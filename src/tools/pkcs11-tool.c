@@ -107,67 +107,69 @@ extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 // clang-format off
+/* EC, Edwards and Montgomery curves understood by pkcs11-tool */
 static struct ec_curve_info {
-	const char *name;
-	const char *oid;
-	const char *ec_params;
-	size_t size;
+	const char *name;	  /* common name of curve */
+	const char *oid;	  /* formated printable OID */
+	unsigned char *ec_params; /* der of OID or printable string */
+	size_t ec_params_size;
+	size_t size; /* field_size in bits */
 	CK_KEY_TYPE mechanism;
 } ec_curve_infos[] = {
-	{"secp192r1",    "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, 0},
-	{"prime192v1",   "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, 0},
-	{"prime192v2",   "1.2.840.10045.3.1.2", "06082A8648CE3D030102", 192, 0},
-	{"prime192v3",   "1.2.840.10045.3.1.3", "06082A8648CE3D030103", 192, 0},
-	{"nistp192",     "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, 0},
-	{"ansiX9p192r1", "1.2.840.10045.3.1.1", "06082A8648CE3D030101", 192, 0},
+	{"secp192r1",    "1.2.840.10045.3.1.1", (unsigned char*)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x01", 10, 192, 0},
+	{"prime192v1",   "1.2.840.10045.3.1.1", (unsigned char*)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x01", 10, 192, 0},
+	{"prime192v2",   "1.2.840.10045.3.1.2", (unsigned char*)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x02", 10, 192, 0},
+	{"prime192v3",   "1.2.840.10045.3.1.3", (unsigned char*)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x03", 10, 192, 0},
+	{"nistp192",     "1.2.840.10045.3.1.1", (unsigned char*)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x01", 10, 192, 0},
+	{"ansiX9p192r1", "1.2.840.10045.3.1.1", (unsigned char*)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x01", 10, 192, 0},
 
-	{"secp224r1", "1.3.132.0.33", "06052b81040021", 224, 0},
-	{"nistp224",  "1.3.132.0.33", "06052b81040021", 224, 0},
+	{"secp224r1", "1.3.132.0.33", (unsigned char*)"\x06\x05\x2b\x81\x04\x00\x21", 7, 224, 0},
+	{"nistp224",  "1.3.132.0.33", (unsigned char*)"\x06\x05\x2b\x81\x04\x00\x21", 7, 224, 0},
 
-	{"prime256v1",   "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, 0},
-	{"secp256r1",    "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, 0},
-	{"nistp256",     "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, 0},
-	{"ansiX9p256r1", "1.2.840.10045.3.1.7", "06082A8648CE3D030107", 256, 0},
-	{"frp256v1",	 "1.2.250.1.223.101.256.1", "060a2a817a01815f65820001", 256, 0},
+	{"prime256v1",   "1.2.840.10045.3.1.7", (unsigned char*)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10, 256, 0},
+	{"secp256r1",    "1.2.840.10045.3.1.7", (unsigned char*)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10, 256, 0},
+	{"nistp256",     "1.2.840.10045.3.1.7", (unsigned char*)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10, 256, 0},
+	{"ansiX9p256r1", "1.2.840.10045.3.1.7", (unsigned char*)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10, 256, 0},
+	{"frp256v1",	 "1.2.250.1.223.101.256.1", (unsigned char*)"\x06\x0a\x2a\x81\x7a\x01\x81\x5f\x65\x82\x00\x01", 11, 256, 0},
 
-	{"secp384r1",		"1.3.132.0.34", "06052B81040022", 384, 0},
-	{"prime384v1",		"1.3.132.0.34", "06052B81040022", 384, 0},
-	{"ansiX9p384r1",	"1.3.132.0.34", "06052B81040022", 384, 0},
+	{"secp384r1",		"1.3.132.0.34", (unsigned char*)"\x06\x05\x2B\x81\x04\x00\x22", 7, 384, 0},
+	{"prime384v1",		"1.3.132.0.34", (unsigned char*)"\x06\x05\x2B\x81\x04\x00\x22", 7, 384, 0},
+	{"ansiX9p384r1",	"1.3.132.0.34", (unsigned char*)"\x06\x05\x2B\x81\x04\x00\x22", 7, 384, 0},
 
-	{"prime521v1", "1.3.132.0.35", "06052B81040023", 521, 0},
-	{"secp521r1", "1.3.132.0.35", "06052B81040023", 521, 0},
-	{"nistp521",  "1.3.132.0.35", "06052B81040023", 521, 0},
+	{"prime521v1", "1.3.132.0.35", (unsigned char*)"\x06\x05\x2B\x81\x04\x00\x23", 7, 521, 0},
+	{"secp521r1", "1.3.132.0.35", (unsigned char*)"\x06\x05\x2B\x81\x04\x00\x23", 7, 521, 0},
+	{"nistp521",  "1.3.132.0.35", (unsigned char*)"\x06\x05\x2B\x81\x04\x00\x23", 7, 521, 0},
 
-	{"brainpoolP192r1", "1.3.36.3.3.2.8.1.1.3", "06092B2403030208010103", 192, 0},
-	{"brainpoolP224r1", "1.3.36.3.3.2.8.1.1.5", "06092B2403030208010105", 224, 0},
-	{"brainpoolP256r1", "1.3.36.3.3.2.8.1.1.7", "06092B2403030208010107", 256, 0},
-	{"brainpoolP320r1", "1.3.36.3.3.2.8.1.1.9", "06092B2403030208010109", 320, 0},
-	{"brainpoolP384r1", "1.3.36.3.3.2.8.1.1.11", "06092B240303020801010B", 384, 0},
-	{"brainpoolP512r1", "1.3.36.3.3.2.8.1.1.13", "06092B240303020801010D", 512, 0},
+	{"brainpoolP192r1", "1.3.36.3.3.2.8.1.1.3", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x03", 11, 192, 0},
+	{"brainpoolP224r1", "1.3.36.3.3.2.8.1.1.5", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x05", 11, 224, 0},
+	{"brainpoolP256r1", "1.3.36.3.3.2.8.1.1.7", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x07", 11, 256, 0},
+	{"brainpoolP320r1", "1.3.36.3.3.2.8.1.1.9", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x09", 11, 320, 0},
+	{"brainpoolP384r1", "1.3.36.3.3.2.8.1.1.11", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0B", 11, 384, 0},
+	{"brainpoolP512r1", "1.3.36.3.3.2.8.1.1.13", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0D", 11, 512, 0},
 
-	{"secp192k1",		"1.3.132.0.31", "06052B8104001F", 192, 0},
-	{"secp256k1",		"1.3.132.0.10", "06052B8104000A", 256, 0},
-	{"secp521k1",		"1.3.132.0.35", "06052B81040023", 521, 0},
+	{"secp192k1",		"1.3.132.0.31", (unsigned char*)"\x06\x05\x2B\x81\x04\x00\x1F", 7, 192, 0},
+	{"secp256k1",		"1.3.132.0.10", (unsigned char*)"\x06\x05\x2B\x81\x04\x00\x0A", 7, 256, 0},
+	{"secp521k1",		"1.3.132.0.35", (unsigned char*)"\x06\x05\x2B\x81\x04\x00\x23", 7, 521, 0},
 
 	/* Some of the following may not yet be supported by the OpenSC module, but may be by other modules */
 	/* OpenPGP extensions by Yubikey and GNUK are not defined in RFCs, so pass by printable string */
 	/* See PKCS#11 3.0 2.3.7 */
-	{"edwards25519", "1.3.6.1.4.1.11591.15.1", "130c656477617264733235353139", 255, CKM_EC_EDWARDS_KEY_PAIR_GEN}, /* send by curve name */
-	{"curve25519",   "1.3.6.1.4.1.3029.1.5.1", "130a63757276653235353139",     255, CKM_EC_MONTGOMERY_KEY_PAIR_GEN}, /* send by curve name */
+	{"edwards25519", "1.3.6.1.4.1.11591.15.1", (unsigned char*)"\x13\x0c\x65\x64\x77\x61\x72\x64\x73\x32\x35\x35\x31\x39", 14, 255, CKM_EC_EDWARDS_KEY_PAIR_GEN}, /* send by curve name */
+	{"curve25519",   "1.3.6.1.4.1.3029.1.5.1", (unsigned char*)"\x13\x0a\x63\x75\x72\x76\x65\x32\x35\x35\x31\x39", 12, 255, CKM_EC_MONTGOMERY_KEY_PAIR_GEN}, /* send by curve name */
 
 	/* RFC8410, EDWARDS and MONTGOMERY curves are used by GnuPG and also by OpenSSL */
 
-	{"X25519",  "1.3.101.110", "06032b656e", 255, CKM_EC_MONTGOMERY_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
-	{"X448",    "1.3.101.111", "06032b656f", 448, CKM_EC_MONTGOMERY_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
-	{"Ed25519", "1.3.101.112", "06032b6570", 255, CKM_EC_EDWARDS_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
-	{"Ed448",   "1.3.101.113", "06032b6571", 448, CKM_EC_EDWARDS_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
+	{"X25519",  "1.3.101.110", (unsigned char*)"\x06\x03\x2b\x65\x6e", 5, 255, CKM_EC_MONTGOMERY_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
+	{"X448",    "1.3.101.111", (unsigned char*)"\x06\x03\x2b\x65\x6f", 5, 448, CKM_EC_MONTGOMERY_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
+	{"Ed25519", "1.3.101.112", (unsigned char*)"\x06\x03\x2b\x65\x70", 5, 255, CKM_EC_EDWARDS_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
+	{"Ed448",   "1.3.101.113", (unsigned char*)"\x06\x03\x2b\x65\x71", 5, 448, CKM_EC_EDWARDS_KEY_PAIR_GEN}, /* RFC 4810 send by OID */
 
 	/* GnuPG openpgp curves as used in gnupg-card are equivalent to RFC8410 OIDs */
-	{"cv25519", "1.3.101.110", "06032b656e", 255, CKM_EC_MONTGOMERY_KEY_PAIR_GEN},
-	{"ed25519", "1.3.101.112", "06032b6570", 255, CKM_EC_EDWARDS_KEY_PAIR_GEN},
+	{"cv25519", "1.3.101.110", (unsigned char*)"\x06\x03\x2b\x65\x6e", 5, 255, CKM_EC_MONTGOMERY_KEY_PAIR_GEN},
+	{"ed25519", "1.3.101.112", (unsigned char*)"\x06\x03\x2b\x65\x70", 5, 255, CKM_EC_EDWARDS_KEY_PAIR_GEN},
 	/* OpenSC card-openpgp.c will map these to what is need on the card */
 
-	{NULL, NULL, NULL, 0, 0},
+	{NULL, NULL, NULL, 0, 0, 0},
 };
 // clang-format on
 
@@ -2207,16 +2209,12 @@ match_ec_curve_by_name(const char *name)
 static const struct ec_curve_info *
 match_ec_curve_by_params(const unsigned char *ec_params, CK_ULONG ec_params_size)
 {
-	char ecpbuf[64];
-
-	if (ec_params_size > (sizeof(ecpbuf) / 2)) {
-		util_fatal("Invalid EC params");
-	}
-
-	sc_bin_to_hex(ec_params, ec_params_size, ecpbuf, sizeof(ecpbuf), 0);
+	if (ec_params_size < 3)
+		return NULL;
 
 	for (size_t i = 0; ec_curve_infos[i].name != NULL; ++i) {
-		if (strcmp(ec_curve_infos[i].ec_params, ecpbuf) == 0) {
+		if ((ec_curve_infos[i].ec_params_size == ec_params_size) &&
+				(memcmp(&ec_curve_infos[i].ec_params, ec_params, ec_params_size) == 0)) {
 			return &ec_curve_infos[i];
 		}
 	}
@@ -2596,7 +2594,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 		curve = match_ec_curve_by_params(ec_params, ec_params_size);
 		if (curve == NULL) {
-			util_fatal("Unknown or unsupported EC curve used in key");
+			util_fatal("Unknown, invalid or unsupported EC curve used in key");
 		}
 
 		/* Ed448: need the params defined but default to false */
@@ -3119,8 +3117,6 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	};
 	unsigned long int gost_key_type = -1;
 	int n_privkey_attr = 4;
-	unsigned char *ecparams = NULL;
-	size_t ecparams_size;
 	CK_ULONG key_type = CKK_RSA;
 	CK_RV rv;
 
@@ -3217,14 +3213,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				}
 			}
 
-			ecparams_size = strlen(ec_curve_infos[ii].ec_params) / 2;
-			ecparams = malloc(ecparams_size);
-			if (!ecparams)
-				util_fatal("Allocation error", 0);
-			if (sc_hex_to_bin(ec_curve_infos[ii].ec_params, ecparams, &ecparams_size)) {
-				fprintf(stderr, "Cannot convert \"%s\"\n", ec_curve_infos[ii].ec_params);
-				util_print_usage_and_die(app_name, options, option_help, NULL);
-			}
+
 
 			if (opt_key_usage_default || opt_key_usage_sign) {
 				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_VERIFY, &_true, sizeof(_true));
@@ -3240,7 +3229,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				n_privkey_attr++;
 			}
 
-			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_EC_PARAMS, ecparams, ecparams_size);
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_EC_PARAMS, ec_curve_infos[ii].ec_params, ec_curve_infos[ii].ec_params_size);
 			n_pubkey_attr++;
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 			n_pubkey_attr++;
@@ -3418,9 +3407,6 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		hPublicKey, hPrivateKey);
 	if (rv != CKR_OK)
 		p11_fatal("C_GenerateKeyPair", rv);
-
-	if (ecparams)
-		free(ecparams);
 
 	printf("Key pair generated:\n");
 	show_object(session, *hPrivateKey);
@@ -4279,7 +4265,7 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
  * and CKK_EC_MONTGOMERY for X25519 and X448.
  * If requested, return pointer to struct ec_curve_info containing OID and size
  */
-
+ 
 static CK_RV
 evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type, struct ec_curve_info **ec_curve_info)
 {
@@ -4374,25 +4360,22 @@ err:
 
 /*  Edwards and Montogmery keys have the same format */
 static int
-parse_ed_mont_pkey(EVP_PKEY *pkey, int type, int pk_type, struct ec_curve_info *ec_info, int private, struct gostkey_info *gost)
+parse_ed_mont_pkey(EVP_PKEY *pkey, int type, int pk_type, struct ec_curve_info *ec_curve_info, int private, struct gostkey_info *gost)
 {
-	
-	size_t ec_params_size;
 	unsigned char *key;
 	size_t key_size;
 
 	/* set EC_PARAMS value
 	 * The param passed is DER of an OID or a PRINTABLE STRING as defines in PKCS11 3.0 
-	 * ec_info containes these and all have one byte tag and one byte length.
+	 * all of the ec_curve_info entries have one byte len values
 	 */
 
-	ec_params_size = ec_info->ec_params[1] + 2;
-	gost->param_oid.value = OPENSSL_malloc(ec_params_size);
+	gost->param_oid.value = OPENSSL_malloc(ec_curve_info->ec_params_size);
 	if (gost->param_oid.value == NULL) {
 		return -1;
 	}
-	gost->param_oid.len = ec_params_size;
-	memcpy(gost->param_oid.value, ec_info->ec_params, ec_params_size);
+	gost->param_oid.len = ec_curve_info->ec_params_size;
+	memcpy(gost->param_oid.value, ec_curve_info->ec_params, ec_curve_info->ec_params_size);
 
 	if (private) {
 		if (EVP_PKEY_get_raw_private_key(pkey, NULL, &key_size) != 1) {
@@ -4464,7 +4447,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	struct gostkey_info gost;
 	EVP_PKEY *evp_key = NULL;
 	int pk_type;
-	struct ec_curve_info *ec_info = NULL;
+	struct ec_curve_info *ec_curve_info = NULL;
 
 	memset(&cert, 0, sizeof(cert));
 	memset(&rsa,  0, sizeof(rsa));
@@ -4547,7 +4530,6 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		int is_private = opt_object_class == CKO_PRIVATE_KEY;
 		int rv;
 		CK_KEY_TYPE type;
-		struct ec_curve_info *ec_info;
 
 		rv = do_read_key(contents, contents_len, is_private, &evp_key);
 		if (rv) {
@@ -4558,7 +4540,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		}
 
 		/* get CK_TYPE from EVP_PKEY if both supported by OpenSSL and PKCS11 */
-		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type, &ec_info) != CKR_OK)
+		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type, &ec_curve_info) != CKR_OK)
 			util_fatal("Key type not supported by OpenSSL and/or PKCS11");
 
 		if (type == CKK_RSA) {
@@ -4571,7 +4553,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		} else if (type == CKK_EC) {
 			rv = parse_ec_pkey(evp_key, is_private, &gost);
 		} else if (type == CKK_EC_EDWARDS || type == CKK_EC_MONTGOMERY) {
-			rv = parse_ed_mont_pkey(evp_key, type, pk_type, ec_info, is_private, &gost);
+			rv = parse_ed_mont_pkey(evp_key, type, pk_type, ec_curve_info, is_private, &gost);
 		}
 #endif
 		else
@@ -4635,6 +4617,8 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		n_privkey_attr++;
 		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SENSITIVE, &_true, sizeof(_true));
 		n_privkey_attr++;
+		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EC_PARAMS, gost.param_oid.value, gost.param_oid.len);
+		n_privkey_attr++;
 
 		if (opt_object_label != NULL) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_LABEL, opt_object_label, strlen(opt_object_label));
@@ -4679,7 +4663,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 		}
 
-		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type,&ec_info) != CKR_OK)
+		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type,&ec_curve_info) != CKR_OK)
 			util_fatal("Key type not supported by OpenSSL and/or PKCS11");
 
 		if (type == CKK_RSA) {
@@ -4731,7 +4715,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		clazz = CKO_PUBLIC_KEY;
 
 #ifdef ENABLE_OPENSSL
-		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type, &ec_info) != CKR_OK)
+		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type, &ec_curve_info) != CKR_OK)
 			util_fatal("Key type not supported by OpenSSL and/or PKCS11");
 
 		n_pubkey_attr = 0;
