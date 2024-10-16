@@ -477,7 +477,7 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 {
 	int r;
-	sc_cardctl_openpgp_keygen_info_t key_info;
+	sc_cardctl_openpgp_key_gen_store_info_t key_info;
 	u8 fingerprints[60];
 	sc_path_t path;
 	sc_file_t *file;
@@ -492,7 +492,7 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 	if (!keytype)
 		keytype = "RSA2048";
 
-	memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keygen_info_t));
+	memset(&key_info, 0, sizeof(sc_cardctl_openpgp_key_gen_store_info_t));
 
 	/* generate key depending on keytype passed */
 	if (strncasecmp("RSA", keytype, strlen("RSA")) == 0) {
