@@ -70,6 +70,27 @@ static struct dtrust_supported_ec_curves {
 };
 // clang-format on
 
+/* copied from iso7816.c */
+static void
+fixup_transceive_length(const struct sc_card *card,
+		struct sc_apdu *apdu)
+{
+	if (card == NULL || apdu == NULL) {
+		return;
+	}
+
+	if (apdu->lc > sc_get_max_send_size(card)) {
+		/* The lower layers will automatically do chaining */
+		apdu->flags |= SC_APDU_FLAGS_CHAINING;
+	}
+
+	if (apdu->le > sc_get_max_recv_size(card)) {
+		/* The lower layers will automatically do a GET RESPONSE, if possible.
+		 * All other workarounds must be carried out by the upper layers. */
+		apdu->le = sc_get_max_recv_size(card);
+	}
+}
+
 static int
 _dtrust_match_cardos(sc_card_t *card)
 {
@@ -259,6 +280,7 @@ dtrust_init(sc_card_t *card)
 	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
 	case SC_CARD_TYPE_DTRUST_V4_1_M100:
 	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+		flags |= SC_ALGORITHM_ECDH_CDH_RAW;
 		flags |= SC_ALGORITHM_ECDSA_RAW;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 		for (unsigned int i = 0; dtrust_curves[i].oid.value[0] >= 0; i++) {
@@ -377,6 +399,14 @@ dtrust_set_security_env(sc_card_t *card,
 		}
 		break;
 
+	case SC_SEC_OPERATION_DERIVE:
+		if (env->algorithm_flags & SC_ALGORITHM_ECDH_CDH_RAW) {
+			se_num = 0x39;
+		} else {
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+		break;
+
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}
@@ -439,6 +469,84 @@ err:
 }
 
 static int
+_dtrust_compute_shared_value(struct sc_card *card,
+		const u8 *crgram, size_t crgram_len,
+		u8 *out, size_t outlen)
+{
+	int r;
+	struct sc_apdu apdu;
+	u8 *sbuf = NULL;
+
+	if (card == NULL || crgram == NULL || out == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	LOG_FUNC_CALLED(card->ctx);
+	sc_log(card->ctx, "CardOS compute shared value: in-len %" SC_FORMAT_LEN_SIZE_T "u, out-len %" SC_FORMAT_LEN_SIZE_T "u", crgram_len, outlen);
+
+	/* Ensure public key is provided in uncompressed format (indicator byte
+	 * 0x04 followed by X and Y coordinate. */
+	if (crgram_len % 2 == 0 || crgram[0] != 0x04) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	/* strip indicator byte */
+	crgram++;
+	crgram_len--;
+
+	sbuf = malloc(crgram_len + 2);
+	if (sbuf == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	/* INS: 0x2A  PERFORM SECURITY OPERATION
+	 * P1:  0x80  Resp: Plain value
+	 * P2:  0xA6  Cmd: Control reference template for key agreement */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x2A, 0x80, 0xA6);
+	apdu.resp = out;
+	apdu.resplen = outlen;
+	apdu.le = outlen;
+
+	sbuf[0] = 0x9c; /* context specific ASN.1 tag */
+	sbuf[1] = crgram_len;
+	memcpy(sbuf + 2, crgram, crgram_len);
+	apdu.data = sbuf;
+	apdu.lc = crgram_len + 2;
+	apdu.datalen = crgram_len + 2;
+
+	fixup_transceive_length(card, &apdu);
+	r = sc_transmit_apdu(card, &apdu);
+	sc_mem_clear(sbuf, crgram_len + 2);
+	free(sbuf);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
+		LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
+	else
+		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+}
+
+static int
+dtrust_decipher(struct sc_card *card, const u8 *data,
+		size_t data_len, u8 *out, size_t outlen)
+{
+	switch (card->type) {
+	/* No special handling necessary for RSA cards. */
+	case SC_CARD_TYPE_DTRUST_V4_1_STD:
+	case SC_CARD_TYPE_DTRUST_V4_4_STD:
+		LOG_FUNC_RETURN(card->ctx, iso_ops->decipher(card, data, data_len, out, outlen));
+
+	/* Elliptic Curve cards cannot use PSO:DECIPHER command and need to
+	 * perform key agreement by a CardOS specific command. */
+	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V4_1_M100:
+	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+		LOG_FUNC_RETURN(card->ctx, _dtrust_compute_shared_value(card, data, data_len, out, outlen));
+
+	default:
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+}
+
+static int
 dtrust_logout(sc_card_t *card)
 {
 	sc_path_t path;
@@ -462,6 +570,7 @@ sc_get_dtrust_driver(void)
 	dtrust_ops.finish = dtrust_finish;
 	dtrust_ops.set_security_env = dtrust_set_security_env;
 	dtrust_ops.compute_signature = dtrust_compute_signature;
+	dtrust_ops.decipher = dtrust_decipher;
 	dtrust_ops.logout = dtrust_logout;
 
 	return &dtrust_drv;
