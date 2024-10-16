@@ -103,6 +103,61 @@ static int openpgp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	LOG_FUNC_CALLED(p15card->card->ctx);
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
+/**
+ * Set algorithm and check if card supports it
+ * @param p15card sc_pkcs15_card_t
+ * @param type SC_PKCS15_TYPE_*
+ * @param key_id  openspgp id
+ * @param &algorithm   SC_OPENPGP_KEYALGO_*
+
+ * @returns 0 or error
+ */
+
+static int openpgp_set_algorithm(sc_pkcs15_card_t *p15card,
+		u8 key_id, unsigned long type, u8 *algo)
+{
+	sc_card_t *card = p15card->card;
+	
+	if (card->type != SC_CARD_TYPE_OPENPGP_GNUK &&
+			card->type < SC_CARD_TYPE_OPENPGP_V3) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is supported on this card");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	}
+
+	switch (key_id) {
+	case SC_OPENPGP_KEY_SIGN:
+	case SC_OPENPGP_KEY_AUTH:
+		switch (type) {
+		case SC_PKCS15_TYPE_PRKEY_EC:
+		case SC_PKCS15_TYPE_PUBKEY_EC:
+			*algo = SC_OPENPGP_KEYALGO_ECDSA;
+			return SC_SUCCESS;
+			break;
+		case SC_PKCS15_TYPE_PRKEY_EDDSA:
+		case SC_PKCS15_TYPE_PUBKEY_EDDSA:
+			*algo = SC_OPENPGP_KEYALGO_EDDSA;
+			return SC_SUCCESS;
+			break;
+		}
+		break;
+	case SC_OPENPGP_KEY_ENCR:
+		switch (type) {
+		case SC_PKCS15_TYPE_PRKEY_EC:
+		case SC_PKCS15_TYPE_PUBKEY_EC:
+			*algo = SC_OPENPGP_KEYALGO_ECDH;
+			return SC_SUCCESS;
+			break;
+		case SC_PKCS15_TYPE_PRKEY_XEDDSA:
+		case SC_PKCS15_TYPE_PUBKEY_XEDDSA:
+			*algo = SC_OPENPGP_KEYALGO_ECDH;
+			return SC_SUCCESS;
+			break;
+		}
+		break;
+	}
+	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Invalid algorithm of openpgp slot");
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
+}
 
 /**
  * Stores an external key on the card.
@@ -115,9 +170,17 @@ static int openpgp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
+	/* Maybe called internally to write public key because PKCS11 stores 
+	 * private and public keyis in separate operations. In this case
+	 * the object will have a type of SC_PKCS15_TYPE_PUBLIC_*
+	 * and key will be sc_pkcs15_pubkey_t
+	 */
 	sc_card_t *card = p15card->card;
+	sc_pkcs15_pubkey_t *pubkey = (sc_pkcs15_pubkey_t *) key; /* maybe pubkey */
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
-	sc_cardctl_openpgp_keystore_info_t key_info = {0};
+	sc_pkcs15_pubkey_info_t *pubkinfo = (sc_pkcs15_pubkey_info_t *) obj->data;
+
+	sc_cardctl_openpgp_key_gen_store_info_t key_info = {0};
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -125,34 +188,32 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	switch(obj->type)
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
-		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keystore_info_t));
+		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_key_gen_store_info_t));
 		key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
 		key_info.key_id = kinfo->id.value[0];
-		key_info.u.rsa.e = key->u.rsa.exponent.data;
-		key_info.u.rsa.e_len = key->u.rsa.exponent.len * 8; /* use bits instead of bytes */
+		key_info.u.rsa.exponent = key->u.rsa.exponent.data;
+		key_info.u.rsa.exponent_len = key->u.rsa.exponent.len * 8; /* use bits instead of bytes */
 		key_info.u.rsa.p = key->u.rsa.p.data;
 		key_info.u.rsa.p_len = key->u.rsa.p.len;
 		key_info.u.rsa.q = key->u.rsa.q.data;
 		key_info.u.rsa.q_len = key->u.rsa.q.len;
-		key_info.u.rsa.n = key->u.rsa.modulus.data;
-		key_info.u.rsa.n_len = key->u.rsa.modulus.len * 8; /* use bits instead of bytes */
+		key_info.u.rsa.modulus = key->u.rsa.modulus.data;
+		key_info.u.rsa.modulus_len = key->u.rsa.modulus.len * 8; /* use bits instead of bytes */
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
 		break;
+
 	case SC_PKCS15_TYPE_PRKEY_EC:
 	case SC_PKCS15_TYPE_PRKEY_EDDSA:
 	case SC_PKCS15_TYPE_PRKEY_XEDDSA:
-		if (card->type != SC_CARD_TYPE_OPENPGP_GNUK &&
-				card->type < SC_CARD_TYPE_OPENPGP_V3) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is supported on this card");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-		}
-		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_keystore_info_t));
-		key_info.algorithm = (kinfo->id.value[0] == SC_OPENPGP_KEY_ENCR)
-				   ? SC_OPENPGP_KEYALGO_ECDH /* ECDH for slot 2 only */
-				   : SC_OPENPGP_KEYALGO_ECDSA; /* ECDSA for slot 1 and 3 */
+		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_key_gen_store_info_t));
+		
+		r = openpgp_set_algorithm(p15card, kinfo->id.value[0], obj->type, &key_info.algorithm);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Key type not valid for key id");
+	
 		key_info.key_id = kinfo->id.value[0];
 		key_info.u.ec.privateD = key->u.ec.privateD.data;
 		key_info.u.ec.privateD_len = key->u.ec.privateD.len;
+		/* key->u.ec.ecpointQ.len is optional with private key */
 		if (key->u.ec.ecpointQ.len) {
 			key_info.u.ec.ecpointQ = malloc(key->u.ec.ecpointQ.len);
 			if (!key_info.u.ec.ecpointQ)
@@ -163,10 +224,55 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		key_info.u.ec.oid = key->u.ec.params.id;
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
 		break;
+
+		/* Unlike RSA which includes modulus in privkey, 
+		 * PKCS11 stores pubkey as separate operation
+		 */
+	case SC_PKCS15_TYPE_PUBKEY_EC:
+	case SC_PKCS15_TYPE_PUBKEY_EDDSA:
+	case SC_PKCS15_TYPE_PUBKEY_XEDDSA:
+		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_key_gen_store_info_t));
+
+		r = openpgp_set_algorithm(p15card, pubkinfo->id.value[0], obj->type, &key_info.algorithm);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Key type not valid for key id");
+	
+		key_info.key_id = pubkinfo->id.value[0];
+		if (pubkey->u.ec.ecpointQ.len) {
+			key_info.u.ec.ecpointQ = malloc(pubkey->u.ec.ecpointQ.len);
+			if (!key_info.u.ec.ecpointQ)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+			memcpy(&key_info.u.ec.ecpointQ, &pubkey->u.ec.ecpointQ.value, pubkey->u.ec.ecpointQ.len);
+		key_info.u.ec.ecpointQ_len = pubkey->u.ec.ecpointQ.len;
+
+		}
+		/* copy oid, oid_len and key_length from pubkey */
+
+		if (pubkey->u.ec.params.der.len > 2)
+			key_info.u.ec.oidv_len = pubkey->u.ec.params.der.value[1];
+		else
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+		for ( size_t i = 0; (i < key_info.u.ec.oidv_len) && (i+2 < pubkey->u.ec.params.der.len); i++){
+			key_info.u.ec.oidv.value[i] = pubkey->u.ec.params.der.value[i+2];
+		}
+		key_info.u.ec.oidv.value[key_info.u.ec.oidv_len] = -1;
+
+		/* copy sc_object_id too */
+		key_info.u.ec.oid = pubkey->u.ec.params.id;
+
+		key_info.u.ec.key_length = pubkey->u.ec.params.field_length;
+		key_info.key_type = pubkey->u.ec.params.key_type;
+
+		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
+		break;
+	
 	default:
 		r = SC_ERROR_NOT_SUPPORTED;
 		sc_log(card->ctx, "%s: Key generation failed: Unknown/unsupported key type.", strerror(r));
 	}
+
+err:
+	/* TODO cleanup  key_info */
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -182,7 +288,7 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 	sc_pkcs15_pubkey_t *pubkey)
 {
 	sc_context_t *ctx = card->ctx;
-	sc_cardctl_openpgp_keygen_info_t key_info;
+	sc_cardctl_openpgp_key_gen_store_info_t key_info;
 	sc_pkcs15_prkey_info_t *required = (sc_pkcs15_prkey_info_t *)obj->data;
 	sc_pkcs15_id_t *kid = &(required->id);
 	int r;
@@ -251,6 +357,7 @@ err:
 	key_info.u.rsa.modulus = NULL;
 	free(key_info.u.rsa.exponent);
 	key_info.u.rsa.exponent = NULL;
+	free(key_info.data);
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -266,7 +373,7 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 									sc_pkcs15_pubkey_t *pubkey)
 {
 	sc_context_t *ctx = card->ctx;
-	sc_cardctl_openpgp_keygen_info_t key_info;
+	sc_cardctl_openpgp_key_gen_store_info_t key_info;
 	sc_pkcs15_prkey_info_t *required = (sc_pkcs15_prkey_info_t *)obj->data;
 	sc_pkcs15_id_t *kid = &(required->id);
 	struct sc_ec_parameters *info_ec =
@@ -307,24 +414,32 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 		key_info.algorithm = (key_info.key_id == SC_OPENPGP_KEY_ENCR)
 						     ? SC_OPENPGP_KEYALGO_ECDH	 /* ECDH for slot 2 only */
 						     : SC_OPENPGP_KEYALGO_ECDSA; /* ECDSA for slot 1 and 3 */
-		key_info.u.ec.ecpoint_len = 1 + 2 * BYTES4BITS(required->field_length);
+		key_info.u.ec.ecpointQ_len = 1 + 2 * BYTES4BITS(required->field_length);
 		break;
 	case SC_ALGORITHM_EDDSA:
 		key_info.algorithm = SC_OPENPGP_KEYALGO_EDDSA; /* only sign */
-		key_info.u.ec.ecpoint_len = BYTES4BITS(required->field_length);
+		key_info.u.ec.ecpointQ_len = BYTES4BITS(required->field_length);
 		break;
 	case SC_ALGORITHM_XEDDSA:
 		/* TODO  may need to look at MSE, and how sign XEDDSA certificate */
 		key_info.algorithm = SC_OPENPGP_KEYALGO_ECDH; /* but could be used to sign too */
-		key_info.u.ec.ecpoint_len = BYTES4BITS(required->field_length);
+		key_info.u.ec.ecpointQ_len = BYTES4BITS(required->field_length);
 		break;
 	}
 
 	/* copying info_ec.id works for any EC ECDH EdDSA keys */
 	if (info_ec->der.len > 2)
-		key_info.u.ec.oid = info_ec->id; /* copy sc_object_id */
+		key_info.u.ec.oidv_len = info_ec->der.value[1];
 	else
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	for (size_t i=0; (i < key_info.u.ec.oidv_len) && (i+2 < info_ec->der.len); i++){
+		key_info.u.ec.oidv.value[i] = info_ec->der.value[i+2];
+	}
+	key_info.u.ec.oidv.value[key_info.data_len] = -1;
+
+	/* copy  id also */
+	key_info.u.ec.oid = info_ec->id;
 
 	/* generate key on card */
 	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
@@ -334,18 +449,17 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	sc_log(ctx, "Set output ecpoint info");
 
 	pubkey->algorithm = key_info.key_type;
-	pubkey->u.ec.ecpointQ.len = key_info.u.ec.ecpoint_len;
-	pubkey->u.ec.ecpointQ.value = malloc(key_info.u.ec.ecpoint_len);
+	pubkey->u.ec.ecpointQ.len = key_info.u.ec.ecpointQ_len;
+	pubkey->u.ec.ecpointQ.value = malloc(key_info.u.ec.ecpointQ_len);
 	if (pubkey->u.ec.ecpointQ.value == NULL) {
 		r = SC_ERROR_NOT_ENOUGH_MEMORY;
 		goto err;
 	}
 
-	memcpy(pubkey->u.ec.ecpointQ.value, key_info.u.ec.ecpoint, key_info.u.ec.ecpoint_len);
+	memcpy(pubkey->u.ec.ecpointQ.value, key_info.u.ec.ecpointQ, key_info.u.ec.ecpointQ_len);
 
 err:
-	if (key_info.u.ec.ecpoint)
-		free(key_info.u.ec.ecpoint);
+	free(key_info.u.ec.ecpointQ);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -425,16 +539,31 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 	sc_pkcs15_id_t *cid;
 	sc_pkcs15_data_info_t *dinfo;
 	u8 buf[254];
-	int r;
+	int r = 0;
+	sc_pkcs15_pubkey_t *pubkey = NULL;
+
 
 	LOG_FUNC_CALLED(card->ctx);
 
 	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_PRKEY:
-	case SC_PKCS15_TYPE_PUBKEY:
-		/* For these two type, store_data just don't need to do anything.
-		 * All have been done already before this function is called */
 		r = SC_SUCCESS;
+		break;
+
+	case SC_PKCS15_TYPE_PUBKEY:
+
+		if (obj->type == SC_PKCS15_TYPE_PUBKEY_EC ||
+				obj->type == SC_PKCS15_TYPE_PUBKEY_EDDSA ||
+				obj->type == SC_PKCS15_TYPE_PUBKEY_XEDDSA) {
+			r = sc_pkcs15_read_pubkey(p15card, obj, &pubkey);
+			LOG_TEST_GOTO_ERR(ctx, r, "Failed to get pubkey from spki");
+
+			/* PKCS11 stores private and public keys as two operations */
+			r = openpgp_store_key (profile,  p15card, obj, (void *)pubkey);
+			LOG_TEST_GOTO_ERR(ctx, r, "Failed to store pubkey fromk spki");
+
+			r = SC_SUCCESS;
+		}
 		break;
 
 	case SC_PKCS15_TYPE_CERT:
@@ -517,6 +646,8 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 	default:
 		r = SC_ERROR_NOT_IMPLEMENTED;
 	}
+err:
+	sc_pkcs15_free_pubkey(pubkey);
 	sc_file_free(file);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -530,7 +661,7 @@ static struct sc_pkcs15init_operations sc_pkcs15init_openpgp_operations = {
 	openpgp_create_pin,
 	NULL,				/* select key reference */
 	openpgp_create_key,
-	openpgp_store_key,
+	openpgp_store_key,		/* May be called for private and public key twice */
 	openpgp_generate_key,
 	NULL, NULL, 			/* encode private/public key */
 	NULL,				/* finalize_card */
