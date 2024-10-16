@@ -826,6 +826,7 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		pubkey->alg_id->algorithm = pubkey->algorithm;
 	}
 
+/* TODO fix  EDDSA and XEDDSA to only have algo and no param in SPKI */
 	switch (pubkey->algorithm) {
 	case SC_ALGORITHM_EC:
 	case SC_ALGORITHM_EDDSA:
@@ -845,20 +846,23 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 			r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
 			LOG_TEST_RET(ctx, r, "failed to fix EC parameters");
 
-			ec_params  = calloc(1, sizeof(struct sc_ec_parameters));
-			if (!ec_params)
-				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-			ec_params->type = 1;
-			ec_params->der.value = calloc(1, pubkey->u.ec.params.der.len);
-			if (!ec_params->der.value) {
-				free(ec_params);
-				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			/* EDDSA and XEDDSA only have algo and no param in SPKI */
+			if (pubkey->algorithm == SC_ALGORITHM_EC) {
+				ec_params  = calloc(1, sizeof(struct sc_ec_parameters));
+				if (!ec_params)
+					LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+				ec_params->type = 1;
+				ec_params->der.value = calloc(1, pubkey->u.ec.params.der.len);
+				if (!ec_params->der.value) {
+					free(ec_params);
+					LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+				}
+				memcpy(ec_params->der.value, pubkey->u.ec.params.der.value, pubkey->u.ec.params.der.len);
+				ec_params->der.len = pubkey->u.ec.params.der.len;
 			}
-			memcpy(ec_params->der.value, pubkey->u.ec.params.der.value, pubkey->u.ec.params.der.len);
-			ec_params->der.len = pubkey->u.ec.params.der.len;
 			/* This could have been already allocated: avoid memory leak */
 			sc_asn1_clear_algorithm_id(pubkey->alg_id);
-			pubkey->alg_id->params = ec_params;
+			pubkey->alg_id->params = ec_params; /* NULL for EDDSA and XEDDSA */
 		}
 		break;
 	case SC_ALGORITHM_GOSTR3410:
