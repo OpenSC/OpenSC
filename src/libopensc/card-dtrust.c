@@ -70,27 +70,6 @@ static struct dtrust_supported_ec_curves {
 };
 // clang-format on
 
-/* copied from iso7816.c */
-static void
-fixup_transceive_length(const struct sc_card *card,
-		struct sc_apdu *apdu)
-{
-	if (card == NULL || apdu == NULL) {
-		return;
-	}
-
-	if (apdu->lc > sc_get_max_send_size(card)) {
-		/* The lower layers will automatically do chaining */
-		apdu->flags |= SC_APDU_FLAGS_CHAINING;
-	}
-
-	if (apdu->le > sc_get_max_recv_size(card)) {
-		/* The lower layers will automatically do a GET RESPONSE, if possible.
-		 * All other workarounds must be carried out by the upper layers. */
-		apdu->le = sc_get_max_recv_size(card);
-	}
-}
-
 static int
 _dtrust_match_cardos(sc_card_t *card)
 {
@@ -516,7 +495,7 @@ _dtrust_compute_shared_value(struct sc_card *card,
 	apdu.lc = crgram_len + 2;
 	apdu.datalen = crgram_len + 2;
 
-	fixup_transceive_length(card, &apdu);
+	iso7816_fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	sc_mem_clear(sbuf, crgram_len + 2);
 	free(sbuf);
