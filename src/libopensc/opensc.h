@@ -1673,6 +1673,18 @@ extern const char *sc_get_version(void);
 
 extern sc_card_driver_t *sc_get_iso7816_driver(void);
 
+/*
+ * @brief Request command chaining if needed.
+ *
+ * @param[in]     card  card
+ * @param[in,out] apdu  apdu structure to update
+ *
+ * @note Checks if the command payload or the expected response fits into the
+ * card transceive buffer. It requests command chaining from the lower levels
+ * if the data length exceeds the buffer size.
+ */
+void iso7816_fixup_transceive_length(const struct sc_card *card, struct sc_apdu *apdu);
+
 /**
  * @brief Read a complete EF by short file identifier.
  *

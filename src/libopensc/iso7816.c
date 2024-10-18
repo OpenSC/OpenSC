@@ -30,8 +30,8 @@
 #include "iso7816.h"
 #include "sm/sm-iso.h"
 
-
-static void fixup_transceive_length(const struct sc_card *card,
+void
+iso7816_fixup_transceive_length(const struct sc_card *card,
 		struct sc_apdu *apdu)
 {
 	if (card == NULL || apdu == NULL) {
@@ -152,7 +152,7 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 	apdu.resplen = count;
 	apdu.resp = buf;
 
-	fixup_transceive_length(card, &apdu);
+	iso7816_fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 
@@ -254,7 +254,7 @@ iso7816_read_record(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
 	if (flags & SC_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
 
-	fixup_transceive_length(card, &apdu);
+	iso7816_fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -295,7 +295,7 @@ iso7816_write_record(struct sc_card *card, unsigned int rec_nr,
 	if (flags & SC_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
 
-	fixup_transceive_length(card, &apdu);
+	iso7816_fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -318,7 +318,7 @@ iso7816_append_record(struct sc_card *card,
 	apdu.data = buf;
 	apdu.p2 = (flags & SC_RECORD_EF_ID_MASK) << 3;
 
-	fixup_transceive_length(card, &apdu);
+	iso7816_fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -358,7 +358,7 @@ iso7816_update_record(struct sc_card *card, unsigned int rec_nr, unsigned int id
 	if (flags & SC_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
 
-	fixup_transceive_length(card, &apdu);
+	iso7816_fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -388,7 +388,7 @@ iso7816_write_binary(struct sc_card *card,
 	apdu.datalen = count;
 	apdu.data = buf;
 
-	fixup_transceive_length(card, &apdu);
+	iso7816_fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -415,7 +415,7 @@ iso7816_update_binary(struct sc_card *card,
 	apdu.datalen = count;
 	apdu.data = buf;
 
-	fixup_transceive_length(card, &apdu);
+	iso7816_fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1114,7 +1114,7 @@ iso7816_compute_signature(struct sc_card *card,
 	apdu.lc = datalen;
 	apdu.datalen = datalen;
 
-	fixup_transceive_length(card, &apdu);
+	iso7816_fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
@@ -1162,7 +1162,7 @@ iso7816_decipher(struct sc_card *card,
 	apdu.lc = crgram_len + 1;
 	apdu.datalen = crgram_len + 1;
 
-	fixup_transceive_length(card, &apdu);
+	iso7816_fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	sc_mem_clear(sbuf, crgram_len + 1);
 	free(sbuf);

@@ -72,26 +72,6 @@ typedef struct cardos_data {
 	const sc_security_env_t * sec_env;
 } cardos_data_t;
 
-/* copied from iso7816.c */
-static void fixup_transceive_length(const struct sc_card *card,
-		struct sc_apdu *apdu)
-{
-	if (card == NULL || apdu == NULL) {
-		return;
-	}
-
-	if (apdu->lc > sc_get_max_send_size(card)) {
-		/* The lower layers will automatically do chaining */
-		apdu->flags |= SC_APDU_FLAGS_CHAINING;
-	}
-
-	if (apdu->le > sc_get_max_recv_size(card)) {
-		/* The lower layers will automatically do a GET RESPONSE, if possible.
-		 * All other workarounds must be carried out by the upper layers. */
-		apdu->le = sc_get_max_recv_size(card);
-	}
-}
-
 static int cardos_match_card(sc_card_t *card)
 {
 	unsigned char atr[SC_MAX_ATR_SIZE] = {0};
@@ -1080,7 +1060,7 @@ do_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	apdu.data    = data;
 	apdu.lc      = datalen;
 	apdu.datalen = datalen;
-	fixup_transceive_length(card, &apdu);
+	iso7816_fixup_transceive_length(card, &apdu);
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
