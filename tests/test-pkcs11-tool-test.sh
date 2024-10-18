@@ -23,21 +23,37 @@ echo "======================================================="
 $PKCS11_TOOL --test -p "${PIN}" --module "${P11LIB}"
 assert $? "Failed running tests"
 
-echo "======================================================="
-echo "Test objects URI"
-echo "======================================================="
-$PKCS11_TOOL -O 2>/dev/null | grep 'uri:' 2>/dev/null >/dev/null
-assert $? "Failed running objects URI tests"
-$PKCS11_TOOL -O 2>/dev/null | grep 'uri:' | awk -F 'uri:' '{print $2}' | tr -d ' ' | grep ^"pkcs11:" 2>/dev/null >/dev/null
-assert $? "Failed running objects URI tests"
+# done with $P11LIB
 
-echo "======================================================="
-echo "Test slots URI"
-echo "======================================================="
-$PKCS11_TOOL -L 2>/dev/null | grep 'uri' 2>/dev/null >/dev/null
-assert $? "Failed running slots URI tests"
-$PKCS11_TOOL -O 2>/dev/null | grep 'uri' | awk -F 'uri*:' '{print $2}' | tr -d ' '  | grep ^"pkcs11:" 2>/dev/null >/dev/null
-assert $? "Failed running slots URI tests"
+# test if OpenSC can access a reader with a token using OpenSC module
+# to test how OpenSC creates 
+# softhsm2 module does not count 
+#
+OPENSC_TOOL="../src/tools/opensc-tool"
+if [[ -f "$OPENSC_TOOL" ]] ; then 
+    $OPENSC_TOOL -a
+	if [[ "$?" -eq "0" ]] ; then
+		echo "======================================================="
+		echo "Test objects URI"
+		echo "======================================================="
+		$PKCS11_TOOL -O 2>/dev/null | grep 'uri:' 2>/dev/null >/dev/null
+		assert $? "Failed running objects URI tests"
+		$PKCS11_TOOL -O 2>/dev/null | grep 'uri:' | awk -F 'uri:' '{print $2}' | tr -d ' ' | grep ^"pkcs11:" 2>/dev/null >/dev/null
+		assert $? "Failed running objects URI tests"
+
+		echo "======================================================="
+		echo "Test slots URI"
+		echo "======================================================="
+		$PKCS11_TOOL -L 2>/dev/null | grep 'uri' 2>/dev/null >/dev/null
+		assert $? "Failed running slots URI tests"
+		$PKCS11_TOOL -O 2>/dev/null | grep 'uri' | awk -F 'uri*:' '{print $2}' | tr -d ' '  | grep ^"pkcs11:" 2>/dev/null >/dev/null
+		assert $? "Failed running slots URI tests"
+	else
+		echo "Skipping URI tests because no token found"
+	fi
+else
+	echo "Skipping URI tests because because opensc-tool not found"
+fi
 
 echo "======================================================="
 echo "Cleanup"
