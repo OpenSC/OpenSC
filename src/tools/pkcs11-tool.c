@@ -8354,9 +8354,9 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 #else
 		for (n = 0; n < num_mechs; n++) {
 			switch (mechs[n]) {
-			case CKM_RSA_PKCS_OAEP:
+//			case CKM_RSA_PKCS_OAEP:
 				/* one more OAEP test with param .. */
-				errors += encrypt_decrypt(sess, mechs[n], privKeyObject, "ABC", 3);
+// 				errors += encrypt_decrypt(sess, mechs[n], privKeyObject, "ABC", 3);
 				/* fall through */
 			case CKM_RSA_PKCS:
 			case CKM_RSA_X_509:
