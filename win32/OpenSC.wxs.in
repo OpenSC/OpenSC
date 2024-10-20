@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="windows-1252"?>
-<?if $(var.Platform) = x64 ?>
+<?if $(sys.BUILDARCH) = x64 ?>
   <?ifndef OpenSSL ?>
     <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light (64bit)" ?>
   <?else ?>
@@ -27,8 +27,7 @@
            Codepage="1252"
            Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.@OPENSC_VERSION_REVISION@"
            Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@">
-    <Package Platform="$(var.Platform)"
-             Description="@VS_FF_PRODUCT_NAME@ Installer"
+    <Package Description="@VS_FF_PRODUCT_NAME@ Installer"
              Comments="@OPENSC_VS_FF_COMMENTS@"
              Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@"
              InstallerVersion="300"
@@ -95,7 +94,7 @@
                   <RegistryValue Type="integer" Name="Type" Value="1"/>
                 </RegistryKey>
                 <!-- when the x64 installer will install x86 components on x64 plateform too
-                    <?if $(var.Platform) = x64 ?>
+                    <?if $(sys.BUILDARCH) = x64 ?>
                     <RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Defaults\Provider\OpenSC CSP">
                       <RegistryValue Type="string" Name="Image Path" Value="basecsp.dll"/>
                       <RegistryValue Type="integer" Name="Type" Value="1"/>
@@ -213,7 +212,7 @@
                 </RegistryKey>
               </Component>
               <Component Id="Autostart_native_tools" Guid="*" Win64="$(var.Win64YesNo)">
-                <?if $(var.Platform) = "x86"?>
+                <?if $(sys.BUILDARCH) = "x86"?>
                 <Condition>
                   <![CDATA[NOT Msix64]]>
                 </Condition>
