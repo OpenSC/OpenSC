@@ -151,6 +151,9 @@
               <Component Id="pkcs11_register.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\pkcs11-register.exe" Vital="yes"/>
               </Component>
+              <Component Id="pkcs11_launcher.vbs" Guid="*" Win64="$(var.Win64YesNo)">
+                <File Source="$(var.SOURCE_DIR)\src\tools\pkcs11-launcher.vbs" Vital="yes"/>
+              </Component>
               <Component Id="cardos_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                 <File Source="$(var.SOURCE_DIR)\src\tools\cardos-tool.exe" Vital="yes"/>
               </Component>
@@ -209,7 +212,7 @@
               <?endif ?>
               <Component Id="Autostart_tools" Guid="*" Win64="$(var.Win64YesNo)">
                 <RegistryKey Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\Run">
-                  <RegistryValue Type="string" Name="pkcs11-register.exe" Value="[INSTALLDIR_TOOLS]pkcs11-register.exe" />
+                  <RegistryValue Type="string" Name="pkcs11-launcher.vbs" Value='wscript.exe "[INSTALLDIR_TOOLS]pkcs11-launcher.vbs"' />
                 </RegistryKey>
               </Component>
               <Component Id="Autostart_native_tools" Guid="*" Win64="$(var.Win64YesNo)">
@@ -377,6 +380,7 @@
         <ComponentRef Id="opensc_notify.exe"/>
         <ComponentRef Id="pkcs11_tool.exe"/>
         <ComponentRef Id="pkcs11_register.exe"/>
+        <ComponentRef Id="pkcs11_launcher.vbs"/>
         <ComponentRef Id="cardos_tool.exe"/>
         <ComponentRef Id="egk_tool.exe"/>
         <ComponentRef Id="goid_tool.exe"/>
