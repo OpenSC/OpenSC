@@ -512,8 +512,7 @@ sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx, const struct sc_pkcs15_obje
 
 	sc_log(ctx, "Key path %s", sc_print_path(&pubkey->path));
 
-	if (spki_value)
-		free(spki_value);
+	free(spki_value);
 	return r;
 }
 
@@ -668,7 +667,7 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ecpoint_len:%" SC_FORMAT_LEN_SIZE_T "u", ecpoint_len);
 	/* if from bit string */
 	if (asn1_ec_pointQ[1].flags & SC_ASN1_PRESENT)
-		ecpoint_len = (ecpoint_len + 7) / 8; /* bits to bytes */
+		ecpoint_len = BYTES4BITS(ecpoint_len);
 	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ecpoint_len:%" SC_FORMAT_LEN_SIZE_T "u", ecpoint_len);
 
 	if (*ecpoint_data != 0x04) {
@@ -695,23 +694,16 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 	 * PKCS11 does not define CKA_VALUE for a pub key
 	 * But some PKCS11 modules define a CKA_VALUE for a public key
 	 * and PKCS11 says ECPOINT is encoded as "DER-encoding of ANSI X9.62 ECPoint value Q"
-	 * But ANSI X9.62 (early draft at least) says encode as BIT STRING
+	 * But ANSI X9.62 (early draft at least) says encode as OCTET STRING
 	 * IETF encodes it in SubjectPublicKeyInfo (SPKI) in BIT STRING
-	 * PKCS11 V3 does add CKA_PUBLIC_KEY_INFO as SPKI
 	 * For now return as OCTET STRING.
 	 */
-	volatile int gdb_test = 0; /* 0 - OCTET STRING (PKCS15 RAW) 1 - BIT STRING (SPKI) */
 
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 
-	if (gdb_test == 0) {
-		key_len = key->ecpointQ.len;
-		sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key_len, 1);
-	} else {
-		key_len = key->ecpointQ.len * 8; /* encode in bit string */
-		sc_format_asn1_entry(asn1_ec_pointQ + 1, key->ecpointQ.value, &key_len, 1);
-	}
+	key_len = key->ecpointQ.len;
+	sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key_len, 1);
 
 	LOG_FUNC_RETURN(ctx,
 			sc_asn1_encode(ctx, asn1_ec_pointQ, buf, buflen));
@@ -743,7 +735,7 @@ sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 	}
 
 	if (asn1_ec_pointQ[1].flags & SC_ASN1_PRESENT)
-		ecpoint_len = (ecpoint_len + 7) / 8;
+		ecpoint_len = BYTES4BITS(ecpoint_len);
 
 	key->ecpointQ.len = ecpoint_len;
 	key->ecpointQ.value = ecpoint_data;
@@ -752,9 +744,6 @@ sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-/* This is a change from  previous code that used OCTET STRING
- * But RFC 8410 and PKCS11 use BITSTRING.
- */
 int
 sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
@@ -763,9 +752,9 @@ sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key
 	size_t key_len;
 
 	LOG_FUNC_CALLED(ctx);
-	key_len = key->ecpointQ.len * 8; /* in bits */
+	key_len = key->ecpointQ.len; /* in bytes */
 	sc_copy_asn1_entry(c_asn1_eddsa_pubkey, asn1_eddsa_pubkey);
-	sc_format_asn1_entry(asn1_eddsa_pubkey + 1, key->ecpointQ.value, &key_len, 1);
+	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, key->ecpointQ.value, &key_len, 1);
 
 	LOG_FUNC_RETURN(ctx,
 			sc_asn1_encode(ctx, asn1_eddsa_pubkey, buf, buflen));
@@ -826,7 +815,6 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		pubkey->alg_id->algorithm = pubkey->algorithm;
 	}
 
-/* TODO fix  EDDSA and XEDDSA to only have algo and no param in SPKI */
 	switch (pubkey->algorithm) {
 	case SC_ALGORITHM_EC:
 	case SC_ALGORITHM_EDDSA:
@@ -848,7 +836,7 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 
 			/* EDDSA and XEDDSA only have algo and no param in SPKI */
 			if (pubkey->algorithm == SC_ALGORITHM_EC) {
-				ec_params  = calloc(1, sizeof(struct sc_ec_parameters));
+				ec_params = calloc(1, sizeof(struct sc_ec_parameters));
 				if (!ec_params)
 					LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 				ec_params->type = 1;
@@ -887,6 +875,7 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		r =  sc_asn1_encode(ctx, asn1_spki_key, buf, len);
 	}
 
+	/*  pkey.len == 0 is flag to not delete */
 	if (pkey.len && pkey.value)
 		free(pkey.value);
 
@@ -1384,7 +1373,7 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 
 	if (pk.len == 0)
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INTERNAL, "Incorrect length of key");
-	pk.len = BYTES4BITS(pk.len);	/* convert number of bits to bytes */
+	pk.len = BYTES4BITS(pk.len); /* convert number of bits to bytes */
 
 	if (pk_alg.algorithm == SC_ALGORITHM_EC)   {
 		/* EC public key is not encapsulated into BIT STRING -- it's a BIT STRING */
@@ -1441,12 +1430,9 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	pubkey = NULL;
 
 err:
-	if (pubkey)
-		sc_pkcs15_free_pubkey(pubkey);
-	if (pk.value)
-		free(pk.value);
-	if (tmp_buf)
-		free(tmp_buf);
+	sc_pkcs15_free_pubkey(pubkey);
+	free(pk.value);
+	free(tmp_buf);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -1491,8 +1477,7 @@ sc_pkcs15_pubkey_from_spki_file(struct sc_context *ctx, char * filename,
 	LOG_TEST_RET(ctx, r, "Cannot read SPKI DER file");
 
 	r = sc_pkcs15_pubkey_from_spki_sequence(ctx, buf, buflen, outpubkey);
-	if (buf)
-		free(buf);
+	free(buf);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
