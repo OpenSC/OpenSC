@@ -695,23 +695,16 @@ sc_pkcs15_encode_pubkey_ec(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 	 * PKCS11 does not define CKA_VALUE for a pub key
 	 * But some PKCS11 modules define a CKA_VALUE for a public key
 	 * and PKCS11 says ECPOINT is encoded as "DER-encoding of ANSI X9.62 ECPoint value Q"
-	 * But ANSI X9.62 (early draft at least) says encode as BIT STRING
+	 * But ANSI X9.62 (early draft at least) says encode as OCTET STRING
 	 * IETF encodes it in SubjectPublicKeyInfo (SPKI) in BIT STRING
-	 * PKCS11 V3 does add CKA_PUBLIC_KEY_INFO as SPKI
 	 * For now return as OCTET STRING.
 	 */
-	volatile int gdb_test = 0; /* 0 - OCTET STRING (PKCS15 RAW) 1 - BIT STRING (SPKI) */
 
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_ec_pointQ, asn1_ec_pointQ);
 
-	if (gdb_test == 0) {
-		key_len = key->ecpointQ.len;
-		sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key_len, 1);
-	} else {
-		key_len = key->ecpointQ.len * 8; /* encode in bit string */
-		sc_format_asn1_entry(asn1_ec_pointQ + 1, key->ecpointQ.value, &key_len, 1);
-	}
+	key_len = key->ecpointQ.len;
+	sc_format_asn1_entry(asn1_ec_pointQ + 0, key->ecpointQ.value, &key_len, 1);
 
 	LOG_FUNC_RETURN(ctx,
 			sc_asn1_encode(ctx, asn1_ec_pointQ, buf, buflen));
@@ -752,9 +745,6 @@ sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-/* This is a change from  previous code that used OCTET STRING
- * But RFC 8410 and PKCS11 use BITSTRING.
- */
 int
 sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
@@ -763,9 +753,9 @@ sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key
 	size_t key_len;
 
 	LOG_FUNC_CALLED(ctx);
-	key_len = key->ecpointQ.len * 8; /* in bits */
+	key_len = key->ecpointQ.len ; /* in bytes */
 	sc_copy_asn1_entry(c_asn1_eddsa_pubkey, asn1_eddsa_pubkey);
-	sc_format_asn1_entry(asn1_eddsa_pubkey + 1, key->ecpointQ.value, &key_len, 1);
+	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, key->ecpointQ.value, &key_len, 1);
 
 	LOG_FUNC_RETURN(ctx,
 			sc_asn1_encode(ctx, asn1_eddsa_pubkey, buf, buflen));
