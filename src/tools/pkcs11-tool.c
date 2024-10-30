@@ -4270,7 +4270,7 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 #ifdef ENABLE_OPENSSL
 /* Return PKCS11 key type based on OpenSSL EVP_PKEY type
  * which are support by PKCS11 and OpenSSL used when compiling.
- * PKCS11 defines CKK_EC_EDWARDS for both Ed25529 and X448
+ * PKCS11 defines CKK_EC_EDWARDS for both Ed25529 and Ed448
  * and CKK_EC_MONTGOMERY for X25519 and X448.
  * If requested, return pointer to struct ec_curve_info containing OID and size
  */
@@ -5363,10 +5363,12 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		eckey = EVP_PKEY_get0_EC_KEY(pkey);
-		ecpoint = EC_KEY_get0_public_key(eckey);
-		ecgroup = EC_KEY_get0_group(eckey);
+		if (eckey) {
+			ecpoint = EC_KEY_get0_public_key(eckey);
+			ecgroup = EC_KEY_get0_group(eckey);
+		}
 
-		if (!ecpoint || !ecgroup)
+		if (!eckey || !ecpoint || !ecgroup)
 			util_fatal("Failed to parse peer EC key from %s", opt_input);
 #else
 		if (EVP_PKEY_get_group_name(pkey, name, sizeof(name), &len) != 1 ||
@@ -5389,10 +5391,14 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
+		if (buf_size == 0)
+			util_fatal("Failed to parse peer EC key \n");
 		buf = (unsigned char *)malloc(buf_size);
 		if (buf == NULL)
 			util_fatal("malloc() failure\n");
 		buf_size = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, buf_size, NULL);
+		if (buf_size == 0)
+			util_fatal("Failed to parse peer EC key \n");
 #else
 		EC_GROUP_free(ecgroup);
 		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &buf_size);
@@ -5415,7 +5421,7 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 #endif
 		EVP_PKEY_get_raw_public_key(pkey, NULL, &buf_size);
 		if (buf_size == 0)
-			util_fatal("Unable to get of peer key\n");
+			util_fatal("Unable to get public key of peer\n");
 		buf = (unsigned char *)malloc(buf_size);
 		if (buf == NULL)
 			util_fatal("malloc() failure\n");
@@ -5625,9 +5631,9 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		if (!find_mechanism(slot, CKF_DERIVE|opt_allow_sw, NULL, 0, &opt_mechanism))
 			util_fatal("Derive mechanism not supported");
 
-	switch (key_type) {
-	case CKK_EC:
-	case CKK_EC_MONTGOMERY:
+	switch(opt_mechanism) {
+	case CKM_ECDH1_COFACTOR_DERIVE:
+	case CKM_ECDH1_DERIVE:
 		derived_key = derive_ec_key(session, key, opt_mechanism);
 		break;
 	case CKM_HKDF_DERIVE:
