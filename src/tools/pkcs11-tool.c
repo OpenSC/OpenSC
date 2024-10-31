@@ -112,8 +112,8 @@ static struct ec_curve_info {
 	const char *name;	  /* common name of curve */
 	const char *oid;	  /* formatted printable OID */
 	unsigned char *ec_params; /* der of OID or printable string */
-	size_t ec_params_size;
-	size_t size; /* field_size in bits */
+	CK_ULONG ec_params_size;
+	CK_ULONG size; /* field_size in bits */
 	CK_KEY_TYPE mechanism;
 } ec_curve_infos[] = {
 	{"secp192r1",    "1.2.840.10045.3.1.1", (unsigned char*)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x01", 10, 192, 0},
@@ -2223,7 +2223,7 @@ match_ec_curve_by_params(const unsigned char *ec_params, CK_ULONG ec_params_size
 
 	for (size_t i = 0; ec_curve_infos[i].name != NULL; ++i) {
 		if ((ec_curve_infos[i].ec_params_size == ec_params_size) &&
-				(memcmp(&ec_curve_infos[i].ec_params, ec_params, ec_params_size) == 0)) {
+				(memcmp(ec_curve_infos[i].ec_params, ec_params, ec_params_size) == 0)) {
 			return &ec_curve_infos[i];
 		}
 	}
@@ -2639,7 +2639,6 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			unsigned char rs_buffer[512];
 			bytes = getEC_POINT(session, key, &len);
 			free(bytes);
-			/* TODO DEE EDDSA and EC_POINT returned in BIT STRING needs some work */
 			/*
 			 * (We only support uncompressed for now)
 			 * Uncompressed EC_POINT is DER OCTET STRING of "04||x||y"
@@ -4269,7 +4268,7 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 
 #ifdef ENABLE_OPENSSL
 /* Return PKCS11 key type based on OpenSSL EVP_PKEY type
- * which are support by PKCS11 and OpenSSL used when compiling.
+ * which are supported by PKCS11 and OpenSSL used when compiling.
  * PKCS11 defines CKK_EC_EDWARDS for both Ed25529 and Ed448
  * and CKK_EC_MONTGOMERY for X25519 and X448.
  * If requested, return pointer to struct ec_curve_info containing OID and size
@@ -4721,9 +4720,6 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		clazz = CKO_PUBLIC_KEY;
 
 #ifdef ENABLE_OPENSSL
-		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type, &ec_curve_info) != CKR_OK)
-			util_fatal("Key type not supported by OpenSSL and/or PKCS11");
-
 		n_pubkey_attr = 0;
 		FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_CLASS, &clazz, sizeof(clazz));
 		n_pubkey_attr++;
@@ -5401,7 +5397,10 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 			util_fatal("Failed to parse peer EC key \n");
 #else
 		EC_GROUP_free(ecgroup);
-		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &buf_size);
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &buf_size) != 1)
+			util_fatal("Failed to get size of public key\n");
+		if (buf_size == 0)
+			util_fatal("Failed to get size of public key\n");
 		if ((buf = (unsigned char *)malloc(buf_size)) == NULL)
 			util_fatal("malloc() failure\n");
 
@@ -5419,13 +5418,15 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 #if defined(EVP_PKEY_X448)
 	case EVP_PKEY_X448:
 #endif
-		EVP_PKEY_get_raw_public_key(pkey, NULL, &buf_size);
+		if (EVP_PKEY_get_raw_public_key(pkey, NULL, &buf_size) != 1)
+			util_fatal("Unable to get public key of peer\n");
 		if (buf_size == 0)
 			util_fatal("Unable to get public key of peer\n");
 		buf = (unsigned char *)malloc(buf_size);
 		if (buf == NULL)
 			util_fatal("malloc() failure\n");
-		EVP_PKEY_get_raw_public_key(pkey, buf, &buf_size);
+		if (EVP_PKEY_get_raw_public_key(pkey, buf, &buf_size) != 1)
+			util_fatal("Unable to get public key of peer\n");
 
 		if (mech_mech != CKM_ECDH1_DERIVE)
 			util_fatal("Peer key %s not usable with %s", "CKK_EC_MONTGOMERY", p11_mechanism_to_name(mech_mech));
@@ -5763,101 +5764,64 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			printf("; EC");
 		}
 		if (pub) {
-			unsigned char *bytes = NULL;
-			unsigned char *body;
+			unsigned char *point_bytes = NULL;
+			CK_ULONG point_size = 0;
+			unsigned char *params_bytes = NULL;
+			CK_ULONG params_size = 0;
+			const struct ec_curve_info *curve_info = NULL;
 
-			unsigned long ksize = 0;
 			unsigned int n;
-			unsigned long body_len = 0;
 
-			bytes = getEC_POINT(sess, obj, &size);
-			/*
-			 * simple parse of DER BIT STRING 0x03 or OCTET STRING 0x04
-			 * good to 65K bytes
-			 */
-			if (size > 3 && (bytes[0] == 0x03 || bytes[0] == 0x04)) {
-				if (bytes[1] <= 127 && size == (unsigned long)(bytes[1] + 2)) {
-					body_len = size - 2;
-					body = bytes + 2;
-				} else if (bytes[1] == 0x81 && size == ((unsigned long)bytes[2] + 3)) {
-					body_len = size - 3;
-					body = bytes + 3;
-				} else if (bytes[1] == 0x82 && size == ((unsigned long)(bytes[2] << 8) + (unsigned long)bytes[3] + 4)) {
-					body_len = size - 4;
-					body = bytes + 4;
-				} else {
-					body_len = 0; /* some problem with size */
-				}
-			}
-			/* With BIT STRING remove unused bits in last byte indicator */
-			if (body_len > 0 && bytes[0] == 0x03) {
-				body_len--;
-				body++;
-			}
+			point_bytes = getEC_POINT(sess, obj, &point_size);
+			params_bytes = getEC_PARAMS(sess, obj, &params_size);
 
-			if (key_type == CKK_EC && body_len > 0) {
-				/*
-				 * (We only support uncompressed for now)
-				 * Uncompressed EC_POINT is DER OCTET STRING
-				 * or DER BIT STRING "04||x||y"
-				 * So a "256" bit key has x and y of 32 bytes each
-				 * something like: "03 42 00 04|x|y" or  "04 41 04||x||y"
-				 * Do simple size calculation based on DER encoding
-				 */
-				ksize = (body_len - 1) * 4;
-
-			} else if (body_len > 0) {
-				/*
-				 * EDDSA and XEDDSA in PKCS11 and only one coordinate
-				 */
-				ksize = (body_len) * 8;
-				if (ksize == 256)
-					ksize--; /* as 25519 uses 255 as bits */
-			}
-
-			if (ksize)
-				printf("  EC_POINT %lu bits\n", ksize);
+			/* get field length from known EC curves */
+			curve_info = match_ec_curve_by_params(params_bytes, params_size);
+			if (curve_info)
+				printf("  EC_POINT %lu bits\n", curve_info->size);
 			else
-				printf("  EC_POINT size unknown");
+				printf("  EC_POINT size unknown\n");
 
-			if (bytes && body) {
-				if ((CK_LONG)size > 0) { /* Will print the point here */
-					printf("  EC_POINT:   ");
-					for (n = 0; n < body_len; n++)
-						printf("%02x", body[n]);
-					printf("\n");
-				}
+			/*
+			 * PKCS11 EC_POINT is "DER-encoding of ANSI X9.62 ECPoint value Q"
+			 * "ECPoint ::= OCTET STRING"
+			 */
+			if (point_bytes && point_size) {
+				printf("  EC_POINT:   ");
+				for (n = 0; n < point_size; n++)
+					printf("%02x", point_bytes[n]);
+				printf("\n");
 			}
-			free(bytes);
-			bytes = NULL;
-			size = 0;
-			bytes = getEC_PARAMS(sess, obj, &size);
-			if (bytes) {
-				if ((CK_LONG)size > 0) {
-					struct sc_object_id oid;
 
-					printf("  EC_PARAMS:  ");
-					for (n = 0; n < size; n++)
-						printf("%02x", bytes[n]);
+			if (params_bytes && params_size > 2) {
+				struct sc_object_id oid;
 
-					if (size > 2 && bytes[0] == 0x06) { // OID
-						sc_init_oid(&oid);
-						if (sc_asn1_decode_object_id(bytes + 2, size - 2, &oid) == SC_SUCCESS) {
-							printf(" (OID %i", oid.value[0]);
-							if (oid.value[0] >= 0)
-								for (n = 1; (n < SC_MAX_OBJECT_ID_OCTETS)
-										&& (oid.value[n] >= 0); n++)
-									printf(".%i", oid.value[n]);
-							printf(")");
-						}
-					} else if (size > 2 && bytes[0] == 0x13) { // Printable string
-						printf(" (PrintableString %.*s)", bytes[1], bytes+2);
+				printf("  EC_PARAMS:  ");
+				for (n = 0; n < params_size; n++)
+					printf("%02x", params_bytes[n]);
+
+				if (curve_info)
+					printf(" (\"%s\" OID:\"%s\")", curve_info->name, curve_info->oid);
+				else  /* if unknown curve, type and print something */
+				if (params_bytes[0] == SC_ASN1_OBJECT) {
+					sc_init_oid(&oid);
+					if (sc_asn1_decode_object_id(params_bytes + 2, params_size - 2, &oid) == SC_SUCCESS) {
+						printf(" (OID %i", oid.value[0]);
+						if (oid.value[0] >= 0)
+							for (n = 1; (n < SC_MAX_OBJECT_ID_OCTETS)
+									&& (oid.value[n] >= 0); n++)
+								printf(".%i", oid.value[n]);
+						printf(")");
 					}
-					printf("\n");
-
+				} else if (params_size > 2 && params_bytes[0] == SC_ASN1_PRINTABLESTRING) { // Printable string
+					printf(" (PrintableString %.*s)", params_bytes[1], params_bytes+2);
+				} else {
+					printf("Unknown format of CKA_EC_PARAMS");
 				}
-				free(bytes);
+				printf("\n");
 			}
+			free(point_bytes);
+			free(params_bytes);
 		} else {
 			printf("\n");
 		}
@@ -6488,12 +6452,12 @@ static int read_object(CK_SESSION_HANDLE session)
 
 				value = getEC_POINT(session, obj, &len);
 				/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
-				/* No, should return encoded in BIT STRING, Need to accept both */
+				/*  will accept BIT STRING, accept both */
 				a = value;
 				os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
 				if (!os) {
 					os = d2i_ASN1_BIT_STRING(NULL, &a, (long)len);
-				len = (len + 7) / 8;
+					len = (len + 7) / 8;
 				}
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
