@@ -111,8 +111,8 @@ static struct ec_curve_info {
 	const char *name;	  /* common name of curve */
 	const char *oid;	  /* formatted printable OID */
 	unsigned char *ec_params; /* der of OID or printable string */
-	size_t ec_params_size;
-	size_t size; /* field_size in bits */
+	CK_ULONG ec_params_size;
+	CK_ULONG size; /* field_size in bits */
 	CK_KEY_TYPE mechanism;
 } ec_curve_infos[] = {
 	{"secp192r1",    "1.2.840.10045.3.1.1", (unsigned char*)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x01", 10, 192, 0},
@@ -2638,7 +2638,6 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			unsigned char rs_buffer[512];
 			bytes = getEC_POINT(session, key, &len);
 			free(bytes);
-			/* TODO DEE EDDSA and EC_POINT returned in BIT STRING needs some work */
 			/*
 			 * (We only support uncompressed for now)
 			 * Uncompressed EC_POINT is DER OCTET STRING of "04||x||y"
@@ -4268,7 +4267,7 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 
 #ifdef ENABLE_OPENSSL
 /* Return PKCS11 key type based on OpenSSL EVP_PKEY type
- * which are support by PKCS11 and OpenSSL used when compiling.
+ * which are supported by PKCS11 and OpenSSL used when compiling.
  * PKCS11 defines CKK_EC_EDWARDS for both Ed25529 and Ed448
  * and CKK_EC_MONTGOMERY for X25519 and X448.
  * If requested, return pointer to struct ec_curve_info containing OID and size
@@ -4720,9 +4719,6 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		clazz = CKO_PUBLIC_KEY;
 
 #ifdef ENABLE_OPENSSL
-		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type, &ec_curve_info) != CKR_OK)
-			util_fatal("Key type not supported by OpenSSL and/or PKCS11");
-
 		n_pubkey_attr = 0;
 		FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_CLASS, &clazz, sizeof(clazz));
 		n_pubkey_attr++;
@@ -5400,7 +5396,10 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 			util_fatal("Failed to parse peer EC key \n");
 #else
 		EC_GROUP_free(ecgroup);
-		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &buf_size);
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &buf_size) != 1)
+			util_fatal("Failed to get size of public key\n");
+		if (buf_size == 0)
+			util_fatal("Failed to get size of public key\n");
 		if ((buf = (unsigned char *)malloc(buf_size)) == NULL)
 			util_fatal("malloc() failure\n");
 
@@ -5418,13 +5417,15 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 #if defined(EVP_PKEY_X448)
 	case EVP_PKEY_X448:
 #endif
-		EVP_PKEY_get_raw_public_key(pkey, NULL, &buf_size);
+		if (EVP_PKEY_get_raw_public_key(pkey, NULL, &buf_size) != 1)
+			util_fatal("Unable to get public key of peer\n");
 		if (buf_size == 0)
 			util_fatal("Unable to get public key of peer\n");
 		buf = (unsigned char *)malloc(buf_size);
 		if (buf == NULL)
 			util_fatal("malloc() failure\n");
-		EVP_PKEY_get_raw_public_key(pkey, buf, &buf_size);
+		if (EVP_PKEY_get_raw_public_key(pkey, buf, &buf_size) != 1)
+			util_fatal("Unable to get public key of peer\n");
 
 		if (mech_mech != CKM_ECDH1_DERIVE)
 			util_fatal("Peer key %s not usable with %s", "CKK_EC_MONTGOMERY", p11_mechanism_to_name(mech_mech));
@@ -5763,9 +5764,9 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		}
 		if (pub) {
 			unsigned char *point_bytes = NULL;
-			size_t point_size = 0;
+			CK_ULONG point_size = 0;
 			unsigned char *params_bytes = NULL;
-			size_t params_size = 0;
+			CK_ULONG params_size = 0;
 			const struct ec_curve_info *curve_info = NULL;
 
 			unsigned int n;
@@ -5803,7 +5804,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 				else  /* if unknown curve, type and print something */
 				if (params_bytes[0] == SC_ASN1_OBJECT) {
 					sc_init_oid(&oid);
-					if (sc_asn1_decode_object_id(params_bytes + 2, size - 2, &oid) == SC_SUCCESS) {
+					if (sc_asn1_decode_object_id(params_bytes + 2, params_size - 2, &oid) == SC_SUCCESS) {
 						printf(" (OID %i", oid.value[0]);
 						if (oid.value[0] >= 0)
 							for (n = 1; (n < SC_MAX_OBJECT_ID_OCTETS)
@@ -6450,12 +6451,12 @@ static int read_object(CK_SESSION_HANDLE session)
 
 				value = getEC_POINT(session, obj, &len);
 				/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
-				/* No, should return encoded in BIT STRING, Need to accept both */
+				/*  will accept BIT STRING, accept both */
 				a = value;
 				os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
 				if (!os) {
 					os = d2i_ASN1_BIT_STRING(NULL, &a, (long)len);
-				len = (len + 7) / 8;
+					len = (len + 7) / 8;
 				}
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
