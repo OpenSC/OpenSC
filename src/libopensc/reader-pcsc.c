@@ -394,7 +394,7 @@ static int refresh_attributes(sc_reader_t *reader)
 				/* When reader is removed between two subsequent calls to refresh_attributes,
 				 * SCardGetStatusChange does not notice the change, test the card handle with SCardStatus */
 				rv = priv->gpriv->SCardStatus(priv->pcsc_card, NULL, &readers_len, &cstate, &prot, atr, &atr_len);
-				if (rv == (LONG)SCARD_W_REMOVED_CARD || rv == (LONG)SCARD_E_INVALID_VALUE)
+				if (rv != (LONG)SCARD_S_SUCCESS)
 					reader->flags |= SC_READER_CARD_CHANGED;
 				/* If this happens, card must be reconnected, otherwise SCardGetStatusChange() will still return timeout
 				 * and card handle will be invalid. */
@@ -695,6 +695,10 @@ static int pcsc_disconnect(sc_reader_t * reader)
 	if (!priv->gpriv->cardmod && !(reader->ctx->flags & SC_CTX_FLAG_TERMINATE)) {
 		LONG rv = priv->gpriv->SCardDisconnect(priv->pcsc_card, priv->gpriv->disconnect_action);
 		PCSC_TRACE(reader, "SCardDisconnect returned", rv);
+		if (rv == SCARD_S_SUCCESS) {
+			// Card was successfully disconnected, reset the card handle
+			priv->pcsc_card = 0;
+		}
 	}
 	reader->flags &= SC_READER_REMOVED;
 	return SC_SUCCESS;
