@@ -2780,6 +2780,7 @@ build_rsa_oaep_params(
 		printf("mgf not set, defaulting to %s\n", p11_mgf_to_name(oaep_params->mgf));
 	}
 
+	/* PKCS11 3.0 is vague about setting CKZ_DATA_SPECIFIED */
 	oaep_params->source = CKZ_DATA_SPECIFIED;
 	oaep_params->pSourceData = param;
 	oaep_params->ulSourceDataLen = param_len;
@@ -5793,33 +5794,33 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 				printf("\n");
 			}
 
-			if (params_bytes && params_size > 2) {
+			if (params_bytes && params_size > 0) {
 				struct sc_object_id oid;
 
 				printf("  EC_PARAMS:  ");
 				for (n = 0; n < params_size; n++)
 					printf("%02x", params_bytes[n]);
 
-				if (curve_info)
+				if (curve_info) { /* we matched it above, use printable OID */
 					printf(" (\"%s\" OID:\"%s\")", curve_info->name, curve_info->oid);
-				else  /* if unknown curve, type and print something */
-				if (params_bytes[0] == SC_ASN1_OBJECT) {
+				} else if (params_bytes[0] == SC_ASN1_OBJECT) {
 					sc_init_oid(&oid);
-					if (sc_asn1_decode_object_id(params_bytes + 2, params_size - 2, &oid) == SC_SUCCESS) {
-						printf(" (OID %i", oid.value[0]);
-						if (oid.value[0] >= 0)
+					if (sc_asn1_decode_object_id(params_bytes, params_size, &oid) == SC_SUCCESS) {
+						printf(" (OID: \"%i", oid.value[0]);
+						if (oid.value[0] >= 0) {
 							for (n = 1; (n < SC_MAX_OBJECT_ID_OCTETS)
-									&& (oid.value[n] >= 0); n++)
+									&& (oid.value[n] >= 1); n++) {
 								printf(".%i", oid.value[n]);
-						printf(")");
+							}
+						}
+						printf("\"");
 					}
-				} else if (params_size > 2 && params_bytes[0] == SC_ASN1_PRINTABLESTRING) { // Printable string
-					printf(" (PrintableString %.*s)", params_bytes[1], params_bytes+2);
-				} else {
-					printf("Unknown format of CKA_EC_PARAMS");
-				}
 				printf("\n");
+				}
+			} else {
+				printf("  EC_PARAMS: not available\n");
 			}
+
 			free(point_bytes);
 			free(params_bytes);
 		} else {
@@ -8324,9 +8325,12 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 #else
 		for (n = 0; n < num_mechs; n++) {
 			switch (mechs[n]) {
-//			case CKM_RSA_PKCS_OAEP:
+			case CKM_RSA_PKCS_OAEP:
 				/* one more OAEP test with param .. */
-// 				errors += encrypt_decrypt(sess, mechs[n], privKeyObject, "ABC", 3);
+				/* SoftHSM2 and maybe others fail with pSourceData */
+				/* the pSourceData is not used so the C_Decrypt fails with CKR_GENERAL_ERROR */
+				// errors += encrypt_decrypt(sess, mechs[n], privKeyObject, "ABC", 3)) != 0);
+				printf(" -- CKM_RSA_PKCS_OAEP with pSourceData != NULL, skipping\n");
 				/* fall through */
 			case CKM_RSA_PKCS:
 			case CKM_RSA_X_509:
