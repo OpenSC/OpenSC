@@ -20,7 +20,9 @@ assert $? "Failed to set up card"
 echo "======================================================="
 echo "Test"
 echo "======================================================="
-$PKCS11_TOOL --test -p "${PIN}" --module "${P11LIB}"
+#SoftHSM only supports CKM_RSA_PKCS_OAEP with --hash-algorithm SHA-1 and --mgf MGF1-SHA1
+# and it accepts pSourceData, but  does not use, so decrypt fails, See pkcs11-tool.c comments
+$PKCS11_TOOL --test -p "${PIN}" --module "${P11LIB}" --hash-algorithm "SHA-1" --mgf "MGF1-SHA1"
 assert $? "Failed running tests"
 
 echo "======================================================="
