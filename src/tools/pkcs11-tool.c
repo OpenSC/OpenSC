@@ -4454,7 +4454,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	struct rsakey_info rsa;
 	struct gostkey_info gost;
 	EVP_PKEY *evp_key = NULL;
-	int pk_type;
+	int pk_type = -1;
 	struct ec_curve_info *ec_curve_info = NULL;
 
 	memset(&cert, 0, sizeof(cert));
@@ -4554,9 +4554,8 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			rv = parse_rsa_pkey(evp_key, is_private, &rsa);
 		}
 #if !defined(OPENSSL_NO_EC)
-		else if (type == NID_id_GostR3410_2001) {
+		else if (type == CKK_GOSTR3410) {
 			rv = parse_gost_pkey(evp_key, is_private, &gost);
-			type = CKK_GOSTR3410;
 		} else if (type == CKK_EC) {
 			rv = parse_ec_pkey(evp_key, is_private, &gost);
 		} else if (type == CKK_EC_EDWARDS || type == CKK_EC_MONTGOMERY) {
