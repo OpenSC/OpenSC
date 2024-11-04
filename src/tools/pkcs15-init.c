@@ -724,9 +724,9 @@ static const struct alg_spec alg_types_sym[] = {
 /* RSA can have a number , default is 2048 */
 /* EC require a curve name */
 /* EDDSA and XEDDSA  without a size require a size or curve name or OID */
-/* other EDDSA and XEDDSA can be used  alone */
+/* other EDDSA and XEDDSA can be used alone */
 static const struct alg_spec alg_types_asym[] = {
-	{ "rsa",	SC_ALGORITHM_RSA,	2048 }, /* new default */
+	{ "rsa",	SC_ALGORITHM_RSA,	3072 }, /* new default */
 	{ "gost2001",	SC_ALGORITHM_GOSTR3410,	SC_PKCS15_GOSTR3410_KEYSIZE },
 	{ "ec",		SC_ALGORITHM_EC,	0 }, /* keybits derived from curve */
 	/*  RFC 8410 */
