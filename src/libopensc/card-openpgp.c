@@ -570,6 +570,8 @@ pgp_init(sc_card_t *card)
 					else if (priv->ec_curves[i].key_type == SC_ALGORITHM_XEDDSA)
 						_sc_card_add_xeddsa_alg(card, priv->ec_curves[i].size,
 								flags_xeddsa, ext_flags, &priv->ec_curves[i].oid);
+					else
+						LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 				}
 				break;
 			case SC_CARD_TYPE_OPENPGP_V2:
