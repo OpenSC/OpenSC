@@ -4360,7 +4360,7 @@ evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type, struct ec_
 #endif
 err:
 	/* unsupported by OpenSSL, PKCS11 or this program */
-	*type = -1;
+	*type = CKK_OPENSC_UNDEFINED;
 	*pk_type = -1;
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -4447,7 +4447,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	unsigned char *oid_buf = NULL;
 	CK_OBJECT_CLASS clazz;
 	CK_CERTIFICATE_TYPE cert_type;
-	CK_KEY_TYPE type = CKK_RSA;
+	CK_KEY_TYPE type = CKK_OPENSC_UNDEFINED;
 	size_t ret = 0;
 #ifdef ENABLE_OPENSSL
 	struct x509cert_info cert;
@@ -4537,7 +4537,6 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 #ifdef ENABLE_OPENSSL
 		int is_private = opt_object_class == CKO_PRIVATE_KEY;
 		int rv;
-		CK_KEY_TYPE type;
 
 		rv = do_read_key(contents, contents_len, is_private, &evp_key);
 		if (rv) {
@@ -4668,9 +4667,6 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 		}
 
-		if (evp_pkey2ck_key_type(evp_key, &type, &pk_type,&ec_curve_info) != CKR_OK)
-			util_fatal("Key type not supported by OpenSSL and/or PKCS11");
-
 		if (type == CKK_RSA) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
@@ -4711,6 +4707,8 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			if (rv)
 				return rv;
 			n_privkey_attr++;
+		} else {
+			util_fatal("Unsupported CK_KEY_TYPE, cannot write private key");
 		}
 #else
 		util_fatal("No OpenSSL support, cannot write private key");
@@ -4794,6 +4792,8 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			if (rv)
 				return rv;
 			n_pubkey_attr++;
+		} else {
+			util_fatal("Unsupported CK_KEY_TYPE, cannot write public key");
 		}
 #endif
 #else
