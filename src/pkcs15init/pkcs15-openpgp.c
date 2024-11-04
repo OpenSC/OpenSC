@@ -200,6 +200,8 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		key_info.u.rsa.modulus = key->u.rsa.modulus.data;
 		key_info.u.rsa.modulus_len = key->u.rsa.modulus.len * 8; /* use bits instead of bytes */
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
+
+		/* nothing to free in key_info for RSA */
 		break;
 
 	case SC_PKCS15_TYPE_PRKEY_EC:
@@ -223,6 +225,8 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		key_info.u.ec.ecpointQ_len = key->u.ec.ecpointQ.len;
 		key_info.u.ec.oid = key->u.ec.params.id;
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
+
+		free(key_info.u.ec.ecpointQ);
 		break;
 
 		/* Unlike RSA which includes modulus in privkey, 
@@ -249,8 +253,10 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 		if (pubkey->u.ec.params.der.len > 2)
 			key_info.u.ec.oidv_len = pubkey->u.ec.params.der.value[1];
-		else
+		else {
+			free(key_info.u.ec.ecpointQ);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
 
 		for ( size_t i = 0; (i < key_info.u.ec.oidv_len) && (i+2 < pubkey->u.ec.params.der.len); i++){
 			key_info.u.ec.oidv.value[i] = pubkey->u.ec.params.der.value[i+2];
@@ -264,6 +270,8 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		key_info.key_type = pubkey->u.ec.params.key_type;
 
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
+
+		free(key_info.u.ec.ecpointQ);
 		break;
 	
 	default:
@@ -272,8 +280,6 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 
 err:
-	/* TODO cleanup  key_info */
-
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
