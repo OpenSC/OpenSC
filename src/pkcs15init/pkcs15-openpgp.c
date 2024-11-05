@@ -113,11 +113,12 @@ static int openpgp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  * @returns 0 or error
  */
 
-static int openpgp_set_algorithm(sc_pkcs15_card_t *p15card,
+static int
+openpgp_set_algorithm(sc_pkcs15_card_t *p15card,
 		u8 key_id, unsigned long type, u8 *algo)
 {
 	sc_card_t *card = p15card->card;
-	
+
 	if (card->type != SC_CARD_TYPE_OPENPGP_GNUK &&
 			card->type < SC_CARD_TYPE_OPENPGP_V3) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "only RSA is supported on this card");
@@ -170,15 +171,15 @@ static int openpgp_set_algorithm(sc_pkcs15_card_t *p15card,
 static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
-	/* Maybe called internally to write public key because PKCS11 stores 
+	/* Maybe called internally to write public key because PKCS11 stores
 	 * private and public keys in separate operations. In this case
 	 * the object will have a type of SC_PKCS15_TYPE_PUBLIC_*
 	 * and key will be sc_pkcs15_pubkey_t
 	 */
 	sc_card_t *card = p15card->card;
-	sc_pkcs15_pubkey_t *pubkey = (sc_pkcs15_pubkey_t *) key; /* maybe pubkey */
+	sc_pkcs15_pubkey_t *pubkey = (sc_pkcs15_pubkey_t *)key; /* maybe pubkey */
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
-	sc_pkcs15_pubkey_info_t *pubkinfo = (sc_pkcs15_pubkey_info_t *) obj->data;
+	sc_pkcs15_pubkey_info_t *pubkinfo = (sc_pkcs15_pubkey_info_t *)obj->data;
 
 	sc_cardctl_openpgp_key_gen_store_info_t key_info = {0};
 	int r;
@@ -208,10 +209,10 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	case SC_PKCS15_TYPE_PRKEY_EDDSA:
 	case SC_PKCS15_TYPE_PRKEY_XEDDSA:
 		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_key_gen_store_info_t));
-		
+
 		r = openpgp_set_algorithm(p15card, kinfo->id.value[0], obj->type, &key_info.algorithm);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Key type not valid for key id");
-	
+
 		key_info.key_id = kinfo->id.value[0];
 		key_info.u.ec.privateD = key->u.ec.privateD.data;
 		key_info.u.ec.privateD_len = key->u.ec.privateD.len;
@@ -229,7 +230,7 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		free(key_info.u.ec.ecpointQ);
 		break;
 
-		/* Unlike RSA which includes modulus in privkey, 
+		/* Unlike RSA which includes modulus in privkey,
 		 * PKCS11 stores pubkey as separate operation
 		 */
 	case SC_PKCS15_TYPE_PUBKEY_EC:
@@ -239,15 +240,14 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 		r = openpgp_set_algorithm(p15card, pubkinfo->id.value[0], obj->type, &key_info.algorithm);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Key type not valid for key id");
-	
+
 		key_info.key_id = pubkinfo->id.value[0];
 		if (pubkey->u.ec.ecpointQ.len) {
 			key_info.u.ec.ecpointQ = malloc(pubkey->u.ec.ecpointQ.len);
 			if (!key_info.u.ec.ecpointQ)
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 			memcpy(&key_info.u.ec.ecpointQ, &pubkey->u.ec.ecpointQ.value, pubkey->u.ec.ecpointQ.len);
-		key_info.u.ec.ecpointQ_len = pubkey->u.ec.ecpointQ.len;
-
+			key_info.u.ec.ecpointQ_len = pubkey->u.ec.ecpointQ.len;
 		}
 		/* copy oid, oid_len and key_length from pubkey */
 
@@ -258,8 +258,8 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 
-		for ( size_t i = 0; (i < key_info.u.ec.oidv_len) && (i+2 < pubkey->u.ec.params.der.len); i++){
-			key_info.u.ec.oidv.value[i] = pubkey->u.ec.params.der.value[i+2];
+		for (size_t i = 0; (i < key_info.u.ec.oidv_len) && (i + 2 < pubkey->u.ec.params.der.len); i++) {
+			key_info.u.ec.oidv.value[i] = pubkey->u.ec.params.der.value[i + 2];
 		}
 		key_info.u.ec.oidv.value[key_info.u.ec.oidv_len] = -1;
 
@@ -273,7 +273,7 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 		free(key_info.u.ec.ecpointQ);
 		break;
-	
+
 	default:
 		r = SC_ERROR_NOT_SUPPORTED;
 		sc_log(card->ctx, "%s: Key generation failed: Unknown/unsupported key type.", strerror(r));
@@ -439,8 +439,8 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	else
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	for (size_t i=0; (i < key_info.u.ec.oidv_len) && (i+2 < info_ec->der.len); i++){
-		key_info.u.ec.oidv.value[i] = info_ec->der.value[i+2];
+	for (size_t i = 0; (i < key_info.u.ec.oidv_len) && (i + 2 < info_ec->der.len); i++) {
+		key_info.u.ec.oidv.value[i] = info_ec->der.value[i + 2];
 	}
 	key_info.u.ec.oidv.value[key_info.data_len] = -1;
 
@@ -548,7 +548,6 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 	int r = 0;
 	sc_pkcs15_pubkey_t *pubkey = NULL;
 
-
 	LOG_FUNC_CALLED(card->ctx);
 
 	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
@@ -565,7 +564,7 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 			LOG_TEST_GOTO_ERR(ctx, r, "Failed to get pubkey from spki");
 
 			/* PKCS11 stores private and public keys as two operations */
-			r = openpgp_store_key (profile,  p15card, obj, (void *)pubkey);
+			r = openpgp_store_key(profile, p15card, obj, (void *)pubkey);
 			LOG_TEST_GOTO_ERR(ctx, r, "Failed to store pubkey fromk spki");
 
 			r = SC_SUCCESS;
@@ -659,25 +658,25 @@ err:
 }
 
 static struct sc_pkcs15init_operations sc_pkcs15init_openpgp_operations = {
-	openpgp_erase,
-	NULL,				/* init_card */
-	openpgp_create_dir,
-	NULL,				/* create_domain */
-	openpgp_select_pin_reference,
-	openpgp_create_pin,
-	NULL,				/* select key reference */
-	openpgp_create_key,
-	openpgp_store_key,		/* May be called for private and public key twice */
-	openpgp_generate_key,
-	NULL, NULL, 			/* encode private/public key */
-	NULL,				/* finalize_card */
-	NULL, 				/* delete_object */
-	NULL,
-	openpgp_emu_update_any_df,
-	openpgp_emu_update_tokeninfo,
-	NULL,   /* emu_write_info */
-	openpgp_store_data, /* emu_store_data */
-	NULL				/* sanity_check */
+		openpgp_erase,
+		NULL, /* init_card */
+		openpgp_create_dir,
+		NULL, /* create_domain */
+		openpgp_select_pin_reference,
+		openpgp_create_pin,
+		NULL, /* select key reference */
+		openpgp_create_key,
+		openpgp_store_key, /* May be called for private and public key twice */
+		openpgp_generate_key,
+		NULL, NULL, /* encode private/public key */
+		NULL,	    /* finalize_card */
+		NULL,	    /* delete_object */
+		NULL,
+		openpgp_emu_update_any_df,
+		openpgp_emu_update_tokeninfo,
+		NULL,		    /* emu_write_info */
+		openpgp_store_data, /* emu_store_data */
+		NULL		    /* sanity_check */
 };
 
 struct sc_pkcs15init_operations *sc_pkcs15init_get_openpgp_ops(void)
