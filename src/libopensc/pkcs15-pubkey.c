@@ -512,8 +512,7 @@ sc_pkcs15_encode_pukdf_entry(struct sc_context *ctx, const struct sc_pkcs15_obje
 
 	sc_log(ctx, "Key path %s", sc_print_path(&pubkey->path));
 
-	if (spki_value)
-		free(spki_value);
+	free(spki_value);
 	return r;
 }
 
@@ -877,6 +876,7 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		r =  sc_asn1_encode(ctx, asn1_spki_key, buf, len);
 	}
 
+	/*  pkey.len == 0 is flag to not delete */
 	if (pkey.len && pkey.value)
 		free(pkey.value);
 
@@ -1431,12 +1431,9 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	pubkey = NULL;
 
 err:
-	if (pubkey)
-		sc_pkcs15_free_pubkey(pubkey);
-	if (pk.value)
-		free(pk.value);
-	if (tmp_buf)
-		free(tmp_buf);
+	sc_pkcs15_free_pubkey(pubkey);
+	free(pk.value);
+	free(tmp_buf);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -1481,8 +1478,7 @@ sc_pkcs15_pubkey_from_spki_file(struct sc_context *ctx, char * filename,
 	LOG_TEST_RET(ctx, r, "Cannot read SPKI DER file");
 
 	r = sc_pkcs15_pubkey_from_spki_sequence(ctx, buf, buflen, outpubkey);
-	if (buf)
-		free(buf);
+	free(buf);
 
 	LOG_FUNC_RETURN(ctx, r);
 }
