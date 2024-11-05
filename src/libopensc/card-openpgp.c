@@ -622,7 +622,7 @@ pgp_parse_hist_bytes(sc_card_t *card, u8 *ctlv, size_t ctlv_len)
  **/
 static int
 pgp_parse_algo_attr_blob(sc_card_t *card, const pgp_blob_t *blob,
-	sc_cardctl_openpgp_key_gen_store_info_t *key_info)
+		sc_cardctl_openpgp_key_gen_store_info_t *key_info)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct sc_object_id oid;
@@ -707,8 +707,9 @@ pgp_parse_algo_attr_blob(sc_card_t *card, const pgp_blob_t *blob,
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-int _pgp_handle_curve25519(sc_card_t *card,
-	sc_cardctl_openpgp_key_gen_store_info_t key_info, unsigned int do_num)
+int
+_pgp_handle_curve25519(sc_card_t *card,
+		sc_cardctl_openpgp_key_gen_store_info_t key_info, unsigned int do_num)
 {
 	if (!sc_compare_oid(&key_info.u.ec.oid, &curve25519_oid) &&
 			!sc_compare_oid(&key_info.u.ec.oid, &X25519_oid))
@@ -724,7 +725,8 @@ int _pgp_handle_curve25519(sc_card_t *card,
 	return 1;
 }
 
-int _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t key_info, unsigned int do_num)
+int
+_pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t key_info, unsigned int do_num)
 {
 	unsigned long flags = 0, ext_flags = 0;
 
@@ -2597,11 +2599,11 @@ pgp_update_new_algo_attr(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 
 			key_info->data[0] = key_info->algorithm;
-			ushort2bebytes(key_info->data+1, key_info->u.rsa.modulus_len);
+			ushort2bebytes(key_info->data + 1, key_info->u.rsa.modulus_len);
 			/* OpenPGP Card only accepts 32bit as exponent length field,
 			 * although you can import keys with smaller exponent;
 			 * thus we don't change rsa.exponent_len, but ignore it here */
-			ushort2bebytes(key_info->data+3, SC_OPENPGP_MAX_EXP_BITS);
+			ushort2bebytes(key_info->data + 3, SC_OPENPGP_MAX_EXP_BITS);
 			/* Import-Format of private key (e,p,q) */
 			key_info->data[5] = SC_OPENPGP_KEYFORMAT_RSA_STD;
 		}
@@ -2678,7 +2680,7 @@ pgp_store_creationtime(sc_card_t *card, u8 key_id, time_t *outtime)
  **/
 static int
 pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
-                                    sc_cardctl_openpgp_key_gen_store_info_t *key_info)
+		sc_cardctl_openpgp_key_gen_store_info_t *key_info)
 {
 	u8 fingerprint[SHA_DIGEST_LENGTH];
 	u8 *fp_buffer = NULL;  /* fingerprint buffer, not hashed */
@@ -2726,12 +2728,12 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 
 		/* https://tools.ietf.org/html/rfc4880  page 41, 72
 		 * and https://tools.ietf.org/html/rfc6637 section 9 (page 8 and 9) */
-		pk_packet_len = 1					  /* version number */
-				+ 4					  /* creation time */
-				+ 1					  /* algorithm */
-				+ 1					  /* oid len */
-				+ key_info->u.ec.oidv_len		  /* oid */
-				+ key_info->u.ec.ecpointQ_len;		  /* ecpoint */
+		pk_packet_len = 1			       /* version number */
+				+ 4			       /* creation time */
+				+ 1			       /* algorithm */
+				+ 1			       /* oid len */
+				+ key_info->u.ec.oidv_len      /* oid */
+				+ key_info->u.ec.ecpointQ_len; /* ecpoint */
 
 		/* KDF parameters for ECDH */
 		if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH) {
@@ -2801,15 +2803,13 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 			p += 1;
 			*p = 0x01; /* version of this format */
 			p += 1;
-			if (key_info->u.ec.key_length <= 256){       /* ec bit size <= 256 */
+			if (key_info->u.ec.key_length <= 256) { /* ec bit size <= 256 */
 				*p = 0x08;	/* KDF algo */
 				*(p+1) = 0x07;	/* KEK algo */
-			}
-			else if (key_info->u.ec.key_length <= 384) { /* ec bit size <= 384 */
+			} else if (key_info->u.ec.key_length <= 384) { /* ec bit size <= 384 */
 				*p = 0x09;	/* KDF algo */
 				*(p+1) = 0x08;	/* KEK algo */
-			}
-			else {					       /* ec bit size = 512 or 521*/
+			} else {		/* ec bit size = 512 or 521*/
 				*p = 0x0a;	/* KDF algo */
 				*(p+1) = 0x09;	/* KEK algo */
 			}
@@ -2909,7 +2909,7 @@ pgp_update_pubkey_blob(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t 
 			key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA ||
 			key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
 		memset(&p15pubkey, 0, sizeof(p15pubkey));
-		p15pubkey.algorithm = key_info->key_type;   /* TODO not set? */
+		p15pubkey.algorithm = key_info->key_type; /* TODO not set? */
 		p15pubkey.u.ec.ecpointQ.value = key_info->u.ec.ecpointQ;
 		p15pubkey.u.ec.ecpointQ.len = key_info->u.ec.ecpointQ_len;
 	} else
@@ -2930,8 +2930,8 @@ pgp_update_pubkey_blob(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t 
  * Internal: parse response data and set output
  **/
 static int
-pgp_parse_and_set_pubkey_output(sc_card_t *card, u8* data, size_t data_len,
-                                sc_cardctl_openpgp_key_gen_store_info_t *key_info)
+pgp_parse_and_set_pubkey_output(sc_card_t *card, u8 *data, size_t data_len,
+		sc_cardctl_openpgp_key_gen_store_info_t *key_info)
 {
 	time_t ctime = 0;
 	u8 *in = data;
@@ -3273,7 +3273,7 @@ set_taglength_tlv(u8 *buffer, unsigned int tag, size_t length)
  **/
 static int
 pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t *key_info,
-                               u8 **result, size_t *resultlen)
+		u8 **result, size_t *resultlen)
 {
 	sc_context_t *ctx = card->ctx;
 	/* Cardholder private key template (7F48) part */
@@ -3368,9 +3368,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 		}
 	}
 	/* ECC */
-	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH
-		|| key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA
-		|| key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
+	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH || key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA || key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
 		components[0] = key_info->u.ec.privateD;
 		componentlens[0] = key_info->u.ec.privateD_len;
 		componenttags[0] = 0x92;
@@ -3394,8 +3392,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 
 		/* Cardholder private key template's data part */
 		memset(pritemplate, 0, max_prtem_len);
-	}
-	else
+	} else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	/* start from beginning of pritemplate */
@@ -3533,8 +3530,8 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t *key_info
 		/* we only support exponent of maximum 32 bits */
 		if (key_info->u.rsa.exponent_len > SC_OPENPGP_MAX_EXP_BITS) {
 			sc_log(card->ctx,
-				   "Exponent %"SC_FORMAT_LEN_SIZE_T"u-bit (>32) is not supported.",
-				   key_info->u.rsa.exponent_len);
+					"Exponent %" SC_FORMAT_LEN_SIZE_T "u-bit (>32) is not supported.",
+					key_info->u.rsa.exponent_len);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 		}
 	}
@@ -3700,11 +3697,11 @@ pgp_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		break;
 #ifdef ENABLE_OPENSSL
 	case SC_CARDCTL_OPENPGP_GENERATE_KEY:
-		r = pgp_gen_key(card, (sc_cardctl_openpgp_key_gen_store_info_t *) ptr);
+		r = pgp_gen_key(card, (sc_cardctl_openpgp_key_gen_store_info_t *)ptr);
 		LOG_FUNC_RETURN(card->ctx, r);
 		break;
 	case SC_CARDCTL_OPENPGP_STORE_KEY:
-		r = pgp_store_key(card, (sc_cardctl_openpgp_key_gen_store_info_t *) ptr);
+		r = pgp_store_key(card, (sc_cardctl_openpgp_key_gen_store_info_t *)ptr);
 		LOG_FUNC_RETURN(card->ctx, r);
 		break;
 #endif /* ENABLE_OPENSSL */
