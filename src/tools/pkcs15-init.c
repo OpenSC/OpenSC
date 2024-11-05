@@ -785,13 +785,13 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 			user_keybits = (unsigned)strtoul(spec, &end, 10);
 			if (*end) {
 				util_error("Invalid number of key bits \"%s\"", spec);
-				 return SC_ERROR_INVALID_ARGUMENTS;
+				return SC_ERROR_INVALID_ARGUMENTS;
 			}
 			if (user_keybits != *keybits) {
 				util_error("If specified, number of key bits must be \"%d\" for \"%s\"", *keybits, types[types_idx].spec);
 				return SC_ERROR_INVALID_ARGUMENTS;
 			}
-		} else {  /* rsa or symmetric key */
+		} else { /* rsa or symmetric key */
 			*keybits = (unsigned)strtoul(spec, &end, 10);
 			if (*end) {
 				util_error("Invalid number of key bits \"%s\"", spec);
