@@ -752,7 +752,7 @@ sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key
 	size_t key_len;
 
 	LOG_FUNC_CALLED(ctx);
-	key_len = key->ecpointQ.len ; /* in bytes */
+	key_len = key->ecpointQ.len; /* in bytes */
 	sc_copy_asn1_entry(c_asn1_eddsa_pubkey, asn1_eddsa_pubkey);
 	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, key->ecpointQ.value, &key_len, 1);
 
@@ -815,7 +815,7 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		pubkey->alg_id->algorithm = pubkey->algorithm;
 	}
 
-/* TODO fix  EDDSA and XEDDSA to only have algo and no param in SPKI */
+	/* TODO fix  EDDSA and XEDDSA to only have algo and no param in SPKI */
 	switch (pubkey->algorithm) {
 	case SC_ALGORITHM_EC:
 	case SC_ALGORITHM_EDDSA:
@@ -837,7 +837,7 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 
 			/* EDDSA and XEDDSA only have algo and no param in SPKI */
 			if (pubkey->algorithm == SC_ALGORITHM_EC) {
-				ec_params  = calloc(1, sizeof(struct sc_ec_parameters));
+				ec_params = calloc(1, sizeof(struct sc_ec_parameters));
 				if (!ec_params)
 					LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 				ec_params->type = 1;
