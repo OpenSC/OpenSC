@@ -22,9 +22,9 @@
 #ifndef _OPENSC_CARDCTL_H
 #define _OPENSC_CARDCTL_H
 
-#include <time.h>
-#include "libopensc/types.h"
 #include "libopensc/opensc.h"
+#include "libopensc/types.h"
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -887,28 +887,28 @@ typedef struct sc_cardctl_openpgp_key_gen_store_info {
 	unsigned long key_type; /* SC_ALGORITHM_... */
 	u8 *data;		/* algo blob data */
 	size_t data_len;	/* bytes */
-	time_t creationtime; /* when private generated or stored */
+	time_t creationtime;	/* when private generated or stored */
 	union {
 		struct {
 			u8 keyformat;	/* SC_OPENPGP_KEYFORMAT_RSA_... */
-			u8 *exponent;		/* exponent to store or generated */
-			size_t exponent_len;	/* bit */
+			u8 *exponent;	/* exponent to store or generated */
+			size_t exponent_len; /* bit */
 			u8 *p;
 			size_t p_len;
 			u8 *q;
 			size_t q_len;
-			u8 *modulus;		/* modulus to store or generated */
-			size_t modulus_len;	/* bits - field_length */
+			u8 *modulus;	    /* modulus to store or generated */
+			size_t modulus_len; /* bits - field_length */
 		} rsa;
 		struct {
 			u8 keyformat;	/* SC_OPENPGP_KEYFORMAT_EC_... */
 			u8 *privateD;	/* private key to store */
-			size_t privateD_len; /* bytes */
-			u8 *ecpointQ;	/* public key to store or generated */
-			size_t ecpointQ_len; /* bytes */
+			size_t privateD_len;	 /* bytes */
+			u8 *ecpointQ;		 /* public key to store or generated */
+			size_t ecpointQ_len;	 /* bytes */
 			struct sc_object_id oid; /* RFC8410 OID */
 			/*
-			 * sc_object_id oidv is misused here to contain the bytes 
+			 * sc_object_id oidv is misused here to contain the bytes
 			 * of the values from TLV of OID DER TLV
 			 */
 			struct sc_object_id oidv;
@@ -917,7 +917,6 @@ typedef struct sc_cardctl_openpgp_key_gen_store_info {
 		} ec;
 	} u;
 } sc_cardctl_openpgp_key_gen_store_info_t;
-
 
 /*
  * SmartCard-HSM
