@@ -2788,8 +2788,6 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 		p += 1;
 		*p = key_info->u.ec.oidv_len;
 		p += 1;
-		/* TODO Should this be a loop to copy byte be byte? */
-		/* Should it be the key_info data and data_len? */
 		memcpy(p, key_info->u.ec.oidv.value, key_info->u.ec.oidv_len);
 		p += key_info->u.ec.oidv_len;
 		memcpy(p, key_info->u.ec.ecpointQ, key_info->u.ec.ecpointQ_len);
@@ -3476,7 +3474,6 @@ err:
 static int
 pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t *key_info)
 {
-//	sc_cardctl_openpgp_key_gen_store_info_t pubkey;
 	u8 *data = NULL;
 	size_t len = 0;
 	int r = 0;
@@ -3484,8 +3481,6 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t *key_info
 	struct pgp_priv_data *priv = DRVDATA(card);
 
 	LOG_FUNC_CALLED(card->ctx);
-
-//	memset(&pubkey, 0, sizeof(pubkey));
 
 	/* PKCS11 loads privkey separately from pubkey as two different operations
 	 * So this routine will be called twice to create two different objects.
@@ -3542,14 +3537,6 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t *key_info
 				   key_info->u.rsa.exponent_len);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 		}
-
-//		pubkey.key_id = key_info->key_id;
-//		pubkey.algorithm = key_info->algorithm;
-//		pubkey.u.rsa.modulus = key_info->u.rsa.modulus;
-//		pubkey.u.rsa.modulus_len = key_info->u.rsa.modulus_len;
-//		pubkey.u.rsa.exponent = key_info->u.rsa.exponent;
-//		pubkey.u.rsa.exponent_len = key_info->u.rsa.exponent_len;
-
 	}
 	/* ECC */
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA ||
@@ -3560,15 +3547,6 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t *key_info
 
 		if (!has_pubkey && !has_privkey)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-//		memset(&pubkey, 0, sizeof(pubkey));
-//		pubkey.key_id = key_info->key_id;
-//		pubkey.algorithm = key_info->algorithm;
-//
-//		pubkey.u.ec.oid_len = key_info->u.ec.oid_len;
-//		pubkey.u.ec.oid = key_info->u.ec.oid;
-//		pubkey.u.ec.ecpointQ = key_info->u.ec.ecpointQ;
-//		pubkey.u.ec.ecpointQ_len = key_info->u.ec.ecpointQ_len;
 
 		r = pgp_update_new_algo_attr(card, key_info);
 
