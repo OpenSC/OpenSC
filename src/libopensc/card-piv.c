@@ -4635,7 +4635,7 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 	 */
 
 	if (priv->alg_id == 0x11 || priv->alg_id == 0x14 ) {
-		nLen = (priv->key_size + 7) / 8;
+		nLen = BYTES4BITS(priv->key_size);
 		if (outlen < 2*nLen) {
 			sc_log(card->ctx,
 					" output too small for EC signature %"SC_FORMAT_LEN_SIZE_T"u < %"SC_FORMAT_LEN_SIZE_T"u",

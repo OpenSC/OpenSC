@@ -27,6 +27,7 @@
 
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
+#include "libopensc/internal.h"
 #include "libopensc/log.h"
 #include "pkcs15-init.h"
 #include "profile.h"
@@ -848,7 +849,7 @@ myeid_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 		if (object->type == SC_PKCS15_TYPE_PRKEY_RSA) {
 			pubkey->algorithm = SC_ALGORITHM_RSA;
-			pubkey->u.rsa.modulus.len = (keybits + 7) / 8;
+			pubkey->u.rsa.modulus.len = BYTES4BITS(keybits);
 			pubkey->u.rsa.modulus.data = malloc(pubkey->u.rsa.modulus.len);
 			pubkey->u.rsa.exponent.len = MYEID_DEFAULT_PUBKEY_LEN;
 			pubkey->u.rsa.exponent.data = malloc(MYEID_DEFAULT_PUBKEY_LEN);

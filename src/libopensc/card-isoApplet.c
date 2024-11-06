@@ -1249,7 +1249,7 @@ isoApplet_compute_signature(struct sc_card *card,
 		}
 
 		/* Convert ASN.1 sequence of integers R,S to the raw concatenation of R,S for PKCS#11. */
-		size_t len = (drvdata->sec_env_ec_field_length + 7) / 8 * 2;
+		size_t len = BYTES4BITS(drvdata->sec_env_ec_field_length) * 2;
 		if (len > outlen)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 

@@ -19,6 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "p11test_case_ec_sign.h"
+#include "libopensc/internal.h"
 
 void ec_sign_size_test(void **state) {
 	unsigned int i;
@@ -45,7 +46,7 @@ void ec_sign_size_test(void **state) {
 		case CKK_EC:
 			/* This tests just couple of sizes around the curve length
 			 * to verify they are properly truncated on input */
-			curve_len = (objects.data[i].bits + 7) / 8;
+			curve_len = BYTES4BITS(objects.data[i].bits);
 			min = curve_len - 2;
 			max = curve_len + 2;
 			inc = 1;

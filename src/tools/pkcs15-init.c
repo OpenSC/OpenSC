@@ -1256,7 +1256,7 @@ do_store_secret_key(struct sc_profile *profile)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
-	r = do_read_data_object(opt_infile, &args.key.data, &args.key.data_len, (keybits+7) / 8);
+	r = do_read_data_object(opt_infile, &args.key.data, &args.key.data_len, BYTES4BITS(keybits));
 	if (r < 0) {
 		free(args.key.data);
 		return r;
