@@ -370,8 +370,8 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 	switch (obj->type) {
 		case SC_PKCS15_TYPE_PRKEY_EC:
 		case SC_PKCS15_TYPE_PRKEY_XEDDSA:
-			if (out == NULL || *poutlen < (prkey->field_length + 7) / 8) {
-				*poutlen = (prkey->field_length + 7) / 8;
+			if (out == NULL || *poutlen < BYTES4BITS(prkey->field_length)) {
+				*poutlen = BYTES4BITS(prkey->field_length);
 				r = 0; /* say no data to return */
 				LOG_FUNC_RETURN(ctx, r);
 			}
@@ -624,15 +624,15 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 	switch (obj->type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
-			modlen = (prkey->modulus_length + 7) / 8;
+			modlen = BYTES4BITS(prkey->modulus_length);
 			break;
 		case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
-			modlen = (prkey->modulus_length + 7) / 8 * 2;
+			modlen = BYTES4BITS(prkey->modulus_length) * 2;
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
 		case SC_PKCS15_TYPE_PRKEY_EDDSA:
 		case SC_PKCS15_TYPE_PRKEY_XEDDSA:
-			modlen = ((prkey->field_length +7) / 8) * 2;  /* 2*nLen */
+			modlen = BYTES4BITS(prkey->field_length) * 2;  /* 2*nLen */
 			break;
 		default:
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");

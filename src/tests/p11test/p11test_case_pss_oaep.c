@@ -493,7 +493,7 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 	}
 
 	message_length = MIN((int)global_message_length,
-		(int)((o->bits+7)/8 - 2*get_hash_length(mech->hash) - 2));
+		(int)(BYTES4BITS(o->bits) - 2 * get_hash_length(mech->hash) - 2));
 
 	/* will not work for 1024b RSA key and SHA512 hash: It has max size -2 */
 	if (message_length < 0) {
@@ -541,7 +541,7 @@ int oaep_encrypt_decrypt_test(test_cert_t *o, token_info_t *info, test_mech_t *m
 static unsigned long
 get_max_salt_len(unsigned long bits, CK_MECHANISM_TYPE hash)
 {
-	return (bits + 7)/8 - get_hash_length(hash) - 2;
+	return BYTES4BITS(bits) - get_hash_length(hash) - 2;
 }
 
 int fill_pss_params(CK_RSA_PKCS_PSS_PARAMS *pss_params,

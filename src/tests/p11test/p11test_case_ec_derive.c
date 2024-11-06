@@ -19,6 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "p11test_case_ec_derive.h"
+#include "libopensc/internal.h"
 
 size_t
 pkcs11_derive(test_cert_t *o, token_info_t * info,
@@ -31,7 +32,7 @@ pkcs11_derive(test_cert_t *o, token_info_t * info,
 	CK_OBJECT_HANDLE newkey;
 	CK_OBJECT_CLASS newkey_class = CKO_SECRET_KEY;
 	CK_KEY_TYPE newkey_type = CKK_GENERIC_SECRET;
-	CK_ULONG newkey_len = (o->bits + 7) / 8;
+	CK_ULONG newkey_len = BYTES4BITS(o->bits);
 	CK_BYTE newkey_id[] = {0x00, 0xff, 0x31};
 	CK_BYTE newkey_label[] = {"Derived key"};
 	CK_BBOOL _true = TRUE;

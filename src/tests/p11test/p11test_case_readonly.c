@@ -26,6 +26,7 @@
 #include <openssl/ripemd.h>
 #include <openssl/rand.h>
 #include <openssl/evp.h>
+#include "libopensc/internal.h"
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 # include <openssl/provider.h>
 #endif
@@ -64,7 +65,7 @@ const unsigned char *const_message = (unsigned char *) MESSAGE_TO_SIGN;
 unsigned char *
 rsa_x_509_pad_message(const unsigned char *message, unsigned long *message_length, test_cert_t *o, int encrypt)
 {
-	unsigned long pad_message_length = (o->bits+7)/8;
+	unsigned long pad_message_length = BYTES4BITS(o->bits);
 	unsigned char *pad_message = NULL;
 	size_t padding_len = pad_message_length - (*message_length) - 3;
 

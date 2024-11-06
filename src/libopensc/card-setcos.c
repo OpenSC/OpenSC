@@ -1064,18 +1064,18 @@ static int setcos_generate_store_key(sc_card_t *card,
 
 	sbuf[len++] = data->pubexp_len / 256;   /* 2 bytes for pubexp bitlength */
 	sbuf[len++] = data->pubexp_len % 256;
-	memcpy(sbuf + len, data->pubexp, (data->pubexp_len + 7) / 8);
-	len += (data->pubexp_len + 7) / 8;
+	memcpy(sbuf + len, data->pubexp, BYTES4BITS(data->pubexp_len));
+	len += BYTES4BITS(data->pubexp_len);
 
 	if (data->op_type == OP_TYPE_STORE) {
 		sbuf[len++] = data->primep_len / 256;
 		sbuf[len++] = data->primep_len % 256;
-		memcpy(sbuf + len, data->primep, (data->primep_len + 7) / 8);
-		len += (data->primep_len + 7) / 8;
+		memcpy(sbuf + len, data->primep, BYTES4BITS(data->primep_len));
+		len += BYTES4BITS(data->primep_len);
 		sbuf[len++] = data->primeq_len / 256;
 		sbuf[len++] = data->primeq_len % 256;
-		memcpy(sbuf + len, data->primeq, (data->primeq_len + 7) / 8);
-		len += (data->primeq_len + 7) / 8;
+		memcpy(sbuf + len, data->primeq, BYTES4BITS(data->primeq_len));
+		len += BYTES4BITS(data->primeq_len);
 	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x46, 0x00, 0x00);

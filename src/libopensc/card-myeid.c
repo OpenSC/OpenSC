@@ -1087,7 +1087,7 @@ myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *
 	    return SC_ERROR_INVALID_DATA;
 
 	/* test&fail early */
-	buflen = (s_len + 7)/8*2;
+	buflen = BYTES4BITS(s_len) * 2;
 	if (buflen > datalen)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
@@ -1199,8 +1199,8 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 	    field_length = priv->sec_env->algorithm_ref;
 
 	    /* pad with zeros if needed */
-		if (datalen < (field_length + 7) / 8 ) {
-			pad_chars = ((field_length + 7) / 8) - datalen;
+		if (datalen < BYTES4BITS(field_length)) {
+			pad_chars = BYTES4BITS(field_length) - datalen;
 
 			memset(sbuf, 0, pad_chars);
 		}
