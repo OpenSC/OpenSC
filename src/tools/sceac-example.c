@@ -27,10 +27,10 @@
 #endif
 
 #include "libopensc/sm.h"
-#include "sm/sm-iso.h"
 #include "sm/sm-eac.h"
 #include "libopensc/card-npa.h"
 #include <string.h>
+#include <stdlib.h>
 
 static const char *newpin = NULL;
 static const char *pin = NULL;

@@ -31,7 +31,6 @@
 #include <libopensc/log.h>
 #include <libopensc/opensc.h>
 #include <libopensc/sm.h>
-#include <sm/sm-eac.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
