@@ -292,10 +292,10 @@ dtrust_set_security_env(sc_card_t *card,
 {
 	struct dtrust_drv_data_t *drv_data;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 	if (card == NULL || env == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	drv_data = card->drv_data;
 	drv_data->env = env;
