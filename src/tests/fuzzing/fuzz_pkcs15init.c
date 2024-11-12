@@ -243,7 +243,7 @@ void do_store_secret_key(struct sc_profile *profile, struct sc_pkcs15_card *p15c
     sc_pkcs15_format_id("02", &(args.auth_id));
 
     for (int i = 0; i < 3; i++) {
-        size_t keybytes = (keybits[i] + 7) / 8;
+        size_t keybytes = BYTES4BITS(keybits[i]);
         args.key.data = malloc(keybytes);
         memcpy(args.key.data, buf, keybytes);
         args.key.data_len = keybytes;
