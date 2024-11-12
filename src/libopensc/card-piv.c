@@ -2730,7 +2730,7 @@ static int piv_generate_key(sc_card_t *card,
 			break;
 		case 0x11: keydata->key_bits = 0;
 			keydata->ecparam = 0; /* we only support prime256v1 */
-			keydata->ecparam_len =0;
+			keydata->ecparam_len = 0;
 			break;
 		case 0x14: keydata->key_bits = 0;
 			keydata->ecparam = 0; /* we only support secp384r1 */
@@ -4680,7 +4680,7 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 		r = sc_asn1_decode_ecdsa_signature(card->ctx, rbuf, r, nLen, &out, outlen);
 		/* Yubikey 5.7.x supports ED25519 */
 	} else if (priv->alg_id == 0xE0) {
-		nLen = (priv->key_size + 7) / 8;
+		nLen = BYTES4BITS(priv->key_size);
 		if (outlen < nLen) {
 			sc_log(card->ctx,
 					" output too small for ED signature %" SC_FORMAT_LEN_SIZE_T "u < %" SC_FORMAT_LEN_SIZE_T "u",
