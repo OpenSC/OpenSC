@@ -67,6 +67,7 @@
 #include "pkcs11/pkcs11-opensc.h"
 #include "libopensc/asn1.h"
 #include "libopensc/log.h"
+#include "libopensc/internal.h"
 #include "common/compat_strlcat.h"
 #include "common/compat_strlcpy.h"
 #include "common/libpkcs11.h"
@@ -2374,7 +2375,7 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 		if (opt_salt_len_given == 1) { /* salt size explicitly given */
 			unsigned long modlen = 0;
 
-			modlen = (get_private_key_length(session, key) + 7) / 8;
+			modlen = BYTES4BITS(get_private_key_length(session, key));
 			if (modlen == 0)
 				util_fatal("Incorrect length of private key");
 			switch (opt_salt_len) {
@@ -5371,7 +5372,7 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 #endif
 
 		/* both eckeys must be same curve */
-		key_len = (EC_GROUP_get_degree(ecgroup) + 7) / 8;
+		key_len = BYTES4BITS(EC_GROUP_get_degree(ecgroup));
 		FILL_ATTR(newkey_template[n_attrs], CKA_VALUE_LEN, &key_len, sizeof(key_len));
 		n_attrs++;
 
@@ -6453,7 +6454,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
 				if (!os) {
 					os = d2i_ASN1_BIT_STRING(NULL, &a, (long)len);
-					len = (len + 7) / 8;
+					len = BYTES4BITS(len);
 				}
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -6564,7 +6565,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
 				if (!os) {
 					os = d2i_ASN1_BIT_STRING(NULL, &a, (long)len);
-					len = (len + 7) / 8;
+					len = BYTES4BITS(len);
 				}
 				if (!os) {
 					util_fatal("cannot decode EC_POINT");
@@ -7440,7 +7441,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 			continue;
 		}
 
-		modLenBytes = (get_private_key_length(sess, privKeyObject) + 7) / 8;
+		modLenBytes = BYTES4BITS(get_private_key_length(sess, privKeyObject));
 		if(!modLenBytes) {
 			printf(" -- can't be used for signature, skipping: can't obtain modulus\n");
 			continue;
@@ -7633,7 +7634,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		}
 
 		modLenBits = get_private_key_length(sess, privKeyObject);
-		modLenBytes = (modLenBits + 7) / 8;
+		modLenBytes = BYTES4BITS(modLenBits);
 		if (!modLenBytes)   {
 			printf(" -- can't be used to sign/verify, skipping: can't obtain modulus\n");
 			continue;
@@ -7798,7 +7799,7 @@ static int test_verify(CK_SESSION_HANDLE sess)
 			continue;
 		}
 
-		key_len = (get_private_key_length(sess, priv_key) + 7) / 8;
+		key_len = BYTES4BITS(get_private_key_length(sess, priv_key));
 		if (!key_len || key_len > INT_MAX) {
 			printf(" -- can't get the modulus length, skipping\n");
 			continue;
@@ -8028,7 +8029,7 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	}
 	size_t in_len;
 	size_t max_in_len;
-	CK_ULONG mod_len = (get_private_key_length(session, privKeyObject) + 7) / 8;
+	CK_ULONG mod_len = BYTES4BITS(get_private_key_length(session, privKeyObject));
 	switch (mech_type) {
 	case CKM_RSA_PKCS:
 		pad = RSA_PKCS1_PADDING;
