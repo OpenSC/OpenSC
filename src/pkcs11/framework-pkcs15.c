@@ -2849,7 +2849,6 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			rv = attr_extract(attr, ec->params.der.value, &ec->params.der.len);
 			if (rv != CKR_OK) {
 				sc_clear_ec_params(&ec->params);
-				free(ec->params.der.value);
 				return CKR_ATTRIBUTE_VALUE_INVALID;
 			}
 			break;
