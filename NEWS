@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.26.0; 2024-09-11
+# New in 0.26.0; 2024-11-13
 
 ## Security
 * CVE-2024-45615: Usage of uninitialized values in libopensc and pkcs15init (#3225)
@@ -28,7 +28,7 @@ NEWS for OpenSC -- History of user visible changes
 * Show URI when listing token information (#3125) and objects (#3130)
 * Do not limit size of objects to 5000 bytes (#3174)
 * Add support for AES CMAC (#3184)
-* Add support for Add support for AES GCM encryption (#3195)
+* Add support for AES GCM encryption (#3195)
 * Add support for RSA OAEP encryption (#3175)
 * Add support for HKDF (#3193)
 * Implement better support for wrapping and unwrapping (#3198)
@@ -72,6 +72,9 @@ NEWS for OpenSC -- History of user visible changes
 
 # JPKI
 * Adjust parameters for public key in PKCS#15 emulator (#3182)
+
+# D-Trust
+* Add support for ECDSA signatures and ECDH key agreement for D-Trust Signatures Cards 4.1/4.4  (#3240, #3248)
 
 # New in 0.25.1; 2024-04-05
 
