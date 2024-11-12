@@ -434,7 +434,7 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	}
 
 	/* copying info_ec.id works for any EC ECDH EdDSA keys */
-	if (info_ec->der.len > 2)
+	if (info_ec->der.len > 2 && info_ec->der.len == (size_t)(info_ec->der.value[1] + 2))
 		key_info.u.ec.oidv_len = info_ec->der.value[1];
 	else
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
