@@ -78,11 +78,7 @@ function softhsm_initialize() {
 	mkdir ".tokens"
 	export SOFTHSM2_CONF=$(realpath ".softhsm2.conf")
 	# Init token
-	echo DEE uname -a: $(uname -a)
-	echo DEE softhsm version: $(softhsm2-util --version)
-	echo DEE whereis: $(whereis softhsm2-util)
-	echo DEE P11LIB: "$P11LIB" 
-	
+
 	softhsm2-util --init-token --slot 0 --label "SC test" --so-pin="$SOPIN" --pin="$PIN"
 }
 
