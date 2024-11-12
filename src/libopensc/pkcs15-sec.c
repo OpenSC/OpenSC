@@ -630,7 +630,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 			modlen = BYTES4BITS(prkey->modulus_length) * 2;
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EC:
-			modlen = ((prkey->field_length + 7) / 8) * 2; /* 2*nLen */
+			modlen = BYTES4BITS(prkey->field_length) * 2; /* 2*nLen */
 			break;
 		case SC_PKCS15_TYPE_PRKEY_EDDSA:
 		case SC_PKCS15_TYPE_PRKEY_XEDDSA:
@@ -772,7 +772,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 */
 	else if (senv.algorithm == SC_ALGORITHM_EC &&
 			(senv.algorithm_flags & SC_ALGORITHM_ECDSA_HASHES) == 0) {
-		inlen = MIN(inlen, (prkey->field_length+7)/8);
+		inlen = MIN(inlen, BYTES4BITS(prkey->field_length));
 	}
 
 
