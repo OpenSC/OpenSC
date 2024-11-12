@@ -3019,14 +3019,13 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8 *data, size_t data_len,
 			if (len != key_info->u.ec.ecpointQ_len)
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
-			key_info->u.ec.ecpointQ = malloc(len);
-			if (key_info->u.ec.ecpointQ == NULL)
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
-
 			switch (key_info->key_type) {
 			case SC_ALGORITHM_EC:
 			case SC_ALGORITHM_EDDSA:
 			case SC_ALGORITHM_XEDDSA:
+				key_info->u.ec.ecpointQ = malloc(len);
+				if (key_info->u.ec.ecpointQ == NULL)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 				memcpy(key_info->u.ec.ecpointQ, part, len);
 				key_info->u.ec.ecpointQ_len = len;
 				break;
