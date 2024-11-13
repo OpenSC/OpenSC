@@ -70,10 +70,10 @@ NEWS for OpenSC -- History of user visible changes
 ## Rutoken
 * increase the minimum PIN size to support Rutoken ECP BIO (#3208)
 
-# JPKI
+## JPKI
 * Adjust parameters for public key in PKCS#15 emulator (#3182)
 
-# D-Trust
+## D-Trust
 * Add support for ECDSA signatures and ECDH key agreement for D-Trust Signatures Cards 4.1/4.4  (#3240, #3248)
 
 # New in 0.25.1; 2024-04-05
