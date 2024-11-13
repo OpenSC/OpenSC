@@ -26,6 +26,7 @@
 
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
+#include "libopensc/internal.h"
 #include "libopensc/log.h"
 #include "pkcs15-init.h"
 #include "profile.h"
@@ -488,7 +489,7 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	/* Key pair generation -> collect public key info */
 	if (pubkey != NULL) {
 		pubkey->algorithm		= SC_ALGORITHM_RSA;
-		pubkey->u.rsa.modulus.len	= (keybits + 7) / 8;
+		pubkey->u.rsa.modulus.len	= BYTES4BITS(keybits);
 		pubkey->u.rsa.modulus.data	= malloc(pubkey->u.rsa.modulus.len);
 		pubkey->u.rsa.exponent.len	= SETCOS_DEFAULT_PUBKEY_LEN;
 		pubkey->u.rsa.exponent.data	= malloc(SETCOS_DEFAULT_PUBKEY_LEN);

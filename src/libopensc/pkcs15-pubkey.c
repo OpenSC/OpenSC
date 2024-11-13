@@ -1369,7 +1369,7 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 
 	if (pk.len == 0)
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INTERNAL, "Incorrect length of key");
-	pk.len = (pk.len + 7)/8;	/* convert number of bits to bytes */
+	pk.len = BYTES4BITS(pk.len);	/* convert number of bits to bytes */
 
 	if (pk_alg.algorithm == SC_ALGORITHM_EC)   {
 		/* EC public key is not encapsulated into BIT STRING -- it's a BIT STRING */

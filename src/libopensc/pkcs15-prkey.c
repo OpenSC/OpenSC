@@ -828,8 +828,8 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 #endif
 
 		/* Octetstring may need leading zeros if BN is to short */
-		if (dst->privateD.len < (dst->params.field_length + 7) / 8)   {
-			size_t d = (dst->params.field_length + 7) / 8 - dst->privateD.len;
+		if (dst->privateD.len < BYTES4BITS(dst->params.field_length))   {
+			size_t d = BYTES4BITS(dst->params.field_length) - dst->privateD.len;
 
 			dst->privateD.data = realloc(dst->privateD.data, dst->privateD.len + d);
 			if (!dst->privateD.data)

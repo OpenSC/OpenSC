@@ -26,6 +26,7 @@
 #include "common/compat_overflow.h"
 #include "common/constant-time.h"
 #include "sc-pkcs11.h"
+#include "libopensc/internal.h"
 
 /* Also used for verification data */
 struct hash_signature_info {
@@ -631,7 +632,7 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 				rv = key->ops->get_attribute(operation->session, key, &attr);
 				/* convert bits to bytes */
 				if (rv == CKR_OK)
-					*pLength = (*pLength + 7) / 8;
+					*pLength = BYTES4BITS(*pLength);
 				break;
 			case CKK_EC:
 			case CKK_EC_EDWARDS:
@@ -639,12 +640,12 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 				/* TODO: -DEE we should use something other then CKA_MODULUS_BITS... */
 				rv = key->ops->get_attribute(operation->session, key, &attr);
 				if (rv == CKR_OK)
-					*pLength = ((*pLength + 7)/8) * 2 ; /* 2*nLen in bytes */
+					*pLength = BYTES4BITS(*pLength) * 2 ; /* 2*nLen in bytes */
 				break;
 			case CKK_GOSTR3410:
 				rv = key->ops->get_attribute(operation->session, key, &attr);
 				if (rv == CKR_OK)
-					*pLength = (*pLength + 7) / 8 * 2;
+					*pLength = BYTES4BITS(*pLength) * 2;
 				break;
 			default:
 				rv = CKR_MECHANISM_INVALID;

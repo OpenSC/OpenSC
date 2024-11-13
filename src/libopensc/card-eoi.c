@@ -457,7 +457,7 @@ static int eoi_set_security_env(struct sc_card *card, const struct sc_security_e
 
 	/* We don't know yet which hash is used. So just store the security_env data and return */
 	if (!(env->algorithm_flags & ALREADY_PROCESSED)) {
-		privdata->key_len = (env->algorithm_ref + 7)/8;
+		privdata->key_len = BYTES4BITS(env->algorithm_ref);
 		memcpy(&privdata->sec_env, env, sizeof(struct sc_security_env));
 		privdata->se_num = se_num;
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);

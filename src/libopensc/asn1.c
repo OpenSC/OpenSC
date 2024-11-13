@@ -654,7 +654,7 @@ static int encode_bit_string(const u8 * inbuf, size_t bits_left, u8 **outbuf,
 	u8 *out;
 	size_t bytes, skipped = 0;
 
-	bytes = (bits_left + 7)/8 + 1;
+	bytes = BYTES4BITS(bits_left) + 1;
 	*outbuf = out = malloc(bytes);
 	if (out == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
