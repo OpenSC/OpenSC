@@ -20,7 +20,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-12, macos-14]
+        os: [macos-15, macos-14, macos-13]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -45,14 +45,14 @@ jobs:
           PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
 
   push-artifacts:
-    runs-on: macos-12
+    runs-on: macos-latest
     needs: [build]
     steps:
       - uses: actions/checkout@v4
       - name: Pull build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: opensc-build-macos-12
+          name: opensc-build-macos-15
       - run: git config --global user.email "builds@github.com"
       - run: git config --global user.name "Github Actions";
       - run: .github/push_artifacts.sh "Github Actions ${GITHUB_REF}"
