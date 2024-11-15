@@ -3665,7 +3665,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		goto err;
 	}
 
-	logprintf(pCardData, 7, "SubjectPublicKeyInfo:\n");
+	logprintf(pCardData, 7, "Public Key :\n");
 	loghex(pCardData, 7, pubkey_der.value, pubkey_der.len);
 
 	if (prkey_info->modulus_length > 0) {
@@ -3720,7 +3720,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 			BCRYPT_ECCKEY_BLOB *publicKey = NULL;
 			DWORD dwMagic = 0;
 			if (cont->size_sign)   {
-				sz = (DWORD) (sizeof(BCRYPT_ECCKEY_BLOB) +  pubkey_der.len -3);
+				sz = (DWORD) (sizeof(BCRYPT_ECCKEY_BLOB) +  pubkey_der.len - 2);
 
 				switch(cont->size_sign)
 				{
@@ -3747,7 +3747,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					goto err;
 				}
 
-				publicKey->cbKey =  (DWORD)(pubkey_der.len -3) /2;
+				publicKey->cbKey =  (DWORD)(pubkey_der.len -3) /2; /* field length */
 				publicKey->dwMagic = dwMagic;
 
 				pContainerInfo->cbSigPublicKey = sz;
@@ -3761,7 +3761,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					  (unsigned int)publicKey->dwMagic);
 			}
 			if (cont->size_key_exchange)   {
-				sz = (DWORD) (sizeof(BCRYPT_ECCKEY_BLOB) +  pubkey_der.len -3);
+				sz = (DWORD) (sizeof(BCRYPT_ECCKEY_BLOB) +  pubkey_der.len - 2);
 
 				switch(cont->size_key_exchange)
 				{
@@ -3791,9 +3791,10 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 				publicKey->cbKey =  (DWORD)(pubkey_der.len -3) /2;
 				publicKey->dwMagic = dwMagic;
 
+				/* copy "04|X|Y" */
 				pContainerInfo->cbKeyExPublicKey = sz;
 				pContainerInfo->pbKeyExPublicKey = (PBYTE)publicKey;
-				memcpy(((PBYTE)publicKey) + sizeof(BCRYPT_ECCKEY_BLOB),  pubkey_der.value + 3,  pubkey_der.len -3);
+				memcpy(((PBYTE)publicKey) + sizeof(BCRYPT_ECCKEY_BLOB),  pubkey_der.value + 2,  pubkey_der.len - 2);
 
 				logprintf(pCardData, 3,
 					  "return info on ECC KEYX_CONTAINER_INDEX %u cbKey:%u dwMagic:%u\n",
