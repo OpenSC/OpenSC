@@ -6526,7 +6526,7 @@ static int read_object(CK_SESSION_HANDLE session)
 					util_fatal("cannot convert EC public key to DER");
 #endif
 #ifdef EVP_PKEY_ED25519
-			} else if (type == CKK_EC_EDWARDS) {
+			} else if (type == CKK_EC_EDWARDS || type == CKK_EC_MONTGOMERY) {
 				EVP_PKEY *key = NULL;
 				CK_BYTE *params = NULL;
 				const unsigned char *a;
@@ -6545,7 +6545,7 @@ static int read_object(CK_SESSION_HANDLE session)
 						ASN1_PRINTABLESTRING_free(curve);
 					} else if (d2i_ASN1_OBJECT(&obj, &a, (long)len) != NULL) {
 						int nid = OBJ_obj2nid(obj);
-						if (nid != NID_ED25519) {
+						if (nid != NID_ED25519 && nid != NID_X25519) {
 							util_fatal("Unknown curve OID, expected NID_ED25519 (%d), got %d",
 									NID_ED25519, nid);
 						}
