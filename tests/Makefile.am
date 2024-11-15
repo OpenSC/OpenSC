@@ -40,12 +40,12 @@ dist_noinst_SCRIPTS = common.sh \
 TESTS = \
         test-manpage.sh \
         test-duplicate-symbols.sh \
-        test-pkcs11-tool-test.sh \
         test-pkcs11-tool-test-threads.sh \
         test-pkcs11-tool-allowed-mechanisms.sh \
         test-pkcs11-tool-sym-crypt-test.sh
 if ENABLE_OPENSSL
 TESTS += \
+        test-pkcs11-tool-test.sh \
         test-pkcs11-tool-sign-verify.sh \
         test-pkcs11-tool-unwrap-wrap-test.sh \
         test-pkcs11-tool-import.sh
@@ -55,6 +55,5 @@ TESTS += test-p11test.sh
 endif
 endif
 endif
-XFAIL_TESTS = \
-        test-pkcs11-tool-test-threads.sh \
-        test-pkcs11-tool-test.sh
+# no tests expected to fail
+#XFAIL_TESTS =

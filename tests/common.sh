@@ -78,6 +78,7 @@ function softhsm_initialize() {
 	mkdir ".tokens"
 	export SOFTHSM2_CONF=$(realpath ".softhsm2.conf")
 	# Init token
+
 	softhsm2-util --init-token --slot 0 --label "SC test" --so-pin="$SOPIN" --pin="$PIN"
 }
 
@@ -104,9 +105,11 @@ function card_setup() {
 function softhsm_cleanup() {
 	rm .softhsm2.conf
 	rm -rf ".tokens"
+	sleep 1
 }
 
 function card_cleanup() {
 	softhsm_cleanup
 	rm 0{1,2,3,4}.pub
+	sleep 1
 }

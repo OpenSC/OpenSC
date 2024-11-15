@@ -334,6 +334,16 @@
 
 				<varlistentry>
 					<term>
+						<option>--public-key-info</option>
+					</term>
+					<listitem><para>Read public key from the module using "CKA_PUBLIC_KEY_INFO"
+					(use with <option>--read-object --type public</option>).
+					The output is a "SubjectPublicKeyInfo" i.e. as used in certificates
+					and openssl,</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--puk</option> <replaceable>puk</replaceable>
 					</term>
 					<listitem><para>Supply User PUK on the command line.</para></listitem>
