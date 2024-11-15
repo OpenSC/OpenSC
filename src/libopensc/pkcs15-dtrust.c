@@ -18,6 +18,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <string.h>
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -98,6 +100,23 @@ sc_pkcs15emu_dtrust_init(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	rv = sc_pkcs15_bind_internal(p15card, aid);
 
 	p15card->ops.parse_df = _dtrust_parse_df;
+
+#if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
+	struct sc_pkcs15_search_key sk;
+	struct sc_pkcs15_object *objs[8];
+	int i, len;
+
+	memset(&sk, 0, sizeof(sk));
+	sk.class_mask = SC_PKCS15_SEARCH_CLASS_AUTH;
+	len = sc_pkcs15_search_objects(p15card, &sk, (struct sc_pkcs15_object **)&objs, sizeof(objs) / sizeof(struct sc_pkcs15_object *));
+	for (i = 0; i < len; i++) {
+		struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)objs[i]->data;
+		if (auth_info && auth_info->auth_id.len == 8 && !strcmp((char*)auth_info->auth_id.value, "Card CAN")) {
+			/* Mark "Card CAN" as NOT a PIN object, so that it doesn't get it's own PKCS#11 slot */
+			objs[i]->type &= ~SC_PKCS15_TYPE_AUTH_PIN;
+		}
+	}
+#endif
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
