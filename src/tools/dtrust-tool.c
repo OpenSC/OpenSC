@@ -28,6 +28,7 @@
 #include "libopensc/cards.h"
 #include "libopensc/errors.h"
 
+#include "sm/sm-eac.h"
 #include "util.h"
 
 static const char *app_name = "dtrust-tool";
@@ -61,8 +62,89 @@ static int opt_status = 0;
 static int opt_check = 0;
 static int opt_unlock = 0;
 
+int
+verify_pace(sc_card_t *card, int ref, const char *pin)
+{
+	int r;
+	struct establish_pace_channel_input pace_input;
+	struct establish_pace_channel_output pace_output;
+
+	memset(&pace_input, 0, sizeof pace_input);
+	memset(&pace_output, 0, sizeof pace_output);
+
+	pace_input.pin_id = ref;
+	pace_input.pin = (unsigned char *)pin;
+	pace_input.pin_length = strlen(pin);
+
+	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+
+	free(pace_output.ef_cardaccess);
+	free(pace_output.recent_car);
+	free(pace_output.previous_car);
+	free(pace_output.id_icc);
+	free(pace_output.id_pcd);
+
+	return r;
+}
+
+int
+get_pin(char **pin, const char *label, unsigned char check)
+{
+	int r;
+	char *pin2 = NULL;
+	size_t len1 = 0;
+	size_t len2 = 0;
+
+	r = -1;
+
+	if (pin == NULL)
+		return -1;
+
+	*pin = NULL;
+
+	printf("Enter %s:", label);
+	r = util_getpass(pin, &len1, stdin);
+	if (r < 0 || *pin == NULL) {
+		fprintf(stderr, "Unable to get PIN");
+		goto fail;
+	}
+
+	if (!check)
+		return 0;
+
+	printf("Enter %s again:", label);
+	r = util_getpass(&pin2, &len2, stdin);
+	if (r < 0 || pin2 == NULL) {
+		fprintf(stderr, "Unable to get PIN");
+		goto fail;
+	}
+
+	r = strcmp(*pin, pin2);
+	if (r)
+		fprintf(stderr, "PINs doesn't match.\n");
+
+	/* Free repeated PIN in any case. */
+	if (pin2 != NULL) {
+		sc_mem_clear(pin2, len2);
+		free(pin2);
+	}
+
+	if (r == 0)
+		return 0;
+
+fail:
+	/* Free PIN only in case of an error. */
+	if (*pin != NULL) {
+		sc_mem_clear(*pin, len1);
+		free(*pin);
+		*pin = NULL;
+	}
+
+	return -1;
+}
+
 void
-pin_status(sc_card_t *card, int ref, const char *pin_label)
+pin_status(sc_card_t *card, int ref, const char *pin_label, unsigned char transport)
 {
 	int r;
 	struct sc_pin_cmd_data data;
@@ -84,14 +166,17 @@ pin_status(sc_card_t *card, int ref, const char *pin_label)
 		printf("%s: not usable (transport protection still in force)\n", pin_label);
 	else if (r == SC_ERROR_AUTH_METHOD_BLOCKED)
 		printf("%s: blocked (use PUK to unblock PIN)\n", pin_label);
-	else if (r == SC_ERROR_REF_DATA_NOT_USABLE)
-		printf("%s: not usable (transport protection already broken)\n", pin_label);
-	else
+	else if (r == SC_ERROR_REF_DATA_NOT_USABLE) {
+		if (transport)
+			printf("%s: not usable (transport protection already broken)\n", pin_label);
+		else
+			printf("%s: not usable\n", pin_label);
+	} else
 		fprintf(stderr, "%s: status query failed (%s).\n", pin_label, sc_strerror(r));
 }
 
 int
-check_transport_protection(sc_card_t *card)
+check_transport_protection(sc_card_t *card, u8 ref, const char *pin_label)
 {
 	struct sc_apdu apdu;
 	int r;
@@ -99,29 +184,29 @@ check_transport_protection(sc_card_t *card)
 	u8 prot_intact[6] = {0xE3, 0x04, 0x90, 0x02, 0x00, 0x01};
 	u8 prot_broken[6] = {0xE3, 0x04, 0x90, 0x02, 0x00, 0x00};
 
-	sc_format_apdu_ex(&apdu, 0x80, 0xCA, 0x00, 0x0B, NULL, 0, buf, sizeof(buf));
+	sc_format_apdu_ex(&apdu, 0x80, 0xCA, 0x00, ref, NULL, 0, buf, sizeof(buf));
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r != SC_SUCCESS) {
-		fprintf(stderr, "Check transport protection: APDU transmit failed (%s)\n", sc_strerror(r));
+		fprintf(stderr, "Check transport protection of %s: APDU transmit failed (%s)\n", pin_label, sc_strerror(r));
 		return -1;
 	}
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r != SC_SUCCESS) {
-		fprintf(stderr, "Check transport protection: GET_DATA failed (%s)\n", sc_strerror(r));
+		fprintf(stderr, "Check transport protection of %s: GET_DATA failed (%s)\n", pin_label, sc_strerror(r));
 		return -1;
 	}
 
 	if (apdu.resplen == sizeof(prot_intact) && !memcmp(apdu.resp, prot_intact, 6)) {
-		printf("Transport protection is still intact.\n");
+		printf("Transport protection of %s is still intact.\n", pin_label);
 		return 0;
 	} else if (apdu.resplen == sizeof(prot_broken) && !memcmp(apdu.resp, prot_broken, 6)) {
-		printf("Transport protection is broken.\n");
+		printf("Transport protection of %s is broken.\n", pin_label);
 		return 1;
 	}
 
-	fprintf(stderr, "Check transport protection: illegal response: ");
+	fprintf(stderr, "Check transport protection of %s: illegal response: ", pin_label);
 	util_hex_dump(stderr, apdu.resp, apdu.resplen, " ");
 	fprintf(stderr, "\n");
 
@@ -129,16 +214,12 @@ check_transport_protection(sc_card_t *card)
 }
 
 void
-unlock_transport_protection(sc_card_t *card)
+unlock_transport_protection4(sc_card_t *card)
 {
 	struct sc_pin_cmd_data data;
 	int r;
 	char *tpin = NULL;
-	char *qespin1 = NULL;
-	char *qespin2 = NULL;
-	size_t tpin_len = 0;
-	size_t qespin1_len = 0;
-	size_t qespin2_len = 0;
+	char *qespin = NULL;
 	int tries_left;
 
 	memset(&data, 0, sizeof(data));
@@ -156,35 +237,18 @@ unlock_transport_protection(sc_card_t *card)
 		data.pin2.prompt = "Enter Signature PIN";
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
 	} else {
-		printf("Enter Transport PIN:");
-		r = util_getpass(&tpin, &tpin_len, stdin);
-		if (r < 0 || tpin == NULL) {
-			fprintf(stderr, "Unable to get PIN");
-			return;
-		}
-
-		printf("Enter new Signature PIN:");
-		r = util_getpass(&qespin1, &qespin1_len, stdin);
-		if (r < 0 || qespin1 == NULL) {
-			fprintf(stderr, "Unable to get PIN");
+		r = get_pin(&tpin, "Transport PIN", 0);
+		if (r < 0)
 			goto fail;
-		}
 
-		printf("Enter new Signature PIN again:");
-		r = util_getpass(&qespin2, &qespin1_len, stdin);
-		if (r < 0 || qespin2 == NULL) {
-			fprintf(stderr, "Unable to get PIN");
+		r = get_pin(&qespin, "new Signature PIN", 1);
+		if (r < 0)
 			goto fail;
-		}
 
-		if (strcmp(qespin1, qespin2)) {
-			fprintf(stderr, "New signature PINs doesn't match.\n");
-			goto fail;
-		}
 		data.pin1.data = (u8 *)tpin;
 		data.pin1.len = strlen(tpin);
-		data.pin2.data = (u8 *)qespin1;
-		data.pin2.len = strlen(qespin1);
+		data.pin2.data = (u8 *)qespin;
+		data.pin2.len = strlen(qespin);
 	}
 
 	r = sc_pin_cmd(card, &data, &tries_left);
@@ -197,18 +261,90 @@ unlock_transport_protection(sc_card_t *card)
 		printf("Can't change pin: %s\n", sc_strerror(r));
 
 fail:
-	if (qespin2 != NULL) {
-		sc_mem_clear(qespin2, qespin2_len);
-		free(qespin2);
-	}
-
-	if (qespin1 != NULL) {
-		sc_mem_clear(qespin1, qespin1_len);
-		free(qespin1);
+	if (qespin != NULL) {
+		sc_mem_clear(qespin, strlen(qespin));
+		free(qespin);
 	}
 
 	if (tpin != NULL) {
-		sc_mem_clear(tpin, tpin_len);
+		sc_mem_clear(tpin, strlen(tpin));
+		free(tpin);
+	}
+}
+
+void
+unlock_transport_protection5(sc_card_t *card, int ref_pace, int ref_pin, const char *pathstr, const char *pin_label)
+{
+	int r;
+	sc_path_t path;
+	struct sc_pin_cmd_data data;
+	char *tpin = NULL;
+	char *newpin = NULL;
+	int tries_left;
+
+	/* Query all PINs at once */
+	if (!(card->reader->capabilities & SC_READER_CAP_PACE_GENERIC)) {
+		r = get_pin(&tpin, "Transport PIN", 0);
+		if (r < 0)
+			goto fail;
+	}
+
+	if (!(card->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
+		r = get_pin(&newpin, pin_label, 1);
+		if (r < 0)
+			goto fail;
+	}
+
+	/* Authenticate via PACE */
+	r = verify_pace(card, ref_pace, tpin);
+	if (r) {
+		printf("Error verifying Transport PIN.\n");
+		goto fail;
+	}
+
+	/* Select application of the PIN */
+	sc_format_path(pathstr, &path);
+	r = sc_select_file(card, &path, NULL);
+	if (r)
+		goto fail;
+
+	/* Change PIN */
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_CHANGE;
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = ref_pin;
+	data.pin1.min_length = 5;
+	data.pin1.max_length = 5;
+	data.pin2.min_length = 8;
+	data.pin2.max_length = 8;
+
+	if (card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
+		printf("Please enter PINs on the reader's pin pad.\n");
+		data.pin2.prompt = pin_label;
+		data.flags |= SC_PIN_CMD_USE_PINPAD;
+	} else {
+		data.pin1.data = NULL;
+		data.pin1.len = 0;
+		data.pin2.data = (u8 *)newpin;
+		data.pin2.len = strlen(newpin);
+		data.flags |= SC_PIN_CMD_IMPLICIT_CHANGE;
+	}
+
+	r = sc_pin_cmd(card, &data, &tries_left);
+
+	if (r == SC_SUCCESS)
+		printf("Transport protection removed. You can now use your %s.\n", pin_label);
+	else
+		printf("Can't change pin: %s\n", sc_strerror(r));
+
+fail:
+	if (newpin != NULL) {
+		sc_mem_clear(newpin, strlen(newpin));
+		free(newpin);
+	}
+
+	if (tpin != NULL) {
+		sc_mem_clear(tpin, strlen(tpin));
 		free(tpin);
 	}
 }
@@ -220,6 +356,7 @@ main(int argc, char *argv[])
 	sc_context_param_t ctx_param;
 	sc_card_t *card = NULL;
 	sc_context_t *ctx = NULL;
+	char *can = NULL;
 	sc_path_t path;
 
 	while (1) {
@@ -276,36 +413,145 @@ main(int argc, char *argv[])
 	if (r)
 		goto out;
 
-	/*
-	 * We have to select the QES app to verify and change the QES PIN.
-	 */
-	sc_format_path("3F000101", &path);
-	r = sc_select_file(card, &path, NULL);
-	if (r)
-		goto out;
+	if (card->type == SC_CARD_TYPE_DTRUST_V5_1_STD ||
+			card->type == SC_CARD_TYPE_DTRUST_V5_1_MULTI ||
+			card->type == SC_CARD_TYPE_DTRUST_V5_1_M100 ||
+			card->type == SC_CARD_TYPE_DTRUST_V5_4_STD ||
+			card->type == SC_CARD_TYPE_DTRUST_V5_4_MULTI) {
+		/* D-Trust Card 5 requires PACE authentication with CAN */
+		if (opt_status || opt_check) {
+			r = get_pin(&can, "CAN", 0);
+			if (r < 0)
+				goto out;
 
-	if (opt_status) {
-		if (card->type == SC_CARD_TYPE_DTRUST_V4_1_STD ||
-				card->type == SC_CARD_TYPE_DTRUST_V4_1_MULTI ||
-				card->type == SC_CARD_TYPE_DTRUST_V4_1_M100)
-			pin_status(card, 0x03, "Card Holder PIN");
-		pin_status(card, 0x04, "Card Holder PUK");
-		pin_status(card, 0x87, "Signature PIN");
-		pin_status(card, 0x8B, "Transport PIN");
+			r = verify_pace(card, PACE_CAN, can);
+			if (r) {
+				printf("Error verifying CAN.\n");
+				goto out;
+			}
+		}
 	}
 
-	if (opt_check)
-		check_transport_protection(card);
+	if (opt_status) {
+		switch (card->type) {
+		case SC_CARD_TYPE_DTRUST_V4_1_STD:
+		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V4_1_M100:
+			pin_status(card, 0x03, "Card Holder PIN", 0);
+			/* FALLTHRU */
+
+		case SC_CARD_TYPE_DTRUST_V4_4_STD:
+		case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+			/* We have to select the QES app to verify and change the Signature PIN. */
+			sc_format_path("3F000101", &path);
+			r = sc_select_file(card, &path, NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, 0x04, "Card Holder PUK", 0);
+			pin_status(card, 0x87, "Signature PIN", 0);
+			pin_status(card, 0x8B, "Transport PIN", 1);
+			break;
+
+		case SC_CARD_TYPE_DTRUST_V5_1_STD:
+		case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V5_1_M100:
+			/* We have to select the eSign app to verify and change the Authentication PIN. */
+			sc_format_path("3F000102", &path);
+			r = sc_select_file(card, &path, NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, 0x91, "Authentication PIN", 0);
+			pin_status(card, 0x0C, "Transport PIN (Authentication)", 1);
+			/* FALLTHRU */
+
+		case SC_CARD_TYPE_DTRUST_V5_4_STD:
+		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+			/* We have to select the QES app to verify and change the Signature PIN. */
+			sc_format_path("3F000101", &path);
+			r = sc_select_file(card, &path, NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, 0x04, "Card Holder PUK", 0);
+			pin_status(card, 0x87, "Signature PIN", 0);
+			pin_status(card, 0x0B, "Transport PIN (Signature)", 1);
+			break;
+		}
+	}
+
+	if (opt_check) {
+		switch (card->type) {
+		case SC_CARD_TYPE_DTRUST_V4_1_STD:
+		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V4_1_M100:
+		case SC_CARD_TYPE_DTRUST_V4_4_STD:
+		case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+			check_transport_protection(card, 0x0B, "Signature PIN");
+			break;
+
+		case SC_CARD_TYPE_DTRUST_V5_1_STD:
+		case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V5_1_M100:
+			check_transport_protection(card, 0x0C, "Authentication PIN");
+			/* FALLTHRU */
+
+		case SC_CARD_TYPE_DTRUST_V5_4_STD:
+		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+			check_transport_protection(card, 0x0B, "Signature PIN");
+			break;
+		}
+	}
 
 	if (opt_unlock) {
-		r = check_transport_protection(card);
-		if (r)
-			printf("Cannot remove transport protection.\n");
-		else
-			unlock_transport_protection(card);
+		switch (card->type) {
+		case SC_CARD_TYPE_DTRUST_V4_1_STD:
+		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V4_1_M100:
+		case SC_CARD_TYPE_DTRUST_V4_4_STD:
+		case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+			r = check_transport_protection(card, 0x0B, "Signature PIN");
+			if (r)
+				printf("Cannot remove transport protection of Signature PIN.\n");
+			else
+				unlock_transport_protection4(card);
+			break;
+
+		case SC_CARD_TYPE_DTRUST_V5_1_STD:
+		case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V5_1_M100:
+			r = check_transport_protection(card, 0x0C, "Authentication PIN");
+			if (r)
+				printf("Cannot remove transport protection of Authentication PIN.\n");
+			else {
+				unlock_transport_protection5(card, 0x0C, 0x91, "3F000102", "new Authentication PIN");
+			}
+
+			sc_format_path("3F00", &path);
+			r = sc_select_file(card, &path, NULL);
+			if (r)
+				goto out;
+			/* FALLTHRU */
+
+		case SC_CARD_TYPE_DTRUST_V5_4_STD:
+		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+			r = check_transport_protection(card, 0x0B, "Signature PIN");
+			if (r)
+				printf("Cannot remove transport protection of Signature PIN.\n");
+			else {
+				unlock_transport_protection5(card, 0x0B, 0x87, "3F000101", "new Signature PIN");
+			}
+			break;
+		}
 	}
 
 out:
+	if (can != NULL) {
+		sc_mem_clear(can, strlen(can));
+		free(can);
+	}
+
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card);
