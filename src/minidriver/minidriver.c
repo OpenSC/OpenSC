@@ -1936,7 +1936,22 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 		 */
 		cont->size_key_exchange = cont->size_sign = 0;
 		if (key_obj->type == SC_PKCS15_TYPE_PRKEY_RSA) {
-			if (prkey_info->usage & USAGE_ANY_DECIPHER)
+			/*
+			 * try and not use same key for both sign and decrypt
+			 * Unless only one key 
+			 */
+			if (conts_num == 1) {
+				if (prkey_info->usage & USAGE_ANY_SIGN)
+					cont->size_sign = prkey_info->modulus_length;
+				if (prkey_info->usage & USAGE_ANY_DECIPHER)
+					cont->size_key_exchange = prkey_info->modulus_length;
+			}
+
+			/* If this is the default container and has both. use USAGE_ANY_SIGN */
+			else if (cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER && prkey_info->usage & USAGE_ANY_SIGN && prkey_info->usage & USAGE_ANY_DECIPHER) {
+				cont->size_sign = prkey_info->modulus_length;
+				logprintf(pCardData, 7, "DEFAULT_CONTAINER with both USAGE_ANY_SIGN and USAGE_ANY_DECIPHER");
+			} else if (prkey_info->usage & USAGE_ANY_DECIPHER)
 				cont->size_key_exchange = prkey_info->modulus_length;
 			else if (prkey_info->usage & USAGE_ANY_SIGN)
 				cont->size_sign = prkey_info->modulus_length;
