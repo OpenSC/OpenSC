@@ -138,7 +138,7 @@
 			<para>
 				where <replaceable>keyspec</replaceable> describes the algorithm and the parameters
 				of the key to be created. For example, <literal>rsa:2048</literal> generates a RSA key
-				with 2048-bit modulus. If you are generating an EC key, the curve designation must
+				with 2048-bit modulus, default is 3072. If you are generating an EC key, the curve designation must
 				be specified, for example <literal>ec:prime256v1</literal>.
 				The following curves do not need parameters:
 				Edwards 25519 curves use one of these equivalent names: Ed25519(preferred), ed25519 or edwards25519
