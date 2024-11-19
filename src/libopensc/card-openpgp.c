@@ -2904,12 +2904,11 @@ pgp_update_pubkey_blob(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t 
 		p15pubkey.u.rsa.exponent.len  = BYTES4BITS(key_info->u.rsa.exponent_len);
 	}
 	/* ECC */
-	/* TODO FIXME? YES 24-10-06 */
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH || /* includes XEDDSA */
 			key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA ||
 			key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
 		memset(&p15pubkey, 0, sizeof(p15pubkey));
-		p15pubkey.algorithm = key_info->key_type; /* TODO not set? */
+		p15pubkey.algorithm = key_info->key_type;
 		p15pubkey.u.ec.ecpointQ.value = key_info->u.ec.ecpointQ;
 		p15pubkey.u.ec.ecpointQ.len = key_info->u.ec.ecpointQ_len;
 	} else
@@ -3085,7 +3084,6 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_inf
 		algo->algorithm = SC_ALGORITHM_RSA;
 		algo->key_length = (unsigned int)key_info->u.rsa.modulus_len;
 	}
-	/* TODO FIXME */
 	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH || /* includes XEDDSA */
 			key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA ||
 			key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
