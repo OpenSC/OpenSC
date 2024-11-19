@@ -63,16 +63,16 @@
 #include <openssl/err.h>
 #endif
 
-#include "pkcs11/pkcs11.h"
-#include "pkcs11/pkcs11-opensc.h"
-#include "libopensc/asn1.h"
-#include "libopensc/log.h"
-#include "libopensc/internal.h"
 #include "common/compat_strlcat.h"
 #include "common/compat_strlcpy.h"
 #include "common/libpkcs11.h"
-#include "util.h"
+#include "libopensc/asn1.h"
+#include "libopensc/internal.h"
+#include "libopensc/log.h"
 #include "libopensc/sc-ossl-compat.h"
+#include "pkcs11/pkcs11-opensc.h"
+#include "pkcs11/pkcs11.h"
+#include "util.h"
 
 /* pkcs11-tool uses libopensc routines that do not use an sc_context
  * but does use some OpenSSL routines
@@ -372,7 +372,7 @@ static const char *option_help[] = {
 		"Unlock User PIN (without '--login' unlock in logged in session; otherwise '--login-type' has to be 'context-specific')",
 		"Key pair generation",
 		"Key generation",
-		"Specify the type and (not always compulsory) flavour (byte-wise symmetric key length, bit-wise asymmetric key length, elliptic curve identifier, etc.) of the key to create, for example RSA:2048, EC:prime256v1, GOSTR3410-2012-256:B, DES:8, DES3:24, AES:16, AES: or GENERIC:64",
+		"Specify the type and (not always compulsory) flavour (byte-wise symmetric key length, bit-wise asymmetric key length, elliptic curve identifier, etc.) of the key to create, for example RSA:2048, EC:prime256v1, EC:ED25519, EC:X448, GOSTR3410-2012-256:B, DES:8, DES3:24, AES:16, AES: or GENERIC:64",
 		"Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey)",
 		"Specify 'decrypt' key usage flag (sets DECRYPT in privkey and ENCRYPT in pubkey for RSA, sets both DECRYPT and ENCRYPT for secret keys)",
 		"Specify 'derive' key usage flag (EC only)",
@@ -3183,7 +3183,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			key_type = CKK_EC;
 
 			for (ii=0; ec_curve_infos[ii].name; ii++)   {
-				if (!strcmp(ec_curve_infos[ii].name, type + 3))
+				if (!strcasecmp(ec_curve_infos[ii].name, type + 3))
 					break;
 				if (!strcmp(ec_curve_infos[ii].oid, type + 3))
 					break;
@@ -3218,7 +3218,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			if (!opt_mechanism_used) {
 				if (!find_mechanism(slot, CKF_GENERATE_KEY_PAIR, mtypes, mtypes_num,
 						&opt_mechanism)) {
-					util_fatal("Generate EC key mechanism %lx not supported", mtypes[0]);
+					util_fatal("Generate key mechanism %s not supported by token", p11_mechanism_to_name(mtypes[0]));
 				}
 			}
 
@@ -5799,7 +5799,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 					printf("%02x", params_bytes[n]);
 
 				if (curve_info) { /* we matched it above, use printable OID */
-					printf(" (\"%s\" OID:\"%s\")", curve_info->name, curve_info->oid);
+					printf(" (\"%s\" OID:\"%s\")\n", curve_info->name, curve_info->oid);
 				} else if (params_bytes[0] == SC_ASN1_OBJECT) {
 					sc_init_oid(&oid);
 					if (sc_asn1_decode_object_id(params_bytes, params_size, &oid) == SC_SUCCESS) {
