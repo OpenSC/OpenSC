@@ -27,9 +27,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "libopensc/pace.h"
+
 #include "asn1.h"
 #include "card-cardos-common.h"
 #include "internal.h"
+#include "sm/sm-eac.h"
+
+#include "card-dtrust.h"
 
 static const struct sc_card_operations *iso_ops = NULL;
 
@@ -328,6 +333,216 @@ dtrust_finish(sc_card_t *card)
 }
 
 static int
+dtrust_select_app(struct sc_card *card, int ref)
+{
+	sc_path_t path;
+	int r;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	switch (card->type) {
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_4_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_M100:
+	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+		switch (ref) {
+		case DTRUST5_PIN_ID_QES:
+			sc_format_path("3F000101", &path);
+			break;
+
+		case DTRUST5_PIN_ID_AUT:
+			sc_format_path("3F000102", &path);
+			break;
+
+		default:
+			sc_format_path("3F00", &path);
+			break;
+		}
+
+		r = sc_select_file(card, &path, NULL);
+		LOG_TEST_RET(card->ctx, r, "Selecting master file failed");
+		break;
+	}
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+static int
+dtrust_perform_pace(struct sc_card *card,
+		int ref,
+		const unsigned char *pin,
+		size_t pinlen,
+		int *tries_left)
+{
+	int r;
+	struct establish_pace_channel_input pace_input;
+	struct establish_pace_channel_output pace_output;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/* The PKCS#11 layer cannot provide a CAN. Instead we consider the
+	 * following sources for CAN input.
+	 *  1. A CAN provided by the caller
+	 *  2. A cached CAN when the cache feature is enabled
+	 *  3. If the reader supports the PACE protocol, we let it query for a
+	 *     CAN on the pin pad.
+	 *  4. Querying the user interactively if possible */
+	if (ref == PACE_PIN_ID_CAN) {
+		/* TODO: Query the CAN cache if no CAN is provided by the caller. */
+
+		if (pin == NULL) {
+			if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) {
+				/* If no CAN is provided and the reader is
+				 * PACE-capable, we leave pin == NULL to request the
+				 * ready for querying the CAN on its pin pad. */
+				sc_log(card->ctx, "Letting the reader prompt for the CAN on its pin pad.");
+			} else {
+				/* TODO: Request user input */
+				sc_log(card->ctx, "Unable to query for the CAN. Aborting.");
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+			}
+		}
+	}
+
+	/* Establish secure channel via PACE */
+	memset(&pace_input, 0, sizeof pace_input);
+	memset(&pace_output, 0, sizeof pace_output);
+
+	pace_input.pin_id = ref;
+	pace_input.pin = pin;
+	pace_input.pin_length = pinlen;
+
+	/* Select the right application for authentication. */
+	r = dtrust_select_app(card, ref);
+	LOG_TEST_RET(card->ctx, r, "Selecting application failed");
+
+	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+
+	free(pace_output.ef_cardaccess);
+	free(pace_output.recent_car);
+	free(pace_output.previous_car);
+	free(pace_output.id_icc);
+	free(pace_output.id_pcd);
+
+	if (tries_left != NULL) {
+		if (r != SC_SUCCESS &&
+				pace_output.mse_set_at_sw1 == 0x63 &&
+				(pace_output.mse_set_at_sw2 & 0xc0) == 0xc0) {
+			*tries_left = pace_output.mse_set_at_sw2 & 0x0f;
+		} else {
+			*tries_left = -1;
+		}
+	}
+
+	/* TODO: Put CAN into the cache if necessary. */
+
+	return r;
+}
+
+static int
+dtrust_pin_cmd_get_info(struct sc_card *card,
+		struct sc_pin_cmd_data *data,
+		int *tries_left)
+{
+	int r;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	switch (data->pin_reference) {
+	case PACE_PIN_ID_CAN:
+		/* unlimited number of retries */
+		*tries_left = -1;
+		data->pin1.max_tries = -1;
+		data->pin1.tries_left = -1;
+		r = SC_SUCCESS;
+		break;
+
+	case PACE_PIN_ID_PUK:
+	case DTRUST5_PIN_ID_PIN_T:
+	case DTRUST5_PIN_ID_PIN_T_AUT:
+		/* Select the right application for authentication. */
+		r = dtrust_select_app(card, data->pin_reference);
+		LOG_TEST_RET(card->ctx, r, "Selecting application failed");
+
+		/* FIXME: Doesn't work. Returns SW1=69 SW2=85 (Conditions of use not satisfied) instead. */
+		data->pin1.max_tries = 3;
+		r = eac_pace_get_tries_left(card, data->pin_reference, &data->pin1.tries_left);
+		if (tries_left != NULL) {
+			*tries_left = data->pin1.tries_left;
+		}
+		break;
+
+	default:
+		/* Check if a secure channel exists.
+		 * FIXME: This won't work for readers handling the secure
+		 *        channel transparently. */
+		if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT) {
+			/* We need to establish a secure channel to query PIN information. */
+			r = dtrust_perform_pace(card, PACE_PIN_ID_CAN, NULL, 0, NULL);
+			LOG_TEST_RET(card->ctx, r, "CAN authentication failed");
+
+			/* Select the right application again. */
+			r = dtrust_select_app(card, data->pin_reference);
+			LOG_TEST_RET(card->ctx, r, "Selecting application failed");
+		}
+
+		/* Now query PIN information */
+		r = iso_ops->pin_cmd(card, data, tries_left);
+		break;
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+static int
+dtrust_pin_cmd_verify(struct sc_card *card,
+		struct sc_pin_cmd_data *data,
+		int *tries_left)
+{
+	int r;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	switch (data->pin_reference) {
+	/* When the retry counter reaches 1 PACE-PINs become suspended. Before
+	 * verifying a suspended PIN, the CAN has to verified. We go without
+	 * verifying the CAN here, as this only matters for the PUK and the
+	 * transport PIN. Neither PIN ist required during normal operation. The
+	 * user has to resume a suspended PIN using dtrust-tool which manages
+	 * CAN authentication. */
+	case PACE_PIN_ID_CAN:
+	case PACE_PIN_ID_PUK:
+	case DTRUST5_PIN_ID_PIN_T:
+	case DTRUST5_PIN_ID_PIN_T_AUT:
+		/* Establish secure channel via PACE */
+		r = dtrust_perform_pace(card, data->pin_reference, data->pin1.data, data->pin1.len, tries_left);
+		break;
+
+	default:
+		/* Check if a secure channel exists.
+		 * FIXME: This wouldn't work for readers handling the secure
+		 *        channel transparently. */
+		if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT) {
+			/* We need to establish a secure channel to verify the PINs. */
+			r = dtrust_perform_pace(card, PACE_PIN_ID_CAN, NULL, 0, NULL);
+			LOG_TEST_RET(card->ctx, r, "CAN authentication failed");
+
+			/* Select the right application again. */
+			r = dtrust_select_app(card, data->pin_reference);
+			LOG_TEST_RET(card->ctx, r, "Selecting application failed");
+		}
+
+		/* Now verify the PIN */
+		r = iso_ops->pin_cmd(card, data, tries_left);
+
+		break;
+	}
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+static int
 dtrust_pin_cmd(struct sc_card *card,
 		struct sc_pin_cmd_data *data,
 		int *tries_left)
@@ -339,33 +554,25 @@ dtrust_pin_cmd(struct sc_card *card,
 	if (!data)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	/* Upper layers may try to verify the PIN twice, first with PIN type
-	 * SC_AC_CHV and then with PIN type SC_AC_CONTEXT_SPECIFIC. For the
-	 * second attempt we first check by SC_PIN_CMD_GET_INFO whether a
-	 * second PIN authentication is still necessary. If not, we simply
-	 * return without a second verification attempt. Otherwise we perform
-	 * the verification as requested. This only matters for pin pad readers
-	 * to prevent the user from prompting the PIN twice. */
-	if (data->cmd == SC_PIN_CMD_VERIFY && data->pin_type == SC_AC_CONTEXT_SPECIFIC) {
-		struct sc_pin_cmd_data data2;
-
-		memset(&data2, 0, sizeof(struct sc_pin_cmd_data));
-		data2.pin_reference = data->pin_reference;
-		data2.pin1 = data->pin1;
-
-		/* Check verification state */
-		data2.cmd = SC_PIN_CMD_GET_INFO;
-		data2.pin_type = data->pin_type;
-		r = iso_ops->pin_cmd(card, &data2, tries_left);
-
-		if (data2.pin1.logged_in == SC_PIN_STATE_LOGGED_IN) {
-			/* Return if we are already authenticated */
-			data->pin1 = data2.pin1;
-			LOG_FUNC_RETURN(card->ctx, r);
-		}
+	/* No special handling for D-Trust Card 4.1/4.4 */
+	if (card->type >= SC_CARD_TYPE_DTRUST_V4_1_STD && card->type <= SC_CARD_TYPE_DTRUST_V4_4_MULTI) {
+		r = iso_ops->pin_cmd(card, data, tries_left);
+		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	r = iso_ops->pin_cmd(card, data, tries_left);
+	switch (data->cmd) {
+	case SC_PIN_CMD_GET_INFO:
+		r = dtrust_pin_cmd_get_info(card, data, tries_left);
+		break;
+
+	case SC_PIN_CMD_VERIFY:
+		r = dtrust_pin_cmd_verify(card, data, tries_left);
+		break;
+
+	default:
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+	}
+
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -568,11 +775,22 @@ dtrust_decipher(struct sc_card *card, const u8 *data,
 static int
 dtrust_logout(sc_card_t *card)
 {
-	sc_path_t path;
+	struct sc_apdu apdu;
 	int r;
 
-	sc_format_path("3F00", &path);
-	r = sc_select_file(card, &path, NULL);
+	sc_sm_stop(card);
+
+	if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) {
+		/* If PACE is done between reader and card, SM is transparent to us as
+		 * it ends at the reader. With CLA=0x0C we provoke a SM error to
+		 * disable SM on the reader. */
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xA4, 0x00, 0x00);
+		apdu.cla = 0x0C;
+		if (SC_SUCCESS != sc_transmit_apdu(card, &apdu))
+			sc_log(card->ctx, "Warning: Could not logout.");
+	}
+
+	r = sc_select_file(card, sc_get_mf_path(), NULL);
 
 	return r;
 }
