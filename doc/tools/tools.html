@@ -1490,7 +1490,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Generate a new key.</p></dd><dt><span class="term">
 						<code class="option">--key-type</code> <em class="replaceable"><code>specification</code></em>
 					</span></dt><dd><p>Specify the type and (not always compulsory) flavour (byte-wise symmetric key length, bit-wise asymmetric key length,
-					elliptic curve identifier, etc.) of the key to create, for example RSA:2048, EC:prime256v1, GOSTR3410-2012-256:B,
+					elliptic curve identifier, etc.) of the key to create, for example RSA:2048, EC:prime256v1, EC:ED25519, EC:X448, GOSTR3410-2012-256:B,
 					DES:8, DES3:24, AES:16, AES: or GENERIC:64. If the key type was incompletely specified, possible values are listed.</p></dd><dt><span class="term">
 						<code class="option">--usage-sign</code>
 					</span></dt><dd><p>Specify 'sign' key usage flag (sets SIGN in privkey, sets VERIFY in pubkey).</p></dd><dt><span class="term">
@@ -1575,7 +1575,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Read public key from the module using "CKA_PUBLIC_KEY_INFO"
 					(use with <code class="option">--read-object --type public</code>).
 					The output is a "SubjectPublicKeyInfo" i.e. as used in certificates
-					and openssl,</p></dd><dt><span class="term">
+					and openssl.</p></dd><dt><span class="term">
 						<code class="option">--puk</code> <em class="replaceable"><code>puk</code></em>
 					</span></dt><dd><p>Supply User PUK on the command line.</p></dd><dt><span class="term">
 						<code class="option">--new-pin</code> <em class="replaceable"><code>pin</code></em>
@@ -2009,7 +2009,7 @@ pkcs11-tool --login --login-type so --init-pin
 			</p><p>
 				where <em class="replaceable"><code>keyspec</code></em> describes the algorithm and the parameters
 				of the key to be created. For example, <code class="literal">rsa:2048</code> generates a RSA key
-				with 2048-bit modulus. If you are generating an EC key, the curve designation must
+				with 2048-bit modulus, default is 3072. If you are generating an EC key, the curve designation must
 				be specified, for example <code class="literal">ec:prime256v1</code>.
 				The following curves do not need parameters:
 				Edwards 25519 curves use one of these equivalent names: Ed25519(preferred), ed25519 or edwards25519
