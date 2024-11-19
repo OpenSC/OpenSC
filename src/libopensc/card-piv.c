@@ -2773,7 +2773,7 @@ static int piv_generate_key(sc_card_t *card,
 			goto err;
 		}
 
-		/* if RSA vs EC */
+		/* if RSA vs EC, ED25519 or X25519 */
 		if (keydata->key_bits > 0 ) {
 			tag = sc_asn1_find_tag(card->ctx, cp, in_len, 0x82, &taglen);
 			if (tag != NULL && taglen <= 4) {
@@ -2781,7 +2781,11 @@ static int piv_generate_key(sc_card_t *card,
 				if (keydata->exponent == NULL)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 				keydata->exponent_len = taglen;
-				memcpy (keydata->exponent, tag, taglen);
+				memcpy(keydata->exponent, tag, taglen);
+			} else {
+				sc_log(card->ctx, "Tag 0x82 not found");
+				r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+				goto err;
 			}
 
 			tag = sc_asn1_find_tag(card->ctx, cp, in_len, 0x81, &taglen);
@@ -2792,30 +2796,44 @@ static int piv_generate_key(sc_card_t *card,
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 				}
 				keydata->pubkey_len = taglen;
-				memcpy (keydata->pubkey, tag, taglen);
+				memcpy(keydata->pubkey, tag, taglen);
+			} else {
+				sc_log(card->ctx, "Tag 0x81 not found");
+				r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+				goto err;
 			}
-			//		} else if (keydata->key_algid == 0xE0 || keydata->key_algid == 0xE1) {
-			//			/* TODO DEE need to look at what gets returned */
-			/* TODO assume same as EC with tag 86 */
-
-		} else { /* must be EC */
+		} else { /* must be EC, ED25519 or X25519 */
 			tag = sc_asn1_find_tag(card->ctx, cp, in_len, 0x86, &taglen);
 			if (tag != NULL && taglen > 0) {
 				keydata->ecpoint = malloc(taglen);
 				if (keydata->ecpoint == NULL)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 				keydata->ecpoint_len = taglen;
-				memcpy (keydata->ecpoint, tag, taglen);
+				memcpy(keydata->ecpoint, tag, taglen);
+			} else {
+				sc_log(card->ctx, "Tag 0x86 not found");
+				r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+				goto err;
 			}
 		}
 
-		/* TODO: -DEE Could add key to cache so could use engine to generate key,
+		/* Could add key to cache so could use engine to generate key,
 		 * and sign req in single operation or write temporary selfsigned
-		 * certificate with new public key */
+		 * certificate with new public key
+		 */
 		r = 0;
 	}
 
 err:
+	if (r < 0) {
+		free(keydata->exponent);
+		keydata->exponent = NULL;
+		free(keydata->pubkey);
+		keydata->pubkey = NULL;
+		free(keydata->ecpoint);
+		keydata->ecpoint = NULL;
+	}
+
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -4585,8 +4603,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 	if (priv->operation == SC_SEC_OPERATION_DERIVE
-			&& priv->algorithm == SC_ALGORITHM_EC) {
-		/* TODO add code for X25519 */
+			&& (priv->algorithm == SC_ALGORITHM_EC || priv->algorithm == SC_ALGORITHM_XEDDSA)) {
 		op_tag = 0x85;
 	} else {
 		op_tag = 0x81;
