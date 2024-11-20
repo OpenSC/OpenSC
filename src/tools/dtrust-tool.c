@@ -356,24 +356,65 @@ main(int argc, char *argv[])
 		}
 	}
 
-	/*
-	 * We have to select the QES app to verify and change the QES PIN.
-	 */
-	sc_format_path("3F000101", &path);
-	r = sc_select_file(card, &path, NULL);
-	if (r)
-		goto out;
-
 	if (opt_status) {
-		if (card->type == SC_CARD_TYPE_DTRUST_V4_1_STD ||
-				card->type == SC_CARD_TYPE_DTRUST_V4_1_MULTI ||
-				card->type == SC_CARD_TYPE_DTRUST_V4_1_M100)
+		switch (card->type) {
+		case SC_CARD_TYPE_DTRUST_V4_1_STD:
+		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V4_1_M100:
 			pin_status(card, DTRUST4_PIN_ID_PIN_CH, "Card Holder PIN");
-		pin_status(card, DTRUST4_PIN_ID_PUK_CH, "Card Holder PUK");
-		pin_status(card, DTRUST4_PIN_ID_QES, "Signature PIN");
+			/* fall through */
 
-		/* According to the spec, the local bit has to be set. */
-		pin_status(card, 0x80 | DTRUST4_PIN_ID_PIN_T, "Transport PIN");
+		case SC_CARD_TYPE_DTRUST_V4_4_STD:
+		case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+			/* We have to select the QES app to verify and change the Signature PIN. */
+			sc_format_path("3F000101", &path);
+			r = sc_select_file(card, &path, NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, DTRUST4_PIN_ID_PUK_CH, "Card Holder PUK");
+			pin_status(card, DTRUST4_PIN_ID_QES, "Signature PIN");
+
+			/* According to the spec, the local bit has to be set. */
+			pin_status(card, 0x80 | DTRUST4_PIN_ID_PIN_T, "Transport PIN");
+			break;
+
+		case SC_CARD_TYPE_DTRUST_V5_1_STD:
+		case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V5_1_M100:
+			r = sc_select_file(card, sc_get_mf_path(), NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, DTRUST5_PIN_ID_PIN_T_AUT, "Transport PIN (Authentication)");
+
+			/* We have to select the eSign app to verify and change the Authentication PIN. */
+			sc_format_path("3F000102", &path);
+			r = sc_select_file(card, &path, NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, DTRUST5_PIN_ID_AUT, "Authentication PIN");
+			/* fall through */
+
+		case SC_CARD_TYPE_DTRUST_V5_4_STD:
+		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+			r = sc_select_file(card, sc_get_mf_path(), NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, PACE_PIN_ID_PUK, "Card Holder PUK");
+			pin_status(card, DTRUST5_PIN_ID_PIN_T, "Transport PIN (Signature)");
+
+			/* We have to select the QES app to verify and change the Signature PIN. */
+			sc_format_path("3F000101", &path);
+			r = sc_select_file(card, &path, NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, DTRUST5_PIN_ID_QES, "Signature PIN");
+			break;
+		}
 	}
 
 	if (opt_check)
