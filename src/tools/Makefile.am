@@ -141,6 +141,8 @@ goid_tool_CFLAGS += -Wno-shorten-64-to-32
 endif
 
 dtrust_tool_SOURCES = dtrust-tool.c util.c
+dtrust_tool_LDADD = $(OPENPACE_LIBS)
+dtrust_tool_CFLAGS = $(OPENPACE_CFLAGS)
 
 opensc_asn1_SOURCES = opensc-asn1.c fread_to_eof.c opensc-asn1-cmdline.c
 opensc_asn1_CFLAGS =
