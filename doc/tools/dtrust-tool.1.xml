@@ -57,6 +57,29 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>--verify-can</option>,
+					</term>
+					<listitem>
+						<para>
+							D-Trust Card 5 comes with a Card Access Number (CAN) printed
+							onto the card. The purpose of this number is to establish a
+							secure communication channel between the card and the card
+							reader. In normal operation <command>dtrust-tool</command>
+							automatically prompts for the CAN.
+						</para>
+						<para>
+							In case you entered a transport PIN wrong two times, the
+							transport PIN becomes suspended. You need this parameter
+							together with <option>--unlock-transport-protection</option> to
+							resume the suspended transport PIN for a last attempt. Failing
+							to enter the transport PIN successfully blocks the transport
+							PIN. You then need to unblock the transport PIN with
+							<option>--unblock-pin</option>.
+						</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--pin-status</option>,
 						<option>-s</option>
 					</term>
