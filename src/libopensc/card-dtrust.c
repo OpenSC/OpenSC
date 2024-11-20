@@ -49,8 +49,10 @@ static struct sc_card_driver dtrust_drv = {
 };
 // clang-format on
 
-/* internal structure to save the current security environment */
 struct dtrust_drv_data_t {
+	/* track PACE state */
+	unsigned char can : 1;
+	/* save the current security environment */
 	const sc_security_env_t *env;
 };
 
@@ -239,6 +241,7 @@ _dtrust_get_serialnr(sc_card_t *card)
 static int
 dtrust_init(sc_card_t *card)
 {
+	struct dtrust_drv_data_t *drv_data;
 	int r;
 	const size_t data_field_length = 437;
 	unsigned long flags, ext_flags;
@@ -247,9 +250,12 @@ dtrust_init(sc_card_t *card)
 
 	card->cla = 0x00;
 
-	card->drv_data = calloc(1, sizeof(struct dtrust_drv_data_t));
-	if (card->drv_data == NULL)
+	drv_data = calloc(1, sizeof(struct dtrust_drv_data_t));
+	if (drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
+
+	drv_data->can = 0;
+	card->drv_data = drv_data;
 
 	r = _dtrust_get_serialnr(card);
 	LOG_TEST_RET(card->ctx, r, "Error reading serial number.");
@@ -375,11 +381,14 @@ dtrust_perform_pace(struct sc_card *card,
 		size_t pinlen,
 		int *tries_left)
 {
+	struct dtrust_drv_data_t *drv_data;
 	int r;
 	struct establish_pace_channel_input pace_input;
 	struct establish_pace_channel_output pace_output;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	drv_data = card->drv_data;
 
 	/* The PKCS#11 layer cannot provide a CAN. Instead we consider the
 	 * following sources for CAN input.
@@ -419,6 +428,15 @@ dtrust_perform_pace(struct sc_card *card,
 
 	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 
+	/* We need to track whether we established a PACE channel with CAN.
+	 * Checking against card->sm_ctx.sm_mode != SM_MODE_TRANSMIT is not
+	 * sufficient as PACE-capable card readers handle secure messaging
+	 * transparently and authenticating against non-CAN-PINs doesn't allow
+	 * us to verify the QES or AUT-PIN. */
+	if (ref == PACE_PIN_ID_CAN) {
+		drv_data->can = r == SC_SUCCESS;
+	}
+
 	free(pace_output.ef_cardaccess);
 	free(pace_output.recent_car);
 	free(pace_output.previous_car);
@@ -445,9 +463,12 @@ dtrust_pin_cmd_get_info(struct sc_card *card,
 		struct sc_pin_cmd_data *data,
 		int *tries_left)
 {
+	struct dtrust_drv_data_t *drv_data;
 	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	drv_data = card->drv_data;
 
 	switch (data->pin_reference) {
 	case PACE_PIN_ID_CAN:
@@ -474,11 +495,9 @@ dtrust_pin_cmd_get_info(struct sc_card *card,
 		break;
 
 	default:
-		/* Check if a secure channel exists.
-		 * FIXME: This won't work for readers handling the secure
-		 *        channel transparently. */
-		if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT) {
-			/* We need to establish a secure channel to query PIN information. */
+		/* Check if CAN authentication is necessary */
+		if (!drv_data->can) {
+			/* Establish a secure channel with CAN to query PIN information. */
 			r = dtrust_perform_pace(card, PACE_PIN_ID_CAN, NULL, 0, NULL);
 			LOG_TEST_RET(card->ctx, r, "CAN authentication failed");
 
@@ -500,9 +519,12 @@ dtrust_pin_cmd_verify(struct sc_card *card,
 		struct sc_pin_cmd_data *data,
 		int *tries_left)
 {
+	struct dtrust_drv_data_t *drv_data;
 	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	drv_data = card->drv_data;
 
 	switch (data->pin_reference) {
 	/* When the retry counter reaches 1 PACE-PINs become suspended. Before
@@ -520,11 +542,9 @@ dtrust_pin_cmd_verify(struct sc_card *card,
 		break;
 
 	default:
-		/* Check if a secure channel exists.
-		 * FIXME: This wouldn't work for readers handling the secure
-		 *        channel transparently. */
-		if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT) {
-			/* We need to establish a secure channel to verify the PINs. */
+		/* Check if CAN authentication is necessary */
+		if (!drv_data->can) {
+			/* Establish a secure channel with CAN to to verify the PINs. */
 			r = dtrust_perform_pace(card, PACE_PIN_ID_CAN, NULL, 0, NULL);
 			LOG_TEST_RET(card->ctx, r, "CAN authentication failed");
 
@@ -775,24 +795,33 @@ dtrust_decipher(struct sc_card *card, const u8 *data,
 static int
 dtrust_logout(sc_card_t *card)
 {
-	struct sc_apdu apdu;
+	struct dtrust_drv_data_t *drv_data;
 	int r;
 
-	sc_sm_stop(card);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	drv_data = card->drv_data;
+
+	sc_sm_stop(card);
+	drv_data->can = 0;
+
+	/* If PACE is done between reader and card, SM is transparent to us as
+	 * it ends at the reader. With CLA=0x0C we provoke a SM error to
+	 * disable SM on the reader. */
 	if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) {
-		/* If PACE is done between reader and card, SM is transparent to us as
-		 * it ends at the reader. With CLA=0x0C we provoke a SM error to
-		 * disable SM on the reader. */
+		struct sc_apdu apdu;
+
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xA4, 0x00, 0x00);
 		apdu.cla = 0x0C;
-		if (SC_SUCCESS != sc_transmit_apdu(card, &apdu))
+
+		r = sc_transmit_apdu(card, &apdu);
+		if (r != SC_SUCCESS)
 			sc_log(card->ctx, "Warning: Could not logout.");
 	}
 
 	r = sc_select_file(card, sc_get_mf_path(), NULL);
 
-	return r;
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 struct sc_card_driver *
