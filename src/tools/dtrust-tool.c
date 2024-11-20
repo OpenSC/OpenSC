@@ -206,7 +206,7 @@ check_transport_protection(sc_card_t *card, u8 ref, const char *pin_label)
 }
 
 void
-unlock_transport_protection(sc_card_t *card)
+unlock_transport_protection4(sc_card_t *card)
 {
 	struct sc_pin_cmd_data data;
 	int r;
@@ -256,6 +256,105 @@ fail:
 	if (qespin != NULL) {
 		sc_mem_clear(qespin, strlen(qespin));
 		free(qespin);
+	}
+
+	if (tpin != NULL) {
+		sc_mem_clear(tpin, strlen(tpin));
+		free(tpin);
+	}
+}
+
+void
+unlock_transport_protection5(sc_card_t *card, int ref_pace, int ref_pin, const char *pathstr, const char *pin_label)
+{
+	int r;
+	sc_path_t path;
+	struct sc_pin_cmd_data data;
+	char *tpin = NULL;
+	char *newpin = NULL;
+	int tries_left;
+
+	printf("Unlocking %s\n", pin_label);
+
+	/* Query all PINs at once */
+	if (!(card->reader->capabilities & SC_READER_CAP_PACE_GENERIC)) {
+		r = get_pin(&tpin, "Transport PIN", 0);
+		if (r < 0)
+			goto fail;
+	}
+
+	if (!(card->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
+		r = get_pin(&newpin, pin_label, 1);
+		if (r < 0)
+			goto fail;
+
+		if (strlen(newpin) != 8) {
+			fprintf(stderr, "Error. New PIN must be exactly 8 characters long.\n");
+			goto fail;
+		}
+	}
+
+	/* Authenticate via PACE */
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_VERIFY;
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = ref_pace;
+
+	if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC)
+		printf("Enter Transport PIN on the readers pin pad now.\n");
+	else {
+		data.pin1.data = (u8 *)tpin;
+		data.pin1.len = strlen(tpin);
+	}
+
+	r = sc_pin_cmd(card, &data, &tries_left);
+	if (r) {
+		fprintf(stderr, "Error verifying Transport PIN: %s\n", sc_strerror(r));
+		goto fail;
+	}
+
+	/* Select application of the PIN */
+	sc_format_path(pathstr, &path);
+	r = sc_select_file(card, &path, NULL);
+	if (r)
+		goto fail;
+
+	/* Change PIN */
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_CHANGE;
+	data.flags = SC_PIN_CMD_IMPLICIT_CHANGE;
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = ref_pin;
+	data.pin2.min_length = 8;
+	data.pin2.max_length = 8;
+
+	if (card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
+		printf("Enter new %s on the readers pin pad now.\n", pin_label);
+		data.pin2.prompt = pin_label;
+		data.flags |= SC_PIN_CMD_USE_PINPAD;
+	} else {
+		data.pin2.data = (u8 *)newpin;
+		data.pin2.len = strlen(newpin);
+	}
+
+	/* We only have one chance to set the new PIN. Once the Transport PIN
+	 * is verified, it is not usable anymore. For pin pad readers we
+	 * continue as long as the new PIN is set successfully or the user
+	 * aborts the program and renders its card unusable as a consequence. */
+	do {
+		r = sc_pin_cmd(card, &data, NULL);
+		if (r == SC_SUCCESS) {
+			printf("Transport protection removed. You can now use your %s.\n", pin_label);
+			break;
+		}
+
+		printf("Can't change pin: %s\n", sc_strerror(r));
+	} while (card->reader->capabilities & SC_READER_CAP_PIN_PAD);
+
+fail:
+	if (newpin != NULL) {
+		sc_mem_clear(newpin, strlen(newpin));
+		free(newpin);
 	}
 
 	if (tpin != NULL) {
@@ -453,11 +552,81 @@ main(int argc, char *argv[])
 	}
 
 	if (opt_unlock) {
-		r = check_transport_protection(card, DTRUST4_PIN_ID_PIN_T, "Signature PIN");
-		if (r)
-			printf("Cannot remove transport protection of Signature PIN.\n");
-		else
-			unlock_transport_protection(card);
+		/* Warn the user he must not abort the unlocking process on
+		 * pin pad readers, as the transport pin has already been used
+		 * and there is no next attempt. */
+		if (card->reader->capabilities & SC_READER_CAP_PIN_PAD &&
+				card->type >= SC_CARD_TYPE_DTRUST_V5_1_STD &&
+				card->type <= SC_CARD_TYPE_DTRUST_V5_4_MULTI) {
+			printf("\n");
+			printf("CAUTION.\n");
+			printf("\n");
+			printf("You are about to remove the transport protection. After entering the transport\n");
+			printf("PIN, don't abort the program! Otherwise your card becomes irrecoverably unusable.\n");
+			printf("In case of an error, continue to enter your PIN as long as you reader accepts\n");
+			printf("it. The new PIN must be exactly 8 characters long.\n");
+			printf("\n");
+			printf("If in doubt, cancel now and try to unlock your card in a card reader without a\n");
+			printf("pin pad. Then all, your inputs will be validated before unlocking the card.\n");
+			printf("\n");
+			printf("Enter 'yes' to continue.\n");
+
+#ifndef _WIN32
+			ssize_t ret;
+			char *str = NULL;
+			size_t len = 0;
+
+			ret = getline(&str, &len, stdin);
+			if (ret >= 0)
+				ret = strcmp(str, "yes\n");
+			free(str);
+
+			if (ret)
+				goto out;
+#else
+			char str[8];
+			char *ret;
+
+			ret = fgets(str, 8, stdin);
+			if (ret == NULL || strcmp(ret, "yes\n"))
+				goto out;
+#endif
+		}
+
+		switch (card->type) {
+		case SC_CARD_TYPE_DTRUST_V4_1_STD:
+		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V4_1_M100:
+		case SC_CARD_TYPE_DTRUST_V4_4_STD:
+		case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+			r = check_transport_protection(card, DTRUST4_PIN_ID_PIN_T, "Signature PIN");
+			if (r)
+				printf("Cannot remove transport protection of Signature PIN.\n");
+			else
+				unlock_transport_protection4(card);
+			break;
+
+		case SC_CARD_TYPE_DTRUST_V5_1_STD:
+		case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V5_1_M100:
+			r = check_transport_protection(card, DTRUST5_PIN_ID_PIN_T_AUT, "Authentication PIN");
+			if (r)
+				printf("Cannot remove transport protection of Authentication PIN.\n");
+			else {
+				unlock_transport_protection5(card, DTRUST5_PIN_ID_PIN_T_AUT, DTRUST5_PIN_ID_AUT, "3F000102", "Authentication PIN");
+			}
+			/* fall through */
+
+		case SC_CARD_TYPE_DTRUST_V5_4_STD:
+		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+			r = check_transport_protection(card, DTRUST5_PIN_ID_PIN_T, "Signature PIN");
+			if (r)
+				printf("Cannot remove transport protection of Signature PIN.\n");
+			else {
+				unlock_transport_protection5(card, DTRUST5_PIN_ID_PIN_T, DTRUST5_PIN_ID_QES, "3F000101", "Signature PIN");
+			}
+			break;
+		}
 	}
 
 out:
