@@ -3083,8 +3083,7 @@ pgp_update_card_algorithms(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_inf
 	if (key_info->algorithm == SC_OPENPGP_KEYALGO_RSA) {
 		algo->algorithm = SC_ALGORITHM_RSA;
 		algo->key_length = (unsigned int)key_info->u.rsa.modulus_len;
-	}
-	else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH || /* includes XEDDSA */
+	} else if (key_info->algorithm == SC_OPENPGP_KEYALGO_ECDH || /* includes XEDDSA */
 			key_info->algorithm == SC_OPENPGP_KEYALGO_ECDSA ||
 			key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
 		algo->algorithm = SC_ALGORITHM_EC;
