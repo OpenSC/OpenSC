@@ -4602,8 +4602,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	    (r = sc_asn1_put_tag(0x82, NULL, 0, p, sbuflen - (p - sbuf), &p)) != SC_SUCCESS) {
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
-	if (priv->operation == SC_SEC_OPERATION_DERIVE
-			&& (priv->algorithm == SC_ALGORITHM_EC || priv->algorithm == SC_ALGORITHM_XEDDSA)) {
+	if (priv->operation == SC_SEC_OPERATION_DERIVE && (priv->algorithm == SC_ALGORITHM_EC || priv->algorithm == SC_ALGORITHM_XEDDSA)) {
 		op_tag = 0x85;
 	} else {
 		op_tag = 0x81;
