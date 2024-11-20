@@ -25,6 +25,7 @@
 
 #include "libopensc/opensc.h"
 
+#include "libopensc/card-dtrust.h"
 #include "libopensc/cards.h"
 #include "libopensc/errors.h"
 
@@ -204,7 +205,7 @@ unlock_transport_protection(sc_card_t *card)
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_CHANGE;
 	data.pin_type = SC_AC_CHV;
-	data.pin_reference = 0x87;
+	data.pin_reference = DTRUST4_PIN_ID_QES;
 	data.pin1.min_length = 5;
 	data.pin1.max_length = 5;
 	data.pin2.min_length = 6;
@@ -367,10 +368,12 @@ main(int argc, char *argv[])
 		if (card->type == SC_CARD_TYPE_DTRUST_V4_1_STD ||
 				card->type == SC_CARD_TYPE_DTRUST_V4_1_MULTI ||
 				card->type == SC_CARD_TYPE_DTRUST_V4_1_M100)
-			pin_status(card, 0x03, "Card Holder PIN");
-		pin_status(card, 0x04, "Card Holder PUK");
-		pin_status(card, 0x87, "Signature PIN");
-		pin_status(card, 0x8B, "Transport PIN");
+			pin_status(card, DTRUST4_PIN_ID_PIN_CH, "Card Holder PIN");
+		pin_status(card, DTRUST4_PIN_ID_PUK_CH, "Card Holder PUK");
+		pin_status(card, DTRUST4_PIN_ID_QES, "Signature PIN");
+
+		/* According to the spec, the local bit has to be set. */
+		pin_status(card, 0x80 | DTRUST4_PIN_ID_PIN_T, "Transport PIN");
 	}
 
 	if (opt_check)
