@@ -731,7 +731,24 @@ dtrust_set_security_env(sc_card_t *card,
 				return SC_ERROR_NOT_SUPPORTED;
 			}
 		} else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW) {
-			se_num = 0x21;
+			switch (card->type) {
+			case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+			case SC_CARD_TYPE_DTRUST_V4_1_M100:
+			case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+				/* ECDSA on SHA-256 hashes. Other hashes will work though. */
+				se_num = 0x21;
+				break;
+
+			case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+			case SC_CARD_TYPE_DTRUST_V5_1_M100:
+			case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+				/* ECDSA on SHA-384 hashes. Other hashes will work though. */
+				se_num = 0x22;
+				break;
+
+			default:
+				return SC_ERROR_NOT_SUPPORTED;
+			}
 		} else {
 			return SC_ERROR_NOT_SUPPORTED;
 		}
