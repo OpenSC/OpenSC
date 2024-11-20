@@ -61,6 +61,62 @@ static int opt_status = 0;
 static int opt_check = 0;
 static int opt_unlock = 0;
 
+int
+get_pin(char **pin, const char *label, unsigned char check)
+{
+	int r;
+	char *pin2 = NULL;
+	size_t len1 = 0;
+	size_t len2 = 0;
+
+	r = -1;
+
+	if (pin == NULL)
+		return -1;
+
+	*pin = NULL;
+
+	printf("Enter %s:", label);
+	r = util_getpass(pin, &len1, stdin);
+	if (r < 0 || *pin == NULL) {
+		fprintf(stderr, "Unable to get PIN");
+		goto fail;
+	}
+
+	if (!check)
+		return 0;
+
+	printf("Enter %s again:", label);
+	r = util_getpass(&pin2, &len2, stdin);
+	if (r < 0 || pin2 == NULL) {
+		fprintf(stderr, "Unable to get PIN");
+		goto fail;
+	}
+
+	r = strcmp(*pin, pin2);
+	if (r)
+		fprintf(stderr, "PINs doesn't match.\n");
+
+	/* Free repeated PIN in any case. */
+	if (pin2 != NULL) {
+		sc_mem_clear(pin2, len2);
+		free(pin2);
+	}
+
+	if (r == 0)
+		return 0;
+
+fail:
+	/* Free PIN only in case of an error. */
+	if (*pin != NULL) {
+		sc_mem_clear(*pin, len1);
+		free(*pin);
+		*pin = NULL;
+	}
+
+	return -1;
+}
+
 void
 pin_status(sc_card_t *card, int ref, const char *pin_label)
 {
@@ -134,11 +190,7 @@ unlock_transport_protection(sc_card_t *card)
 	struct sc_pin_cmd_data data;
 	int r;
 	char *tpin = NULL;
-	char *qespin1 = NULL;
-	char *qespin2 = NULL;
-	size_t tpin_len = 0;
-	size_t qespin1_len = 0;
-	size_t qespin2_len = 0;
+	char *qespin = NULL;
 	int tries_left;
 
 	memset(&data, 0, sizeof(data));
@@ -156,35 +208,18 @@ unlock_transport_protection(sc_card_t *card)
 		data.pin2.prompt = "Enter Signature PIN";
 		data.flags |= SC_PIN_CMD_USE_PINPAD;
 	} else {
-		printf("Enter Transport PIN:");
-		r = util_getpass(&tpin, &tpin_len, stdin);
-		if (r < 0 || tpin == NULL) {
-			fprintf(stderr, "Unable to get PIN");
-			return;
-		}
-
-		printf("Enter new Signature PIN:");
-		r = util_getpass(&qespin1, &qespin1_len, stdin);
-		if (r < 0 || qespin1 == NULL) {
-			fprintf(stderr, "Unable to get PIN");
+		r = get_pin(&tpin, "Transport PIN", 0);
+		if (r < 0)
 			goto fail;
-		}
 
-		printf("Enter new Signature PIN again:");
-		r = util_getpass(&qespin2, &qespin1_len, stdin);
-		if (r < 0 || qespin2 == NULL) {
-			fprintf(stderr, "Unable to get PIN");
+		r = get_pin(&qespin, "new Signature PIN", 1);
+		if (r < 0)
 			goto fail;
-		}
 
-		if (strcmp(qespin1, qespin2)) {
-			fprintf(stderr, "New signature PINs doesn't match.\n");
-			goto fail;
-		}
 		data.pin1.data = (u8 *)tpin;
 		data.pin1.len = strlen(tpin);
-		data.pin2.data = (u8 *)qespin1;
-		data.pin2.len = strlen(qespin1);
+		data.pin2.data = (u8 *)qespin;
+		data.pin2.len = strlen(qespin);
 	}
 
 	r = sc_pin_cmd(card, &data, &tries_left);
@@ -197,18 +232,13 @@ unlock_transport_protection(sc_card_t *card)
 		printf("Can't change pin: %s\n", sc_strerror(r));
 
 fail:
-	if (qespin2 != NULL) {
-		sc_mem_clear(qespin2, qespin2_len);
-		free(qespin2);
-	}
-
-	if (qespin1 != NULL) {
-		sc_mem_clear(qespin1, qespin1_len);
-		free(qespin1);
+	if (qespin != NULL) {
+		sc_mem_clear(qespin, strlen(qespin));
+		free(qespin);
 	}
 
 	if (tpin != NULL) {
-		sc_mem_clear(tpin, tpin_len);
+		sc_mem_clear(tpin, strlen(tpin));
 		free(tpin);
 	}
 }
