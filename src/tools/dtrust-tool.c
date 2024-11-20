@@ -127,7 +127,7 @@ fail:
 }
 
 void
-pin_status(sc_card_t *card, int ref, const char *pin_label)
+pin_status(sc_card_t *card, int ref, const char *pin_label, unsigned char transport)
 {
 	int r;
 	struct sc_pin_cmd_data data;
@@ -149,9 +149,12 @@ pin_status(sc_card_t *card, int ref, const char *pin_label)
 		printf("%s: not usable (transport protection still in force)\n", pin_label);
 	else if (r == SC_ERROR_AUTH_METHOD_BLOCKED)
 		printf("%s: blocked (use PUK to unblock PIN)\n", pin_label);
-	else if (r == SC_ERROR_REF_DATA_NOT_USABLE)
-		printf("%s: not usable (transport protection already broken)\n", pin_label);
-	else
+	else if (r == SC_ERROR_REF_DATA_NOT_USABLE) {
+		if (transport)
+			printf("%s: not usable (transport protection already broken)\n", pin_label);
+		else
+			printf("%s: not usable\n", pin_label);
+	} else
 		fprintf(stderr, "%s: status query failed (%s).\n", pin_label, sc_strerror(r));
 }
 
@@ -361,7 +364,7 @@ main(int argc, char *argv[])
 		case SC_CARD_TYPE_DTRUST_V4_1_STD:
 		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
 		case SC_CARD_TYPE_DTRUST_V4_1_M100:
-			pin_status(card, DTRUST4_PIN_ID_PIN_CH, "Card Holder PIN");
+			pin_status(card, DTRUST4_PIN_ID_PIN_CH, "Card Holder PIN", 0);
 			/* fall through */
 
 		case SC_CARD_TYPE_DTRUST_V4_4_STD:
@@ -372,11 +375,11 @@ main(int argc, char *argv[])
 			if (r)
 				goto out;
 
-			pin_status(card, DTRUST4_PIN_ID_PUK_CH, "Card Holder PUK");
-			pin_status(card, DTRUST4_PIN_ID_QES, "Signature PIN");
+			pin_status(card, DTRUST4_PIN_ID_PUK_CH, "Card Holder PUK", 0);
+			pin_status(card, DTRUST4_PIN_ID_QES, "Signature PIN", 0);
 
 			/* According to the spec, the local bit has to be set. */
-			pin_status(card, 0x80 | DTRUST4_PIN_ID_PIN_T, "Transport PIN");
+			pin_status(card, 0x80 | DTRUST4_PIN_ID_PIN_T, "Transport PIN", 1);
 			break;
 
 		case SC_CARD_TYPE_DTRUST_V5_1_STD:
@@ -386,7 +389,7 @@ main(int argc, char *argv[])
 			if (r)
 				goto out;
 
-			pin_status(card, DTRUST5_PIN_ID_PIN_T_AUT, "Transport PIN (Authentication)");
+			pin_status(card, DTRUST5_PIN_ID_PIN_T_AUT, "Transport PIN (Authentication)", 1);
 
 			/* We have to select the eSign app to verify and change the Authentication PIN. */
 			sc_format_path("3F000102", &path);
@@ -394,7 +397,7 @@ main(int argc, char *argv[])
 			if (r)
 				goto out;
 
-			pin_status(card, DTRUST5_PIN_ID_AUT, "Authentication PIN");
+			pin_status(card, DTRUST5_PIN_ID_AUT, "Authentication PIN", 0);
 			/* fall through */
 
 		case SC_CARD_TYPE_DTRUST_V5_4_STD:
@@ -403,8 +406,8 @@ main(int argc, char *argv[])
 			if (r)
 				goto out;
 
-			pin_status(card, PACE_PIN_ID_PUK, "Card Holder PUK");
-			pin_status(card, DTRUST5_PIN_ID_PIN_T, "Transport PIN (Signature)");
+			pin_status(card, PACE_PIN_ID_PUK, "Card Holder PUK", 0);
+			pin_status(card, DTRUST5_PIN_ID_PIN_T, "Transport PIN (Signature)", 1);
 
 			/* We have to select the QES app to verify and change the Signature PIN. */
 			sc_format_path("3F000101", &path);
@@ -412,7 +415,7 @@ main(int argc, char *argv[])
 			if (r)
 				goto out;
 
-			pin_status(card, DTRUST5_PIN_ID_QES, "Signature PIN");
+			pin_status(card, DTRUST5_PIN_ID_QES, "Signature PIN", 0);
 			break;
 		}
 	}
