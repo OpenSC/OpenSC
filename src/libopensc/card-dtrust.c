@@ -574,6 +574,38 @@ dtrust_pin_cmd(struct sc_card *card,
 	if (!data)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
+	/* Upper layers may try to verify the PIN twice, first with PIN type
+	 * SC_AC_CHV and then with PIN type SC_AC_CONTEXT_SPECIFIC. For the
+	 * second attempt we first check by SC_PIN_CMD_GET_INFO whether a
+	 * second PIN authentication is still necessary. If not, we simply
+	 * return without a second verification attempt. Otherwise we perform
+	 * the verification as requested. This only matters for pin pad readers
+	 * to prevent the user from prompting the PIN twice. */
+	if (data->cmd == SC_PIN_CMD_VERIFY && data->pin_type == SC_AC_CONTEXT_SPECIFIC) {
+		struct sc_pin_cmd_data data2;
+
+		sc_log(card->ctx, "Checking if verification of PIN 0x%02x is necessary.", data->pin_reference);
+
+		memset(&data2, 0, sizeof(struct sc_pin_cmd_data));
+		data2.pin_reference = data->pin_reference;
+		data2.pin1 = data->pin1;
+
+		/* Check verification state */
+		data2.cmd = SC_PIN_CMD_GET_INFO;
+		data2.pin_type = data->pin_type;
+		r = dtrust_pin_cmd(card, &data2, tries_left);
+
+		if (data2.pin1.logged_in == SC_PIN_STATE_LOGGED_IN) {
+			/* Return if we are already authenticated */
+			sc_log(card->ctx, "PIN 0x%02x already verified. Skipping authentication.", data->pin_reference);
+
+			data->pin1 = data2.pin1;
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+
+		sc_log(card->ctx, "Additional verification of PIN 0x%02x is necessary.", data->pin_reference);
+	}
+
 	/* No special handling for D-Trust Card 4.1/4.4 */
 	if (card->type >= SC_CARD_TYPE_DTRUST_V4_1_STD && card->type <= SC_CARD_TYPE_DTRUST_V4_4_MULTI) {
 		r = iso_ops->pin_cmd(card, data, tries_left);
