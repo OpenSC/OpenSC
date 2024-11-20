@@ -28,14 +28,20 @@
 #include "libopensc/cards.h"
 #include "libopensc/errors.h"
 
+#include "sm/sm-eac.h"
 #include "util.h"
 
 static const char *app_name = "dtrust-tool";
+
+enum {
+	OPT_CAN_VERIFY = 0x100,
+};
 
 // clang-format off
 static const struct option options[] = {
 	{"reader", 1, NULL, 'r'},
 	{"wait", 0, NULL, 'w'},
+	{"verify-can", 0, NULL, OPT_CAN_VERIFY},
 	{"pin-status", 0, NULL, 's'},
 	{"check-transport-protection", 0, NULL, 'c'},
 	{"unlock-transport-protection", 0, NULL, 'u'},
@@ -47,6 +53,7 @@ static const struct option options[] = {
 static const char *option_help[] = {
 	"Uses reader number <arg> [0]",
 	"Wait for card insertion",
+	"Verify Card Access Number (CAN)",
 	"Show PIN status",
 	"Check transport protection",
 	"Unlock transport protection",
@@ -57,6 +64,7 @@ static const char *option_help[] = {
 
 static const char *opt_reader = NULL;
 static int opt_wait = 0, verbose = 0;
+static unsigned char opt_can_verify = 0;
 static int opt_status = 0;
 static int opt_check = 0;
 static int opt_unlock = 0;
@@ -247,6 +255,7 @@ int
 main(int argc, char *argv[])
 {
 	int r, c, long_optind = 0;
+	char *can = NULL;
 	sc_context_param_t ctx_param;
 	sc_card_t *card = NULL;
 	sc_context_t *ctx = NULL;
@@ -267,6 +276,9 @@ main(int argc, char *argv[])
 			break;
 		case 'w':
 			opt_wait = 1;
+			break;
+		case OPT_CAN_VERIFY:
+			opt_can_verify = 1;
 			break;
 		case 's':
 			opt_status = 1;
@@ -306,6 +318,43 @@ main(int argc, char *argv[])
 	if (r)
 		goto out;
 
+	if (opt_status || opt_check)
+		opt_can_verify = 1;
+
+	/* D-Trust Card 5 requires PACE authentication with CAN */
+	if (opt_can_verify &&
+			card->type >= SC_CARD_TYPE_DTRUST_V5_1_STD &&
+			card->type <= SC_CARD_TYPE_DTRUST_V5_4_MULTI) {
+		struct sc_pin_cmd_data data;
+
+		memset(&data, 0, sizeof(data));
+		data.cmd = SC_PIN_CMD_VERIFY;
+		data.pin_type = SC_AC_CHV;
+		data.pin_reference = PACE_PIN_ID_CAN;
+
+		if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) {
+			data.pin1.data = NULL;
+			data.pin1.len = 0;
+		} else {
+			r = get_pin(&can, "CAN", 0);
+			if (r < 0)
+				goto out;
+
+			data.pin1.data = (const unsigned char *)can;
+			data.pin1.len = strlen(can);
+		}
+
+		r = sc_select_file(card, sc_get_mf_path(), NULL);
+		if (r)
+			goto out;
+
+		r = sc_pin_cmd(card, &data, NULL);
+		if (r) {
+			fprintf(stderr, "Error verifying CAN.\n");
+			goto out;
+		}
+	}
+
 	/*
 	 * We have to select the QES app to verify and change the QES PIN.
 	 */
@@ -336,6 +385,11 @@ main(int argc, char *argv[])
 	}
 
 out:
+	if (can != NULL) {
+		sc_mem_clear(can, strlen(can));
+		free(can);
+	}
+
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card);
