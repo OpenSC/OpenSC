@@ -159,37 +159,46 @@ pin_status(sc_card_t *card, int ref, const char *pin_label, unsigned char transp
 }
 
 int
-check_transport_protection(sc_card_t *card)
+check_transport_protection(sc_card_t *card, u8 ref, const char *pin_label)
 {
-	struct sc_apdu apdu;
 	int r;
+	struct sc_apdu apdu;
 	u8 buf[6];
 	u8 prot_intact[6] = {0xE3, 0x04, 0x90, 0x02, 0x00, 0x01};
 	u8 prot_broken[6] = {0xE3, 0x04, 0x90, 0x02, 0x00, 0x00};
 
-	sc_format_apdu_ex(&apdu, 0x80, 0xCA, 0x00, 0x0B, NULL, 0, buf, sizeof(buf));
+	r = sc_select_file(card, sc_get_mf_path(), NULL);
+	if (r != SC_SUCCESS) {
+		fprintf(stderr, "Check transport protection of %s: Unable to select master file (%s)\n", pin_label, sc_strerror(r));
+		return -1;
+	}
+
+	sc_format_apdu_ex(&apdu, 0x80, 0xCA, 0x00, ref, NULL, 0, buf, sizeof(buf));
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r != SC_SUCCESS) {
-		fprintf(stderr, "Check transport protection: APDU transmit failed (%s)\n", sc_strerror(r));
+		fprintf(stderr, "Check transport protection of %s: APDU transmit failed (%s)\n", pin_label, sc_strerror(r));
 		return -1;
 	}
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r != SC_SUCCESS) {
-		fprintf(stderr, "Check transport protection: GET_DATA failed (%s)\n", sc_strerror(r));
+		/* Pin use counter may only be read out, if the retry counter
+		 * is on its maximum value. In case of an error, the PIN has to
+		 * be verified successfully first. */
+		fprintf(stderr, "Check transport protection of %s: GET_DATA failed (%s)\n", pin_label, sc_strerror(r));
 		return -1;
 	}
 
 	if (apdu.resplen == sizeof(prot_intact) && !memcmp(apdu.resp, prot_intact, 6)) {
-		printf("Transport protection is still intact.\n");
+		printf("Transport protection of %s is still intact.\n", pin_label);
 		return 0;
 	} else if (apdu.resplen == sizeof(prot_broken) && !memcmp(apdu.resp, prot_broken, 6)) {
-		printf("Transport protection is broken.\n");
+		printf("Transport protection of %s is broken.\n", pin_label);
 		return 1;
 	}
 
-	fprintf(stderr, "Check transport protection: illegal response: ");
+	fprintf(stderr, "Check transport protection of %s: illegal response: ", pin_label);
 	util_hex_dump(stderr, apdu.resp, apdu.resplen, " ");
 	fprintf(stderr, "\n");
 
@@ -420,13 +429,33 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (opt_check)
-		check_transport_protection(card);
+	if (opt_check) {
+		switch (card->type) {
+		case SC_CARD_TYPE_DTRUST_V4_1_STD:
+		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V4_1_M100:
+		case SC_CARD_TYPE_DTRUST_V4_4_STD:
+		case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+			check_transport_protection(card, DTRUST4_PIN_ID_PIN_T, "Signature PIN");
+			break;
+
+		case SC_CARD_TYPE_DTRUST_V5_1_STD:
+		case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V5_1_M100:
+			check_transport_protection(card, DTRUST5_PIN_ID_PIN_T_AUT, "Authentication PIN");
+			/* fall through */
+
+		case SC_CARD_TYPE_DTRUST_V5_4_STD:
+		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+			check_transport_protection(card, DTRUST5_PIN_ID_PIN_T_AUT, "Signature PIN");
+			break;
+		}
+	}
 
 	if (opt_unlock) {
-		r = check_transport_protection(card);
+		r = check_transport_protection(card, DTRUST4_PIN_ID_PIN_T, "Signature PIN");
 		if (r)
-			printf("Cannot remove transport protection.\n");
+			printf("Cannot remove transport protection of Signature PIN.\n");
 		else
 			unlock_transport_protection(card);
 	}
