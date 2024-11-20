@@ -20,6 +20,19 @@
  * based on card-cardos.c
  */
 
+/*
+ * This are the support periods for the D-Trust cards. The end of life time is
+ * set by the expiry of the underlying card operating system and sets the
+ * validity limit of the issued certificates. After end of life, the code paths
+ * for the affected products may be removed, as the cards are then not useful
+ * anymore.
+ *
+ * 				Start of Sales	End of Sales	End of life
+ * D-Trust Card 4.1/4.4		n/a		Nov 2024	Sep 2026
+ * D-Trust Card 5.1/5.4		Nov 2023	n/a		Oct 2028
+ * D-Trust Card 6.1/6.4		Summer 2025	n/a		n/a
+ */
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
