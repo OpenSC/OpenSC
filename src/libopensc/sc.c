@@ -54,7 +54,6 @@ static const char *sc_version = "(undef)";
 #define PAGESIZE 0
 #endif
 #endif
-static size_t page_size = PAGESIZE;
 
 const char *sc_get_version(void)
 {
@@ -897,40 +896,22 @@ int _sc_parse_atr(sc_reader_t *reader)
 	return SC_SUCCESS;
 }
 
-static void init_page_size()
-{
-	if (page_size == 0) {
-#ifdef _WIN32
-		SYSTEM_INFO system_info;
-		GetSystemInfo(&system_info);
-		page_size = system_info.dwPageSize;
-#else
-		page_size = sysconf(_SC_PAGESIZE);
-		if ((long) page_size < 0) {
-			page_size = 0;
-		}
-#endif
-	}
-}
-
 void *sc_mem_secure_alloc(size_t len)
 {
 	void *p;
 
-	init_page_size();
-	if (page_size > 0) {
-		size_t pages = (len + page_size - 1) / page_size;
-		len = pages * page_size;
-	}
-
-	p = calloc(1, len);
-	if (p == NULL) {
-		return NULL;
-	}
 #ifdef _WIN32
-	VirtualLock(p, len);
+	p = VirtualAlloc(NULL, len, MEM_COMMIT, PAGE_READWRITE);
+	if (p != NULL)
+	{
+		VirtualLock(p, len);
+	}
 #else
-	mlock(p, len);
+	p = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (p != NULL)
+	{
+		mlock(p, len);
+	}
 #endif
 
 	return p;
@@ -940,10 +921,11 @@ void sc_mem_secure_free(void *ptr, size_t len)
 {
 #ifdef _WIN32
 	VirtualUnlock(ptr, len);
+	VirtualFree(ptr, 0, MEM_RELEASE);
 #else
 	munlock(ptr, len);
+	munmap(ptr, len);
 #endif
-	free(ptr);
 }
 
 void sc_mem_clear(void *ptr, size_t len)
