@@ -716,6 +716,7 @@ err:
 	if (rv < 0) {
 		free(private_data);
 		card->drv_data = old_drv_data;
+		rv = SC_ERROR_INVALID_CARD;
 	} else {
 		free(old_drv_data);
 	}
