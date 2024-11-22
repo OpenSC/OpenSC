@@ -64,6 +64,7 @@ static struct sc_card_driver dtrust_drv = {
 
 struct dtrust_drv_data_t {
 	/* track PACE state */
+	unsigned char pace : 1;
 	unsigned char can : 1;
 	/* save the current security environment */
 	const sc_security_env_t *env;
@@ -267,6 +268,7 @@ dtrust_init(sc_card_t *card)
 	if (drv_data == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 
+	drv_data->pace = 0;
 	drv_data->can = 0;
 	card->drv_data = drv_data;
 
@@ -441,11 +443,15 @@ dtrust_perform_pace(struct sc_card *card,
 
 	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 
-	/* We need to track whether we established a PACE channel with CAN.
-	 * Checking against card->sm_ctx.sm_mode != SM_MODE_TRANSMIT is not
-	 * sufficient as PACE-capable card readers handle secure messaging
-	 * transparently and authenticating against non-CAN-PINs doesn't allow
-	 * us to verify the QES or AUT-PIN. */
+	/* We need to track whether we established a PACE channel. Checking
+	 * against card->sm_ctx.sm_mode != SM_MODE_TRANSMIT is not sufficient
+	 * as PACE-capable card readers handle secure messaging transparently. */
+	if (r == SC_SUCCESS) {
+		drv_data->pace = 1;
+	}
+
+	/* We further need to track whether we authenticated against CAN as
+	 * only this PINs allows us to verify the QES or AUT-PIN. */
 	if (ref == PACE_PIN_ID_CAN) {
 		drv_data->can = r == SC_SUCCESS;
 	}
@@ -580,9 +586,12 @@ dtrust_pin_cmd(struct sc_card *card,
 		struct sc_pin_cmd_data *data,
 		int *tries_left)
 {
+	struct dtrust_drv_data_t *drv_data;
 	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	drv_data = card->drv_data;
 
 	if (!data)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -632,6 +641,43 @@ dtrust_pin_cmd(struct sc_card *card,
 
 	case SC_PIN_CMD_VERIFY:
 		r = dtrust_pin_cmd_verify(card, data, tries_left);
+		break;
+
+	case SC_PIN_CMD_CHANGE:
+		/* The card requires a secure channel to change the PIN.
+		 * Although we could return the error code of the card, we
+		 * prevent to send the APDU in case no secure channel was
+		 * established. This prevents us from exposing our new PIN
+		 * inadvertently in plaintext over the contactless interface in
+		 * case of a software error in the upper layers. */
+		if (!drv_data->pace) {
+			sc_log(card->ctx, "Secure channel required for PIN change");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED);
+		}
+
+		if (data->pin1.len != 0 || !(data->flags & SC_PIN_CMD_IMPLICIT_CHANGE)) {
+			sc_log(card->ctx, "Card supports implicit PIN change only");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+		}
+
+		if (data->pin2.len == 0 && !(data->flags & SC_PIN_CMD_USE_PINPAD)) {
+			sc_log(card->ctx, "No value provided for the new PIN");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
+
+		r = iso_ops->pin_cmd(card, data, tries_left);
+		break;
+
+	case SC_PIN_CMD_UNBLOCK:
+		/* The supports only to reset the retry counter to its default
+		 * value, but not to set verify or set a PIN. */
+		if (data->pin1.len != 0 || data->pin2.len != 0 ||
+				data->flags & SC_PIN_CMD_USE_PINPAD) {
+			sc_log(card->ctx, "Card supports retry counter reset only");
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
+
+		r = iso_ops->pin_cmd(card, data, tries_left);
 		break;
 
 	default:
@@ -865,6 +911,7 @@ dtrust_logout(sc_card_t *card)
 	drv_data = card->drv_data;
 
 	sc_sm_stop(card);
+	drv_data->pace = 0;
 	drv_data->can = 0;
 
 	/* If PACE is done between reader and card, SM is transparent to us as
