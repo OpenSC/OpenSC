@@ -133,6 +133,33 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>--unblock-pin</option>,
+					</term>
+					<listitem>
+						<para>
+							Reset the retry counter of a PIN to its default value. To
+							unblock a PIN, you first have to provide the PUK. The following
+							PINs can be unblocked:
+						</para>
+						<itemizedlist>
+							<listitem>
+								<para>For D-Trust Card 4: PIN.T, PIN.CH, PIN.QES</para>
+							</listitem>
+							<listitem>
+								<para>For D-Trust Card 5: PIN.T, PIN.T.AUT, PIN.QES, PIN.AUT</para>
+							</listitem>
+						</itemizedlist>
+						<para>
+							It is impossible to unblock a blocked PUK.
+						</para>
+						<para>
+							Please keep in mind that the PUK may only be used a limited
+							number of times (48 times for D-Trust Card 4 and 5).
+						</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--help</option>,
 						<option>-h</option>
 					</term>
