@@ -36,6 +36,8 @@ static const char *app_name = "dtrust-tool";
 
 enum {
 	OPT_CAN_VERIFY = 0x100,
+	OPT_CHANGE,
+	OPT_VERIFY,
 	OPT_RESUME,
 	OPT_UNBLOCK,
 };
@@ -48,6 +50,8 @@ static const struct option options[] = {
 	{"pin-status", 0, NULL, 's'},
 	{"check-transport-protection", 0, NULL, 'c'},
 	{"unlock-transport-protection", 0, NULL, 'u'},
+	{"change-pin", 1, NULL, OPT_CHANGE},
+	{"change-verify", 1, NULL, OPT_VERIFY},
 	{"resume-pin", 1, NULL, OPT_RESUME},
 	{"unblock-pin", 1, NULL, OPT_UNBLOCK},
 	{"help", 0, NULL, 'h'},
@@ -62,6 +66,8 @@ static const char *option_help[] = {
 	"Show PIN status",
 	"Check transport protection",
 	"Unlock transport protection",
+	"Change PIN",
+	"Verification PIN ID for PIN change",
 	"Resume suspended PIN",
 	"Unblock blocked PIN",
 	"This message",
@@ -75,6 +81,8 @@ static unsigned char opt_can_verify = 0;
 static int opt_status = 0;
 static int opt_check = 0;
 static int opt_unlock = 0;
+static const char *opt_change = NULL;
+static const char *opt_verify = NULL;
 static const char *opt_resume = NULL;
 static const char *opt_unblock = NULL;
 
@@ -434,6 +442,161 @@ fail:
 }
 
 void
+change_pin(sc_card_t *card, int ref_verify, int ref_change)
+{
+	struct sc_pin_cmd_data data_verify, data_change;
+	const char *pathstr = "3F00";
+	const char *oldstr = "Old PIN";
+	const char *newstr = "New PIN";
+	unsigned char pace = 0;
+	char *oldpin = NULL;
+	char *newpin = NULL;
+	sc_path_t path;
+	int r;
+	int tries_left;
+
+	memset(&data_verify, 0, sizeof(struct sc_pin_cmd_data));
+	memset(&data_change, 0, sizeof(struct sc_pin_cmd_data));
+
+	data_verify.cmd = SC_PIN_CMD_VERIFY;
+	data_verify.pin_type = SC_AC_CHV;
+	data_verify.pin_reference = ref_verify;
+
+	data_change.cmd = SC_PIN_CMD_CHANGE;
+	data_change.flags |= SC_PIN_CMD_IMPLICIT_CHANGE;
+	data_change.pin_type = SC_AC_CHV;
+	data_change.pin_reference = ref_change;
+
+	switch (card->type) {
+	case SC_CARD_TYPE_DTRUST_V4_1_STD:
+	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V4_1_M100:
+	case SC_CARD_TYPE_DTRUST_V4_4_STD:
+	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+		data_verify.pin1.min_length = ref_verify == DTRUST4_PIN_ID_PUK_CH ? 8 : 6;
+		data_verify.pin1.max_length = 12;
+		data_change.pin2.min_length = ref_change == DTRUST4_PIN_ID_PUK_CH ? 8 : 6;
+		data_change.pin2.max_length = 12;
+
+		if (ref_change == DTRUST4_PIN_ID_QES)
+			pathstr = "3F000101";
+
+		if (ref_change != DTRUST4_PIN_ID_PIN_CH &&
+				ref_change != DTRUST4_PIN_ID_PUK_CH &&
+				ref_change != DTRUST4_PIN_ID_QES) {
+			fprintf(stderr, "Invalid change PIN. Only PIN.CH, PUK.CH or PIN.QES may be changed.\n");
+			return;
+		}
+
+		/* Every PIN can change itself */
+		if (ref_verify == ref_change)
+			break;
+
+		/* PUK can change cardholder PIN */
+		if (ref_verify == DTRUST4_PIN_ID_PUK_CH && ref_change == DTRUST4_PIN_ID_PIN_CH) {
+			oldstr = "Cardholder PIN";
+			break;
+		}
+
+		fprintf(stderr, "Invalid verification PIN. PINs can only changed by itself.\n");
+		fprintf(stderr, "Additionally the cardholder PIN may by changed by the PUK.\n");
+		return;
+
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_M100:
+	case SC_CARD_TYPE_DTRUST_V5_4_STD:
+	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+		data_verify.pin1.min_length = 8;
+		data_verify.pin1.max_length = 8;
+		data_change.pin2.min_length = 8;
+		data_change.pin2.max_length = 8;
+
+		if (ref_change == DTRUST5_PIN_ID_QES)
+			pathstr = "3F000101";
+		else if (ref_change == DTRUST5_PIN_ID_AUT)
+			pathstr = "3F000102";
+
+		if (ref_change != PACE_PIN_ID_PUK &&
+				ref_change != DTRUST5_PIN_ID_QES &&
+				ref_change != DTRUST5_PIN_ID_AUT) {
+			fprintf(stderr, "Invalid change PIN. Only PUK.CH, PIN.QES or PIN.AUT may be changed.\n");
+			return;
+		}
+
+		/* PUK has to be verified via PACE */
+		if (ref_verify == PACE_PIN_ID_PUK)
+			pace = 1;
+
+		/* Every PIN can change itself */
+		if (ref_verify == ref_change)
+			break;
+
+		fprintf(stderr, "Invalid verification PIN. PINs can only changed by itself.\n");
+		return;
+
+	default:
+		return;
+	}
+
+	if ((card->reader->capabilities & SC_READER_CAP_PIN_PAD) && !pace) {
+		data_verify.flags |= SC_PIN_CMD_USE_PINPAD;
+	} else if (!(card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) || !pace) {
+		r = get_pin(&oldpin, oldstr, 0);
+		if (r < 0)
+			goto fail;
+
+		data_verify.pin1.data = (const unsigned char *)oldpin;
+		data_verify.pin1.len = strlen(oldpin);
+	}
+
+	if (card->reader->capabilities & SC_READER_CAP_PIN_PAD) {
+		data_change.flags |= SC_PIN_CMD_USE_PINPAD;
+	} else {
+		r = get_pin(&newpin, newstr, 1);
+		if (r < 0)
+			goto fail;
+
+		data_change.pin2.data = (const unsigned char *)newpin;
+		data_change.pin2.len = strlen(newpin);
+	}
+
+	sc_format_path(pathstr, &path);
+
+	r = sc_select_file(card, pace ? sc_get_mf_path() : &path, NULL);
+	if (r) {
+		fprintf(stderr, "Error selecting application: %s\n", sc_strerror(r));
+		goto fail;
+	}
+
+	r = sc_pin_cmd(card, &data_verify, &tries_left);
+	if (r) {
+		fprintf(stderr, "Error verifying PIN: %s\n", sc_strerror(r));
+		if (tries_left >= 0)
+			fprintf(stderr, "%d attempts left.\n", tries_left);
+		goto fail;
+	}
+
+	if (pace) {
+		r = sc_select_file(card, &path, NULL);
+		if (r) {
+			fprintf(stderr, "Error selecting application: %s\n", sc_strerror(r));
+			goto fail;
+		}
+	}
+
+	r = sc_pin_cmd(card, &data_change, NULL);
+	if (r) {
+		fprintf(stderr, "Error changing PIN: %s\n", sc_strerror(r));
+		goto fail;
+	}
+
+fail:
+	free(oldpin);
+	free(newpin);
+}
+
+void
 resume_pin(sc_card_t *card, int ref_pin)
 {
 	struct sc_pin_cmd_data data;
@@ -626,6 +789,8 @@ main(int argc, char *argv[])
 	sc_context_param_t ctx_param;
 	sc_card_t *card = NULL;
 	sc_context_t *ctx = NULL;
+	int pin_change = -1;
+	int pin_verify = -1;
 	int pin_resume = -1;
 	int pin_unblock = -1;
 	sc_path_t path;
@@ -657,6 +822,12 @@ main(int argc, char *argv[])
 			break;
 		case 'u':
 			opt_unlock = 1;
+			break;
+		case OPT_CHANGE:
+			opt_change = optarg;
+			break;
+		case OPT_VERIFY:
+			opt_verify = optarg;
 			break;
 		case OPT_RESUME:
 			opt_resume = optarg;
@@ -695,6 +866,19 @@ main(int argc, char *argv[])
 
 	if (opt_status || opt_check)
 		opt_can_verify = 1;
+
+	if (opt_change != NULL) {
+		pin_change = parse_pin(card, opt_change, "Change", opt_verify == NULL ? &opt_can_verify : NULL);
+		pin_verify = pin_change;
+		if (pin_change < 0)
+			goto out;
+	}
+
+	if (opt_verify != NULL) {
+		pin_verify = parse_pin(card, opt_verify, "Verification", &opt_can_verify);
+		if (pin_verify < 0)
+			goto out;
+	}
 
 	if (opt_resume != NULL) {
 		opt_can_verify = 1;
@@ -903,6 +1087,8 @@ main(int argc, char *argv[])
 			}
 			break;
 		}
+	} else if (opt_change != NULL) {
+		change_pin(card, pin_verify, pin_change);
 	} else if (opt_resume != NULL) {
 		resume_pin(card, pin_resume);
 	} else if (opt_unblock != NULL) {
