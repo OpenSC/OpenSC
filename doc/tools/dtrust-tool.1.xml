@@ -133,6 +133,26 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>--resume-pin</option>,
+					</term>
+					<listitem>
+						<para>
+							Resume a suspended PIN. This matters only for the PUK (PUK.CH)
+							of D-Trust 5 cards. After two unsuccessful attempts to verify
+							the PUK, the PUK is suspended. To resume the suspended PUK you
+							first have to input the CAN and then the value of the suspended
+							PUK. If you enter the wrong PUK again, the PUK is finally
+							blocked and cannot be recovered.
+						</para>
+						<para>
+							To resume a suspended transport PIN use
+							<option>--unlock-transport-protection</option> together with
+							<option>--can</option>.
+						</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--unblock-pin</option>,
 					</term>
 					<listitem>
