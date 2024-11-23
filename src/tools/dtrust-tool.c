@@ -310,6 +310,8 @@ unlock_transport_protection5(sc_card_t *card, int ref_pace, int ref_pin, const c
 	r = sc_pin_cmd(card, &data, &tries_left);
 	if (r) {
 		fprintf(stderr, "Error verifying Transport PIN: %s\n", sc_strerror(r));
+		if (tries_left >= 0)
+			fprintf(stderr, "%d attempts left.\n", tries_left);
 		goto fail;
 	}
 
@@ -416,13 +418,13 @@ main(int argc, char *argv[])
 
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
-		printf("Failed to establish context: %s\n", sc_strerror(r));
+		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
 		return 1;
 	}
 
 	r = sc_set_card_driver(ctx, "dtrust");
 	if (r) {
-		printf("Driver 'dtrust' not found!\n");
+		fprintf(stderr, "Driver 'dtrust' not found!\n");
 		goto out;
 	}
 
