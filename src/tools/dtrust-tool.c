@@ -36,6 +36,7 @@ static const char *app_name = "dtrust-tool";
 
 enum {
 	OPT_CAN_VERIFY = 0x100,
+	OPT_RESUME,
 	OPT_UNBLOCK,
 };
 
@@ -47,6 +48,7 @@ static const struct option options[] = {
 	{"pin-status", 0, NULL, 's'},
 	{"check-transport-protection", 0, NULL, 'c'},
 	{"unlock-transport-protection", 0, NULL, 'u'},
+	{"resume-pin", 1, NULL, OPT_RESUME},
 	{"unblock-pin", 1, NULL, OPT_UNBLOCK},
 	{"help", 0, NULL, 'h'},
 	{"verbose", 0, NULL, 'v'},
@@ -60,6 +62,7 @@ static const char *option_help[] = {
 	"Show PIN status",
 	"Check transport protection",
 	"Unlock transport protection",
+	"Resume suspended PIN",
 	"Unblock blocked PIN",
 	"This message",
 	"Verbose operation, may be used several times",
@@ -72,6 +75,7 @@ static unsigned char opt_can_verify = 0;
 static int opt_status = 0;
 static int opt_check = 0;
 static int opt_unlock = 0;
+static const char *opt_resume = NULL;
 static const char *opt_unblock = NULL;
 
 int
@@ -430,6 +434,74 @@ fail:
 }
 
 void
+resume_pin(sc_card_t *card, int ref_pin)
+{
+	struct sc_pin_cmd_data data;
+	char *pin = NULL;
+	int r;
+
+	memset(&data, 0, sizeof(struct sc_pin_cmd_data));
+
+	data.cmd = SC_PIN_CMD_VERIFY;
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = ref_pin;
+
+	switch (card->type) {
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_M100:
+	case SC_CARD_TYPE_DTRUST_V5_4_STD:
+	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+		data.pin1.min_length = 8;
+		data.pin1.max_length = 8;
+
+		if (ref_pin == PACE_PIN_ID_PUK)
+			break;
+
+		/* Resuming a transport PIN leads to decreasing its use
+		 * counter. Not performing the signature PIN changing procedure
+		 * irectly after transport PIN verification would render the
+		 * card useless. Thus we enforce the user to resume the PIN
+		 * during the regular unlock procedure. */
+		fprintf(stderr, "Invalid PIN to resume. Only the PUK can be resumed with this command.\n");
+		fprintf(stderr, "To resume a transport PIN call this tool with --can and --unlock-transport-protection parameter.\n");
+		return;
+
+	default:
+		fprintf(stderr, "This card does not support PINs which can be resumed.\n");
+		return;
+	}
+
+	/* Suspended PIN always require a PACE authentication. */
+	if (!(card->reader->capabilities & SC_READER_CAP_PACE_GENERIC)) {
+		r = get_pin(&pin, "PIN to resume", 0);
+		if (r < 0)
+			goto fail;
+
+		data.pin1.data = (const unsigned char *)pin;
+		data.pin1.len = strlen(pin);
+	}
+
+	/* CAN was already verified by the caller at this point. We can
+	 * directly verify the resumed PIN. */
+
+	r = sc_select_file(card, sc_get_mf_path(), NULL);
+	if (r) {
+		fprintf(stderr, "Error selecting master application: %s\n", sc_strerror(r));
+		goto fail;
+	}
+
+	r = sc_pin_cmd(card, &data, NULL);
+	if (r) {
+		fprintf(stderr, "Error resuming PIN: %s\n", sc_strerror(r));
+		goto fail;
+	}
+
+fail:
+	free(pin);
+}
+
+void
 unblock_pin(sc_card_t *card, int ref_pin)
 {
 	struct sc_pin_cmd_data data_verify, data_unblock;
@@ -554,6 +626,7 @@ main(int argc, char *argv[])
 	sc_context_param_t ctx_param;
 	sc_card_t *card = NULL;
 	sc_context_t *ctx = NULL;
+	int pin_resume = -1;
 	int pin_unblock = -1;
 	sc_path_t path;
 
@@ -584,6 +657,9 @@ main(int argc, char *argv[])
 			break;
 		case 'u':
 			opt_unlock = 1;
+			break;
+		case OPT_RESUME:
+			opt_resume = optarg;
 			break;
 		case OPT_UNBLOCK:
 			opt_unblock = optarg;
@@ -619,6 +695,13 @@ main(int argc, char *argv[])
 
 	if (opt_status || opt_check)
 		opt_can_verify = 1;
+
+	if (opt_resume != NULL) {
+		opt_can_verify = 1;
+		pin_resume = parse_pin(card, opt_resume, "Resume", NULL);
+		if (pin_resume < 0)
+			goto out;
+	}
 
 	if (opt_unblock != NULL) {
 		pin_unblock = parse_pin(card, opt_unblock, "Unblock", NULL);
@@ -820,6 +903,8 @@ main(int argc, char *argv[])
 			}
 			break;
 		}
+	} else if (opt_resume != NULL) {
+		resume_pin(card, pin_resume);
 	} else if (opt_unblock != NULL) {
 		unblock_pin(card, pin_unblock);
 	}
