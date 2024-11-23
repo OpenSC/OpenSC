@@ -133,6 +133,44 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
+						<option>--change-pin</option>,
+					</term>
+					<listitem>
+						<para>
+							Change the specified PIN. The following PINs can be changed:
+						</para>
+						<itemizedlist>
+							<listitem>
+								<para>For D-Trust Card 4: PIN.CH, PIN.QES, PUK.CH</para>
+							</listitem>
+							<listitem>
+								<para>For D-Trust Card 5: PIN.QES, PIN.AUT, PUK.CH</para>
+							</listitem>
+						</itemizedlist>
+						<para>
+							It is not recommended to change the PUK.
+						</para>
+						<para>
+							To change a PIN, you first have to enter the old PIN and then
+							the new PIN value two times.
+						</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--change-verify</option>,
+					</term>
+					<listitem><para>
+						This option specifies the PIN to verify for changing the PIN
+						specified with the <option>--change-pin</option> command. The only
+						useful application of this option is to reset the cardholder PIN
+						(PIN.CH) of D-Trust 4.1 cards by providing the cardholder PUK (PUK.CH).
+						In all other cases, a PIN may only changed by providing its current
+						value.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--resume-pin</option>,
 					</term>
 					<listitem>
