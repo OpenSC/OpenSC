@@ -36,6 +36,7 @@ static const char *app_name = "dtrust-tool";
 
 enum {
 	OPT_CAN_VERIFY = 0x100,
+	OPT_UNBLOCK,
 };
 
 // clang-format off
@@ -46,6 +47,7 @@ static const struct option options[] = {
 	{"pin-status", 0, NULL, 's'},
 	{"check-transport-protection", 0, NULL, 'c'},
 	{"unlock-transport-protection", 0, NULL, 'u'},
+	{"unblock-pin", 1, NULL, OPT_UNBLOCK},
 	{"help", 0, NULL, 'h'},
 	{"verbose", 0, NULL, 'v'},
 	{NULL, 0, NULL, 0}
@@ -58,6 +60,7 @@ static const char *option_help[] = {
 	"Show PIN status",
 	"Check transport protection",
 	"Unlock transport protection",
+	"Unblock blocked PIN",
 	"This message",
 	"Verbose operation, may be used several times",
 };
@@ -69,6 +72,7 @@ static unsigned char opt_can_verify = 0;
 static int opt_status = 0;
 static int opt_check = 0;
 static int opt_unlock = 0;
+static const char *opt_unblock = NULL;
 
 int
 get_pin(char **pin, const char *label, unsigned char check)
@@ -122,6 +126,66 @@ fail:
 		free(*pin);
 		*pin = NULL;
 	}
+
+	return -1;
+}
+
+int
+parse_pin(sc_card_t *card, const char *pinstr, const char *label, unsigned char *require_can)
+{
+	const char *valid = NULL;
+
+	switch (card->type) {
+	case SC_CARD_TYPE_DTRUST_V4_1_STD:
+	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V4_1_M100:
+	case SC_CARD_TYPE_DTRUST_V4_4_STD:
+	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+		valid = "PIN.CH, PUK.CH, PIN.T, PIN.QES";
+
+		if (!strcasecmp(pinstr, "PIN.CH"))
+			return DTRUST4_PIN_ID_PIN_CH;
+		if (!strcasecmp(pinstr, "PUK.CH"))
+			return DTRUST4_PIN_ID_PUK_CH;
+		if (!strcasecmp(pinstr, "PIN.T"))
+			return DTRUST4_PIN_ID_PIN_T;
+		if (!strcasecmp(pinstr, "PIN.QES"))
+			return DTRUST4_PIN_ID_QES;
+		break;
+
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_M100:
+		valid = "PUK.CH, PIN.T, PIN.T.AUT, PIN.QES, PIN.AUT";
+
+		if (!strcasecmp(pinstr, "PIN.T.AUT")) {
+			return DTRUST5_PIN_ID_PIN_T_AUT;
+		}
+		if (!strcasecmp(pinstr, "PIN.AUT")) {
+			if (require_can != NULL)
+				*require_can = 1;
+			return DTRUST5_PIN_ID_AUT;
+		}
+		/* fall through */
+
+	case SC_CARD_TYPE_DTRUST_V5_4_STD:
+	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+		if (valid == NULL)
+			valid = "PUK.CH, PIN.T, PIN.QES";
+
+		if (!strcasecmp(pinstr, "PUK.CH"))
+			return PACE_PIN_ID_PUK;
+		if (!strcasecmp(pinstr, "PIN.T"))
+			return DTRUST5_PIN_ID_PIN_T;
+		if (!strcasecmp(pinstr, "PIN.QES")) {
+			if (require_can != NULL)
+				*require_can = 1;
+			return DTRUST5_PIN_ID_QES;
+		}
+		break;
+	}
+
+	fprintf(stderr, "%s PIN '%s' is invalid. Choose one from: %s\n", label, pinstr, valid);
 
 	return -1;
 }
@@ -365,6 +429,123 @@ fail:
 	}
 }
 
+void
+unblock_pin(sc_card_t *card, int ref_pin)
+{
+	struct sc_pin_cmd_data data_verify, data_unblock;
+	const char *pathstr = "3F00";
+	unsigned char pace = 0;
+	char *puk = NULL;
+	sc_path_t path;
+	int r;
+	int tries_left;
+
+	memset(&data_verify, 0, sizeof(struct sc_pin_cmd_data));
+	memset(&data_unblock, 0, sizeof(struct sc_pin_cmd_data));
+
+	data_verify.cmd = SC_PIN_CMD_VERIFY;
+	data_verify.pin_type = SC_AC_CHV;
+
+	data_unblock.cmd = SC_PIN_CMD_UNBLOCK;
+	data_unblock.pin_type = SC_AC_CHV;
+	data_unblock.pin_reference = ref_pin;
+
+	switch (card->type) {
+	case SC_CARD_TYPE_DTRUST_V4_1_STD:
+	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V4_1_M100:
+	case SC_CARD_TYPE_DTRUST_V4_4_STD:
+	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+		data_verify.pin_reference = DTRUST4_PIN_ID_PUK_CH;
+		data_verify.pin1.min_length = 8;
+		data_verify.pin1.max_length = 12;
+
+		if (ref_pin == DTRUST4_PIN_ID_QES)
+			pathstr = "3F000101";
+
+		if (ref_pin == DTRUST4_PIN_ID_PIN_CH ||
+				ref_pin == DTRUST4_PIN_ID_PIN_T ||
+				ref_pin == DTRUST4_PIN_ID_QES) {
+			break;
+		}
+
+		fprintf(stderr, "Invalid unblock PIN. Only PIN.CH, PIN.T or PIN.QES may be unblocked.\n");
+		return;
+
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_M100:
+	case SC_CARD_TYPE_DTRUST_V5_4_STD:
+	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+		pace = 1;
+		data_verify.pin_reference = PACE_PIN_ID_PUK;
+		data_verify.pin1.min_length = 8;
+		data_verify.pin1.max_length = 8;
+
+		if (ref_pin == DTRUST5_PIN_ID_QES)
+			pathstr = "3F000101";
+		else if (ref_pin == DTRUST5_PIN_ID_AUT)
+			pathstr = "3F000102";
+
+		if (ref_pin == DTRUST5_PIN_ID_PIN_T ||
+				ref_pin == DTRUST5_PIN_ID_PIN_T_AUT ||
+				ref_pin == DTRUST5_PIN_ID_QES ||
+				ref_pin == DTRUST5_PIN_ID_AUT) {
+			break;
+		}
+
+		fprintf(stderr, "Invalid unblock PIN. Only PIN.T, PIN.T.AUT, PIN.QES or PIN.AUT may be unblocked.\n");
+		return;
+
+	default:
+		return;
+	}
+
+	if ((card->reader->capabilities & SC_READER_CAP_PIN_PAD) && !pace) {
+		data_verify.flags |= SC_PIN_CMD_USE_PINPAD;
+	} else if (!(card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) || !pace) {
+		r = get_pin(&puk, "PUK", 0);
+		if (r < 0)
+			goto fail;
+
+		data_verify.pin1.data = (const unsigned char *)puk;
+		data_verify.pin1.len = strlen(puk);
+	}
+
+	sc_format_path(pathstr, &path);
+
+	r = sc_select_file(card, pace ? sc_get_mf_path() : &path, NULL);
+	if (r) {
+		fprintf(stderr, "Error selecting application: %s\n", sc_strerror(r));
+		goto fail;
+	}
+
+	r = sc_pin_cmd(card, &data_verify, &tries_left);
+	if (r) {
+		fprintf(stderr, "Error verifying PUK: %s\n", sc_strerror(r));
+		if (tries_left >= 0)
+			fprintf(stderr, "%d attempts left.\n", tries_left);
+		goto fail;
+	}
+
+	if (!pace) {
+		r = sc_select_file(card, &path, NULL);
+		if (r) {
+			fprintf(stderr, "Error selecting application: %s\n", sc_strerror(r));
+			goto fail;
+		}
+	}
+
+	r = sc_pin_cmd(card, &data_unblock, NULL);
+	if (r) {
+		fprintf(stderr, "Error unblocking PIN: %s\n", sc_strerror(r));
+		goto fail;
+	}
+
+fail:
+	free(puk);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -373,6 +554,7 @@ main(int argc, char *argv[])
 	sc_context_param_t ctx_param;
 	sc_card_t *card = NULL;
 	sc_context_t *ctx = NULL;
+	int pin_unblock = -1;
 	sc_path_t path;
 
 	while (1) {
@@ -402,6 +584,9 @@ main(int argc, char *argv[])
 			break;
 		case 'u':
 			opt_unlock = 1;
+			break;
+		case OPT_UNBLOCK:
+			opt_unblock = optarg;
 			break;
 		case 'v':
 			verbose++;
@@ -434,6 +619,12 @@ main(int argc, char *argv[])
 
 	if (opt_status || opt_check)
 		opt_can_verify = 1;
+
+	if (opt_unblock != NULL) {
+		pin_unblock = parse_pin(card, opt_unblock, "Unblock", NULL);
+		if (pin_unblock < 0)
+			goto out;
+	}
 
 	/* D-Trust Card 5 requires PACE authentication with CAN */
 	if (opt_can_verify &&
@@ -629,6 +820,8 @@ main(int argc, char *argv[])
 			}
 			break;
 		}
+	} else if (opt_unblock != NULL) {
+		unblock_pin(card, pin_unblock);
 	}
 
 out:
