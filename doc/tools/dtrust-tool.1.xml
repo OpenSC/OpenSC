@@ -36,6 +36,42 @@
 			<variablelist>
 				<varlistentry>
 					<term>
+						<option>--reader</option> <replaceable>arg</replaceable>,
+						<option>-r</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem><para>
+						Number of the reader to use. By default, the first reader with a
+						present card is used. If <replaceable>arg</replaceable> is an ATR, the
+						reader with a matching card will be chosen.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>
+						Causes <command>dtrust-tool</command> to wait for the token to be
+						inserted into reader.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--pin-status</option>,
+						<option>-s</option>
+					</term>
+					<listitem><para>
+						Show the status of the various PINs. The Card Holder PIN is used for
+						advanced signatures and decryption. It is only defined for signature
+						cards, but not for sealing cards. The signature PIN is used for
+						qualified signatures. It can only be used if it is unlocked by
+						presenting the Transport PIN. Once the Transport PIN is used, it cannot
+						be used anymore. The PUK is used to unlock PIN which had beend entered
+						incorrectly several times.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--check-transport-protection</option>,
 						<option>-c</option>
 					</term>
@@ -64,46 +100,20 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--help</option>,
-						<option>-h</option>
-					</term>
-					<listitem><para>Print help message on screen.</para></listitem>
-				</varlistentry>
-				<varlistentry>
-					<term>
-						<option>--reader</option> <replaceable>arg</replaceable>,
-						<option>-r</option> <replaceable>arg</replaceable>
-					</term>
-					<listitem><para>
-						Number of the reader to use. By default, the first reader with a
-						present card is used. If <replaceable>arg</replaceable> is an ATR, the
-						reader with a matching card will be chosen.
-					</para></listitem>
-				</varlistentry>
-				<varlistentry>
-					<term>
-						<option>--pin-status</option>,
-						<option>-s</option>
-					</term>
-					<listitem><para>
-						Show the status of the various PINs. The Card Holder PIN is used for
-						advanced signatures and decryption. It is only defined for signature
-						cards, but not for sealing cards. The signature PIN is used for
-						qualified signatures. It can only be used if it is unlocked by
-						presenting the Transport PIN. Once the Transport PIN is used, it cannot
-						be used anymore. The PUK is used to unlock PIN which had beend entered
-						incorrectly several times.
-					</para></listitem>
-				</varlistentry>
-				<varlistentry>
-					<term>
 						<option>--unlock-transport-protection</option>,
 						<option>-u</option>
 					</term>
 					<listitem><para>
-						This command removes the transport protection. If first queries for the
-						Transport PIN and then for the new value of the Signature PIN twice.
+						This command removes the transport protection. It first queries the
+						Transport PIN and then the new value of the Signature PIN twice.
 					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option>
+					</term>
+					<listitem><para>Print help message on screen.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
@@ -115,20 +125,9 @@
 						flag several times to enable debug output in the opensc library.
 					</para></listitem>
 				</varlistentry>
-				<varlistentry>
-					<term>
-						<option>--wait</option>,
-						<option>-w</option>
-					</term>
-					<listitem><para>
-						Causes <command>dtrust-tool</command> to wait for the token to be
-						inserted into reader.
-					</para></listitem>
-				</varlistentry>
 			</variablelist>
 		</para>
 	</refsect1>
-
 	<refsect1>
 		<title>Authors</title>
 		<para><command>dtrust-tool</command> was written by
