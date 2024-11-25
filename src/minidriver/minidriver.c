@@ -3598,6 +3598,13 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		ret = SCARD_E_NO_KEY_CONTAINER;
 		goto err;
 	}
+	if (md_get_config_bool(pCardData, "md_container_version_must_match", FALSE) == TRUE) {
+		if (pContainerInfo->dwVersion != CONTAINER_INFO_CURRENT_VERSION) {
+			logprintf(pCardData, 7, "pContainerInfo->dwVersion not CONTAINER_INFO_CURRENT_VERSION\n");
+			ret = SCARD_E_NO_KEY_CONTAINER;
+			goto err;
+		}
+	}
 	if (pContainerInfo->dwVersion > CONTAINER_INFO_CURRENT_VERSION) {
 		ret = ERROR_REVISION_MISMATCH;
 		goto err;
