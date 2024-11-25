@@ -13,11 +13,8 @@ customactions.dll: versioninfo-customactions.res customactions.obj
 	type customactions.exports >> $*.def
 	link /dll $(LINKFLAGS) /def:$*.def /out:customactions.dll versioninfo-customactions.res customactions.obj msi.lib $(WIX_LIBS) Advapi32.lib User32.lib Version.lib Shell32.lib
 
-OpenSC.msi: OpenSC.wixobj
-	"$(WIX)\bin\light.exe" -ext WixUIExtension -ext WiXUtilExtension $?
-
-OpenSC.wixobj: OpenSC.wxs customactions.dll
-	"$(WIX)\bin\candle.exe" -ext WiXUtilExtension -dSOURCE_DIR=$(TOPDIR) $(CANDLEFLAGS) OpenSC.wxs
+OpenSC.msi: OpenSC.wxs customactions.dll
+	wix build -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -d SOURCE_DIR=$(TOPDIR) $(WIXFLAGS) OpenSC.wxs
 
 clean::
 	del /Q config.h *.msi *.wixobj *.wixpdb
