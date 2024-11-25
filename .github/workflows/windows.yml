@@ -34,7 +34,6 @@ jobs:
       - name: Package name
         shell: bash
         run: |
-          echo PACKAGE_NAME=OpenSC-${{ steps.ghd.outputs.tag }} >> $GITHUB_ENV
           echo ARTIFACT=OpenSC-${{ steps.ghd.outputs.tag }}_${{ matrix.platform == 'x86' && 'win32' || 'win64' }}${{ matrix.configuration == 'Light' && '-Light' || '' }} >> $GITHUB_ENV
       - name: Install CPDK
         run: choco install windows-cryptographic-provider-development-kit -y > $null
@@ -68,6 +67,8 @@ jobs:
           vcpkgArguments: zlib openssl
           vcpkgGitCommitId: 511d74f695bd45959d12b50b00f1b68f69e8f0b0
           vcpkgTriplet: ${{ matrix.platform }}-windows-static
+      - name: Install WIX
+        run: powershell -ExecutionPolicy Bypass -File .github/setup-wix.ps1
       - name: Restore Cache
         if: matrix.configuration == 'Release'
         uses: actions/cache@v4
@@ -90,7 +91,7 @@ jobs:
             ca_lib.c cv_cert.c cvc_lookup.c x509_lookup.c eac_asn1.c eac.c eac_ca.c eac_dh.c `
             eac_ecdh.c eac_kdf.c eac_lib.c eac_print.c eac_util.c misc.c pace.c pace_lib.c `
             pace_mappings.c ri.c ri_lib.c ta.c ta_lib.c objects.c ssl_compat.c
-          lib /nologo /machine:${{ matrix.platform }} /out:libeac.lib `
+          lib /nologo /out:libeac.lib `
             ca_lib.obj cv_cert.obj cvc_lookup.obj x509_lookup.obj eac_asn1.obj eac.obj eac_ca.obj eac_dh.obj `
             eac_ecdh.obj eac_kdf.obj eac_lib.obj eac_print.obj eac_util.obj misc.obj pace.obj pace_lib.obj `
             pace_mappings.obj ri.obj ri_lib.obj ta.obj ta_lib.obj objects.obj ssl_compat.obj

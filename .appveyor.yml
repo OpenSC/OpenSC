@@ -17,13 +17,13 @@ environment:
   matrix:
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
     VCVARSALL: "%ProgramFiles(x86)%/Microsoft Visual Studio/2017/Community/VC/Auxiliary/Build/vcvarsall.bat"
-    DO_PUSH_ARTIFACT: yes
     OPENSSL_VER: "1.1.1"
     OPENSSL_DIR: "C:\\OpenSSL-v111"
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
     VCVARSALL: "%ProgramFiles(x86)%/Microsoft Visual Studio/2019/Community/VC/Auxiliary/Build/vcvarsall.bat"
     OPENSSL_DIR: "C:\\OpenSSL-v30"
     OPENSSL_FLAGS: "/DHAVE_EVP_PKEY_DUP"
+    DO_PUSH_ARTIFACT: yes
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
     VCVARSALL: "%ProgramFiles%/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/vcvarsall.bat"
     OPENSSL_DIR: "C:\\OpenSSL-v30"
@@ -60,6 +60,8 @@ install:
           appveyor DownloadFile "https://download.microsoft.com/download/1/7/6/176909B0-50F2-4DF3-B29B-830A17EA7E38/CPDK_RELEASE_UPDATE/cpdksetup.exe"
       }
   - cpdksetup.exe /quiet
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%" == "Visual Studio 2017" choco install dotnet-sdk --version=6.0.100 -y
+  - ps: .\.github\setup-wix.ps1
 
 build_script:
   - echo "Using %APPVEYOR_BUILD_WORKER_IMAGE% with %VCVARSALL%"
