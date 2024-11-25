@@ -68,6 +68,11 @@ jobs:
           vcpkgArguments: zlib openssl
           vcpkgGitCommitId: 511d74f695bd45959d12b50b00f1b68f69e8f0b0
           vcpkgTriplet: ${{ matrix.platform }}-windows-static
+      - name: Install WIX
+        run: |
+          dotnet tool install -g --version 5.0.2 wix
+          wix extension add -g WixToolset.UI.wixext/5.0.2
+          wix extension add -g WixToolset.Util.wixext/5.0.2
       - name: Restore Cache
         if: matrix.configuration == 'Release'
         uses: actions/cache@v4
