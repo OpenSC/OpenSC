@@ -3,9 +3,14 @@ OPENSC_FEATURES = pcsc
 #Include support for minidriver
 MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 
-#Build MSI with the Windows Installer XML (WIX) toolkit, requires WIX >= 3.14
-WIX_INCL_DIR = "/I$(WIX)\SDK\VS2017\inc"
-WIX_LIBS = "$(WIX)\SDK\VS2017\lib\$(PLATFORM)\dutil.lib" "$(WIX)\SDK\VS2017\lib\$(PLATFORM)\wcautil.lib"
+#Build MSI with the Windows Installer XML (WIX) toolkit
+!IF "$(WIX_PACKAGES)" == ""
+WIX_PACKAGES = $(TOPDIR)\win32\packages
+!ENDIF
+WIX_INCL_DIR = "/I$(WIX_PACKAGES)/wixtoolset.dutil/5.0.2/build/native/include" \
+	"/I$(WIX_PACKAGES)/wixtoolset.wcautil/5.0.2/build/native/include"
+WIX_LIBS = "$(WIX_PACKAGES)/wixtoolset.dutil/5.0.2/build/native/v14/$(PLATFORM)/dutil.lib" \
+	"$(WIX_PACKAGES)/wixtoolset.wcautil/5.0.2/build/native/v14/$(PLATFORM)/wcautil.lib"
 
 # We do not build tests on windows
 #TESTS_DEF = /DENABLE_TESTS
@@ -113,9 +118,9 @@ CPDK_INCL_DIR = "/IC:\Program Files (x86)\Windows Kits\10\Cryptographic Provider
 COPTS = /nologo /Zi /GS /W3 /WX /D_CRT_SECURE_NO_DEPRECATE /D_CRT_NONSTDC_NO_WARNINGS /DHAVE_CONFIG_H \
 	/DWINVER=0x0601 /D_WIN32_WINNT=0x0601 /DWIN32_LEAN_AND_MEAN /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\"" \
 	$(DEBUG_DEF) $(OPENPACE_DEF) $(OPENSSL_DEF) $(ZLIB_DEF) $(MINIDRIVER_DEF) $(SM_DEF) $(TESTS_DEF) $(OPENSSL_EXTRA_CFLAGS) \
-	/I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENPACE_INCL_DIR) $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(CPDK_INCL_DIR) $(WIX_INCL_DIR)
-LINKFLAGS = /nologo /machine:$(PLATFORM) /INCREMENTAL:NO /NXCOMPAT /DYNAMICBASE /DEBUG /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD
-LIBFLAGS =  /nologo /machine:$(PLATFORM)
+	/I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENPACE_INCL_DIR) $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(CPDK_INCL_DIR)
+LINKFLAGS = /nologo /INCREMENTAL:NO /NXCOMPAT /DYNAMICBASE /DEBUG /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD
+LIBFLAGS =  /nologo
 WIXFLAGS = -arch $(PLATFORM) $(WIXFLAGS)
 
 !IF "$(DEBUG_DEF)" == "/DDEBUG"
@@ -130,7 +135,7 @@ COPTS = /O1 /$(BUILD_TYPE) $(COPTS)
 	cl $(COPTS) /c $<
 
 .cpp.obj::
-	cl $(COPTS) /c $<
+	cl $(COPTS) $(WIX_INCL_DIR) /c $<
 
 .rc.res::
 	rc /l 0x0409 $<
