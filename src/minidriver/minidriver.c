@@ -3602,8 +3602,9 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		ret = ERROR_REVISION_MISMATCH;
 		goto err;
 	}
-
-	pContainerInfo->dwVersion = CONTAINER_INFO_CURRENT_VERSION;
+	/*  7.06 says: The dwVersion member must be set by the caller. */
+	if (md_get_config_bool(pCardData, "md_container dont_change_dwversion", FALSE) == TRUE)
+		pContainerInfo->dwVersion = CONTAINER_INFO_CURRENT_VERSION;
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 	if (!vs) {
