@@ -2866,17 +2866,17 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	}
 
 	if (key_type == CKK_EC_EDWARDS) {
-		if (ec->ecpointQ.len == 32)
+		if (ec->ecpointQ.len == BYTES4BITS(255))
 			ec->params.id = oid_ED25519;
-		else if (ec->ecpointQ.len == 56)
+		else if (ec->ecpointQ.len == BYTES4BITS(448))
 			ec->params.id = oid_ED448;
 		else
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 
 	} else if (key_type == CKK_EC_MONTGOMERY) {
-		if (ec->ecpointQ.len == 32)
+		if (ec->ecpointQ.len == BYTES4BITS(255))
 			ec->params.id = oid_X25519;
-		else if (ec->ecpointQ.len == 56)
+		else if (ec->ecpointQ.len == BYTES4BITS(448))
 			ec->params.id = oid_X448;
 		else
 			return CKR_ATTRIBUTE_VALUE_INVALID;
