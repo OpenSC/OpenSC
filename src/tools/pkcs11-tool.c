@@ -4686,15 +4686,15 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 		}
 
-		else if ((type == CKK_EC) || (type == CKK_EC_EDWARDS) || (type = CKK_EC_MONTGOMERY)) {
+		else if ((type == CKK_EC) ||(type == CKK_EC_EDWARDS) || (type == CKK_EC_MONTGOMERY)) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EC_PARAMS, gost.param_oid.value, gost.param_oid.len);
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, gost.private.value, gost.private.len);
 			n_privkey_attr++;
+			
 		} else if (type == CKK_GOSTR3410) {
-
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_GOSTR3410_PARAMS, gost.param_oid.value, gost.param_oid.len);
@@ -4769,6 +4769,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_pubkey_attr++;
 		}
 #if !defined(OPENSSL_NO_EC)
+
 		else if ((type == CKK_EC) || (type == CKK_EC_EDWARDS) || (type == CKK_EC_MONTGOMERY)) {
 
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
@@ -6331,13 +6332,14 @@ static int read_object(CK_SESSION_HANDLE session)
 		/* If module supports CKA_PUBLIC_KEY_INFO which is DER of SPKI
 		 * return whatever the module provides including ED448 and X448
 		 */
-		if (opt_public_key_info)
+		if (opt_public_key_info) {
 			value = getPUBLIC_KEY_INFO(session, obj, &len);
-		/* softhsm2 may return length 0 and varattr may allocate memory treat as invalid */
-		if (value && len == 0) {
-			p11_warn("getPUBLIC_KEY_INFO returned a value of length 0", 0);
-			free(value);
-			value = NULL;
+			/* softhsm2 may return length 0 and varattr may allocate memory treat as invalid */
+			if (value && len == 0) {
+				p11_warn("getPUBLIC_KEY_INFO returned a value of length 0", 0);
+				free(value);
+				value = NULL;
+			}
 		}
 		if (value == NULL) { /* Do the old way */
 #ifdef ENABLE_OPENSSL
@@ -6525,12 +6527,15 @@ static int read_object(CK_SESSION_HANDLE session)
 				if (!i2d_PUBKEY_bio(pout, pkey))
 					util_fatal("cannot convert EC public key to DER");
 #endif
+			/* only if compiled with a version of or OpenSSL or libressl */
+			/* do more tests for the other 3 as needed */
 #ifdef EVP_PKEY_ED25519
 			} else if (type == CKK_EC_EDWARDS || type == CKK_EC_MONTGOMERY) {
 				EVP_PKEY *key = NULL;
 				CK_BYTE *params = NULL;
 				const unsigned char *a;
 				ASN1_OCTET_STRING *os;
+				int raw_pk = 0;
 
 				if ((params = getEC_PARAMS(session, obj, &len))) {
 					ASN1_PRINTABLESTRING *curve = NULL;
@@ -6538,9 +6543,9 @@ static int read_object(CK_SESSION_HANDLE session)
 
 					a = params;
 					if (d2i_ASN1_PRINTABLESTRING(&curve, &a, (long)len) != NULL) {
-						if (strcmp((char *)curve->data, "edwards25519")) {
-							util_fatal("Unknown curve name, expected edwards25519, got %s",
-									curve->data);
+						if (strcmp((char *)curve->data, "edwards25519") &&
+								strcmp((char *)curve->data, "curve25519")) {
+							util_fatal("Unknown curve name \"%si\"", curve->data);
 						}
 						ASN1_PRINTABLESTRING_free(curve);
 					} else if (d2i_ASN1_OBJECT(&obj, &a, (long)len) != NULL) {
@@ -6559,21 +6564,56 @@ static int read_object(CK_SESSION_HANDLE session)
 				}
 
 				value = getEC_POINT(session, obj, &len);
-				/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
-				/* No, should be in BIT STRING accept both */
+				/* PKCS11 3.0 errta and 3.1 say Edwards and Montgomery
+				 * return raw byte strings, convert to OCTET string for OpenSSL
+				 * Will asccept as OCT STRING
+				 */
 				a = value;
 				os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
 				if (!os) {
 					os = d2i_ASN1_BIT_STRING(NULL, &a, (long)len);
-					len = BYTES4BITS(len);
+					if (os)
+						len = BYTES4BITS(len);
+				}
+				if (!os) {
+					size_t buflen = 0;
+					unsigned char * buf = NULL;
+					unsigned char *in = value;
+
+					if (sc_pkcs15_encode_pubkey_eddsa_raw_to_os(NULL,
+							in, (size_t) len,
+							&buf, &buflen) != 0) {
+						util_fatal("cannot obtain EC POINT");
+					}
+					a = buf;
+					if ((os = d2i_ASN1_OCTET_STRING(NULL, &a,
+								(long) buflen)) == NULL) {
+						util_fatal("cannot obtain EC POINT");
+					}
+					free(buf);
 				}
 				if (!os) {
 					util_fatal("cannot decode EC_POINT");
 				}
-				if (os->length != 32) {
-					util_fatal("Invalid length of EC_POINT value");
-				}
-				key = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, NULL,
+				
+				if (type == CKK_EC_EDWARDS && os->length == BYTES4BITS(255))
+					raw_pk = EVP_PKEY_ED25519;
+#if defined(EVP_PKEY_ED448)
+				else if (type == CKK_EC_EDWARDS && os->length == BYTES4BITS(448))
+					raw_pk = EVP_PKEY_ED448;
+#endif /* EVP_PKEY_ED448 */
+#if defined(EVP_PKEY_X25519)
+				else if (type == CKK_EC_MONTGOMERY && os->length == BYTES4BITS(255))
+					raw_pk = EVP_PKEY_X25519;
+#endif /*EVP_PKEY_X25519 */
+#if defined(EVP_PKEY_X448)
+				else if (type == CKK_EC_MONTGOMERY && os->length == BYTES4BITS(448))
+					raw_pk = EVP_PKEY_X448;
+#endif  /* EVP_PKEY_X448 */
+				else
+					util_fatal("Invalid or not supported CKK_EC_EDWARDS or CKK_EC_MONTGOMERY public key");
+
+				key = EVP_PKEY_new_raw_public_key(raw_pk, NULL,
 						(const uint8_t *)os->data,
 						os->length);
 				ASN1_STRING_free(os);
@@ -6581,7 +6621,9 @@ static int read_object(CK_SESSION_HANDLE session)
 					util_fatal("out of memory");
 				}
 				/* Note, that we write PEM here as there is no "native"
-				 * representation of EdDSA public keys to use */
+				 * in RFC 8410 /OpenSSL format 
+				 * representation of EdDSA public keys to use
+				 */
 				if (!PEM_write_bio_PUBKEY(pout, key)) {
 					util_fatal("cannot convert EdDSA public key to PEM");
 				}
@@ -8721,7 +8763,10 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return;
 	}
 	getEC_POINT(session, pub_key, &ec_point_len);
-	/* TODO only looking at length of encoded EC_POINT. May be in BIT STRING or OCTET STRING */
+	/* TODO if this routine us expanded to test EDDSA keys the following may be needed. 
+	 * a per 3.0 errata and 3.1 Edwards and Montgomery EC_POINT is just a byte string.
+	 * Accept either BIT STRING, OCTET STRING or raw byte string.
+	 */
 	if (ec_point_len < 5 || ec_point_len > 10000) {
 		printf("ERR: GetAttribute(pubkey, CKA_EC_POINT) doesn't seem to work\n");
 		return;
