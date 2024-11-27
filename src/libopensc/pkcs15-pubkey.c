@@ -744,6 +744,40 @@ sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
+
+/* Used by pkcs11-tool to convert raw ec_point to octet_string */
+int
+sc_pkcs15_encode_pubkey_eddsa_raw_to_os(sc_context_t *ctx, u8 *inbuf, size_t inlen,
+		u8 **buf, size_t *buflen)
+{
+	struct sc_asn1_entry asn1_eddsa_pubkey[C_ASN1_EDDSA_PUBKEY_SIZE];
+	size_t key_len = inlen;
+
+
+	LOG_FUNC_CALLED(ctx);
+	sc_copy_asn1_entry(c_asn1_eddsa_pubkey, asn1_eddsa_pubkey);
+	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, inbuf, &key_len, 1);
+
+
+	LOG_FUNC_RETURN(ctx,
+			sc_asn1_encode(ctx, asn1_eddsa_pubkey, buf, buflen));
+}
+
+/* For PKCS11 3.0 errata and 3.1 Edwards and Montgomery CKA_EC_POINT are raw not DER */
+int sc_pkcs15_encode_pubkey_eddsa_raw(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
+		u8 **buf, size_t *buflen)
+{
+	LOG_FUNC_CALLED(ctx);
+
+	*buf = malloc(key->ecpointQ.len);
+	if (*buf == NULL)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	memcpy(*buf, key->ecpointQ.value, key->ecpointQ.len);
+	*buflen =  key->ecpointQ.len;
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
 int
 sc_pkcs15_encode_pubkey_eddsa(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
