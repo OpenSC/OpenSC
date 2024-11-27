@@ -286,6 +286,48 @@ dtrust_finish(sc_card_t *card)
 }
 
 static int
+dtrust_pin_cmd(struct sc_card *card,
+		struct sc_pin_cmd_data *data,
+		int *tries_left)
+{
+	int r;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	/* Upper layers may try to verify the PIN twice, first with PIN type
+	 * SC_AC_CHV and then with PIN type SC_AC_CONTEXT_SPECIFIC. For the
+	 * second attempt we first check by SC_PIN_CMD_GET_INFO whether a
+	 * second PIN authentication is still necessary. If not, we simply
+	 * return without a second verification attempt. Otherwise we perform
+	 * the verification as requested. This only matters for pin pad readers
+	 * to prevent the user from prompting the PIN twice. */
+	if (data->cmd == SC_PIN_CMD_VERIFY && data->pin_type == SC_AC_CONTEXT_SPECIFIC) {
+		struct sc_pin_cmd_data data2;
+
+		memset(&data2, 0, sizeof(struct sc_pin_cmd_data));
+		data2.pin_reference = data->pin_reference;
+		data2.pin1 = data->pin1;
+
+		/* Check verification state */
+		data2.cmd = SC_PIN_CMD_GET_INFO;
+		data2.pin_type = data->pin_type;
+		r = iso_ops->pin_cmd(card, &data2, tries_left);
+
+		if (data2.pin1.logged_in == SC_PIN_STATE_LOGGED_IN) {
+			/* Return if we are already authenticated */
+			data->pin1 = data2.pin1;
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+	}
+
+	r = iso_ops->pin_cmd(card, data, tries_left);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+static int
 dtrust_set_security_env(sc_card_t *card,
 		const sc_security_env_t *env,
 		int se_num)
@@ -498,6 +540,7 @@ sc_get_dtrust_driver(void)
 	dtrust_ops.match_card = dtrust_match_card;
 	dtrust_ops.init = dtrust_init;
 	dtrust_ops.finish = dtrust_finish;
+	dtrust_ops.pin_cmd = dtrust_pin_cmd;
 	dtrust_ops.set_security_env = dtrust_set_security_env;
 	dtrust_ops.compute_signature = dtrust_compute_signature;
 	dtrust_ops.decipher = dtrust_decipher;
