@@ -240,6 +240,8 @@ app <em class="replaceable"><code>application</code></em> {
 							</p></li><li class="listitem"><p>
 									<code class="literal">myeid</code>: See <a class="xref" href="#myeid" title="Configuration Options for MyEID Card">the section called “Configuration Options for MyEID Card”</a>
 							</p></li><li class="listitem"><p>
+									<code class="literal">dtrust</code>: See <a class="xref" href="#dtrust" title="Configuration Options for D-Trust Signature Cards">the section called “Configuration Options for D-Trust Signature Cards”</a>
+							</p></li><li class="listitem"><p>
 									Any other value: Configuration block for an externally loaded card driver
 							</p></li></ul></div><p>
 					</p></dd><dt><span class="term">
@@ -551,7 +553,16 @@ app <em class="replaceable"><code>application</code></em> {
 							(in encrypted form) it can be used to automatically establish
 							secure connection, but only if the card is accessed over the
 							contact interface.
-					</p></dd></dl></div></div><div class="refsect2"><a name="piv"></a><h3>Configuration Options for PIV Card</h3><div class="variablelist"><dl class="variablelist"></dl></div></div><div class="refsect2"><a name="card_atr"></a><h3>Configuration based on ATR</h3><p>
+					</p></dd></dl></div></div><div class="refsect2"><a name="dtrust"></a><h3>Configuration Options for D-Trust Signature Cards</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">can = <em class="replaceable"><code>value</code></em>;</code>
+					</span></dt><dd><p>
+						CAN (Card Access Number – 6 digit number printed on the front side of
+						the card) is required to establish connection with the card. It might
+						be overwritten by <code class="literal">DTRUST_CAN</code> environment variable.
+						If not specified here, the CAN will be read from a card specific cache,
+						prompted on the card readers PIN pad or prompted interactively in the
+						following order.
+						</p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><p>Environment variable <code class="literal">DTRUST_CAN</code></p></li><li class="listitem"><p>This configuration file option</p></li><li class="listitem"><p>Pin pad of a PACE-capable card reader</p></li></ol></div></dd></dl></div></div><div class="refsect2"><a name="piv"></a><h3>Configuration Options for PIV Card</h3><div class="variablelist"><dl class="variablelist"></dl></div></div><div class="refsect2"><a name="card_atr"></a><h3>Configuration based on ATR</h3><p>
 				</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 							<code class="option">atrmask = <em class="replaceable"><code>hexstring</code></em>;</code>
 						</span></dt><dd><p>

@@ -66,6 +66,8 @@ struct dtrust_drv_data_t {
 	/* track PACE state */
 	unsigned char pace : 1;
 	unsigned char can : 1;
+	/* global CAN from configuration file */
+	const char *can_value;
 	/* save the current security environment */
 	const sc_security_env_t *env;
 };
@@ -256,6 +258,9 @@ static int
 dtrust_init(sc_card_t *card)
 {
 	struct dtrust_drv_data_t *drv_data;
+	const char *can_env = NULL;
+	size_t i, j;
+	scconf_block **found_blocks, *block;
 	int r;
 	const size_t data_field_length = 437;
 	unsigned long flags, ext_flags;
@@ -270,6 +275,32 @@ dtrust_init(sc_card_t *card)
 
 	drv_data->pace = 0;
 	drv_data->can = 0;
+	drv_data->can_value = NULL;
+
+	drv_data->can_value = can_env = getenv("DTRUST_CAN");
+	if (can_env != NULL) {
+		sc_log(card->ctx, "Using CAN provided by environment variable.");
+	}
+
+	/* read configuration */
+	for (i = 0; card->ctx->conf_blocks[i]; i++) {
+		found_blocks = scconf_find_blocks(card->ctx->conf, card->ctx->conf_blocks[i], "card_driver", "dtrust");
+		if (!found_blocks)
+			continue;
+
+		for (j = 0, block = found_blocks[j]; block; j++, block = found_blocks[j]) {
+			/* Environment variable has precedence over configured CAN */
+			if (can_env == NULL) {
+				drv_data->can_value = scconf_get_str(block, "can", drv_data->can_value);
+			}
+		}
+		free(found_blocks);
+	}
+
+	if (can_env == NULL && drv_data->can_value != NULL) {
+		sc_log(card->ctx, "Using CAN provided by configuration file.");
+	}
+
 	card->drv_data = drv_data;
 
 	r = _dtrust_get_serialnr(card);
@@ -408,11 +439,22 @@ dtrust_perform_pace(struct sc_card *card,
 	/* The PKCS#11 layer cannot provide a CAN. Instead we consider the
 	 * following sources for CAN input.
 	 *  1. A CAN provided by the caller
-	 *  2. A cached CAN when the cache feature is enabled
-	 *  3. If the reader supports the PACE protocol, we let it query for a
+	 *  2. A CAN provided in the environment variable DTRUST_CAN
+	 *  3. A CAN provided in the configuration file
+	 *  4. A cached CAN when the cache feature is enabled
+	 *  5. If the reader supports the PACE protocol, we let it query for a
 	 *     CAN on the pin pad.
-	 *  4. Querying the user interactively if possible */
+	 *  6. Querying the user interactively if possible */
 	if (ref == PACE_PIN_ID_CAN) {
+		/* Use CAN from environment variable or configuration file */
+		if (pin == NULL) {
+			pin = (const unsigned char *)drv_data->can_value;
+			if (pin != NULL) {
+				sc_log(card->ctx, "Using static CAN (environment variable/configuration file).");
+				pinlen = strlen(drv_data->can_value);
+			}
+		}
+
 		/* TODO: Query the CAN cache if no CAN is provided by the caller. */
 
 		if (pin == NULL) {
