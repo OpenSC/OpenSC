@@ -6075,7 +6075,8 @@ get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	switch (key->algorithm) {
 	case SC_ALGORITHM_EDDSA:
 	case SC_ALGORITHM_XEDDSA:
-		rc = sc_pkcs15_encode_pubkey_eddsa(context, &key->u.ec, &value, &value_len);
+		/* For PKCS11 3.0 errata and 3.1, Edwards and Montgomery EC_POINT is raw byte string */
+		rc = sc_pkcs15_encode_pubkey_eddsa_raw(context, &key->u.ec, &value, &value_len);
 		if (rc != SC_SUCCESS)
 			return sc_to_cryptoki_error(rc, NULL);
 
