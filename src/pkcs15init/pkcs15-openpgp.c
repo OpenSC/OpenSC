@@ -231,7 +231,10 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		break;
 
 		/* Unlike RSA which includes modulus in privkey,
-		 * PKCS11 stores pubkey as separate operation
+		 * and pkcs15_init includes public ecpoint with private key,
+		 * PKCS11 stores pubkey as separate operation and
+		 * we only get here if called from openpgp_store_data
+		 * after the private key was stored as first operation. 
 		 */
 	case SC_PKCS15_TYPE_PUBKEY_EC:
 	case SC_PKCS15_TYPE_PUBKEY_EDDSA:
@@ -271,7 +274,7 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
 
-		free(key_info.u.ec.ecpointQ);
+		/* do not free key_info.u.ec.ecpointQ. openpgp_store_data will free it */
 		break;
 
 	default:
