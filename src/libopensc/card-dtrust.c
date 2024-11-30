@@ -68,6 +68,10 @@ struct dtrust_drv_data_t {
 	unsigned char can : 1;
 	/* global CAN from configuration file */
 	const char *can_value;
+	/* use CAN cache */
+	unsigned char can_cache : 1;
+	/* PKCS#15 context for CAN caching */
+	struct sc_pkcs15_card *p15card;
 	/* save the current security environment */
 	const sc_security_env_t *env;
 };
@@ -276,6 +280,8 @@ dtrust_init(sc_card_t *card)
 	drv_data->pace = 0;
 	drv_data->can = 0;
 	drv_data->can_value = NULL;
+	drv_data->can_cache = 1;
+	drv_data->p15card = NULL;
 
 	drv_data->can_value = can_env = getenv("DTRUST_CAN");
 	if (can_env != NULL) {
@@ -289,6 +295,8 @@ dtrust_init(sc_card_t *card)
 			continue;
 
 		for (j = 0, block = found_blocks[j]; block; j++, block = found_blocks[j]) {
+			drv_data->can_cache = scconf_get_bool(block, "can_use_cache", drv_data->can_cache);
+
 			/* Environment variable has precedence over configured CAN */
 			if (can_env == NULL) {
 				drv_data->can_value = scconf_get_str(block, "can", drv_data->can_value);
@@ -323,7 +331,6 @@ dtrust_init(sc_card_t *card)
 	card->max_recv_size = sc_get_max_recv_size(card);
 
 	flags = 0;
-	r = SC_ERROR_WRONG_CARD;
 
 	switch (card->type) {
 	case SC_CARD_TYPE_DTRUST_V4_1_STD:
@@ -341,8 +348,6 @@ dtrust_init(sc_card_t *card)
 		flags |= SC_ALGORITHM_MGF1_SHA512;
 
 		_sc_card_add_rsa_alg(card, 3072, flags, 0);
-
-		r = SC_SUCCESS;
 		break;
 
 	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
@@ -353,8 +358,6 @@ dtrust_init(sc_card_t *card)
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 
 		_sc_card_add_ec_alg(card, 256, flags, ext_flags, &oid_secp256r1);
-
-		r = SC_SUCCESS;
 		break;
 
 	case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
@@ -365,19 +368,38 @@ dtrust_init(sc_card_t *card)
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 
 		_sc_card_add_ec_alg(card, 384, flags, ext_flags, &oid_secp384r1);
+		break;
 
-		r = SC_SUCCESS;
+	default:
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_CARD);
+	}
+
+	switch (card->type) {
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_4_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_M100:
+	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+		r = sc_pkcs15_bind(card, NULL, &drv_data->p15card);
+		LOG_TEST_RET(card->ctx, r, "Binding PKCS#15 context failed");
 		break;
 	}
 
-	LOG_FUNC_RETURN(card->ctx, r);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static int
 dtrust_finish(sc_card_t *card)
 {
+	struct dtrust_drv_data_t *drv_data;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	drv_data = card->drv_data;
+
+	if (drv_data->p15card != NULL) {
+		sc_pkcs15_unbind(drv_data->p15card);
+	}
 	free((char *)card->name);
 	free(card->drv_data);
 
@@ -428,6 +450,10 @@ dtrust_perform_pace(struct sc_card *card,
 		int *tries_left)
 {
 	struct dtrust_drv_data_t *drv_data;
+	sc_path_t can_path;
+	u8 can_buffer[16];
+	u8 *can_ptr = can_buffer;
+	size_t can_len;
 	int r;
 	struct establish_pace_channel_input pace_input;
 	struct establish_pace_channel_output pace_output;
@@ -435,6 +461,22 @@ dtrust_perform_pace(struct sc_card *card,
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	drv_data = card->drv_data;
+
+	/* Dummy file path for the CAN cache */
+	sc_format_path("CA4E", &can_path);
+
+	/* Read CAN cache always. We need to know if the cache contains a CAN
+	 * value even if we use a CAN source with higher precedence. The CAN
+	 * cache must only be written if it was empty. Writing to a non-empty
+	 * cache file will append the data to be written instead of overwriting
+	 * the file. */
+	can_len = sizeof(can_buffer) - 1;
+	r = sc_pkcs15_read_cached_file(drv_data->p15card, &can_path, &can_ptr, &can_len);
+	if (r == SC_SUCCESS && can_len > 0) {
+		can_buffer[can_len] = '\0';
+	} else {
+		can_len = 0;
+	}
 
 	/* The PKCS#11 layer cannot provide a CAN. Instead we consider the
 	 * following sources for CAN input.
@@ -455,8 +497,18 @@ dtrust_perform_pace(struct sc_card *card,
 			}
 		}
 
-		/* TODO: Query the CAN cache if no CAN is provided by the caller. */
+		/* Use the CAN cache if no CAN is provided. */
+		if (drv_data->can_cache && pin == NULL) {
+			if (can_len > 0) {
+				sc_log(card->ctx, "Using cached CAN.");
+				pin = can_buffer;
+				pinlen = can_len;
+			} else {
+				sc_log(card->ctx, "No cached CAN available.");
+			}
+		}
 
+		/* Query the user interactively if no cached CAN is available. */
 		if (pin == NULL) {
 			if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) {
 				/* If no CAN is provided and the reader is
@@ -514,7 +566,11 @@ dtrust_perform_pace(struct sc_card *card,
 		}
 	}
 
-	/* TODO: Put CAN into the cache if necessary. */
+	/* Write CAN to the cache, if it is correct and the cache was initially empty. */
+	if (ref == PACE_PIN_ID_CAN && pin != NULL && drv_data->can_cache &&
+			r == SC_SUCCESS && can_len == 0) {
+		sc_pkcs15_cache_file(drv_data->p15card, &can_path, pin, pinlen);
+	}
 
 	return r;
 }
