@@ -1296,7 +1296,8 @@ app <replaceable>application</replaceable> {
 							<literal>mcrd</literal> (deactivated driver),
 							<literal>npa</literal>,
 							<literal>nqapplet</literal>,
-							<literal>tcos</literal> and otherwise <literal>no</literal>).
+							<literal>tcos</literal>,
+							<literal>dtrust</literal> and otherwise <literal>no</literal>).
 						</para>
 						<para>
 							If caching is done by a system process, the
