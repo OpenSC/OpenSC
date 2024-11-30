@@ -1247,6 +1247,7 @@ const char *pkcs15_get_default_use_file_cache(struct sc_card *card)
 			"npa",
 			"nqapplet",
 			"tcos",
+			"dtrust",
 	};
 
 	if (NULL == card || NULL == card->driver || NULL == card->driver->short_name)
