@@ -846,8 +846,22 @@ app <replaceable>application</replaceable> {
 						<orderedlist>
 							 <listitem><para>Environment variable <literal>DTRUST_CAN</literal></para></listitem>
 							 <listitem><para>This configuration file option</para></listitem>
+							 <listitem><para>PKCS#15 card-specific cache</para></listitem>
 							 <listitem><para>Pin pad of a PACE-capable card reader</para></listitem>
 						</orderedlist>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>can_use_cache = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem>
+						<para>
+						Cache the CAN number of a card once it was provided by the user in the
+						directory <literal>file_cache_dir</literal>. The cached CAN is used
+						later to avoid interactively prompting for the CAN. This feature is
+						enabled by default.
+						</para>
 					</listitem>
 				</varlistentry>
 			</variablelist>

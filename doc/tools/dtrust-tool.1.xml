@@ -76,6 +76,10 @@
 							PIN. You then need to unblock the transport PIN with
 							<option>--unblock-pin</option>.
 						</para>
+						<para>
+							You may call <literal>dtrust-tool</literal> with just this
+							option to save the CAN into the cache.
+						</para>
 					</listitem>
 				</varlistentry>
 				<varlistentry>
