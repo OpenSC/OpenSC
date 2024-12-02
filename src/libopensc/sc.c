@@ -916,6 +916,7 @@ static void init_page_size()
 void *sc_mem_secure_alloc(size_t len)
 {
 	void *p;
+	size_t requested_len = len;
 
 	init_page_size();
 	if (page_size > 0) {
@@ -928,9 +929,9 @@ void *sc_mem_secure_alloc(size_t len)
 		return NULL;
 	}
 #ifdef _WIN32
-	VirtualLock(p, len);
+	VirtualLock(p, requested_len);
 #else
-	mlock(p, len);
+	mlock(p, requested_len);
 #endif
 
 	return p;
