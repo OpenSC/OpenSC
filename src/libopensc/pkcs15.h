@@ -486,6 +486,10 @@ struct sc_pkcs15_object {
 	struct sc_pkcs15_object *next, *prev; /* used only internally */
 
 	struct sc_pkcs15_der content;
+	/* Method for deallocating the object's content.value.
+	 * If no specific function for deallocation is given, then free() is used
+	 * to release content.value */
+	void (*content_free)(void *, size_t);
 
 	int session_object;	/* used internally. if nonzero, object is a session object. */
 };
