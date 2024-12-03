@@ -73,6 +73,9 @@ jobs:
           dotnet tool install -g --version 5.0.2 wix
           wix extension add -g WixToolset.UI.wixext/5.0.2
           wix extension add -g WixToolset.Util.wixext/5.0.2
+          cd win32
+          dotnet new console --force --name CustomAction
+          dotnet add CustomAction package WixToolset.WcaUtil --version 5.0.2 --package-directory packages
       - name: Restore Cache
         if: matrix.configuration == 'Release'
         uses: actions/cache@v4
