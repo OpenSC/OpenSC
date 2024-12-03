@@ -3,9 +3,19 @@ OPENSC_FEATURES = pcsc
 #Include support for minidriver
 MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 
-#Build MSI with the Windows Installer XML (WIX) toolkit, requires WIX >= 3.14
-WIX_INCL_DIR = "/I$(WIX)\SDK\VS2017\inc"
-WIX_LIBS = "$(WIX)\SDK\VS2017\lib\$(PLATFORM)\dutil.lib" "$(WIX)\SDK\VS2017\lib\$(PLATFORM)\wcautil.lib"
+#Build MSI with the Windows Installer XML (WIX) toolkit
+#dotnet tool install -g --version 5.0.2 wix
+#wix extension add -g WixToolset.UI.wixext/5.0.2
+#wix extension add -g WixToolset.Util.wixext/5.0.2
+#dotnet new console --force --name CustomAction
+#dotnet add CustomAction package WixToolset.WcaUtil --version 5.0.2 --package-directory packages
+!IF "$(WIX_PACKAGES)" == ""
+WIX_PACKAGES = $(TOPDIR)\win32\packages
+!ENDIF
+WIX_INCL_DIR = "/I$(WIX_PACKAGES)/wixtoolset.dutil/5.0.2/build/native/include" \
+	"/I$(WIX_PACKAGES)/wixtoolset.wcautil/5.0.2/build/native/include"
+WIX_LIBS = "$(WIX_PACKAGES)/wixtoolset.dutil/5.0.2/build/native/v14/$(PLATFORM)/dutil.lib" \
+	"$(WIX_PACKAGES)/wixtoolset.wcautil/5.0.2/build/native/v14/$(PLATFORM)/wcautil.lib"
 
 # We do not build tests on windows
 #TESTS_DEF = /DENABLE_TESTS
