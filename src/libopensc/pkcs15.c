@@ -2736,12 +2736,9 @@ sc_pkcs15_make_absolute_path(const struct sc_path *parent, struct sc_path *child
 
 void sc_pkcs15_free_object_content(struct sc_pkcs15_object *obj)
 {
-	if (obj->content.value && obj->content.len)   {
-		if (SC_PKCS15_TYPE_AUTH & obj->type
-			|| SC_PKCS15_TYPE_SKEY & obj->type
-			|| SC_PKCS15_TYPE_PRKEY & obj->type) {
-			/* clean everything that potentially contains a secret */
-			sc_mem_secure_clear_free(obj->content.value, obj->content.len);
+	if (obj->content.value && obj->content.len) {
+		if (obj->content_free) {
+			obj->content_free(obj->content.value, obj->content.len);
 		} else {
 			free(obj->content.value);
 		}
@@ -2772,6 +2769,7 @@ sc_pkcs15_allocate_object_content(struct sc_context *ctx, struct sc_pkcs15_objec
 			|| SC_PKCS15_TYPE_SKEY & obj->type
 			|| SC_PKCS15_TYPE_PRKEY & obj->type) {
 		tmp_buf = sc_mem_secure_alloc(len);
+		obj->content_free = sc_mem_secure_free;
 	} else {
 		tmp_buf = malloc(len);
 	}
