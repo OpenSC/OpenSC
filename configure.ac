@@ -102,7 +102,7 @@ case "${host}" in
 		if test "${with_cygwin_native}" = "yes"; then
 			AC_MSG_RESULT([Using native win32])
 			CPPFLAGS="${CPPFLAGS} -DWIN32_LEAN_AND_MEAN"
-			CFLAGS="${CFLAGS} -mno-cygwin"
+			#CFLAGS="${CFLAGS} -mno-cygwin" deprecated/removed flag
 			WIN32="yes"
 		else
 			AC_MSG_RESULT([Using cygwin])
