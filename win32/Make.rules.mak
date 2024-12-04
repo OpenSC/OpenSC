@@ -3,9 +3,19 @@ OPENSC_FEATURES = pcsc
 #Include support for minidriver
 MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 
-#Build MSI with the Windows Installer XML (WIX) toolkit, requires WIX >= 3.14
-WIX_INCL_DIR = "/I$(WIX)\SDK\VS2017\inc"
-WIX_LIBS = "$(WIX)\SDK\VS2017\lib\$(PLATFORM)\dutil.lib" "$(WIX)\SDK\VS2017\lib\$(PLATFORM)\wcautil.lib"
+#Build MSI with the Windows Installer XML (WIX) toolkit
+#dotnet tool install -g --version 5.0.2 wix
+#wix extension add -g WixToolset.UI.wixext/5.0.2
+#wix extension add -g WixToolset.Util.wixext/5.0.2
+#dotnet new console --force --name CustomAction
+#dotnet add CustomAction package WixToolset.WcaUtil --version 5.0.2 --package-directory packages
+!IF "$(WIX_PACKAGES)" == ""
+WIX_PACKAGES = $(TOPDIR)\win32\packages
+!ENDIF
+WIX_INCL_DIR = "/I$(WIX_PACKAGES)/wixtoolset.dutil/5.0.2/build/native/include" \
+	"/I$(WIX_PACKAGES)/wixtoolset.wcautil/5.0.2/build/native/include"
+WIX_LIBS = "$(WIX_PACKAGES)/wixtoolset.dutil/5.0.2/build/native/v14/$(PLATFORM)/dutil.lib" \
+	"$(WIX_PACKAGES)/wixtoolset.wcautil/5.0.2/build/native/v14/$(PLATFORM)/wcautil.lib"
 
 # We do not build tests on windows
 #TESTS_DEF = /DENABLE_TESTS
@@ -38,24 +48,25 @@ OPENSSL_STATIC_DIR = static
 !IF "$(OPENSSL_LIB)" == ""
 !IF "$(DEBUG_DEF)" == "/DDEBUG"
 !IF "$(PLATFORM)" == "x86"
-OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto32MTd.lib
+OPENSSL_LIB = libcrypto32MTd.lib
 !ELSE
-OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto64MTd.lib
+OPENSSL_LIB = libcrypto64MTd.lib
 !ENDIF
 !ELSE
 !IF "$(PLATFORM)" == "x86"
-OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto32MT.lib
+OPENSSL_LIB = libcrypto32MT.lib
 !ELSE
-OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\libcrypto64MT.lib
+OPENSSL_LIB = libcrypto64MT.lib
 !ENDIF
 !ENDIF
+OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(OPENSSL_STATIC_DIR)\$(OPENSSL_LIB)
 !ENDIF
 OPENSSL_LIB = $(OPENSSL_LIB) user32.lib advapi32.lib crypt32.lib ws2_32.lib
 
 PROGRAMS_OPENSSL = cryptoflex-tool.exe pkcs15-init.exe netkey-tool.exe piv-tool.exe \
 	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe gids-tool.exe
 OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
-CANDLEFLAGS = -dOpenSSL="$(OPENSSL_DIR)" $(CANDLEFLAGS)
+WIXFLAGS = -d OpenSSL="$(OPENSSL_DIR)" $(WIXFLAGS)
 !ENDIF
 
 
@@ -82,7 +93,7 @@ ZLIB_INCL_DIR = /IC:\zlib-dll\include
 ZLIB_LIB = C:\zlib-dll\lib\zdll.lib
 !ENDIF
 OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
-CANDLEFLAGS = -dzlib="C:\zlib-dll" $(CANDLEFLAGS)
+WIXFLAGS = -d zlib="C:\zlib-dll" $(WIXFLAGS)
 !ENDIF
 
 
@@ -102,19 +113,20 @@ OPENPACE_LIB = $(OPENPACE_DIR)\src\libeac.lib
 # Build only when OpenPACE and OpenSSL are available
 PROGRAMS_OPENPACE = npa-tool.exe
 !ENDIF
-CANDLEFLAGS = -dOpenPACE="$(OPENPACE_DIR)" $(CANDLEFLAGS)
+WIXFLAGS = -d OpenPACE="$(OPENPACE_DIR)" $(WIXFLAGS)
 !ENDIF
 
 
 # Used for MiniDriver
 CPDK_INCL_DIR = "/IC:\Program Files (x86)\Windows Kits\10\Cryptographic Provider Development Kit\Include"
 
-COPTS = /nologo /Zi /GS /W3 /WX /D_CRT_SECURE_NO_DEPRECATE /D_CRT_NONSTDC_NO_WARNINGS /DHAVE_CONFIG_H /DWINVER=0x0601 /D_WIN32_WINNT=0x0601 /DWIN32_LEAN_AND_MEAN /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\""
-COPTS = $(COPTS) $(DEBUG_DEF) $(OPENPACE_DEF) $(OPENSSL_DEF) $(ZLIB_DEF) $(MINIDRIVER_DEF) $(SM_DEF) $(TESTS_DEF) $(OPENSSL_EXTRA_CFLAGS)
-COPTS = $(COPTS) /I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENPACE_INCL_DIR) $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(CPDK_INCL_DIR) $(WIX_INCL_DIR)
+COPTS = /nologo /Zi /GS /W3 /WX /D_CRT_SECURE_NO_DEPRECATE /D_CRT_NONSTDC_NO_WARNINGS /DHAVE_CONFIG_H \
+	/DWINVER=0x0601 /D_WIN32_WINNT=0x0601 /DWIN32_LEAN_AND_MEAN /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\"" \
+	$(DEBUG_DEF) $(OPENPACE_DEF) $(OPENSSL_DEF) $(ZLIB_DEF) $(MINIDRIVER_DEF) $(SM_DEF) $(TESTS_DEF) $(OPENSSL_EXTRA_CFLAGS) \
+	$(COPTS) /I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENPACE_INCL_DIR) $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(CPDK_INCL_DIR) $(WIX_INCL_DIR)
 LINKFLAGS = /nologo /machine:$(PLATFORM) /INCREMENTAL:NO /NXCOMPAT /DYNAMICBASE /DEBUG /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD
 LIBFLAGS =  /nologo /machine:$(PLATFORM)
-CANDLEFLAGS = -arch $(PLATFORM) $(CANDLEFLAGS)
+WIXFLAGS = -arch $(PLATFORM) $(WIXFLAGS)
 
 !IF "$(DEBUG_DEF)" == "/DDEBUG"
 LINKFLAGS = $(LINKFLAGS) /NODEFAULTLIB:LIBCMT
