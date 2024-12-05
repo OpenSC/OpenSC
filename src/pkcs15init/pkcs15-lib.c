@@ -1919,8 +1919,13 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 	}
 
 	if ((usage = keyargs->usage) == 0) {
-		sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Setting default usage to verify");
-		usage = SC_PKCS15_PRKEY_USAGE_VERIFY;
+		if (type == SC_PKCS15_TYPE_PUBKEY_XEDDSA) {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Setting default usage to derive");
+			usage = SC_PKCS15_PRKEY_USAGE_DERIVE;
+		} else {
+			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Setting default usage to verify");
+			usage = SC_PKCS15_PRKEY_USAGE_VERIFY;
+		}
 		if (keyargs->x509_usage) {
 			sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "Setting usage from keyargs->x509_usage");
 			usage = sc_pkcs15init_map_usage(keyargs->x509_usage, 0);
@@ -1941,9 +1946,11 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 
 	key_info = (struct sc_pkcs15_pubkey_info *) object->data;
 	key_info->usage = usage;
-	key_info->modulus_length = keybits;
+	key_info->id = keyargs->id;
 
-	if (key.algorithm == SC_ALGORITHM_GOSTR3410) {
+	if (key.algorithm == SC_ALGORITHM_RSA) {
+		key_info->modulus_length = keybits;
+	} else if (key.algorithm == SC_ALGORITHM_GOSTR3410) {
 		key_info->params.len = sizeof(*keyinfo_gostparams);
 		/* FIXME: malloc() call in pkcs15init, but free() call
 		 * in libopensc (sc_pkcs15_free_prkey_info) */
