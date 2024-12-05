@@ -1747,7 +1747,7 @@ pgp_get_pubkey_pem(sc_card_t *card, unsigned int tag, u8 *buf, size_t buf_len)
 				/* PKCS#11 3.0: 2.3.5 Edwards EC public keys only support the use
 				 * of the curveName selection to specify a curve name as defined
 				 * in [RFC 8032] */
-				r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, &p15pubkey, &data, &len);
+			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, &p15pubkey, &data, &len);
 				break;
 			case SC_OPENPGP_KEYALGO_ECDH:
 				/* This yields either EC(DSA) key or EC_MONTGOMERY (curve25519) key */
@@ -2914,7 +2914,7 @@ pgp_update_pubkey_blob(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t 
 	} else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	r = sc_pkcs15_encode_pubkey(card->ctx, &p15pubkey, &data, &len);
+	r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, &p15pubkey, &data, &len);
 	LOG_TEST_RET(card->ctx, r, "Cannot encode pubkey");
 
 	sc_log(card->ctx, "Updating blob %04X's content.", blob_id);
