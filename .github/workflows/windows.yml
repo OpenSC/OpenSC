@@ -98,13 +98,18 @@ jobs:
         if: matrix.configuration == 'Release'
         run: |
           $VCPKG_DIR="${env:RUNVCPKG_VCPKG_ROOT}\installed\${env:RUNVCPKG_VCPKG_TRIPLET}"
-          $NMAKE_EXTRA="ZLIBSTATIC_DEF=/DENABLE_ZLIB_STATIC ZLIB_INCL_DIR=/I${VCPKG_DIR}\include ZLIB_LIB=${VCPKG_DIR}\lib\zlib.lib"
-          $NMAKE_EXTRA+=" OPENSSL_DEF=/DENABLE_OPENSSL OPENSSL_DIR=${VCPKG_DIR} OPENSSL_LIB=${VCPKG_DIR}\lib\libcrypto.lib OPENSSL_EXTRA_CFLAGS=/DOPENSSL_SECURE_MALLOC_SIZE=65536"
-          $NMAKE_EXTRA+=" OPENPACE_DEF=/DENABLE_OPENPACE OPENPACE_DIR=${env:GITHUB_WORKSPACE}\openpace-${env:OPENPACE_VER}"
-          echo "NMAKE_EXTRA=$NMAKE_EXTRA" >> $env:GITHUB_ENV
+          echo "ZLIBSTATIC_DEF=/DENABLE_ZLIB_STATIC" >> $env:GITHUB_ENV
+          echo "ZLIB_INCL_DIR=/I${VCPKG_DIR}\include" >> $env:GITHUB_ENV
+          echo "ZLIB_LIB=${VCPKG_DIR}\lib\zlib.lib" >> $env:GITHUB_ENV
+          echo "OPENSSL_DEF=/DENABLE_OPENSSL" >> $env:GITHUB_ENV
+          echo "OPENSSL_DIR=${VCPKG_DIR}" >> $env:GITHUB_ENV
+          echo "OPENSSL_LIB=${VCPKG_DIR}\lib\libcrypto.lib" >> $env:GITHUB_ENV
+          echo "OPENSSL_EXTRA_CFLAGS=/DOPENSSL_SECURE_MALLOC_SIZE=65536" >> $env:GITHUB_ENV
+          echo "OPENPACE_DEF=/DENABLE_OPENPACE" >> $env:GITHUB_ENV
+          echo "OPENPACE_DIR=${env:GITHUB_WORKSPACE}\openpace-${env:OPENPACE_VER}" >> $env:GITHUB_ENV
       - name: Build OpenSC
         run: |
-          nmake /nologo /f Makefile.mak ${{ env.NMAKE_EXTRA }} opensc.msi
+          nmake /nologo /f Makefile.mak opensc.msi
           move win32\OpenSC.msi OpenSC-${env:ARTIFACT}.msi
       - name: Debug symbols
         run: |
