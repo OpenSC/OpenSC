@@ -902,14 +902,12 @@ void *sc_mem_secure_alloc(size_t len)
 
 #ifdef _WIN32
 	p = VirtualAlloc(NULL, len, MEM_COMMIT, PAGE_READWRITE);
-	if (p != NULL)
-	{
+	if (p != NULL) {
 		VirtualLock(p, len);
 	}
 #else
 	p = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	if (p != NULL)
-	{
+	if (p != NULL) {
 		mlock(p, len);
 	}
 #endif
