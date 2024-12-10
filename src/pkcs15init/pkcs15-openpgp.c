@@ -221,7 +221,7 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			key_info.u.ec.ecpointQ = malloc(key->u.ec.ecpointQ.len);
 			if (!key_info.u.ec.ecpointQ)
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-			memcpy(&key_info.u.ec.ecpointQ, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
+			memcpy(key_info.u.ec.ecpointQ, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
 		}
 		key_info.u.ec.ecpointQ_len = key->u.ec.ecpointQ.len;
 		key_info.u.ec.oid = key->u.ec.params.id;
