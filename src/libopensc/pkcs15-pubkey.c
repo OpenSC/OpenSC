@@ -744,7 +744,6 @@ sc_pkcs15_decode_pubkey_eddsa(sc_context_t *ctx,
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-
 /* Used by pkcs11-tool to convert raw ec_point to octet_string */
 int
 sc_pkcs15_encode_pubkey_eddsa_raw_to_os(sc_context_t *ctx, u8 *inbuf, size_t inlen,
@@ -753,27 +752,26 @@ sc_pkcs15_encode_pubkey_eddsa_raw_to_os(sc_context_t *ctx, u8 *inbuf, size_t inl
 	struct sc_asn1_entry asn1_eddsa_pubkey[C_ASN1_EDDSA_PUBKEY_SIZE];
 	size_t key_len = inlen;
 
-
 	LOG_FUNC_CALLED(ctx);
 	sc_copy_asn1_entry(c_asn1_eddsa_pubkey, asn1_eddsa_pubkey);
 	sc_format_asn1_entry(asn1_eddsa_pubkey + 0, inbuf, &key_len, 1);
-
 
 	LOG_FUNC_RETURN(ctx,
 			sc_asn1_encode(ctx, asn1_eddsa_pubkey, buf, buflen));
 }
 
 /* For PKCS11 3.0 errata and 3.1 Edwards and Montgomery CKA_EC_POINT are raw not DER */
-int sc_pkcs15_encode_pubkey_eddsa_raw(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
+int
+sc_pkcs15_encode_pubkey_eddsa_raw(sc_context_t *ctx, struct sc_pkcs15_pubkey_ec *key,
 		u8 **buf, size_t *buflen)
 {
 	LOG_FUNC_CALLED(ctx);
 
 	*buf = malloc(key->ecpointQ.len);
 	if (*buf == NULL)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(*buf, key->ecpointQ.value, key->ecpointQ.len);
-	*buflen =  key->ecpointQ.len;
+	*buflen = key->ecpointQ.len;
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1533,8 +1531,8 @@ static struct ec_curve_info {
 		{"secp224r1",		"1.3.132.0.33", {(u8 *)"\x06\x05\x2b\x81\x04\x00\x21", 7}, 224, SC_ALGORITHM_EC},
 		{"nistp224",		"1.3.132.0.33", {(u8 *)"\x06\x05\x2b\x81\x04\x00\x21", 7}, 224, SC_ALGORITHM_EC},
 
-		{"secp256r1",		"1.2.840.10045.3.1.7", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10}, 256, SC_ALGORITHM_EC},
 		{"prime256v1",		"1.2.840.10045.3.1.7", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10}, 256, SC_ALGORITHM_EC},
+		{"secp256r1",		"1.2.840.10045.3.1.7", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10}, 256, SC_ALGORITHM_EC},
 		{"nistp256",		"1.2.840.10045.3.1.7", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10}, 256, SC_ALGORITHM_EC},
 		{"ansiX9p256r1",	"1.2.840.10045.3.1.7", {(u8 *)"\x06\x08\x2A\x86\x48\xCE\x3D\x03\x01\x07", 10}, 256, SC_ALGORITHM_EC},
 
