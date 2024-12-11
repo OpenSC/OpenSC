@@ -64,6 +64,7 @@ sc_cancel
 sc_card_ctl
 sc_change_reference_data
 sc_check_sw
+sc_clear_ec_params
 sc_compare_oid
 sc_compare_path
 sc_compare_path_prefix
@@ -177,6 +178,8 @@ sc_pkcs15_encode_pubkey
 sc_pkcs15_encode_pubkey_rsa
 sc_pkcs15_encode_pubkey_ec
 sc_pkcs15_encode_pubkey_eddsa
+sc_pkcs15_encode_pubkey_eddsa_raw_to_os
+sc_pkcs15_encode_pubkey_eddsa_raw
 sc_pkcs15_encode_pubkey_gostr3410
 sc_pkcs15_encode_pubkey_as_spki
 sc_pkcs15_encode_pukdf_entry
