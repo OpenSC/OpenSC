@@ -1288,11 +1288,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 	p15card->opts.use_pin_cache = 1;
 	p15card->opts.pin_cache_counter = 10;
 	p15card->opts.pin_cache_ignore_user_consent = 0;
-	if (0 == strcmp(ctx->app_name, "tokend")) {
-		pin_protected_certificate = "ignore";
-	} else {
-		pin_protected_certificate = "protect";
-	}
+	pin_protected_certificate = "protect";
 	private_certificate = "";
 
 	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);

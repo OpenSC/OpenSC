@@ -14,4 +14,4 @@ run this command: `opensc-tool -n`
 - [ ] New files have a LGPL 2.1 license statement
 - [ ] PKCS#11 module is tested
 - [ ] Windows minidriver is tested
-- [ ] macOS tokend is tested
+- [ ] macOS token is tested
