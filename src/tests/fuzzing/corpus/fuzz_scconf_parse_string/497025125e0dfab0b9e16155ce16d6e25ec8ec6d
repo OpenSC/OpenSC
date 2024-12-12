@@ -169,14 +169,6 @@ app onepin-opensc-pkcs11 {
 	}
 }
 
-# Used by OpenSC.tokend on Mac OS X only
-app tokend {
-	framework tokend {
-		score = 10;
-		ignore_private_certificate = false;
-	}
-}
-
 # Used by OpenSC minidriver on Windows only
 app cardmod {
 }
