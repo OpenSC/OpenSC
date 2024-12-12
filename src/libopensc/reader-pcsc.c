@@ -644,14 +644,6 @@ static int pcsc_connect(sc_reader_t *reader)
 		rv = priv->gpriv->SCardConnect(priv->gpriv->pcsc_ctx, reader->name,
 				priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
 				protocol, &card_handle, &active_proto);
-#ifdef __APPLE__
-		if (rv == (LONG)SCARD_E_SHARING_VIOLATION) {
-			sleep(1); /* Try again to compete with Tokend probes */
-			rv = priv->gpriv->SCardConnect(priv->gpriv->pcsc_ctx, reader->name,
-					priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
-					protocol, &card_handle, &active_proto);
-		}
-#endif
 		if (rv != SCARD_S_SUCCESS) {
 			PCSC_TRACE(reader, "SCardConnect failed", rv);
 			return pcsc_to_opensc_error(rv);

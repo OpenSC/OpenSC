@@ -108,7 +108,6 @@ MacOSX/resources/Welcome.html
 
 *.dmg
 *.pkg
-OpenSC.tokend/
 build/
 engine_pkcs11/
 libp11/

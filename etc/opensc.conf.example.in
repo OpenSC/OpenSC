@@ -947,7 +947,7 @@ app default {
 
 		# How to handle a PIN-protected certificate
 		# Valid values: protect, declassify, ignore.
-		# Default: ignore in tokend, protect otherwise
+		# Default: protect
 		# pin_protected_certificate = declassify;
 
 		# Enable pkcs15 emulation.
@@ -1164,27 +1164,6 @@ app opensc-pkcs11 {
 app "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe" {
 	pkcs11 {
 		slots_per_card = 1;
-	}
-}
-
-# Used by OpenSC.tokend on Mac OS X only
-app tokend {
-	# The file to which debug log will be written
-	# Default: /tmp/opensc-tokend.log
-	#
-	# debug_file = /Library/Logs/OpenSC.tokend.log
-
-	framework tokend {
-		# Score for OpenSC.tokend
-		# The tokend with the highest score shall be used.
-		# Default: 300
-		#
-		# score = 10;
-
-		# Tokend ignore to read PIN protected certificate that is set SC_PKCS15_CO_FLAG_PRIVATE flag.
-		# Default: true
-		#
-		# ignore_private_certificate = false;
 	}
 }
 

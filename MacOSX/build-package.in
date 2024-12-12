@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the macOS installer for the tokend and command line tools.
+# Build the macOS installer for the token and command line tools.
 #
 # This is only tested and supported on macOS 10.10 or later, using Xcode 6.0.1.
 # Building should also work on older macOS versions with slight changes; YMMV.
@@ -129,42 +129,6 @@ if test -n "${CODE_SIGN_IDENTITY}"; then
 fi
 
 
-# Build OpenSC.tokend when XCode version < 10
-if (( $(xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9]+)(\.[0-9]*)*/\1/p') < 10 )); then
-	# Check out OpenSC.tokend, if not already fetched.
-	if ! test -e OpenSC.tokend; then
-		git clone https://github.com/OpenSC/OpenSC.tokend.git
-	fi
-
-	# Create the symlink to OpenSC sources
-	test -L OpenSC.tokend/build/opensc-src || ln -sf ${BUILDPATH}/src OpenSC.tokend/build/opensc-src
-
-	# Build and copy OpenSC.tokend
-	if test -n "${CODE_SIGN_IDENTITY}" -a -n "${DEVELOPMENT_TEAM}"; then
-		xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend \
-		CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime" CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO CODE_SIGN_STYLE=Manual
-	else
-		xcodebuild -target OpenSC -configuration Deployment -project OpenSC.tokend/Tokend.xcodeproj install DSTROOT=${BUILDPATH}/target_tokend
-	fi
-
-	TOKEND="-tokend"
-else
-	# https://github.com/OpenSC/OpenSC.tokend/issues/33
-	mkdir -p ${BUILDPATH}/target_tokend
-	TOKEND=""
-fi
-
-#if ! test -e $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications/terminal-notifier.app; then
-	#if ! test -e terminal-notifier-1.7.1.zip; then
-		#curl -L https://github.com/julienXX/terminal-notifier/releases/download/1.7.1/terminal-notifier-1.7.1.zip > terminal-notifier-1.7.1.zip
-	#fi
-	#if ! test -e terminal-notifier-1.7.1; then
-		#unzip terminal-notifier-1.7.1.zip
-	#fi
-	#mkdir -p $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
-	#cp -r terminal-notifier-1.7.1/terminal-notifier.app $BUILDPATH/target/Library/Security/tokend/OpenSC.tokend/Contents/Resources/Applications
-#fi
-
 imagedir=$(mktemp -d)
 
 # Prepare target root
@@ -221,7 +185,6 @@ fi
 
 # Build package
 pkgbuild --root ${BUILDPATH}/target --component-plist MacOSX/target.plist --scripts MacOSX/scripts --identifier org.opensc-project.mac --version @PACKAGE_VERSION@ --install-location / OpenSC.pkg
-pkgbuild --root ${BUILDPATH}/target_tokend --component-plist MacOSX/target_tokend.plist --identifier org.opensc-project.tokend --version @PACKAGE_VERSION@ --install-location / OpenSC-tokend.pkg
 pkgbuild --root ${BUILDPATH}/target_token $COMPONENT_TOKEN --identifier org.opensc-project.mac.opensctoken --version @PACKAGE_VERSION@ --install-location / OpenSCToken.pkg
 pkgbuild --root ${BUILDPATH}/target_startup --component-plist MacOSX/target_startup.plist --identifier org.opensc-project.startup --version @PACKAGE_VERSION@ --install-location / OpenSC-startup.pkg
 
@@ -241,9 +204,9 @@ if test -n "${CODE_SIGN_IDENTITY}"; then
 fi
 
 # Create .dmg
-rm -f OpenSC-@PACKAGE_VERSION@$TOKEND.dmg
+rm -f OpenSC-@PACKAGE_VERSION@.dmg
 i=0
-while ! hdiutil create -srcfolder "${imagedir}" -volname "@PACKAGE_NAME@" -fs JHFS+ OpenSC-@PACKAGE_VERSION@$TOKEND.dmg
+while ! hdiutil create -srcfolder "${imagedir}" -volname "@PACKAGE_NAME@" -fs JHFS+ OpenSC-@PACKAGE_VERSION@.dmg
 do
 	i=$[$i+1]
 	if [ $i -gt 2 ]
