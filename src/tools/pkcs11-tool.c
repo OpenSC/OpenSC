@@ -4686,14 +4686,14 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 		}
 
-		else if ((type == CKK_EC) ||(type == CKK_EC_EDWARDS) || (type == CKK_EC_MONTGOMERY)) {
+		else if ((type == CKK_EC) || (type == CKK_EC_EDWARDS) || (type == CKK_EC_MONTGOMERY)) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EC_PARAMS, gost.param_oid.value, gost.param_oid.len);
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, gost.private.value, gost.private.len);
 			n_privkey_attr++;
-			
+
 		} else if (type == CKK_GOSTR3410) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
@@ -6527,8 +6527,8 @@ static int read_object(CK_SESSION_HANDLE session)
 				if (!i2d_PUBKEY_bio(pout, pkey))
 					util_fatal("cannot convert EC public key to DER");
 #endif
-			/* only if compiled with a version of or OpenSSL or libressl */
-			/* do more tests for the other 3 as needed */
+					/* only if compiled with a version of or OpenSSL or libressl */
+					/* do more tests for the other 3 as needed */
 #ifdef EVP_PKEY_ED25519
 			} else if (type == CKK_EC_EDWARDS || type == CKK_EC_MONTGOMERY) {
 				EVP_PKEY *key = NULL;
@@ -6566,7 +6566,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				value = getEC_POINT(session, obj, &len);
 				/* PKCS11 3.0 errta and 3.1 say Edwards and Montgomery
 				 * return raw byte strings, convert to OCTET string for OpenSSL
-				 * Will asccept as OCT STRING
+				 * Will asccept as OCTET STRING
 				 */
 				a = value;
 				os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
@@ -6577,17 +6577,17 @@ static int read_object(CK_SESSION_HANDLE session)
 				}
 				if (!os) {
 					size_t buflen = 0;
-					unsigned char * buf = NULL;
+					unsigned char *buf = NULL;
 					unsigned char *in = value;
 
 					if (sc_pkcs15_encode_pubkey_eddsa_raw_to_os(NULL,
-							in, (size_t) len,
-							&buf, &buflen) != 0) {
+							    in, (size_t)len,
+							    &buf, &buflen) != 0) {
 						util_fatal("cannot obtain EC POINT");
 					}
 					a = buf;
 					if ((os = d2i_ASN1_OCTET_STRING(NULL, &a,
-								(long) buflen)) == NULL) {
+							     (long)buflen)) == NULL) {
 						util_fatal("cannot obtain EC POINT");
 					}
 					free(buf);
@@ -6595,7 +6595,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				if (!os) {
 					util_fatal("cannot decode EC_POINT");
 				}
-				
+
 				if (type == CKK_EC_EDWARDS && os->length == BYTES4BITS(255))
 					raw_pk = EVP_PKEY_ED25519;
 #if defined(EVP_PKEY_ED448)
@@ -6609,7 +6609,7 @@ static int read_object(CK_SESSION_HANDLE session)
 #if defined(EVP_PKEY_X448)
 				else if (type == CKK_EC_MONTGOMERY && os->length == BYTES4BITS(448))
 					raw_pk = EVP_PKEY_X448;
-#endif  /* EVP_PKEY_X448 */
+#endif /* EVP_PKEY_X448 */
 				else
 					util_fatal("Invalid or not supported CKK_EC_EDWARDS or CKK_EC_MONTGOMERY public key");
 
@@ -6620,12 +6620,8 @@ static int read_object(CK_SESSION_HANDLE session)
 				if (key == NULL) {
 					util_fatal("out of memory");
 				}
-				/* Note, that we write PEM here as there is no "native"
-				 * in RFC 8410 /OpenSSL format 
-				 * representation of EdDSA public keys to use
-				 */
-				if (!PEM_write_bio_PUBKEY(pout, key)) {
-					util_fatal("cannot convert EdDSA public key to PEM");
+				if (i2d_PUBKEY_bio(pout, key) < 1) {
+					util_fatal("cannot write public key to output");
 				}
 
 				EVP_PKEY_free(key);
@@ -6642,6 +6638,7 @@ static int read_object(CK_SESSION_HANDLE session)
 	}
 	else
 		value = getVALUE(session, obj, &len);
+
 	if (value == NULL)
 		util_fatal("get CKA_VALUE failed");
 
@@ -8763,7 +8760,7 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		return;
 	}
 	getEC_POINT(session, pub_key, &ec_point_len);
-	/* TODO if this routine us expanded to test EDDSA keys the following may be needed. 
+	/* TODO if this routine us expanded to test EDDSA keys the following may be needed.
 	 * a per 3.0 errata and 3.1 Edwards and Montgomery EC_POINT is just a byte string.
 	 * Accept either BIT STRING, OCTET STRING or raw byte string.
 	 */
