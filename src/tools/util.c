@@ -498,13 +498,20 @@ util_getpass (char **lineptr, size_t *len, FILE *stream)
 size_t
 util_get_pin(const char *input, const char **pin)
 {
-	size_t inputlen = strlen(input);
+	size_t inputlen;
 	size_t pinlen = 0;
 
-	if(inputlen > 4 && strncasecmp(input, "env:", 4) == 0) {
+	if (!input || !pin) {
+		return 0;
+	}
+	inputlen = strlen(input);
+
+	if (inputlen > 4 && strncasecmp(input, "env:", 4) == 0) {
 		// Get a PIN from a environment variable
 		*pin = getenv(input + 4);
 		pinlen = *pin ? strlen(*pin) : 0;
+	} else if (inputlen > 5 && strncasecmp(input, "file:", 5) == 0) {
+		fprintf(stderr, "Reading PIN from file not supported!\n");
 	} else {
 		//Just use the input
 		*pin = input;
