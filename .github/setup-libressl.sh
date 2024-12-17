@@ -2,7 +2,8 @@
 
 set -ex -o xtrace
 
-V=libressl-3.8.1
+# WARNING: Change this also in .github/workflows/linux.yml
+V=libressl-4.0.0
 
 sudo apt-get remove -y libssl-dev
 

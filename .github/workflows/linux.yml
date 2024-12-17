@@ -28,7 +28,7 @@ env:
   JAVA_DEPS: |
     ant openjdk-8-jdk maven cmake
   JCARDSIM: https://github.com/Jakuje/jcardsim.git
-  LIBRESSL_VERSION: 3.8.1
+  LIBRESSL_VERSION: 4.0.0
 
 jobs:
   build:

@@ -83,17 +83,17 @@ if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
 	fi
 elif [ "$1" == "debug" -o "$2" == "debug" ]; then
 	# install debug symbols
-	$SUDO apt-get install -y lsb-core ubuntu-dbgsym-keyring
+	$SUDO apt-get install -y lsb-release ubuntu-dbgsym-keyring
 	echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse
-deb http://ddebs.ubuntu.com $(lsb_release -cs)-updates main restricted universe multiverse
-deb http://ddebs.ubuntu.com $(lsb_release -cs)-proposed main restricted universe multiverse" | \
+deb http://ddebs.ubuntu.com $(lsb_release -cs 2> /dev/null)-updates main restricted universe multiverse
+deb http://ddebs.ubuntu.com $(lsb_release -cs 2> /dev/null)-proposed main restricted universe multiverse" | \
 	$SUDO tee -a /etc/apt/sources.list.d/ddebs.list
 	$SUDO apt-get update -qq
 	DEP="libssl1.1-dbgsym"
 	if [ -f "/usr/lib/x86_64-linux-gnu/libssl.so.3" ]; then
-		DEP="libssl3-dbgsym"
+		DEP="libssl3t64-dbgsym"
 	fi
-	$SUDO apt-get install -y openssl-dbgsym "$DEP" softhsm2-dbgsym
+	$SUDO apt-get install -y openssl-dbgsym "$DEP" softhsm2-dbgsym libsofthsm2-dbgsym
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
