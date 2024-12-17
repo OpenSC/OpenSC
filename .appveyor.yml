@@ -36,9 +36,9 @@ install:
         https://ci.appveyor.com/api/projects/$env:APPVEYOR_ACCOUNT_NAME/$env:APPVEYOR_PROJECT_SLUG/history?recordsNumber=50).builds | `
         Where-Object pullRequestId -eq $env:APPVEYOR_PULL_REQUEST_NUMBER)[0].buildNumber) { `
         throw "There are newer queued builds for this pull request, failing early." }
-  - ps: $env:PACKAGE_NAME=(git describe --tags --abbrev=0)
+  - ps: $env:PACKAGE_VERSION=(git describe --tags --abbrev=0)
   - ps: $env:OPENSSL_PF = If ($env:Platform -eq "x86") { "Win32" } Else { "Win64" }
-  - ps: $env:ARTIFACT="OpenSC-${env:PACKAGE_NAME}_${env:OPENSSL_PF}"
+  - ps: $env:ARTIFACT="OpenSC-${env:PACKAGE_VERSION}_${env:OPENSSL_PF}"
   - ps: >-
       If ($env:Configuration -Like "*Light*") {
         $env:ARTIFACT+="-Light"
@@ -91,7 +91,7 @@ build_script:
         $env:OPENPACE_DIR="C:\openpace-${env:OPENSSL_PF}"
       }
   - nmake /nologo /f Makefile.mak opensc.msi
-  - move win32\OpenSC.msi %ARTIFACT%.msi
+  - move win32\OpenSC*.msi %ARTIFACT%.msi
   # put all pdb files for dump analysis, but this consumes approx 100 MB per build
   - md %ARTIFACT%-Debug
   - ps: >-
