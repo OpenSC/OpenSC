@@ -23,6 +23,7 @@ sudo make install
 popd
 
 # prepare pcscd
+PCSCD_DEBUG="-d -a"
 . .github/restart-pcscd.sh
 
 # virt_cacard
