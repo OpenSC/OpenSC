@@ -65,20 +65,55 @@
 							onto the card. The purpose of this number is to establish a
 							secure communication channel between the card and the card
 							reader. In normal operation <command>dtrust-tool</command>
-							automatically prompts for the CAN.
+							automatically prompts for the CAN when necessary. Under certain
+							circumstances <literal>dtrust-tool</literal> cannot decide
+							whether the CAN is necessary.
 						</para>
+						<itemizedlist>
+							<listitem><para>
+								You may call <literal>dtrust-tool</literal> with just
+								this option to force a CAN verification, which saves
+								the CAN into the cache if it proved right. Once the CAN
+								was saved into the cache, You do not need to enter the
+								CAN of this card again.
+							</para></listitem>
+							<listitem><para>
+								In case you entered a transport PIN wrong two times,
+								the transport PIN is suspended. You need this parameter
+								together with <option>--unlock-transport-protection</option>
+								to resume the suspended transport PIN for a last
+								attempt. Failing to enter the transport PIN
+								successfully blocks the transport PIN. You then need to
+								unblock the transport PIN with <option>--unblock-pin</option>.
+							</para></listitem>
+						</itemizedlist>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--enter-can</option>,
+					</term>
+					<listitem>
 						<para>
-							In case you entered a transport PIN wrong two times, the
-							transport PIN becomes suspended. You need this parameter
-							together with <option>--unlock-transport-protection</option> to
-							resume the suspended transport PIN for a last attempt. Failing
-							to enter the transport PIN successfully blocks the transport
-							PIN. You then need to unblock the transport PIN with
-							<option>--unblock-pin</option>.
+							There are several ways to provide a CAN. See the
+							<literal>dtrust</literal> section in the
+							<filename>opensc.conf</filename> manpage for details. With this
+							parameter <command>dtrust-tool</command> will prompt
+							interactively for a CAN, bypassing all other sources. This is
+							useful if you:
 						</para>
+						<itemizedlist>
+							<listitem><para>
+								enter the CAN for the first time and want it to be
+								saved in the CAN cache
+							</para></listitem>
+							<listitem><para>
+								want to bypass the pin pad of card reader. Bypassing
+								the pin pad will save the CAN into the cache as well.
+							</para></listitem>
+						</itemizedlist>
 						<para>
-							You may call <literal>dtrust-tool</literal> with just this
-							option to save the CAN into the cache.
+							Once the CAN is cached, you do not need this parameter anymore.
 						</para>
 					</listitem>
 				</varlistentry>
@@ -240,6 +275,17 @@
 			</variablelist>
 		</para>
 	</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>opensc.conf</refentrytitle>
+				<manvolnum>5</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
 	<refsect1>
 		<title>Authors</title>
 		<para><command>dtrust-tool</command> was written by
