@@ -4,11 +4,7 @@
 /* defined twice: in resource file and in source code */
 #define IDI_SMARTCARD       102
 
-#ifndef __MINGW32__
-IDI_SMARTCARD          ICON                    "..\\..\\win32\\DDORes.dll_14_2302.ico"
-#else
 IDI_SMARTCARD          ICON                    "../../win32/DDORes.dll_14_2302.ico"
-#endif
 
 VS_VERSION_INFO VERSIONINFO
 	FILEVERSION @OPENSC_VERSION_MAJOR@,@OPENSC_VERSION_MINOR@,@OPENSC_VERSION_FIX@,@OPENSC_VERSION_REVISION@

@@ -50,6 +50,7 @@
 
 #include "internal.h"
 
+
 static void sc_do_log_va(sc_context_t *ctx, int level, const char *file, int line, const char *func, int color, const char *format, va_list args);
 static int sc_color_fprintf_va(int colors, struct sc_context *ctx, FILE * stream, const char *format, va_list args);
 
