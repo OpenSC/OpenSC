@@ -36,6 +36,7 @@ static const char *app_name = "dtrust-tool";
 
 enum {
 	OPT_CAN_VERIFY = 0x100,
+	OPT_CAN_ENTER,
 	OPT_CHANGE,
 	OPT_VERIFY,
 	OPT_RESUME,
@@ -47,6 +48,7 @@ static const struct option options[] = {
 	{"reader", 1, NULL, 'r'},
 	{"wait", 0, NULL, 'w'},
 	{"verify-can", 0, NULL, OPT_CAN_VERIFY},
+	{"enter-can", 0, NULL, OPT_CAN_ENTER},
 	{"pin-status", 0, NULL, 's'},
 	{"check-transport-protection", 0, NULL, 'c'},
 	{"unlock-transport-protection", 0, NULL, 'u'},
@@ -63,6 +65,7 @@ static const char *option_help[] = {
 	"Uses reader number <arg> [0]",
 	"Wait for card insertion",
 	"Verify Card Access Number (CAN)",
+	"Enter CAN explicitly",
 	"Show PIN status",
 	"Check transport protection",
 	"Unlock transport protection",
@@ -78,6 +81,7 @@ static const char *option_help[] = {
 static const char *opt_reader = NULL;
 static int opt_wait = 0, verbose = 0;
 static unsigned char opt_can_verify = 0;
+static unsigned char opt_can_enter = 0;
 static int opt_status = 0;
 static int opt_check = 0;
 static int opt_unlock = 0;
@@ -814,6 +818,9 @@ main(int argc, char *argv[])
 		case OPT_CAN_VERIFY:
 			opt_can_verify = 1;
 			break;
+		case OPT_CAN_ENTER:
+			opt_can_enter = 1;
+			break;
 		case 's':
 			opt_status = 1;
 			break;
@@ -904,10 +911,7 @@ main(int argc, char *argv[])
 		data.pin_type = SC_AC_CHV;
 		data.pin_reference = PACE_PIN_ID_CAN;
 
-		if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) {
-			data.pin1.data = NULL;
-			data.pin1.len = 0;
-		} else {
+		if (opt_can_enter) {
 			r = get_pin(&can, "CAN", 0);
 			if (r < 0)
 				goto out;
