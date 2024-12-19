@@ -205,6 +205,9 @@
                 <Component Id="npa_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
                   <File Source="$(var.SOURCE_DIR)\src\tools\npa-tool.exe" Vital="yes"/>
                 </Component>
+                <Component Id="dtrust_tool.exe" Guid="*" Win64="$(var.Win64YesNo)">
+                  <File Source="$(var.SOURCE_DIR)\src\tools\dtrust-tool.exe" Vital="yes"/>
+                </Component>
               <?endif ?>
               <Component Id="Autostart_tools" Guid="*" Win64="$(var.Win64YesNo)">
                 <RegistryKey Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\Run">
@@ -394,6 +397,7 @@
           <ComponentRef Id="dnie_tool.exe"/>
           <ComponentRef Id="gids_tool.exe"/>
           <ComponentRef Id="npa_tool.exe"/>
+          <ComponentRef Id="dtrust_tool.exe"/>
           <ComponentRef Id="cyberflex.profile"/>
           <ComponentRef Id="flex.profile"/>
           <ComponentRef Id="muscle.profile"/>
