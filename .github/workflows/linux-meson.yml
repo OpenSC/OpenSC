@@ -1,0 +1,31 @@
+name: Linux (meson)
+
+on:
+  pull_request:
+    branches: master
+
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
+jobs:
+  ubuntu:
+    name: Native build on Ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install build-essential meson git openssl docbook-xsl xsltproc gengetopt libpcsclite-dev libssl-dev libcmocka-dev libreadline-dev
+      - uses: actions/checkout@v4
+      - name: Configure project
+        run: meson setup -Dcomponents=pkcs11,tools,sm -Ddriver=pcsc -Dopenssl=enabled -Dreadline=enabled -Dtests=true -Ddoc=true -Dman=true build/
+      - name: Build project
+        run: meson compile -C build/ -v
+      - name: Run unit tests
+        run: meson test -C build/ -v
+      - name: Upload test log
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: Ubuntu_Meson_Testlog
+          path: build/meson-logs/testlog.txt

@@ -1,0 +1,30 @@
+option('components', type: 'array', choices: ['pkcs11', 'tools', 'minidriver', 'sm'], value: ['pkcs11', 'tools'])
+
+option('static_components', type: 'array', choices: ['pkcs11', 'tools', 'minidriver', 'sm'], value: ['minidriver'], description: 'Components that must be linked statically')
+
+option('driver', type: 'combo', choices: ['pcsc', 'cryptotokenkit', 'openct', 'ctapi'], value: 'pcsc', description: 'A card reader API that OpenSC will use')
+
+option('openpace', type: 'feature', value: 'auto', description: 'Use OpenPACE')
+option('openssl',  type: 'feature', value: 'auto', description: 'Use OpenSSL')
+option('readline', type: 'feature', value: 'auto', description: 'Enable history of commands in "opensc-explorer"')
+option('zlib',     type: 'feature', value: 'auto', description: 'Use zlib')
+option('dnie_ui',  type: 'feature', value: 'auto', description: 'Enable to request DNIe user pin with an external program')
+option('p11kit',   type: 'feature', value: 'auto', description: 'Install PKCS#11 libraries as p11-kit modules')
+
+option('openssl_secure_malloc', type: 'integer', min: 0, value: 0, description: 'Size of OpenSSL secure memory in bytes (must be a power of 2)')
+
+option('notify',         type: 'boolean', value: true, description: 'Notification support')
+option('thread_locking', type: 'boolean', value: true, description: 'Serialize threads in PKCS#11 API')
+option('piv_sm',         type: 'boolean', value: true, description: 'Enable secure messages in PIV card driver')
+option('autostart',      type: 'boolean', value: false, description: 'Launch "pkcs11-register" on user login')
+
+option('doc', type: 'boolean', value: true, description: 'Install documentation')
+option('man', type: 'boolean', value: true, description: 'Install manual pages')
+option('bash_completion', type: 'boolean', value: true, description: 'Install bash completion scripts')
+
+option('xsl_stylesheets_path', type: 'string', value: '')
+option('bash_completion_path', type: 'string', value: '')
+option('cpdk_path', type: 'string', value: '', description: 'Path to Cryptographic Provider Development Kit')
+
+option('tests', type: 'boolean', value: false, description: 'Build tests')
+option('fuzzing_libs', type: 'string', value: '', description: 'Additional link argument for fuzzing tests')

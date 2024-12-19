@@ -1,0 +1,57 @@
+name: Windows (meson)
+
+on:
+  pull_request:
+    branches: master
+
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
+jobs:
+  build:
+    runs-on: ${{ matrix.image }}
+    strategy:
+      matrix:
+        platform: [x86, x64]
+        configuration: [Light, Release]
+        image: [windows-2019, windows-2022]
+    steps:
+      - name: Install Meson
+        run: python -m pip install meson ninja
+      - name: Install MSYS2
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MSYS
+          install: gengetopt
+      - name: Install CPDK
+        run: choco install windows-cryptographic-provider-development-kit -y
+      - name: Install Wix 5
+        run: |
+          dotnet tool install --global wix
+          wix extension add -g WixToolset.UI.wixext
+          wix extension add -g WixToolset.Util.wixext
+      - uses: actions/checkout@v4
+      - name: Setup dev env
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.platform }}
+      - name: Configure project (release)
+        if: matrix.configuration == 'Release'
+        run: |
+          $env:Path += ";${{ steps.msys2.outputs.msys2-location }}\usr\bin"
+          meson setup -Dbackend=ninja '-Dcomponents=pkcs11,tools,sm,minidriver' -Ddriver=pcsc -Dopenssl=enabled build/
+      - name: Configure project (light)
+        if: matrix.configuration == 'Light'
+        run: |
+          $env:Path += ";${{ steps.msys2.outputs.msys2-location }}\usr\bin"
+          meson setup -Dbackend=ninja '-Dcomponents=pkcs11,tools,sm,minidriver' -Ddriver=pcsc -Dopenssl=disabled build/
+      - name: Build project
+        run: |
+          meson compile -C build/ -v
+          meson compile -C build/ -v msi
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: msi_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
+          path: build/*.msi
