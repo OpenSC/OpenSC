@@ -138,7 +138,7 @@ COPTS = /O1 /$(BUILD_TYPE) $(COPTS)
 	cl $(COPTS) $(WIX_INCL_DIR) /c $<
 
 .rc.res::
-	rc /l 0x0409 $<
+	rc /l 0x0409 /I$(TOPDIR) $<
 
 clean::
 	del /Q *.obj *.dll *.exe *.pdb *.lib *.def *.res

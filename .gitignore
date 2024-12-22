@@ -45,7 +45,6 @@ test-driver
 *.pdb
 *.rej
 *.u
-*.rc
 *.pc
 *~
 *.o
