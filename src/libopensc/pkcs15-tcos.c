@@ -68,7 +68,7 @@ static int insert_cert(
 		return 2;
 	}
 	cert_len = r; /* actual number of read bytes */
-	if (cert_len < 7 || (size_t)(7 + cert[5]) > cert_len) {
+	if (cert_len < 4) {
 		sc_log(ctx, "Invalid certificate length");
 		return 3;
 	}
@@ -78,7 +78,9 @@ static int insert_cert(
 	}
 
 	/* some certificates are prefixed by an OID */
-	if (cert[4] == 0x06 && cert[5] < 10 && cert[6 + cert[5]] == 0x30 && cert[7 + cert[5]] == 0x82) {
+	if (cert_len >= 5 && (size_t)(7 + cert[5]) <= cert_len &&
+			cert[4] == 0x06 && cert[5] < 10 && cert[6 + cert[5]] == 0x30 &&
+			cert[7 + cert[5]] == 0x82) {
 		if ((size_t)(9 + cert[5]) > cert_len) {
 			sc_log(ctx, "Invalid certificate length");
 			return 3;
