@@ -2009,7 +2009,7 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 	u8 n_pathbuf[SC_MAX_PATH_SIZE];
 	const u8 *path = pathbuf;
 	size_t pathlen = len;
-	int bMatch = -1;
+	size_t bMatch = 0;
 	unsigned int i;
 	int r;
 
