@@ -4583,8 +4583,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	unsigned int cla, tag;
 	unsigned int real_alg_id, op_tag;
 
-	/* TODO check for 4096 keys */
-	u8 sbuf[4096]; /* needs work. for 3072 keys, needs 384+10 or so */
+	u8 sbuf[4096]; /* needs work. for 4096 needs 512+10 or so */
 	size_t sbuflen = sizeof(sbuf);
 	u8 rbuf[4096];
 
