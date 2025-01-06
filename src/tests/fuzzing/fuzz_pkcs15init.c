@@ -243,16 +243,16 @@ void do_store_secret_key(struct sc_profile *profile, struct sc_pkcs15_card *p15c
     sc_pkcs15_format_id("02", &(args.auth_id));
 
     for (int i = 0; i < 3; i++) {
-	    size_t keybytes = BYTES4BITS(keybits[i]);
-	    args.key.data = malloc(keybytes);
-	    memcpy(args.key.data, buf, keybytes);
-	    args.key.data_len = keybytes;
-	    args.algorithm = algorithms[i];
-	    args.value_len = keybits[i];
+	size_t keybytes = BYTES4BITS(keybits[i]);
+	args.key.data = malloc(keybytes);
+	memcpy(args.key.data, buf, keybytes);
+	args.key.data_len = keybytes;
+	args.algorithm = algorithms[i];
+	args.value_len = keybits[i];
 
-	    sc_pkcs15init_store_secret_key(p15card, profile, &args, NULL);
-	    if (args.key.data)
-		    free(args.key.data);
+	sc_pkcs15init_store_secret_key(p15card, profile, &args, NULL);
+	if (args.key.data)
+		free(args.key.data);
     }
 }
 
