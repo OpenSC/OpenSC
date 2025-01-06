@@ -2447,7 +2447,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("Cannot read from %s: %m", opt_input);
 
 	if (opt_mechanism == CKM_RSA_PKCS_PSS && (size_t)sz != hashlen) {
-		util_fatal("For %s mechanism, message size (got %z bytes) "
+		util_fatal("For %s mechanism, message size (got %zd bytes) "
 			"must be equal to specified digest length (%lu)\n",
 			p11_mechanism_to_name(opt_mechanism), sz, hashlen);
 	} else if (opt_mechanism == CKM_AES_CMAC_GENERAL) {
@@ -2653,7 +2653,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("Cannot read from %s: %m", opt_input);
 
 	if (opt_mechanism == CKM_RSA_PKCS_PSS && (size_t)sz != hashlen) {
-		util_fatal("For %s mechanism, message size (got %z bytes)"
+		util_fatal("For %s mechanism, message size (got %zd bytes)"
 			" must be equal to specified digest length (%lu)\n",
 			p11_mechanism_to_name(opt_mechanism), sz, hashlen);
 	} else if (opt_mechanism == CKM_AES_CMAC_GENERAL) {
