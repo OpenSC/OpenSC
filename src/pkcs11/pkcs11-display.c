@@ -201,7 +201,7 @@ print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR ar
 			BIO *bio = BIO_new(BIO_s_file());
 			BIO_set_fp(bio, f, 0);
 			fprintf(f, "    DN: ");
-			X509_NAME_print(bio, name, XN_FLAG_RFC2253);
+			X509_NAME_print_ex(bio, name, 0, XN_FLAG_RFC2253);
 			fprintf(f, "\n");
 			BIO_free(bio);
 		}
