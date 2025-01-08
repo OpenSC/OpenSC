@@ -5924,7 +5924,7 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			BIO *bio = BIO_new(BIO_s_file());
 			BIO_set_fp(bio, stdout, BIO_NOCLOSE);
 			printf("  subject:    DN: ");
-			X509_NAME_print(bio, name, XN_FLAG_RFC2253);
+			X509_NAME_print_ex(bio, name, 0, XN_FLAG_RFC2253);
 			printf("\n");
 			BIO_free(bio);
 			X509_NAME_free(name);
