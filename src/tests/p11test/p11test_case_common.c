@@ -141,16 +141,23 @@ add_supported_mechs(test_cert_t *o)
 	if (o->type == EVP_PKEY_RSA) {
 		if (token.num_rsa_mechs > 0 ) {
 			/* Get supported mechanisms by token */
-			o->num_mechs = token.num_rsa_mechs;
+			o->num_mechs = 0;
 			for (i = 0; i < token.num_rsa_mechs; i++) {
-				o->mechs[i].mech = token.rsa_mechs[i].mech;
-				o->mechs[i].params = token.rsa_mechs[i].params;
-				o->mechs[i].params_len = token.rsa_mechs[i].params_len;
-				o->mechs[i].result_flags = 0;
-				o->mechs[i].usage_flags =
-					token.rsa_mechs[i].usage_flags;
+				if (FIPS_mode()) {
+					/* Skip algorithms that are not supported in FIPS mode */
+					if (token.rsa_mechs[i].mech == CKM_RSA_PKCS ||
+							token.rsa_mechs[i].mech == CKM_RSA_X_509 ||
+							token.rsa_mechs[i].mech == CKM_MD5_RSA_PKCS)
+						continue;
+				}
+				o->mechs[o->num_mechs].mech = token.rsa_mechs[i].mech;
+				o->mechs[o->num_mechs].params = token.rsa_mechs[i].params;
+				o->mechs[o->num_mechs].params_len = token.rsa_mechs[i].params_len;
+				o->mechs[o->num_mechs].result_flags = 0;
+				o->mechs[o->num_mechs].usage_flags = token.rsa_mechs[i].usage_flags;
+				o->num_mechs++;
 			}
-		} else {
+		} else if (!FIPS_mode()) {
 			/* Use the default list */
 			o->num_mechs = 1;
 			o->mechs[0].mech = CKM_RSA_PKCS;
