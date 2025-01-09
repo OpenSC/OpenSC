@@ -1,6 +1,6 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
-EXTRA_DIST = softhsm_ref.json
+EXTRA_DIST = softhsm_ref.json softhsm_fips_ref.json
 
 TEST_EXTENSIONS = .sh
 # This pushes the valgrind command to the test environment
