@@ -64,7 +64,7 @@ XFAIL_TESTS="test-pkcs11-tool-test-threads.sh test-pkcs11-tool-test.sh"
 # In FIPS mode, OpenSSL doesn't allow RSA-PKCS, this is hardcoded into OpenSSL
 # and we cannot influence it. Hence, the test is expected to fail in FIPS mode.
 if [[ -f "/proc/sys/crypto/fips_enabled" && $(cat /proc/sys/crypto/fips_enabled) == "1" ]]; then
-	XFAIL_TESTS+=" test-pkcs11-tool-unwrap-wrap-test.sh test-p11test.sh"
+	XFAIL_TESTS+=" test-pkcs11-tool-unwrap-wrap-test.sh"
 fi
 
 sed -i -e "/XFAIL_TESTS/,$ {
