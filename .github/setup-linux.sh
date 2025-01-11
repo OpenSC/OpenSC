@@ -91,7 +91,9 @@ deb http://ddebs.ubuntu.com $(lsb_release -cs 2> /dev/null)-proposed main restri
 	$SUDO apt-get update -qq
 	DEP="libssl1.1-dbgsym"
 	if [ -f "/usr/lib/x86_64-linux-gnu/libssl.so.3" ]; then
-		DEP="libssl3t64-dbgsym"
+#		libcrypto is in same package as libssl
+		DEPX=`dpkg -S "/usr/lib/x86_64-linux-gnu/libssl.so.3"`
+		DEP="${DEPX%%:*}-dbgsym"
 	fi
 	$SUDO apt-get install -y openssl-dbgsym "$DEP" softhsm2-dbgsym libsofthsm2-dbgsym
 fi
