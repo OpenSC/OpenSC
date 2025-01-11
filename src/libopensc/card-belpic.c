@@ -146,15 +146,15 @@ static long t1, t2, tot_read = 0, tot_dur = 0, dur;
 static size_t next_idx = (size_t)-1;
 
 static const struct sc_atr_table belpic_atrs[] = {
-	/* Applet V1.8 */
-	{ "3B:7F:96:00:00:80:31:80:65:B0:85:04:01:20:12:0F:FF:82:90:00", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
-	/* Applet V1.1 */
-	{ "3B:98:13:40:0A:A5:03:01:01:01:AD:13:11", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
-	/* Applet V1.0 with new EMV-compatible ATR */
-	{ "3B:98:94:40:0A:A5:03:01:01:01:AD:13:10", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
-	/* Applet beta 5 + V1.0 */
-	{ "3B:98:94:40:FF:A5:03:01:01:01:AD:13:10", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
-	{ NULL, NULL, NULL, 0, 0, NULL }
+		/* Applet V1.8 */
+		{"3B:7F:96:00:00:80:31:80:65:B0:85:04:01:20:12:0F:FF:82:90:00", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL},
+		/* Applet V1.1 */
+		{"3B:98:13:40:0A:A5:03:01:01:01:AD:13:11",			   NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL},
+		/* Applet V1.0 with new EMV-compatible ATR */
+		{"3B:98:94:40:0A:A5:03:01:01:01:AD:13:10",			   NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL},
+		/* Applet beta 5 + V1.0 */
+		{"3B:98:94:40:FF:A5:03:01:01:01:AD:13:10",			   NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL},
+		{NULL,							  NULL, NULL, 0,			      0, NULL}
 };
 
 static struct sc_card_operations belpic_ops;
