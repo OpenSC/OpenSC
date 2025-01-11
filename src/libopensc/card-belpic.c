@@ -146,8 +146,8 @@ static long t1, t2, tot_read = 0, tot_dur = 0, dur;
 static size_t next_idx = (size_t)-1;
 
 static const struct sc_atr_table belpic_atrs[] = {
-	/* Applet V1.8 -- disabled, as it requires driver updates which are not yet implemented */
-	/* { "3B:7F:96:00:00:80:31:80:65:B0:85:04:01:20:12:0F:FF:82:90:00", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL }, */
+	/* Applet V1.8 */
+	{ "3B:7F:96:00:00:80:31:80:65:B0:85:04:01:20:12:0F:FF:82:90:00", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
 	/* Applet V1.1 */
 	{ "3B:98:13:40:0A:A5:03:01:01:01:AD:13:11", NULL, NULL, SC_CARD_TYPE_BELPIC_EID, 0, NULL },
 	/* Applet V1.0 with new EMV-compatible ATR */
@@ -217,6 +217,7 @@ static int belpic_match_card(sc_card_t *card)
 static int belpic_init(sc_card_t *card)
 {
 	int key_size = 1024;
+	unsigned long flags = 0;
 
 	sc_log(card->ctx,  "Belpic V%s\n", BELPIC_VERSION);
 
@@ -231,11 +232,19 @@ static int belpic_init(sc_card_t *card)
 		if(get_carddata(card, carddata, sizeof(carddata)) < 0) {
 			return SC_ERROR_INVALID_CARD;
 		}
-		if (carddata[BELPIC_CARDDATA_OFF_APPLETVERS] >= 0x17) {
-			key_size = 2048;
+		if (carddata[BELPIC_CARDDATA_OFF_APPLETVERS] >= 0x18) {
+			flags = SC_ALGORITHM_ECDSA_HASH_NONE | SC_ALGORITHM_ECDSA_RAW;
+			_sc_card_add_ec_alg(card, 256, flags, 0, NULL);
+			_sc_card_add_ec_alg(card, 384, flags, 0, NULL);
+			_sc_card_add_ec_alg(card, 512, flags, 0, NULL);
+			_sc_card_add_ec_alg(card, 521, flags, 0, NULL);
+		} else {
+			if (carddata[BELPIC_CARDDATA_OFF_APPLETVERS] >= 0x17) {
+				key_size = 2048;
+			}
+			_sc_card_add_rsa_alg(card, key_size,
+					SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
 		}
-		_sc_card_add_rsa_alg(card, key_size,
-				SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
 	}
 
 	/* State that we have an RNG */
@@ -358,6 +367,14 @@ static int belpic_set_security_env(sc_card_t *card,
 			sbuf[2] = 0x02;
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_MD5)
 			sbuf[2] = 0x04;
+		else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA256)
+			sbuf[2] = 0x01;
+		else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA384)
+			sbuf[2] = 0x02;
+		else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_HASH_SHA512)
+			sbuf[2] = 0x04;
+		else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW)
+			sbuf[2] = 0x40;
 		else {
 			sc_log(card->ctx,  "Set Sec Env: unsupported algo 0X%0lX\n",
 				 env->algorithm_flags);
