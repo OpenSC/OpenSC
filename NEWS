@@ -1,5 +1,17 @@
 NEWS for OpenSC -- History of user visible changes
 
+# New in 0.26.1; 2025-01-14
+
+## General improvements
+* Align allocations of sc_mem_secure_alloc (#3281)
+* Fix -O3 gcc optimization failure on amd64 and ppc64el (#3299)
+
+## pkcs11-spy
+* Avoid crash while spying C_GetInterface() (#3275)
+
+## TCOS
+* Fix reading certificate (#3296)
+
 # New in 0.26.0; 2024-11-13
 
 ## Security
