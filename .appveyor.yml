@@ -1,4 +1,4 @@
-version: 0.26.0.{build}
+version: 0.26.1.{build}
 
 platform:
   - x86
