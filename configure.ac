@@ -1177,8 +1177,6 @@ AC_CONFIG_FILES([
 	src/libopensc/Makefile
 	src/sm/Makefile
 	src/pkcs11/Makefile
-	src/pkcs11/versioninfo-pkcs11.rc
-	src/pkcs11/versioninfo-pkcs11-spy.rc
 	src/pkcs11/opensc-pkcs11.pc
 	src/pkcs15init/Makefile
 	src/scconf/Makefile
@@ -1188,15 +1186,10 @@ AC_CONFIG_FILES([
 	src/tests/fuzzing/Makefile
 	src/tests/unittests/Makefile
 	src/tools/Makefile
-	src/tools/versioninfo-tools.rc
-	src/tools/versioninfo-opensc-notify.rc
 	src/smm/Makefile
 	src/minidriver/Makefile
-	src/minidriver/versioninfo-minidriver.rc
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
-	win32/versioninfo.rc
-	win32/versioninfo-customactions.rc
 	win32/winconfig.h
 	win32/OpenSC.iss
 	win32/OpenSC.wxs

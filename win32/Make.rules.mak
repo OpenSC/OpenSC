@@ -133,7 +133,7 @@ COPTS = /O1 /$(BUILD_TYPE) $(COPTS)
 	cl $(COPTS) /c $<
 
 .rc.res::
-	rc /l 0x0409 $<
+	rc /l 0x0409 /I$(TOPDIR) $<
 
 clean::
 	del /Q *.obj *.dll *.exe *.pdb *.lib *.def *.res

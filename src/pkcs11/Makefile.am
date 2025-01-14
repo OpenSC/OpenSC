@@ -1,7 +1,7 @@
 include $(top_srcdir)/win32/ltrc.inc
 
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/versioninfo-pkcs11.rc $(srcdir)/versioninfo-pkcs11-spy.rc
-EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc.in versioninfo-pkcs11-spy.rc.in opensc-pkcs11.pc.in opensc-pkcs11.dll.manifest
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
+EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc versioninfo-pkcs11-spy.rc opensc-pkcs11.pc.in opensc-pkcs11.dll.manifest
 
 if ENABLE_SHARED
 lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la
