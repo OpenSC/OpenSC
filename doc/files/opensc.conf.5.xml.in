@@ -89,9 +89,6 @@ app <replaceable>application</replaceable> {
 						<literal>cardmod</literal>: Configuration block for Windows' minidriver (<filename>opensc-minidriver.dll</filename>)
 				</para></listitem>
 				<listitem><para>
-						<literal>tokend</literal>: Configuration block for macOS' tokend (<application>OpenSC.tokend</application>)
-				</para></listitem>
-				<listitem><para>
 						<literal>cardos-tool</literal>,
 						<literal>cryptoflex-tool</literal>,
 						<literal>dnie-tool</literal>,
@@ -480,9 +477,6 @@ app <replaceable>application</replaceable> {
 						<itemizedlist>
 							<listitem><para>
 									<literal>pkcs15</literal>: See <xref linkend="framework pkcs15"/>
-							</para></listitem>
-							<listitem><para>
-									<literal>tokend</literal>: See <xref linkend="framework tokend"/>
 							</para></listitem>
 						</itemizedlist>
 					</para>
@@ -1368,8 +1362,7 @@ app <replaceable>application</replaceable> {
 										<literal>ignore</literal>: Ignore PIN-protected certificates.
 								</para></listitem>
 							</itemizedlist>
-							(Default: <literal>ignore</literal> in Tokend,
-							<literal>protect</literal> otherwise).
+							(Default: <literal>protect</literal>.
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>
@@ -1541,22 +1534,6 @@ app <replaceable>application</replaceable> {
 							</varlistentry>
 						</variablelist>
 					</listitem>
-				</varlistentry>
-			</variablelist>
-		</refsect2>
-
-		<refsect2 id="framework tokend">
-			<title>Configuration of Tokend</title>
-			<variablelist>
-				<varlistentry>
-					<term>
-						<option>score = <replaceable>num</replaceable>;</option>
-					</term>
-					<listitem><para>
-							Score for <application>OpenSC.tokend</application>
-							(Default: <literal>300</literal>).  The tokend with
-							the highest score shall be used.
-					</para></listitem>
 				</varlistentry>
 			</variablelist>
 		</refsect2>
