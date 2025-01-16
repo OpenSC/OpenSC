@@ -390,15 +390,15 @@ test_unwrap_aes(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	CK_ULONG key_padded_len = sizeof(key);
 	CK_OBJECT_CLASS keyClass = CKO_SECRET_KEY;
 	CK_KEY_TYPE keyType = CKK_AES;
-	CK_BBOOL true = CK_TRUE;
+	CK_BBOOL _true = CK_TRUE;
 	CK_BYTE new_id[] = {0x00, 0xff, 0x42};
 	CK_BYTE new_label[] = "Unwrapped key";
 	CK_ATTRIBUTE template[] = {
 			{CKA_CLASS, &keyClass, sizeof(keyClass)},
 			{CKA_KEY_TYPE, &keyType, sizeof(keyType)},
-			{CKA_ENCRYPT, &true, sizeof(true)},
-			{CKA_DECRYPT, &true, sizeof(true)},
-			{CKA_TOKEN, &true, sizeof(true)},
+			{CKA_ENCRYPT, &_true, sizeof(_true)},
+			{CKA_DECRYPT, &_true, sizeof(_true)},
+			{CKA_TOKEN, &_true, sizeof(_true)},
 			{CKA_ID, &new_id, sizeof(new_id)},
 			{CKA_LABEL, &new_label, sizeof(new_label)},
 			{CKA_VALUE_LEN, &key_len, sizeof(key_len)}, /* keep this one last! */
