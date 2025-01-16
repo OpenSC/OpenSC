@@ -2034,7 +2034,6 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 			&& card->cache.current_path.type == SC_PATH_TYPE_PATH
 			&& card->cache.current_path.len >= 2
 			&& card->cache.current_path.len <= pathlen) {
-		bMatch = 0;
 		for (i = 0; i < card->cache.current_path.len; i += 2)
 			if (card->cache.current_path.value[i] == path[i]
 					&& card->cache.current_path.value[i + 1] == path[i + 1])

@@ -456,7 +456,6 @@ static int atrust_acos_select_file(struct sc_card *card,
 		    && card->cache.current_path.len >= 2
 		    && card->cache.current_path.len <= pathlen )
 		{
-			bMatch = 0;
 			for (i=0; i < card->cache.current_path.len; i+=2)
 				if (card->cache.current_path.value[i] == path[i]
 				    && card->cache.current_path.value[i+1] == path[i+1] )
