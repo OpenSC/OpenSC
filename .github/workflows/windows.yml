@@ -20,9 +20,16 @@ jobs:
     runs-on: ${{ matrix.image }}
     strategy:
       matrix:
-        platform: [x86, x64]
+        platform: [x86, x64, arm64]
         configuration: [Light, Release]
         image: [windows-2019, windows-2022]
+        include:
+          - platform: x86
+            setenv: amd64_x86
+          - platform: x64
+            setenv: amd64
+          - platform: arm64
+            setenv: amd64_arm64
     env:
       OPENPACE_VER: 1.1.3
     steps:
@@ -34,7 +41,7 @@ jobs:
       - name: Package name
         shell: bash
         run: |
-          echo ARTIFACT=OpenSC-${{ steps.ghd.outputs.tag }}_${{ matrix.platform == 'x86' && 'win32' || 'win64' }}${{ matrix.configuration == 'Light' && '-Light' || '' }} >> $GITHUB_ENV
+          echo ARTIFACT=OpenSC-${{ steps.ghd.outputs.tag }}_${{ matrix.platform }}${{ matrix.configuration == 'Light' && '-Light' || '' }} >> $GITHUB_ENV
       - name: Install CPDK
         run: choco install windows-cryptographic-provider-development-kit -y > $null
       - name: Install autotools
@@ -59,7 +66,7 @@ jobs:
       - name: Setup dev env
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: ${{ matrix.platform }}
+          arch: ${{ matrix.setenv }}
       - name: Prepare vcpkg
         if: matrix.configuration == 'Release'
         uses: lukka/run-vcpkg@v7
