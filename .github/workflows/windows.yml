@@ -20,11 +20,19 @@ jobs:
     runs-on: ${{ matrix.image }}
     strategy:
       matrix:
-        platform: [x86, x64]
+        platform: [x86, x64, arm64]
         configuration: [Light, Release]
         image: [windows-2019, windows-2022]
+        include:
+          - platform: x86
+            setenv: amd64_x86
+          - platform: x64
+            setenv: amd64
+          - platform: arm64
+            setenv: amd64_arm64
     env:
       OPENPACE_VER: 1.1.3
+      VCPKG_INSTALLED: ${{ github.workspace }}\vcpkg_installed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,7 +42,7 @@ jobs:
       - name: Package name
         shell: bash
         run: |
-          echo ARTIFACT=OpenSC-${{ steps.ghd.outputs.tag }}_${{ matrix.platform == 'x86' && 'win32' || 'win64' }}${{ matrix.configuration == 'Light' && '-Light' || '' }} >> $GITHUB_ENV
+          echo ARTIFACT=OpenSC-${{ steps.ghd.outputs.tag }}_${{ matrix.platform }}${{ matrix.configuration == 'Light' && '-Light' || '' }} >> $GITHUB_ENV
       - name: Install CPDK
         run: choco install windows-cryptographic-provider-development-kit -y > $null
       - name: Install autotools
@@ -59,14 +67,17 @@ jobs:
       - name: Setup dev env
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: ${{ matrix.platform }}
+          arch: ${{ matrix.setenv }}
       - name: Prepare vcpkg
         if: matrix.configuration == 'Release'
-        uses: lukka/run-vcpkg@v7
+        uses: lukka/run-vcpkg@v11
         with:
-          vcpkgArguments: zlib openssl
-          vcpkgGitCommitId: 511d74f695bd45959d12b50b00f1b68f69e8f0b0
-          vcpkgTriplet: ${{ matrix.platform }}-windows-static
+          vcpkgGitCommitId: e4644bd15436d406bba71928d086c809e5c9ca45
+          vcpkgJsonGlob: .github/vcpkg.json
+          runVcpkgInstall: true
+        env:
+          VCPKG_DEFAULT_TRIPLET: ${{ matrix.platform }}-windows-static
+          VCPKG_INSTALLED_DIR: ${{ env.VCPKG_INSTALLED }}
       - name: Install WIX
         run: powershell -ExecutionPolicy Bypass -File .github/setup-wix.ps1
       - name: Restore Cache
@@ -82,7 +93,7 @@ jobs:
           Invoke-WebRequest "https://github.com/frankmorgner/openpace/archive/${env:OPENPACE_VER}.zip" -OutFile openpace.zip
           tar xf openpace.zip
           cd openpace-${env:OPENPACE_VER}\src
-          cl /nologo /O1 /Zi /W3 /GS /MT /I${env:RUNVCPKG_VCPKG_ROOT}\installed\${env:RUNVCPKG_VCPKG_TRIPLET}\include /I. `
+          cl /nologo /O1 /Zi /W3 /GS /MT /I${env:VCPKG_INSTALLED}\${env:VCPKG_DEFAULT_TRIPLET}\include /I. `
             /DX509DIR=`"/`" /DCVCDIR=`"/`" /D_CRT_SECURE_NO_DEPRECATE /DWIN32_LEAN_AND_MEAN `
             /DHAVE_ASN1_STRING_GET0_DATA /DHAVE_DECL_OPENSSL_ZALLOC /DHAVE_DH_GET0_KEY /DHAVE_DH_GET0_PQG `
             /DHAVE_DH_SET0_KEY /DHAVE_DH_SET0_PQG /DHAVE_ECDSA_SIG_GET0 /DHAVE_ECDSA_SIG_SET0 `
@@ -98,7 +109,7 @@ jobs:
       - name: Set NMake Variables
         if: matrix.configuration == 'Release'
         run: |
-          $VCPKG_DIR="${env:RUNVCPKG_VCPKG_ROOT}\installed\${env:RUNVCPKG_VCPKG_TRIPLET}"
+          $VCPKG_DIR="${env:VCPKG_INSTALLED}\${env:VCPKG_DEFAULT_TRIPLET}"
           echo "ZLIBSTATIC_DEF=/DENABLE_ZLIB_STATIC" >> $env:GITHUB_ENV
           echo "ZLIB_INCL_DIR=/I${VCPKG_DIR}\include" >> $env:GITHUB_ENV
           echo "ZLIB_LIB=${VCPKG_DIR}\lib\zlib.lib" >> $env:GITHUB_ENV
