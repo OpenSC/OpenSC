@@ -607,7 +607,6 @@ static int entersafe_select_path(sc_card_t *card,
 			card->cache.current_path.type == SC_PATH_TYPE_PATH &&
 			card->cache.current_path.len >= 2 &&
 			card->cache.current_path.len <= pathlen) {
-		bMatch = 0;
 		for (i = 0; i < card->cache.current_path.len; i += 2) {
 			if (card->cache.current_path.value[i] == path[i] &&
 					card->cache.current_path.value[i + 1] == path[i + 1]) {
