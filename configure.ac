@@ -17,7 +17,6 @@ define([VS_FF_LEGAL_COMPANY_URL], [https://github.com/OpenSC])
 define([VS_FF_COMMENTS], [Provided under the terms of the GNU Lesser General Public License (LGPLv2.1+).])
 define([VS_FF_PRODUCT_NAME], [OpenSC smartcard framework])
 define([VS_FF_PRODUCT_UPDATES], [https://github.com/OpenSC/OpenSC/releases])
-define([VS_FF_PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 
 m4_sinclude(m4/version.m4.ci)
 
@@ -40,7 +39,6 @@ OPENSC_VS_FF_COMPANY_URL="VS_FF_LEGAL_COMPANY_URL"
 OPENSC_VS_FF_COMMENTS="VS_FF_COMMENTS"
 OPENSC_VS_FF_PRODUCT_NAME="VS_FF_PRODUCT_NAME"
 OPENSC_VS_FF_PRODUCT_UPDATES="VS_FF_PRODUCT_UPDATES"
-OPENSC_VS_FF_PRODUCT_URL="VS_FF_PRODUCT_URL"
 
 # LT Version numbers, remember to change them just *before* a release.
 #   (Code changed:                      REVISION++)
@@ -1082,7 +1080,6 @@ AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMPANY_NAME], ["${OPENSC_VS_FF_COMPANY_NAME}"]
 AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMMENTS], ["${OPENSC_VS_FF_COMMENTS}"], [OpenSC version-info Comments])
 AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_NAME], ["${OPENSC_VS_FF_PRODUCT_NAME}"], [OpenSC version-info ProductName])
 AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_UPDATES], ["${OPENSC_VS_FF_PRODUCT_UPDATES}"], [OpenSC version-info UpdateURL])
-AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_URL], ["${OPENSC_VS_FF_PRODUCT_URL}"], [OpenSC version-info ProductURL])
 AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMPANY_URL], ["${OPENSC_VS_FF_COMPANY_URL}"], [OpenSC version-info UpdateURL])
 
 pkcs11dir="\$(libdir)/pkcs11"
@@ -1099,7 +1096,6 @@ AC_SUBST([OPENSC_VS_FF_COMPANY_NAME])
 AC_SUBST([OPENSC_VS_FF_COMMENTS])
 AC_SUBST([OPENSC_VS_FF_PRODUCT_NAME])
 AC_SUBST([OPENSC_VS_FF_PRODUCT_UPDATES])
-AC_SUBST([OPENSC_VS_FF_PRODUCT_URL])
 AC_SUBST([OPENSC_VS_FF_COMPANY_URL])
 AC_SUBST([OPENSC_LT_CURRENT])
 AC_SUBST([OPENSC_LT_REVISION])
@@ -1225,7 +1221,7 @@ Company URL:             ${OPENSC_VS_FF_COMPANY_URL}
 Comments:                ${OPENSC_VS_FF_COMMENTS}
 Product name:            ${OPENSC_VS_FF_PRODUCT_NAME}
 Product updates:         ${OPENSC_VS_FF_PRODUCT_UPDATES}
-Product URL:             ${OPENSC_VS_FF_PRODUCT_URL}
+Product URL:             ${PACKAGE_URL}
 
 User binaries:           $(eval eval eval echo "${bindir}")
 Configuration files:     $(eval eval eval echo "${sysconfdir}")
