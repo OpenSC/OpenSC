@@ -3645,6 +3645,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 	size_t iv_size = 0;
 	CK_BYTE_PTR aad = NULL;
 	size_t aad_size = 0;
+	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 	CK_OBJECT_HANDLE hUnwrappingKey;
 	ssize_t sz;
 
@@ -3692,6 +3693,9 @@ unwrap_key(CK_SESSION_HANDLE session)
 		gcm_params.ulTagBits = opt_tag_bits;
 		mechanism.pParameter = &gcm_params;
 		mechanism.ulParameterLen = sizeof(gcm_params);
+		break;
+	case CKM_RSA_PKCS_OAEP:
+		build_rsa_oaep_params(&oaep_params, &mechanism, NULL, 0);
 		break;
 	default:
 		// Nothing to do with other mechanisms.
@@ -3820,6 +3824,7 @@ wrap_key(CK_SESSION_HANDLE session)
 	size_t iv_size = 0;
 	CK_BYTE_PTR aad = NULL;
 	size_t aad_size = 0;
+	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 
 	if (NULL == opt_application_id)
 		util_fatal("Use --application-id to specify secret key (to be wrapped)");
@@ -3848,6 +3853,9 @@ wrap_key(CK_SESSION_HANDLE session)
 		gcm_params.ulTagBits = opt_tag_bits;
 		mechanism.pParameter = &gcm_params;
 		mechanism.ulParameterLen = sizeof(gcm_params);
+		break;
+	case CKM_RSA_PKCS_OAEP:
+		build_rsa_oaep_params(&oaep_params, &mechanism, NULL, 0);
 		break;
 	default:
 		// Nothing to do with other mechanisms.

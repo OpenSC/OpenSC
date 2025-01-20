@@ -76,7 +76,59 @@ cmp plain_wrapped.key aes_plain_key >/dev/null 2>/dev/null
 assert $? "wrapped key after decipher does not match the original key"
 
 echo "======================================================="
-echo " RSA-PKCS Cleanup"
+echo " RSA-PKCS-OAEP Unwrap test"
+echo "======================================================="
+ID4="97"
+ID5="98"
+# Reusing AES key and RSA key for unwrap/wrap operation already generated with ID1 in previous RSA-PKCS Unwrap test
+# Cleanup previously generated output
+rm aes_wrapped_key generic_extracted_key aes_ciphertext_openssl.data aes_ciphertext_pkcs11.data wrapped.key plain_wrapped.key
+
+# wrap AES key with RSA OAEP mode 
+# (SHA1 deprecated by NIST, therefore to be replaced with SHA256 or higher, but SoftHSM only supports SHA1 hash with OAEP currently, so we are stuck with SHA1 for now. Known issue: https://github.com/softhsm/SoftHSMv2/issues/474 .)
+openssl pkeyutl -encrypt -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha1 -pkeyopt rsa_mgf1_md:sha1 -pubin -keyform DER -inkey rsa_pub.key -in aes_plain_key -out aes_wrapped_key
+assert $? "Failed wrap AES key"
+
+# unwrap key by pkcs11 interface, extractable
+# (Same comment as before as to why SHA1 is used here and why it should be replaced with SHA256 as soon as it is supported by SoftHSM in RSA-PKCS-OAEP mode.)
+$PKCS11_TOOL_W_PIN --unwrap -m RSA-PKCS-OAEP --hash-algorithm SHA-1 --mgf MGF1-SHA1 --id $ID1 -i aes_wrapped_key --key-type GENERIC: \
+	--extractable --application-id $ID4 --application-label "unwrap-aes-ex-with-rsa-oaep" 2>/dev/null
+assert $? "Unwrap failed"
+# because key is extractable, there is no problem to compare key value with original key
+$PKCS11_TOOL_W_PIN --id $ID4 --read-object --type secrkey --output-file generic_extracted_key
+assert $? "unable to read key value"
+cmp generic_extracted_key aes_plain_key >/dev/null 2>/dev/null
+assert $? "extracted key does not match the input key"
+
+# unwrap AES key, not extractable
+$PKCS11_TOOL_W_PIN --unwrap -m RSA-PKCS-OAEP --hash-algorithm SHA-1 --mgf MGF1-SHA1 --id $ID1 -i aes_wrapped_key --key-type AES: \
+	--application-id $ID5 --application-label "unwrap-aes-non-ex-with-rsa-oaep" 2>/dev/null
+assert $? "Unwrap failed"
+
+# To check if AES key was correctly unwrapped (non extractable), we do the same as in the RSA-PKCS test.
+openssl enc -aes-128-cbc -nopad -in aes_plain.data -out aes_ciphertext_openssl.data -iv $VECTOR -K $KEY
+assert $? "Fail/Openssl"
+
+$PKCS11_TOOL_W_PIN --encrypt --id $ID5 -m AES-CBC --iv $VECTOR \
+        --input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
+assert $? "Fail/pkcs11-tool encrypt"
+cmp aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data >/dev/null 2>/dev/null
+assert $? "Fail, AES-CBC - wrong encrypt"
+
+echo "======================================================="
+echo " RSA-PKCS-OAEP Wrap test"
+echo "======================================================="
+
+# (Same comment as before as to why SHA1 is used here and why it should be replaced with SHA256 as soon as it is supported by SoftHSM in RSA-PKCS-OAEP mode.)
+$PKCS11_TOOL_W_PIN --wrap -m RSA-PKCS-OAEP --id $ID1 --hash-algorithm SHA-1 --mgf MGF1-SHA1 --application-id $ID4 --output-file wrapped.key
+assert $? "Fail, unable to wrap"
+$PKCS11_TOOL_W_PIN --decrypt -m RSA-PKCS-OAEP --hash-algorithm SHA-1 --mgf MGF1-SHA1 --id $ID1 --input-file wrapped.key --output-file plain_wrapped.key
+assert $? "Fail, unable to decrypt wrapped key"
+cmp plain_wrapped.key aes_plain_key >/dev/null 2>/dev/null
+assert $? "wrapped key after decipher does not match the original key"
+
+echo "======================================================="
+echo " RSA-PKCS / RSA-PKCS-OAEP Cleanup"
 echo "======================================================="
 
 rm rsa_pub.key aes_plain_key aes_wrapped_key aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data aes_plain.data generic_extracted_key wrapped.key plain_wrapped.key
