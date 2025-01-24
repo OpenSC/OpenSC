@@ -5861,9 +5861,9 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	get_token_info(opt_slot, &info);
 	printf("  uri:        %s", get_uri(&info));
 	if (id != NULL && idsize) {
-		printf(";id=%%");
+		printf(";id=");
 		for (unsigned int n = 0; n < idsize; n++)
-			printf("%02x", id[n]);
+			printf("%%%02x", id[n]);
 		free(id);
 	}
 	if (label != NULL) {
@@ -5963,9 +5963,9 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	get_token_info(opt_slot, &info);
 	printf("  uri:        %s", get_uri(&info));
 	if (id != NULL && size) {
-		printf(";id=%%");
+		printf(";id=");
 		for (unsigned int n = 0; n < size; n++)
-			printf("%02x", id[n]);
+			printf("%%%02x", id[n]);
 		free(id);
 	}
 	if (label != NULL) {
