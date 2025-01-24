@@ -546,7 +546,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 	for (i = 0; i < count; i++) {
 		struct sc_cardctl_coolkey_object     coolkey_obj;
 		struct sc_pkcs15_object    obj_obj;
-		struct sc_pkcs15_cert_info cert_info;
+		struct sc_pkcs15_cert_info cert_info = {0};
 		struct sc_pkcs15_pubkey_info pubkey_info;
 		struct sc_pkcs15_prkey_info prkey_info;
 		sc_pkcs15_pubkey_t *key = NULL;
@@ -678,8 +678,12 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		if (r != SC_SUCCESS)
 			sc_log(card->ctx, "sc_pkcs15emu_object_add() returned %d", r);
 fail:
-		if (key) { sc_pkcs15_free_pubkey(key); }
-
+		if (key) {
+			sc_pkcs15_free_pubkey(key);
+		}
+		if (r < 0) {
+			free(cert_info.value.value);
+		}
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS, &count);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize objects.");
