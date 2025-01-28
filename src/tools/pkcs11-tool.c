@@ -6527,7 +6527,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				if (!i2d_PUBKEY_bio(pout, pkey))
 					util_fatal("cannot convert EC public key to DER");
 #endif
-					/* only if compiled with a version of or OpenSSL or libressl */
+					/* only if compiled with a version of OpenSSL or libressl */
 					/* do more tests for the other 3 as needed */
 #ifdef EVP_PKEY_ED25519
 			} else if (type == CKK_EC_EDWARDS || type == CKK_EC_MONTGOMERY) {
@@ -6566,7 +6566,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				value = getEC_POINT(session, obj, &len);
 				/* PKCS11 3.0 errta and 3.1 say Edwards and Montgomery
 				 * return raw byte strings, convert to OCTET string for OpenSSL
-				 * Will asccept as OCTET STRING
+				 * Will asccept as OCTET STRING and BIT_STRING
 				 */
 				a = value;
 				os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
@@ -6576,24 +6576,11 @@ static int read_object(CK_SESSION_HANDLE session)
 						len = BYTES4BITS(len);
 				}
 				if (!os) {
-					size_t buflen = 0;
-					unsigned char *buf = NULL;
-					unsigned char *in = value;
-
-					if (sc_pkcs15_encode_pubkey_eddsa_raw_to_os(NULL,
-							    in, (size_t)len,
-							    &buf, &buflen) != 0) {
-						util_fatal("cannot obtain EC POINT");
+					if ((os = ASN1_OCTET_STRING_new()) == NULL)
+						util_fatal("cannot decode EC_POINT");
+					if (ASN1_OCTET_STRING_set(os, value, (long)len) == 0) {
+						util_fatal("cannot decode EC_POINT");
 					}
-					a = buf;
-					if ((os = d2i_ASN1_OCTET_STRING(NULL, &a,
-							     (long)buflen)) == NULL) {
-						util_fatal("cannot obtain EC POINT");
-					}
-					free(buf);
-				}
-				if (!os) {
-					util_fatal("cannot decode EC_POINT");
 				}
 
 				if (type == CKK_EC_EDWARDS && os->length == BYTES4BITS(255))
