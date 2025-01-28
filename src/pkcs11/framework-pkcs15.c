@@ -6076,24 +6076,20 @@ get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	case SC_ALGORITHM_EDDSA:
 	case SC_ALGORITHM_XEDDSA:
 		/* For PKCS11 3.0 errata and 3.1, Edwards and Montgomery EC_POINT is raw byte string */
-		rc = sc_pkcs15_encode_pubkey_eddsa_raw(context, &key->u.ec, &value, &value_len);
-		if (rc != SC_SUCCESS)
-			return sc_to_cryptoki_error(rc, NULL);
+		/* key->key->u.ec.ecpointQ is raw byte string */
+		if (key->u.ec.ecpointQ.value == NULL || key->u.ec.ecpointQ.len == 0)
+			return CKR_ATTRIBUTE_TYPE_INVALID;
 
 		if (attr->pValue == NULL_PTR) {
-			attr->ulValueLen = value_len;
-			free(value);
+			attr->ulValueLen = key->u.ec.ecpointQ.len;
 			return CKR_OK;
 		}
-		if (attr->ulValueLen < value_len) {
-			attr->ulValueLen = value_len;
-			free(value);
+		if (attr->ulValueLen < key->u.ec.ecpointQ.len) {
+			attr->ulValueLen = key->u.ec.ecpointQ.len;
 			return CKR_BUFFER_TOO_SMALL;
 		}
-		attr->ulValueLen = value_len;
-
-		memcpy(attr->pValue, value, value_len);
-		free(value);
+		attr->ulValueLen = key->u.ec.ecpointQ.len;
+		memcpy(attr->pValue, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
 		return CKR_OK;
 
 	case SC_ALGORITHM_EC:
