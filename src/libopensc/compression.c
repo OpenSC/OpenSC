@@ -210,6 +210,7 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 		if (!buf) {
 			free(*out);
 			*out = NULL;
+			inflateEnd(&gz);
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
 		*out = buf;
