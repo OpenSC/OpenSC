@@ -706,10 +706,6 @@ int sc_pkcs15_encode_pubkey_ec(struct sc_context *,
 		struct sc_pkcs15_pubkey_ec *, u8 **, size_t *);
 int sc_pkcs15_encode_pubkey_eddsa(struct sc_context *,
 		struct sc_pkcs15_pubkey_ec *, u8 **, size_t *);
-int sc_pkcs15_encode_pubkey_eddsa_raw_to_os(struct sc_context *,
-		u8 *in, size_t inlen, u8 **, size_t *);
-int sc_pkcs15_encode_pubkey_eddsa_raw(struct sc_context *,
-		struct sc_pkcs15_pubkey_ec *, u8 **, size_t *);
 int sc_pkcs15_decode_pubkey(struct sc_context *,
 		struct sc_pkcs15_pubkey *, const u8 *, size_t);
 int sc_pkcs15_encode_pubkey(struct sc_context *,
