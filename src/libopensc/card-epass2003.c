@@ -110,6 +110,7 @@ typedef struct epass2003_exdata_st {
 	unsigned char sk_mac[16];	/* mac session key */
 	unsigned char icv_mac[16];	/* instruction counter vector(for sm) */
 	unsigned char bFipsCertification;	/* fips mode Alg */
+	unsigned char bFips2;		/* TAG 81 02 1D D4 type card */
 	unsigned char currAlg;		/* current Alg */
 	unsigned int  ecAlgFlags; 	/* Ec Alg mechanism type*/
 } epass2003_exdata;
@@ -266,10 +267,15 @@ epass2003_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 static int
 sc_transmit_apdu_t(sc_card_t *card, sc_apdu_t *apdu)
 {
+	int r;
 	size_t resplen = apdu->resplen;
-	int r = sc_transmit_apdu(card, apdu);
-	if ((0x69 == apdu->sw1 && 0x85 == apdu->sw2) || (0x69 == apdu->sw1 && 0x88 == apdu->sw2)) {
-		epass2003_refresh(card);
+
+	r = sc_transmit_apdu(card, apdu);
+	if (apdu && (((0x69 == apdu->sw1) && (0x85 == apdu->sw2)) || ((0x69 == apdu->sw1) && (0x88 == apdu->sw2))))
+	{
+		r = epass2003_refresh(card);
+		LOG_TEST_RET(card->ctx, r, "epass2003_refresh failed");
+		
 		/* renew old resplen */
 		apdu->resplen = resplen;
 		r = sc_transmit_apdu(card, apdu);
@@ -338,12 +344,13 @@ out:
 	return r;
 }
 
+/* NIST SP 800-38B 6.2 MAC Generation but uses AES-128-ECB for k1 and k2 */ 
 static int
 aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysize,
 	const unsigned char *input, size_t length, unsigned char *output,unsigned char *iv)
 {
-	unsigned char data1[32] = {0};
-	unsigned char data2[32] = {0};
+	unsigned char data1[32] = {0}; /* last 16 bytes if no padding needed */
+	unsigned char data2[32] = {0}; /* last 16 bytes if paded xor with k2 */
 	unsigned char k1Bin[32] = {0};
 	unsigned char k2Bin[32] = {0};
 
@@ -402,6 +409,8 @@ aes128_encrypt_cmac_ft(struct sc_card *card, const unsigned char *key, int keysi
 	for (int i = 0; i < 16; i++) {
 		data2[i] = data2[i] ^ k2Bin[offset + i];
 	}
+	sc_evp_cipher_free(alg);
+	alg = sc_evp_cipher(card->ctx, "AES-128-CBC");
 	r = openssl_enc(alg, key, iv, data2, 16, output);
 	sc_evp_cipher_free(alg);
 	if (r != SC_SUCCESS)
@@ -932,11 +941,14 @@ epass2003_refresh(struct sc_card *card)
 
 	exdata = (epass2003_exdata *)card->drv_data;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	if (exdata->sm) {
 		card->sm_ctx.sm_mode = 0;
+		memset(exdata->icv_mac, 0, sizeof(exdata->icv_mac));
 		r = mutual_auth(card, g_init_key_enc, g_init_key_mac);
-		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 		LOG_TEST_RET(card->ctx, r, "mutual_auth failed");
+		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 	}
 
 	return r;
@@ -955,6 +967,8 @@ construct_data_tlv(struct sc_card *card, struct sc_apdu *apdu, unsigned char *ap
 	unsigned char iv[16] = {0};
 	epass2003_exdata *exdata = NULL;
 	int r = 0;
+
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1038,6 +1052,8 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 	int i = (KEY_TYPE_AES == key_type ? 15 : 7);
 	epass2003_exdata *exdata = NULL;
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
@@ -1073,9 +1089,11 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 	memcpy(icv, exdata->icv_mac, 16);
 	if (KEY_TYPE_AES == key_type) {
 		if (exdata->bFipsCertification) {
+			sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input - aes128_encrypt_cmac", apdu_buf, data_tlv_len+le_tlv_len+block_size);
 			for (int i = 0; i < 16; i++) {
 				apdu_buf[i] = apdu_buf[i] ^ icv[i];
 			}
+			sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input - aes128_encrypt_cmac", apdu_buf, data_tlv_len+le_tlv_len+block_size);
 			r = aes128_encrypt_cmac(card, exdata->sk_mac, 128, apdu_buf, data_tlv_len + le_tlv_len + block_size, mac);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac failed");
 			memcpy(mac_tlv + 2, &mac[0 /*ulmacLen-16*/], 8);
@@ -1083,6 +1101,7 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 				apdu_buf[j] = apdu_buf[j] ^ icv[j];
 			}
 		} else {
+			sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input - aes128_encrypt_cbc", apdu_buf, mac_len);
 			r = aes128_encrypt_cbc(card, exdata->sk_mac, 16, icv, apdu_buf, mac_len, mac);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cbc failed");
 			memcpy(mac_tlv + 2, &mac[mac_len - 16], 8);
@@ -1090,11 +1109,14 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 	} else {
 		unsigned char iv[EVP_MAX_IV_LENGTH] = {0};
 		unsigned char tmp[8] = {0};
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input - case1 des_encrypt_cbc-1", apdu_buf, mac_len);
 		r = des_encrypt_cbc(card, exdata->sk_mac, 8, icv, apdu_buf, mac_len, mac);
 		LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc 1 failed");
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - des_encrypt_cbc-2", &mac[mac_len - 8], 8);
 		r = des_decrypt_cbc(card, &exdata->sk_mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
 		LOG_TEST_RET(card->ctx, r, "des_decrypt_cbc failed");
 		memset(iv, 0x00, sizeof iv);
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - des_encrypt_cbc-3",  tmp, 8);
 		r = des_encrypt_cbc(card, exdata->sk_mac, 8, iv, tmp, 8, mac_tlv + 2);
 		LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc 2 failed");
 	}
@@ -1114,8 +1136,9 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
 	size_t mac_len;
 	int i = (KEY_TYPE_AES == key_type ? 15 : 7);
 	unsigned char icv[16] = {0};
-
 	epass2003_exdata *exdata = NULL;
+
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (!card->drv_data)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1148,12 +1171,14 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
 	memcpy(icv, exdata->icv_mac, 16);
 	if (KEY_TYPE_AES == key_type) {
 		if (exdata->bFipsCertification) {
+			sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - ^icv aes128_encrypt_cmac_ft", apdu_buf, data_tlv_len + le_tlv_len + block_size);
 			r = aes128_encrypt_cmac_ft(card, exdata->sk_mac, 128, apdu_buf, data_tlv_len + le_tlv_len + block_size, mac, &icv[0]);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cmac_ft failed");
 			memcpy(mac_tlv + 2, &mac[0 /*ulmacLen-16*/], 8);
 		} else {
 			if (mac_len < 16)
 				LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "incorrect mac length");
+			sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - aes128_encrypt_cbc", apdu_buf, mac_len);
 			r = aes128_encrypt_cbc(card, exdata->sk_mac, 16, icv, apdu_buf, mac_len, mac);
 			LOG_TEST_RET(card->ctx, r, "aes128_encrypt_cbc failed");
 			memcpy(mac_tlv + 2, &mac[mac_len - 16], 8);
@@ -1163,11 +1188,14 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
 		unsigned char tmp[8] = {0};
 		if (mac_len < 8)
 			LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "incorrect mac length");
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input - case1 des_encrypt_cbc-1", apdu_buf, mac_len);
 		r = des_encrypt_cbc(card, exdata->sk_mac, 8, icv, apdu_buf, mac_len, mac);
 		LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc  failed");
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - des_encrypt_cbc-2", &mac[mac_len - 8], 8);
 		r = des_decrypt_cbc(card, &exdata->sk_mac[8], 8, iv, &mac[mac_len - 8], 8, tmp);
 		LOG_TEST_RET(card->ctx, r, "des_decrypt_cbc failed");
 		memset(iv, 0x00, sizeof iv);
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM data input case1 - des_encrypt_cbc-3",  tmp, 8);
 		r = des_encrypt_cbc(card, exdata->sk_mac, 8, iv, tmp, 8, mac_tlv + 2);
 		LOG_TEST_RET(card->ctx, r, "des_encrypt_cbc failed");
 	}
@@ -1206,6 +1234,8 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 	exdata = (epass2003_exdata*)card->drv_data;
 	block_size = (KEY_TYPE_DES == exdata->smtype ? 16 : 8);
 
+	LOG_FUNC_CALLED(card->ctx);
+
 	sm->cse = SC_APDU_CASE_4_SHORT;
 	apdu_buf[0] = (unsigned char)plain->cla;
 	apdu_buf[1] = (unsigned char)plain->ins;
@@ -1214,6 +1244,7 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 	/* plain_le = plain->le; */
 	/* padding */
 	if (exdata->bFipsCertification && plain->lc == 0 && apdu_buf[1] == 0x82 && apdu_buf[2] == 0x01) {
+	
 		apdu_buf[4] = 0x00;
 	} else {
 		apdu_buf[4] = 0x80;
@@ -1269,6 +1300,8 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 
 	*apdu_buf_len += 4 + tmp_lc + data_tlv_len + le_tlv_len + mac_tlv_len + tmp_le;
 	/* sm->le = calc_le(plain_le); */
+
+	sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "SM DATA with MAC", apdu_buf, *apdu_buf_len);
 	return 0;
 }
 
@@ -1688,6 +1721,7 @@ static int epass2003_match_card(struct sc_card *card)
 static int
 epass2003_init(struct sc_card *card)
 {
+	int r = 0;
 	unsigned int flags;
 	unsigned int ext_flags;
 	unsigned char data[SC_MAX_APDU_BUFFER_SIZE] = {0};
@@ -1720,6 +1754,10 @@ epass2003_init(struct sc_card *card)
 		exdata->bFipsCertification = 0x00;
 	}
 
+	if (memcmp(&data[3],"\x81\x02\x1D\xD4",4) == 0) {
+		exdata->bFips2 = 0x01;
+	}
+
 	if (0x01 == data[2])
 		exdata->smtype = KEY_TYPE_AES;
 	else
@@ -1740,9 +1778,10 @@ epass2003_init(struct sc_card *card)
 	card->sm_ctx.ops.free_sm_apdu = epass2003_sm_free_wrapped_apdu;
 
 	/* FIXME (VT): rather then set/unset 'g_sm', better to implement filter for APDUs to be wrapped */
-	epass2003_refresh(card);
-
-	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
+	r =epass2003_refresh(card);
+	if (r < 0) {
+		sc_log(card->ctx, "epass2003_refresh failed: %d continue without SM", r);
+	}
 
 	flags = SC_ALGORITHM_ONBOARD_KEY_GEN | SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_HASH_NONE;
 
@@ -2690,7 +2729,6 @@ epass2003_create_file(struct sc_card *card, sc_file_t * file)
 	apdu.lc = len;
 	apdu.datalen = len;
 	apdu.data = sbuf;
-
 	r = sc_transmit_apdu_t(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -3056,6 +3094,7 @@ epass2003_erase_card(struct sc_card *card)
 	static const unsigned char mf_path[2] = { 0x3f, 0x00 };
 	sc_apdu_t apdu;
 	int r;
+	int saved_sm_mode = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
 	sc_invalidate_cache(card);
@@ -3065,7 +3104,13 @@ epass2003_erase_card(struct sc_card *card)
 	apdu.cla = 0x80;
 	apdu.data = install_magic_pin;
 	apdu.datalen = apdu.lc = sizeof(install_magic_pin);
+
+	saved_sm_mode = card->sm_ctx.sm_mode;
+        card->sm_ctx.sm_mode = 0;
+
 	r = sc_transmit_apdu(card, &apdu);
+	card->sm_ctx.sm_mode = saved_sm_mode;
+
 	LOG_TEST_RET(card->ctx, r, "APDU install magic pin failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "install magic pin failed");
@@ -3176,6 +3221,8 @@ get_external_key_retries(struct sc_card *card, unsigned char kid, unsigned char 
 	int r;
 	struct sc_apdu apdu;
 	unsigned char random[16] = {0};
+
+	LOG_FUNC_CALLED(card->ctx);
 
 	r = sc_get_challenge(card, random, 8);
 	LOG_TEST_RET(card->ctx, r, "get challenge get_external_key_retries failed");
