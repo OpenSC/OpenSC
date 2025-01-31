@@ -163,6 +163,15 @@ const unsigned int gostr3410_paramset_B_oid[] = {1, 2, 643, 2, 2, 35, 2, (unsign
 const CK_BYTE gostr3410_paramset_C_encoded_oid[] = { 0x06, 0x07, 0x2a, 0x85, 0x03, 0x02, 0x02, 0x23, 0x03 };
 const unsigned int gostr3410_paramset_C_oid[] = {1, 2, 643, 2, 2, 35, 3, (unsigned int)-1};
 
+#ifdef ENABLE_OPENSSL
+// clang-format off
+static const struct sc_object_id oid_ED25519 = { { 1, 3, 101, 112, -1 } };
+static const struct sc_object_id oid_ED448 = { { 1, 3, 101, 113, -1 } };
+static const struct sc_object_id oid_X25519 = { { 1, 3, 101, 110, -1 } };
+static const struct sc_object_id oid_X448 = { { 1, 3, 101, 111, -1 } };
+// clang-format on
+#endif /* ENABLE_OPENSSL */
+
 static const struct {
 	const CK_BYTE *encoded_oid;
 	const unsigned int encoded_oid_size;
@@ -2367,12 +2376,12 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 			break;
 		case CKK_EC_EDWARDS:
 			args.key.algorithm = SC_ALGORITHM_EDDSA;
-			/* TODO */
-			return CKR_ATTRIBUTE_VALUE_INVALID;
+			ec = &args.key.u.ec;
+			break;
 		case CKK_EC_MONTGOMERY:
 			args.key.algorithm = SC_ALGORITHM_XEDDSA;
-			/* TODO */
-			return CKR_ATTRIBUTE_VALUE_INVALID;
+			ec = &args.key.u.ec;
+			break;
 		case CKK_EC:
 			args.key.algorithm = SC_ALGORITHM_EC;
 			ec = &args.key.u.ec;
@@ -2414,15 +2423,21 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 		case CKA_VALUE:
 			if (key_type == CKK_GOSTR3410)
 				bn = &gost->d;
-			if (key_type == CKK_EC)
+			else if (key_type == CKK_EC ||
+					key_type == CKK_EC_EDWARDS ||
+					key_type == CKK_EC_MONTGOMERY) {
 				bn = &ec->privateD;
+			}
 			break;
 		case CKA_EC_PARAMS:
 			ec->params.der.value = calloc(1, attr->ulValueLen);
 			ec->params.der.len = attr->ulValueLen;
 			rv = attr_extract(attr, ec->params.der.value, &ec->params.der.len);
-			if (rv != CKR_OK)
+			if (rv != CKR_OK) {
+				free(ec->params.der.value);
+				ec->params.der.value = NULL;
 				goto out;
+			}
 			if (sc_pkcs15_fix_ec_parameters(p11card->card->ctx, &ec->params) != SC_SUCCESS)
 				return CKR_ATTRIBUTE_VALUE_INVALID;
 			break;
@@ -2476,9 +2491,10 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 			rv = sc_to_cryptoki_error(rc, "C_CreateObject");
 			goto out;
 		}
-	}
-	else if (key_type == CKK_EC)   {
-		if (!ec->privateD.len || !ec->params.field_length)   {
+	} else if (key_type == CKK_EC ||
+			key_type == CKK_EC_EDWARDS ||
+			key_type == CKK_EC_MONTGOMERY) {
+		if (!ec->privateD.len || !ec->params.field_length) {
 			sc_log(context, "Template to store the EC private key is incomplete");
 			return CKR_TEMPLATE_INCOMPLETE;
 		}
@@ -2486,11 +2502,11 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 
 	rc = sc_pkcs15init_store_private_key(fw_data->p15_card, profile, &args, &key_obj);
 	/* free args now */
-	if (key_type == CKK_EC) {
+	if (key_type == CKK_EC ||
+			key_type == CKK_EC_EDWARDS ||
+			key_type == CKK_EC_MONTGOMERY) {
+		sc_clear_ec_params(&ec->params);
 		/* allocated above */
-		free(ec->params.der.value);
-		/* in sc_pkcs15_fix_ec_parameters() */
-		free(ec->params.named_curve);
 	}
 	if (rc < 0) {
 		rv = sc_to_cryptoki_error(rc, "C_CreateObject");
@@ -2748,9 +2764,13 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			ec = &args.key.u.ec;
 			break;
 		case CKK_EC_EDWARDS:
+			args.key.algorithm = SC_ALGORITHM_EDDSA;
+			ec = &args.key.u.ec;
+			break;
 		case CKK_EC_MONTGOMERY:
-			/* TODO: -DEE Do not have real pkcs15 card with EC */
-			/* fall through */
+			args.key.algorithm = SC_ALGORITHM_XEDDSA;
+			ec = &args.key.u.ec;
+			break;
 		default:
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 	}
@@ -2792,17 +2812,45 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_WRAP);
 			break;
 		case CKA_EC_POINT:
-			if (key_type == CKK_EC) {
-				if (sc_pkcs15_decode_pubkey_ec(p11card->card->ctx, ec, attr->pValue, attr->ulValueLen) < 0)
+			switch (key_type) {
+			case CKK_EC:
+				if (sc_pkcs15_decode_pubkey_ec(p11card->card->ctx, ec, attr->pValue, attr->ulValueLen) < 0) {
+					free(ec->ecpointQ.value);
+					ec->ecpointQ.value = NULL;
+					ec->ecpointQ.len = 0;
+					sc_clear_ec_params(&ec->params);
 					return CKR_ATTRIBUTE_VALUE_INVALID;
+				}
+
+				break;
+			case CKK_EC_EDWARDS:
+			case CKK_EC_MONTGOMERY:
+				/* TODO my need to decode here too to support OS vs BS */
+				/* Difference between 25519 and 448 versions set by ec->ecpointQ.len below */
+				ec->ecpointQ.value = calloc(1, attr->ulValueLen);
+				ec->ecpointQ.len = attr->ulValueLen;
+				rv = attr_extract(attr, ec->ecpointQ.value, &ec->ecpointQ.len);
+				if (rv != CKR_OK) {
+					free(ec->ecpointQ.value);
+					ec->ecpointQ.value = NULL;
+					ec->ecpointQ.len = 0;
+					sc_clear_ec_params(&ec->params);
+					return CKR_ATTRIBUTE_VALUE_INVALID;
+				}
+				break;
+
+			default:
+				return CKR_ATTRIBUTE_VALUE_INVALID;
 			}
 			break;
 		case CKA_EC_PARAMS:
 			ec->params.der.value = calloc(1, attr->ulValueLen);
 			ec->params.der.len = attr->ulValueLen;
 			rv = attr_extract(attr, ec->params.der.value, &ec->params.der.len);
-			if (rv != CKR_OK)
+			if (rv != CKR_OK) {
+				sc_clear_ec_params(&ec->params);
 				return CKR_ATTRIBUTE_VALUE_INVALID;
+			}
 			break;
 		default:
 			/* ignore unknown attrs, or flag error? */
@@ -2817,12 +2865,32 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		}
 	}
 
+	if (key_type == CKK_EC_EDWARDS) {
+		if (ec->ecpointQ.len == BYTES4BITS(255))
+			ec->params.id = oid_ED25519;
+		else if (ec->ecpointQ.len == BYTES4BITS(448))
+			ec->params.id = oid_ED448;
+		else
+			return CKR_ATTRIBUTE_VALUE_INVALID;
+
+	} else if (key_type == CKK_EC_MONTGOMERY) {
+		if (ec->ecpointQ.len == BYTES4BITS(255))
+			ec->params.id = oid_X25519;
+		else if (ec->ecpointQ.len == BYTES4BITS(448))
+			ec->params.id = oid_X448;
+		else
+			return CKR_ATTRIBUTE_VALUE_INVALID;
+	}
+
 	if (key_type == CKK_RSA) {
 		if (!rsa->modulus.len || !rsa->exponent.len)
 			return CKR_TEMPLATE_INCOMPLETE;
-	}
-	else if (key_type == CKK_EC) {
-		if (!ec->ecpointQ.len || !ec->params.der.value)   {
+	} else if (key_type == CKK_EC ||
+			key_type == CKK_EC_EDWARDS ||
+			key_type == CKK_EC_MONTGOMERY) {
+		rc = sc_pkcs15_fix_ec_parameters(p11card->card->ctx, &ec->params);
+
+		if (rc || !ec->ecpointQ.len || !ec->params.der.value) {
 			sc_log(context, "Template to store the EC public key is incomplete");
 			return CKR_TEMPLATE_INCOMPLETE;
 		}
@@ -2830,12 +2898,10 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 
 	rc = sc_pkcs15init_store_public_key(fw_data->p15_card, profile, &args, &key_obj);
 	/* free args now */
-	if (key_type == CKK_EC) {
-		/* allocated above */
-		free(ec->params.der.value);
-		/* in sc_pkcs15_fix_ec_parameters() */
-		free(ec->params.named_curve);
-		/* in sc_pkcs15_decode_pubkey_ec() */
+	if (key_type == CKK_EC ||
+			key_type == CKK_EC_EDWARDS ||
+			key_type == CKK_EC_MONTGOMERY) {
+		sc_clear_ec_params(&ec->params);
 		free(ec->ecpointQ.value);
 	}
 	if (rc < 0)
@@ -3384,44 +3450,38 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		if (rv != CKR_OK)
 			keybits = 1024; /* Default key size */
 		/* TODO: check allowed values of keybits */
-	}
-	else if (keytype == CKK_EC)   {
+	} else if (keytype == CKK_EC || keytype == CKK_EC_EDWARDS || keytype == CKK_EC_MONTGOMERY) {
 		struct sc_lv_data *der = &keygen_args.prkey_args.key.u.ec.params.der;
 		void *ptr = NULL;
 
-		der->len = sizeof(struct sc_object_id);
 		rv = attr_find_and_allocate_ptr(pPubTpl, ulPubCnt, CKA_EC_PARAMS, &ptr, &der->len);
 		der->value = (unsigned char *) ptr;
 		if (rv != CKR_OK)   {
 			sc_unlock(p11card->card);
 			return rv;
 		}
-
-		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EC;
-		pub_args.key.algorithm               = SC_ALGORITHM_EC;
-	}
-	else if (keytype == CKK_EC_EDWARDS) {
-		/* TODO Validate EC_PARAMS contains curveName "edwards25519" or "edwards448" (from RFC 8032)
-		 * or id-Ed25519 or id-Ed448 (or equivalent OIDs in oId field) (from RFC 8410)
-		 * otherwise return CKR_CURVE_NOT_SUPPORTED
-		 */
-		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EDDSA;
-		pub_args.key.algorithm               = SC_ALGORITHM_EDDSA;
-		return CKR_CURVE_NOT_SUPPORTED;
-	}
-	else if (keytype == CKK_EC_MONTGOMERY) {
-		/* TODO Validate EC_PARAMS contains curveName "curve25519" or "curve448" (from RFC 7748)
-		 * or id-X25519 or id-X448 (or equivalent OIDs in oId field) (from RFC 8410)
-		 * otherwise return CKR_CURVE_NOT_SUPPORTED
-		 */
-		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_XEDDSA;
-		pub_args.key.algorithm               = SC_ALGORITHM_XEDDSA;
-		return CKR_CURVE_NOT_SUPPORTED;
-	}
-	else   {
+		if (sc_pkcs15_fix_ec_parameters(context, &keygen_args.prkey_args.key.u.ec.params) < 0) {
+			rv = CKR_CURVE_NOT_SUPPORTED;
+			goto kpgen_done;
+		}
+	} else {
 		/* CKA_KEY_TYPE is set, but keytype isn't correct */
 		rv = CKR_ATTRIBUTE_VALUE_INVALID;
 		goto kpgen_done;
+	}
+
+	if (keytype == CKK_EC) {
+		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EC;
+		pub_args.key.algorithm               = SC_ALGORITHM_EC;
+	} else if (keytype == CKK_EC_EDWARDS) {
+		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EDDSA;
+		keygen_args.prkey_args.usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
+		pub_args.key.algorithm = SC_ALGORITHM_EDDSA;
+	} else if (keytype == CKK_EC_MONTGOMERY) {
+		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_XEDDSA;
+		/* Can not sign. To created a cert, see: openssl x509 -force_pubkey */
+		keygen_args.prkey_args.usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
+		pub_args.key.algorithm = SC_ALGORITHM_XEDDSA;
 	}
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
@@ -3516,6 +3576,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	rv = sc_pkcs15_dup_pubkey(context, ((struct pkcs15_pubkey_object *)pub_any_obj)->pub_data, &priv_prk_obj->pub_data);
 
 kpgen_done:
+	sc_pkcs15_erase_prkey(&keygen_args.prkey_args.key);
 	sc_pkcs15init_unbind(profile);
 	sc_unlock(p11card->card);
 
@@ -4937,6 +4998,7 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		case CKA_MODULUS_BITS:
 		case CKA_VALUE:
 		case CKA_SPKI:
+		case CKA_PUBLIC_KEY_INFO:
 		case CKA_PUBLIC_EXPONENT:
 		case CKA_EC_PARAMS:
 		case CKA_EC_POINT:
@@ -5063,26 +5125,25 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 	 */
 	case CKA_VALUE:
 	case CKA_SPKI:
+	case CKA_PUBLIC_KEY_INFO:
 
-		if (attr->type != CKA_SPKI && pubkey->pub_info && pubkey->pub_info->direct.raw.value && pubkey->pub_info->direct.raw.len)   {
+		if (attr->type != CKA_SPKI && attr->type != CKA_PUBLIC_KEY_INFO && pubkey->pub_info && pubkey->pub_info->direct.raw.value && pubkey->pub_info->direct.raw.len) {
 			check_attribute_buffer(attr, pubkey->pub_info->direct.raw.len);
 			memcpy(attr->pValue, pubkey->pub_info->direct.raw.value, pubkey->pub_info->direct.raw.len);
-		}
-		else if (pubkey->pub_info && pubkey->pub_info->direct.spki.value && pubkey->pub_info->direct.spki.len)   {
+		} else if (pubkey->pub_info && pubkey->pub_info->direct.spki.value && pubkey->pub_info->direct.spki.len) {
 			check_attribute_buffer(attr, pubkey->pub_info->direct.spki.len);
 			memcpy(attr->pValue, pubkey->pub_info->direct.spki.value, pubkey->pub_info->direct.spki.len);
-		}
-		else if (pubkey->pub_data)   {
+		} else if (pubkey->pub_data) {
 			unsigned char *value = NULL;
 			size_t len;
 
-			if (attr->type != CKA_SPKI) {
+			if (attr->type != CKA_SPKI && attr->type != CKA_PUBLIC_KEY_INFO) {
 				if (sc_pkcs15_encode_pubkey(context, pubkey->pub_data, &value, &len))
 					return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
-				} else {
-					if (sc_pkcs15_encode_pubkey_as_spki(context, pubkey->pub_data, &value, &len))
+			} else {
+				if (sc_pkcs15_encode_pubkey_as_spki(context, pubkey->pub_data, &value, &len))
 					return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_GetAttributeValue");
-				}
+			}
 
 			if (attr->pValue == NULL_PTR) {
 				attr->ulValueLen = len;
@@ -5098,16 +5159,13 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 			memcpy(attr->pValue, value, len);
 
 			free(value);
-		}
-		else if (attr->type != CKA_SPKI && pubkey->base.p15_object && pubkey->base.p15_object->content.value && pubkey->base.p15_object->content.len)   {
+		} else if (attr->type != CKA_SPKI && attr->type != CKA_PUBLIC_KEY_INFO && pubkey->base.p15_object && pubkey->base.p15_object->content.value && pubkey->base.p15_object->content.len) {
 			check_attribute_buffer(attr, pubkey->base.p15_object->content.len);
 			memcpy(attr->pValue, pubkey->base.p15_object->content.value, pubkey->base.p15_object->content.len);
-		}
-		else if (cert && cert->cert_data) {
+		} else if (cert && cert->cert_data) {
 			check_attribute_buffer(attr, cert->cert_data->data.len);
 			memcpy(attr->pValue, cert->cert_data->data.value, cert->cert_data->data.len);
-		}
-		else   {
+		} else {
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
 		break;
@@ -6017,24 +6075,21 @@ get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	switch (key->algorithm) {
 	case SC_ALGORITHM_EDDSA:
 	case SC_ALGORITHM_XEDDSA:
-		rc = sc_pkcs15_encode_pubkey_eddsa(context, &key->u.eddsa, &value, &value_len);
-		if (rc != SC_SUCCESS)
-			return sc_to_cryptoki_error(rc, NULL);
+		/* For PKCS11 3.0 errata and 3.1, Edwards and Montgomery EC_POINT is raw byte string */
+		/* key->key->u.ec.ecpointQ is raw byte string */
+		if (key->u.ec.ecpointQ.value == NULL || key->u.ec.ecpointQ.len == 0)
+			return CKR_ATTRIBUTE_TYPE_INVALID;
 
 		if (attr->pValue == NULL_PTR) {
-			attr->ulValueLen = value_len;
-			free(value);
+			attr->ulValueLen = key->u.ec.ecpointQ.len;
 			return CKR_OK;
 		}
-		if (attr->ulValueLen < value_len) {
-			attr->ulValueLen = value_len;
-			free(value);
+		if (attr->ulValueLen < key->u.ec.ecpointQ.len) {
+			attr->ulValueLen = key->u.ec.ecpointQ.len;
 			return CKR_BUFFER_TOO_SMALL;
 		}
-		attr->ulValueLen = value_len;
-
-		memcpy(attr->pValue, value, value_len);
-		free(value);
+		attr->ulValueLen = key->u.ec.ecpointQ.len;
+		memcpy(attr->pValue, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
 		return CKR_OK;
 
 	case SC_ALGORITHM_EC:

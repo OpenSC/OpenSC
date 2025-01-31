@@ -13,6 +13,9 @@ fi
 card_setup
 assert $? "Failed to set up card"
 
+# To add Ed25519 will require OpenSSL 3.2 and use of genpkey -outpubkey
+# which will also work for other keys, and will not require openssl pkey 
+
 for KEYTYPE in "RSA" "EC"; do
     echo "======================================================="
     echo "Generate and import $KEYTYPE keys"

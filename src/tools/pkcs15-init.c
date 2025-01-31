@@ -720,21 +720,40 @@ static const struct alg_spec alg_types_sym[] = {
 	{ NULL, -1, 0 }
 };
 
+// clang-format off
+/* RSA can have a number , default is 2048 */
+/* EC require a curve name */
+/* EDDSA and XEDDSA  without a size require a size or curve name or OID */
+/* other EDDSA and XEDDSA can be used alone */
 static const struct alg_spec alg_types_asym[] = {
-	{ "rsa",	SC_ALGORITHM_RSA,	1024 },
+	{ "rsa",	SC_ALGORITHM_RSA,	3072 }, /* new default */
 	{ "gost2001",	SC_ALGORITHM_GOSTR3410,	SC_PKCS15_GOSTR3410_KEYSIZE },
-	{ "ec",		SC_ALGORITHM_EC,	0 },
+	{ "ec",		SC_ALGORITHM_EC,	0 }, /* keybits derived from curve */
+	/*  RFC 8410 */
+	{ "Ed25519",	SC_ALGORITHM_EDDSA,	255 }, /* RFC 8410 and gunpg */
+	{ "Ed448",	SC_ALGORITHM_EDDSA,	448 },
+	{ "X25519",	SC_ALGORITHM_XEDDSA,	255 },
+	{ "X448",	SC_ALGORITHM_XEDDSA,	448 },
+	/* used by Yubikey and GNUK */
+	{ "edwards25519", SC_ALGORITHM_EDDSA,	255 },
+	{ "curve25519", SC_ALGORITHM_XEDDSA,	255 },
+	/* gnupg */
+	{ "cv25519",	SC_ALGORITHM_XEDDSA,	255 },
+
 	{ NULL, -1, 0 }
 };
+// clang-format on
 
 static int
 parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *keybits, struct sc_pkcs15_prkey *prkey)
 {
-	int i, algorithm = -1;
+	int i, types_idx = -1, algorithm = -1;
+	unsigned int user_keybits = 0;
 	char *end;
 
 	for (i = 0; types[i].spec; i++) {
 		if (!strncasecmp(spec, types[i].spec, strlen(types[i].spec))) {
+			types_idx = i; /* save index of types array */
 			algorithm = types[i].algorithm;
 			*keybits = types[i].keybits;
 			spec += strlen(types[i].spec);
@@ -749,10 +768,30 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 	if (*spec == '/' || *spec == '-' || *spec == ':')
 		spec++;
 
-	if (*spec)   {
+	/*  prkey is required for keys that use ecparms */
+	if (*spec == '\0' && (algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA) && prkey) {
+		if ((prkey->u.ec.params.named_curve = strdup(types[types_idx].spec)) == NULL) /* correct case */
+			return SC_ERROR_OUT_OF_MEMORY;
+		return algorithm;
+	}
+
+	if (*spec != '\0') {
 		if (isalpha((unsigned char)*spec) && algorithm == SC_ALGORITHM_EC && prkey) {
-			prkey->u.ec.params.named_curve = strdup(spec);
-		} else {
+			if ((prkey->u.ec.params.named_curve = strdup(spec)) == NULL) /* pass EC curve name */
+				return SC_ERROR_OUT_OF_MEMORY;
+		} else if ((algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA) && prkey) {
+			if ((prkey->u.ec.params.named_curve = strdup(types[types_idx].spec)) == NULL) /* copy correct case */
+				return SC_ERROR_OUT_OF_MEMORY;
+			user_keybits = (unsigned)strtoul(spec, &end, 10);
+			if (*end) {
+				util_error("Invalid number of key bits \"%s\"", spec);
+				return SC_ERROR_INVALID_ARGUMENTS;
+			}
+			if (user_keybits != *keybits) {
+				util_error("If specified, number of key bits must be \"%d\" for \"%s\"", *keybits, types[types_idx].spec);
+				return SC_ERROR_INVALID_ARGUMENTS;
+			}
+		} else { /* rsa or symmetric key */
 			*keybits = (unsigned)strtoul(spec, &end, 10);
 			if (*end) {
 				util_error("Invalid number of key bits \"%s\"", spec);
@@ -1228,6 +1267,7 @@ do_store_public_key(struct sc_profile *profile, EVP_PKEY *pkey)
 		sc_pkcs15_erase_pubkey(&(args.key));
 		sc_unlock(g_p15card->card);
 	}
+	sc_pkcs15_erase_pubkey(&(args.key));
 
 	return r;
 }

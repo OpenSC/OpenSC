@@ -570,18 +570,12 @@ sc_pkcs15_erase_prkey(struct sc_pkcs15_prkey *key)
 		free(key->u.gostr3410.d.data);
 		break;
 	case SC_ALGORITHM_EC:
-		free(key->u.ec.params.der.value);
-		free(key->u.ec.params.named_curve);
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
+		/* EC, Edwards and Montgomery use common ec params */
+		sc_clear_ec_params(&key->u.ec.params);
 		free(key->u.ec.privateD.data);
 		free(key->u.ec.ecpointQ.value);
-		break;
-	case SC_ALGORITHM_EDDSA:
-		free(key->u.eddsa.pubkey.value);
-		key->u.eddsa.pubkey.value = NULL;
-		key->u.eddsa.pubkey.len = 0;
-		free(key->u.eddsa.value.value);
-		key->u.eddsa.value.value = NULL;
-		key->u.eddsa.value.len = 0;
 		break;
 	}
 	sc_mem_clear(key, sizeof(*key));
@@ -828,7 +822,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 #endif
 
 		/* Octetstring may need leading zeros if BN is to short */
-		if (dst->privateD.len < BYTES4BITS(dst->params.field_length))   {
+		if (dst->privateD.len < BYTES4BITS(dst->params.field_length)) {
 			size_t d = BYTES4BITS(dst->params.field_length) - dst->privateD.len;
 
 			dst->privateD.data = realloc(dst->privateD.data, dst->privateD.len + d);

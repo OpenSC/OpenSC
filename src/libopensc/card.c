@@ -163,11 +163,10 @@ static void sc_card_free(sc_card_t *card)
 		int i;
 		for (i=0; i<card->algorithm_count; i++)   {
 			struct sc_algorithm_info *info = (card->algorithms + i);
-			if (info->algorithm == SC_ALGORITHM_EC) {
-				struct sc_ec_parameters ep = info->u._ec.params;
-
-				free(ep.named_curve);
-				free(ep.der.value);
+			if (info->algorithm == SC_ALGORITHM_EC ||
+					info->algorithm == SC_ALGORITHM_EDDSA ||
+					info->algorithm == SC_ALGORITHM_XEDDSA) {
+				sc_clear_ec_params(&info->u._ec.params);
 			}
 		}
 		free(card->algorithms);
@@ -1167,6 +1166,7 @@ _sc_card_add_ec_alg_int(sc_card_t *card, size_t key_length,
 			int algorithm)
 {
 	sc_algorithm_info_t info;
+	int r;
 
 	memset(&info, 0, sizeof(info));
 	sc_init_oid(&info.u._ec.params.id);
@@ -1176,10 +1176,19 @@ _sc_card_add_ec_alg_int(sc_card_t *card, size_t key_length,
 	info.flags = flags;
 
 	info.u._ec.ext_flags = ext_flags;
-	if (curve_oid)
+	if (curve_oid) {
 		info.u._ec.params.id = *curve_oid;
+		r = sc_encode_oid(card->ctx, &info.u._ec.params.id, &info.u._ec.params.der.value, &info.u._ec.params.der.len);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "sc_encode_oid failed");
+		r = sc_pkcs15_fix_ec_parameters(card->ctx, &info.u._ec.params);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "sc_pkcs15_fix_ec_parameters failed");
+	}
 
-	return _sc_card_add_algorithm(card, &info);
+	r = _sc_card_add_algorithm(card, &info);
+	return r;
+err:
+	sc_clear_ec_params(&info.u._ec.params);
+	return r;
 }
 
 int  _sc_card_add_ec_alg(sc_card_t *card, size_t key_length,
@@ -1216,13 +1225,13 @@ sc_algorithm_info_t *sc_card_find_alg(sc_card_t *card,
 	for (i = 0; i < card->algorithm_count; i++) {
 		sc_algorithm_info_t *info = &card->algorithms[i];
 
-		if (info->algorithm != algorithm)
-			continue;
 		if (param && (info->algorithm == SC_ALGORITHM_EC ||
 			info->algorithm == SC_ALGORITHM_EDDSA ||
 			info->algorithm == SC_ALGORITHM_XEDDSA)) {
 			if (sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
 				return info;
+		} else if (info->algorithm != algorithm) {
+			continue;
 		} else if (info->key_length == key_length)
 			return info;
 	}
@@ -1507,6 +1516,17 @@ void sc_print_cache(struct sc_card *card)
 		       sc_print_path(&card->cache.current_df->path));
 }
 
+void
+sc_clear_ec_params(struct sc_ec_parameters *ecp)
+{
+	if (ecp) {
+		free(ecp->named_curve);
+		free(ecp->der.value);
+		memset(ecp, 0, sizeof(struct sc_ec_parameters));
+	}
+	return;
+}
+
 int sc_copy_ec_params(struct sc_ec_parameters *dst, struct sc_ec_parameters *src)
 {
 	if (!dst || !src)
@@ -1528,8 +1548,9 @@ int sc_copy_ec_params(struct sc_ec_parameters *dst, struct sc_ec_parameters *src
 		memcpy(dst->der.value, src->der.value, src->der.len);
 		dst->der.len = src->der.len;
 	}
-	src->type = dst->type;
-	src->field_length = dst->field_length;
+	dst->type = src->type;
+	dst->field_length = src->field_length;
+	dst->key_type = src->key_type;
 
 	return SC_SUCCESS;
 }

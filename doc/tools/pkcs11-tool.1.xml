@@ -147,7 +147,7 @@
 						<option>--key-type</option> <replaceable>specification</replaceable>
 					</term>
 					<listitem><para>Specify the type and (not always compulsory) flavour (byte-wise symmetric key length, bit-wise asymmetric key length,
-					elliptic curve identifier, etc.) of the key to create, for example RSA:2048, EC:prime256v1, GOSTR3410-2012-256:B,
+					elliptic curve identifier, etc.) of the key to create, for example RSA:2048, EC:prime256v1, EC:ED25519, EC:X448, GOSTR3410-2012-256:B,
 					DES:8, DES3:24, AES:16, AES: or GENERIC:64. If the key type was incompletely specified, possible values are listed.</para></listitem>
 				</varlistentry>
 
@@ -330,6 +330,16 @@
 					used.</para>
 					<para>This option will also set
 					the <option>--login</option> option.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--public-key-info</option>
+					</term>
+					<listitem><para>Read public key from the module using "CKA_PUBLIC_KEY_INFO"
+					(use with <option>--read-object --type public</option>).
+					The output is a "SubjectPublicKeyInfo" i.e. as used in certificates
+					and openssl.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

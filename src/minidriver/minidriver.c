@@ -2552,6 +2552,7 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 	keygen_args.pubkey_label = keygen_args.prkey_args.label;
 
 	rv = sc_pkcs15init_generate_key(vs->p15card, profile, &keygen_args, key_size, &cont->prkey_obj);
+	sc_pkcs15_erase_prkey(&keygen_args.prkey_args.key);
 	if (rv < 0) {
 		logprintf(pCardData, 3, "MdGenerateKey(): key generation failed: sc-error %i\n", rv);
 		goto done;

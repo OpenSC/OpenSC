@@ -1,5 +1,6 @@
 #!/bin/bash
-source common.sh
+SOURCE_PATH=${SOURCE_PATH:-..}
+source $SOURCE_PATH/tests/common.sh
 
 echo "======================================================="
 echo "Setup SoftHSM"

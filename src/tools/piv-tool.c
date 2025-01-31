@@ -320,6 +320,14 @@ static int gen_key(const char * key_info)
 		case 0x14: keydata.key_bits = 0;
 			nid = NID_secp384r1;
 			break;
+		case 0xE0:
+			keydata.key_bits = 0;
+			nid = NID_ED25519;
+			break;
+		case 0xE1:
+			keydata.key_bits = 0;
+			nid = NID_X25519;
+			break;
 #endif
 		default:
 			fprintf(stderr, "<keyref>:<algid> algid=RSA - 05, 06, 07 for 3072, 1024, 2048;EC - 11, 14 for 256, 384\n");
@@ -443,6 +451,27 @@ static int gen_key(const char * key_info)
 		EVP_PKEY_CTX_free(cctx);
 		OSSL_PARAM_free(params);
 #endif
+
+#ifdef EVP_PKEY_ED25519
+	} else if (nid == NID_ED25519 || nid == NID_X25519) {
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+		fprintf(stderr, "This build of OpenSSL does not support ED25519 or X25519 keys\n");
+		return -1;
+#else
+		evpkey = EVP_PKEY_new_raw_public_key(nid, NULL, keydata.ecpoint, keydata.ecpoint_len);
+		if (!evpkey) {
+			sc_log_openssl(ctx);
+			fprintf(stderr, "gen key failed ti copy 25519 pubkey\n");
+			return -1;
+		}
+
+		if (verbose)
+			EVP_PKEY_print_public_fp(stdout, evpkey, 0, NULL);
+#endif /* OPENSSL_VERSION_NUMBER < 0x30000000L */
+#else
+		fprintf(stderr, "This build of OpenSSL does not support ED25519 or X25519 keys\n");
+		return -1;
+#endif		 /* EVP_PKEY_ED25519 */
 	} else { /* EC key */
 #if !defined(OPENSSL_NO_EC)
 		int i;

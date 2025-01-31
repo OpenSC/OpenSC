@@ -25,5 +25,6 @@
  * to set userConsent=1 for other objects than private keys via PKCS#11. */
 #define CKA_OPENSC_ALWAYS_AUTH_ANY_OBJECT (CKA_VENDOR_DEFINED | SC_VENDOR_DEFINED | 3UL)
 
-
+/* PKCS11 does not define an unknown  CKK. Define one for internal OpenSC and pkcs11-tool.c */
+#define CKK_OPENSC_UNDEFINED (CKK_VENDOR_DEFINED | SC_VENDOR_DEFINED | 0xffUL)
 #endif

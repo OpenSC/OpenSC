@@ -770,7 +770,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 */
 	else if (senv.algorithm == SC_ALGORITHM_EC &&
 			(senv.algorithm_flags & SC_ALGORITHM_ECDSA_HASHES) == 0) {
-		inlen = MIN(inlen, (prkey->field_length+7)/8);
+		inlen = MIN(inlen, BYTES4BITS(prkey->field_length));
 	}
 
 
