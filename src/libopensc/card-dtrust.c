@@ -67,7 +67,7 @@ struct dtrust_drv_data_t {
 	unsigned char pace : 1;
 	unsigned char can : 1;
 	/* global CAN from configuration file */
-	const char *can_value;
+	char *can_value;
 	/* use CAN cache */
 	unsigned char can_cache : 1;
 	/* PKCS#15 context for CAN caching */
@@ -262,7 +262,7 @@ static int
 dtrust_init(sc_card_t *card)
 {
 	struct dtrust_drv_data_t *drv_data;
-	const char *can_env = NULL;
+	const char *can_env, *can_value;
 	size_t i, j;
 	scconf_block **found_blocks, *block;
 	int r;
@@ -283,12 +283,11 @@ dtrust_init(sc_card_t *card)
 	drv_data->can_cache = 1;
 	drv_data->p15card = NULL;
 
-	drv_data->can_value = can_env = getenv("DTRUST_CAN");
-	if (can_env != NULL) {
-		sc_log(card->ctx, "Using CAN provided by environment variable.");
-	}
+	/* read environment variable */
+	can_env = getenv("DTRUST_CAN");
 
 	/* read configuration */
+	can_value = NULL;
 	for (i = 0; card->ctx->conf_blocks[i]; i++) {
 		found_blocks = scconf_find_blocks(card->ctx->conf, card->ctx->conf_blocks[i], "card_driver", "dtrust");
 		if (!found_blocks)
@@ -299,14 +298,28 @@ dtrust_init(sc_card_t *card)
 
 			/* Environment variable has precedence over configured CAN */
 			if (can_env == NULL) {
-				drv_data->can_value = scconf_get_str(block, "can", drv_data->can_value);
+				can_value = scconf_get_str(block, "can", can_value);
 			}
 		}
 		free(found_blocks);
 	}
 
-	if (can_env == NULL && drv_data->can_value != NULL) {
+	if (can_env != NULL) {
+		sc_log(card->ctx, "Using CAN provided by environment variable.");
+		can_value = can_env;
+	} else if (can_value != NULL) {
 		sc_log(card->ctx, "Using CAN provided by configuration file.");
+	}
+
+	if (can_value != NULL) {
+		size_t can_len;
+
+		can_len = strlen(can_env);
+		drv_data->can_value = sc_mem_secure_alloc(can_len + 1);
+		if (drv_data->can_value == NULL) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+		memcpy(drv_data->can_value, can_value, can_len + 1);
 	}
 
 	card->drv_data = drv_data;
@@ -400,6 +413,11 @@ dtrust_finish(sc_card_t *card)
 	if (drv_data->p15card != NULL) {
 		sc_pkcs15_unbind(drv_data->p15card);
 	}
+
+	if (drv_data->can_value != NULL) {
+		sc_mem_secure_free(drv_data->can_value, strlen(drv_data->can_value) + 1);
+	}
+
 	free((char *)card->name);
 	free(card->drv_data);
 
