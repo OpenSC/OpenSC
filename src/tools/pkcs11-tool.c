@@ -2633,25 +2633,27 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		if (opt_sig_format && (!strcmp(opt_sig_format, "openssl") ||
 							   !strcmp(opt_sig_format, "sequence"))) {
 
-			CK_BYTE* bytes;
+			CK_BYTE *bytes, *tmp;
 			CK_ULONG len;
-			size_t rs_len = 0;
+			size_t rs_len = 0, taglen;
+			unsigned int cla, tag;
 			unsigned char rs_buffer[512];
 			bytes = getEC_POINT(session, key, &len);
-			free(bytes);
 			/*
 			 * (We only support uncompressed for now)
 			 * Uncompressed EC_POINT is DER OCTET STRING of "04||x||y"
 			 * So a "256" bit key has x and y of 32 bytes each
 			 * something like: "04 41 04||x||y"
-			 * Do simple size calculation based on DER encoding
+			 * Extract length from ASN.1
 			 */
-			if ((len - 2) <= 127)
-				rs_len = len - 3;
-			else if ((len - 3) <= 255)
-				rs_len = len - 4;
-			else
+			tmp = bytes;
+			if (sc_asn1_read_tag((const u8 **)&tmp, len, &cla, &tag, &taglen) != SC_SUCCESS ||
+					len < 2 || len > 255) {
+				free(bytes);
 				util_fatal("Key not supported");
+			}
+			free(bytes);
+			rs_len = taglen - 1; // len is length of "04||x||y"
 
 			if (sc_asn1_sig_value_sequence_to_rs(NULL, sig_buffer, sz2,
 				rs_buffer, rs_len)) {
