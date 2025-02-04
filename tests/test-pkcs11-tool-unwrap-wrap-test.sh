@@ -96,7 +96,7 @@ ID5="98"
 rm aes_wrapped_key generic_extracted_key aes_ciphertext_openssl.data aes_ciphertext_pkcs11.data wrapped.key plain_wrapped.key
 
 # wrap AES key with RSA OAEP mode 
-openssl pkeyutl -encrypt -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:$OSSL_OAEP_HASH_ALG -pkeyopt rsa_mgf1_md:$OSSL_OAEP_HASH_ALG -pubin -keyform DER -inkey rsa_pub.key -in aes_plain_key -out aes_wrapped_key
+openssl pkeyutl -encrypt -pubin -keyform DER -inkey rsa_pub.key -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:$OSSL_OAEP_HASH_ALG -pkeyopt rsa_mgf1_md:$OSSL_OAEP_HASH_ALG -in aes_plain_key -out aes_wrapped_key
 assert $? "Failed wrap AES key"
 
 # unwrap key by pkcs11 interface, extractable
