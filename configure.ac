@@ -82,7 +82,6 @@ fi
 
 dnl Check for some target-specific stuff
 test -z "${WIN32}" && WIN32="no"
-test -z "${CYGWIN}" && CYGWIN="no"
 
 case "${host}" in
 	*-*-solaris*)
@@ -95,17 +94,14 @@ case "${host}" in
 		WIN_LIBPREFIX="lib"
 	;;
 	*-cygwin*)
+		CPPFLAGS="${CPPFLAGS} -DWIN32_LEAN_AND_MEAN"
 		AC_MSG_CHECKING([cygwin mode to use])
-		CYGWIN="yes"
 		if test "${with_cygwin_native}" = "yes"; then
 			AC_MSG_RESULT([Using native win32])
-			CPPFLAGS="${CPPFLAGS} -DWIN32_LEAN_AND_MEAN"
-			#CFLAGS="${CFLAGS} -mno-cygwin" deprecated/removed flag
 			WIN32="yes"
 		else
 			AC_MSG_RESULT([Using cygwin])
 			WIN_LIBPREFIX="cyg"
-			AC_DEFINE([USE_CYGWIN], [1], [Define if you are on Cygwin])
 		fi
 	;;
 esac
@@ -1137,7 +1133,6 @@ AM_CONDITIONAL([ENABLE_OPENCT], [test "${enable_openct}" = "yes"])
 AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([ENABLE_TESTS], [test "${enable_tests}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
-AM_CONDITIONAL([CYGWIN], [test "${CYGWIN}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER_SETUP_CUSTOMACTION], [test "${enable_minidriver_ca}" = "yes"])
 AM_CONDITIONAL([ENABLE_SM], [test "${enable_sm}" = "yes"])
