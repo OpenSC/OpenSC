@@ -99,8 +99,6 @@ app <em class="replaceable"><code>application</code></em> {
 				</p></li><li class="listitem"><p>
 						<code class="literal">cardmod</code>: Configuration block for Windows' minidriver (<code class="filename">opensc-minidriver.dll</code>)
 				</p></li><li class="listitem"><p>
-						<code class="literal">tokend</code>: Configuration block for macOS' tokend (<span class="application">OpenSC.tokend</span>)
-				</p></li><li class="listitem"><p>
 						<code class="literal">cardos-tool</code>,
 						<code class="literal">cryptoflex-tool</code>,
 						<code class="literal">dnie-tool</code>,
@@ -352,8 +350,6 @@ app <em class="replaceable"><code>application</code></em> {
 						Internal configuration options where <em class="replaceable"><code>name</code></em> is one of:
 						</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
 									<code class="literal">pkcs15</code>: See <a class="xref" href="#framework%20pkcs15" title="Configuration of PKCS#15 Framework">the section called “Configuration of PKCS#15 Framework”</a>
-							</p></li><li class="listitem"><p>
-									<code class="literal">tokend</code>: See <a class="xref" href="#framework%20tokend" title="Configuration of Tokend">the section called “Configuration of Tokend”</a>
 							</p></li></ul></div><p>
 					</p></dd><dt><span class="term">
 					<code class="option">pkcs11 {
@@ -887,8 +883,7 @@ app <em class="replaceable"><code>application</code></em> {
 								</p></li><li class="listitem"><p>
 										<code class="literal">ignore</code>: Ignore PIN-protected certificates.
 								</p></li></ul></div><p>
-							(Default: <code class="literal">ignore</code> in Tokend,
-							<code class="literal">protect</code> otherwise).
+							(Default: <code class="literal">protect</code>.
 					</p></dd><dt><span class="term">
 						<code class="option">enable_pkcs15_emulation = <em class="replaceable"><code>bool</code></em>;</code>
 					</span></dt><dd><p>
@@ -991,13 +986,7 @@ app <em class="replaceable"><code>application</code></em> {
 									<code class="option">sign_pin = <em class="replaceable"><code>name</code></em>;</code>
 								</span></dt><dd><p>
 									Name of the PIN object that will be used for signing.
-								</p></dd></dl></div></dd></dl></div></div><div class="refsect2"><a name="framework%20tokend"></a><h3>Configuration of Tokend</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
-						<code class="option">score = <em class="replaceable"><code>num</code></em>;</code>
-					</span></dt><dd><p>
-							Score for <span class="application">OpenSC.tokend</span>
-							(Default: <code class="literal">300</code>).  The tokend with
-							the highest score shall be used.
-					</p></dd></dl></div></div><div class="refsect2"><a name="pkcs11"></a><h3>Configuration of PKCS#11</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+								</p></dd></dl></div></dd></dl></div></div><div class="refsect2"><a name="pkcs11"></a><h3>Configuration of PKCS#11</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 						<code class="option">max_virtual_slots = <em class="replaceable"><code>num</code></em>;</code>
 					</span></dt><dd><p>
 							Maximum Number of virtual slots (Default:
