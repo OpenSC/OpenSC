@@ -2876,7 +2876,7 @@ static int piv_find_aid(sc_card_t * card)
 			priv->init_flags |= PIV_INIT_AID_PARSED;
 			/* look for 800-73-4 0xAC for Cipher Suite Algorithm Identifier Table 14 */
 			/* There may be more than one 0xAC tag, loop to find all */
-
+			/* TODO do we need to look for "Nitrokey PIVP" in tag 0x50 length 12 */
 			nextac = tag;
 			while((actag = sc_asn1_find_tag(card->ctx, nextac, taglen - (nextac - tag),
 					0xAC, &actaglen)) != NULL) {
@@ -5398,6 +5398,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_PIVKEY:
 		case SC_CARD_TYPE_PIV_II_SWISSBIT:
 		case SC_CARD_TYPE_PIV_II_800_73_4:
+		case SC_CARD_TYPE_PIV_II_NITROKEY:
 			type = card->type;
 			break;
 		default:
@@ -5433,7 +5434,9 @@ static int piv_match_card_continued(sc_card_t *card)
 
 				if ((data = sc_compacttlv_find_tag(card->reader->atr_info.hist_bytes + 1,
 						card->reader->atr_info.hist_bytes_len - 1, 0x50, &datalen))) {
-					if (datalen == 7 && !(memcmp(data, "YubiKey", 7))) {
+					if (datalen >= 8 && !(memcmp(data, "Nitrokey", 8))) { /* first 8 are Nitrokey */
+						type = SC_CARD_TYPE_PIV_II_NITROKEY;
+					} else if (datalen == 7 && !(memcmp(data, "YubiKey", 7))) {
 						type = SC_CARD_TYPE_PIV_II_YUBIKEY4;   /* reader says 4  really 5 */
 					}
 					/* Yubikey 5 NFC ATR using ACR122 contactless reader does not match
@@ -5562,6 +5565,10 @@ static int piv_match_card_continued(sc_card_t *card)
 				priv->yubico_version = (yubico_version_buf[0]<<16) | (yubico_version_buf[1] <<8) | yubico_version_buf[2];
 				sc_log(card->ctx, "Yubico card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->yubico_version);
 			}
+			break;
+		case SC_CARD_TYPE_PIV_II_NITROKEY:
+			/* TODO get Nitrokey version number */
+			break;
 	}
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
@@ -5614,6 +5621,7 @@ static int piv_match_card_continued(sc_card_t *card)
 			priv->card_issues |= CI_DISCOVERY_USELESS;
 			priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
 			break;
+		/* TODO  SC_CARD_TYPE_PIV_II_NITROKEY: nothing to do for now */
 	}
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
@@ -5622,6 +5630,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		switch(card->type) {
 			case SC_CARD_TYPE_PIV_II_BASE:
 			case SC_CARD_TYPE_PIV_II_800_73_4:
+			case SC_CARD_TYPE_PIV_II_NITROKEY:
 				r2 = piv_find_aid(card);
 		}
 	}
@@ -5713,6 +5722,11 @@ static int piv_match_card_continued(sc_card_t *card)
 				| CI_NO_RANDOM; /* does not have 9B key */
 				/* Discovery object returns 6A 82 so is not on card by default */
 				/*  TODO may need more research */
+			break;
+
+		case SC_CARD_TYPE_PIV_II_NITROKEY:
+			priv->card_issues |= CI_PIV_AID_LOSE_STATE;
+			/* TODO may need to add others */
 			break;
 
 		default:
