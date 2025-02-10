@@ -66,12 +66,14 @@ int uncompress_gzip(void* uncompressed, size_t *uncompressed_len,
 	stream.next_out = (Bytef *) uncompressed;
 
 	/* 15 window bits, and the +32 tells zlib to to detect if using gzip or zlib */
-	if (Z_OK == inflateInit2(&stream, (15 + 32))
-			&& Z_STREAM_END == inflate(&stream, Z_FINISH)) {
-		*uncompressed_len = stream.total_out;
-	} else {
+	if (inflateInit2(&stream, (15 + 32)) != Z_OK) {
 		return SC_ERROR_INVALID_DATA;
 	}
+	if (inflate(&stream, Z_FINISH) != Z_STREAM_END) {
+		inflateEnd(&stream);
+		return SC_ERROR_INVALID_DATA;
+	}
+	*uncompressed_len = stream.total_out;
 	inflateEnd(&stream);
 
 	return SC_SUCCESS;

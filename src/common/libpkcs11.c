@@ -99,6 +99,8 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 			mod = NULL; /* already freed */
 	}
 failed:
+	if (mod && mod->handle)
+		sc_dlclose(mod->handle);
 	free(mod);
 	return NULL;
 }

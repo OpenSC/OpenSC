@@ -709,29 +709,34 @@ pgp_parse_algo_attr_blob(sc_card_t *card, const pgp_blob_t *blob,
 
 int
 _pgp_handle_curve25519(sc_card_t *card,
-		sc_cardctl_openpgp_key_gen_store_info_t key_info, unsigned int do_num)
+		sc_cardctl_openpgp_key_gen_store_info_t *key_info, unsigned int do_num)
 {
-	if (!sc_compare_oid(&key_info.u.ec.oid, &curve25519_oid) &&
-			!sc_compare_oid(&key_info.u.ec.oid, &X25519_oid))
+	if (!card || !key_info)
+		return 0;
+	if (!sc_compare_oid(&key_info->u.ec.oid, &curve25519_oid) &&
+			!sc_compare_oid(&key_info->u.ec.oid, &X25519_oid))
 		return 0;
 
 	/* CKM_XEDDSA supports both Sign and Derive, but
 	* OpenPGP card supports only derivation using these
 	* keys as far as I know */
-	_sc_card_add_xeddsa_alg(card, key_info.u.ec.key_length,
-			SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN, 0, &key_info.u.ec.oid);
+	_sc_card_add_xeddsa_alg(card, key_info->u.ec.key_length,
+			SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN, 0, &key_info->u.ec.oid);
 	sc_log(card->ctx, "DO %uX: Added XEDDSA algorithm (%d), mod_len = %zu",
-	    do_num, SC_ALGORITHM_XEDDSA, key_info.u.ec.key_length);
+	    do_num, SC_ALGORITHM_XEDDSA, key_info->u.ec.key_length);
 	return 1;
 }
 
 int
-_pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t key_info, unsigned int do_num)
+_pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t *key_info, unsigned int do_num)
 {
 	unsigned long flags = 0, ext_flags = 0;
 
+	if (!card || !key_info)
+		return 0;
+
 	/* [RFC 4880], [draft-ietf-openpgp-crypto-refresh] */
-	switch (key_info.algorithm) {
+	switch (key_info->algorithm) {
 	case SC_OPENPGP_KEYALGO_RSA:
 		/* OpenPGP card spec 1.1 & 2.x, section 7.2.9 & 7.2.10 /
 		 * v3.x section 7.2.11 & 7.2.12 */
@@ -739,10 +744,10 @@ _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t key_info,
 			SC_ALGORITHM_RSA_HASH_NONE |
 			SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
 
-		_sc_card_add_rsa_alg(card, key_info.u.rsa.modulus_len, flags, 0);
+		_sc_card_add_rsa_alg(card, key_info->u.rsa.modulus_len, flags, 0);
 		sc_log(card->ctx, "DO %uX: Added RSA algorithm, mod_len = %"
 			SC_FORMAT_LEN_SIZE_T"u",
-			do_num, key_info.u.rsa.modulus_len);
+			do_num, key_info->u.rsa.modulus_len);
 		break;
 	case SC_OPENPGP_KEYALGO_ECDH:
 		/* The montgomery curve (curve25519) needs to go through
@@ -761,25 +766,25 @@ _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t key_info,
 		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 
-		_sc_card_add_ec_alg(card, key_info.u.ec.key_length, flags, ext_flags,
-			&key_info.u.ec.oid);
+		_sc_card_add_ec_alg(card, key_info->u.ec.key_length, flags, ext_flags,
+			&key_info->u.ec.oid);
 		sc_log(card->ctx, "DO %uX: Added EC algorithm (%d), mod_len = %zu" ,
-			do_num, key_info.algorithm, key_info.u.ec.key_length);
+			do_num, key_info->algorithm, key_info->u.ec.key_length);
 		break;
 	case SC_OPENPGP_KEYALGO_EDDSA:
 		/* EdDSA from draft-ietf-openpgp-rfc4880bis-08 */
 		/* Handle Yubikey bug, that in DO FA curve25519 has EDDSA algo */
 		if (_pgp_handle_curve25519(card, key_info, do_num))
 			break;
-		_sc_card_add_eddsa_alg(card, key_info.u.ec.key_length,
-				SC_ALGORITHM_EDDSA_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN, 0, &key_info.u.ec.oid);
+		_sc_card_add_eddsa_alg(card, key_info->u.ec.key_length,
+				SC_ALGORITHM_EDDSA_RAW | SC_ALGORITHM_ONBOARD_KEY_GEN, 0, &key_info->u.ec.oid);
 
 		sc_log(card->ctx, "DO %uX: Added EDDSA algorithm (%d), mod_len = %zu" ,
-			do_num, key_info.algorithm, key_info.u.ec.key_length);
+			do_num, key_info->algorithm, key_info->u.ec.key_length);
 		break;
 	default:
 		sc_log(card->ctx, "DO %uX: Unknown algorithm ID (%d)" ,
-			do_num, key_info.algorithm);
+			do_num, key_info->algorithm);
 		/* return "false" if we do not understand algo */
 		return 0;
 	}
@@ -864,7 +869,7 @@ pgp_get_card_features(sc_card_t *card)
 					continue;
 				sc_cardctl_openpgp_key_gen_store_info_t key_info;
 				if (pgp_parse_algo_attr_blob(card, child, &key_info) >= 0)
-					handled_algos += _pgp_add_algo(card, key_info, 0x00fa);
+					handled_algos += _pgp_add_algo(card, &key_info, 0x00fa);
 			}
 		}
 	}
@@ -971,7 +976,8 @@ pgp_get_card_features(sc_card_t *card)
 			/* OpenPGP card spec 1.1 & 2.x section 4.3.3.6 / v3.x section 4.4.3.7 */
 			if ((pgp_get_blob(card, blob73, i, &blob) >= 0) &&
 			    (pgp_parse_algo_attr_blob(card, blob, &key_info) >= 0)) {
-				_pgp_add_algo(card, key_info, i);
+				if (!_pgp_add_algo(card, &key_info, i))
+					LOG_TEST_RET(card->ctx, SC_ERROR_INTERNAL, "Cannot add algorithm");
 			}
 		}
 

@@ -467,7 +467,10 @@ int msc_get_challenge(sc_card_t *card, unsigned short dataLength, unsigned short
 
 	if(location == 1) {
 		u8* outputBuffer = malloc(dataLength + 2);
-		if(outputBuffer == NULL) LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		if(outputBuffer == NULL) {
+			free(buffer);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		};
 		apdu.le = dataLength + 2;
 		apdu.resp = outputBuffer;
 		apdu.resplen = dataLength + 2;

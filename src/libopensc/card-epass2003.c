@@ -184,7 +184,7 @@ static const struct sc_card_error epass2003_errors[] = {
 typedef struct sec_attr_to_acl_entries {
 	unsigned int file_type;		/* file->type */
 	unsigned int file_ef_structure;	/* file->ef_structure */
-	int indx;			/* index in  epass2003 iversion of sec_attr */
+	int index;			/* index in  epass2003 iversion of sec_attr */
 	/* use the follow for sc_file_add_entry */
 	int op;				/* SC_AC_OP_* */
 } sec_attr_to_acl_entries_t;
@@ -2330,7 +2330,7 @@ acl_to_ac_byte(struct sc_card *card, const struct sc_acl_entry *e)
 
 /* Use epass2003 sec_attr to add acl entries */
 int
-sec_attr_to_entry(struct sc_card *card, sc_file_t *file, int indx)
+sec_attr_to_entry(struct sc_card *card, sc_file_t *file, int index)
 {
 	int i;
 	int found = 0;
@@ -2340,7 +2340,7 @@ sec_attr_to_entry(struct sc_card *card, sc_file_t *file, int indx)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	switch (file->sec_attr[indx]) {
+	switch (file->sec_attr[index]) {
 	case (EPASS2003_AC_MAC_NOLESS | EPASS2003_AC_EVERYONE):
 		method = SC_AC_NONE;
 		keyref = SC_AC_KEY_REF_NONE;
@@ -2350,7 +2350,7 @@ sec_attr_to_entry(struct sc_card *card, sc_file_t *file, int indx)
 		keyref = 1;
 		break;
 	default:
-		sc_log(card->ctx, "Unknown value 0x%2.2x in file->sec_attr[%d]", file->sec_attr[indx], indx);
+		sc_log(card->ctx, "Unknown value 0x%2.2x in file->sec_attr[%d]", file->sec_attr[index], index);
 		method = SC_AC_NEVER;
 		keyref = SC_AC_KEY_REF_NONE;
 		break;
@@ -2359,7 +2359,7 @@ sec_attr_to_entry(struct sc_card *card, sc_file_t *file, int indx)
 	for (i = 0; i < (int)(sizeof(sec_attr_to_acl_entry) / sizeof(sec_attr_to_acl_entries_t)); i++) {
 		const sec_attr_to_acl_entries_t *e = &sec_attr_to_acl_entry[i];
 
-		if (indx == e->indx && file->type == e->file_type
+		if (index == e->index && file->type == e->file_type
 				&& file->ef_structure == e->file_ef_structure) {
 				/* may add multiple entries */
 			sc_file_add_acl_entry(file, e->op, method, keyref);

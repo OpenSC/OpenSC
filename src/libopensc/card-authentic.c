@@ -2295,6 +2295,7 @@ authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struc
 
 	apdu->resp = calloc (1, plain->resplen + 32);
 	if (!apdu->resp) {
+		free((unsigned char *) apdu->data);
 		free(apdu);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
@@ -2305,6 +2306,7 @@ authentic_sm_get_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struc
 	rv = card->sm_ctx.module.ops.get_apdus(ctx, &card->sm_ctx.info, NULL, 0, NULL);
 	if (rv < 0) {
 		free(apdu->resp);
+		free((unsigned char *) apdu->data);
 		free(apdu);
 	}
 	LOG_TEST_RET(ctx, rv, "SM: GET_APDUS failed");

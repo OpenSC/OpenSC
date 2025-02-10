@@ -358,6 +358,8 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 
 	r = sc_pkcs15init_read_info(card, profile);
 	if (r < 0) {
+		if (profile->dll)
+			sc_dlclose(profile->dll);
 		sc_profile_free(profile);
 		LOG_TEST_RET(ctx, r, "Read info error");
 	}
@@ -389,6 +391,8 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 	}  while (0);
 
 	if (r < 0)   {
+		if (profile->dll)
+			sc_dlclose(profile->dll);
 		sc_profile_free(profile);
 		LOG_TEST_RET(ctx, r, "Load profile error");
 	}
@@ -3082,9 +3086,9 @@ select_object_path(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file	*file;
 	struct sc_pkcs15_object	*objs[32];
-	struct sc_pkcs15_id indx_id;
+	struct sc_pkcs15_id index_id;
 	struct sc_path obj_path;
-	int ii, r, nn_objs, indx;
+	int ii, r, nn_objs, index;
 	const char *name;
 
 	LOG_FUNC_CALLED(ctx);
@@ -3114,18 +3118,18 @@ select_object_path(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	sc_log(ctx, "key-domain.%s @%s (auth_id.len=%"SC_FORMAT_LEN_SIZE_T"u)",
 	       name, sc_print_path(path), obj->auth_id.len);
 
-	indx_id.len = 1;
-	for (indx = TEMPLATE_INSTANTIATE_MIN_INDEX; indx <= TEMPLATE_INSTANTIATE_MAX_INDEX; indx++)   {
-		indx_id.value[0] = indx;
-		r = sc_profile_instantiate_template(profile, "key-domain", path, name, &indx_id, &file);
+	index_id.len = 1;
+	for (index = TEMPLATE_INSTANTIATE_MIN_INDEX; index <= TEMPLATE_INSTANTIATE_MAX_INDEX; index++)   {
+		index_id.value[0] = index;
+		r = sc_profile_instantiate_template(profile, "key-domain", path, name, &index_id, &file);
 		if (r == SC_ERROR_TEMPLATE_NOT_FOUND)   {
 			/* No template in 'key-domain' -- try to instantiate the template-'object name'
 			 * outside of the 'key-domain' scope. */
 			char t_name[0x40];
 
 			snprintf(t_name, sizeof(t_name), "template-%s", name);
-			sc_log(ctx, "get instance %i of '%s'", indx, t_name);
-			r = sc_profile_get_file_instance(profile, t_name, indx, &file);
+			sc_log(ctx, "get instance %i of '%s'", index, t_name);
+			r = sc_profile_get_file_instance(profile, t_name, index, &file);
 			if (r == SC_ERROR_FILE_NOT_FOUND)
 				LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 		}
@@ -3154,10 +3158,10 @@ select_object_path(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 		sc_file_free(file);
 
-		indx_id.value[0] += 1;
+		index_id.value[0] += 1;
 	}
 
-	if (indx > TEMPLATE_INSTANTIATE_MAX_INDEX)
+	if (index > TEMPLATE_INSTANTIATE_MAX_INDEX)
 		LOG_TEST_RET(ctx, SC_ERROR_TOO_MANY_OBJECTS, "Template instantiation error");
 
 	*path = file->path;

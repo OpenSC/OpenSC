@@ -20,3 +20,4 @@ responde
 sie
 signatur
 standarts
+algorithmus
