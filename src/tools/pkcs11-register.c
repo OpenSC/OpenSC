@@ -345,3 +345,11 @@ main(int argc, char **argv)
 
 	return 0;
 }
+
+#ifdef _WIN32
+int WINAPI
+WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPSTR lpCmdLine, int nShowCmd)
+{
+	return main(__argc, __argv);
+}
+#endif

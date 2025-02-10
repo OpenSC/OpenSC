@@ -49,7 +49,7 @@ opensc-asn1.exe: opensc-asn1-cmdline.obj fread_to_eof.obj versioninfo-tools.res 
 
 pkcs11-register.exe: pkcs11-register-cmdline.obj fread_to_eof.obj $(LIBS)
 	cl $(COPTS) /c $*.c
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj pkcs11-register-cmdline.obj fread_to_eof.obj versioninfo-tools.res $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
+	link $(LINKFLAGS) /subsystem:windows /pdb:$*.pdb /out:$@ $*.obj pkcs11-register-cmdline.obj fread_to_eof.obj versioninfo-tools.res $(LIBS) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
 	mt -manifest exe.manifest -outputresource:$@;1
 
 pkcs15-tool.exe: pkcs15-tool.obj $(TOPDIR)\src\pkcs11\pkcs11-display.obj
