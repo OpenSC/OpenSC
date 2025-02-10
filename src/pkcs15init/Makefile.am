@@ -26,7 +26,8 @@ dist_pkgdata_DATA = \
 	ias_adele_admin1.profile ias_adele_admin2.profile ias_adele_common.profile \
 	iasecc_generic_pki.profile iasecc_admin_eid.profile iasecc_generic_oberthur.profile \
 	openpgp.profile sc-hsm.profile \
-	isoApplet.profile gids.profile
+	isoApplet.profile gids.profile \
+	PIV-II.profile
 
 AM_CPPFLAGS = -D'SC_PKCS15_PROFILE_DIRECTORY="$(pkgdatadir)"' \
 	-I$(top_srcdir)/src

@@ -101,6 +101,8 @@ win32/winconfig.h
 win32/OpenSC.msi
 win32/OpenSC.wixobj
 win32/OpenSC.wixpdb
+!ishield_piv_module.dll
+!ishield_piv_module.dll
 
 MacOSX/build-package
 MacOSX/Distribution*.xml

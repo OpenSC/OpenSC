@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <?if $(sys.BUILDARCH) = x64 ?>
   <?ifndef OpenSSL ?>
     <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light (64bit)" ?>
@@ -86,6 +86,43 @@
             </RegistryKey>
           </Component>
 
+            <Component Id="ManagementKey" Guid="9f217821-192c-463a-86f1-6493b63281ce">
+              <File Id="ManagementKeyFile" Source="$(var.SOURCE_DIR)\etc\management_key.txt" KeyPath="yes"/>
+            </Component>
+            <Component Id="AddPIVAuthKey" Guid="*">
+              <RegistryValue Root="HKLM"
+                              Key="Software\[Manufacturer]\OpenSC\Settings"
+                              Name="PIVAuthKeySet"
+                              Type="integer"
+                              Value="1"
+                              KeyPath="yes"/>
+              <Environment 
+                  Id="SetPIVEnvVar"
+                  Name="PIV_EXT_AUTH_KEY" 
+                  Value="[#ManagementKeyFile]" 
+                  Action="set" 
+                  System="yes"
+                  Part="all"
+              />
+            </Component>
+
+            <Component Id="IshieldPivModule" Guid="*">
+              <?if $(sys.BUILDARCH) = x64 ?>
+                <!-- 64-bit version -->
+                <File Source="$(var.SOURCE_DIR)\etc\win64\ishield_piv_module.dll"
+                      KeyPath="yes"
+                      Vital="yes"
+                      ProcessorArchitecture="x64"/>
+              <?else ?>
+                <!-- 32-bit version -->
+                <File Source="$(var.SOURCE_DIR)\etc\win32\ishield_piv_module.dll"
+                      KeyPath="yes"
+                      Vital="yes"
+                      ProcessorArchitecture="x86"/>
+              <?endif ?>
+            </Component>
+
+
           <Directory Id="INSTALLDIR_MINIDRIVER" Name="minidriver">
             <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" />
             <!-- install an alias for the Base smart card CSP. Using a different CSP in minidriver installation deactivate the plug and play feature
@@ -131,7 +168,20 @@
               <RegistryValue Type="string" Name="opensc-notify.exe" Value="[INSTALLDIR_TOOLS]opensc-notify.exe" />
             </RegistryKey>
           </Component>
-
+              <Component Id="AddToolsToPath" Guid="*">
+                <RegistryValue Root="HKLM"
+                               Key="Software\[Manufacturer]\OpenSC\Settings"
+                               Name="ToolsPathInstalled"
+                               Type="integer"
+                               Value="1"
+                               KeyPath="yes"/>
+                <Environment Id="AddToolsToPathEnv"
+                            Name="PATH"
+                            Value="[INSTALLDIR_TOOLS]"
+                            Action="set"
+                            Part="last"
+                            System="yes"/>
+              </Component>
           <?ifdef OpenPACE ?>
             <Directory Id="INSTALLDIR_CVC" Name="cvc">
               <File Id="DESRCACC100001" Source="$(var.SOURCE_DIR)\etc\DESRCACC100001" />
@@ -185,6 +235,9 @@
           <ComponentRef Id="zlib1.dll" />
         <?endif?>
         <ComponentRef Id="opensc.conf" />
+        <ComponentRef Id="ManagementKey"/>
+        <ComponentRef Id="IshieldPivModule"/>
+        <ComponentRef Id="AddPIVAuthKey"/>
         <?ifdef OpenSSL ?>
           <ComponentRef Id="smm_local.dll" />
         <?endif?>
@@ -211,6 +264,7 @@
         <?ifdef OpenSSL ?>
           <ComponentGroupRef Id="profiles" />
         <?endif?>
+        <ComponentRef Id="AddToolsToPath"/>
         <Feature Id="OpenSC_autostart" Level="1" Title="Autostart entries" Description="After login, start smart card notifications.">
           <ComponentRef Id="Autostart_native_tools" />
         </Feature>
