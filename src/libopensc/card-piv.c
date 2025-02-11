@@ -3,7 +3,7 @@
  * card-default.c: Support for cards with no driver
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2005-2024  Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2005-2025  Douglas E. Engert <deengert@gmail.com>
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  *
@@ -2875,8 +2875,10 @@ static int piv_find_aid(sc_card_t * card)
 		if (tag != NULL) {
 			priv->init_flags |= PIV_INIT_AID_PARSED;
 			/* look for 800-73-4 0xAC for Cipher Suite Algorithm Identifier Table 14 */
-			/* There may be more than one 0xAC tag, loop to find all */
-			/* TODO do we need to look for "Nitrokey PIVP" in tag 0x50 length 12 */
+			/* 800-73-4 only expects 1 0xAC tag len 6 with a 80 01 xx 06 01 00
+			 * where xx is the SM csID either 27 or 2E.
+			 * Some vendors may include entries for supported Algorithms even when
+			 * not required */
 			nextac = tag;
 			while((actag = sc_asn1_find_tag(card->ctx, nextac, taglen - (nextac - tag),
 					0xAC, &actaglen)) != NULL) {
@@ -2885,7 +2887,7 @@ static int piv_find_aid(sc_card_t * card)
 				csai = sc_asn1_find_tag(card->ctx, actag, actaglen, 0x80, &csailen);
 				if (csai != NULL) {
 					if (csailen == 1) {
-						sc_log(card->ctx,"found csID=0x%2.2x",*csai);
+						sc_log(card->ctx,"found 0xAC 0x80 entry:0x%2.2x",*csai);
 #ifdef ENABLE_PIV_SM
 						for (i = 0; i < PIV_CSS_SIZE; i++) {
 							if (*csai != css[i].id)
@@ -5347,6 +5349,7 @@ static int piv_match_card(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_PIVKEY:
 		case SC_CARD_TYPE_PIV_II_SWISSBIT:
 		case SC_CARD_TYPE_PIV_II_800_73_4:
+		case SC_CARD_TYPE_PIV_II_NITROKEY:
 			break;
 		default:
 			return 0; /* can not handle the card */
@@ -5549,10 +5552,11 @@ static int piv_match_card_continued(sc_card_t *card)
 		goto err;
 	}
 
-	 /* Assumes all Yubikey cards are identified via ATR Historic bytes */
+	 /* Assumes all Yubikey/Nitrokey cards are identified via ATR Historic bytes */
 	switch (card->type) {
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+		case SC_CARD_TYPE_PIV_II_NITROKEY: /* Nitrokey PIV iuses same APDU as Yubikey */
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xFD, 0x00, 0x00);
 			apdu.lc = 0;
 			apdu.data = NULL;
@@ -5563,11 +5567,8 @@ static int piv_match_card_continued(sc_card_t *card)
 			r2 = sc_transmit_apdu(card, &apdu); /* on error yubico_version == 0 */
 			if (apdu.resplen == 3) {
 				priv->yubico_version = (yubico_version_buf[0]<<16) | (yubico_version_buf[1] <<8) | yubico_version_buf[2];
-				sc_log(card->ctx, "Yubico card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->yubico_version);
+				sc_log(card->ctx, "Yubico/Nitrokey card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->yubico_version);
 			}
-			break;
-		case SC_CARD_TYPE_PIV_II_NITROKEY:
-			/* TODO get Nitrokey version number */
 			break;
 	}
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
@@ -5621,7 +5622,6 @@ static int piv_match_card_continued(sc_card_t *card)
 			priv->card_issues |= CI_DISCOVERY_USELESS;
 			priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
 			break;
-		/* TODO  SC_CARD_TYPE_PIV_II_NITROKEY: nothing to do for now */
 	}
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
@@ -5635,19 +5635,23 @@ static int piv_match_card_continued(sc_card_t *card)
 		}
 	}
 
-	/* If SM is supported, set SC_CARD_TYPE_PIV_II_800_73_4 */
-	if (priv->init_flags & PIV_INIT_AID_AC) {
-		card->type = SC_CARD_TYPE_PIV_II_800_73_4;
-	}
-
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
+	/* If unknown card has 800-73-4 features, it must be based on 800-73-4 or above */
+	/* SC_CARD_TYPE_PIV_II_NITROKEY is already known to be based on 800-73-4 */
+	switch(card->type) {
+		case SC_CARD_TYPE_PIV_II_BASE:
+			if (priv->init_flags & PIV_INIT_AID_AC) {
+					card->type = SC_CARD_TYPE_PIV_II_800_73_4;
+			}
 
 #ifdef ENABLE_PIV_SM
-	/* Discovery object has pin policy. 800-74-4 bits, its at least SC_CARD_TYPE_PIV_II_800_73_4 */
-	if ((priv->pin_policy & (PIV_PP_OCC | PIV_PP_VCI_IMPL | PIV_PP_VCI_WITHOUT_PC)) != 0) {
-		card->type = SC_CARD_TYPE_PIV_II_800_73_4;
-	}
+			/* Discovery object has pin policy. 800-74-4 bits, its at least SC_CARD_TYPE_PIV_II_800_73_4 */
+			if ((priv->pin_policy & (PIV_PP_OCC | PIV_PP_VCI_IMPL | PIV_PP_VCI_WITHOUT_PC)) != 0) {
+				card->type = SC_CARD_TYPE_PIV_II_800_73_4;
+			}
 #endif
+			break;
+	}
+
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
 	/*
@@ -5687,6 +5691,10 @@ static int piv_match_card_continued(sc_card_t *card)
 				priv->card_issues |= CI_RSA_4096 | CI_25519;
 			break;
 
+		case SC_CARD_TYPE_PIV_II_NITROKEY:
+			priv->card_issues |= CI_OTHER_AID_LOSE_STATE;
+			break;
+
 		case SC_CARD_TYPE_PIV_II_GI_DE:
 		case SC_CARD_TYPE_PIV_II_OBERTHUR:
 		case SC_CARD_TYPE_PIV_II_GEMALTO:
@@ -5722,11 +5730,6 @@ static int piv_match_card_continued(sc_card_t *card)
 				| CI_NO_RANDOM; /* does not have 9B key */
 				/* Discovery object returns 6A 82 so is not on card by default */
 				/*  TODO may need more research */
-			break;
-
-		case SC_CARD_TYPE_PIV_II_NITROKEY:
-			priv->card_issues |= CI_PIV_AID_LOSE_STATE;
-			/* TODO may need to add others */
 			break;
 
 		default:
