@@ -1,4 +1,4 @@
-﻿/*
+/*
  * minidriver.c: OpenSC minidriver
  *
  * Copyright (C) 2009,2010 francois.leblanc@cev-sa.com
@@ -3064,9 +3064,7 @@ static HRESULT CALLBACK md_dialog_proc(HWND hWnd, UINT message, WPARAM wParam, L
 	return S_FALSE;
 }
 
-
-
-static int 
+static int
 md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *pin_obj,
 		const u8 *pin1, size_t pin1len,
@@ -3100,7 +3098,7 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 		return rv;
 	}
 
-	/* launch the UI in the same thread context than the parent and the function to perform in another thread context 
+	/* launch the UI in the same thread context than the parent and the function to perform in another thread context
 	this is the only way to display a modal dialog attached to a parent (hwndParent != 0) */
 	tc.hwndParent = pv->hwndParent;
 	tc.hInstance = g_inst;
@@ -3146,7 +3144,7 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	if (md_get_pinpad_dlg_timeout(pCardData) > 0) {
 		tc.dwFlags |= TDF_SHOW_PROGRESS_BAR | TDF_CALLBACK_TIMER;
 	}
-	
+
 	checked = !md_is_pinpad_dlg_enable_cancel(pCardData);
 	if (checked) {
 		tc.dwFlags |= TDF_VERIFICATION_FLAG_CHECKED;
@@ -4953,7 +4951,6 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				goto err;
 		}
 	}
-	
 
 	/* Compute output size */
 	if ( prkey_info->modulus_length > 0) {
@@ -5024,7 +5021,6 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 
 		pInfo->cbSignedData = r;
 
-		
 		/*revert data only for RSA (Microsoft uses the big endian version while everyone is using little endian*/
 		if ( prkey_info->modulus_length > 0) {
 			for(i = 0; i < r; i++)
@@ -5195,12 +5191,11 @@ err:
 	MD_FUNC_RETURN(pCardData, 1, dwret);
 }
 
-
 DWORD WINAPI CardDeriveHashOrHMAC(__in PCARD_DATA pCardData,
 	__inout PCARD_DERIVE_KEY pAgreementInfo,
 	__in struct md_dh_agreement* agreement,
 	__in PWSTR szAlgorithm,
-	__in PBYTE pbHmacKey, __in DWORD dwHmacKeySize 
+	__in PBYTE pbHmacKey, __in DWORD dwHmacKeySize
 	)
 {
 	DWORD dwReturn = 0;
@@ -5327,10 +5322,10 @@ cleanup:
 /* Generic function to perform hash. Could have been OpenSSL but used BCrypt* functions.
 BCrypt is loaded as a delay load library. The dll can be loaded into Windows XP until this code is called.
 Hopefully, ECC is not available in Windows XP and BCrypt functions are not called */
-DWORD HashDataWithBCrypt(__in PCARD_DATA pCardData, BCRYPT_ALG_HANDLE hAlgorithm, 
-		PBYTE pbOuput, DWORD dwOutputSize, PBYTE pbSecret, DWORD dwSecretSize, 
+DWORD HashDataWithBCrypt(__in PCARD_DATA pCardData, BCRYPT_ALG_HANDLE hAlgorithm,
+		PBYTE pbOuput, DWORD dwOutputSize, PBYTE pbSecret, DWORD dwSecretSize,
 		PBYTE pbData1, DWORD dwDataSize1,
-		PBYTE pbData2, DWORD dwDataSize2, 
+		PBYTE pbData2, DWORD dwDataSize2,
 		PBYTE pbData3, DWORD dwDataSize3 )
 {
 	DWORD dwReturn, dwSize, dwBufferSize;
@@ -5448,22 +5443,22 @@ DWORD WINAPI DoTlsPrf(__in PCARD_DATA pCardData,
 		dwReturn = SCARD_E_NO_MEMORY;
 		goto cleanup;
 	}
-	
+
 	for (i = 0; i<dwNumberOfRounds; i++) {
 		/* A1, A2, ... */
 		if (i == 0) {
 			/* A(1) = HMAC_hash(secret, label + seed)*/
-			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
-					pbAx, dwHashSize, pbSecret, dwSecretSize, 
+			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm,
+					pbAx, dwHashSize, pbSecret, dwSecretSize,
 					pbLabel, dwLabelSize,
-					pbSeed, 64, 
+					pbSeed, 64,
 					NULL, 0);
 		} else {
 			/* A(i) = HMAC_hash(secret, A(i-1))*/
-			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
-					pbAx + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize, 
-					pbAx + (i-1) * dwHashSize, dwHashSize,
-					NULL, 0, 
+			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm,
+					pbAx + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize,
+					pbAx + (i - 1) * dwHashSize, dwHashSize,
+					NULL, 0,
 					NULL, 0);
 		}
 		if (dwReturn) {
@@ -5474,15 +5469,15 @@ DWORD WINAPI DoTlsPrf(__in PCARD_DATA pCardData,
 		}
 		if (dwNumberOfRounds -1 == i) {
 			/* last round */
-			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
-					pbBuffer, dwHashSize, pbSecret, dwSecretSize, 
+			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm,
+					pbBuffer, dwHashSize, pbSecret, dwSecretSize,
 					pbAx + i * dwHashSize, dwHashSize,
 					pbLabel, dwLabelSize,
 					pbSeed, 64);
 			memcpy(pbOutput + i * dwHashSize, pbBuffer, dwLastRoundSize);
 		} else {
-			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm, 
-					pbOutput + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize, 
+			dwReturn = HashDataWithBCrypt(pCardData, hAlgorithm,
+					pbOutput + i * dwHashSize, dwHashSize, pbSecret, dwSecretSize,
 					pbAx + i * dwHashSize, dwHashSize,
 					pbLabel, dwLabelSize,
 					pbSeed, 64);
@@ -5675,7 +5670,7 @@ DWORD WINAPI CardDeriveKey(__in PCARD_DATA pCardData,
 	/* find the algorithm, checks parameters */
 
 	parameters = (NCryptBufferDesc*)pAgreementInfo->pParameterList;
-	
+
 	if (parameters) {
 		for (i = 0; i < parameters->cBuffers; i++) {
 			NCryptBuffer* buffer = parameters->pBuffers + i;
@@ -6011,9 +6006,9 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		if (ppbSessionPin) *ppbSessionPin = NULL;
 		logprintf(pCardData, 2, "standard pin verification");
 		/*
-		 * TODO the use of auth_method being overridden to do session pin 
+		 * TODO the use of auth_method being overridden to do session pin
 		 * conflicts with framework-pkcs15.c use of auth_method  SC_AC_CONTEXT_SPECIFIC
-		 * for a different purpose. But needs to be reviewed 
+		 * for a different purpose. But needs to be reviewed
 		 */
 		if (PinId == MD_ROLE_USER_SIGN && vs->need_pin_always) {
 			logprintf(pCardData, 7, "Setting SC_AC_CONTEXT_SPECIFIC cbPinData: %lu old auth_method: %0x auth_id:%x \n",
@@ -6677,7 +6672,7 @@ DWORD WINAPI CardSetProperty(__in   PCARD_DATA pCardData,
 		logprintf(pCardData, 3, "Saved parent window (%p)\n", vs->hwndParent);
 		MD_FUNC_RETURN(pCardData, 1, SCARD_S_SUCCESS);
 	}
-	
+
 	if (wcscmp(CP_PIN_CONTEXT_STRING, wszProperty) == 0) {
 		vs->wszPinContext = (PWSTR) pbData;
 		logprintf(pCardData, 3, "Saved PIN context string: %S\n", (PWSTR) pbData);
