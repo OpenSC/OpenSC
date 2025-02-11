@@ -2813,29 +2813,91 @@ build_chacha20_params(
 	mech->ulParameterLen = sizeof(*params);
 }
 
-static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
-		CK_OBJECT_HANDLE key)
+typedef union
 {
-	unsigned char	in_buffer[1024], out_buffer[1024];
-	CK_MECHANISM	mech;
-	CK_RV		rv;
-	union
-	{
-		CK_RSA_PKCS_OAEP_PARAMS oaep;
-		CK_GCM_PARAMS gcm;
-		CK_CHACHA20_PARAMS chacha20;
-		CK_SALSA20_CHACHA20_POLY1305_PARAMS chacha20poly1305;
-	} params = {0};
-	CK_ULONG	in_len, out_len;
-	int		fd_in, fd_out;
-	CK_BYTE_PTR	iv = NULL;
-	size_t		iv_size = 0;
-	ssize_t sz;
-	CK_BYTE_PTR aad = NULL;
+	CK_RSA_PKCS_OAEP_PARAMS oaep;
+	CK_GCM_PARAMS gcm;
+	CK_CHACHA20_PARAMS chacha20;
+	CK_SALSA20_CHACHA20_POLY1305_PARAMS chacha20poly1305;
+} params_t;
+
+static void
+build_params(
+		params_t *params,
+		CK_MECHANISM *mech,
+		CK_BYTE_PTR *iv,
+		CK_BYTE_PTR *aad)
+{
+	size_t iv_size = 0;
 	size_t aad_size = 0;
 
+	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
+	switch (opt_mechanism) {
+	case CKM_RSA_PKCS_OAEP:
+		build_rsa_oaep_params(&params->oaep, mech, NULL, 0);
+		break;
+	case CKM_RSA_X_509:
+	case CKM_RSA_PKCS:
+	case CKM_AES_ECB:
+		mech->pParameter = NULL;
+		mech->ulParameterLen = 0;
+		break;
+	case CKM_AES_CBC:
+	case CKM_AES_CBC_PAD:
+		iv_size = 16;
+		*iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		mech->pParameter = *iv;
+		mech->ulParameterLen = iv_size;
+		break;
+	case CKM_AES_GCM:
+		*iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		params->gcm.pIv = *iv;
+		params->gcm.ulIvLen = iv_size;
+		*aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
+		params->gcm.pAAD = *aad;
+		params->gcm.ulAADLen = aad_size;
+		params->gcm.ulTagBits = opt_tag_bits;
+		mech->pParameter = &params->gcm;
+		mech->ulParameterLen = sizeof(params->gcm);
+		break;
+	case CKM_CHACHA20:
+		*iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		if (iv_size != 16) {
+			util_fatal("Invalid iv size %zu\n", iv_size);
+		}
+		build_chacha20_params(&params->chacha20, mech, *iv);
+		break;
+	case CKM_CHACHA20_POLY1305:
+		*iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		params->chacha20poly1305.pNonce = *iv;
+		params->chacha20poly1305.ulNonceLen = iv_size;
+		*aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
+		params->chacha20poly1305.pAAD = *aad;
+		params->chacha20poly1305.ulAADLen = aad_size;
+		mech->pParameter = &params->chacha20poly1305;
+		mech->ulParameterLen = sizeof(params->chacha20poly1305);
+		break;
+	default:
+		break;
+	}
+}
+
+static void
+decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
+		CK_OBJECT_HANDLE key)
+{
+	unsigned char in_buffer[1024], out_buffer[1024];
+	CK_MECHANISM mech;
+	CK_RV rv;
+	params_t params = {0};
+	CK_BYTE_PTR iv = NULL;
+	CK_BYTE_PTR aad = NULL;
+	CK_ULONG in_len, out_len;
+	int fd_in, fd_out;
+	ssize_t sz;
+
 	if (!opt_mechanism_used)
-		if (!find_mechanism(slot, CKF_DECRYPT|opt_allow_sw, NULL, 0, &opt_mechanism))
+		if (!find_mechanism(slot, CKF_DECRYPT | opt_allow_sw, NULL, 0, &opt_mechanism))
 			util_fatal("Decrypt mechanism not supported");
 
 	fprintf(stderr, "Using decrypt algorithm %s\n", p11_mechanism_to_name(opt_mechanism));
@@ -2844,58 +2906,9 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_OAEP)
 		util_fatal("The hash-algorithm is applicable only to "
-               "RSA-PKCS-OAEP mechanism");
+			   "RSA-PKCS-OAEP mechanism");
 
-
-	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
-	switch (opt_mechanism) {
-	case CKM_RSA_PKCS_OAEP:
-		build_rsa_oaep_params(&params.oaep, &mech, NULL, 0);
-		break;
-	case CKM_RSA_X_509:
-	case CKM_RSA_PKCS:
-	case CKM_AES_ECB:
-		mech.pParameter = NULL;
-		mech.ulParameterLen = 0;
-		break;
-	case CKM_AES_CBC:
-	case CKM_AES_CBC_PAD:
-		iv_size = 16;
-		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
-		mech.pParameter = iv;
-		mech.ulParameterLen = iv_size;
-		break;
-	case CKM_AES_GCM:
-		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
-		params.gcm.pIv = iv;
-		params.gcm.ulIvLen = iv_size;
-		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
-		params.gcm.pAAD = aad;
-		params.gcm.ulAADLen = aad_size;
-		params.gcm.ulTagBits = opt_tag_bits;
-		mech.pParameter = &params.gcm;
-		mech.ulParameterLen = sizeof(params.gcm);
-		break;
-	case CKM_CHACHA20:
-		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
-		if (iv_size != 16) {
-			util_fatal("Invalid iv size %zu\n", iv_size);
-		}
-		build_chacha20_params(&params.chacha20, &mech, iv);
-		break;
-	case CKM_CHACHA20_POLY1305:
-		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
-		params.chacha20poly1305.pNonce = iv;
-		params.chacha20poly1305.ulNonceLen = iv_size;
-		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
-		params.chacha20poly1305.pAAD = aad;
-		params.chacha20poly1305.ulAADLen = aad_size;
-		mech.pParameter = &params.chacha20poly1305;
-		mech.ulParameterLen = sizeof(params.chacha20poly1305);
-		break;
-	default:
-		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
-	}
+	build_params(&params, &mech, &iv, &aad);
 
 	if (opt_input == NULL)
 		fd_in = 0;
@@ -2965,23 +2978,15 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
-	unsigned char	in_buffer[1024], out_buffer[1024];
-	CK_MECHANISM	mech;
-	CK_RV		rv;
-	union
-	{
-		CK_RSA_PKCS_OAEP_PARAMS oaep;
-		CK_GCM_PARAMS gcm;
-		CK_CHACHA20_PARAMS chacha20;
-		CK_SALSA20_CHACHA20_POLY1305_PARAMS chacha20poly1305;
-	} params = {0};
-	CK_ULONG	in_len, out_len;
-	int		fd_in, fd_out;
-	ssize_t sz;
-	CK_BYTE_PTR	iv = NULL;
-	size_t		iv_size = 0;
+	unsigned char in_buffer[1024], out_buffer[1024];
+	CK_MECHANISM mech;
+	CK_RV rv;
+	params_t params = {0};
+	CK_BYTE_PTR iv = NULL;
 	CK_BYTE_PTR aad = NULL;
-	size_t aad_size = 0;
+	CK_ULONG in_len, out_len;
+	int fd_in, fd_out;
+	ssize_t sz;
 
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_ENCRYPT | opt_allow_sw, NULL, 0, &opt_mechanism))
@@ -2995,52 +3000,7 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("The hash-algorithm is applicable only to "
 			   "RSA-PKCS-OAEP mechanism");
 
-	switch (opt_mechanism) {
-	case CKM_RSA_PKCS_OAEP:
-		build_rsa_oaep_params(&params.oaep, &mech, NULL, 0);
-		break;
-	case CKM_AES_ECB:
-		mech.pParameter = NULL;
-		mech.ulParameterLen = 0;
-		break;
-	case CKM_AES_CBC:
-	case CKM_AES_CBC_PAD:
-		iv_size = 16;
-		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
-		mech.pParameter = iv;
-		mech.ulParameterLen = iv_size;
-		break;
-	case CKM_AES_GCM:
-		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
-		params.gcm.pIv = iv;
-		params.gcm.ulIvLen = iv_size;
-		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
-		params.gcm.pAAD = aad;
-		params.gcm.ulAADLen = aad_size;
-		params.gcm.ulTagBits = opt_tag_bits;
-		mech.pParameter = &params.gcm;
-		mech.ulParameterLen = sizeof(params.gcm);
-		break;
-	case CKM_CHACHA20:
-		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
-		if (iv_size != 16) {
-			util_fatal("Invalid iv size %zu\n", iv_size);
-		}
-		build_chacha20_params(&params.chacha20, &mech, iv);
-		break;
-	case CKM_CHACHA20_POLY1305:
-		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
-		params.chacha20poly1305.pNonce = iv;
-		params.chacha20poly1305.ulNonceLen = iv_size;
-		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
-		params.chacha20poly1305.pAAD = aad;
-		params.chacha20poly1305.ulAADLen = aad_size;
-		mech.pParameter = &params.chacha20poly1305;
-		mech.ulParameterLen = sizeof(params.chacha20poly1305);
-		break;
-	default:
-		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
-	}
+	build_params(&params, &mech, &iv, &aad);
 
 	if (opt_input == NULL)
 		fd_in = 0;
@@ -3732,15 +3692,9 @@ unwrap_key(CK_SESSION_HANDLE session)
 	unsigned char in_buffer[2048];
 	CK_ULONG wrapped_key_length;
 	CK_BYTE_PTR pWrappedKey;
+	params_t params = {0};
 	CK_BYTE_PTR iv = NULL;
-	size_t iv_size = 0;
 	CK_BYTE_PTR aad = NULL;
-	size_t aad_size = 0;
-	union
-	{
-		CK_RSA_PKCS_OAEP_PARAMS oaep;
-		CK_GCM_PARAMS gcm;
-	} params = {0};
 	CK_OBJECT_HANDLE hUnwrappingKey;
 	ssize_t sz;
 
@@ -3770,32 +3724,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 		close(fd);
 	pWrappedKey = in_buffer;
 
-	switch (opt_mechanism) {
-	case CKM_AES_CBC:
-	case CKM_AES_CBC_PAD:
-		iv_size = 16;
-		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
-		mechanism.pParameter = iv;
-		mechanism.ulParameterLen = iv_size;
-		break;
-	case CKM_AES_GCM:
-		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
-		params.gcm.pIv = iv;
-		params.gcm.ulIvLen = iv_size;
-		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
-		params.gcm.pAAD = aad;
-		params.gcm.ulAADLen = aad_size;
-		params.gcm.ulTagBits = opt_tag_bits;
-		mechanism.pParameter = &params.gcm;
-		mechanism.ulParameterLen = sizeof(params.gcm);
-		break;
-	case CKM_RSA_PKCS_OAEP:
-		build_rsa_oaep_params(&params.oaep, &mechanism, NULL, 0);
-		break;
-	default:
-		// Nothing to do with other mechanisms.
-		break;
-	}
+	build_params(&params, &mechanism, &iv, &aad);
 
 	if (opt_key_type == NULL) {
 		util_fatal("Key type must be specified");
@@ -3914,15 +3843,9 @@ wrap_key(CK_SESSION_HANDLE session)
 	size_t hkey_id_len;
 	int fd;
 	ssize_t sz;
+	params_t params = {0};
 	CK_BYTE_PTR iv = NULL;
-	size_t iv_size = 0;
 	CK_BYTE_PTR aad = NULL;
-	size_t aad_size = 0;
-	union
-	{
-		CK_RSA_PKCS_OAEP_PARAMS oaep;
-		CK_GCM_PARAMS gcm;
-	} params = {0};
 
 	if (NULL == opt_application_id)
 		util_fatal("Use --application-id to specify secret key (to be wrapped)");
@@ -3933,32 +3856,7 @@ wrap_key(CK_SESSION_HANDLE session)
 	mechanism.pParameter = NULL_PTR;
 	mechanism.ulParameterLen = 0;
 
-	switch (opt_mechanism) {
-	case CKM_AES_CBC:
-	case CKM_AES_CBC_PAD:
-		iv_size = 16;
-		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
-		mechanism.pParameter = iv;
-		mechanism.ulParameterLen = iv_size;
-		break;
-	case CKM_AES_GCM:
-		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
-		params.gcm.pIv = iv;
-		params.gcm.ulIvLen = iv_size;
-		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
-		params.gcm.pAAD = aad;
-		params.gcm.ulAADLen = aad_size;
-		params.gcm.ulTagBits = opt_tag_bits;
-		mechanism.pParameter = &params.gcm;
-		mechanism.ulParameterLen = sizeof(params.gcm);
-		break;
-	case CKM_RSA_PKCS_OAEP:
-		build_rsa_oaep_params(&params.oaep, &mechanism, NULL, 0);
-		break;
-	default:
-		// Nothing to do with other mechanisms.
-		break;
-	}
+	build_params(&params, &mechanism, &iv, &aad);
 
 	hkey_id_len = sizeof(hkey_id);
 	if (sc_hex_to_bin(opt_application_id, hkey_id, &hkey_id_len))
