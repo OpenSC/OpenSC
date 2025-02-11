@@ -305,7 +305,7 @@ static int cwa_parse_tlv(sc_card_t * card,
 			}
 		}
 		tlv->data = buffer + n + j;
-		tlv->buflen = j + tlv->len;;
+		tlv->buflen = j + tlv->len;
 		sc_log(ctx, "Found Tag: '0x%02X': Length: '%"SC_FORMAT_LEN_SIZE_T"u' Value:\n%s",
 		       tlv->tag, tlv->len, sc_dump_hex(tlv->data, tlv->len));
 		/* set index to next Tag to jump to */

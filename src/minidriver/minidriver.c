@@ -902,11 +902,11 @@ md_contguid_add_conversion(PCARD_DATA pCardData, struct sc_pkcs15_object *prkey,
 			strlcpy(md_static_conversions[i].szOpenSCGuid,
 				szOpenSCGuid, MAX_CONTAINER_NAME_LEN + 1);
 			logprintf(pCardData, 0, "md_contguid_add_conversion(): Registering conversion '%s' '%s'\n", szWindowsGuid, szOpenSCGuid);
-			return SCARD_S_SUCCESS;;
+			return SCARD_S_SUCCESS;
 		}
 	}
 	logprintf(pCardData, 0, "md_contguid_add_conversion(): Unable to add a new conversion with guid %s.\n", szWindowsGuid);
-	return SCARD_F_INTERNAL_ERROR;;
+	return SCARD_F_INTERNAL_ERROR;
 }
 
 /* remove an entry in the guid conversion table*/
