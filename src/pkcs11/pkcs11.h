@@ -370,6 +370,8 @@ typedef unsigned long ck_key_type_t;
 #define CKK_GOSTR3410		(0x30UL)
 #define CKK_GOSTR3411		(0x31UL)
 #define CKK_GOST28147		(0x32UL)
+#define CKK_CHACHA20		(0x33UL)
+#define CKK_POLY1305		(0x34UL)
 #define CKK_EC_EDWARDS		(0x40UL)
 #define CKK_EC_MONTGOMERY	(0x41UL)
 #define CKK_HKDF		(0x42UL)
@@ -802,6 +804,10 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_GOST28147           (0x1222UL)
 #define CKM_GOST28147_MAC       (0x1223UL)
 #define CKM_GOST28147_KEY_WRAP  (0x1224UL)
+#define CKM_CHACHA20_KEY_GEN    (0x1225UL)
+#define CKM_CHACHA20            (0x1226UL)
+#define CKM_POLY1305_KEY_GEN    (0x1227UL)
+#define CKM_POLY1305            (0x1228UL)
 
 #define CKM_DSA_PARAMETER_GEN		(0x2000UL)
 #define CKM_DH_PKCS_PARAMETER_GEN	(0x2001UL)
@@ -813,6 +819,7 @@ typedef unsigned long ck_mechanism_type_t;
 #define CKM_AES_CFB1			(0x2108UL)
 #define CKM_AES_KEY_WRAP		(0x2109UL)
 #define CKM_AES_KEY_WRAP_PAD		(0x210AUL)
+#define CKM_CHACHA20_POLY1305		(0x4021UL)
 #define CKM_XEDDSA			(0x4029UL)
 #define CKM_HKDF_DERIVE			(0x402AUL)
 #define CKM_HKDF_DATA			(0x402BUL)
@@ -961,6 +968,20 @@ typedef struct CK_XEDDSA_PARAMS {
 } CK_XEDDSA_PARAMS;
 
 typedef CK_XEDDSA_PARAMS *CK_XEDDSA_PARAMS_PTR;
+
+typedef struct CK_CHACHA20_PARAMS {
+	unsigned char *pBlockCounter;
+	unsigned long blockCounterBits;
+	unsigned char *pNonce;
+	unsigned long ulNonceBits;
+} CK_CHACHA20_PARAMS;
+
+typedef struct CK_SALSA20_CHACHA20_POLY1305_PARAMS {
+	unsigned char *pNonce;
+	unsigned long ulNonceLen;
+	unsigned char *pAAD;
+	unsigned long ulAADLen;
+} CK_SALSA20_CHACHA20_POLY1305_PARAMS;
 
 typedef struct CK_AES_CTR_PARAMS {
     unsigned long ulCounterBits;
