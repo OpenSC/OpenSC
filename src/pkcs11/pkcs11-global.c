@@ -76,7 +76,7 @@ CK_RV mutex_create(void **mutex)
 
 	m = calloc(1, sizeof(*m));
 	if (m == NULL)
-		return CKR_GENERAL_ERROR;;
+		return CKR_GENERAL_ERROR;
 	pthread_mutex_init(m, NULL);
 	*mutex = m;
 	return CKR_OK;
