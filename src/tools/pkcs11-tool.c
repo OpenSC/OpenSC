@@ -2798,6 +2798,21 @@ build_rsa_oaep_params(
 			oaep_params->ulSourceDataLen);
 }
 
+static void
+build_chacha20_params(
+		CK_CHACHA20_PARAMS *params,
+		CK_MECHANISM *mech,
+		CK_BYTE *iv)
+{
+	params->pBlockCounter = iv;
+	params->blockCounterBits = 64;
+	params->pNonce = &iv[8];
+	params->ulNonceBits = 64;
+
+	mech->pParameter = params;
+	mech->ulParameterLen = sizeof(*params);
+}
+
 static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
@@ -2808,6 +2823,8 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	{
 		CK_RSA_PKCS_OAEP_PARAMS oaep;
 		CK_GCM_PARAMS gcm;
+		CK_CHACHA20_PARAMS chacha20;
+		CK_SALSA20_CHACHA20_POLY1305_PARAMS chacha20poly1305;
 	} params = {0};
 	CK_ULONG	in_len, out_len;
 	int		fd_in, fd_out;
@@ -2858,6 +2875,23 @@ static void decrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		params.gcm.ulTagBits = opt_tag_bits;
 		mech.pParameter = &params.gcm;
 		mech.ulParameterLen = sizeof(params.gcm);
+		break;
+	case CKM_CHACHA20:
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		if (iv_size != 16) {
+			util_fatal("Invalid iv size %zu\n", iv_size);
+		}
+		build_chacha20_params(&params.chacha20, &mech, iv);
+		break;
+	case CKM_CHACHA20_POLY1305:
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		params.chacha20poly1305.pNonce = iv;
+		params.chacha20poly1305.ulNonceLen = iv_size;
+		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
+		params.chacha20poly1305.pAAD = aad;
+		params.chacha20poly1305.ulAADLen = aad_size;
+		mech.pParameter = &params.chacha20poly1305;
+		mech.ulParameterLen = sizeof(params.chacha20poly1305);
 		break;
 	default:
 		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
@@ -2938,6 +2972,8 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	{
 		CK_RSA_PKCS_OAEP_PARAMS oaep;
 		CK_GCM_PARAMS gcm;
+		CK_CHACHA20_PARAMS chacha20;
+		CK_SALSA20_CHACHA20_POLY1305_PARAMS chacha20poly1305;
 	} params = {0};
 	CK_ULONG	in_len, out_len;
 	int		fd_in, fd_out;
@@ -2984,6 +3020,23 @@ static void encrypt_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		params.gcm.ulTagBits = opt_tag_bits;
 		mech.pParameter = &params.gcm;
 		mech.ulParameterLen = sizeof(params.gcm);
+		break;
+	case CKM_CHACHA20:
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		if (iv_size != 16) {
+			util_fatal("Invalid iv size %zu\n", iv_size);
+		}
+		build_chacha20_params(&params.chacha20, &mech, iv);
+		break;
+	case CKM_CHACHA20_POLY1305:
+		iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		params.chacha20poly1305.pNonce = iv;
+		params.chacha20poly1305.ulNonceLen = iv_size;
+		aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
+		params.chacha20poly1305.pAAD = aad;
+		params.chacha20poly1305.ulAADLen = aad_size;
+		mech.pParameter = &params.chacha20poly1305;
+		mech.ulParameterLen = sizeof(params.chacha20poly1305);
 		break;
 	default:
 		util_fatal("Mechanism %s illegal or not supported\n", p11_mechanism_to_name(opt_mechanism));
@@ -3451,7 +3504,7 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 	if (type != NULL) {
 		if (strncasecmp(type, "AES:", strlen("AES:")) == 0) {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_AES_KEY_GEN};
-			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
+			size_t mtypes_num = sizeof(mtypes) / sizeof(mtypes[0]);
 			const char *size = type + strlen("AES:");
 
 			key_type = CKK_AES;
@@ -3466,10 +3519,9 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 
 			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 			n_attr++;
-		}
-		else if (strncasecmp(type, "DES:", strlen("DES:")) == 0) {
+		} else if (strncasecmp(type, "DES:", strlen("DES:")) == 0) {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_DES_KEY_GEN};
-			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
+			size_t mtypes_num = sizeof(mtypes) / sizeof(mtypes[0]);
 			const char *size = type + strlen("DES:");
 
 			key_type = CKK_DES;
@@ -3484,10 +3536,9 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 
 			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 			n_attr++;
-		}
-		else if (strncasecmp(type, "DES3:", strlen("DES3:")) == 0) {
+		} else if (strncasecmp(type, "DES3:", strlen("DES3:")) == 0) {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_DES3_KEY_GEN};
-			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
+			size_t mtypes_num = sizeof(mtypes) / sizeof(mtypes[0]);
 			const char *size = type + strlen("DES3:");
 
 			key_type = CKK_DES3;
@@ -3502,10 +3553,9 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 
 			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 			n_attr++;
-		}
-		else if (strncasecmp(type, "GENERIC:", strlen("GENERIC:")) == 0) {
+		} else if (strncasecmp(type, "GENERIC:", strlen("GENERIC:")) == 0) {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_GENERIC_SECRET_KEY_GEN};
-			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
+			size_t mtypes_num = sizeof(mtypes) / sizeof(mtypes[0]);
 			const char *size = type + strlen("GENERIC:");
 
 			key_type = CKK_GENERIC_SECRET;
@@ -3520,9 +3570,7 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 
 			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 			n_attr++;
-		}
-
-		else if (strncasecmp(type, "HKDF:", strlen("HKDF:")) == 0) {
+		} else if (strncasecmp(type, "HKDF:", strlen("HKDF:")) == 0) {
 			CK_MECHANISM_TYPE mtypes[] = {CKM_HKDF_KEY_GEN};
 			size_t mtypes_num = sizeof(mtypes) / sizeof(mtypes[0]);
 			const char *size = type + strlen("HKDF:");
@@ -3536,6 +3584,34 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 			key_length = (unsigned long)atol(size);
 			if (key_length == 0)
 				util_fatal("Unknown key type %s, expecting HKDF:<nbytes>", type);
+
+			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_attr++;
+		} else if (strncasecmp(type, "CHACHA20", strlen("CHACHA20")) == 0) {
+			CK_MECHANISM_TYPE mtypes[] = {CKM_CHACHA20_KEY_GEN};
+			size_t mtypes_num = sizeof(mtypes) / sizeof(mtypes[0]);
+
+			key_type = CKK_CHACHA20;
+
+			if (!opt_mechanism_used)
+				if (!find_mechanism(slot, CKF_GENERATE, mtypes, mtypes_num, &opt_mechanism))
+					util_fatal("Generate Key mechanism not supported\n");
+
+			key_length = 32U;
+
+			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_attr++;
+		} else if (strncasecmp(type, "POLY1305", strlen("POLY1305")) == 0) {
+			CK_MECHANISM_TYPE mtypes[] = {CKM_POLY1305_KEY_GEN};
+			size_t mtypes_num = sizeof(mtypes) / sizeof(mtypes[0]);
+
+			key_type = CKK_POLY1305;
+
+			if (!opt_mechanism_used)
+				if (!find_mechanism(slot, CKF_GENERATE, mtypes, mtypes_num, &opt_mechanism))
+					util_fatal("Generate Key mechanism not supported\n");
+
+			key_length = 32U;
 
 			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 			n_attr++;
@@ -4834,8 +4910,12 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 				type = CKK_GENERIC_SECRET;
 			else if (strncasecmp(opt_key_type, "HKDF:", strlen("HKDF:")) == 0)
 				type = CKK_HKDF;
+			else if (strncasecmp(opt_key_type, "CHACHA20", strlen("CHACHA20")) == 0)
+				type = CKK_CHACHA20;
+			else if (strncasecmp(opt_key_type, "POLY1305", strlen("POLY1305")) == 0)
+				type = CKK_POLY1305;
 			else
-				util_fatal("Unknown key type: 0x%lX", type);
+				util_fatal("Unknown key type: 0x%lX\nSupported key types are AES, DES3, GENERIC, HKDF, CHACHA20 and POLY1305", type);
 		}
 
 		FILL_ATTR(seckey_templ[0], CKA_CLASS, &clazz, sizeof(clazz));
@@ -5851,6 +5931,8 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	case CKK_DES:
 	case CKK_DES3:
 	case CKK_HKDF:
+	case CKK_CHACHA20:
+	case CKK_POLY1305:
 		if (key_type == CKK_AES)
 			printf("; AES");
 		else if (key_type == CKK_DES)
@@ -5859,6 +5941,10 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			printf("; DES3");
 		else if (key_type == CKK_HKDF)
 			printf("; HKDF");
+		else if (key_type == CKK_CHACHA20)
+			printf("; CHACHA20");
+		else if (key_type == CKK_POLY1305)
+			printf("; POLY1305");
 		else
 			printf("; Generic secret");
 		size = getVALUE_LEN(sess, obj);
@@ -9362,6 +9448,11 @@ static struct mech_info	p11_mechanisms[] = {
 	{ CKM_X9_42_DH_PARAMETER_GEN,"X9-42-DH-PARAMETER-GEN", NULL, MF_UNKNOWN },
 	{ CKM_AES_KEY_WRAP,	"AES-KEY-WRAP", NULL, MF_UNKNOWN },
 	{ CKM_AES_KEY_WRAP_PAD,	"AES-KEY-WRAP-PAD", NULL, MF_UNKNOWN},
+	{ CKM_CHACHA20_KEY_GEN,	"CHACHA20-KEY-GEN", NULL, MF_UNKNOWN},
+	{ CKM_CHACHA20,	"CHACHA20", NULL, MF_UNKNOWN},
+	{ CKM_POLY1305_KEY_GEN,	"POLY1305-KEY-GEN", NULL, MF_UNKNOWN},
+	{ CKM_POLY1305,	"POLY1305", NULL, MF_GENERIC_HMAC_FLAGS},
+	{ CKM_CHACHA20_POLY1305,	"CHACHA20-POLY1305", NULL, MF_UNKNOWN},
 	{ 0, NULL, NULL, MF_UNKNOWN },
 };
 
