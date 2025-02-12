@@ -529,6 +529,7 @@ CK_RV slot_token_removed(CK_SLOT_ID id)
 	/* Reset relevant slot properties */
 	slot->slot_info.flags &= ~CKF_TOKEN_PRESENT;
 	slot->login_user = -1;
+	slot->profile = NULL;
 	pop_all_login_states(slot);
 
 	if (token_was_present)

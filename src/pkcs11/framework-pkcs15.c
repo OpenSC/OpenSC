@@ -1506,7 +1506,7 @@ static void _add_profile_object(struct sc_pkcs11_slot *slot, struct pkcs15_fw_da
 	int rv;
 
 	if (slot->profile) {
-		struct pkcs15_profile_object *pobj = (struct pkcs15_profile_object *)slot->profile;;
+		struct pkcs15_profile_object *pobj = (struct pkcs15_profile_object *)slot->profile;
 		/* already exists -- downgrade if we found some non-public certificates */
 		if (pobj->profile_id == CKP_PUBLIC_CERTIFICATES_TOKEN && !public_certificates) {
 			pobj->profile_id = CKP_AUTHENTICATION_TOKEN;

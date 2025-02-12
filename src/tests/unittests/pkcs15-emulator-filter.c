@@ -340,7 +340,7 @@ static void torture_name_and_internal(void **state)
 static void torture_internal_and_nonexisting(void **state)
 {
 	struct _sc_pkcs15_emulators filtered_emulators;
-	int i, rv;;
+	int i, rv;
 	scconf_list list2 =  { NULL, "non" };
 	scconf_list list1 =  { &list2, "internal" };
 	filtered_emulators.ccount = 0;
