@@ -148,7 +148,7 @@
 					</term>
 					<listitem><para>Specify the type and (not always compulsory) flavour (byte-wise symmetric key length, bit-wise asymmetric key length,
 					elliptic curve identifier, etc.) of the key to create, for example RSA:2048, EC:prime256v1, EC:ED25519, EC:X448, GOSTR3410-2012-256:B,
-					DES:8, DES3:24, AES:16, AES: or GENERIC:64. If the key type was incompletely specified, possible values are listed.</para></listitem>
+					DES:8, DES3:24, AES:16, AES:, CHACHA20, POLY1305 or GENERIC:64. If the key type was incompletely specified, possible values are listed.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -845,7 +845,7 @@ pkcs11-tool --login --wrap --id 75 --mechanism AES-CBC-PAD \
 				<programlisting>
 pkcs11-tool --login --unwrap --mechanism RSA-PKCS --id 22 \
 	-i aes_wrapped.key --key-type AES: \
-	--application-id 90 --applicatin-label unwrapped-key
+	--application-id 90 --application-label unwrapped-key
 				</programlisting>
 
 			Use the SO-PIN to initialize or re-set the PIN:
