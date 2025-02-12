@@ -3268,6 +3268,13 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				n_privkey_attr++;
 			}
 
+			if (opt_key_usage_default || opt_key_usage_decrypt) {
+				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_ENCRYPT, &_true, sizeof(_true));
+				n_pubkey_attr++;
+				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_DECRYPT, &_true, sizeof(_true));
+				n_privkey_attr++;
+			}
+
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_EC_PARAMS, ec_curve_infos[ii].ec_params, ec_curve_infos[ii].ec_params_size);
 			n_pubkey_attr++;
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
