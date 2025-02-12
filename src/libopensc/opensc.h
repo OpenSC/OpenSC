@@ -228,6 +228,8 @@ extern "C" {
 
 #define MAX_FILE_SIZE 65535
 
+#define ED448_KEY_SIZE_BYTES 57U
+
 struct sc_supported_algo_info {
 	unsigned int reference;
 	unsigned int mechanism;

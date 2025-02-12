@@ -6556,9 +6556,31 @@ static int read_object(CK_SESSION_HANDLE session)
 						ASN1_PRINTABLESTRING_free(curve);
 					} else if (d2i_ASN1_OBJECT(&obj, &a, (long)len) != NULL) {
 						int nid = OBJ_obj2nid(obj);
-						if (nid != NID_ED25519 && nid != NID_X25519) {
-							util_fatal("Unknown curve OID, expected NID_ED25519 (%d), got %d",
-									NID_ED25519, nid);
+						if (nid != NID_ED25519 &&
+								nid != NID_X25519
+#if defined(EVP_PKEY_ED448)
+								&& nid != NID_ED448
+#endif
+#if defined(EVP_PKEY_X448)
+								&& nid != NID_X448
+#endif
+						) {
+							util_fatal("Unknown curve OID, expected NID_ED25519 (%d), NID_X25519 (%d), "
+#if defined(EVP_PKEY_ED448)
+								   "NID_ED448 (%d), "
+#endif
+#if defined(EVP_PKEY_X448)
+								   "NID_X448 (%d), "
+#endif
+								   "got %d",
+									NID_ED25519, NID_X25519,
+#if defined(EVP_PKEY_ED448)
+									NID_ED448,
+#endif
+#if defined(EVP_PKEY_X448)
+									NID_X448,
+#endif
+									nid);
 						}
 						ASN1_OBJECT_free(obj);
 					} else {
@@ -6570,9 +6592,9 @@ static int read_object(CK_SESSION_HANDLE session)
 				}
 
 				value = getEC_POINT(session, obj, &len);
-				/* PKCS11 3.0 errta and 3.1 say Edwards and Montgomery
+				/* PKCS11 3.0 errata and 3.1 say Edwards and Montgomery
 				 * return raw byte strings, convert to OCTET string for OpenSSL
-				 * Will asccept as OCTET STRING and BIT_STRING
+				 * Will accept as OCTET STRING and BIT_STRING
 				 */
 				a = value;
 				os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
@@ -6592,7 +6614,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				if (type == CKK_EC_EDWARDS && os->length == BYTES4BITS(255))
 					raw_pk = EVP_PKEY_ED25519;
 #if defined(EVP_PKEY_ED448)
-				else if (type == CKK_EC_EDWARDS && os->length == BYTES4BITS(448))
+				else if (type == CKK_EC_EDWARDS && os->length == ED448_KEY_SIZE_BYTES)
 					raw_pk = EVP_PKEY_ED448;
 #endif /* EVP_PKEY_ED448 */
 #if defined(EVP_PKEY_X25519)
