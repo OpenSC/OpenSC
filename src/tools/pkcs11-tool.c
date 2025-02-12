@@ -3434,6 +3434,10 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	}
 
 	if (opt_allowed_mechanisms_len > 0) {
+		FILL_ATTR(publicKeyTemplate[n_pubkey_attr],
+				CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+				sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+		n_pubkey_attr++;
 		FILL_ATTR(privateKeyTemplate[n_privkey_attr],
 			CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
 			sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
@@ -4805,6 +4809,12 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 #else
 		util_fatal("No OpenSSL support, cannot write public key");
 #endif
+		if (opt_allowed_mechanisms_len > 0) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr],
+					CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+					sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+			n_pubkey_attr++;
+		}
 		break;
 	case CKO_SECRET_KEY:
 		clazz = CKO_SECRET_KEY;
@@ -4894,6 +4904,12 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		}
 		if (opt_object_id_len != 0)  {
 			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_ID, opt_object_id, opt_object_id_len);
+			n_seckey_attr++;
+		}
+		if (opt_allowed_mechanisms_len > 0) {
+			FILL_ATTR(seckey_templ[n_seckey_attr],
+					CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+					sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
 			n_seckey_attr++;
 		}
 		break;
@@ -5976,18 +5992,16 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("none");
 	printf("\n");
 
-	if (!pub) {
-		mechs = getALLOWED_MECHANISMS(sess, obj, &size);
-		if (mechs && size) {
-			unsigned int n;
+	mechs = getALLOWED_MECHANISMS(sess, obj, &size);
+	if (mechs && size) {
+		unsigned int n;
 
-			printf("  Allowed mechanisms: ");
-			for (n = 0; n < size; n++) {
-				printf("%s%s", (n != 0 ? "," : ""),
+		printf("  Allowed mechanisms: ");
+		for (n = 0; n < size; n++) {
+			printf("%s%s", (n != 0 ? "," : ""),
 					p11_mechanism_to_name(mechs[n]));
-			}
-			printf("\n");
 		}
+		printf("\n");
 	}
 	if ((unique_id = getUNIQUE_ID(sess, obj, NULL)) != NULL) {
 		printf("  Unique ID:  %s\n", unique_id);
