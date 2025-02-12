@@ -547,6 +547,15 @@
 
 				<varlistentry>
 					<term>
+						<option>--private-privkey</option>
+					</term>
+					<listitem><para>Set the CKA_PRIVATE attribute for a private
+					key when a key pair is generated or imported (object is only
+					viewable after a login).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--always-auth</option>
 					</term>
 					<listitem><para>Set the CKA_ALWAYS_AUTHENTICATE attribute to a private key object.

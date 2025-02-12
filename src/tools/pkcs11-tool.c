@@ -197,6 +197,7 @@ enum {
 	OPT_KEY_USAGE_DERIVE,
 	OPT_KEY_USAGE_WRAP,
 	OPT_PRIVATE,
+	OPT_PRIVATE_PRIVKEY,
 	OPT_SENSITIVE,
 	OPT_EXTRACTABLE,
 	OPT_UNDESTROYABLE,
@@ -310,6 +311,7 @@ static const struct option options[] = {
 	{ "moz-cert",		1, NULL,		'z' },
 	{ "verbose",		0, NULL,		'v' },
 	{ "private",		0, NULL,		OPT_PRIVATE },
+	{ "private-privkey",	0, NULL,		OPT_PRIVATE },
 	{ "sensitive",		0, NULL,		OPT_SENSITIVE },
 	{ "extractable",	0, NULL,		OPT_EXTRACTABLE },
 	{ "undestroyable",	0, NULL,		OPT_UNDESTROYABLE },
@@ -465,6 +467,7 @@ static char *		opt_sig_format = NULL;
 static CK_MECHANISM_TYPE opt_allowed_mechanisms[MAX_ALLOWED_MECHANISMS];
 static size_t		opt_allowed_mechanisms_len = 0;
 static int		opt_is_private = 0;
+static int		opt_is_private_privkey = 0;
 static int		opt_is_sensitive = 0;
 static int		opt_is_extractable = 0;
 static int		opt_is_destroyable = 1;
@@ -1110,6 +1113,9 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_PRIVATE:
 			opt_is_private = 1;
+			break;
+		case OPT_PRIVATE_PRIVKEY:
+			opt_is_private_privkey = 1;
 			break;
 		case OPT_SENSITIVE:
 			opt_is_sensitive = 1;
@@ -3142,11 +3148,10 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_ATTRIBUTE privateKeyTemplate[20] = {
 		{CKA_CLASS, &privkey_class, sizeof(privkey_class)},
 		{CKA_TOKEN, &_true, sizeof(_true)},
-		{CKA_PRIVATE, &_true, sizeof(_true)},
 		{CKA_SENSITIVE, &_true, sizeof(_true)},
 	};
 	unsigned long int gost_key_type = -1;
-	int n_privkey_attr = 4;
+	int n_privkey_attr = 3;
 	CK_ULONG key_type = CKK_RSA;
 	CK_RV rv;
 
@@ -3408,6 +3413,16 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PRIVATE,
 			&_false, sizeof(_false));
 		n_pubkey_attr++;
+	}
+
+	if (opt_is_private_privkey != 0) {
+		FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PRIVATE,
+				&_true, sizeof(_true));
+		n_privkey_attr++;
+	} else {
+		FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PRIVATE,
+				&_false, sizeof(_false));
+		n_privkey_attr++;
 	}
 
 	if (opt_always_auth != 0) {
@@ -4614,10 +4629,15 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		n_privkey_attr++;
 		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_TOKEN, &_true, sizeof(_true));
 		n_privkey_attr++;
-		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIVATE, &_true, sizeof(_true));
-		n_privkey_attr++;
 		FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SENSITIVE, &_true, sizeof(_true));
 		n_privkey_attr++;
+		if (opt_is_private_privkey != 0) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIVATE, &_true, sizeof(_true));
+			n_privkey_attr++;
+		} else {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PRIVATE, &_false, sizeof(_false));
+			n_privkey_attr++;
+		}
 		if (opt_object_label != NULL) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_LABEL, opt_object_label, strlen(opt_object_label));
 			n_privkey_attr++;
