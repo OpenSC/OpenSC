@@ -6,6 +6,17 @@
     <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ (64bit)" ?>
   <?endif?>
   <?define PlatformUpgradeCode = "{9A449570-69A2-11E0-9CC6-955B4824019B}" ?>
+  <?define BUILD_ARCH = "AMD64" ?>
+  <?define SUFFIX = "" ?>
+<?elseif $(sys.BUILDARCH) = arm64 ?>
+  <?ifndef OpenSSL ?>
+    <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light (ARM 64bit)" ?>
+  <?else?>
+    <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ (ARM 64bit)" ?>
+  <?endif?>
+  <?define PlatformUpgradeCode = "{63666c12-c4b5-4e55-87af-3babcd563c28}" ?>
+  <?define BUILD_ARCH = "ARM64" ?>
+  <?define SUFFIX = "_arm64" ?>
 <?else?>
   <?ifndef OpenSSL ?>
     <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light" ?>
@@ -13,6 +24,8 @@
     <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@" ?>
   <?endif?>
   <?define PlatformUpgradeCode = "{69428F65-B96D-458D-BB87-DBB5FDB35DCE}" ?>
+  <?define BUILD_ARCH = "x86" ?>
+  <?define SUFFIX = "" ?>
 <?endif?>
 
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
@@ -21,18 +34,16 @@
   <Package Name="$(var.ProductName)"
            UpgradeCode="$(var.PlatformUpgradeCode)"
            Language="1033"
-           Codepage="1252"
            Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.@OPENSC_VERSION_REVISION@"
-           Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@"
-           InstallerVersion="300">
-    <SummaryInformation Description="@VS_FF_PRODUCT_NAME@ Installer"
+           Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@">
+    <SummaryInformation Description="@OPENSC_VS_FF_PRODUCT_NAME@ Installer"
                         Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@" />
     <!-- Setup background images -->
     <WixVariable Id="WixUIBannerBmp" Value="bannrbmp.bmp" />
     <WixVariable Id="WixUIDialogBmp" Value="dlgbmp.bmp" />
     <!-- Links in info -->
-    <Property Id="ARPHELPLINK" Value="@PRODUCT_BUGREPORT@" />
-    <Property Id="ARPURLINFOABOUT" Value="@OPENSC_VS_FF_PRODUCT_URL@" />
+    <Property Id="ARPHELPLINK" Value="@PACKAGE_BUGREPORT@" />
+    <Property Id="ARPURLINFOABOUT" Value="@PACKAGE_URL@" />
     <Property Id="ARPURLUPDATEINFO" Value="@OPENSC_VS_FF_PRODUCT_UPDATES@" />
     <Property Id="ARPCONTACT" Value="@OPENSC_VS_FF_COMPANY_URL@" />
 
@@ -44,6 +55,12 @@
     <CustomAction Id="RemoveSmartCardConfiguration" BinaryRef="customactions" DllEntry="RemoveSmartCardConfiguration" Execute="deferred" Impersonate="no" />
     <CustomAction Id="AddSmartCardConfiguration" BinaryRef="customactions" DllEntry="AddSmartCardConfiguration" Execute="commit" Impersonate="no" />
     <CustomAction Id="Start_pkcs11_register.exe" Execute="immediate" Impersonate="yes" Return="asyncNoWait" FileRef="pkcs11_register.exe" ExeCommand="" />
+
+    <Property Id="NATIVE_ARCH">
+      <RegistrySearch Id="NativeArchSearch" Root="HKLM" Name="PROCESSOR_ARCHITECTURE" Type="raw"
+                      Key="SYSTEM\CurrentControlSet\Control\Session Manager\Environment" />
+    </Property>
+    <Property Id="BUILD_ARCH" Value="$(var.BUILD_ARCH)" />
 
     <Media Id="1" Cabinet="OpenSC.cab" EmbedCab="yes" CompressionLevel="high" />
 
@@ -57,7 +74,7 @@
     <StandardDirectory Id="ProgramFiles6432Folder">
       <Directory Id="OpenSC_Project_Dir" Name="OpenSC Project">
         <!-- Most of the stuff goes to the Program Files folder -->
-        <Directory Id="INSTALLDIR" Name="OpenSC">
+        <Directory Id="INSTALLDIR" Name="OpenSC$(var.SUFFIX)">
           <!-- opensc.conf sample goes to installation directory -->
           <Component Id="opensc.conf">
             <File Source="$(var.SOURCE_DIR)\etc\opensc.conf" KeyPath="yes" />
@@ -71,9 +88,7 @@
           </Component>
 
           <Directory Id="INSTALLDIR_MINIDRIVER" Name="minidriver">
-            <Component Id="opensc_minidriver.dll">
-              <File Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" />
-            </Component>
+            <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" />
             <!-- install an alias for the Base smart card CSP. Using a different CSP in minidriver installation deactivate the plug and play feature
                 but not all other components like the pin change screen available after ctrl+alt+del.
                 It is because the "80000001" entry is still returning the minidriver dll.-->
@@ -106,12 +121,8 @@
           </Directory>
 
           <Directory Id="INSTALLDIR_PKCS11" Name="pkcs11">
-            <Component Id="opensc_pkcs11.dll">
-              <File Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" />
-            </Component>
-            <Component Id="onepin_opensc_pkcs11.dll">
-              <File Name="onepin-opensc-pkcs11.dll" Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" />
-            </Component>
+            <File Id="opensc_pkcs11.dll" Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" />
+            <File Id="onepin_opensc_pkcs11.dll" Name="onepin-opensc-pkcs11.dll" Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" />
           </Directory>
 
           <Directory Id="INSTALLDIR_TOOLS" Name="tools" />
@@ -121,7 +132,7 @@
               <RegistryValue Type="string" Name="pkcs11-register.exe" Value="[INSTALLDIR_TOOLS]pkcs11-register.exe" />
             </RegistryKey>
           </Component>
-          <Component Id="Autostart_native_tools" Condition="'$(sys.BUILDARCH)' != 'x86' OR NOT VersionNT64">
+          <Component Id="Autostart_native_tools" Condition="BUILD_ARCH = NATIVE_ARCH">
             <RegistryKey Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\Run">
               <RegistryValue Type="string" Name="opensc-notify.exe" Value="[INSTALLDIR_TOOLS]opensc-notify.exe" />
             </RegistryKey>
@@ -129,12 +140,8 @@
 
           <?ifdef OpenPACE ?>
             <Directory Id="INSTALLDIR_CVC" Name="cvc">
-              <Component Id="DESRCACC100001">
-                <File Source="$(var.SOURCE_DIR)\etc\DESRCACC100001" />
-              </Component>
-              <Component Id="DESCHSMCVCA00001">
-                <File Source="$(var.SOURCE_DIR)\etc\DESCHSMCVCA00001" />
-              </Component>
+              <File Id="DESRCACC100001" Source="$(var.SOURCE_DIR)\etc\DESRCACC100001" />
+              <File Id="DESCHSMCVCA00001" Source="$(var.SOURCE_DIR)\etc\DESCHSMCVCA00001" />
             </Directory>
           <?endif?>
         </Directory>

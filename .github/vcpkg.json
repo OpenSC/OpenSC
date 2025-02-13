@@ -1,0 +1,8 @@
+{
+  "name": "opensc",
+  "dependencies": [
+    "openssl",
+    "zlib"
+  ],
+  "builtin-baseline": "e4644bd15436d406bba71928d086c809e5c9ca45"
+}
