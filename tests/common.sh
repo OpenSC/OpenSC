@@ -1,10 +1,15 @@
 #!/bin/bash
 ## from OpenSC/src/tests/p11test/runtest.sh
-BUILD_PATH=${BUILD_PATH:-..}
 
 # run valgrind with all the switches we are interested in
 if [ -n "$VALGRIND" -a -n "$LOG_COMPILER" ]; then
     VALGRIND="$LOG_COMPILER"
+fi
+
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	BUILD_PATH=${BUILD_PATH:-..}
+else
+	BUILD_PATH="$MESON_BUILD_ROOT"
 fi
 
 SOPIN="12345678"
@@ -12,7 +17,8 @@ PIN="123456"
 PKCS11_TOOL="$VALGRIND $BUILD_PATH/src/tools/pkcs11-tool"
 
 softhsm_paths="/usr/local/lib/softhsm/libsofthsm2.so \
-	/usr/lib/softhsm/libsofthsm2.so
+	/usr/lib/softhsm/libsofthsm2.so \
+	/usr/lib/pkcs11/libsofthsm2.so \
 	/usr/lib64/pkcs11/libsofthsm2.so \
 	/usr/lib/i386-linux-gnu/softhsm/libsofthsm2.so \
 	/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so"
