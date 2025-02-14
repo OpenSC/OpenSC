@@ -143,7 +143,7 @@ typedef const SCARD_IO_REQUEST *LPCSCARD_IO_REQUEST;
 #ifndef PCSC_API
 #if defined(_WIN32)
 #define PCSC_API WINAPI
-#elif defined(USE_CYGWIN)
+#elif defined(__CYGWIN__)
 #define PCSC_API __stdcall
 #else
 #define PCSC_API
