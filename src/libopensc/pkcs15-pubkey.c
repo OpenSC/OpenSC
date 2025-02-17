@@ -1524,17 +1524,18 @@ static struct ec_curve_info {
 
 		/* OpenPGP extensions by Yubikey and GNUK are not defined in RFCs but we know the oid written to card */
 
-		{"edwards25519",	"1.3.6.1.4.1.11591.15.1", {(u8 *)"\x06\x09\x2B\x06\x01\x04\x01\xDA\x47\x0F\x01", 11}, 255, SC_ALGORITHM_EDDSA},
-		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", {(u8 *)"\x06\x0A\x2B\x06\x01\x04\x01\x97\x55\x01\x05\x01", 12}, 255, SC_ALGORITHM_XEDDSA},
+		{"edwards25519",	"1.3.6.1.4.1.11591.15.1", {(u8 *)"\x06\x09\x2B\x06\x01\x04\x01\xDA\x47\x0F\x01", 11}, 256, SC_ALGORITHM_EDDSA},
+		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", {(u8 *)"\x06\x0A\x2B\x06\x01\x04\x01\x97\x55\x01\x05\x01", 12}, 256, SC_ALGORITHM_XEDDSA},
 
 		/* RFC 8410 defined curves */
-		{"X25519",              "1.3.101.110", {(u8 *)"\x06\x03\x2b\x65\x6e", 5}, 255, SC_ALGORITHM_XEDDSA},
+		{"X25519",              "1.3.101.110", {(u8 *)"\x06\x03\x2b\x65\x6e", 5}, 256, SC_ALGORITHM_XEDDSA},
 		{"X448",		"1.3.101.111", {(u8 *)"\x06\x03\x2b\x65\x6f", 5}, 448, SC_ALGORITHM_XEDDSA},
-		{"Ed25519",             "1.3.101.112", {(u8 *)"\x06\x03\x2b\x65\x70", 5}, 255, SC_ALGORITHM_EDDSA},
-		{"Ed448",		"1.3.101.113", {(u8 *)"\x06\x03\x2b\x65\x71", 5}, 448, SC_ALGORITHM_EDDSA},
+		{"Ed25519",             "1.3.101.112", {(u8 *)"\x06\x03\x2b\x65\x70", 5}, 256, SC_ALGORITHM_EDDSA},
+		/* Ed448 needs extra byte thus 456 */
+		{"Ed448",		"1.3.101.113", {(u8 *)"\x06\x03\x2b\x65\x71", 5}, 456, SC_ALGORITHM_EDDSA},
 		/* GnuPG openpgp curves as used in gnupg-card are equivalent to RFC8410 OIDs */
-		{"cv25519",		"1.3.101.110", {(u8 *)"\x06\x03\x2b\x65\x6e", 5}, 255, SC_ALGORITHM_XEDDSA},
-		{"ed25519",		"1.3.101.112", {(u8 *)"\x06\x03\x2b\x65\x70", 5}, 255, SC_ALGORITHM_EDDSA},
+		{"cv25519",		"1.3.101.110", {(u8 *)"\x06\x03\x2b\x65\x6e", 5}, 256, SC_ALGORITHM_XEDDSA},
+		{"ed25519",		"1.3.101.112", {(u8 *)"\x06\x03\x2b\x65\x70", 5}, 256, SC_ALGORITHM_EDDSA},
 
 		{NULL, NULL, {NULL, 0}, 0, 0}, /* Do not touch this */
 };
