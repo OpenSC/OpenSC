@@ -2819,6 +2819,7 @@ typedef union
 	CK_GCM_PARAMS gcm;
 	CK_CHACHA20_PARAMS chacha20;
 	CK_SALSA20_CHACHA20_POLY1305_PARAMS chacha20poly1305;
+	CK_AES_CTR_PARAMS ctr;
 } params_t;
 
 static void
@@ -2859,6 +2860,16 @@ build_params(
 		params->gcm.ulTagBits = opt_tag_bits;
 		mech->pParameter = &params->gcm;
 		mech->ulParameterLen = sizeof(params->gcm);
+		break;
+	case CKM_AES_CTR:
+		*iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		if (iv_size != 16U) {
+			util_fatal("Invalid IV length %zu", iv_size);
+		}
+		memcpy(&params->ctr.cb[0], *iv, sizeof(params->ctr.cb));
+		params->ctr.ulCounterBits = 128U;
+		mech->pParameter = &params->ctr;
+		mech->ulParameterLen = sizeof(params->ctr);
 		break;
 	case CKM_CHACHA20:
 		*iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
