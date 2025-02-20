@@ -731,7 +731,7 @@ static const struct alg_spec alg_types_asym[] = {
 	{ "ec",		SC_ALGORITHM_EC,	0 }, /* keybits derived from curve */
 	/*  RFC 8410 */
 	{ "Ed25519",	SC_ALGORITHM_EDDSA,	256 }, /* RFC 8410 and gunpg */
-	{ "Ed448",	SC_ALGORITHM_EDDSA,	456 }, /* note extra btye */
+	{ "Ed448",	SC_ALGORITHM_EDDSA,	456 }, /* note extra 8 bits to get 57 bytes */
 	{ "X25519",	SC_ALGORITHM_XEDDSA,	256 },
 	{ "X448",	SC_ALGORITHM_XEDDSA,	448 },
 	/* used by Yubikey and GNUK */
