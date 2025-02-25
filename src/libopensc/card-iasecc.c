@@ -525,9 +525,6 @@ iasecc_init_oberthur(struct sc_card *card)
 
 	flags = IASECC_CARD_DEFAULT_FLAGS;
 
-	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
-	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
-
 	card->caps = IASECC_CARD_DEFAULT_CAPS;
 
 	iasecc_parse_ef_atr(card);
@@ -545,6 +542,9 @@ iasecc_init_oberthur(struct sc_card *card)
 
 	rv = iasecc_parse_ef_atr(card);
 	LOG_TEST_RET(ctx, rv, "EF.ATR read or parse error");
+
+	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
+	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
 
 	sc_log(ctx, "EF.ATR(aid:'%s')", sc_dump_hex(card->ef_atr->aid.value, card->ef_atr->aid.len));
 	LOG_FUNC_RETURN(ctx, rv);
@@ -588,9 +588,6 @@ iasecc_init_amos_or_sagem(struct sc_card *card)
 
 	flags = IASECC_CARD_DEFAULT_FLAGS;
 
-	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
-	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
-
 	card->caps = IASECC_CARD_DEFAULT_CAPS;
 
 	if (card->type == SC_CARD_TYPE_IASECC_MI)   {
@@ -609,6 +606,9 @@ iasecc_init_amos_or_sagem(struct sc_card *card)
 		rv = iasecc_parse_ef_atr(card);
 	}
 	LOG_TEST_RET(ctx, rv, "IASECC: ATR parse failed");
+
+	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
+	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -640,14 +640,14 @@ iasecc_init_cpx(struct sc_card *card)
 
 	flags = IASECC_CARD_DEFAULT_FLAGS;
 
-	_sc_card_add_rsa_alg(card, 512, flags, 0);
-	_sc_card_add_rsa_alg(card, 1024, flags, 0);
-	_sc_card_add_rsa_alg(card, 2048, flags, 0);
-
 	rv = iasecc_parse_ef_atr(card);
 	if (rv)
 		sc_invalidate_cache(card); /* avoid memory leakage */
 	LOG_TEST_RET(ctx, rv, "Parse EF.ATR");
+
+	_sc_card_add_rsa_alg(card, 512, flags, 0);
+	_sc_card_add_rsa_alg(card, 1024, flags, 0);
+	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
