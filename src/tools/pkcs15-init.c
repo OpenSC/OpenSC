@@ -730,15 +730,15 @@ static const struct alg_spec alg_types_asym[] = {
 	{ "gost2001",	SC_ALGORITHM_GOSTR3410,	SC_PKCS15_GOSTR3410_KEYSIZE },
 	{ "ec",		SC_ALGORITHM_EC,	0 }, /* keybits derived from curve */
 	/*  RFC 8410 */
-	{ "Ed25519",	SC_ALGORITHM_EDDSA,	255 }, /* RFC 8410 and gunpg */
-	{ "Ed448",	SC_ALGORITHM_EDDSA,	448 },
-	{ "X25519",	SC_ALGORITHM_XEDDSA,	255 },
+	{ "Ed25519",	SC_ALGORITHM_EDDSA,	256 }, /* RFC 8410 and gunpg */
+	{ "Ed448",	SC_ALGORITHM_EDDSA,	456 }, /* note extra 8 bits to get 57 bytes */
+	{ "X25519",	SC_ALGORITHM_XEDDSA,	256 },
 	{ "X448",	SC_ALGORITHM_XEDDSA,	448 },
 	/* used by Yubikey and GNUK */
-	{ "edwards25519", SC_ALGORITHM_EDDSA,	255 },
-	{ "curve25519", SC_ALGORITHM_XEDDSA,	255 },
+	{ "edwards25519", SC_ALGORITHM_EDDSA,	256 },
+	{ "curve25519", SC_ALGORITHM_XEDDSA,	256 },
 	/* gnupg */
-	{ "cv25519",	SC_ALGORITHM_XEDDSA,	255 },
+	{ "cv25519",	SC_ALGORITHM_XEDDSA,	256 },
 
 	{ NULL, -1, 0 }
 };
