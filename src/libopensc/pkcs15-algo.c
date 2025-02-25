@@ -358,8 +358,9 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 #ifdef SC_ALGORITHM_MD5
 		{SC_ALGORITHM_MD5, {{1, 2, 840, 113549, 2, 5, -1}}, NULL, NULL, NULL},
 #endif
-#ifdef SC_ALGORITHM_RSA /* really rsaEncryption */
-		{SC_ALGORITHM_RSA, {{1, 2, 840, 113549, 1, 1, 1, -1}}, NULL, NULL, NULL},
+#ifdef SC_ALGORITHM_RSA /* really rsaEncryption and id-RSASSA-PSS */
+		{SC_ALGORITHM_RSA, {{ 1, 2, 840, 113549, 1, 1, 1, -1}}, NULL, NULL, NULL },
+		{SC_ALGORITHM_RSA, {{ 1, 2, 840, 113549, 1, 1, 10, -1}}, NULL, NULL, NULL },
 #endif
 #ifdef SC_ALGORITHM_DH
 		{SC_ALGORITHM_DH, {{1, 2, 840, 10046, 2, 1, -1}}, NULL, NULL, NULL},
