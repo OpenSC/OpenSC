@@ -861,7 +861,11 @@ else
 fi
 
 if  test "${enable_piv_sm}" = "yes"; then
-	AC_DEFINE([ENABLE_PIV_SM], [1], [Enable PIV SM])
+	if test "${enable_sm}" = "yes" -a "${enable_openssl}" = "yes" ; then
+		AC_DEFINE([ENABLE_PIV_SM], [1], [Enable PIV SM])
+	else
+		AC_MSG_ERROR([ENABLE_PIV_SM requires ENABLE_SM and ENABLE_OPENSSL])
+	fi
 fi
 
 if test "${enable_openct}" = "yes"; then
