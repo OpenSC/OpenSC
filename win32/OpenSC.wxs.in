@@ -54,7 +54,6 @@
     <Binary Id="customactions" SourceFile="$(var.SOURCE_DIR)\win32\customactions.dll" />
     <CustomAction Id="RemoveSmartCardConfiguration" BinaryRef="customactions" DllEntry="RemoveSmartCardConfiguration" Execute="deferred" Impersonate="no" />
     <CustomAction Id="AddSmartCardConfiguration" BinaryRef="customactions" DllEntry="AddSmartCardConfiguration" Execute="commit" Impersonate="no" />
-    <CustomAction Id="Start_pkcs11_register.exe" Execute="immediate" Impersonate="yes" Return="asyncNoWait" FileRef="pkcs11_register.exe" ExeCommand="" />
 
     <Property Id="NATIVE_ARCH">
       <RegistrySearch Id="NativeArchSearch" Root="HKLM" Name="PROCESSOR_ARCHITECTURE" Type="raw"
@@ -127,11 +126,6 @@
 
           <Directory Id="INSTALLDIR_TOOLS" Name="tools" />
 
-          <Component Id="Autostart_tools">
-            <RegistryKey Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\Run">
-              <RegistryValue Type="string" Name="pkcs11-register.exe" Value="[INSTALLDIR_TOOLS]pkcs11-register.exe" />
-            </RegistryKey>
-          </Component>
           <Component Id="Autostart_native_tools" Condition="BUILD_ARCH = NATIVE_ARCH">
             <RegistryKey Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\Run">
               <RegistryValue Type="string" Name="opensc-notify.exe" Value="[INSTALLDIR_TOOLS]opensc-notify.exe" />
@@ -175,10 +169,7 @@
         <File Id="smm_local.dll" Source="$(var.SOURCE_DIR)\src\smm\smm-local.dll" />
       <?endif?>
       <File Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" />
-      <Files Include="$(var.SOURCE_DIR)\src\tools\*.exe">
-        <Exclude Files="$(var.SOURCE_DIR)\src\tools\pkcs11-register.exe" />
-      </Files>
-      <File Id="pkcs11_register.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs11-register.exe" />
+      <Files Include="$(var.SOURCE_DIR)\src\tools\*.exe" />
     </ComponentGroup>
 
 <?ifdef OpenSSL ?>
@@ -220,8 +211,7 @@
         <?ifdef OpenSSL ?>
           <ComponentGroupRef Id="profiles" />
         <?endif?>
-        <Feature Id="OpenSC_autostart" Level="1" Title="Autostart entries" Description="After login, automatically register the PKCS#11 module and start smart card notifications.">
-          <ComponentRef Id="Autostart_tools" />
+        <Feature Id="OpenSC_autostart" Level="1" Title="Autostart entries" Description="After login, start smart card notifications.">
           <ComponentRef Id="Autostart_native_tools" />
         </Feature>
       </Feature>
@@ -247,10 +237,6 @@
       <!-- add the smart card registration (only at install of the feature OpenSC_minidriver) -->
       <Custom Action="AddSmartCardConfiguration" Before="RemoveSmartCardConfiguration"
               Condition="(NOT (REMOVE=&quot;ALL&quot;)) AND (NOT UPGRADINGPRODUCTCODE) AND (&amp;OpenSC_minidriver=3) AND (!OpenSC_minidriver=2)" />
-
-      <!-- smart pkcs11-register.exe (only at install of the feature OpenSC_autostart) -->
-      <Custom Action="Start_pkcs11_register.exe" After="InstallFinalize"
-              Condition="(NOT (REMOVE=&quot;ALL&quot;)) AND (NOT UPGRADINGPRODUCTCODE) AND (&amp;OpenSC_autostart=3) AND (!OpenSC_autostart=2)" />
 
     </InstallExecuteSequence>
   </Package>
