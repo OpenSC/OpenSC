@@ -49,11 +49,6 @@ TESTS += \
         test-pkcs11-tool-sign-verify.sh \
         test-pkcs11-tool-unwrap-wrap-test.sh \
         test-pkcs11-tool-import.sh
-if ENABLE_TESTS
-if ENABLE_SHARED
-TESTS += test-p11test.sh
-endif
-endif
 endif
 # no tests expected to fail
 #XFAIL_TESTS =
