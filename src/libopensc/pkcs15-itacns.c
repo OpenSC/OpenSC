@@ -143,6 +143,7 @@ static const struct {
 } itacns_data_files[] = {
 	{ "EF_DatiProcessore", "3F0010001002", 0 },
 	{ "EF_IDCarta", ITACNS_PATH_SERIAL, 0 },
+	{ "EF_CardName", ITACNS_PATH_NAME, SC_CARD_TYPE_ITACNS_CNS_IDEMIA_2021 },
 	{ "EF_DatiSistema", "3F0010001004", SC_CARD_TYPE_ITACNS_CIE_V2 },
 	{ "EF_DatiPersonali", "3F0011001102", 0 },
 	{ "EF_DatiPersonali_Annotazioni", "3F0011001103", SC_CARD_TYPE_ITACNS_CIE_V2 },
@@ -771,6 +772,10 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 		char buffer[256];
 		itacns_drv_data_t *data =
 			(itacns_drv_data_t*) p15card->card->drv_data;
+
+		if (data->card_name)
+			set_string(&p15card->tokeninfo->label, data->card_name);
+
 		mask_code = data->mask_manufacturer_code;
 		if (mask_code >= sizeof(itacns_mask_manufacturers)
 			/sizeof(itacns_mask_manufacturers[0]))

@@ -81,6 +81,39 @@ static void itacns_init_cns_card(sc_card_t *card)
 	}
 }
 
+static int itacns_get_card_name(sc_card_t *card, unsigned char *rbuf,
+				size_t count)
+{
+	sc_path_t path;
+	sc_file_t *file;
+
+	sc_log(card->ctx, "Reading the card name");
+
+	sc_format_path(ITACNS_PATH_NAME, &path);
+
+	if (sc_select_file(card, &path, &file) != SC_SUCCESS) {
+		return SC_ERROR_WRONG_CARD;
+	}
+	sc_file_free(file);
+
+	if (sc_read_binary(card, 0, rbuf, count, 0) <= 0) {
+		return SC_ERROR_WRONG_CARD;
+	}
+
+	return SC_SUCCESS;
+}
+
+static void itacns_init_idemia_cns_card(sc_card_t *card)
+{
+	u8 buf[512] = {0};
+
+	if (itacns_get_card_name(card, buf, sizeof(buf)) == SC_SUCCESS) {
+		DRVDATA(card)->card_name = strndup ((const char*) buf,
+						    sizeof (buf));
+		card->name = DRVDATA(card)->card_name;
+	}
+}
+
 static int itacns_match_cns_card(sc_card_t *card)
 {
 	u8 manufacturer_code;
@@ -150,8 +183,11 @@ static int itacns_init(sc_card_t *card)
 	if (!card->drv_data)
 		return SC_ERROR_OUT_OF_MEMORY;
 
-	if (card->type == SC_CARD_TYPE_ITACNS_CNS)
+	if (card->type == SC_CARD_TYPE_ITACNS_CNS) {
 		itacns_init_cns_card(card);
+	} else if (card->type == SC_CARD_TYPE_ITACNS_CNS_IDEMIA_2021) {
+		itacns_init_idemia_cns_card(card);
+	}
 
 	DRVDATA(card)->ic_manufacturer_code = card->reader->atr_info.hist_bytes[2];
 	DRVDATA(card)->mask_manufacturer_code = card->reader->atr_info.hist_bytes[3];
@@ -177,6 +213,10 @@ static int itacns_init(sc_card_t *card)
 static int itacns_finish(struct sc_card *card)
 {
 	if(card->drv_data) {
+		if (card->name == DRVDATA(card)->card_name)
+			card->name = NULL;
+
+		free(DRVDATA(card)->card_name);
 		free(card->drv_data);
 	}
 	return 0;
