@@ -12,4 +12,6 @@ typedef struct {
 #define ITACNS_MASKMAN_SIEMENS		0x08
 #define ITACNS_MASKMAN_STINCARD		0x09
 
+#define ITACNS_PATH_SERIAL "10001003"
+
 #endif /* _OPENSC_ITACNS_H */

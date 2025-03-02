@@ -448,7 +448,7 @@ static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 
 	sc_log(card->ctx, "Reading EF_IDCarta.\n");
 
-	sc_format_path("3F0010001003", &path);
+	sc_format_path(ITACNS_PATH_SERIAL, &path);
 
 	r = sc_select_file(card, &path, &file);
 	if (r != SC_SUCCESS) {

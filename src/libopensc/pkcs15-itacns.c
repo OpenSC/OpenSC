@@ -47,8 +47,6 @@
 #include <openssl/x509v3.h>
 #endif
 
-static const char path_serial[] = "10001003";
-
 /* Manufacturers */
 
 const char * itacns_mask_manufacturers[] = {
@@ -144,7 +142,7 @@ static const struct {
 	int cie_only;
 } itacns_data_files[] = {
 	{ "EF_DatiProcessore", "3F0010001002", 0 },
-	{ "EF_IDCarta", "3F0010001003", 0 },
+	{ "EF_IDCarta", ITACNS_PATH_SERIAL, 0 },
 	{ "EF_DatiSistema", "3F0010001004", 1 },
 	{ "EF_DatiPersonali", "3F0011001102", 0 },
 	{ "EF_DatiPersonali_Annotazioni", "3F0011001103", 1 },
@@ -791,7 +789,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	{
 		u8 serial[17];
 		int bytes;
-		sc_format_path(path_serial, &path);
+		sc_format_path(ITACNS_PATH_SERIAL, &path);
 		bytes = loadFile(p15card, &path, serial, 16);
 		if (bytes < 0) return bytes;
 		if (bytes > 16) return -1;
