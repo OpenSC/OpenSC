@@ -139,15 +139,15 @@ const char * iso7816_ic_manufacturers[] = {
 static const struct {
 	const char *label;
 	const char *path;
-	int cie_only;
+	int card_type;
 } itacns_data_files[] = {
 	{ "EF_DatiProcessore", "3F0010001002", 0 },
 	{ "EF_IDCarta", ITACNS_PATH_SERIAL, 0 },
-	{ "EF_DatiSistema", "3F0010001004", 1 },
+	{ "EF_DatiSistema", "3F0010001004", SC_CARD_TYPE_ITACNS_CIE_V2 },
 	{ "EF_DatiPersonali", "3F0011001102", 0 },
-	{ "EF_DatiPersonali_Annotazioni", "3F0011001103", 1 },
-	{ "EF_Impronte", "3F0011001104", 1 },
-	{ "EF_Foto", "3F0011001104", 1 },
+	{ "EF_DatiPersonali_Annotazioni", "3F0011001103", SC_CARD_TYPE_ITACNS_CIE_V2 },
+	{ "EF_Impronte", "3F0011001104", SC_CARD_TYPE_ITACNS_CIE_V2 },
+	{ "EF_Foto", "3F0011001104", SC_CARD_TYPE_ITACNS_CIE_V2 },
 	{ "EF_DatiPersonaliAggiuntivi", "3F0012001201", 0 },
 	{ "EF_MemoriaResidua", "3F0012001202", 0 },
 	{ "EF_ServiziInstallati", "3F0012001203", 0 },
@@ -493,8 +493,8 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_data_info_t data;
 		sc_pkcs15_object_t    obj;
 
-		if (itacns_data_files[i].cie_only &&
-			p15card->card->type != SC_CARD_TYPE_ITACNS_CIE_V2)
+		if (itacns_data_files[i].card_type &&
+		    itacns_data_files[i].card_type != p15card->card->type)
 			continue;
 
 		sc_format_path(itacns_data_files[i].path, &path);
