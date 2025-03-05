@@ -3268,7 +3268,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				n_privkey_attr++;
 			}
 
-			if (opt_key_usage_default || opt_key_usage_decrypt) {
+			if (opt_key_usage_decrypt) {
 				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_ENCRYPT, &_true, sizeof(_true));
 				n_pubkey_attr++;
 				FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_DECRYPT, &_true, sizeof(_true));
