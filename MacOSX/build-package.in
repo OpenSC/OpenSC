@@ -14,12 +14,6 @@ set -ex
 test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
 
-xcode_ver=$(xcodebuild -version | sed -En 's/Xcode[[:space:]](.*)/\1/p')
-base_ver="12.2"
-if [ $(echo -e $base_ver"\n"$xcode_ver | sort -V | head -1) == "$base_ver" ]; then
-	export BUILD_ARM="true"
-fi
-
 export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
 export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
@@ -32,20 +26,19 @@ if test "$FORCE_OPENSSL_BUILD" == "1" || ! pkg-config libcrypto --atleast-versio
 			git clone --depth=1 https://github.com/openssl/openssl.git -b openssl-3.0
 		fi
 		cd openssl
-		./Configure darwin64-x86_64 no-shared --prefix=$PREFIX enable-ec_nistp_64_gcc_128
+		sed -ie 's!my @disablables = (!my @disablables = (\n    "apps",!' Configure
+		./Configure darwin64-x86_64 no-shared no-apps --prefix=$PREFIX enable-ec_nistp_64_gcc_128
 		make clean
 		make -j 4
 		make DESTDIR=$BUILDPATH/openssl_bin install_sw
-		if test -n "${BUILD_ARM}"; then
-			make clean
-			./Configure darwin64-arm64 no-shared --prefix=$PREFIX enable-ec_nistp_64_gcc_128
-			make -j 4
-			make DESTDIR=$BUILDPATH/openssl_arm64 install_sw
-			lipo -create $BUILDPATH/openssl_arm64/$PREFIX/lib/libcrypto.a $BUILDPATH/openssl_bin/$PREFIX/lib/libcrypto.a -output libcrypto.a
-			lipo -create $BUILDPATH/openssl_arm64/$PREFIX/lib/libssl.a $BUILDPATH/openssl_bin/$PREFIX/lib/libssl.a -output libssl.a
-			mv libcrypto.a $BUILDPATH/openssl_bin/$PREFIX/lib/libcrypto.a
-			mv libssl.a $BUILDPATH/openssl_bin/$PREFIX/lib/libssl.a
-		fi
+		make clean
+		./Configure darwin64-arm64 no-shared no-apps --prefix=$PREFIX enable-ec_nistp_64_gcc_128
+		make -j 4
+		make DESTDIR=$BUILDPATH/openssl_arm64 install_sw
+		lipo -create $BUILDPATH/openssl_arm64/$PREFIX/lib/libcrypto.a $BUILDPATH/openssl_bin/$PREFIX/lib/libcrypto.a -output libcrypto.a
+		lipo -create $BUILDPATH/openssl_arm64/$PREFIX/lib/libssl.a $BUILDPATH/openssl_bin/$PREFIX/lib/libssl.a -output libssl.a
+		mv libcrypto.a $BUILDPATH/openssl_bin/$PREFIX/lib/libcrypto.a
+		mv libssl.a $BUILDPATH/openssl_bin/$PREFIX/lib/libssl.a
 		cd ..
 	fi
 	export OPENSSL_CFLAGS="`env PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openssl_bin pkg-config --static --cflags libcrypto`"
@@ -54,17 +47,8 @@ if test "$FORCE_OPENSSL_BUILD" == "1" || ! pkg-config libcrypto --atleast-versio
 	export CRYPTO_LIBS="$OPENSSL_LIBS"
 fi
 
-# Locate the latest OSX SDK
-SDK_PATH=$(xcrun --sdk macosx --show-sdk-path)
-export CFLAGS="$CFLAGS -isysroot $SDK_PATH"
-
-if test -n "${BUILD_ARM}"; then
-	export CFLAGS="$CFLAGS -arch x86_64 -arch arm64"
-	export LDFLAGS="$LDFLAGS -arch x86_64 -arch arm64"
-	DISTRIBUTION_XML=MacOSX/Distribution_universal.xml
-else
-	DISTRIBUTION_XML=MacOSX/Distribution.xml
-fi
+export CFLAGS="$CFLAGS -arch x86_64 -arch arm64"
+export LDFLAGS="$LDFLAGS -arch x86_64 -arch arm64"
 export OBJCFLAGS=$CFLAGS
 
 if ! test -e $BUILDPATH/openpace_bin/$PREFIX/lib/pkgconfig; then
@@ -189,7 +173,7 @@ pkgbuild --root ${BUILDPATH}/target_token $COMPONENT_TOKEN --identifier org.open
 pkgbuild --root ${BUILDPATH}/target_startup --component-plist MacOSX/target_startup.plist --identifier org.opensc-project.startup --version @PACKAGE_VERSION@ --install-location / OpenSC-startup.pkg
 
 # Build product
-productbuild --distribution $DISTRIBUTION_XML --package-path . --resources MacOSX/resources "${imagedir}/OpenSC @PACKAGE_VERSION@.pkg"
+productbuild --distribution MacOSX/Distribution.xml --package-path . --resources MacOSX/resources "${imagedir}/OpenSC @PACKAGE_VERSION@.pkg"
 
 # Sign installer
 if test -n "${INSTALLER_SIGN_IDENTITY}"; then
