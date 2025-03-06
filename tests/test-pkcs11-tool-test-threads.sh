@@ -6,17 +6,6 @@ source $SOURCE_PATH/tests/common.sh
 # Test our PKCS #11 module here
 P11LIB="../src/pkcs11/.libs/opensc-pkcs11.so"
 
-OPENSC_TOOL="../src/tools/opensc-tool"
-echo "check for opensc-tool"
-if [[ -f $OPENSC_TOOL ]] ; then
-echo "trying opensc-tool -a"
-	$OPENSC_TOOL -a
-	if [[ "$?" -ne "0" ]] ; then
-		echo "No token found, skipping Test pkcs11 threads "
-		exit 77
-	fi
-fi
-
 echo "======================================================="
 echo "Test pkcs11 threads IN "
 echo "======================================================="
