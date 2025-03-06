@@ -1,8 +1,8 @@
 #
-# PKCS15 r/w profile for Aladdin LASER card
+# PKCS15 r/w profile for Aladdin JaCarta PKI applet
 #
 cardinfo {
-	label		= "Aladdin LASER";
+	label		= "JaCarta PKI";
 	manufacturer	= "Aladdin R.D.";
 	max-pin-length	= 10;
 	min-pin-length	= 4;
@@ -10,9 +10,9 @@ cardinfo {
 }
 
 pkcs15 {
-    # Put certificates into the CDF itself?
+    # Put certificates into the CDF itself
     # direct-certificates = yes;
-    # Have a lastUpdate field in the EF(TokenInfo)?
+    # Have a lastUpdate field in the EF(TokenInfo)
     do-last-update      = no;
 }
 
@@ -50,7 +50,7 @@ filesystem {
 			type	= internal-ef;
 			structure = 8;
 			content	= "81083030303030303030";
-            prop-attr = "C001000033000000000000000000"; # "C0010000 A0 042000000000001010" Class Usage Algorithm Padding MaxRetryConter|MaxUnblockCounter MinSize MaxSize UpperCases LowerCases Digits Alphabetics Specials Occurrence Sequence
+            prop-attr = "C001000033000000000000000000"; # "C0010000 33 000000000000000000" Class Usage Algorithm Padding MaxRetryConter|MaxUnblockCounter MinSize MaxSize UpperCases LowerCases Digits Alphabetics Specials Occurrence Sequence
 		}
 
 		EF Aladdin-UserPIN {
@@ -61,7 +61,7 @@ filesystem {
 			type	= internal-ef;
 			structure = 8;
 			content = "81083131313131313131";
-			prop-attr = "C0010000A0000000000000000000"; # "C0010000 A0 042000000000000000";
+			prop-attr = "C0010000A0000000000000000000"; 
 		}
 
 		EF Aladdin-TransportPIN2 {

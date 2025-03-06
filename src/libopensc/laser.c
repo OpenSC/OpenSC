@@ -1,7 +1,26 @@
+/*
+ * pkcs15-laser.c: Support for JaCarta PKI applet
+ *
+ * Copyright (C) 2025  Andrey Khodunov <a.khodunov@aladdin.ru>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-//#ifdef ENABLE_OPENSSL /* empty file without openssl */
+#ifdef ENABLE_OPENSSL /* empty file without openssl */
 
 #include "config.h"
 
@@ -22,43 +41,41 @@
 
 #define C_ASN1_CREATE_RSA_KEY_SIZE 2
 static struct sc_asn1_entry c_asn1_create_rsa_key[C_ASN1_CREATE_RSA_KEY_SIZE] = {
-	/* tag 0x71 */
-	{ "createRsaKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x11, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		/* tag 0x71 */
+		{"createRsaKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x11, 0, NULL, NULL},
+		{NULL,		       0,		  0,				 0, NULL, NULL}
 };
 
 #define C_ASN1_RSA_PUB_COEFFICIENTS_SIZE 3
 static struct sc_asn1_entry c_asn1_create_rsa_pub_coefficients[C_ASN1_RSA_PUB_COEFFICIENTS_SIZE] = {
-	/* tag 0x90 */
-	{ "exponent", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x10, SC_ASN1_ALLOC, NULL, NULL },
-	/* tag 0x91 */
-	{ "modulus",  SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x11, SC_ASN1_ALLOC, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		/* tag 0x90 */
+		{"exponent", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x10, SC_ASN1_ALLOC, NULL, NULL},
+		/* tag 0x91 */
+		{"modulus",  SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x11, SC_ASN1_ALLOC, NULL, NULL},
+		{NULL,       0,			  0,		     0,		NULL, NULL}
 };
-
 
 #define C_ASN1_UPDATE_RSA_KEY_SIZE 2
 static struct sc_asn1_entry c_asn1_update_rsa_key[C_ASN1_UPDATE_RSA_KEY_SIZE] = {
-	/* tag 0x62 */
-	{ "updateRsaKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x02, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		/* tag 0x62 */
+		{"updateRsaKeyCoefficients", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x02, 0, NULL, NULL},
+		{NULL,		       0,		  0,				 0, NULL, NULL}
 };
 
 #define C_ASN1_RSA_PRV_COEFFICIENTS_SIZE 6
 static struct sc_asn1_entry c_asn1_create_rsa_prv_coefficients[C_ASN1_RSA_PRV_COEFFICIENTS_SIZE] = {
-	/* tag 0x90 */
-	{ "exponent", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x10, SC_ASN1_ALLOC, NULL, NULL },
-	/* tag 0x91 */
-	{ "modulus",  SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x11, SC_ASN1_ALLOC, NULL, NULL },
-	/* tag 0x92 */
-	{ "privateExponent",  SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x12, SC_ASN1_ALLOC, NULL, NULL },
-	/* tag 0x93 */
-	{ "privatePrimes",  SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x13, SC_ASN1_ALLOC, NULL, NULL },
-	/* tag 0x94 */
-	{ "privatePartialPrimes",  SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x14, SC_ASN1_ALLOC, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
+		/* tag 0x90 */
+		{"exponent",	     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x10, SC_ASN1_ALLOC, NULL, NULL},
+		/* tag 0x91 */
+		{"modulus",		    SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x11, SC_ASN1_ALLOC, NULL, NULL},
+		/* tag 0x92 */
+		{"privateExponent",	    SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x12, SC_ASN1_ALLOC, NULL, NULL},
+		/* tag 0x93 */
+		{"privatePrimes",	  SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x13, SC_ASN1_ALLOC, NULL, NULL},
+		/* tag 0x94 */
+		{"privatePartialPrimes", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x14, SC_ASN1_ALLOC, NULL, NULL},
+		{NULL,		       0,			  0,		     0,		NULL, NULL}
 };
-
 
 struct laser_cka {
 	unsigned long cka;
@@ -68,10 +85,9 @@ struct laser_cka {
 	size_t len;
 };
 
-
 static int
 laser_encode_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key,
-	unsigned char **buf, size_t *buflen)
+		unsigned char **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_rsa_key[C_ASN1_CREATE_RSA_KEY_SIZE];
 	struct sc_asn1_entry asn1_rsa_pub_coefficients[C_ASN1_RSA_PUB_COEFFICIENTS_SIZE];
@@ -92,17 +108,16 @@ laser_encode_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key
 
 int
 laser_encode_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key,
-	       unsigned char **buf, size_t *len)
+		unsigned char **buf, size_t *len)
 {
 	if (key->algorithm == SC_ALGORITHM_RSA)
 		return laser_encode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
-
 static int
 laser_encode_prvkey_rsa(struct sc_context *ctx, struct sc_pkcs15_prkey_rsa *key,
-	unsigned char **buf, size_t *buflen)
+		unsigned char **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_rsa_key[C_ASN1_UPDATE_RSA_KEY_SIZE];
 	struct sc_asn1_entry asn1_rsa_coefficients[C_ASN1_RSA_PRV_COEFFICIENTS_SIZE];
@@ -115,7 +130,7 @@ laser_encode_prvkey_rsa(struct sc_context *ctx, struct sc_pkcs15_prkey_rsa *key,
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate primes");
 	memcpy(primes, key->p.data, key->p.len);
 	memcpy(primes + key->p.len, key->q.data, key->q.len);
-	primes_len =  key->p.len + key->q.len;
+	primes_len = key->p.len + key->q.len;
 
 	partial_primes = malloc(key->dmp1.len + key->dmq1.len + key->iqmp.len);
 	if (!partial_primes)
@@ -138,21 +153,19 @@ laser_encode_prvkey_rsa(struct sc_context *ctx, struct sc_pkcs15_prkey_rsa *key,
 	r = sc_asn1_encode(ctx, asn1_rsa_key, buf, buflen);
 	LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 encoding of RSA private key failed");
 err:
-	if(primes) free(primes);
-	if(partial_primes) free(partial_primes);
+	free(primes);
+	free(partial_primes);
 	return SC_SUCCESS;
 }
 
-
 int
 laser_encode_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *key,
-	       unsigned char **buf, size_t *len)
+		unsigned char **buf, size_t *len)
 {
 	if (key->algorithm == SC_ALGORITHM_RSA)
 		return laser_encode_prvkey_rsa(ctx, &key->u.rsa, buf, len);
 	return SC_ERROR_NOT_SUPPORTED;
 }
-
 
 static size_t
 _get_attr(unsigned char *data, size_t length, size_t *in_offs, struct laser_cka *attr)
@@ -166,7 +179,7 @@ _get_attr(unsigned char *data, size_t length, size_t *in_offs, struct laser_cka 
 	 * At the end of kxc/s files there are mysterious 4 bytes (like 'OD OO OD OO').
 	 * TODO: Get to know what they are for.
 	 */
-	for (offs = *in_offs; (*(data + offs) == 0xFF) && (offs < length - 4); offs++)
+	for (offs = *in_offs; (offs < length - 4) && (*(data + offs) == 0xFF); offs++)
 		;
 	if (offs >= length - 4)
 		return 0;
@@ -183,7 +196,6 @@ _get_attr(unsigned char *data, size_t length, size_t *in_offs, struct laser_cka 
 	return 0;
 }
 
-
 static int
 _cka_get_unsigned(struct laser_cka *attr, unsigned *out)
 {
@@ -194,12 +206,11 @@ _cka_get_unsigned(struct laser_cka *attr, unsigned *out)
 	if (attr->len != 4)
 		return SC_ERROR_INVALID_DATA;
 
-	for (ii=0, *out = 0; ii < 4; ii++)
+	for (ii = 0, *out = 0; ii < 4; ii++)
 		*out = *out * 0x100 + *(attr->val + 3 - ii);
 
 	return SC_SUCCESS;
 }
-
 
 static int
 _cka_set_label(const struct laser_cka *attr, struct sc_pkcs15_object *obj)
@@ -210,13 +221,12 @@ _cka_set_label(const struct laser_cka *attr, struct sc_pkcs15_object *obj)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	memset(obj->label, 0, sizeof(obj->label));
-	len = (attr->len < sizeof(obj->label) - 1) ? attr->len : sizeof(obj->label) - 1;
+	len = MIN(attr->len, sizeof(obj->label) - 1);
 	if (len)
 		memcpy(obj->label, attr->val, len);
 
 	return SC_SUCCESS;
 }
-
 
 static int
 _cka_set_application(const struct laser_cka *attr, struct sc_pkcs15_data_info *info)
@@ -227,29 +237,27 @@ _cka_set_application(const struct laser_cka *attr, struct sc_pkcs15_data_info *i
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	memset(info->app_label, 0, sizeof(info->app_label));
-	len = (attr->len < sizeof(info->app_label) - 1) ? attr->len : sizeof(info->app_label) - 1;
+	len = MIN(attr->len, sizeof(info->app_label) - 1);
 	if (len)
 		memcpy(info->app_label, attr->val, len);
 
 	return SC_SUCCESS;
 }
 
-
 static int
 _cka_get_object_id(struct laser_cka *attr, struct sc_pkcs15_data_info *info)
 {
 	int ii;
 
-	for (ii = 0; ii < SC_MAX_OBJECT_ID_OCTETS; ii++)   {
-		if (ii*sizeof(int) < attr->len)
-			info->app_oid.value[ii] = *((int *)(attr->val + ii*sizeof(int)));
+	for (ii = 0; ii < SC_MAX_OBJECT_ID_OCTETS; ii++) {
+		if (ii * sizeof(int) < attr->len)
+			info->app_oid.value[ii] = *((int *)(attr->val + ii * sizeof(int)));
 		else
 			info->app_oid.value[ii] = -1;
 	}
 
 	return SC_SUCCESS;
 }
-
 
 static int
 _cka_get_blob(struct laser_cka *attr, struct sc_pkcs15_der *out)
@@ -269,7 +277,6 @@ _cka_get_blob(struct laser_cka *attr, struct sc_pkcs15_der *out)
 	return SC_SUCCESS;
 }
 
-
 static int
 _cka_set_id(struct laser_cka *attr, struct sc_pkcs15_id *out)
 {
@@ -284,7 +291,6 @@ _cka_set_id(struct laser_cka *attr, struct sc_pkcs15_id *out)
 
 	return SC_SUCCESS;
 }
-
 
 static int
 laser_add_attribute(unsigned char **buf, size_t *buf_sz, unsigned char flags,
@@ -302,15 +308,15 @@ laser_add_attribute(unsigned char **buf, size_t *buf_sz, unsigned char flags,
 
 	offs = *buf_sz;
 	if (cka & CKA_VENDOR_DEFINED)
-		*(ptr + offs++) = (cka >> 24) & 0xFF;		/* cka type: MSB | LSB */
+		*(ptr + offs++) = (cka >> 24) & 0xFF; /* cka type: MSB | LSB */
 	else
-		*(ptr + offs++) = (cka >> 8) & 0xFF;		/* cka type: 2 LSBs */
+		*(ptr + offs++) = (cka >> 8) & 0xFF; /* cka type: 2 LSBs */
 	*(ptr + offs++) = cka & 0xFF;
 	*(ptr + offs++) = flags;
-	*(ptr + offs++) = (cka_len >> 8) & 0xFF;	/* cka length: 2 bytes*/
+	*(ptr + offs++) = (cka_len >> 8) & 0xFF; /* cka length: 2 bytes*/
 	*(ptr + offs++) = cka_len & 0xFF;
 
-	memset(ptr +  offs, 0, cka_len);
+	memset(ptr + offs, 0, cka_len);
 	if (data)
 		memcpy(ptr + offs, (unsigned char *)data, cka_len);
 	offs += cka_len;
@@ -320,7 +326,6 @@ laser_add_attribute(unsigned char **buf, size_t *buf_sz, unsigned char flags,
 
 	return SC_SUCCESS;
 }
-
 
 int
 laser_attrs_cert_decode(struct sc_context *ctx,
@@ -332,7 +337,7 @@ laser_attrs_cert_decode(struct sc_context *ctx,
 
 	LOG_FUNC_CALLED(ctx);
 
-	for (next = offs = 0; offs < data_len; offs = next)   {
+	for (next = offs = 0; offs < data_len; offs = next) {
 		struct laser_cka attr;
 		unsigned uval;
 
@@ -342,7 +347,7 @@ laser_attrs_cert_decode(struct sc_context *ctx,
 			break;
 		sc_log(ctx, "Attribute(%lX) to parse '%s'", attr.cka, sc_dump_hex(attr.val, attr.len));
 
-		switch (attr.cka)   {
+		switch (attr.cka) {
 		case CKA_CLASS:
 			rv = _cka_get_unsigned(&attr, &uval);
 			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_CLASS");
@@ -391,11 +396,11 @@ laser_attrs_cert_decode(struct sc_context *ctx,
 		}
 	}
 
-	if (info->value.len)   {
+	if (info->value.len) {
 		/* TODO: get certificate authority:
 		 * see 'sc_oberthur_get_certificate_authority' and do likewise.
 		 */
-		if (!info->id.len)   {
+		if (!info->id.len) {
 			struct sc_pkcs15_pubkey *pubkey = NULL;
 
 			rv = sc_pkcs15_pubkey_from_cert(ctx, &info->value, &pubkey);
@@ -408,7 +413,6 @@ laser_attrs_cert_decode(struct sc_context *ctx,
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
-
 
 int
 laser_attrs_pubkey_decode(struct sc_context *ctx,
@@ -424,7 +428,7 @@ laser_attrs_pubkey_decode(struct sc_context *ctx,
 
 	memset(&pub_key, 0, sizeof(pub_key));
 
-	for (next = offs = 0; offs < data_len; offs = next)   {
+	for (next = offs = 0; offs < data_len; offs = next) {
 		struct laser_cka attr;
 		unsigned uval;
 
@@ -434,7 +438,7 @@ laser_attrs_pubkey_decode(struct sc_context *ctx,
 			break;
 		sc_log(ctx, "Attribute(%lX) to parse '%s'", attr.cka, sc_dump_hex(attr.val, attr.len));
 
-		switch (attr.cka)   {
+		switch (attr.cka) {
 		case CKA_CLASS:
 			rv = _cka_get_unsigned(&attr, &uval);
 			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_CLASS");
@@ -508,11 +512,10 @@ laser_attrs_pubkey_decode(struct sc_context *ctx,
 			LOG_TEST_RET(ctx, rv, "Cannot get public key modulus");
 
 			pub_key.algorithm = SC_ALGORITHM_RSA;
-			if (attr.cka == CKA_MODULUS)  {
+			if (attr.cka == CKA_MODULUS) {
 				pub_key.u.rsa.modulus.data = der.value;
 				pub_key.u.rsa.modulus.len = der.len;
-			}
-			else   {
+			} else {
 				pub_key.u.rsa.exponent.data = der.value;
 				pub_key.u.rsa.exponent.len = der.len;
 			}
@@ -536,7 +539,7 @@ laser_attrs_pubkey_decode(struct sc_context *ctx,
 		}
 	}
 
-	if (have_public_key)   {
+	if (have_public_key) {
 		rv = sc_pkcs15_encode_pubkey(ctx, &pub_key, &object->content.value, &object->content.len);
 		LOG_TEST_RET(ctx, rv, "Cannot encode public key");
 		sc_pkcs15_erase_pubkey(&pub_key);
@@ -544,7 +547,6 @@ laser_attrs_pubkey_decode(struct sc_context *ctx,
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
-
 
 int
 laser_attrs_prvkey_decode(struct sc_context *ctx,
@@ -560,7 +562,7 @@ laser_attrs_prvkey_decode(struct sc_context *ctx,
 
 	memset(&key_rsa, 0, sizeof(key_rsa));
 
-	for (next = offs = 0; offs < data_len; offs = next)   {
+	for (next = offs = 0; offs < data_len; offs = next) {
 		struct laser_cka attr;
 		unsigned uval;
 
@@ -570,7 +572,7 @@ laser_attrs_prvkey_decode(struct sc_context *ctx,
 			break;
 		sc_log(ctx, "Attribute(%lX) to parse '%s'", attr.cka, sc_dump_hex(attr.val, attr.len));
 
-		switch (attr.cka)   {
+		switch (attr.cka) {
 		case CKA_CLASS:
 			rv = _cka_get_unsigned(&attr, &uval);
 			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_CLASS");
@@ -678,22 +680,21 @@ laser_attrs_prvkey_decode(struct sc_context *ctx,
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
-
 int
 laser_attrs_data_object_decode(struct sc_context *ctx,
 		struct sc_pkcs15_object *object, struct sc_pkcs15_data_info *info,
-		unsigned char *data, size_t data_len, unsigned char* hash_exists)
+		unsigned char *data, size_t data_len, unsigned char *hash_exists)
 {
 	size_t offs, next;
 	int rv = SC_ERROR_INVALID_DATA;
 
 	LOG_FUNC_CALLED(ctx);
 
-	if(hash_exists)
+	if (hash_exists)
 		*hash_exists = 0;
 
 	sc_log(ctx, "DATA object path %s", sc_print_path(&info->path));
-	for (next = offs = 0; offs < data_len; offs = next)   {
+	for (next = offs = 0; offs < data_len; offs = next) {
 		struct laser_cka attr;
 		unsigned uval;
 
@@ -703,9 +704,9 @@ laser_attrs_data_object_decode(struct sc_context *ctx,
 			break;
 		sc_log(ctx, "Attribute(%lX) to parse '%s'", attr.cka, sc_dump_hex(attr.val, attr.len));
 
-		switch (attr.cka)   {
+		switch (attr.cka) {
 		case CKA_CERT_HASH:
-			if(hash_exists)
+			if (hash_exists)
 				*hash_exists = 1;
 			// struct sc_pkcs15_der der;
 			// rv = _cka_get_blob(&attr, &der);
@@ -748,10 +749,10 @@ laser_attrs_data_object_decode(struct sc_context *ctx,
 	}
 
 	sc_log(ctx, "DATA object path %s", sc_print_path(&info->path));
-	if (info->path.len)   {
+	if (info->path.len) {
 		unsigned file_id = info->path.value[info->path.len - 2] * 0x100 + info->path.value[info->path.len - 1];
 
-		if (file_id == CMAP_FID)   {
+		if (file_id == CMAP_FID) {
 			if (!strlen(info->app_label))
 				strncpy(info->app_label, CMAP_DO_APPLICATION_NAME, sizeof(info->app_label) - 1);
 			if (!strlen(object->label))
@@ -761,7 +762,6 @@ laser_attrs_data_object_decode(struct sc_context *ctx,
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
-
 
 int
 laser_md_cmap_record_decode(struct sc_context *ctx, struct sc_pkcs15_data *data, size_t *offs,
@@ -776,7 +776,7 @@ laser_md_cmap_record_decode(struct sc_context *ctx, struct sc_pkcs15_data *data,
 	if (data->data_len - *offs < sizeof(struct laser_cmap_record))
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-	*out = calloc (1, sizeof(struct laser_cmap_record));
+	*out = calloc(1, sizeof(struct laser_cmap_record));
 	if (*out == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(*out, data->data + *offs, sizeof(struct laser_cmap_record));
@@ -784,7 +784,6 @@ laser_md_cmap_record_decode(struct sc_context *ctx, struct sc_pkcs15_data *data,
 	*offs += sizeof(struct laser_cmap_record);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
-
 
 int
 laser_md_cmap_record_guid(struct sc_context *ctx, struct laser_cmap_record *rec,
@@ -797,7 +796,7 @@ laser_md_cmap_record_guid(struct sc_context *ctx, struct laser_cmap_record *rec,
 	if (!rec || !out)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "cmap.record.guid(%i) 0x'%s'", rec->guid_len, sc_dump_hex(rec->guid, rec->guid_len*2));
+	sc_log(ctx, "cmap.record.guid(%i) 0x'%s'", rec->guid_len, sc_dump_hex(rec->guid, rec->guid_len * 2));
 
 	if (rec->guid_len * 2 > sizeof(rec->guid))
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -806,13 +805,12 @@ laser_md_cmap_record_guid(struct sc_context *ctx, struct laser_cmap_record *rec,
 	if (*out == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
-	for (ii=0; ii<rec->guid_len; ii++)
-		*(*out + ii) = rec->guid[2*ii];
+	for (ii = 0; ii < rec->guid_len; ii++)
+		*(*out + ii) = rec->guid[2 * ii];
 	*out_len = rec->guid_len;
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
-
 
 static int
 laser_attach_cache_stamp(struct sc_pkcs15_card *p15card, int zero_stamp,
@@ -828,22 +826,20 @@ laser_attach_cache_stamp(struct sc_pkcs15_card *p15card, int zero_stamp,
 	if (!ptr)
 		return SC_ERROR_OUT_OF_MEMORY;
 
-	if (zero_stamp)   {
+	if (zero_stamp) {
 		memset(ptr + *buf_sz, 0, 4);
-	} 
-	else if (p15card->md_data)   {
-	    struct laser_cardcf *cardcf = &p15card->md_data->cardcf;
+	} else if (p15card->md_data) {
+		struct laser_cardcf *cardcf = &p15card->md_data->cardcf;
 
-	    *(ptr + *buf_sz + 0) = cardcf->cont_freshness & 0xFF;
-	    *(ptr + *buf_sz + 1) = (cardcf->cont_freshness >> 8) & 0xFF;
-	    *(ptr + *buf_sz + 2) = cardcf->files_freshness & 0xFF;
-	    *(ptr + *buf_sz + 3) = (cardcf->files_freshness >> 8) & 0xFF;
-	}
-	else {
-	    srand((unsigned)time(NULL));
-	    rand_val = rand();
-	    *(ptr + *buf_sz + 0) = *(ptr + *buf_sz + 2) = rand_val & 0xFF;
-	    *(ptr + *buf_sz + 1) = *(ptr + *buf_sz + 3) = (rand_val >> 8) & 0xFF;
+		*(ptr + *buf_sz + 0) = cardcf->cont_freshness & 0xFF;
+		*(ptr + *buf_sz + 1) = (cardcf->cont_freshness >> 8) & 0xFF;
+		*(ptr + *buf_sz + 2) = cardcf->files_freshness & 0xFF;
+		*(ptr + *buf_sz + 3) = (cardcf->files_freshness >> 8) & 0xFF;
+	} else {
+		srand((unsigned)time(NULL));
+		rand_val = rand();
+		*(ptr + *buf_sz + 0) = *(ptr + *buf_sz + 2) = rand_val & 0xFF;
+		*(ptr + *buf_sz + 1) = *(ptr + *buf_sz + 3) = (rand_val >> 8) & 0xFF;
 	}
 
 	*buf = ptr;
@@ -851,7 +847,6 @@ laser_attach_cache_stamp(struct sc_pkcs15_card *p15card, int zero_stamp,
 
 	return SC_SUCCESS;
 }
-
 
 int
 laser_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
@@ -990,17 +985,16 @@ laser_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
 	attrs_num++;
 
-	sc_log(ctx, "Attributes(%zu) '%s'",attrs_num, sc_dump_hex(data, data_len));
-	if (out && out_len)    {
-	    *out = data;
-	    *out_len = data_len;
-	    data = NULL;
+	sc_log(ctx, "Attributes(%zu) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	if (out && out_len) {
+		*out = data;
+		*out_len = data_len;
+		data = NULL;
 	}
 err:
-	if (data) free(data);
+	free(data);
 	LOG_FUNC_RETURN(ctx, rv);
 }
-
 
 int
 laser_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
@@ -1135,17 +1129,16 @@ laser_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
 	attrs_num++;
 
-	sc_log(ctx, "Attributes(%zu) '%s'",attrs_num, sc_dump_hex(data, data_len));
-	if (out && out_len)    {
-	    *out = data;
-	    *out_len = data_len;
-	    data = NULL;
+	sc_log(ctx, "Attributes(%zu) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	if (out && out_len) {
+		*out = data;
+		*out_len = data_len;
+		data = NULL;
 	}
 err:
-	if(data) free(data);
+	free(data);
 	LOG_FUNC_RETURN(ctx, rv);
 }
-
 
 int
 laser_encode_update_key(struct sc_context *ctx, struct sc_pkcs15_prkey *prkey,
@@ -1162,7 +1155,6 @@ laser_encode_update_key(struct sc_context *ctx, struct sc_pkcs15_prkey *prkey,
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
-
 
 int
 laser_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
@@ -1183,7 +1175,7 @@ laser_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object 
 
 	LOG_FUNC_CALLED(ctx);
 
-        cert = malloc(sizeof(struct sc_pkcs15_cert));
+	cert = malloc(sizeof(struct sc_pkcs15_cert));
 	if (!cert)
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate cert.encode repr.");
 
@@ -1194,7 +1186,7 @@ laser_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object 
 
 	data = malloc(7);
 	if (!data)
-	    LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	data_len = 0;
 	*(data + data_len++) = LASER_ATTRIBUTE_VALID;
@@ -1276,18 +1268,17 @@ laser_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object 
 	SHA1(data, data_len, sha1);
 	memcpy(data + sha1_offs, sha1, SHA_DIGEST_LENGTH);
 
-	sc_log(ctx, "Attributes(%zu) '%s'",attrs_num, sc_dump_hex(data, data_len));
-	if (out && out_len)    {
-	    *out = data;
-	    *out_len = data_len;
-	    data = NULL;
+	sc_log(ctx, "Attributes(%zu) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	if (out && out_len) {
+		*out = data;
+		*out_len = data_len;
+		data = NULL;
 	}
 err:
-	if(data) free(data);
-	if (cert) sc_pkcs15_free_certificate(cert);
+	free(data);
+	sc_pkcs15_free_certificate(cert);
 	LOG_FUNC_RETURN(ctx, rv);
 }
-
 
 int
 laser_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
@@ -1333,11 +1324,11 @@ laser_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	attrs_num++;
 
 	// TEMP data object private attribute
-	if((object->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0)
+	if ((object->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0)
 		rv = laser_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_true);
 	else
 		rv = laser_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_false);
-	//rv = laser_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_false);
+	// rv = laser_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_false);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_PRIVATE DATA object attribute");
 	attrs_num++;
 
@@ -1378,22 +1369,21 @@ laser_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	SHA1(data, data_len, sha1);
 	memcpy(data + sha1_offs, sha1, SHA_DIGEST_LENGTH);
 
-	sc_log(ctx, "Attributes(%zu) '%s'",attrs_num, sc_dump_hex(data, data_len));
-	if (out && out_len)    {
+	sc_log(ctx, "Attributes(%zu) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	if (out && out_len) {
 		*out = data;
 		*out_len = data_len;
 		data = NULL;
 	}
 err:
-	if(data) free(data);
+	free(data);
 	LOG_FUNC_RETURN(ctx, rv);
 }
-
 
 int
 laser_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info *info, int *is_converted)
 {
-	unsigned char guid[CMAP_GUID_INFO_SIZE/2];
+	unsigned char guid[CMAP_GUID_INFO_SIZE / 2];
 	unsigned char bits[5];
 	unsigned offs;
 	int MSBset = 0;
@@ -1411,10 +1401,10 @@ laser_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info *inf
 	memset(bits, 0, sizeof(bits));
 	memset(guid, 0, sizeof(guid));
 
-	for (offs=0; offs<info->id.len; offs++)   {
+	for (offs = 0; offs < info->id.len; offs++) {
 		unsigned char guid_ch, id_ch = info->id.value[offs];
 
-		switch (id_ch)   {
+		switch (id_ch) {
 		case 0x5C:
 		case 0xDC:
 			guid_ch = 0x5B;
@@ -1427,20 +1417,19 @@ laser_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info *inf
 			guid_ch = id_ch;
 		}
 
-		if (guid_ch & 0x80)   {
-			if (offs > sizeof(bits)*7)
+		if (guid_ch & 0x80) {
+			if (offs > sizeof(bits) * 7)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
 			MSBset = 1;
 			guid[offs] = guid_ch & 0x7F;
-			bits[offs/7] |= 0x01 << (6 - (offs%7));
-		}
-		else   {
+			bits[offs / 7] |= 0x01 << (6 - (offs % 7));
+		} else {
 			guid[offs] = guid_ch;
 		}
 	}
 
-	if (MSBset)   {
+	if (MSBset) {
 		if (is_converted)
 			*is_converted = 1;
 		if (offs > sizeof(guid) - 5)
@@ -1449,22 +1438,19 @@ laser_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info *inf
 		offs += 5;
 	}
 
-
 	if (info->aux_data != NULL && (info->aux_data->type != SC_AUX_DATA_TYPE_MD_CMAP_RECORD && info->aux_data->type != SC_AUX_DATA_TYPE_NO_DATA))
 		sc_aux_data_free(&info->aux_data);
-	if (info->aux_data == NULL)
-	{
+	if (info->aux_data == NULL) {
 		rv = sc_aux_data_allocate(ctx, &info->aux_data, NULL);
 		LOG_TEST_RET(ctx, rv, "Cannot allocate MD auxiliary data");
 	}
 
 	guid[offs] = 0;
-	rv = sc_aux_data_set_md_guid(ctx, info->aux_data, (char*)guid);
+	rv = sc_aux_data_set_md_guid(ctx, info->aux_data, (char *)guid);
 	LOG_TEST_RET(ctx, rv, "Cannot set MD CMAP Guid");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
-
 
 static int
 laser_cmap_record_init(struct sc_context *ctx, struct sc_pkcs15_object *key_obj,
@@ -1481,16 +1467,16 @@ laser_cmap_record_init(struct sc_context *ctx, struct sc_pkcs15_object *key_obj,
 	if (info->aux_data == NULL || info->aux_data->type != SC_AUX_DATA_TYPE_MD_CMAP_RECORD || info->aux_data->data.cmap_record.guid_len == 0)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
-	if ((info->aux_data->data.cmap_record.guid_len == 0) || info->aux_data->data.cmap_record.guid_len >= CMAP_GUID_INFO_SIZE/2)
+	if ((info->aux_data->data.cmap_record.guid_len == 0) || info->aux_data->data.cmap_record.guid_len >= CMAP_GUID_INFO_SIZE / 2)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
 	sc_log(ctx, "encode CMAP container: guid:0x'%s', flags:0x%X",
-			sc_dump_hex(info->aux_data->data.cmap_record.guid,info->aux_data->data.cmap_record.guid_len), info->aux_data->data.cmap_record.flags);
+			sc_dump_hex(info->aux_data->data.cmap_record.guid, info->aux_data->data.cmap_record.guid_len), info->aux_data->data.cmap_record.flags);
 	sc_log(ctx, "key ID %s", sc_pkcs15_print_id(&info->id));
 
 	memset(cmap_rec, 0, sizeof(struct laser_cmap_record));
-	for (ii=0; ii<info->aux_data->data.cmap_record.guid_len; ii++)
-		cmap_rec->guid[2*ii] = *(info->aux_data->data.cmap_record.guid + ii);
+	for (ii = 0; ii < info->aux_data->data.cmap_record.guid_len; ii++)
+		cmap_rec->guid[2 * ii] = *(info->aux_data->data.cmap_record.guid + ii);
 
 	cmap_rec->guid_len = ii;
 	cmap_rec->flags = info->aux_data->data.cmap_record.flags;
@@ -1500,7 +1486,6 @@ laser_cmap_record_init(struct sc_context *ctx, struct sc_pkcs15_object *key_obj,
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
-
 
 int
 laser_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object_to_ignore,
@@ -1527,36 +1512,35 @@ laser_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *objec
 	prkeys_num = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, prkeys, 12);
 	LOG_TEST_RET(ctx, prkeys_num, "Failed to get private key objects");
 
-	for (ii=0, idx_max = 0; ii < prkeys_num; ii++)   {
+	for (ii = 0, idx_max = 0; ii < prkeys_num; ii++) {
 		struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)prkeys[ii]->data;
 
 		idx = (info->key_reference & LASER_FS_REF_MASK) - LASER_FS_KEY_REF_MIN;
-		if (idx > sizeof(ordered_prkeys)/sizeof(struct sc_pkcs15_object *) - 1)
+		if (idx > sizeof(ordered_prkeys) / sizeof(struct sc_pkcs15_object *) - 1)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
 		ordered_prkeys[idx] = prkeys[ii];
 		if (idx_max < idx)
-			idx_max  = idx;
+			idx_max = idx;
 	}
 
-	for (idx = 0; idx < idx_max + 1; idx++)   {
+	for (idx = 0; idx < idx_max + 1; idx++) {
 		struct laser_cmap_record cmap_rec;
 
 		memset(&cmap_rec, 0, sizeof(cmap_rec));
 
-		if (ordered_prkeys[idx])   {
+		if (ordered_prkeys[idx]) {
 			struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)ordered_prkeys[idx]->data;
 
-			if (!(ignore_id && sc_pkcs15_compare_id(ignore_id, &info->id)))   {
+			if (!(ignore_id && sc_pkcs15_compare_id(ignore_id, &info->id))) {
 				rv = laser_cmap_record_init(ctx, ordered_prkeys[idx], &cmap_rec);
 				LOG_TEST_RET(ctx, rv, "Failed encode CMAP record");
 
-				if (info->id.len == SHA_DIGEST_LENGTH + 5)   {
+				if (info->id.len == SHA_DIGEST_LENGTH + 5) {
 					sc_log(ctx, "Applied Laser style of CKA_ID to GUID conversion.");
-					cmap_rec.rfu |= 0x80; 
+					cmap_rec.rfu |= 0x80;
 				}
-			}
-			else   {
+			} else {
 				sc_log(ctx, "Ignore (deleted?) key %s", sc_pkcs15_print_id(&info->id));
 			}
 		}
@@ -1571,7 +1555,6 @@ laser_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *objec
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-
 int
 laser_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigned base_id)
 {
@@ -1585,7 +1568,7 @@ laser_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigned bas
 	objs_num = sc_pkcs15_get_objects(p15card, type, objs, 32);
 	LOG_TEST_RET(ctx, objs_num, "Failed to get objects");
 
-	switch (type & SC_PKCS15_TYPE_CLASS_MASK)   {
+	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_PRKEY:
 		min = LASER_FS_KEY_REF_MIN, max = LASER_FS_KEY_REF_MAX;
 		break;
@@ -1600,11 +1583,11 @@ laser_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigned bas
 	}
 
 	sc_log(ctx, "found %i objects of type %X", objs_num, type);
-	for (ii = min; ii <= max; ii++)   {
-		for (jj=0; jj<objs_num; jj++)   {
+	for (ii = min; ii <= max; ii++) {
+		for (jj = 0; jj < objs_num; jj++) {
 			unsigned id;
 
-			switch (type & SC_PKCS15_TYPE_CLASS_MASK)   {
+			switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
 			case SC_PKCS15_TYPE_CERT:
 				path = ((struct sc_pkcs15_cert_info *)objs[jj]->data)->path;
 				break;
@@ -1634,4 +1617,4 @@ laser_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigned bas
 	LOG_FUNC_RETURN(ctx, idx);
 }
 
-//#endif // ENABLE_OPENSSL
+#endif // ENABLE_OPENSSL
