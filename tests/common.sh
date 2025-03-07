@@ -2,31 +2,26 @@
 ## from OpenSC/src/tests/p11test/runtest.sh
 BUILD_PATH=${BUILD_PATH:-..}
 
+TOKENTYPE=$1
+
 # run valgrind with all the switches we are interested in
 if [ -n "$VALGRIND" -a -n "$LOG_COMPILER" ]; then
     VALGRIND="$LOG_COMPILER"
 fi
 
-SOPIN="12345678"
-PIN="123456"
+export SOPIN="12345678"
+export PIN="123456"
 PKCS11_TOOL="$VALGRIND $BUILD_PATH/src/tools/pkcs11-tool"
 
-softhsm_paths="/usr/local/lib/softhsm/libsofthsm2.so \
-	/usr/lib/softhsm/libsofthsm2.so
-	/usr/lib64/pkcs11/libsofthsm2.so \
-	/usr/lib/i386-linux-gnu/softhsm/libsofthsm2.so \
-	/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so"
-
-for LIB in $softhsm_paths; do
-	echo "Testing $LIB"
-	if [[ -f $LIB ]]; then
-		P11LIB=$LIB
-		echo "Setting P11LIB=$LIB"
-		break
-	fi
-done
-if [[ -z "$P11LIB" ]]; then
-	echo "Warning: Could not find the softhsm pkcs11 module"
+if [ "${TOKENTYPE}" == "softhsm" ]; then
+    source "${BUILD_PATH}/tests/setup-softhsm.sh"
+elif [ "${TOKENTYPE}" == "softokn" ]; then
+    source "${BUILD_PATH}/tests/setup-softokn.sh"
+elif [ "${TOKENTYPE}" == "kryoptic" ]; then
+    source "${BUILD_PATH}/tests/setup-kryoptic.sh"
+else
+    echo "Unknown token type: $1"
+    exit 1
 fi
 
 ERRORS=0
@@ -44,16 +39,14 @@ function generate_key() {
 
 	echo "Generate $TYPE key (ID=$ID)"
 	# Generate key pair
-	$PKCS11_TOOL --keypairgen --key-type="$TYPE" --login --pin=$PIN \
-		--module="$P11LIB" --label="$LABEL" --id=$ID
+	$PKCS11_TOOL "${PRIV_ARGS[@]}" --keypairgen --key-type="$TYPE" --label="$LABEL" --id=$ID
 	if [[ "$?" -ne "0" ]]; then
 		echo "Couldn't generate $TYPE key pair"
 		return 1
 	fi
 
 	# Extract public key from the card
-	$PKCS11_TOOL --read-object --id $ID --type pubkey --output-file $ID.der \
-		--module="$P11LIB"
+	$PKCS11_TOOL "${PUB_ARGS[@]}" --read-object --id $ID --type pubkey --output-file $ID.der
 	if [[ "$?" -ne "0" ]]; then
 		echo "Couldn't read generated $TYPE public key"
 		return 1
@@ -70,46 +63,31 @@ function generate_key() {
 	rm $ID.der
 }
 
-function softhsm_initialize() {
-	echo "directories.tokendir = $(realpath .tokens)" > .softhsm2.conf
-	if [ -d ".tokens" ]; then
-		rm -rf ".tokens"
-	fi
-	mkdir ".tokens"
-	export SOFTHSM2_CONF=$(realpath ".softhsm2.conf")
-	# Init token
-
-	softhsm2-util --init-token --slot 0 --label "SC test" --so-pin="$SOPIN" --pin="$PIN"
-}
-
 function card_setup() {
-	softhsm_initialize
+	initialize_token
 
-	# Generate 1024b RSA Key pair
-	generate_key "RSA:1024" "01" "RSA_auth" || return 1
 	# Generate 2048b RSA Key pair
-	generate_key "RSA:2048" "02" "RSA2048" || return 1
+	generate_key "RSA:2048" "01" "RSA2048" || return 1
+	# Generate 4096b RSA Key pair
+	generate_key "RSA:4096" "02" "RSA4096" || return 1
 	# Generate 256b ECC Key pair
 	generate_key "EC:secp256r1" "03" "ECC_auth" || return 1
 	# Generate 521b ECC Key pair
 	generate_key "EC:secp521r1" "04" "ECC521" || return 1
-	# Generate an HMAC:SHA256 key
-	$PKCS11_TOOL --keygen --key-type="GENERIC:64" --login --pin=$PIN \
-		--module="$P11LIB" --label="HMAC-SHA256" --id="05"
-	if [[ "$?" -ne "0" ]]; then
-		echo "Couldn't generate GENERIC key"
-		return 1
+
+	if [[ ${TOKENTYPE} == "softhsm" ]]; then
+		# Generate an HMAC:SHA256 key
+		$PKCS11_TOOL --keygen --key-type="GENERIC:64" --login --pin=$PIN \
+			--module="$P11LIB" --label="HMAC-SHA256" --id="05"
+		if [[ "$?" -ne "0" ]]; then
+			echo "Couldn't generate GENERIC key"
+			return 1
+		fi
 	fi
 }
 
-function softhsm_cleanup() {
-	rm .softhsm2.conf
-	rm -rf ".tokens"
-	sleep 1
-}
-
 function card_cleanup() {
-	softhsm_cleanup
+	token_cleanup
 	rm 0{1,2,3,4}.pub
 	sleep 1
 }

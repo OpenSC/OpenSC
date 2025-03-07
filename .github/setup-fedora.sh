@@ -18,6 +18,10 @@ else
 	DEPS="$DEPS pcsc-lite-devel readline-devel openssl-devel zlib-ng-devel libcmocka-devel"
 fi
 
+if [ "$1" == "kryoptic" ]; then
+	DEPS="$DEPS clang meson cargo expect pkgconf-pkg-config openssl-devel p11-kit-devel gnutls-utils g++ sqlite-devel python3-six git"
+fi
+
 sudo dnf install -y $DEPS
 
 XFAIL_TESTS="test-pkcs11-tool-test-threads.sh test-pkcs11-tool-test.sh"

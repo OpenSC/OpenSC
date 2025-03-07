@@ -1,19 +1,32 @@
 #!/bin/bash
 SOURCE_PATH=${SOURCE_PATH:-..}
 
-source $SOURCE_PATH/tests/common.sh
+TOKENTYPE=$1
+
+if [ "${TOKENTYPE}" == "softokn" ]; then
+	echo "Generate key-pair with CKA_ALLOWED_MECHANISMS not supported"
+	exit 1
+elif [ "${TOKENTYPE}" == "" ]; then
+    TOKENTYPE=softhsm
+    echo "No tokentype provided, running with SoftHSM"
+fi
+
+source $SOURCE_PATH/tests/common.sh $TOKENTYPE
 
 echo "======================================================="
-echo "Setup SoftHSM"
+echo "Setup $TOKENTYPE"
 echo "======================================================="
 if [[ ! -f $P11LIB ]]; then
-    echo "WARNING: The SoftHSM is not installed. Can not run this test"
+    echo "WARNING: The $TOKENTYPE is not installed. Can not run this test"
     exit 77;
 fi
-# The Ubuntu has old softhsm version not supporting this feature
-grep "Ubuntu 18.04" /etc/issue && echo "WARNING: Not supported on Ubuntu 18.04" && exit 77
 
-softhsm_initialize
+if [ "${TOKENTYPE}" == "softhsm" ]; then
+	# The Ubuntu has old softhsm version not supporting this feature
+	grep "Ubuntu 18.04" /etc/issue && echo "WARNING: Not supported on Ubuntu 18.04" && exit 77
+fi
+
+initialize_token
 
 echo "======================================================="
 echo "Generate key-pair with CKA_ALLOWED_MECHANISMS"
@@ -46,7 +59,7 @@ rm -f data{,.sig}
 echo "======================================================="
 echo "Cleanup"
 echo "======================================================="
-softhsm_cleanup
+token_cleanup
 
 rm objects.list sign.log
 

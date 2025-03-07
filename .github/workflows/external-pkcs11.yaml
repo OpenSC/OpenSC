@@ -1,0 +1,114 @@
+name: Tests of external pkcs11 modules
+
+on:
+  pull_request:
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.sh'
+      - .github/workflows/fedora.yml
+      - '**.am'
+      - doc/**
+      - configure.ac
+  push:
+
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
+env:
+  BASE_DEPS: |
+    build-essential docbook-xsl xsltproc gengetopt help2man pcscd check
+    pcsc-tools libtool make autoconf autoconf-archive automake pkg-config
+    git xxd openssl valgrind socat gawk
+    libglib2.0-dev libnss3-dev gnutls-bin libusb-dev libudev-dev flex
+    libnss3-tools
+    libpcsclite-dev libcmocka-dev libssl-dev zlib1g-dev libreadline-dev softhsm2
+  KRYOPTIC: https://github.com/latchset/kryoptic.git
+
+jobs:
+  #######################
+  ## pkcs11-tool tests ##
+  #######################
+
+  test-kryoptic:
+    runs-on: ubuntu-24.04
+    container:
+      image: fedora:latest
+    env:
+      SOURCE_PATH: ./
+      BUILD_PATH: ./
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Setup Fedora
+        run: .github/setup-fedora.sh kryoptic
+      - name: Install OpenSC
+        run: .github/build.sh
+      - name: Setup Kryoptic
+        run: .github/setup-kryoptic.sh
+      - name: Test Sign & Verify with Kryoptic
+        run: tests/test-pkcs11-tool-sign-verify.sh kryoptic
+      - name: Test Import with Kryoptic
+        run: tests/test-pkcs11-tool-import.sh kryoptic kryoptic
+      - name: Test Allowed Mechanisms with Kryoptic
+        run: tests/test-pkcs11-tool-allowed-mechanisms.sh kryoptic
+      - name: Test pkcs11-tool test with Kryoptic
+        run: tests/test-pkcs11-tool-test.sh kryoptic
+
+  test-softokn:
+    runs-on: ubuntu-24.04
+    env:
+      SOURCE_PATH: ./
+      BUILD_PATH: ./
+    steps:
+      - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-20-base
+          execute_install_scripts: true
+      - name: Setup Ubuntu
+        run: .github/setup-linux.sh softokn
+      - name: Build OpenSC
+        run: .github/build.sh
+      - name: Test Sign & Verify with Softokn
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+        run: tests/test-pkcs11-tool-sign-verify.sh softokn
+      - name: Test Import with Softokn
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+        run: tests/test-pkcs11-tool-import.sh softokn
+
+  test-softhsm:
+    runs-on: ubuntu-24.04
+    env:
+      SOURCE_PATH: ./
+      BUILD_PATH: ./
+    steps:
+      - uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-20-base
+          execute_install_scripts: true
+      - name: Setup Ubuntu
+        run: .github/setup-linux.sh
+      - name: Build OpenSC
+        run: .github/build.sh
+      - name: Test Sign & Verify with SoftHSM
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+        run: tests/test-pkcs11-tool-sign-verify.sh softhsm
+      - name: Test Import with SoftHSM
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+        run: tests/test-pkcs11-tool-import.sh softhsm
+      - name: Test Allowed Mechanisms with SoftHSM
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+        run: tests/test-pkcs11-tool-allowed-mechanisms.sh softhsm
+      - name: Test pkcs11-tool test with SoftHSM
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib
+        run: tests/test-pkcs11-tool-test.sh softhsm
