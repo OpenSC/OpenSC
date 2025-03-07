@@ -1,18 +1,27 @@
 #!/bin/bash
 SOURCE_PATH=${SOURCE_PATH:-..}
 
-source $SOURCE_PATH/tests/common.sh
+TOKENTYPE=$1
+
+if [ "${TOKENTYPE}" == "" ]; then
+    TOKENTYPE=softhsm
+    echo "No tokentype provided, running with SoftHSM"
+fi
+
+source $SOURCE_PATH/tests/common.sh $TOKENTYPE
 
 echo "======================================================="
-echo "Setup SoftHSM"
+echo "Setup $TOKENTYPE"
 echo "======================================================="
 if [[ ! -f $P11LIB ]]; then
-    echo "WARNING: The SoftHSM is not installed. Can not run this test"
+    echo "WARNING: The $TOKENTYPE is not installed. Can not run this test"
     exit 77;
 fi
 
-# The Ubuntu has old softhsm version not supporting this feature
-grep "Ubuntu 18.04" /etc/issue && echo "WARNING: Not supported on Ubuntu 18.04" && exit 77
+if [ "${TOKENTYPE}" == "softhsm" ]; then
+    # The Ubuntu has old softhsm version not supporting this feature
+    grep "Ubuntu 18.04" /etc/issue && echo "WARNING: Not supported on Ubuntu 18.04" && exit 77
+fi
 
 card_setup
 assert $? "Failed to set up card"
@@ -20,10 +29,15 @@ assert $? "Failed to set up card"
 echo "======================================================="
 echo "Test"
 echo "======================================================="
-#SoftHSM only supports CKM_RSA_PKCS_OAEP with --hash-algorithm SHA-1 and --mgf MGF1-SHA1
-# and it accepts pSourceData, but  does not use, so decrypt fails, See pkcs11-tool.c comments
-$PKCS11_TOOL --test -p "${PIN}" --module "${P11LIB}" --hash-algorithm "SHA-1" --mgf "MGF1-SHA1"
-assert $? "Failed running tests"
+if [ "${TOKENTYPE}" == "softhsm" ]; then
+    #SoftHSM only supports CKM_RSA_PKCS_OAEP with --hash-algorithm SHA-1 and --mgf MGF1-SHA1
+    # and it accepts pSourceData, but  does not use, so decrypt fails, See pkcs11-tool.c comments
+    $PKCS11_TOOL --test -p "${PIN}" --module "${P11LIB}" --hash-algorithm "SHA-1" --mgf "MGF1-SHA1"
+    assert $? "Failed running tests"
+else
+    $PKCS11_TOOL --test -p "${PIN}" --module "${P11LIB}"
+    assert $? "Failed running tests"
+fi
 
 echo "======================================================="
 echo "Test objects URI"
