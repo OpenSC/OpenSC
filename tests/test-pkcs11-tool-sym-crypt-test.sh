@@ -1,7 +1,17 @@
 #!/bin/bash
 SOURCE_PATH=${SOURCE_PATH:-..}
 
-source $SOURCE_PATH/tests/common.sh
+TOKENTYPE=$1
+
+if [ "${TOKENTYPE}" == "" ]; then
+    TOKENTYPE=softhsm
+    echo "No tokentype provided, running with SoftHSM"
+elif [ "${TOKENTYPE}" != "softhsm" ]; then
+    echo "Supported only for softhsm"
+    exit 1
+fi
+
+source $SOURCE_PATH/tests/common.sh softhsm
 
 echo "======================================================="
 echo "Setup SoftHSM"
@@ -13,7 +23,7 @@ fi
 # The Ubuntu has old softhsm version not supporting this feature
 grep "Ubuntu 18.04" /etc/issue && echo "WARNING: Not supported on Ubuntu 18.04" && exit 77
 
-softhsm_initialize
+initialize_token
 
 #echo "======================================================="
 #echo "Generate AES key"
@@ -204,7 +214,7 @@ assert $? "Fail, AES-CTR - wrong encrypt"
 echo "======================================================="
 echo "Cleanup"
 echo "======================================================="
-softhsm_cleanup
+token_cleanup
 
 rm objects.list
 rm aes_128.key aes_plain.data aes_plain_test.data aes_ciphertext_openssl.data aes_ciphertext_pkcs11.data aes_plain_pkcs11.data gcm_128.key gcm_vector_plain.data gcm_test_plain.data gcm_vector_ct_tag.data gcm_test_ct_tag.data
