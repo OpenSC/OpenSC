@@ -49,18 +49,14 @@
 #endif
 #endif
 
-/* 800-73-4 SM and VCI need: ECC, SM and real OpenSSL >= 1.1 */
-#if defined(ENABLE_OPENSSL) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-#else
-#undef ENABLE_PIV_SM
-#endif
+#include "internal.h"
 
-#ifdef ENABLE_PIV_SM
+/* 800-73-4 SM and VCI need: ECC, SM and OpenSSL or LibreSSL */
+#if defined(ENABLE_PIV_SM)
 #include <openssl/cmac.h>
 #include "compression.h"
 #endif
 
-#include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
 #include "simpletlv.h"
