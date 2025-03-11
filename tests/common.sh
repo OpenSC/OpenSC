@@ -14,11 +14,11 @@ export PIN="123456"
 PKCS11_TOOL="$VALGRIND $BUILD_PATH/src/tools/pkcs11-tool"
 
 if [ "${TOKENTYPE}" == "softhsm" ]; then
-    source "${BUILD_PATH}/tests/setup-softhsm.sh"
+    source "${BUILD_PATH}/tests/init-softhsm.sh"
 elif [ "${TOKENTYPE}" == "softokn" ]; then
-    source "${BUILD_PATH}/tests/setup-softokn.sh"
+    source "${BUILD_PATH}/tests/init-softokn.sh"
 elif [ "${TOKENTYPE}" == "kryoptic" ]; then
-    source "${BUILD_PATH}/tests/setup-kryoptic.sh"
+    source "${BUILD_PATH}/tests/init-kryoptic.sh"
 else
     echo "Unknown token type: $1"
     exit 1
