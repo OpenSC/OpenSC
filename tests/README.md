@@ -6,7 +6,7 @@ Some of the tests support running with several PKCS#11 modules:
 
 - SoftHSM,
 - Kyoptic,
-- and Softokn.
+- and NSS Softokn.
 
 The test can be run with specified token `softhsm | kryoptic | softokn`:
 
