@@ -21,8 +21,6 @@ if [[ ! -f $P11LIB ]]; then
     exit 77;
 fi
 
-# The Ubuntu has old softhsm version not supporting this feature
-grep "Ubuntu 18.04" /etc/issue && echo "WARNING: Not supported on Ubuntu 18.04" && exit 77
 initialize_token
 
 PKCS11_TOOL_W_PIN="$PKCS11_TOOL --module $P11LIB --pin $PIN"
