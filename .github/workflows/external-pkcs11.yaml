@@ -46,14 +46,8 @@ jobs:
         run: .github/build.sh
       - name: Setup Kryoptic
         run: .github/setup-kryoptic.sh
-      - name: Test Sign & Verify with Kryoptic
-        run: tests/test-pkcs11-tool-sign-verify.sh kryoptic
-      - name: Test Import with Kryoptic
-        run: tests/test-pkcs11-tool-import.sh kryoptic kryoptic
-      - name: Test Allowed Mechanisms with Kryoptic
-        run: tests/test-pkcs11-tool-allowed-mechanisms.sh kryoptic
-      - name: Test pkcs11-tool test with Kryoptic
-        run: tests/test-pkcs11-tool-test.sh kryoptic
+      - name: Test with Kryoptic
+        run: tests/test-kryoptic.sh
 
   test-softokn:
     runs-on: ubuntu-24.04
@@ -71,14 +65,10 @@ jobs:
         run: .github/setup-linux.sh softokn
       - name: Build OpenSC
         run: .github/build.sh
-      - name: Test Sign & Verify with Softokn
+      - name: Test NSS Softokn
         env:
           LD_LIBRARY_PATH: /usr/local/lib
-        run: tests/test-pkcs11-tool-sign-verify.sh softokn
-      - name: Test Import with Softokn
-        env:
-          LD_LIBRARY_PATH: /usr/local/lib
-        run: tests/test-pkcs11-tool-import.sh softokn
+        run: tests/test-softokn.sh
 
   test-softhsm:
     runs-on: ubuntu-24.04
@@ -96,19 +86,7 @@ jobs:
         run: .github/setup-linux.sh
       - name: Build OpenSC
         run: .github/build.sh
-      - name: Test Sign & Verify with SoftHSM
+      - name: Test SoftHSM
         env:
           LD_LIBRARY_PATH: /usr/local/lib
-        run: tests/test-pkcs11-tool-sign-verify.sh softhsm
-      - name: Test Import with SoftHSM
-        env:
-          LD_LIBRARY_PATH: /usr/local/lib
-        run: tests/test-pkcs11-tool-import.sh softhsm
-      - name: Test Allowed Mechanisms with SoftHSM
-        env:
-          LD_LIBRARY_PATH: /usr/local/lib
-        run: tests/test-pkcs11-tool-allowed-mechanisms.sh softhsm
-      - name: Test pkcs11-tool test with SoftHSM
-        env:
-          LD_LIBRARY_PATH: /usr/local/lib
-        run: tests/test-pkcs11-tool-test.sh softhsm
+        run: tests/test-softhsm.sh
