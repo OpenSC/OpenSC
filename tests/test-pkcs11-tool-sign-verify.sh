@@ -80,12 +80,8 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
             # -PSS methods should work on data > 512 bytes; generate data:
             head -c 1024 </dev/urandom > data
 
-            if [ "${TOKENTYPE}" == "softhsm" ]; then
-                if [[ "$HASH" == "SHA512" ]]; then
-                    continue; # This one is broken
-                fi
-                # Ubuntu SoftHSM version does not support RSA-PSS
-                grep "Ubuntu 18.04" /etc/issue && echo "WARNING: Not supported on Ubuntu 18.04" && continue
+            if [[ "${TOKENTYPE}" == "softhsm" && "$HASH" == "SHA512" ]]; then
+                continue; # This one is broken for SoftHSM
             fi
 
             echo
