@@ -75,14 +75,11 @@ function card_setup() {
 	# Generate 521b ECC Key pair
 	generate_key "EC:secp521r1" "04" "ECC521" || return 1
 
-	if [[ ${TOKENTYPE} == "softhsm" ]]; then
-		# Generate an HMAC:SHA256 key
-		$PKCS11_TOOL --keygen --key-type="GENERIC:64" --login --pin=$PIN \
-			--module="$P11LIB" --label="HMAC-SHA256" --id="05"
-		if [[ "$?" -ne "0" ]]; then
-			echo "Couldn't generate GENERIC key"
-			return 1
-		fi
+	# Generate an HMAC:SHA256 key
+	$PKCS11_TOOL "${PRIV_ARGS[@]}" --keygen --key-type="GENERIC:64" --label="HMAC-SHA256" --id="05" --usage-sign
+	if [[ "$?" -ne "0" ]]; then
+		echo "Couldn't generate GENERIC key"
+		return 1
 	fi
 }
 
