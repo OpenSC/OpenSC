@@ -3,15 +3,15 @@ SOURCE_PATH=${SOURCE_PATH:-..}
 
 TOKENTYPE=$1
 
-if [ "${TOKENTYPE}" == "" ]; then
+if [ "${TOKENTYPE}" == "softokn" ]; then
+	echo "p11test not supported"
+	exit 1
+elif [ "${TOKENTYPE}" == "" ]; then
     TOKENTYPE=softhsm
     echo "No tokentype provided, running with SoftHSM"
-elif [ "${TOKENTYPE}" != "softhsm" ]; then
-    echo "Supported only for softhsm"
-    exit 1
 fi
 
-source $SOURCE_PATH/tests/common.sh softhsm
+source $SOURCE_PATH/tests/common.sh $TOKENTYPE
 
 echo "======================================================="
 echo "Setup SoftHSM"
@@ -23,25 +23,21 @@ fi
 
 initialize_token
 
-#echo "======================================================="
-#echo "Generate AES key"
-#echo "======================================================="
-#ID1="85"
-# Generate key
-#$PKCS11_TOOL --keygen --key-type="aes:32" --login --pin=$PIN \
-#	--module="$P11LIB" --label="gen_aes256" --id="$ID1"
-#assert $? "Failed to Generate AES key"
-
 echo "======================================================="
 echo "import AES key"
 echo "======================================================="
 ID2="86"
 echo -n "pppppppppppppppp" > aes_128.key
 # import key
-softhsm2-util --import aes_128.key --aes --token "SC test" --pin "$PIN" --label import_aes_128 --id "$ID2"
+if [ "${TOKENTYPE}" == "softhsm" ]; then
+	softhsm2-util --import aes_128.key --aes --token "SC test" --pin "$PIN" --label import_aes_128 --id "$ID2"
+else
+	$PKCS11_TOOL "${PRIV_ARGS[@]}" --write-object aes_128.key --id "$ID2" \
+			--type secrkey --label "import_aes_128" --key-type AES:16
+fi
 assert $? "Fail, unable to import key"
 
-$PKCS11_TOOL --module="$P11LIB" --list-objects -l --pin=$PIN  2>/dev/null |tee > objects.list
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --list-objects -l  2>/dev/null |tee > objects.list
 assert $? "Failed to list objects"
 
 VECTOR="00000000000000000000000000000000"
@@ -53,14 +49,15 @@ echo "======================================================="
 
 echo "C_Encrypt"
 dd if=/dev/urandom bs=200 count=1 >aes_plain.data 2>/dev/null
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --encrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
 	--input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
 assert $? "Fail/pkcs11-tool encrypt"
 openssl enc -aes-128-cbc -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
 cmp aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data >/dev/null 2>/dev/null
 assert $? "Fail, AES-CBC-PAD (C_Encrypt) - wrong encrypt"
+
 echo "C_Decrypt"
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --decrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --decrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
 	--input-file aes_ciphertext_pkcs11.data --output-file aes_plain_pkcs11.data 2>/dev/null
 assert $? "Fail/pkcs11-tool decrypt"
 cmp aes_plain.data aes_plain_pkcs11.data >/dev/null 2>/dev/null
@@ -70,13 +67,14 @@ echo "C_DecryptUpdate"
 dd if=/dev/urandom bs=8131 count=3 >aes_plain.data 2>/dev/null
 openssl enc -aes-128-cbc -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
 assert $? "Fail, OpenSSL"
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --decrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --decrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
 	--input-file aes_ciphertext_openssl.data --output-file aes_plain_test.data 2>/dev/null
 assert $? "Fail/pkcs11-tool (C_DecryptUpdate) decrypt"
 cmp aes_plain.data aes_plain_test.data >/dev/null 2>/dev/null
 assert $? "Fail, AES-CBC-PAD - wrong decrypt"
+
 echo "C_EncryptUpdate"
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --encrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
 	--input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
 assert $? "Fail/pkcs11-tool encrypt"
 cmp aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data >/dev/null 2>/dev/null
@@ -87,9 +85,9 @@ echo " AES-ECB, AES-CBC - must fail, because the length of   "
 echo " the input is not multiple od block size               "
 echo "======================================================="
 echo -n "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU" > aes_plain.data
-! $PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID2" -m AES-ECB --input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
+! $PKCS11_TOOL "${PRIV_ARGS[@]}" --encrypt --id "$ID2" -m AES-ECB --input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
 assert $? "Fail, AES-ECB must not work if the input is not a multiple of the block size"
-! $PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
+! $PKCS11_TOOL "${PRIV_ARGS[@]}" --encrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
 	--input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
 assert $? "Fail, AES-CBC must not work if the input is not a multiple of the block size"
 
@@ -103,12 +101,12 @@ echo "======================================================="
 
 openssl enc -aes-128-ecb -nopad -in aes_plain.data -out aes_ciphertext_openssl.data  -K "70707070707070707070707070707070"
 assert $? "Fail/OpenSSL"
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --decrypt --id "$ID2" -m AES-ECB --input-file aes_ciphertext_openssl.data --output-file aes_plain_test.data 2>/dev/null
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --decrypt --id "$ID2" -m AES-ECB --input-file aes_ciphertext_openssl.data --output-file aes_plain_test.data 2>/dev/null
 assert $? "Fail/pkcs11-tool decrypt"
 cmp aes_plain.data aes_plain_test.data >/dev/null 2>/dev/null
 assert $? "Fail, AES-ECB - wrong decrypt"
 
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID2" -m AES-ECB --input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --encrypt --id "$ID2" -m AES-ECB --input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
 assert $? "Fail/pkcs11-tool encrypt"
 cmp aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data >/dev/null 2>/dev/null
 assert $? "Fail, AES-ECB - wrong encrypt"
@@ -121,13 +119,13 @@ echo "======================================================="
 
 openssl enc -aes-128-cbc -nopad -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
 assert $? "Fail/OpenSSL"
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --decrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --decrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
 	--input-file aes_ciphertext_openssl.data --output-file aes_plain_test.data 2>/dev/null
 assert $? "Fail/pkcs11-tool decrypt"
 cmp aes_plain.data aes_plain_test.data >/dev/null 2>/dev/null
 assert $? "Fail, AES-CBC - wrong decrypt"
 
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --encrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
 	--input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
 assert $? "Fail/pkcs11-tool encrypt"
 cmp  aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data >/dev/null 2>/dev/null
@@ -142,13 +140,13 @@ echo "======================================================="
 
 openssl enc -aes-128-cbc -nopad -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
 assert $? "Fail/Openssl"
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --decrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --decrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
 	--input-file aes_ciphertext_openssl.data --output-file aes_plain_test.data 2>/dev/null
 assert $? "Fail/pkcs11-tool decrypt"
 cmp aes_plain.data aes_plain_test.data >/dev/null 2>/dev/null
 assert $? "Fail, AES-CBC - wrong decrypt"
 
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --encrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
 	--input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
 assert $? "Fail/pkcs11-tool encrypt"
 cmp  aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data >/dev/null 2>/dev/null
@@ -174,16 +172,21 @@ echo -n $PT | xxd -r -p > gcm_vector_plain.data
 echo -n $CT | xxd -r -p > gcm_vector_ct_tag.data
 echo -n $TAG | xxd -r -p >> gcm_vector_ct_tag.data
 
-softhsm2-util --import gcm_128.key --aes --token "SC test" --pin "$PIN" --label import_aes_gcm_128 --id "$ID3" >/dev/null
+if [ "${TOKENTYPE}" == "softhsm" ]; then
+	softhsm2-util --import gcm_128.key --aes --token "SC test" --pin "$PIN" --label import_aes_gcm_128 --id "$ID3" >/dev/null
+else
+	$PKCS11_TOOL "${PRIV_ARGS[@]}" --write-object gcm_128.key --id "$ID3" \
+			--type secrkey --label "import_aes_gcm_128" --key-type AES:16
+fi
 assert $? "Fail, unable to import key"
 
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID3" -m AES-GCM --iv "$IV" --aad "$AAD" \
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --encrypt --id "$ID3" -m AES-GCM --iv "$IV" --aad "$AAD" \
 	--tag-bits-len 128 --input-file gcm_vector_plain.data --output-file gcm_test_ct_tag.data 2>/dev/null
 assert $? "Fail/pkcs11-tool encrypt"
 cmp gcm_vector_ct_tag.data gcm_test_ct_tag.data >/dev/null 2>&1
 assert $? "Fail, AES-GCM - wrong encrypt"
 
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --decrypt --id "$ID3" -m AES-GCM --iv "$IV" --aad "$AAD" \
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --decrypt --id "$ID3" -m AES-GCM --iv "$IV" --aad "$AAD" \
 	--tag-bits-len 128 --input-file gcm_vector_ct_tag.data --output-file gcm_test_plain.data 2>/dev/null
 assert $? "Fail/pkcs11-tool decrypt"
 cmp gcm_vector_plain.data gcm_test_plain.data >/dev/null 2>&1
@@ -197,13 +200,13 @@ echo "======================================================="
 
 openssl enc -aes-128-ctr -nopad -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
 assert $? "Fail/OpenSSL"
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --decrypt --id "$ID2" -m AES-CTR --iv "${VECTOR}" \
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --decrypt --id "$ID2" -m AES-CTR --iv "${VECTOR}" \
 	--input-file aes_ciphertext_openssl.data --output-file aes_plain_test.data 2>/dev/null
 assert $? "Fail/pkcs11-tool decrypt"
 cmp aes_plain.data aes_plain_test.data >/dev/null 2>/dev/null
 assert $? "Fail, AES-CTR - wrong decrypt"
 
-$PKCS11_TOOL --module="$P11LIB" --pin "$PIN" --encrypt --id "$ID2" -m AES-CTR --iv "${VECTOR}" \
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --encrypt --id "$ID2" -m AES-CTR --iv "${VECTOR}" \
 	--input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
 assert $? "Fail/pkcs11-tool encrypt"
 cmp  aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data >/dev/null 2>/dev/null
