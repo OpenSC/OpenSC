@@ -62,7 +62,7 @@ else
 		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --enable-piv-sm"
 	fi
 	if [ "$1" == "valgrind" -o "$2" == "valgrind" ]; then
-		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --disable-notify --enable-valgrind"
+		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --disable-notify --enable-valgrind --disable-integration-tests"
 	fi
 	if [ "$1" == "no-shared" ]; then
 		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --disable-shared"
