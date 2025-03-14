@@ -283,6 +283,13 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_ENABLE(
+	[integration_tests],
+	[AS_HELP_STRING([--enable-integration-tests],[enable integration tests with software token @<:@enabled@:>@])],
+	,
+	[enable_integration_tests="yes"]
+)
+
+AC_ARG_ENABLE(
 	[dnie-ui],
 	[AS_HELP_STRING([--enable-dnie-ui],[enable use of external user interface program to request DNIe pin@<:@disabled@:>@])],
 	,
@@ -1132,6 +1139,7 @@ AM_CONDITIONAL([ENABLE_CRYPTOTOKENKIT], [test "${enable_cryptotokenkit}" = "yes"
 AM_CONDITIONAL([ENABLE_OPENCT], [test "${enable_openct}" = "yes"])
 AM_CONDITIONAL([ENABLE_DOC], [test "${enable_doc}" = "yes"])
 AM_CONDITIONAL([ENABLE_TESTS], [test "${enable_tests}" = "yes"])
+AM_CONDITIONAL([ENABLE_INTEGRATION_TESTS], [test "${enable_integration_tests}" = "yes"])
 AM_CONDITIONAL([WIN32], [test "${WIN32}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER], [test "${enable_minidriver}" = "yes"])
 AM_CONDITIONAL([ENABLE_MINIDRIVER_SETUP_CUSTOMACTION], [test "${enable_minidriver_ca}" = "yes"])
@@ -1219,6 +1227,7 @@ XSL stylesheets:         ${xslstylesheetsdir}
 man support:             ${enable_man}
 doc support:             ${enable_doc}
 tests:                   ${enable_tests}
+integration tests:       ${enable_integration_tests}
 thread locking support:  ${enable_thread_locking}
 zlib support:            ${enable_zlib}
 readline support:        ${enable_readline}
