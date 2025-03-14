@@ -374,8 +374,8 @@ static int gen_key(const char * key_info)
 			fprintf(stderr, "gen_key failed %d\n", r);
 			free(keydata.pubkey);
 			free(keydata.exponent);
-			EVP_PKEY_free(evpkey);
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
+			EVP_PKEY_free(evpkey);
 			RSA_free(newkey);
 #endif
 			return -1;
@@ -389,8 +389,8 @@ static int gen_key(const char * key_info)
 		keydata.exponent_len = 0;
 		if (!newkey_n || !newkey_e) {
 			sc_log_openssl(ctx);
-			EVP_PKEY_free(evpkey);
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
+			EVP_PKEY_free(evpkey);
 			RSA_free(newkey);
 #endif
 			fprintf(stderr, "conversion or key params failed %d\n", r);
@@ -458,7 +458,13 @@ static int gen_key(const char * key_info)
 		fprintf(stderr, "This build of OpenSSL does not support ED25519 or X25519 keys\n");
 		return -1;
 #else
+		if (!keydata.ecpoint) {
+			fprintf(stderr, "gen_key failed %d\n", r);
+			return -1;
+		}
 		evpkey = EVP_PKEY_new_raw_public_key(nid, NULL, keydata.ecpoint, keydata.ecpoint_len);
+		free(keydata.ecpoint);
+		keydata.ecpoint_len = 0;
 		if (!evpkey) {
 			sc_log_openssl(ctx);
 			fprintf(stderr, "gen key failed ti copy 25519 pubkey\n");
@@ -492,7 +498,9 @@ static int gen_key(const char * key_info)
 
 		if (!keydata.ecpoint) {
 			fprintf(stderr, "gen_key failed %d\n", r);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 			EVP_PKEY_free(evpkey);
+#endif
 			return -1;
 		}
 
@@ -503,31 +511,33 @@ static int gen_key(const char * key_info)
 		/* PIV returns 04||x||y  and x and y are the same size */
 		i = (int)(keydata.ecpoint_len - 1) / 2;
 		x = BN_bin2bn(keydata.ecpoint + 1, i, NULL);
-		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL) ;
+		y = BN_bin2bn(keydata.ecpoint + 1 + i, i, NULL);
+		free(keydata.ecpoint);
+		keydata.ecpoint_len = 0;
 		if (!x || !y) {
 			sc_log_openssl(ctx);
-			free(keydata.ecpoint);
-			keydata.ecpoint_len = 0;
 			BN_free(x);
 			BN_free(y);
-			EVP_PKEY_free(evpkey);
 			EC_GROUP_free(ecgroup);
 			EC_POINT_free(ecpoint);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			EVP_PKEY_free(evpkey);
+#endif
 			return -1;
 		}
 		r = EC_POINT_set_affine_coordinates(ecgroup, ecpoint, x, y, NULL);
 
-		free(keydata.ecpoint);
-		keydata.ecpoint_len = 0;
 		BN_free(x);
 		BN_free(y);
 
 		if (r == 0) {
 			sc_log_openssl(ctx);
 			fprintf(stderr, "EC_POINT_set_affine_coordinates_GFp failed\n");
-			EVP_PKEY_free(evpkey);
 			EC_GROUP_free(ecgroup);
 			EC_POINT_free(ecpoint);
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			EVP_PKEY_free(evpkey);
+#endif
 			return -1;
 		}
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
