@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011-2018 Frank Morgner
- * Copyright (C) 2023 Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2025 Douglas E. Engert <deengert@gmail.com>
  *
  * This file is part of OpenSC.
  *
@@ -35,12 +35,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#if defined(ENABLE_OPENSSL) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-#else
-#undef ENABLE_NIST_SM
-#endif
-
-#if defined(ENABLE_NIST_SM) && defined(ENABLE_SM)
+#if defined(ENABLE_SM_NIST) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
 #include <openssl/cmac.h>
@@ -79,7 +74,6 @@
 
 		int o0len; /* first in otherinfo */
 		u8 o0_char;
-		size_t IDshlen;
 		size_t CBhlen;
 		size_t T16Qehlen;
 		size_t IDsicclen;
@@ -102,7 +96,7 @@
 static cipher_suite_t css[PIV_CSS_SIZE] = {
 		{PIV_CS_CS2, 256, NID_X9_62_prime256v1, {{1, 2, 840, 10045, 3, 1, 7, -1}},
 		PIV_CS_CS2, 65, 16, 32, 61,
-		4, 0x09, 8, 1, 16, 8, 16, 1,
+		4, 0x09, 1, 16, 8, 16, 1,
 		4, 128/8, SHA256_DIGEST_LENGTH,
 		(EVP_MD *(*)(void)) EVP_sha256,
 		(const EVP_CIPHER *(*)(void)) EVP_aes_128_cbc,
@@ -112,7 +106,7 @@ static cipher_suite_t css[PIV_CSS_SIZE] = {
 
 		{PIV_CS_CS7, 384, NID_secp384r1, {{1, 3, 132, 0, 34, -1}},
 		PIV_CS_CS7, 97, 16, 48, 69,
-		4, 0x0D, 8, 1, 16, 8, 24, 1,
+		4, 0x0D, 1, 16, 8, 24, 1,
 		4, 256/8, SHA384_DIGEST_LENGTH,
 		(EVP_MD *(*)(void)) EVP_sha384,
 		(const EVP_CIPHER *(*)(void)) EVP_aes_256_cbc,
@@ -244,9 +238,7 @@ static const struct sc_card_error piv_sm_errors[] = {
 };
 #endif /* 0 */
 
-/* TODO not the same piv_private_data as in card-piv.c */
-/* needs name changed and added to sm-nist.h */
-typedef struct piv_private_data {
+typedef struct sm_nist_private_data {
 	int magic;
 	cipher_suite_t *cs; /* active cypher_suite */
 	u8 csID;
@@ -257,29 +249,29 @@ typedef struct piv_private_data {
 	unsigned long pin_policy;
 	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
 	piv_sm_session_t sm_session;
-} piv_private_data_t;
+} sm_nist_private_data_t;
 
 //TODO fix to look at iso_sm_ctx  priv data
 #define ISO_CTX_FROM_CARD ((struct iso_sm_ctx *)card->sm_ctx.info.cmd_data)
-#define PIV_PRIV_FROM_CARD ((piv_private_data_t *)((struct iso_sm_ctx *)card->sm_ctx.info.cmd_data)->priv_data)
-#define PIV_PRIV_FROM(isoctx) ((piv_private_data_t *)((struct iso_sm_ctx *)isoctx)->priv_data)
+#define SM_NIST_PRIV_CARD ((sm_nist_private_data_t *)((struct iso_sm_ctx *)card->sm_ctx.info.cmd_data)->priv_data)
+#define SM_NIST_PRIV(isoctx) ((sm_nist_private_data_t *)((struct iso_sm_ctx *)isoctx)->priv_data)
 
-static int nist_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
+static int sm_nist_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *data, size_t datalen, u8 **enc);
-static int nist_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
+static int sm_nist_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *enc, size_t enclen, u8 **data);
-static int nist_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
+static int sm_nist_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *data, size_t datalen, u8 **outdata);
-static int nist_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
+static int sm_nist_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *mac, size_t maclen,
 		const u8 *macdata, size_t macdatalen);
-static int nist_sm_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
+static int sm_nist_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *apdu);
-static int nist_sm_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
+static int sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *sm_apdu);
-static int nist_sm_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
+static int sm_nist_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *apdu);
-static void nist_sm_clear_free(const struct iso_sm_ctx *ctx);
+static void sm_nist_clear_free(const struct iso_sm_ctx *ctx);
 
 static void piv_inc(u8 *counter, size_t size);
 //static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
@@ -337,13 +329,13 @@ static int Q2OS(int fsize, u8 *Q, size_t Qlen, u8 * OS, size_t *OSlen)
 static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 {
 	int r;
-	piv_private_data_t * priv = PIV_PRIV_FROM_CARD;
+	sm_nist_private_data_t * priv = SM_NIST_PRIV_CARD;
 	struct iso_sm_ctx *ctx = NULL;
 	sc_apdu_t plain;
 	sc_apdu_t sm_apdu;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	priv = (piv_private_data_t *)((struct iso_sm_ctx *)card->sm_ctx.info.cmd_data)->priv_data;
+	priv = (sm_nist_private_data_t *)((struct iso_sm_ctx *)card->sm_ctx.info.cmd_data)->priv_data;
 
 	if (priv->pin_policy & PIV_PP_VCI_WITHOUT_PC)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS); /* Not needed */
@@ -391,7 +383,7 @@ static int piv_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
 		u8 *data, size_t data_size,
 		unsigned char *sig, size_t siglen)
 {
-	piv_private_data_t * priv = PIV_PRIV_FROM_CARD;
+	sm_nist_private_data_t * priv = SM_NIST_PRIV_CARD;
 	cipher_suite_t *cs = priv->cs;
 	int r = 0;
 	EVP_MD_CTX *md_ctx = NULL;
@@ -427,7 +419,7 @@ err:
 
 static int piv_sm_verify_certs(struct sc_card *card)
 {
-	piv_private_data_t * priv = PIV_PRIV_FROM_CARD;
+	sm_nist_private_data_t * priv = SM_NIST_PRIV_CARD;
 	cipher_suite_t *cs = priv->cs;
 	int r = 0;
 //	u8 *cert_blob = NULL; /* do not free */
@@ -631,15 +623,15 @@ err:
 
 
 /*
- * NIST SP800-73-4  4.1 The key Establishment Protocol
- * Variable names and Steps  are based on Client Application (h)
+ * NIST SP800-73-4 4.1 The key Establishment Protocol
+ * Variable names and Steps are based on Client Application (h)
  * and PIV Card Application (icc)
  * Capital leters used for variable, and lower case for subscript names
  */
  // TODO is sctx or priv needed here?
 static int piv_sm_open(struct sc_card *card)
 {
-	piv_private_data_t * priv = PIV_PRIV_FROM_CARD;
+	sm_nist_private_data_t * priv = SM_NIST_PRIV_CARD;
 //	struct iso_sm_ctx *sctx = NULL;
 	cipher_suite_t *cs = priv->cs;
 	int r = 0;
@@ -802,7 +794,7 @@ static int piv_sm_open(struct sc_card *card)
 		goto err;
 	}
 
-	r = len2a = sc_asn1_put_tag(0x81, NULL, 1 + cs->IDshlen + Qehlen, NULL, 0, NULL);
+	r = len2a = sc_asn1_put_tag(0x81, NULL, 1 + sizeof(IDsh) + Qehlen, NULL, 0, NULL);
 	if (r < 0)
 		goto err;
 	r = len2b = sc_asn1_put_tag(0x80, NULL, 0, NULL, 0, NULL);
@@ -823,7 +815,7 @@ static int piv_sm_open(struct sc_card *card)
 	if (r != SC_SUCCESS)
 		goto err;
 
-	r = sc_asn1_put_tag(0x81, NULL, 1 + cs->IDshlen + Qehlen, p, sbuflen - (p - sbuf), &p);
+	r = sc_asn1_put_tag(0x81, NULL, 1 + sizeof(IDsh) + Qehlen, p, sbuflen - (p - sbuf), &p);
 	if (r != SC_SUCCESS)
 		goto err;
 
@@ -835,9 +827,9 @@ static int piv_sm_open(struct sc_card *card)
 #else
 	pid = (unsigned long) getpid(); /* use PID as our ID so different from other processes */
 #endif
-	memcpy(IDsh, &pid, MIN(sizeof(pid), cs->IDshlen));
-	memcpy(p, IDsh, cs->IDshlen);
-	p += cs->IDshlen;
+	memcpy(IDsh, &pid, MIN(sizeof(pid), sizeof(IDsh)));
+	memcpy(p, IDsh, sizeof(IDsh));
+	p += sizeof(IDsh);
 	memcpy(p, Qeh, Qehlen);
 	p += Qehlen;
 
@@ -1031,9 +1023,9 @@ static int piv_sm_open(struct sc_card *card)
 	for (i = 0; i <  cs->o0len; i++)
 		*p++ = cs->o0_char; /* 0x09 or 0x0d */
 
-	*p++ = cs->IDshlen;
-	memcpy(p, IDsh, cs->IDshlen);
-	p += cs->IDshlen;
+	*p++ = sizeof(IDsh);
+	memcpy(p, IDsh, sizeof(IDsh));
+	p += sizeof(IDsh);
 
 	*p++ = cs->CBhlen;
 	memcpy(p, &CBh, cs->CBhlen);
@@ -1125,8 +1117,8 @@ static int piv_sm_open(struct sc_card *card)
 		p += 6;
 		memcpy(p, IDsicc, cs->IDsicclen);
 		p += cs->IDsicclen;
-		memcpy(p, IDsh, cs->IDshlen);
-		p += cs->IDshlen;
+		memcpy(p, IDsh, sizeof(IDsh));
+		p += sizeof(IDsh);
 
 		memcpy(p, Qeh_OS, Qeh_OSlen);
 		p += Qeh_OSlen;
@@ -1253,7 +1245,7 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 {
 	int r = SC_SUCCESS;
 	int i;
-	piv_private_data_t * priv = PIV_PRIV_FROM(card);
+	sm_nist_private_data_t * priv = SM_NIST_PRIV(card);
 	cipher_suite_t *cs = priv->cs;
 	struct sc_lv_data ee = {NULL, 0};
 	struct sc_lv_data status = {NULL, 0};
@@ -1539,7 +1531,7 @@ err:
 static int piv_sm_close(sc_card_t *card)
 {
 	int r = 0;
-	piv_private_data_t * priv = NULL;
+	sm_nist_private_data_t * priv = NULL;
 	struct iso_sm_ctx * ctx = NULL;
 
 	if (!card)
@@ -1549,7 +1541,7 @@ static int piv_sm_close(sc_card_t *card)
 	if (!ctx)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
 
-	priv = (piv_private_data_t *)ctx->priv_data;
+	priv = (sm_nist_private_data_t *)ctx->priv_data;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_log(card->ctx, "priv->sm_flags: 0x%8.8lu", *priv->sm_flags);
@@ -1603,8 +1595,9 @@ static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen,
 	size_t taglen;
 	size_t signaturebits;
 
-	if (!card  ||  !buf || !*buf || !cvc)
-		return SC_ERROR_INVALID_ARGUMENTS;
+	if (buf == NULL || *buf == NULL || cvc == NULL) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
 	
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1706,12 +1699,12 @@ static int nist_parse_pairing_code(sc_card_t *card, const char *option)
 }
 #endif /* 0 */
 
-static piv_private_data_t *piv_private_data_create()
+static sm_nist_private_data_t *sm_nist_private_data_create()
 {
-	piv_private_data_t *out = malloc(sizeof(piv_private_data_t));
+	sm_nist_private_data_t *out = malloc(sizeof(sm_nist_private_data_t));
 	if (!out)
 		goto err;
-	memset(out, 0, sizeof(piv_private_data_t));
+	memset(out, 0, sizeof(sm_nist_private_data_t));
 
 	out->magic = 0xDEE1;
 err:
@@ -1729,7 +1722,7 @@ int sm_nist_start(sc_card_t *card,
 	int r;
 	int i;
 	struct iso_sm_ctx *sctx = NULL;
-	struct piv_private_data *priv = NULL;
+	struct sm_nist_private_data *priv = NULL;
 //	u8 *p = 0;
 
 
@@ -1739,13 +1732,13 @@ int sm_nist_start(sc_card_t *card,
 		goto err;
 	}
 
-        sctx->priv_data = piv_private_data_create();
+        sctx->priv_data = sm_nist_private_data_create();
         if (!sctx->priv_data) {
                 r = SC_ERROR_OUT_OF_MEMORY;
                 goto err;
         }
 
-	priv = (piv_private_data_t *)sctx->priv_data;
+	priv = (sm_nist_private_data_t *)sctx->priv_data;
 
 	if (!sm_flags) {
 		sc_log(card->ctx, "sm_flags required parameter is NULL");
@@ -1799,7 +1792,6 @@ int sm_nist_start(sc_card_t *card,
 			goto err;
 		}
 	}
-	*priv->sm_flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
 
 	if (sm_in_cvc_der && sm_in_cvc_len) {
 		u8 *pp = sm_in_cvc_der;
@@ -1815,14 +1807,14 @@ int sm_nist_start(sc_card_t *card,
 	memcpy(priv->pairing_code, pairing_code, PIV_PAIRING_CODE_LEN);
 	priv->csID = csID;
 
-	sctx->authenticate = nist_sm_authenticate;
-	sctx->encrypt = nist_sm_encrypt;
-	sctx->decrypt = nist_sm_decrypt;
-	sctx->verify_authentication = nist_sm_verify_authentication;
-	sctx->pre_transmit = nist_sm_pre_transmit;
-	sctx->post_transmit = nist_sm_post_transmit;
-	sctx->finish = nist_sm_finish;
-	sctx->clear_free = nist_sm_clear_free;
+	sctx->authenticate = sm_nist_authenticate;
+	sctx->encrypt = sm_nist_encrypt;
+	sctx->decrypt = sm_nist_decrypt;
+	sctx->verify_authentication = sm_nist_verify_authentication;
+	sctx->pre_transmit = sm_nist_pre_transmit;
+	sctx->post_transmit = sm_nist_post_transmit;
+	sctx->finish = sm_nist_finish;
+	sctx->clear_free = sm_nist_clear_free;
 	sctx->padding_indicator = SM_ISO_PADDING;
 	sctx->padding_tag = 1;
 	sctx->use_sm_chaining = 1;
@@ -1862,11 +1854,11 @@ err:
 
 
 static int
-nist_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
+sm_nist_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *data, size_t datalen, u8 **enc)
 {
 	int r;
-	piv_private_data_t * priv = NULL;
+	sm_nist_private_data_t * priv = NULL;
 	cipher_suite_t *cs = NULL;
 	EVP_CIPHER_CTX *ed_ctx = NULL;
 	u8 *out = NULL;
@@ -1884,7 +1876,7 @@ nist_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if (!ctx || !data || !ctx->priv_data || !enc)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
 
-	priv = (piv_private_data_t *)ctx->priv_data;
+	priv = (sm_nist_private_data_t *)ctx->priv_data;
 	cs = priv->cs;
 
 	out = (u8 *)malloc(datalen);
@@ -1937,11 +1929,11 @@ err:
 }
 
 static int
-nist_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
+sm_nist_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *enc, size_t enclen, u8 **data)
 {
 	int r;
-	piv_private_data_t * priv = NULL;
+	sm_nist_private_data_t * priv = NULL;
 	cipher_suite_t *cs;
 	u8 zeros[16] = {0};
 	u8 IV[16];
@@ -1961,7 +1953,7 @@ nist_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if ( !ctx || !data || !ctx->priv_data || !data)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
 
-	priv = (piv_private_data_t *)ctx->priv_data;
+	priv = (sm_nist_private_data_t *)ctx->priv_data;
 	cs = priv->cs;
 
 	out = malloc(enclen);
@@ -2013,13 +2005,13 @@ err:
 
 
 static int
-nist_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
+sm_nist_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *data, size_t datalen, u8 **macdata)
 {
 
 //	u8 *p = NULL;
 	int r;
-	piv_private_data_t  *priv = NULL;
+	sm_nist_private_data_t  *priv = NULL;
 	cipher_suite_t *cs = NULL;
 	int MCVlen = 16;
 	int macdatalen = 8;
@@ -2039,7 +2031,7 @@ nist_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if ( !ctx || !data || !ctx->priv_data || !macdata)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
 
-	priv = (piv_private_data_t *)ctx->priv_data;
+	priv = (sm_nist_private_data_t *)ctx->priv_data;
 	cs = priv->cs;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -2106,13 +2098,13 @@ err:
 }
 
 static int
-nist_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
+sm_nist_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *rmac, size_t rmaclen,
 		const u8 *macdata, size_t macdatalen)
 {
 //	u8 *p = NULL;
 	int r;
-	piv_private_data_t  *priv = NULL;
+	sm_nist_private_data_t  *priv = NULL;
 	cipher_suite_t *cs = NULL;
 	int MCVlen = 16;
 	size_t R_MCVlen = 0;
@@ -2133,7 +2125,7 @@ nist_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if(!ctx || !ctx->priv_data || !rmac || !macdata)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
 
-	priv = (piv_private_data_t *)ctx->priv_data;
+	priv = (sm_nist_private_data_t *)ctx->priv_data;
 	cs = priv->cs;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -2195,12 +2187,12 @@ err:
 }
 
 static int
-nist_sm_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
+sm_nist_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *apdu)
 {
 	int r = 0;
 
-	piv_private_data_t *priv;
+	sm_nist_private_data_t *priv;
 
 	if (!card)
 	   return SC_ERROR_INVALID_ARGUMENTS;
@@ -2208,7 +2200,7 @@ nist_sm_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if(!ctx || !ctx->priv_data || !apdu)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
 
-	priv = (piv_private_data_t *)ctx->priv_data;
+	priv = (sm_nist_private_data_t *)ctx->priv_data;
 
 // TODO 230923 to make more general, may need more work
 	switch (apdu->ins) {
@@ -2235,11 +2227,11 @@ nist_sm_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 }
 
 static int
-nist_sm_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
+sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *sm_apdu)
 {
 	int r = 0;
-	piv_private_data_t *priv;
+	sm_nist_private_data_t *priv;
 
 	if (!card)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -2247,7 +2239,7 @@ nist_sm_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if(!ctx || !ctx->priv_data || !sm_apdu)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
 
-	priv = (piv_private_data_t *)ctx->priv_data;
+	priv = (sm_nist_private_data_t *)ctx->priv_data;
 
 	memcpy(priv->sm_session.enc_counter_last, priv->sm_session.enc_counter, sizeof(priv->sm_session.enc_counter));
 	piv_inc(priv->sm_session.enc_counter, sizeof(priv->sm_session.enc_counter));
@@ -2256,17 +2248,17 @@ nist_sm_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 }
 
 static int
-nist_sm_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
+sm_nist_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *apdu)
 {
-	piv_private_data_t *priv;
+	sm_nist_private_data_t *priv;
 
 	if (!card)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if(!ctx || !ctx->priv_data || !apdu)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
-	priv = (piv_private_data_t *)ctx->priv_data;
+	priv = (sm_nist_private_data_t *)ctx->priv_data;
 
 	piv_inc(priv->sm_session.resp_enc_counter, sizeof(priv->sm_session.resp_enc_counter));
 
@@ -2274,10 +2266,10 @@ nist_sm_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 }
 
 static void
-nist_sm_clear_free(const struct iso_sm_ctx *ctx)
+sm_nist_clear_free(const struct iso_sm_ctx *ctx)
 {
 	if (ctx) {
-		struct piv_private_data *priv = PIV_PRIV_FROM(ctx);
+		struct sm_nist_private_data *priv = SM_NIST_PRIV(ctx);
 
 		if (priv) {
 			piv_clear_sm_session(&priv->sm_session);
@@ -2291,5 +2283,5 @@ nist_sm_clear_free(const struct iso_sm_ctx *ctx)
 }
 
 #else  /* correct versions of OpenSSL or not enabled */
-//TODO add dummy  nist_sm_start 
-#endif /* ENABLE_NIST_SM */
+//TODO add dummy  sm_nist_start 
+#endif /* ENABLE_SM_NIST */
