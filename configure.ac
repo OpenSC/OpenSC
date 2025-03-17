@@ -254,19 +254,20 @@ AC_ARG_ENABLE(
 	[enable_sm="yes"]
 )
 
+# build SM: NIST sp800-73-4
 AC_ARG_ENABLE(
-	[piv-sm],
-	[AS_HELP_STRING([--enable-piv-sm],[enable SM in PIV card driver linkage @<:@disabled@:>@])],
+	[sm-nist],
+	[AS_HELP_STRING([--disable-sm-nist],[disable SM NIST (sm/sm_nist) for card drivers @<:@enabled@:>@])],
 	,
-	[enable_piv_sm="no"]
+	[enable_sm_nist="yes"]
 )
 
-# WIP change to force use of  sm-nist  for PIV SM
+# use sm-nist in PIV card driver
 AC_ARG_ENABLE(
-	[nist-sm],
-	[AS_HELP_STRING([--enable-nist-sm],[enable SM in PIV card driver using sm/sm_nist  linkage @<:@disabled@:>@])],
+	[piv-sm],
+	[AS_HELP_STRING([--disable-piv-sm],[disable SM (sm/sm_nist) in PIV card driver @<:@enabled@:>@])],
 	,
-	[enable_nist_sm="yes"]
+	[enable_piv_sm="yes"]
 )
 
 AC_ARG_ENABLE(
@@ -873,14 +874,14 @@ fi
 
 if  test "${enable_piv_sm}" = "yes"; then
 	if test "${enable_sm}" = "yes" -a "${enable_openssl}" = "yes" ; then
-		AC_DEFINE([ENABLE_PIV_SM], [1], [Enable PIV SM])
+		AC_DEFINE([ENABLE_PIV_SM], [1], [Enable PIV SM either SM in card driver or sm/sm_nist])
+				# WIP enable_sm_nist will become the default
+		if  test "${enable_sm_nist}" = "yes"; then
+			AC_DEFINE([ENABLE_SM_NIST], [1], [Enable SM_NIST sm/sm_init])
+		fi
 	else
-		AC_MSG_ERROR([ENABLE_PIV_SM requires ENABLE_SM and ENABLE_OPENSSL])
+		AC_MSG_WARN([ENABLE_PIV_SM requires ENABLE_SM and ENABLE_OPENSSL])
 	fi
-fi
-
-if  test "${enable_nist_sm}" = "yes"; then
-	AC_DEFINE([ENABLE_NIST_SM], [1], [Enable NIST SM])
 fi
 
 if test "${enable_openct}" = "yes"; then
@@ -1269,8 +1270,8 @@ minidriver support:      ${enable_minidriver}
 SM support:              ${enable_sm}
 SM default module:       ${DEFAULT_SM_MODULE}
 SM default path:         $(eval eval eval echo "${DEFAULT_SM_MODULE_PATH}")
-PIV SM support:          ${enable_piv_sm}
-PIV SM use sm-nist:	 ${enable_nist_sm}
+SM sm-nist support:	 ${enable_sm_nist}
+PIV driver use sm-nist:  ${enable_piv_sm}
 DNIe UI support:         ${enable_dnie_ui}
 Notification support:    ${enable_notify}
 Code coverage:           ${enable_code_coverage}
