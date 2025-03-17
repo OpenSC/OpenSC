@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011-2015 Frank Morgner
- * Copyright (C) 2023 Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2025 Douglas E. Engert <deengert@gmail.com>
  *
  * This file is part of OpenSC.
  *
@@ -39,7 +39,7 @@
 
 #define PIV_PAIRING_CODE_LEN	8
 
-/* for sm_flags */
+/* for sm_flags  must match flag in card-piv.c*/
 
 #define PIV_SM_FLAGS_SM_CERT_SIGNER_VERIFIED	0x00000001lu
 #define PIV_SM_FLAGS_SM_CVC_VERIFIED		0x00000002lu
@@ -54,7 +54,7 @@
 								/* will use VCI if card supports it for contactless */
 #define PIV_SM_FLAGS_ALWAYS			0x00000200lu	/* Use SM or quit, VCI requires SM */
 #define PIV_SM_FLAGS_DEFER_OPEN			0x00001000lu	/* call sm_open from reader_lock_obtained */
-#define PIV_SM_VCI_ACTIVE			0x00002000lu   /* VCI is active */
+#define PIV_SM_VCI_ACTIVE			0x00002000lu    /* VCI is active */
 #define PIV_SM_GET_DATA_IN_CLEAR		0x00004000lu	/* OK to do this GET DATA in the clear */
 #define PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED	0x00008000lu	/* compressed */
 #define PIV_SM_CONTACTLESS			0x00010000lu	/* contacless */
@@ -71,13 +71,6 @@ sm_nist_start(sc_card_t *card,
 		unsigned long pin_policy,
 		u8 pairing_code[PIV_PAIRING_CODE_LEN],
 		u8 cipher_suite_id);
-
-int
-sm_nist_clear_free(sc_card_t *card);
-
-// TODO this should call piv_sm_open
-int
-sm_nist_key_establish(sc_card_t *card);
 
 #ifdef  __cplusplus
 }
