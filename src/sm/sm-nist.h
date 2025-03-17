@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011-2015 Frank Morgner
- * Copyright (C) 2023 Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2025 Douglas E. Engert <deengert@gmail.com>
  *
  * This file is part of OpenSC.
  *
