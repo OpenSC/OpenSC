@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011-2018 Frank Morgner
- * Copyright (C) 2023 Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2025 Douglas E. Engert <deengert@gmail.com>
  *
  * This file is part of OpenSC.
  *
@@ -35,12 +35,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#if defined(ENABLE_OPENSSL) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-#else
-#undef ENABLE_NIST_SM
-#endif
-
-#if defined(ENABLE_NIST_SM) && defined(ENABLE_SM)
+#if defined(ENABLE_SM_NIST) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
 #include <openssl/cmac.h>
@@ -2292,4 +2287,4 @@ nist_sm_clear_free(const struct iso_sm_ctx *ctx)
 
 #else  /* correct versions of OpenSSL or not enabled */
 //TODO add dummy  nist_sm_start 
-#endif /* ENABLE_NIST_SM */
+#endif /* ENABLE_SM_NIST */
