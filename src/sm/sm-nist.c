@@ -35,7 +35,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#if defined(ENABLE_SM_NIST) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && !defined(LIBRESSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if defined(ENABLE_SM_NIST) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
 #include <openssl/evp.h>
 #include <openssl/buffer.h>
 #include <openssl/cmac.h>
@@ -74,7 +74,6 @@
 
 		int o0len; /* first in otherinfo */
 		u8 o0_char;
-		size_t IDshlen;
 		size_t CBhlen;
 		size_t T16Qehlen;
 		size_t IDsicclen;
@@ -97,7 +96,7 @@
 static cipher_suite_t css[PIV_CSS_SIZE] = {
 		{PIV_CS_CS2, 256, NID_X9_62_prime256v1, {{1, 2, 840, 10045, 3, 1, 7, -1}},
 		PIV_CS_CS2, 65, 16, 32, 61,
-		4, 0x09, 8, 1, 16, 8, 16, 1,
+		4, 0x09, 1, 16, 8, 16, 1,
 		4, 128/8, SHA256_DIGEST_LENGTH,
 		(EVP_MD *(*)(void)) EVP_sha256,
 		(const EVP_CIPHER *(*)(void)) EVP_aes_128_cbc,
@@ -107,7 +106,7 @@ static cipher_suite_t css[PIV_CSS_SIZE] = {
 
 		{PIV_CS_CS7, 384, NID_secp384r1, {{1, 3, 132, 0, 34, -1}},
 		PIV_CS_CS7, 97, 16, 48, 69,
-		4, 0x0D, 8, 1, 16, 8, 24, 1,
+		4, 0x0D, 1, 16, 8, 24, 1,
 		4, 256/8, SHA384_DIGEST_LENGTH,
 		(EVP_MD *(*)(void)) EVP_sha384,
 		(const EVP_CIPHER *(*)(void)) EVP_aes_256_cbc,
@@ -626,8 +625,8 @@ err:
 
 
 /*
- * NIST SP800-73-4  4.1 The key Establishment Protocol
- * Variable names and Steps  are based on Client Application (h)
+ * NIST SP800-73-4 4.1 The key Establishment Protocol
+ * Variable names and Steps are based on Client Application (h)
  * and PIV Card Application (icc)
  * Capital leters used for variable, and lower case for subscript names
  */
@@ -797,7 +796,7 @@ static int piv_sm_open(struct sc_card *card)
 		goto err;
 	}
 
-	r = len2a = sc_asn1_put_tag(0x81, NULL, 1 + cs->IDshlen + Qehlen, NULL, 0, NULL);
+	r = len2a = sc_asn1_put_tag(0x81, NULL, 1 + sizeof(IDsh) + Qehlen, NULL, 0, NULL);
 	if (r < 0)
 		goto err;
 	r = len2b = sc_asn1_put_tag(0x80, NULL, 0, NULL, 0, NULL);
@@ -818,7 +817,7 @@ static int piv_sm_open(struct sc_card *card)
 	if (r != SC_SUCCESS)
 		goto err;
 
-	r = sc_asn1_put_tag(0x81, NULL, 1 + cs->IDshlen + Qehlen, p, sbuflen - (p - sbuf), &p);
+	r = sc_asn1_put_tag(0x81, NULL, 1 + sizeof(IDsh) + Qehlen, p, sbuflen - (p - sbuf), &p);
 	if (r != SC_SUCCESS)
 		goto err;
 
@@ -830,9 +829,9 @@ static int piv_sm_open(struct sc_card *card)
 #else
 	pid = (unsigned long) getpid(); /* use PID as our ID so different from other processes */
 #endif
-	memcpy(IDsh, &pid, MIN(sizeof(pid), cs->IDshlen));
-	memcpy(p, IDsh, cs->IDshlen);
-	p += cs->IDshlen;
+	memcpy(IDsh, &pid, MIN(sizeof(pid), sizeof(IDsh)));
+	memcpy(p, IDsh, sizeof(IDsh));
+	p += sizeof(IDsh);
 	memcpy(p, Qeh, Qehlen);
 	p += Qehlen;
 
@@ -1026,9 +1025,9 @@ static int piv_sm_open(struct sc_card *card)
 	for (i = 0; i <  cs->o0len; i++)
 		*p++ = cs->o0_char; /* 0x09 or 0x0d */
 
-	*p++ = cs->IDshlen;
-	memcpy(p, IDsh, cs->IDshlen);
-	p += cs->IDshlen;
+	*p++ = sizeof(IDsh);
+	memcpy(p, IDsh, sizeof(IDsh));
+	p += sizeof(IDsh);
 
 	*p++ = cs->CBhlen;
 	memcpy(p, &CBh, cs->CBhlen);
@@ -1120,8 +1119,8 @@ static int piv_sm_open(struct sc_card *card)
 		p += 6;
 		memcpy(p, IDsicc, cs->IDsicclen);
 		p += cs->IDsicclen;
-		memcpy(p, IDsh, cs->IDshlen);
-		p += cs->IDshlen;
+		memcpy(p, IDsh, sizeof(IDsh));
+		p += sizeof(IDsh);
 
 		memcpy(p, Qeh_OS, Qeh_OSlen);
 		p += Qeh_OSlen;
