@@ -69,13 +69,15 @@
 
 #ifdef PIV_SM_NIST
 #include "sm/sm-nist.h"
-#endif
+#endif /* PIV_SM_NIST */
+
 #ifdef PIV_SM_LOCAL
 #include <openssl/cmac.h>
-#endif
+#endif /* PIV_SM_LOCAL */
+
 #ifdef  ENABLE_PIV_SM
 #include "compression.h"
-#endif
+#endif /* ENABLE_PIV_SM */
 
 #include "asn1.h"
 #include "cardctl.h"
@@ -390,7 +392,7 @@ static const struct sc_card_error piv_sm_errors[] = {
 	{0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"}, /* other process interference */
 	{0, 0, NULL}
 };
-#endif /* defined(ENABLE_PIV_SM */
+#endif /* defined(ENABLE_PIV_SM) */
 
 /* 800-73-4 3.3.2 Discovery Object - PIN Usage Policy */
 #define PIV_PP_PIN		0x00004000u
@@ -450,10 +452,8 @@ typedef struct piv_private_data {
 	piv_cvc_t sm_in_cvc; /* Intermediate CVC Table 16 */
 	piv_sm_session_t sm_session;
 #endif /* PIV_SM_LOCAL */
-#ifdef PIV_SM_NIST
 	unsigned long  sm_flags; /* share with sm-nist */
 	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
-#endif /* ENABLE_PIV_SM */
 	u8 *cert_signer_der;
 	size_t cert_signer_len;
 	u8 *sm_in_cvc_der;
@@ -1174,7 +1174,7 @@ static int piv_get_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apd
 		case 0xCB: /* GET_DATA */
 			/* If not contactless, could read in clear */
 			/* Discovery object never has PIV_SM_GET_DATA_IN_CLEAR set */
-			sc_log(card->ctx,"init_flags:0x%8.8x sm_flags:0x%8.8lx",priv->init_flags,priv->sm_flags);
+			sc_log(card->ctx,"init_flags:0x%8.8x sm_flags:0x%8.8lx",priv->init_flags, priv->sm_flags);
 			if (!(priv->init_flags & PIV_INIT_CONTACTLESS)
 					&& !(priv->init_flags & PIV_INIT_IN_READER_LOCK_OBTAINED)
 					&& (priv->sm_flags & PIV_SM_GET_DATA_IN_CLEAR)) {
@@ -2924,9 +2924,9 @@ static int piv_find_aid(sc_card_t * card)
 	const u8 *csai; /* Cipher Suite Algorithm Identifier */
 	size_t csailen;
 	size_t resplen = sizeof(rbuf);
-#if defined(PIV_SM_LOCAL)
+#ifdef PIV_SM_LOCAL
 	int found_csai = 0;
-#endif /* defined(PIV_SM_LOCAL) */
+#endif /* PIV_SM_LOCAL */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -2962,7 +2962,7 @@ static int piv_find_aid(sc_card_t * card)
 							priv->init_flags |= PIV_INIT_AID_AC;
 						}
 #endif /* ENABLE_PIV_SM */						
-#if defined(PIV_SM_LOCAL)
+#ifdef PIV_SM_LOCAL
 						for (i = 0; i < PIV_CSS_SIZE; i++) {
 							if (*csai != css[i].id)
 								continue;
@@ -2975,7 +2975,7 @@ static int piv_find_aid(sc_card_t * card)
 								priv->init_flags |= PIV_INIT_AID_AC;
 							}
 						}
-#endif /*  PIV_SM_LOCAL */
+#endif /* PIV_SM_LOCAL */
 					}
 				}
 			}
@@ -3312,7 +3312,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
 
 	/* get the certificate out */
-	 if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_CERT) {
+	if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_CERT) {
 
 		tag = sc_asn1_find_tag(card->ctx, body, bodylen, 0x71, &taglen);
 		/* 800-72-1 not clear if this is 80 or 01 Sent comment to NIST for 800-72-2 */
@@ -3380,8 +3380,9 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 				if (r < 0) {
 					sc_log(card->ctx,"unable to parse intermediate CVC: %d skipping",r);
 				}
-				priv->sm_flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
 #endif /* PIV_SM_LOCAL */
+				/* set for both local or sm-nist */
+				priv->sm_flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
 #ifdef PIV_SM_NIST
 				/* save for sm-nist */
 				if (priv->sm_in_cvc_der) {
