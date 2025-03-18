@@ -39,7 +39,7 @@
 
 #define PIV_PAIRING_CODE_LEN	8
 
-/* for sm_flags */
+/* for sm_flags  must match flag in card-piv.c*/
 
 #define PIV_SM_FLAGS_SM_CERT_SIGNER_VERIFIED	0x00000001lu
 #define PIV_SM_FLAGS_SM_CVC_VERIFIED		0x00000002lu
@@ -71,13 +71,6 @@ sm_nist_start(sc_card_t *card,
 		unsigned long pin_policy,
 		u8 pairing_code[PIV_PAIRING_CODE_LEN],
 		u8 cipher_suite_id);
-
-int
-sm_nist_clear_free(sc_card_t *card);
-
-// TODO this should call piv_sm_open
-int
-sm_nist_key_establish(sc_card_t *card);
 
 #ifdef  __cplusplus
 }
