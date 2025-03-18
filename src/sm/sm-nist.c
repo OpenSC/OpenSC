@@ -1597,8 +1597,9 @@ static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen,
 	size_t taglen;
 	size_t signaturebits;
 
-	if (!card  ||  !buf || !*buf || !cvc)
-		return SC_ERROR_INVALID_ARGUMENTS;
+	if (buf == NULL || *buf == NULL || cvc == NULL) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
 	
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1793,7 +1794,6 @@ int sm_nist_start(sc_card_t *card,
 			goto err;
 		}
 	}
-	*priv->sm_flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
 
 	if (sm_in_cvc_der && sm_in_cvc_len) {
 		u8 *pp = sm_in_cvc_der;
