@@ -54,7 +54,7 @@
 /* 800-73-4 SM and VCI need: ECC, SM and OpenSSL or LibreSSL */
 
 /*
- * WIP eventially PIV_LOCAL will be removed
+ * WIP eventually PIV_LOCAL will be removed
  * and PIV_SM_NIST will be the same as ENABLE_PIV_SM
  * and !ENABLE_PIV_SM will mean do not build with any SM
  */
