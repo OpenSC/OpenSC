@@ -987,6 +987,8 @@ if test "${enable_sm}" = "yes"; then
 	esac
 fi
 
+AC_DEFINE([ENABLE_PKCS11], [1], [Enable building of PKCS#11 library])
+
 if test "${with_pkcs11_provider}" = "detect"; then
 	if test "${WIN32}" != "yes"; then
 		DEFAULT_PKCS11_PROVIDER="${libdir}/opensc-pkcs11${DYN_LIB_EXT}"
