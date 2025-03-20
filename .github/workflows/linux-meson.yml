@@ -1,6 +1,9 @@
 name: Linux (meson)
 
+
 on:
+  push:
+      branches: ['sbom']
   pull_request:
     branches: master
 
@@ -59,14 +62,20 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get -y install build-essential meson libpcsclite-dev libp11-kit-dev
+          sudo apt-get -y install build-essential meson libpcsclite-dev libp11-kit-dev openjdk-21-jre
       - uses: actions/checkout@v4
       - name: Configure project
         run: meson setup --prefix=/usr -Dbuildtype=release -Db_lto=true -Db_ndebug=true -Dc_link_args=-Wl,-Bsymbolic -Dcomponents=pkcs11 -Dstatic_components=pkcs11 -Ddriver=pcsc -Dp11kit=enabled --wrap-mode=forcefallback -Dglib:libmount=disabled -Dglib:tests=false -Dglib:glib_debug=disabled -Dglib:glib_assert=false -Dglib:glib_checks=false -Dglib:sysprof=disabled -Dproxy-libintl:default_library=static -Dlibffi:default_library=static -Dzlib:tests=disabled build/
       - name: Build project
         run: meson compile -C build/ -v
+      - name: build SBOM
+        run: |
+          npm install -g @cyclonedx/cdxgen
+          cdxgen -t c -o sbom.json .
       - name: Upload the PKCS#11 module
         uses: actions/upload-artifact@v4
         with:
           name: opensc-pkcs11
-          path: build/src/pkcs11/opensc-pkcs11.so
+          path: |
+            build/src/pkcs11/opensc-pkcs11.so
+            sbom.json
