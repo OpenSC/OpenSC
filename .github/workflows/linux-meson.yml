@@ -1,6 +1,5 @@
 name: Linux (meson)
 
-
 on:
   push:
       branches: ['sbom']

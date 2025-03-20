@@ -1,6 +1,8 @@
 name: Windows (meson)
 
 on:
+  push:
+      branches: ['sbom']
   pull_request:
     branches: master
 
@@ -47,8 +49,14 @@ jobs:
         run: |
           meson compile -C build/ -v
           meson compile -C build/ -v msi
+      - name: build SBOM
+        run: |
+          npm install -g @cyclonedx/cdxgen
+          cdxgen -t c -o sbom.json .
       - name: Archive artifacts
         uses: actions/upload-artifact@v4
         with:
           name: msi_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
-          path: build/*.msi
+          path: |
+            build/*.msi
+            sbom.json
