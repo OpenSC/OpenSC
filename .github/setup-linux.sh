@@ -89,10 +89,11 @@ deb http://ddebs.ubuntu.com $(lsb_release -cs 2> /dev/null)-updates main restric
 deb http://ddebs.ubuntu.com $(lsb_release -cs 2> /dev/null)-proposed main restricted universe multiverse" | \
 	$SUDO tee -a /etc/apt/sources.list.d/ddebs.list
 	$SUDO apt-get update -qq
+	ARCH_TRIPLET=$(dpkg-architecture -qDEB_HOST_MULTIARCH)
 	DEP="libssl1.1-dbgsym"
-	if [ -f "/usr/lib/x86_64-linux-gnu/libssl.so.3" ]; then
+	if [ -f "/usr/lib/${ARCH_TRIPLET}/libssl.so.3" ]; then
 #		libcrypto is in same package as libssl
-		DEPX=`dpkg -S "/usr/lib/x86_64-linux-gnu/libssl.so.3"`
+		DEPX=`dpkg -S "/usr/lib/${ARCH_TRIPLET}/libssl.so.3"`
 		DEP="${DEPX%%:*}-dbgsym"
 	fi
 	$SUDO apt-get install -y openssl-dbgsym "$DEP" softhsm2-dbgsym libsofthsm2-dbgsym
