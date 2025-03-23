@@ -7,7 +7,7 @@ on:
       - '**.c'
       - '**.h'
       - '**.sh'
-      - .github/workflows/linux.yml
+      - .github/workflows/linux-strict.yml
       - '**.am'
       - doc/**
       - configure.ac
@@ -28,6 +28,7 @@ permissions:
 # -Wno-incompatible-pointer-types-discards-qualifiers -- again with logging
 # -Wno-unused-function -- the inline compat functions for openssl
 #     are included in files where they are needed and clang does not like it
+# -Wno-unused-parameter -- too many to fix them right now
 # -Wformat-pedantic - this complains about missing casts to (void *) which is
 #     pointles
 # -Wno-pedantic -- this complains about void and function pointers casts
@@ -35,15 +36,17 @@ permissions:
 #   complains about missing const, which is there
 env:
   CFLAGS: >-
-    -pedantic -Werror -Wall
+    -pedantic -Werror -Wall -Wextra
     -Wno-strict-prototypes -Wno-empty-translation-unit
     -Wno-incompatible-library-redeclaration
-    -Wno-variadic-macros -Wno-unused-function
+    -Wno-variadic-macros -Wno-unused-function -Wno-unused-parameter
     -Wno-incompatible-pointer-types-discards-qualifiers
     -Wno-gnu-zero-variadic-macro-arguments
     -Wno-format-pedantic
     -Wno-pedantic
     -Wno-incompatible-function-pointer-types
+  CLANG_CFLAGS: >-
+    -Wshorten-64-to-32
   BASE_DEPS: |
     build-essential docbook-xsl xsltproc gengetopt help2man pcscd check
     pcsc-tools libtool make autoconf autoconf-archive automake pkg-config

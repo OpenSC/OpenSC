@@ -4385,7 +4385,7 @@ err:
 
 /*  Edwards and Montogmery keys have the same format */
 static int
-parse_ed_mont_pkey(EVP_PKEY *pkey, int type, int pk_type, struct ec_curve_info *ec_curve_info, int private, struct gostkey_info *gost)
+parse_ed_mont_pkey(EVP_PKEY *pkey, CK_KEY_TYPE type, int pk_type, struct ec_curve_info *ec_curve_info, int private, struct gostkey_info *gost)
 {
 	unsigned char *key;
 	size_t key_size;
@@ -6638,7 +6638,7 @@ static int read_object(CK_SESSION_HANDLE session)
 				if (!os) {
 					if ((os = ASN1_OCTET_STRING_new()) == NULL)
 						util_fatal("cannot decode EC_POINT");
-					if (ASN1_OCTET_STRING_set(os, value, (long)len) == 0) {
+					if (ASN1_OCTET_STRING_set(os, value, (int)len) == 0) {
 						util_fatal("cannot decode EC_POINT");
 					}
 				}
