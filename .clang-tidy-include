@@ -1,0 +1,8 @@
+src/common/*.h
+src/common/*.c
+
+src/libopensc/*.h
+src/libopensc/*.c
+
+src/pkcs11/*.h
+src/pkcs11/*.c

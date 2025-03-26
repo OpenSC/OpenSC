@@ -31,7 +31,6 @@
 #include <libopensc/log.h>
 #include <libopensc/opensc.h>
 #include <libopensc/sm.h>
-#include <sm/sm-eac.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,6 +39,9 @@
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #else
+#ifdef _WIN32
+#include <windows.h>
+#endif
 /* only implement what we are using in this file */
 struct timeval {
 	unsigned int tv_sec;

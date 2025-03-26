@@ -791,8 +791,7 @@ iasecc_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsig
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
-
-#if ENABLE_SM
+#ifdef ENABLE_SM
 static int
 _iasecc_sm_read_binary(struct sc_card *card, unsigned int offs,
 		unsigned char *buff, size_t count)
