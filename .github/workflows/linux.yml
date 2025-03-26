@@ -32,55 +32,46 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    name: build-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build }}
+    strategy:
+      matrix:
+        dist: ['22.04', '24.04']
+        arch: ['amd64', 'arm64']
+        build: ['dist', 'valgrind']
+        exclude:
+          - build: dist
+            arch: arm64
+    runs-on: ubuntu-${{ matrix.dist }}${{ matrix.arch == 'arm64' && '-arm' || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }}
-          version: apt-20-base
+          version: apt-${{ matrix.dist }}-${{ matrix.arch }}-base
           execute_install_scripts: true
-      - run: .github/setup-linux.sh
-      - run: .github/build.sh dist
+      - run: .github/setup-linux.sh ${{ matrix.build == 'valgrind' && 'debug' || '' }}
+      - run: .github/build.sh ${{ matrix.build }}
       - name: Upload test logs
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: ubuntu-test-logs
+          name: ubuntu-${{ matrix.dist }}-${{ matrix.arch }}-test-logs
           path: |
             tests/*.log
             src/tests/unittests/*.log
       - uses: actions/cache@v4
         id: cache-build
+        if: matrix.build == 'dist'
         with:
           path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
+          key: ${{ runner.os }}-${{ matrix.dist }}-${{ matrix.arch }}-${{ github.sha }}
       - name: Upload build artifacts
+        if: matrix.build == 'dist'
         uses: actions/upload-artifact@v4
         with:
-          name: opensc-build
+          name: opensc-build-${{ matrix.dist }}-${{ matrix.arch }}
           path:
             opensc*.tar.gz
-
-  valgrind:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-latest-base
-          execute_install_scripts: true
-      - run: .github/setup-linux.sh debug
-      - run: .github/build.sh valgrind
-      - name: Upload test logs
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: ubuntu-valgrind-logs
-          path: |
-            tests/*.log
-            src/tests/unittests/*.log
 
   build-no-shared:
     runs-on: ubuntu-latest
@@ -113,7 +104,7 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }}
-          version: apt-20-base
+          version: apt-24.04-amd64-base
           execute_install_scripts: true
       - run: .github/setup-linux.sh ix86
       - run: .github/build.sh ix86
@@ -188,7 +179,7 @@ jobs:
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
       - run: git clone $JCARDSIM
       - uses: actions/setup-java@v4
         with:
@@ -244,7 +235,7 @@ jobs:
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
       - run: .github/setup-linux.sh isoapplet
       - run: .github/test-isoapplet.sh v0
       - run: .github/test-isoapplet.sh v0 valgrind
@@ -263,7 +254,7 @@ jobs:
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
       - run: git clone $JCARDSIM
       - uses: actions/setup-java@v4
         with:
@@ -288,7 +279,7 @@ jobs:
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
       - run: git clone $JCARDSIM
       - uses: actions/setup-java@v4
         with:
@@ -307,13 +298,13 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }} %{{ env.JAVA_DEPS }}
-          version: apt-20-base
+          version: apt-24.04-amd64-base
           execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
       - run: git clone $JCARDSIM
       - uses: actions/setup-java@v4
         with:
@@ -332,13 +323,13 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }}
-          version: apt-20-base
+          version: apt-24.04-amd64-base
           execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
       - run: .github/setup-linux.sh clang-tidy
       - run: .github/build.sh clang-tidy
 
@@ -350,13 +341,13 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }}
-          version: apt-20-base
+          version: apt-24.04-amd64-base
           execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
       - run: .github/setup-linux.sh cac
       - run: .github/test-cac.sh
       - run: .github/test-cac.sh valgrind
@@ -369,13 +360,13 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }}
-          version: apt-20-base
+          version: apt-24.04-amd64-base
           execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
       - run: .github/setup-linux.sh oseid
       - run: .github/test-oseid.sh
       - run: .github/test-oseid.sh valgrind
@@ -383,38 +374,6 @@ jobs:
   ############################################
   ## Ubuntu 22.04 with OpenSSL 3.0 pipeline ##
   ############################################
-  build-ubuntu-22:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-22-base
-          execute_install_scripts: true
-      - run: .github/setup-linux.sh
-      - run: .github/build.sh dist valgrind
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: ubuntu-22-test-logs
-          path: |
-            tests/*.log
-            src/tests/unittests/*.log
-      - uses: actions/cache@v4
-        id: cache-build
-        if: ${{ success() }}
-        with:
-          path: ./*
-          key: ${{ runner.os }}-22-${{ github.sha }}
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        if: ${{ success() }}
-        with:
-          name: opensc-22-build
-          path:
-            opensc*.tar.gz
-
   build-ubuntu-22-piv-sm:
     runs-on: ubuntu-22.04
     steps:
@@ -467,7 +426,7 @@ jobs:
 
   test-cac-ubuntu-22:
     runs-on: ubuntu-22.04
-    needs: [build-ubuntu-22]
+    needs: [build]
     steps:
       - uses: actions/checkout@v4
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
@@ -479,26 +438,26 @@ jobs:
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-22-${{ github.sha }}
+          key: ${{ runner.os }}-22.04-amd64-${{ github.sha }}
       - run: .github/setup-linux.sh cac
       - run: .github/test-cac.sh
       - run: .github/test-cac.sh valgrind
 
   test-oseid-ubuntu-22:
     runs-on: ubuntu-22.04
-    needs: [build-ubuntu-22]
+    needs: [build]
     steps:
       - uses: actions/checkout@v4
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }}
-          version: apt-22-base
+          version: apt-22.04-amd64-base
           execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-22-${{ github.sha }}
+          key: ${{ runner.os }}-22.04-amd64-${{ github.sha }}
       - run: .github/setup-linux.sh oseid
       - run: .github/test-oseid.sh
       - run: .github/test-oseid.sh valgrind
@@ -596,7 +555,7 @@ jobs:
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
       - name: Pull mingw build artifacts
         uses: actions/download-artifact@v4
         with:
