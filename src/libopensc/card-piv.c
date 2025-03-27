@@ -573,6 +573,15 @@ static const struct sc_atr_table piv_atrs[] = {
 	  "ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00", NULL, SC_CARD_TYPE_PIV_II_800_73_4, 0, NULL },
 	{ "3b:86:80:01:80:31:c1:52:41:12:76", NULL, NULL, SC_CARD_TYPE_PIV_II_800_73_4, 0, NULL }, /* contactless */
 
+	/*
+	 * MyEID cards version >= 4 may have limited PIV applet enabled but will not be found if MyEID card driver
+	 * matches ATR first. MyEID's intent is to use the card-myeid.c and only provide the PIV applet to be used
+	 * where MyEID sodtware will not run, So these changes to card-piv.c are more for testing their PIV changes.
+	 * To use PIV driver, set env OPENSC_DRIVER="PIV_II" or change driver order in opensc.conf.
+	 * See https://github.com/OpenSC/OpenSC/wiki/Aventra-MyEID-PKI-card for initalizing cards.
+	 * SC_CARD_TYPE_PIV_II_MYEID
+	 */
+
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -2934,8 +2943,16 @@ static int piv_find_aid(sc_card_t * card)
 	/* first  see if the default application will return a template
 	 * that we know about.
 	 */
-
 	r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, rbuf, &resplen);
+
+	/* temp fix for MyEID which does not return tag=61: add a 0x61 and length */
+	if (r >= 0 && resplen > 2 && rbuf[0] != 0x61 && resplen < (sizeof(rbuf) - 2)) {
+		memmove(rbuf + 2, rbuf, resplen);
+		rbuf[0] = 0x61;
+		rbuf[1] = (unsigned int)resplen;
+		resplen += 2;
+	}
+
 	if (r > 0 && priv->aid_der.value && resplen == priv->aid_der.len  && !memcmp(priv->aid_der.value, rbuf, resplen)) {
 		LOG_FUNC_RETURN(card->ctx,SC_SUCCESS);
 		/* no need to parse again, same as last time */
@@ -5514,6 +5531,11 @@ static int piv_match_card_continued(sc_card_t *card)
 					!(memcmp(card->reader->atr_info.hist_bytes, "PIVKEY", 6))) {
 				type = SC_CARD_TYPE_PIV_II_PIVKEY;
 			}
+			else if (card->reader->atr_info.hist_bytes_len >= 5  &&
+					!(memcmp(&card->reader->atr_info.hist_bytes[card->reader->atr_info.hist_bytes_len - 5], "MyEID", 5))) {
+				type = SC_CARD_TYPE_PIV_II_MYEID;
+			}
+					
 			/* look for TLV historic data */
 			else if (card->reader->atr_info.hist_bytes_len > 0
 					&& card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
