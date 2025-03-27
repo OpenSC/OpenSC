@@ -230,10 +230,11 @@ static DWORD opensc_proto_to_pcsc(unsigned int proto)
 	}
 }
 
-static int pcsc_internal_transmit(sc_reader_t *reader,
-			 const u8 *sendbuf, size_t sendsize,
-			 u8 *recvbuf, size_t *recvsize,
-			 unsigned long control)
+static int
+pcsc_internal_transmit(sc_reader_t *reader,
+		const u8 *sendbuf, DWORD sendsize,
+		u8 *recvbuf, DWORD *recvsize,
+		unsigned long control)
 {
 	struct pcsc_private_data *priv = reader->drv_data;
 	SCARD_IO_REQUEST sSendPci, sRecvPci;
@@ -303,7 +304,8 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 
 static int pcsc_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 {
-	size_t ssize, rsize, rbuflen = 0;
+	size_t ssize, rbuflen = 0;
+	DWORD rsize;
 	u8 *sbuf = NULL, *rbuf = NULL;
 	int r;
 
@@ -1060,7 +1062,7 @@ err:
 
 static int
 part10_find_property_by_tag(unsigned char buffer[], DWORD length,
-	int tag_searched);
+		int tag_searched);
 /**
  * @brief Detects reader's maximum data size
  *
@@ -2097,14 +2099,13 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 /* Find a given PCSC v2 part 10 property */
 static int
 part10_find_property_by_tag(unsigned char buffer[], DWORD length,
-	int tag_searched)
+		int tag_searched)
 {
 	unsigned char *p;
 	int found = 0, len, value = -1;
 
 	p = buffer;
-	while (p-buffer < (long)length)
-	{
+	while ((DWORD)(p - buffer) < length) {
 		if (*p++ == tag_searched)
 		{
 			found = 1;
@@ -2146,7 +2147,7 @@ part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 {
 	int r;
 	unsigned char buffer[256];
-	size_t length = sizeof buffer;
+	DWORD length = sizeof buffer;
 	struct pcsc_private_data *priv = reader->drv_data;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) reader->ctx->reader_drv_data;
 	struct sc_pin_cmd_pin *pin_ref =
@@ -2202,7 +2203,8 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	u8 sbuf[sizeof(PIN_VERIFY_STRUCTURE)>sizeof(PIN_MODIFY_STRUCTURE)?
 		sizeof(PIN_VERIFY_STRUCTURE)+SC_MAX_APDU_BUFFER_SIZE:
 		sizeof(PIN_MODIFY_STRUCTURE)+SC_MAX_APDU_BUFFER_SIZE];
-	size_t rcount = sizeof(rbuf), scount = 0;
+	DWORD rcount = sizeof(rbuf);
+	size_t scount = 0;
 	int r;
 	DWORD ioctl = 0;
 	sc_apdu_t *apdu;
@@ -2504,7 +2506,8 @@ pcsc_perform_pace(struct sc_reader *reader, void *input_pace, void *output_pace)
 	struct establish_pace_channel_output *pace_output = (struct establish_pace_channel_output *) output_pace;
 	struct pcsc_private_data *priv;
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
-	size_t rcount = sizeof rbuf, scount = sizeof sbuf;
+	DWORD rcount = sizeof rbuf;
+	size_t scount = sizeof sbuf;
 
 	if (!reader || !(reader->capabilities & SC_READER_CAP_PACE_GENERIC))
 		return SC_ERROR_INVALID_ARGUMENTS;

@@ -63,7 +63,8 @@ int gettimeofday(struct timeval *tv, struct timezone *tz)
 #endif
 
 #ifndef HAVE_GETLINE
-static int getline(char **lineptr, size_t *n, FILE *stream)
+static ssize_t
+getline(char **lineptr, size_t *n, FILE *stream)
 {
 	char *p;
 
@@ -172,7 +173,7 @@ int npa_translate_apdus(sc_card_t *card, FILE *input)
 	char *read = NULL;
 	size_t readlen = 0, apdulen;
 	sc_apdu_t apdu;
-	int linelen;
+	ssize_t linelen;
 	int r;
 
 	memset(&apdu, 0, sizeof apdu);
@@ -269,9 +270,8 @@ static int add_to_ASN1_AUXILIARY_DATA_NPA_TOOL(
 
 	if (data && data_len) {
 		template->discretionary_data3 = ASN1_OCTET_STRING_new();
-		if (!template->discretionary_data3
-				|| !ASN1_OCTET_STRING_set(
-					template->discretionary_data3, data, data_len)) {
+		if (!template->discretionary_data3 || !ASN1_OCTET_STRING_set(
+								      template->discretionary_data3, data, (int)data_len)) {
 			r = SC_ERROR_INTERNAL;
 			goto err;
 		}
