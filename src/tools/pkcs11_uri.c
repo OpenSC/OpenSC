@@ -31,27 +31,27 @@
 #include "pkcs11_uri.h"
 
 static struct pkcs11_uri_attr path_attr[] = {
-		{"id", 0},
-		{"library-description", 1},
-		{"library-manufacturer", 2},
-		{"library-version", 3},
-		{"manufacturer", 4},
-		{"model", 5},
-		{"object", 6},
-		{"serial", 7},
-		{"slot-description", 8},
-		{"slot-id", 9},
-		{"slot-manufacturer", 10},
-		{"token", 11},
-		{"type", 12},
+		{"id", PKCS11_ID},
+		{"library-description", PKCS11_LIB_DESCRIPTION},
+		{"library-manufacturer", PKCS11_LIB_MANUFACTURER},
+		{"library-version", PKCS11_LIB_VERSION},
+		{"manufacturer", PKCS11_MANUFACTURER},
+		{"model", PKCS11_MODEL},
+		{"object", PKCS11_OBJECT},
+		{"serial", PKCS11_SERIAL},
+		{"slot-description", PKCS11_SLOT_DESCRIPTION},
+		{"slot-id", PKCS11_SLOT_ID},
+		{"slot-manufacturer", PKCS11_SLOT_MANUFACTURER},
+		{"token", PKCS11_TOKEN},
+		{"type", PKCS11_TYPE},
 		{NULL, 0}
 };
 
 static struct pkcs11_uri_attr query_attr[] = {
-		{"pin-source", 0},
-		{"pin-value", 1},
-		{"module-name", 2},
-		{"module-path", 3},
+		{"pin-source", PKCS11_PIN_SOURCE},
+		{"pin-value", PKCS11_PIN_VALUE},
+		{"module-name", PKCS11_MODULE_NAME},
+		{"module-path", PKCS11_MODULE_PATH},
 		{NULL, 0}
 };
 
@@ -108,7 +108,7 @@ decode_percent_string(char *data, char **out)
 	/* zero terminate */
 	decoded[decoded_len] = '\0';
 	*out = decoded;
-	return decoded_len;
+	return (int) decoded_len;
 fail:
 	free(decoded);
 	return -1;
@@ -194,60 +194,60 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 		int id = get_attr(path_attr, token);
 		if (id == -1) {
 			rv = 1;
-			fprintf(stderr, "Invalid PKCS#11 token\n");
+			fprintf(stderr, "Invalid PKCS#11 uri attribute\n");
 			goto end;
 		}
 		argument = token + strlen(path_attr[id].name) + 1;
 
 		switch (id) {
-		case 0: /* CKA_ID */
+		case PKCS11_ID:
 			result_ptr = &result->id;
 			result_len = &result->id_len;
 			break;
-		case 1: /* CK_INFO -> libraryDescription */
+		case PKCS11_LIB_DESCRIPTION:
 			rv = 1;
 			fprintf(stderr, "PKCS#11 library description not supported\n");
 			goto end;
 			break;
-		case 2: /* CK_INFO -> manufacturerID */
+		case PKCS11_LIB_MANUFACTURER:
 			rv = 1;
 			fprintf(stderr, "PKCS#11 manufacturer ID not supported\n");
 			goto end;
 			break;
-		case 3: /* CK_INFO -> libraryVersion*/
+		case PKCS11_LIB_VERSION:
 			rv = 1;
 			fprintf(stderr, "PKCS#11 library version not supported\n");
 			goto end;
 			break;
-		case 4: /* CK_TOKEN_INFO -> manufacturerID */
+		case PKCS11_MANUFACTURER:
 			result_ptr = &result->token_manufacturer;
 			max_len = 32;
 			break;
-		case 5: /* CK_TOKEN_INFO -> model */
+		case PKCS11_MODEL:
 			result_ptr = &result->token_model;
 			max_len = 16;
 			break;
-		case 6: /* CKA_LABEL */
+		case PKCS11_OBJECT:
 			result_ptr = &result->object;
 			break;
-		case 7: /* CK_TOKEN_INFO -> serialNumber */
+		case PKCS11_SERIAL:
 			result_ptr = &result->serial;
 			max_len = 16;
 			break;
-		case 8: /* CK_SLOT_INFO -> slotDescription */
+		case PKCS11_SLOT_DESCRIPTION:
 			result_ptr = &result->slot_description;
 			break;
-		case 9: /* CK_SLOT_ID */
+		case PKCS11_SLOT_ID:
 			result_ptr = &result->slot_id;
 			break;
-		case 10: /* CK_SLOT_INFO -> manufacturerID */
+		case PKCS11_SLOT_MANUFACTURER:
 			result_ptr = &result->slot_manufacturer;
 			break;
-		case 11: /* CK_TOKEN_INFO -> label */
+		case PKCS11_TOKEN:
 			result_ptr = &result->token_label;
 			max_len = 32;
 			break;
-		case 12: /* CKA_CLASS */
+		case PKCS11_TYPE:
 			result_ptr = &result->type;
 			break;
 		}
@@ -274,28 +274,28 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 		argument = token + strlen(query_attr[id].name) + 1;
 
 		switch (id) {
-		case 0:
-			if (result->pin != NULL) {
+		case PKCS11_PIN_SOURCE:
+			if (result->pin_value != NULL) {
 				rv = 1;
-				fprintf(stderr, "A pin and pin-source cannot be specified together in PKCS#11 URI\n");
+				fprintf(stderr, "A pin-value and pin-source cannot be specified together in PKCS#11 URI\n");
 				goto end;
 			}
 			result_ptr = &result->pin_source;
 			break;
-		case 1:
+		case PKCS11_PIN_VALUE:
 			if (result->pin_source != NULL) {
 				rv = 1;
-				fprintf(stderr, "A pin and pin-source cannot be specified together in PKCS#11 URI\n");
+				fprintf(stderr, "A pin-value and pin-source cannot be specified together in PKCS#11 URI\n");
 				goto end;
 			}
-			result_ptr = &result->pin;
+			result_ptr = &result->pin_value;
 			break;
-		case 2:
+		case PKCS11_MODULE_NAME:
 			rv = 1;
 			fprintf(stderr, "PKCS#11 module name for query not supported\n");
 			goto end;
 			break;
-		case 3:
+		case PKCS11_MODULE_PATH:
 			result_ptr = &result->module_path;
 			break;
 		}
@@ -332,9 +332,9 @@ pkcs11_uri_free(struct pkcs11_uri *uri)
 	free(uri->token_label);
 	free(uri->type);
 	free(uri->pin_source);
-	if (uri->pin) {
-		memset(uri->pin, 0, strlen(uri->pin));
-		free(uri->pin);
+	if (uri->pin_value) {
+		memset(uri->pin_value, 0, strlen(uri->pin_value));
+		free(uri->pin_value);
 	}
 	free(uri->module_name);
 	free(uri->module_path);

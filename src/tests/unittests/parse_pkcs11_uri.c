@@ -221,7 +221,7 @@ torture_pin_value(void **state)
 	assert_int_equal(rv, 0);
 	assert_string_equal("Software PKCS#11 softtoken", result->token_label);
 	assert_string_equal("Snake Oil, Inc.", result->token_manufacturer);
-	assert_string_equal("the-pin", result->pin);
+	assert_string_equal("the-pin", result->pin_value);
 	pkcs11_uri_free(result);
 }
 

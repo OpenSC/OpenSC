@@ -1270,7 +1270,7 @@ int main(int argc, char * argv[])
 			opt_slot_set = 1;
 		}
 		opt_module = opt_uri->module_path;
-		util_get_pin(opt_uri->pin, &opt_pin);
+		util_get_pin(opt_uri->pin_value, &opt_pin);
 		util_get_pin(opt_uri->pin_source, &opt_pin);
 		if (opt_pin)
 			opt_login = 1;
