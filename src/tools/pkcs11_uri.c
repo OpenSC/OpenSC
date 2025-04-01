@@ -31,27 +31,27 @@
 #include "pkcs11_uri.h"
 
 static struct pkcs11_uri_attr path_attr[] = {
-		{"id", 0},
-		{"library-description", 1},
-		{"library-manufacturer", 2},
-		{"library-version", 3},
-		{"manufacturer", 4},
-		{"model", 5},
-		{"object", 6},
-		{"serial", 7},
-		{"slot-description", 8},
-		{"slot-id", 9},
-		{"slot-manufacturer", 10},
-		{"token", 11},
-		{"type", 12},
+		{"id", PKCS11_ID},
+		{"library-description", PKCS11_LIB_DESCRIPTION},
+		{"library-manufacturer", PKCS11_LIB_MANUFACTURER},
+		{"library-version", PKCS11_LIB_VERSION},
+		{"manufacturer", PKCS11_MANUFACTURER},
+		{"model", PKCS11_MODEL},
+		{"object", PKCS11_OBJECT},
+		{"serial", PKCS11_SERIAL},
+		{"slot-description", PKCS11_SLOT_DESCRIPTION},
+		{"slot-id", PKCS11_SLOT_ID},
+		{"slot-manufacturer", PKCS11_SLOT_MANUFACTURER},
+		{"token", PKCS11_TOKEN},
+		{"type", PKCS11_TYPE},
 		{NULL, 0}
 };
 
 static struct pkcs11_uri_attr query_attr[] = {
-		{"pin-source", 0},
-		{"pin-value", 1},
-		{"module-name", 2},
-		{"module-path", 3},
+		{"pin-source", PKCS11_PIN_SOURCE},
+		{"pin-value", PKCS11_PIN_VALUE},
+		{"module-name", PKCS11_MODULE_NAME},
+		{"module-path", PKCS11_MODULE_PATH},
 		{NULL, 0}
 };
 
