@@ -2762,7 +2762,7 @@ build_rsa_oaep_params(
 		oaep_params->mgf = CKG_MGF1_SHA3_512;
 		break;
 	default:
-		printf("hash-algorithm %s unknown, defaulting to CKM_SHA256\n", p11_mechanism_to_name(opt_hash_alg));
+		fprintf(stderr, "hash-algorithm %s unknown, defaulting to CKM_SHA256\n", p11_mechanism_to_name(opt_hash_alg));
 		oaep_params->hashAlg = CKM_SHA256;
 		/* fall through */
 	case CKM_SHA256:
@@ -2779,7 +2779,7 @@ build_rsa_oaep_params(
 	if (opt_mgf != 0) {
 		oaep_params->mgf = opt_mgf;
 	} else {
-		printf("mgf not set, defaulting to %s\n", p11_mgf_to_name(oaep_params->mgf));
+		fprintf(stderr, "mgf not set, defaulting to %s\n", p11_mgf_to_name(oaep_params->mgf));
 	}
 
 	/* PKCS11 3.0 is vague about setting CKZ_DATA_SPECIFIED */
@@ -2790,7 +2790,7 @@ build_rsa_oaep_params(
 	mech->pParameter = oaep_params;
 	mech->ulParameterLen = sizeof(*oaep_params);
 
-	printf("OAEP parameters: hashAlg=%s, mgf=%s, source_type=%lu, source_ptr=%p, source_len=%lu\n",
+	fprintf(stderr, "OAEP parameters: hashAlg=%s, mgf=%s, source_type=%lu, source_ptr=%p, source_len=%lu\n",
 			p11_mechanism_to_name(oaep_params->hashAlg),
 			p11_mgf_to_name(oaep_params->mgf),
 			oaep_params->source,
