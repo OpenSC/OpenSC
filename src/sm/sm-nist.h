@@ -54,7 +54,7 @@
 								/* will use VCI if card supports it for contactless */
 #define PIV_SM_FLAGS_ALWAYS			0x00000200lu	/* Use SM or quit, VCI requires SM */
 #define PIV_SM_FLAGS_DEFER_OPEN			0x00001000lu	/* call sm_open from reader_lock_obtained */
-#define PIV_SM_VCI_ACTIVE			0x00002000lu   /* VCI is active */
+#define PIV_SM_VCI_ACTIVE			0x00002000lu    /* VCI is active */
 #define PIV_SM_GET_DATA_IN_CLEAR		0x00004000lu	/* OK to do this GET DATA in the clear */
 #define PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED	0x00008000lu	/* compressed */
 #define PIV_SM_CONTACTLESS			0x00010000lu	/* contacless */
