@@ -3,7 +3,7 @@
 set -ex -o xtrace
 
 # Generic dependencies
-DEPS="make /usr/bin/xsltproc docbook-style-xsl autoconf automake libtool bash-completion vim-common softhsm openssl diffutils openpace openpace-devel"
+DEPS="make /usr/bin/xsltproc docbook-style-xsl autoconf automake libtool bash-completion vim-common softhsm openssl diffutils openpace openpace-devel gawk"
 
 if [ "$1" == "clang" ]; then
 	DEPS="$DEPS clang"
