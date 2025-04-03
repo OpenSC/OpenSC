@@ -1232,7 +1232,6 @@ const char *pkcs15_get_default_use_file_cache(struct sc_card *card)
 		"cac1",
 		"cac",
 		"coolkey",
-		"dnie",
 		"edo",
 		"esteid2018",
 		"flex",
