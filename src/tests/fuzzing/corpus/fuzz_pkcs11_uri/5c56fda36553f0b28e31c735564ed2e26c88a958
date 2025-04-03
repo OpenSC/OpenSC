@@ -1,0 +1,1 @@
+pkcs11:object=my-key;type=private?pin-source=file:/etc/token
