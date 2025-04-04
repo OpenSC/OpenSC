@@ -956,6 +956,17 @@ if test "${completiondir}" = "detect"; then
 fi
 AC_SUBST([completiondir])
 
+AC_ARG_ENABLE(p11_system_config_modules,
+              AS_HELP_STRING([--enable-p11_system_config_modules=DIR],
+							 [directory containing P11-Kit cnfiguration files (default is determined by libp11-kit)]),
+                             [p11_system_config_modules="${enableval}"],
+                             [p11_system_config_modules=false])
+if test "${p11_system_config_modules}" = false ; then
+    p11_system_config_modules="`$PKG_CONFIG p11-kit-1 --variable=p11_system_config_modules`"
+fi
+AM_CONDITIONAL([ENABLE_P11KIT], [test -n "${p11_system_config_modules}"])
+P11_SYSTEM_CONFIG_MODULES="${p11_system_config_modules}"
+AC_SUBST(P11_SYSTEM_CONFIG_MODULES)
 
 AC_SUBST(DYN_LIB_EXT)
 AC_SUBST(LIBDIR)
@@ -1181,6 +1192,7 @@ AC_CONFIG_FILES([
 	src/sm/Makefile
 	src/pkcs11/Makefile
 	src/pkcs11/opensc-pkcs11.pc
+	src/pkcs11/opensc.module
 	src/pkcs15init/Makefile
 	src/scconf/Makefile
 	src/tests/Makefile
@@ -1226,6 +1238,7 @@ User binaries:           $(eval eval eval echo "${bindir}")
 Configuration files:     $(eval eval eval echo "${sysconfdir}")
 Bash completion:         ${completiondir}
 XSL stylesheets:         ${xslstylesheetsdir}
+p11_system_config:       ${p11_system_config_modules}
 
 man support:             ${enable_man}
 doc support:             ${enable_doc}

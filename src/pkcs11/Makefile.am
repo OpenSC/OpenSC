@@ -1,7 +1,7 @@
 include $(top_srcdir)/win32/ltrc.inc
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
-EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc versioninfo-pkcs11-spy.rc opensc-pkcs11.pc.in opensc-pkcs11.dll.manifest
+EXTRA_DIST = Makefile.mak versioninfo-pkcs11.rc versioninfo-pkcs11-spy.rc opensc-pkcs11.pc.in opensc.module.in opensc-pkcs11.dll.manifest
 
 if ENABLE_SHARED
 lib_LTLIBRARIES = opensc-pkcs11.la pkcs11-spy.la
@@ -30,6 +30,11 @@ endif
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = opensc-pkcs11.pc
 DISTCLEANFILES = $(pkgconfig_DATA)
+if ENABLE_P11KIT
+p11kitdir = $(P11_SYSTEM_CONFIG_MODULES)
+p11kit_DATA = opensc.module
+DISTCLEANFILES += $(p11kit_DATA)
+endif
 
 opensc_pkcs11_la_SOURCES = $(OPENSC_PKCS11_SRC) $(OPENSC_PKCS11_INC)
 opensc_pkcs11_la_CFLAGS = $(OPENSC_PKCS11_CFLAGS)
