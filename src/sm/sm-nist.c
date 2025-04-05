@@ -240,13 +240,14 @@ static const struct sc_card_error piv_sm_errors[] = {
 
 typedef struct sm_nist_private_data {
 	int magic;
+	sm_nist_params_t *params; /* card driver parameters and flags */
 	cipher_suite_t *cs; /* active cypher_suite */
 	u8 csID;
 	X509 *signer_cert;
 	piv_cvc_t sm_cvc;  /* 800-73-4:  SM CVC Table 15 */
 	piv_cvc_t sm_in_cvc; /* Intermediate CVC Table 16 */
-	unsigned long *sm_flags; /* flags shared with caller */
-	unsigned long pin_policy;
+	//unsigned long *sm_flags; /* flags shared with caller */
+	//unsigned long pin_policy;
 	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
 	piv_sm_session_t sm_session;
 } sm_nist_private_data_t;
@@ -292,6 +293,18 @@ static int piv_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
 		EVP_PKEY *pkey, u8 *data, size_t data_size,
 		unsigned char *sig, size_t siglen);
 static int piv_sm_verify_certs(struct sc_card *card);
+
+int
+sm_nist_params_cleanup(sm_nist_params_t *params) {
+
+	free(params->signer_cert_der);
+	free(params->sm_in_cvc_der);
+	memset(&params, 0, sizeof(params));
+
+	return 0;
+}
+
+
 
 
 /* convert q as 04||x||y used in standard point formats to expanded leading
@@ -454,7 +467,7 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	 * Get the PIV_OBJ_SM_CERT_SIGNER and optional sm_in_cvc
 	 * which were passed 
 	 */
-	*priv->sm_flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
+	priv->params->flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
 
 	if (priv->signer_cert == NULL || (cert_pkey = X509_get0_pubkey(priv->signer_cert)) == NULL) {
 		sc_log(card->ctx,"OpenSSL failed to get pubkey from SM_CERT_SIGNER");
@@ -464,7 +477,7 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	}
 
 	/* if intermediate sm_in_cvc present, cert signed it and sm_cvc is signed by sm_in_cvc */
-	if (*priv->sm_flags & PIV_SM_FLAGS_SM_IN_CVC_PRESENT) {
+	if (priv->params->flags & PIV_SM_FLAGS_SM_IN_CVC_PRESENT) {
 		r = piv_sm_verify_sig(card, cs->kdf_md(), cert_pkey,
 				priv->sm_in_cvc.body, priv->sm_in_cvc.bodylen,
 				priv->sm_in_cvc.signature,priv->sm_in_cvc.signaturelen);
@@ -726,7 +739,7 @@ static int piv_sm_open(struct sc_card *card)
 	 */
 
 	 
-	if (!(*priv->sm_flags & PIV_SM_FLAGS_DEFER_OPEN)) {
+	if (!(priv->params->flags & PIV_SM_FLAGS_DEFER_OPEN)) {
 		LOG_FUNC_RETURN(card->ctx,SC_ERROR_NOT_ALLOWED);
 	}
 	if (cs == NULL)
@@ -892,7 +905,7 @@ static int piv_sm_open(struct sc_card *card)
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
-		*priv->sm_flags |= PIV_SM_FLAGS_SM_CVC_PRESENT;
+		priv->params->flags |= PIV_SM_FLAGS_SM_CVC_PRESENT;
 	}
 
 	/* Step H5 Verify Cicc CVC and pubkey */
@@ -1174,11 +1187,11 @@ static int piv_sm_open(struct sc_card *card)
 #endif /* 0 */
 
 	r = 0;
-	*priv->sm_flags |= PIV_SM_FLAGS_SM_IS_ACTIVE;
+	priv->params->flags |= PIV_SM_FLAGS_SM_IS_ACTIVE;
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 
 err:
-	*priv->sm_flags &= ~PIV_SM_FLAGS_DEFER_OPEN;
+	priv->params->flags &= ~PIV_SM_FLAGS_DEFER_OPEN;
 	if (r != 0)
 		 memset(&priv->sm_session, 0, sizeof(piv_sm_session_t));
 	sc_log_openssl(card->ctx); /* catch any not logged above */
@@ -1699,7 +1712,7 @@ static int nist_parse_pairing_code(sc_card_t *card, const char *option)
 }
 #endif /* 0 */
 
-static sm_nist_private_data_t *sm_nist_private_data_create()
+static sm_nist_private_data_t *sm_nist_private_data_create(sm_nist_params_t *params)
 {
 	sm_nist_private_data_t *out = malloc(sizeof(sm_nist_private_data_t));
 	if (!out)
@@ -1707,17 +1720,13 @@ static sm_nist_private_data_t *sm_nist_private_data_create()
 	memset(out, 0, sizeof(sm_nist_private_data_t));
 
 	out->magic = 0xDEE1;
+	out->params = params;
 err:
 	return out;
 }
 
-int sm_nist_start(sc_card_t *card,
-		u8 *signer_cert_der, size_t signer_cert_len,
-		u8 *sm_in_cvc_der, size_t sm_in_cvc_len,
-		unsigned long *sm_flags, /* shared with caller */
-		unsigned long pin_policy,
-		u8 pairing_code[PIV_PAIRING_CODE_LEN],
-		u8 csID)
+
+int sm_nist_start(sc_card_t *card,  sm_nist_params_t *params)
 {
 	int r;
 	int i;
@@ -1725,6 +1734,11 @@ int sm_nist_start(sc_card_t *card,
 	struct sm_nist_private_data *priv = NULL;
 //	u8 *p = 0;
 
+	if (!params) {
+		sc_log(card->ctx, "sm_nist_params required parameter is NULL");
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto err;
+	}
 
 	sctx = iso_sm_ctx_create();
 	if (!sctx) {
@@ -1732,7 +1746,8 @@ int sm_nist_start(sc_card_t *card,
 		goto err;
 	}
 
-        sctx->priv_data = sm_nist_private_data_create();
+	/* *params is saved in priv_data */
+        sctx->priv_data = sm_nist_private_data_create(params);
         if (!sctx->priv_data) {
                 r = SC_ERROR_OUT_OF_MEMORY;
                 goto err;
@@ -1740,38 +1755,31 @@ int sm_nist_start(sc_card_t *card,
 
 	priv = (sm_nist_private_data_t *)sctx->priv_data;
 
-	if (!sm_flags) {
-		sc_log(card->ctx, "sm_flags required parameter is NULL");
-		r = SC_ERROR_INVALID_ARGUMENTS;
-		goto err;
-	}
-	priv->sm_flags = sm_flags;
-
 	for (i = 0; i < PIV_CSS_SIZE; i++) {
-		if (csID == css[i].id) {
+		if (params->csID == css[i].id) {
 			priv->cs = &css[i];
 			break;
 		}
 	}
 	
 	if (!priv->cs) {
-		sc_log(card->ctx, "Invalid SM csID: 0x%2.2x", csID);
+		sc_log(card->ctx, "Invalid SM csID: 0x%2.2x", params->csID);
 		r =  SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
 
-	if (signer_cert_der && signer_cert_len) {
-		u8 *cert_blob = signer_cert_der;
-		size_t cert_blob_len = signer_cert_len;
-		const u8 *p = signer_cert_der;
+	if (params->signer_cert_der && params->signer_cert_der_len) {
+		u8 *cert_blob = params->signer_cert_der;
+		size_t cert_blob_len = params->signer_cert_der_len;
+		const u8 *p = params->signer_cert_der;
 		int len;
 
-		if (*priv->sm_flags & PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED) {
+		if (params->flags & PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED) {
 #ifdef ENABLE_ZLIB
 			cert_blob = NULL;
 			cert_blob_len = 0;
 			if (SC_SUCCESS != sc_decompress_alloc(&cert_blob, &cert_blob_len,
-					signer_cert_der, signer_cert_len, COMPRESSION_AUTO)) {
+					params->signer_cert_der, params->signer_cert_der_len, COMPRESSION_AUTO)) {
 				sc_log(card->ctx, "PIV decompression of SM CERT_SIGNER failed");
 				r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 				goto err;
@@ -1793,19 +1801,18 @@ int sm_nist_start(sc_card_t *card,
 		}
 	}
 
-	if (sm_in_cvc_der && sm_in_cvc_len) {
-		u8 *pp = sm_in_cvc_der;
-		r = piv_decode_cvc(card, &pp, &sm_in_cvc_len, &priv->sm_in_cvc);
+	if (params->sm_in_cvc_der && params->sm_in_cvc_der_len) {
+		u8 *pp = params->sm_in_cvc_der;
+		r = piv_decode_cvc(card, &pp, &params->sm_in_cvc_der_len, &priv->sm_in_cvc);
 
 		if (r !=  SC_SUCCESS) {
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
-		*priv->sm_flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
+		params->flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
 	}
 
-	memcpy(priv->pairing_code, pairing_code, PIV_PAIRING_CODE_LEN);
-	priv->csID = csID;
+	priv->csID = params->csID;
 
 	sctx->authenticate = sm_nist_authenticate;
 	sctx->encrypt = sm_nist_encrypt;
@@ -1833,9 +1840,6 @@ int sm_nist_start(sc_card_t *card,
 	}
 
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
-// TODO need shared sm_flags or way to test or control from driver
-
-// TODO set piv_sm_open here or in driver or add it to  card->sm_ctx.sm_mode
 
 	/*
 	 * sm-iso does not set an operation for sm_open which in our case
@@ -2204,9 +2208,10 @@ sm_nist_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 // TODO 230923 to make more general, may need more work
 	switch (apdu->ins) {
+		case 0xCA: /* GET_DATA */
 		case 0xCB: /* GET_DATA */
-			if (*priv->sm_flags & PIV_SM_GET_DATA_IN_CLEAR) {
-				*priv->sm_flags &= ~PIV_SM_GET_DATA_IN_CLEAR;
+			if (priv->params->flags & PIV_SM_GET_DATA_IN_CLEAR) {
+				priv->params->flags &= ~PIV_SM_GET_DATA_IN_CLEAR;
 				r = SC_ERROR_SM_NOT_APPLIED;
 			}
 			break;
@@ -2214,6 +2219,7 @@ sm_nist_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 			break;
 		case 0x24: /* CHANGE REFERENCE DATA */
 			break;
+		case 0x86: /* GENERAL AUTHENTICATE */
 		case 0x87: /* GENERAL AUTHENTICATE */
 			break;
 		case 0xC0: /* GET RESPONSE */
