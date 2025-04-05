@@ -1612,6 +1612,7 @@ eac_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	u8 *p = NULL;
 	int r;
 	struct eac_sm_ctx *eacsmctx;
+	size_t mac_data_len;
 
 	if (!card || !ctx || !ctx->priv_data || !macdata) {
 		r = SC_ERROR_INVALID_ARGUMENTS;
@@ -1619,7 +1620,14 @@ eac_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 	eacsmctx = ctx->priv_data;
 
-	inbuf = BUF_MEM_create_init(data, datalen);
+	r = iso_add_80_pad(data, datalen, &p);
+	if (r < 0) {
+		goto err;
+	}
+	mac_data_len = r;
+
+	inbuf = BUF_MEM_create_init(p, mac_data_len);
+	free(p);
 	if (!inbuf) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
@@ -1655,11 +1663,13 @@ err:
 static int
 eac_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *mac, size_t maclen,
-		const u8 *macdata, size_t macdatalen)
+		const u8 *data, size_t datalen)
 {
 	int r;
 	BUF_MEM *inbuf = NULL, *my_mac = NULL;
 	struct eac_sm_ctx *eacsmctx;
+	u8 *macdata = NULL;
+	size_t macdatalen;
 
 	if (!card || !ctx || !ctx->priv_data) {
 		r = SC_ERROR_INVALID_ARGUMENTS;
@@ -1667,7 +1677,14 @@ eac_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 	eacsmctx = ctx->priv_data;
 
+	r = iso_add_80_pad(data, datalen, &macdata);
+	if (r < 0) {
+		goto err;
+	}
+	macdatalen = r;
+
 	inbuf = BUF_MEM_create_init(macdata, macdatalen);
+	free(macdata);
 	if (!inbuf) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;

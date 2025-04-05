@@ -256,9 +256,17 @@ AC_ARG_ENABLE(
 
 AC_ARG_ENABLE(
 	[piv-sm],
-	[AS_HELP_STRING([--enable-piv-sm],[enable SM in PIV card driver linkage @<:@disabled@:>@])],
+	[AS_HELP_STRING([--disable-piv-sm],[disable SM in PIV card driver either SM in card driver or sm/sm_nist @<:@enabled@:>@])],
 	,
-	[enable_piv_sm="no"]
+	[enable_piv_sm="yes"]
+)
+
+# WIP change to force use of sm-nist for PIV SM as default PIV SM
+AC_ARG_ENABLE(
+	[sm-nist],
+	[AS_HELP_STRING([--disable-sm-nist],[enable NIST SM sm/sm_nist and use in card drivers @<:@enabled@:>@])],
+	,
+	[enable_sm_nist="yes"]
 )
 
 AC_ARG_ENABLE(
@@ -865,9 +873,13 @@ fi
 
 if  test "${enable_piv_sm}" = "yes"; then
 	if test "${enable_sm}" = "yes" -a "${enable_openssl}" = "yes" ; then
-		AC_DEFINE([ENABLE_PIV_SM], [1], [Enable PIV SM])
+		AC_DEFINE([ENABLE_PIV_SM], [1], [Enable PIV SM either SM in card driver or sm/sm_nist])
+				# WIP enable_sm_nist will become the default
+		if  test "${enable_sm_nist}" = "yes"; then
+			AC_DEFINE([ENABLE_SM_NIST], [1], [Enable SM_NIST sm/sm_init])
+		fi
 	else
-		AC_MSG_ERROR([ENABLE_PIV_SM requires ENABLE_SM and ENABLE_OPENSSL])
+		AC_MSG_WARN([ENABLE_PIV_SM requires ENABLE_SM and ENABLE_OPENSSL])
 	fi
 fi
 
@@ -1245,6 +1257,7 @@ SM support:              ${enable_sm}
 SM default module:       ${DEFAULT_SM_MODULE}
 SM default path:         $(eval eval eval echo "${DEFAULT_SM_MODULE_PATH}")
 PIV SM support:          ${enable_piv_sm}
+PIV SM use sm-nist:	 ${enable_sm_nist}
 DNIe UI support:         ${enable_dnie_ui}
 Notification support:    ${enable_notify}
 Code coverage:           ${enable_code_coverage}
