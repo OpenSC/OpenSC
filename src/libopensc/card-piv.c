@@ -61,15 +61,17 @@
 #if defined(ENABLE_PIV_SM)
 	#if defined(ENABLE_SM_NIST)
 		#define PIV_SM_NIST
+		#include "sm/sm-nist.h"
 	#else
 		#define PIV_SM_LOCAL
+		#include "sm/sm-nist.h"
 	#endif
 #endif
 		
 
-#ifdef PIV_SM_NIST
-#include "sm/sm-nist.h"
-#endif /* PIV_SM_NIST */
+//#ifdef PIV_SM_NIST
+//#include "sm/sm-nist.h"
+//#endif /* PIV_SM_NIST */
 
 #ifdef PIV_SM_LOCAL
 #include <openssl/cmac.h>
@@ -454,12 +456,12 @@ typedef struct piv_private_data {
 #endif /* PIV_SM_LOCAL */
 	unsigned long  sm_flags; /* share with sm-nist */
 	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
-	u8 *cert_signer_der;
+	u8 *signer_cert_der;
 	size_t cert_signer_len;
 	u8 *sm_in_cvc_der;
 	size_t sm_in_cvc_len;
-#ifdef PIV_SM_NIST
-//TODO 
+#ifdef ENABLE_PIV_SM
+	sm_nist_params_t sm_params;
 #endif  /* PIV_SM_NIST */
 } piv_private_data_t;
 
@@ -578,7 +580,7 @@ static const struct sc_atr_table piv_atrs[] = {
 	 * matches ATR first. MyEID's intent is to use the card-myeid.c and only provide the PIV applet to be used
 	 * where MyEID sodtware will not run, So these changes to card-piv.c are more for testing their PIV changes.
 	 * To use PIV driver, set env OPENSC_DRIVER="PIV_II" or change driver order in opensc.conf.
-	 * See https://github.com/OpenSC/OpenSC/wiki/Aventra-MyEID-PKI-card for initalizing cards.
+	 * See https://github.com/OpenSC/OpenSC/wiki/Aventra-MyEID-PKI-card for initializing cards.
 	 * SC_CARD_TYPE_PIV_II_MYEID
 	 */
 
@@ -1183,11 +1185,11 @@ static int piv_get_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apd
 		case 0xCB: /* GET_DATA */
 			/* If not contactless, could read in clear */
 			/* Discovery object never has PIV_SM_GET_DATA_IN_CLEAR set */
-			sc_log(card->ctx,"init_flags:0x%8.8x sm_flags:0x%8.8lx",priv->init_flags, priv->sm_flags);
+			sc_log(card->ctx,"init_flags:0x%8.8x sm_flags:0x%8.8lx",priv->init_flags, priv->sm_params.flags);
 			if (!(priv->init_flags & PIV_INIT_CONTACTLESS)
 					&& !(priv->init_flags & PIV_INIT_IN_READER_LOCK_OBTAINED)
-					&& (priv->sm_flags & PIV_SM_GET_DATA_IN_CLEAR)) {
-					priv->sm_flags &= ~PIV_SM_GET_DATA_IN_CLEAR;
+					&& (priv->sm_params.flags & PIV_SM_GET_DATA_IN_CLEAR)) {
+					priv->sm_params.flags &= ~PIV_SM_GET_DATA_IN_CLEAR;
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_SM_NOT_APPLIED);
 			}
 			break;
@@ -1520,12 +1522,12 @@ static int piv_sm_close(sc_card_t *card)
 	piv_private_data_t * priv = PIV_DATA(card);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx, "priv->sm_flags: 0x%8.8lu", priv->sm_flags);
+	sc_log(card->ctx, "priv->sm_params.flags: 0x%8.8lu", priv->sm_flags);
 
 	/* sm.c tries to restart sm. Will defer */
-	if ((priv->sm_flags & PIV_SM_FLAGS_SM_IS_ACTIVE)) {
-		priv->sm_flags |= PIV_SM_FLAGS_DEFER_OPEN;
-		priv->sm_flags &= ~PIV_SM_FLAGS_SM_IS_ACTIVE;
+	if ((priv->sm_params.flags & PIV_SM_FLAGS_SM_IS_ACTIVE)) {
+		priv->sm_params.flags |= PIV_SM_FLAGS_DEFER_OPEN;
+		priv->sm_params.flags &= ~PIV_SM_FLAGS_SM_IS_ACTIVE;
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -1688,7 +1690,7 @@ static int piv_load_options(sc_card_t *card)
 	if ((option = getenv("PIV_PAIRING_CODE")) != NULL) {
 		sc_log(card->ctx,"getenv(\"PIV_PAIRING_CODE\") found");
 		if (piv_parse_pairing_code(card, option) == SC_SUCCESS) {
-			memcpy(priv->pairing_code, option, PIV_PAIRING_CODE_LEN);
+			memcpy(priv->sm_params.pairing_code, option, PIV_PAIRING_CODE_LEN);
 			piv_pairing_code_found = 1;
 		}
 	}
@@ -1696,11 +1698,11 @@ static int piv_load_options(sc_card_t *card)
 	if ((option = getenv("PIV_USE_SM"))!= NULL) {
 		sc_log(card->ctx,"getenv(\"PIV_USE_SM\")=\"%s\"", option);
 		if (!strcmp(option, "never")) {
-			priv->sm_flags |= PIV_SM_FLAGS_NEVER;
+			priv->sm_params.flags |= PIV_SM_FLAGS_NEVER;
 			piv_use_sm_found = 1;
 		}
 		else if (!strcmp(option, "always")) {
-			priv->sm_flags |= PIV_SM_FLAGS_ALWAYS;
+			priv->sm_params.flags |= PIV_SM_FLAGS_ALWAYS;
 			piv_use_sm_found = 1;
 		}
 		else {
@@ -1740,10 +1742,10 @@ static int piv_load_options(sc_card_t *card)
 					/* no new flags */
 				}
 				else if (!strcmp(option, "never")) {
-					priv->sm_flags |= PIV_SM_FLAGS_NEVER;
+					priv->sm_params.flags |= PIV_SM_FLAGS_NEVER;
 				}
 				else if (!strcmp(option, "always")) {
-					priv->sm_flags |= PIV_SM_FLAGS_ALWAYS;
+					priv->sm_params.flags |= PIV_SM_FLAGS_ALWAYS;
 				}
 				else {
 					sc_log(card->ctx,"Invalid piv_use_sm: \"%s\"", option);
@@ -1754,7 +1756,7 @@ static int piv_load_options(sc_card_t *card)
 			if (piv_pairing_code_found == 0) {
 				option = scconf_get_str(block, "piv_pairing_code", NULL);
 				if (option && piv_parse_pairing_code(card, option) == SC_SUCCESS) {
-					memcpy(priv->pairing_code, option, PIV_PAIRING_CODE_LEN);
+					memcpy(priv->sm_params.pairing_code, option, PIV_PAIRING_CODE_LEN);
 				}
 			}
 #endif /* defined(ENABLE_PIV_SM) */
@@ -1979,8 +1981,8 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	u8 *cert_blob = NULL; /* do not free */
 	size_t cert_bloblen = 0;
 
-	u8 *rbuf; /* do not free*/
-	size_t rbuflen;
+//	u8 *rbuf; /* do not free*/
+//	size_t rbuflen;
 	X509 *cert = NULL;
 	EVP_PKEY *cert_pkey =  NULL; /* do not free */
 	EVP_PKEY *in_cvc_pkey = NULL;
@@ -2007,10 +2009,10 @@ static int piv_sm_verify_certs(struct sc_card *card)
 
 	/*
 	 * Get the PIV_OBJ_SM_CERT_SIGNER and optional sm_in_cvc in cache
-	 * both are in same object. Rbuf, and rbuflen are needed but not used here
+	 * both are in same object. Do not need the object, just the cert in it
 	 * sm_cvc and sm_in_cvc both have EC_keys sm_in_cvc may have RSA signature
 	 */
-	r = piv_get_cached_data(card, PIV_OBJ_SM_CERT_SIGNER, &rbuf, &rbuflen);
+	r = piv_get_cached_data(card, PIV_OBJ_SM_CERT_SIGNER, NULL, NULL);
 	if (r < 0) {
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
@@ -2021,7 +2023,7 @@ static int piv_sm_verify_certs(struct sc_card *card)
 		goto err;
 	}
 
-	priv->sm_flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
+	priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
 
 	/* get PIV_OBJ_SM_CERT_SIGNER cert DER  from cache */
 	if (priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].flags & PIV_OBJ_CACHE_COMPRESSED) {
@@ -2059,7 +2061,7 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	}
 
 	/* if intermediate sm_in_cvc present, cert signed it and sm_cvc is signed by sm_in_cvc */
-	if (priv->sm_flags & PIV_SM_FLAGS_SM_IN_CVC_PRESENT) {
+	if (priv->sm_params.flags & PIV_SM_FLAGS_SM_IN_CVC_PRESENT) {
 		r = piv_sm_verify_sig(card, cs->kdf_md(), cert_pkey,
 				priv->sm_in_cvc.body, priv->sm_in_cvc.bodylen,
 				priv->sm_in_cvc.signature,priv->sm_in_cvc.signaturelen);
@@ -2248,7 +2250,7 @@ static int piv_sm_open(struct sc_card *card)
 	 * some other application without getting anything done or in
 	 * a loop, each trying to reestablish a SM session and run command.
 	 */
-	if (!(priv->sm_flags & PIV_SM_FLAGS_DEFER_OPEN)) {
+	if (!(priv->sm_params.flags & PIV_SM_FLAGS_DEFER_OPEN)) {
 		LOG_FUNC_RETURN(card->ctx,SC_ERROR_NOT_ALLOWED);
 	}
 	if (cs == NULL)
@@ -2417,7 +2419,7 @@ static int piv_sm_open(struct sc_card *card)
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
-		priv->sm_flags |= PIV_SM_FLAGS_SM_CVC_PRESENT;
+		priv->sm_params.flags |= PIV_SM_FLAGS_SM_CVC_PRESENT;
 	}
 
 	/* Step H5 Verify Cicc CVC and pubkey */
@@ -2699,11 +2701,11 @@ static int piv_sm_open(struct sc_card *card)
 	}
 
 	r = 0;
-	priv->sm_flags |= PIV_SM_FLAGS_SM_IS_ACTIVE;
+	priv->sm_params.flags |= PIV_SM_FLAGS_SM_IS_ACTIVE;
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 
 err:
-	priv->sm_flags &= ~PIV_SM_FLAGS_DEFER_OPEN;
+	priv->sm_params.flags &= ~PIV_SM_FLAGS_DEFER_OPEN;
 	if (r != 0) {
 		memset(&priv->sm_session, 0, sizeof(piv_sm_session_t));
 		sc_log_openssl(card->ctx); /* catch any not logged above */
@@ -3150,21 +3152,21 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	 * i.e. no interference from other applications
 	 */
 	sc_log(card->ctx,"enumtag:%d sm_ctx.sm_mode:%d piv_objects[enumtag].flags:0x%8.8x sm_flags:0x%8.8lx it_flags:0x%8.8x",
-			enumtag, card->sm_ctx.sm_mode, piv_objects[enumtag].flags, priv->sm_flags, priv->init_flags);
-	if (priv->sm_flags & PIV_SM_FLAGS_SM_IS_ACTIVE
+			enumtag, card->sm_ctx.sm_mode, piv_objects[enumtag].flags, priv->sm_params.flags, priv->init_flags);
+	if (priv->sm_params.flags & PIV_SM_FLAGS_SM_IS_ACTIVE
 			&& enumtag != PIV_OBJ_DISCOVERY
 			&& card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
 			&& !(piv_objects[enumtag].flags & PIV_OBJECT_NEEDS_PIN)
-			&& !(priv->sm_flags & (PIV_SM_FLAGS_NEVER | PIV_SM_FLAGS_ALWAYS))
+			&& !(priv->sm_params.flags & (PIV_SM_FLAGS_NEVER | PIV_SM_FLAGS_ALWAYS))
 			&& !(priv->init_flags & ( PIV_INIT_CONTACTLESS | PIV_INIT_IN_READER_LOCK_OBTAINED))) {
 			sc_log(card->ctx,"Set PIV_SM_GET_DATA_IN_CLEAR");
-		priv->sm_flags |= PIV_SM_GET_DATA_IN_CLEAR;
+		priv->sm_params.flags |= PIV_SM_GET_DATA_IN_CLEAR;
 	}
 
 #endif /* defined(ENABLE_PIV_SM) */
 	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, *buf, *buf_len);
 #if defined(ENABLE_PIV_SM)
-	priv->sm_flags &= ~PIV_SM_GET_DATA_IN_CLEAR; /* reset */
+	priv->sm_params.flags &= ~PIV_SM_GET_DATA_IN_CLEAR; /* reset */
 #endif /* defined(ENABLE_PIV_SM) */
 	if (r > 0) {
 		int r_tag;
@@ -3240,9 +3242,15 @@ piv_get_cached_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 			sc_log(card->ctx, "#%d found but len=0", enumtag);
 			goto err;
 		}
-		*buf = priv->obj_cache[enumtag].obj_data;
-		*buf_len = priv->obj_cache[enumtag].obj_len;
-		r = (int)*buf_len;
+		/* Caller may not need the object */
+		if (buf) {
+			*buf = priv->obj_cache[enumtag].obj_data;
+		}
+		if (buf_len) {
+			*buf_len = priv->obj_cache[enumtag].obj_len;
+		}
+
+		r = (int)priv->obj_cache[enumtag].obj_len;
 		goto ok;
 	}
 
@@ -3267,8 +3275,10 @@ piv_get_cached_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		priv->obj_cache[enumtag].flags |= PIV_OBJ_CACHE_VALID;
 		priv->obj_cache[enumtag].obj_len = r;
 		priv->obj_cache[enumtag].obj_data = rbuf;
-		*buf = rbuf;
-		*buf_len = r;
+		if (buf)
+			*buf = rbuf;
+		if (buf_len)
+			*buf_len = r;
 
 		sc_log(card->ctx,
 				"added #%d  %p:%"SC_FORMAT_LEN_SIZE_T"u %p:%"SC_FORMAT_LEN_SIZE_T"u",
@@ -3359,23 +3369,24 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 		priv->obj_cache[enumtag].internal_obj_len = taglen;
 
 #ifdef PIV_SM_NIST
-		/* save for sm_nist early before pkcs15 is active */
+		/* save priv->sm_params.signer_cert_der for sm_nist early before pkcs15 is active */
 		if (piv_objects[enumtag].enumtag == PIV_OBJ_SM_CERT_SIGNER) {
-			if (priv->cert_signer_der) { /* free if already set */
-				free(priv->cert_signer_der);
-				priv->cert_signer_len = 0;
-				priv->sm_flags &= ~PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
+			if (priv->sm_params.signer_cert_der) { /* free if already set */
+				free(priv->sm_params.signer_cert_der);
+				priv->sm_params.signer_cert_der_len = 0;
+				priv->sm_params.flags &= ~PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
 			}
 
-			priv->cert_signer_der = malloc(taglen);
-			if (!priv->cert_signer_der)
+			priv->sm_params.signer_cert_der = malloc(taglen);
+			if (!priv->sm_params.signer_cert_der)
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
-			memcpy(priv->cert_signer_der, tag, taglen);
-			priv->cert_signer_len = taglen;
+			memcpy(priv->sm_params.signer_cert_der, tag, taglen);
+			priv->sm_params.signer_cert_der_len = taglen;
+			priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
 
 			if (compressed)
-				priv->sm_flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
+				priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
 		}
 #endif /* PIV_SM_NIST */
 
@@ -3399,20 +3410,20 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 				}
 #endif /* PIV_SM_LOCAL */
 				/* set for both local or sm-nist */
-				priv->sm_flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
+				priv->sm_params.flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
 #ifdef PIV_SM_NIST
 				/* save for sm-nist */
-				if (priv->sm_in_cvc_der) {
-					free(priv->sm_in_cvc_der);
-					priv->sm_in_cvc_len = 0;
+				if (priv->sm_params.sm_in_cvc_der) {
+					free(priv->sm_params.sm_in_cvc_der);
+					priv->sm_params.sm_in_cvc_der_len = 0;
 				}
 
-				priv->sm_in_cvc_der = malloc(cvc_len);
-				if (!priv->sm_in_cvc_der)
+				priv->sm_params.sm_in_cvc_der = malloc(cvc_len);
+				if (!priv->sm_params.sm_in_cvc_der)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
-				memcpy(priv->sm_in_cvc_der, cvc_start, cvc_len);
-				priv->sm_in_cvc_len = cvc_len;
+				memcpy(priv->sm_params.sm_in_cvc_der, cvc_start, cvc_len);
+				priv->sm_params.sm_in_cvc_der_len = cvc_len;
 #endif /* PIV_SM_NIST */
 			}
 		}
@@ -5423,7 +5434,9 @@ piv_finish(sc_card_t *card)
 		piv_clear_sm_session(&priv->sm_session);
 #endif /* PIV_SM_LOCAL */
 
-		free(priv->cert_signer_der);
+#ifdef  ENABLE_PIV_SM
+		free(priv->sm_params.signer_cert_der);
+#endif /* ENABLE_PIV_SM */
 		free(priv);
 		card->drv_data = NULL; /* priv */
 	}
@@ -5973,7 +5986,7 @@ static int piv_init(sc_card_t *card)
 		/* Only piv_init and piv_reader_lock_obtained should call piv_sm_open */
 
 		/* If user said PIV_SM_FLAGS_NEVER, dont start SM; implies limited contatless access */
-		if (priv->sm_flags & PIV_SM_FLAGS_NEVER) {
+		if (priv->sm_params.flags & PIV_SM_FLAGS_NEVER) {
 			sc_log(card->ctx,"User has requested PIV_SM_FLAGS_NEVER");
 			r = SC_SUCCESS; /* Users choice */
 
@@ -5984,43 +5997,55 @@ static int piv_init(sc_card_t *card)
 
 		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS)
 				&& !(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC)
-				&& (priv->pairing_code[0] == 0x00)) {
+				&& (priv->sm_params.pairing_code[0] == 0x00)) {
 			sc_log(card->ctx,"Contactless, pairing_code required and no pairing code");
 			r = SC_ERROR_PIN_CODE_INCORRECT; /* User should know they need to set pairing code */
 
 		} else {
-			priv->sm_flags |= PIV_SM_FLAGS_DEFER_OPEN; /* tell priv_sm_open, OK to open */
+			priv->sm_params.flags |= PIV_SM_FLAGS_DEFER_OPEN; /* tell priv_sm_open, OK to open */
 #ifdef PIV_SM_LOCAL
 			r = piv_sm_open(card);
 			sc_log(card->ctx,"piv_sm_open returned:%d", r);
 #endif /* PIV_SM_LOCAL */
 
 #ifdef PIV_SM_NIST
-		{
-			u8 *signer_cert = 0;
-			size_t signer_cert_len = 0;
-//			size_t sm_in_len = 0;
-
 			if (priv->init_flags & PIV_INIT_CONTACTLESS)
-				priv->sm_flags |= PIV_SM_CONTACTLESS;
+				priv->sm_params.flags |= PIV_SM_CONTACTLESS;
 
-			/* force reading of signer cert now. Either works and saves addresses or not */
-			r = piv_get_cached_data(card, PIV_OBJ_SM_CERT_SIGNER, &signer_cert, &signer_cert_len);
-			r = piv_cache_internal_data(card,PIV_OBJ_SM_CERT_SIGNER);
+			/*
+			 * Get the PIV_OBJ_SM_CERT_SIGNER and optional sm_in_cvc in cache
+			 * both are in same object. Do not need the object, just the cert in it
+			 * sm_cvc and sm_in_cvc both have EC_keys sm_in_cvc may have RSA signature
+			 * if not found, sm_nist_start will provide error messages 
+			 */
+			r = piv_get_cached_data(card, PIV_OBJ_SM_CERT_SIGNER, NULL, NULL);
+			if (r > 0) {
+				r = piv_cache_internal_data(card,PIV_OBJ_SM_CERT_SIGNER);
+				if (r > 0 &&
+						priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data &&
+						priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len &&
+						((priv->sm_params.signer_cert_der = malloc(priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len)))) {
+					memcpy(priv->sm_params.signer_cert_der,
+							priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data,
+							priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len);
+					priv->sm_params.signer_cert_der_len = priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len;
+					priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
+					if (priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].flags & PIV_OBJ_CACHE_COMPRESSED) {
+						priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
+					}
+				}
+			}
+			/* TODO did we have a sm_in_cvc?  Needed if Signing cert was using RSA */
 
-			r = sm_nist_start(card, priv->cert_signer_der, priv->cert_signer_len,
-					priv->sm_in_cvc_der, priv->sm_in_cvc_len,
-					&priv->sm_flags,
-					priv->pin_policy,
-					priv->pairing_code,
-					priv->csID);
+			priv->sm_params.csID = priv->csID;
+
+			r = sm_nist_start(card, &priv->sm_params);
 			sc_log(card->ctx,"sm_nist_start returned:%d", r);
-		}
 #endif /* PIV_SM_NIST */
 		}
 
 		/* If failed, and user said PIV_SM_FLAGS_ALWAYS quit */
-		if (priv->sm_flags & PIV_SM_FLAGS_ALWAYS && r < 0) {
+		if (priv->sm_params.flags & PIV_SM_FLAGS_ALWAYS && r < 0) {
 			sc_log(card->ctx,"User has requested PIV_SM_FLAGS_ALWAYS, SM has failed to start, don't use the card");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 		}
@@ -6407,7 +6432,7 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		 * sm.c will close the SM connectrion, and set defer
 		 * TODO may be with reset?
 		 */
-		 if (was_reset == 0 && (r == SC_ERROR_SM_INVALID_SESSION_KEY || priv->sm_flags & PIV_SM_FLAGS_DEFER_OPEN)) {
+		 if (was_reset == 0 && (r == SC_ERROR_SM_INVALID_SESSION_KEY || priv->sm_params.flags & PIV_SM_FLAGS_DEFER_OPEN)) {
 			sc_log(card->ctx,"SC_ERROR_SM_INVALID_SESSION_KEY || PIV_SM_FLAGS_DEFER_OPEN");
 #ifdef PIV_SM_LOCAL
 			piv_sm_open(card);
