@@ -879,7 +879,7 @@ if  test "${enable_piv_sm}" = "yes"; then
 			AC_DEFINE([ENABLE_SM_NIST], [1], [Enable SM_NIST sm/sm_init])
 		fi
 	else
-		AC_MSG_ERROR([ENABLE_PIV_SM requires ENABLE_SM and ENABLE_OPENSSL])
+		AC_MSG_WARN([ENABLE_PIV_SM requires ENABLE_SM and ENABLE_OPENSSL])
 	fi
 fi
 
