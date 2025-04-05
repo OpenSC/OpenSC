@@ -39,7 +39,7 @@
 
 #define PIV_PAIRING_CODE_LEN	8
 
-/* for sm_flags  must match flag in card-piv.c*/
+/* sm_flags must match flag in card-piv.c*/
 
 #define PIV_SM_FLAGS_SM_CERT_SIGNER_VERIFIED	0x00000001lu
 #define PIV_SM_FLAGS_SM_CVC_VERIFIED		0x00000002lu
@@ -63,14 +63,27 @@
 extern "C" {
 #endif
 
+/*
+ * Parameters shared between card driver and sm_nist
+ * Owned by card driver and cleared by sc_nist_parms_cleanup
+ */
+
+typedef struct sm_nist_params {
+	unsigned long flags;  /* PIV_SM_* */
+	u8 *signer_cert_der;
+	size_t signer_cert_der_len;
+	u8 *sm_in_cvc_der;
+	size_t sm_in_cvc_der_len;
+	unsigned long pin_policy;
+	u8 pairing_code[PIV_PAIRING_CODE_LEN];
+	u8 csID; /* 0x27 or 0x2E */
+}  sm_nist_params_t;
+
 int
-sm_nist_start(sc_card_t *card,
-		u8 *signer_cert, size_t signer_cert_len,
-		u8 *sm_in_cvc, size_t sm_in_len,
-		unsigned long *sm_flags, /* shared with caller */
-		unsigned long pin_policy,
-		u8 pairing_code[PIV_PAIRING_CODE_LEN],
-		u8 cipher_suite_id);
+sm_nist_start(sc_card_t *card, sm_nist_params_t * params);
+
+int
+sm_nist_params_cleanup(sm_nist_params_t * params);
 
 #ifdef  __cplusplus
 }
