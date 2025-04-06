@@ -1615,7 +1615,7 @@ static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen,
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* If already read and matches previous version return SC_SUCCESS */
-	if (cvc->der.value && (cvc->der.len == *buflen) && buf && *buf
+	if (cvc->der.value && (cvc->der.len == *buflen)
 			&& (memcmp(cvc->der.value, *buf, *buflen) == 0))
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 
