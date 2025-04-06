@@ -1620,7 +1620,7 @@ eac_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 	eacsmctx = ctx->priv_data;
 
-	r = iso_add_80_pad(ctx, data, datalen, &p);
+	r = iso_add_80_pad(data, datalen, ctx->block_length, &p);
 	if (r < 0) {
 		goto err;
 	}
@@ -1677,7 +1677,7 @@ eac_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 	eacsmctx = ctx->priv_data;
 
-	r = iso_add_80_pad(ctx, data, datalen, &macdata);
+	r = iso_add_80_pad(data, datalen, ctx->block_length, &macdata);
 	if (r < 0) {
 		goto err;
 	}
