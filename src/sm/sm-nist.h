@@ -33,31 +33,31 @@
 #ifdef ENABLE_ZLIB
 #include "libopensc/compression.h"
 #endif
-#include "libopensc/opensc.h"
 #include "libopensc/internal.h"
+#include "libopensc/opensc.h"
 #include "sm/sm-iso.h"
 
-#define PIV_PAIRING_CODE_LEN	8
+#define PIV_PAIRING_CODE_LEN 8
 
 /* sm_flags must match flag in card-piv.c*/
 
-#define PIV_SM_FLAGS_SM_CERT_SIGNER_VERIFIED	0x00000001lu
-#define PIV_SM_FLAGS_SM_CVC_VERIFIED		0x00000002lu
-#define PIV_SM_FLAGS_SM_IN_CVC_VERIFIED		0x00000004lu
-#define PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT	0x00000010lu
-#define PIV_SM_FLAGS_SM_CVC_PRESENT		0x00000020lu
-#define PIV_SM_FLAGS_SM_IN_CVC_PRESENT		0x00000040lu
-#define PIV_SM_FLAGS_SM_IS_ACTIVE		0x00000080lu	/* SM has been started */
-	/* if card supports SP800-73-4 SM: */
-#define PIV_SM_FLAGS_NEVER			0x00000100lu	/* Don't use SM even if card support it */
-								/* Default is use if card supports it */
-								/* will use VCI if card supports it for contactless */
-#define PIV_SM_FLAGS_ALWAYS			0x00000200lu	/* Use SM or quit, VCI requires SM */
-#define PIV_SM_FLAGS_DEFER_OPEN			0x00001000lu	/* call sm_open from reader_lock_obtained */
-#define PIV_SM_VCI_ACTIVE			0x00002000lu    /* VCI is active */
-#define PIV_SM_GET_DATA_IN_CLEAR		0x00004000lu	/* OK to do this GET DATA in the clear */
-#define PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED	0x00008000lu	/* compressed */
-#define PIV_SM_CONTACTLESS			0x00010000lu	/* contacless */
+#define PIV_SM_FLAGS_SM_CERT_SIGNER_VERIFIED 0x00000001lu
+#define PIV_SM_FLAGS_SM_CVC_VERIFIED	     0x00000002lu
+#define PIV_SM_FLAGS_SM_IN_CVC_VERIFIED	     0x00000004lu
+#define PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT  0x00000010lu
+#define PIV_SM_FLAGS_SM_CVC_PRESENT	     0x00000020lu
+#define PIV_SM_FLAGS_SM_IN_CVC_PRESENT	     0x00000040lu
+#define PIV_SM_FLAGS_SM_IS_ACTIVE	     0x00000080lu /* SM has been started */
+							  /* if card supports SP800-73-4 SM: */
+#define PIV_SM_FLAGS_NEVER 0x00000100lu			  /* Don't use SM even if card support it */
+/* Default is use if card supports it */
+/* will use VCI if card supports it for contactless */
+#define PIV_SM_FLAGS_ALWAYS		       0x00000200lu /* Use SM or quit, VCI requires SM */
+#define PIV_SM_FLAGS_DEFER_OPEN		       0x00001000lu /* call sm_open from reader_lock_obtained */
+#define PIV_SM_VCI_ACTIVE		       0x00002000lu /* VCI is active */
+#define PIV_SM_GET_DATA_IN_CLEAR	       0x00004000lu /* OK to do this GET DATA in the clear */
+#define PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED 0x00008000lu /* compressed */
+#define PIV_SM_CONTACTLESS		       0x00010000lu /* contacless */
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,7 +69,7 @@ extern "C" {
  */
 
 typedef struct sm_nist_params {
-	unsigned long flags;  /* PIV_SM_* */
+	unsigned long flags; /* PIV_SM_* */
 	u8 *signer_cert_der;
 	size_t signer_cert_der_len;
 	u8 *sm_in_cvc_der;
@@ -77,15 +77,15 @@ typedef struct sm_nist_params {
 	unsigned long pin_policy;
 	u8 pairing_code[PIV_PAIRING_CODE_LEN];
 	u8 csID; /* 0x27 or 0x2E */
-}  sm_nist_params_t;
+} sm_nist_params_t;
 
 int
-sm_nist_start(sc_card_t *card, sm_nist_params_t * params);
+sm_nist_start(sc_card_t *card, sm_nist_params_t *params);
 
 int
-sm_nist_params_cleanup(sm_nist_params_t * params);
+sm_nist_params_cleanup(sm_nist_params_t *params);
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 #endif
