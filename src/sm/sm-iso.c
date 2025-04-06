@@ -355,8 +355,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 			if (ctx->padding_tag == 1) {
 				r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
 						sm_capdu + 1, &fdata, &fdata_len);
-			} else
-			if (apdu->ins & 1) {
+			} else if (apdu->ins & 1) {
 				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
 						sm_capdu + 0, &fdata, &fdata_len);
 			} else {
@@ -385,8 +384,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 			if (ctx->padding_tag == 1) {
 				r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
 						sm_capdu + 1, &fdata, &fdata_len);
-			} else
-			if (apdu->ins & 1) {
+			} else if (apdu->ins & 1) {
 				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
 						sm_capdu + 0, &fdata, &fdata_len);
 			} else {
@@ -420,8 +418,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 			if (ctx->padding_tag == 1) {
 				r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
 						sm_capdu + 1, &fdata, &fdata_len);
-			} else
-			if (apdu->ins & 1) {
+			} else if (apdu->ins & 1) {
 				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
 						sm_capdu + 0, &fdata, &fdata_len);
 			} else {
@@ -504,7 +501,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 			if (sm_apdu->resplen >= SC_MAX_APDU_RESP_SIZE)
 				sm_apdu->resplen++; /* one more extra tag length byte */
 		}
-	
+
 		if (sm_apdu->resplen > SC_MAX_APDU_RESP_SIZE)
 			sm_apdu->le = SC_MAX_APDU_RESP_SIZE;
 		else
@@ -543,7 +540,7 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	struct sc_asn1_entry my_sm_rapdu[5];
 	u8 sw[2], mac[8], fdata[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t sw_len = sizeof sw, mac_len = sizeof mac, mac_data_len, fdata_len = sizeof fdata,
-		   buf_len, fdata_offset = 0;
+	       buf_len, fdata_offset = 0;
 	const u8 *buf;
 	u8 *data = NULL, *mac_data = NULL;
 

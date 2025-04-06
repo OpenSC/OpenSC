@@ -35,9 +35,9 @@
  * and !ENABLE_PIV_SM will mean do not build with any SM
  */
 #if defined(ENABLE_PIV_SM)
-        #if defined(ENABLE_SM_NIST)
-                #define PIV_SM_NIST
-        #endif
+#if defined(ENABLE_SM_NIST)
+#define PIV_SM_NIST
+#endif
 #endif
 
 #ifdef PIV_SM_NIST
@@ -107,7 +107,7 @@ typedef struct myeid_private_data {
 	/* PSO for AES/DES need algo+flags from sec env */
 	unsigned long algorithm, algorithm_flags;
 #ifdef PIV_SM_NIST
-	sm_nist_params_t  sm_params;
+	sm_nist_params_t sm_params;
 #endif /* PIV_SM_NIST */
 } myeid_private_data_t;
 
@@ -138,21 +138,26 @@ static int myeid_get_card_caps(struct sc_card *card, myeid_card_caps_t* card_cap
 
 #ifdef PIV_SM_NIST
 /* TODO  Proof of concept  */
-static int myeid_setup_sm_nist(struct sc_card *card) {
+static int
+myeid_setup_sm_nist(struct sc_card *card)
+{
 
-	myeid_private_data_t *priv = (myeid_private_data_t *) card->drv_data;
+	myeid_private_data_t *priv = (myeid_private_data_t *)card->drv_data;
 	struct sc_file *file = NULL;
-	sc_path_t path_cert_signer = {{0x3F, 0x00, 0x50, 0x15, 0x5C, 0x00}, 6, 0, 0, SC_PATH_TYPE_PATH, {{0}, 0}};
-//	sc_path_t path_cvc_27  = {"\x3F\x00\x50\x15\x5C\x2C", 6, 0, 0, SC_PATH_TYPE_PATH, {{0}}};
-//	sc_path_t path_cvc_2E  = {"\x3F\x00\x50\x15\x5C\x2E", 6, 0, 0, SC_PATH_TYPE_PATH, {{0}}};
+	sc_path_t path_cert_signer = {
+			{0x3F, 0x00, 0x50, 0x15, 0x5C, 0x00},
+			6, 0, 0, SC_PATH_TYPE_PATH, {{0}, 0}
+	};
+	//	sc_path_t path_cvc_27  = {"\x3F\x00\x50\x15\x5C\x2C", 6, 0, 0, SC_PATH_TYPE_PATH, {{0}}};
+	//	sc_path_t path_cvc_2E  = {"\x3F\x00\x50\x15\x5C\x2E", 6, 0, 0, SC_PATH_TYPE_PATH, {{0}}};
 	int r = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
-	
+
 	/*
 	 * Assume:
 	 * cert_signer can be read from 3F00 5015 5C00
-	 * There is no sm_in_cvc at this point 
+	 * There is no sm_in_cvc at this point
 	 * CVC for '27' is at 3F00 5015 5C27
 	 * CVC for '2E' is at 3F00 5015 5C2E
 	 * and can be read using select file and read_binary
@@ -180,7 +185,7 @@ static int myeid_setup_sm_nist(struct sc_card *card) {
 	priv->sm_params.csID = 0x27;
 
 	r = sm_nist_start(card, &priv->sm_params);
-	
+
 	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "sm)nist_start failed");
 
 err:
@@ -308,9 +313,9 @@ static int myeid_init(struct sc_card *card)
 	flags |= SC_ALGORITHM_RSA_HASH_NONE;
 
 	/*  4.9.10 do no support 512, 768, 1024, 1536 */
-	if (card->version.fw_major < 49 ) {
-		_sc_card_add_rsa_alg(card,  512, flags, 0);
-		_sc_card_add_rsa_alg(card,  768, flags, 0);
+	if (card->version.fw_major < 49) {
+		_sc_card_add_rsa_alg(card, 512, flags, 0);
+		_sc_card_add_rsa_alg(card, 768, flags, 0);
 		_sc_card_add_rsa_alg(card, 1024, flags, 0);
 		_sc_card_add_rsa_alg(card, 1536, flags, 0);
 	}
