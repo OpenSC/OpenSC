@@ -54,8 +54,8 @@ static const struct sc_asn1_entry c_sm_rapdu[] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-int
-iso_add_80_pad(const u8 *data, size_t datalen, size_t block_size, u8 **padded)
+static int
+add_iso_pad(const u8 *data, size_t datalen, size_t block_size, u8 **padded)
 {
 	u8 *p;
 	int p_len;
@@ -103,7 +103,7 @@ add_padding(const struct iso_sm_ctx *ctx, const u8 *data, size_t datalen,
 			}
 			return (int)datalen;
 		case SM_ISO_PADDING:
-			return iso_add_80_pad(data, datalen, ctx->block_length, padded);
+			return add_iso_pad(data, datalen, ctx->block_length, padded);
 		default:
 			return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -297,16 +297,13 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 
 	sc_copy_asn1_entry(c_sm_capdu, sm_capdu);
 
-	sm_apdu = calloc(1, sizeof(sc_apdu_t));
+	sm_apdu = malloc(sizeof(sc_apdu_t));
 	if (!sm_apdu) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
 	sm_apdu->control = apdu->control;
 	sm_apdu->flags = apdu->flags;
-	if (ctx->use_sm_chaining)
-		sm_apdu->flags &= ~SC_APDU_FLAGS_SM_CHAINING; /* do not add to sm_apdu */
-
 	sm_apdu->cla = apdu->cla|0x0C;
 	sm_apdu->ins = apdu->ins;
 	sm_apdu->p1 = apdu->p1;
@@ -352,10 +349,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 			break;
 		case SC_APDU_CASE_3_SHORT:
 		case SC_APDU_CASE_3_EXT:
-			if (ctx->padding_tag == 1) {
-				r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
-						sm_capdu + 1, &fdata, &fdata_len);
-			} else if (apdu->ins & 1) {
+			if (apdu->ins & 1) {
 				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
 						sm_capdu + 0, &fdata, &fdata_len);
 			} else {
@@ -381,10 +375,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 				sc_log_hex(card->ctx, "Protected Le (plain)", le, le_len);
 			}
 
-			if (ctx->padding_tag == 1) {
-				r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
-						sm_capdu + 1, &fdata, &fdata_len);
-			} else if (apdu->ins & 1) {
+			if (apdu->ins & 1) {
 				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
 						sm_capdu + 0, &fdata, &fdata_len);
 			} else {
@@ -415,10 +406,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 				sc_log_hex(card->ctx, "Protected Le (plain)", le, le_len);
 			}
 
-			if (ctx->padding_tag == 1) {
-				r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
-						sm_capdu + 1, &fdata, &fdata_len);
-			} else if (apdu->ins & 1) {
+			if (apdu->ins & 1) {
 				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
 						sm_capdu + 0, &fdata, &fdata_len);
 			} else {
@@ -452,6 +440,11 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		mac_data = p;
 		memcpy(mac_data + mac_data_len, asn1, asn1_len);
 		mac_data_len += asn1_len;
+		r = add_padding(ctx, mac_data, mac_data_len, &mac_data);
+		if (r < 0) {
+			goto err;
+		}
+		mac_data_len = r;
 	}
 	sc_log_hex(card->ctx, "Data to authenticate", mac_data, mac_data_len);
 
@@ -473,11 +466,6 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	sm_apdu->data = sm_data;
 	sm_apdu->datalen = sm_data_len;
 	sm_apdu->lc = sm_data_len;
-	if (ctx->use_sm_chaining && sm_apdu->datalen > 255) {
-		sm_apdu->flags |= SC_APDU_FLAGS_CHAINING;
-		sm_apdu->cse = (apdu->cse & ~SC_APDU_SHORT_MASK) | SC_APDU_CASE_4_SHORT;
-	}
-
 	sm_apdu->le = 0;
 	/* for encrypted APDUs we usually get authenticated status bytes (4B), a
 	 * MAC (2B without data) and a cryptogram with padding indicator (2B tag
@@ -491,21 +479,8 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	} else {
 		sm_apdu->cse = SC_APDU_CASE_4_SHORT;
 		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 2 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
-
-		if (ctx->use_sm_chaining) { /* both chaining and get response are short */
-			sm_apdu->flags |= SC_APDU_FLAGS_NO_SM;
-
-			// TODO 230923 these may not be needed
-			if (sm_apdu->resplen >= 128)
-				sm_apdu->resplen++; /* extra tag length byte */
-			if (sm_apdu->resplen >= SC_MAX_APDU_RESP_SIZE)
-				sm_apdu->resplen++; /* one more extra tag length byte */
-		}
-
 		if (sm_apdu->resplen > SC_MAX_APDU_RESP_SIZE)
-			sm_apdu->le = SC_MAX_APDU_RESP_SIZE;
-		else
-			sm_apdu->le = sm_apdu->resplen;
+			sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
 	}
 	resp_data = calloc(1, sm_apdu->resplen);
 	if (!resp_data) {
@@ -539,10 +514,10 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	struct sc_asn1_entry sm_rapdu[5];
 	struct sc_asn1_entry my_sm_rapdu[5];
 	u8 sw[2], mac[8], fdata[SC_MAX_EXT_APDU_BUFFER_SIZE];
-	size_t sw_len = sizeof sw, mac_len = sizeof mac, mac_data_len, fdata_len = sizeof fdata,
-	       buf_len, fdata_offset = 0;
+	size_t sw_len = sizeof sw, mac_len = sizeof mac, fdata_len = sizeof fdata,
+		   buf_len, asn1_len, fdata_offset = 0;
 	const u8 *buf;
-	u8 *data = NULL, *mac_data = NULL;
+	u8 *data = NULL, *mac_data = NULL, *asn1 = NULL;
 
 	sc_copy_asn1_entry(c_sm_rapdu, sm_rapdu);
 	sc_format_asn1_entry(sm_rapdu + 0, fdata, &fdata_len, 0);
@@ -565,12 +540,16 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		sc_copy_asn1_entry(sm_rapdu, my_sm_rapdu);
 		sc_copy_asn1_entry(&c_sm_rapdu[3], &my_sm_rapdu[3]);
 
-		r = sc_asn1_encode(card->ctx, my_sm_rapdu, &mac_data, &mac_data_len);
+		r = sc_asn1_encode(card->ctx, my_sm_rapdu, &asn1, &asn1_len);
 		if (r < 0)
 			goto err;
+		r = add_padding(ctx, asn1, asn1_len, &mac_data);
+		if (r < 0) {
+			goto err;
+		}
 
 		r = ctx->verify_authentication(card, ctx, mac, mac_len,
-				mac_data, mac_data_len);
+				mac_data, r);
 		if (r < 0)
 			goto err;
 	} else {
@@ -637,6 +616,7 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	r = SC_SUCCESS;
 
 err:
+	free(asn1);
 	free(mac_data);
 	if (data) {
 		sc_mem_clear(data, buf_len);
