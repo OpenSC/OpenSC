@@ -20,6 +20,7 @@ BuildRequires:  bash-completion-devel
 BuildRequires:  bash-completion
 %endif
 BuildRequires:  zlib-ng-devel
+BuildRequires:  p11-kit-devel
 # For tests
 BuildRequires:  libcmocka-devel
 BuildRequires:  vim-common
