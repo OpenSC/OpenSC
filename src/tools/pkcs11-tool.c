@@ -73,6 +73,7 @@
 #include "pkcs11/pkcs11-opensc.h"
 #include "pkcs11/pkcs11.h"
 #include "util.h"
+#include "pkcs11_uri.h"
 
 /* pkcs11-tool uses libopensc routines that do not use an sc_context
  * but does use some OpenSSL routines
@@ -237,7 +238,8 @@ enum {
 	OPT_TAG_BITS,
 	OPT_SALT_FILE,
 	OPT_INFO_FILE,
-	OPT_PUBLIC_KEY_INFO
+	OPT_PUBLIC_KEY_INFO,
+	OPT_URI
 };
 
 // clang-format off
@@ -331,7 +333,7 @@ static const struct option options[] = {
 	{ "salt-file", 		1, NULL,		OPT_SALT_FILE},
 	{ "info-file",		1, NULL,		OPT_INFO_FILE},
 	{ "public-key-info",	0, NULL,		OPT_PUBLIC_KEY_INFO},
-
+	{ "uri",		1, NULL,		OPT_URI},
 	{ NULL, 0, NULL, 0 }
 };
 // clang-format on
@@ -425,6 +427,7 @@ static const char *option_help[] = {
 		"Specify the required length (in bits) for the authentication tag for AEAD ciphers",
 		"Specify the file containing the salt for HKDF (optional)",
 		"Specify the file containing the info for HKDF (optional)",
+		"Specify the PKCS#11 URI for module, slot, token or object"
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
@@ -433,7 +436,7 @@ static int		verbose = 0;
 static const char *	opt_input = NULL;
 static const char *	opt_output = NULL;
 static const char *	opt_signature_file = NULL;
-static const char *	opt_module = DEFAULT_PKCS11_PROVIDER;
+static const char *	opt_module = NULL;
 static int		opt_slot_set = 0;
 static CK_SLOT_ID	opt_slot = 0;
 static const char *	opt_slot_description = NULL;
@@ -490,6 +493,7 @@ static unsigned long opt_tag_bits = 0;
 static const char *opt_salt_file = NULL;
 static const char *opt_info_file = NULL;
 static int opt_public_key_info = 0; /* return pubkey as SPKI DER */
+static struct pkcs11_uri *opt_uri = NULL;
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
@@ -609,18 +613,24 @@ static CK_RV		write_object(CK_SESSION_HANDLE session);
 static int		read_object(CK_SESSION_HANDLE session);
 static int		delete_object(CK_SESSION_HANDLE session);
 static void		set_id_attr(CK_SESSION_HANDLE session);
-static int		find_object_id_or_label(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
+static int		find_object_type_or_id_or_label(CK_SESSION_HANDLE sess,
+				CK_OBJECT_CLASS cls, int cls_set,
 				CK_OBJECT_HANDLE_PTR ret,
 				const unsigned char *, size_t id_len,
-				const char *,
-				int obj_index);
+				const char *, int obj_index);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
 static int		find_object_flags(CK_SESSION_HANDLE, uint16_t flags,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
+static int		find_object_flags_and_type_or_id_or_label(CK_SESSION_HANDLE sess,
+				uint16_t mf_flags, CK_OBJECT_HANDLE_PTR ret,
+				CK_OBJECT_CLASS cls, int cls_set,
+				const unsigned char *id, size_t id_len, const char *label, int obj_index);
 static CK_ULONG		find_mechanism(CK_SLOT_ID, CK_FLAGS, CK_MECHANISM_TYPE_PTR, size_t, CK_MECHANISM_TYPE_PTR);
+static int get_default_slot(CK_SLOT_ID_PTR result);
+static int find_slot_by_uri(struct pkcs11_uri *uri, CK_SLOT_ID_PTR result);
 static int		find_slot_by_description(const char *, CK_SLOT_ID_PTR);
 static int		find_slot_by_token_label(const char *, CK_SLOT_ID_PTR);
 static void		get_token_info(CK_SLOT_ID, CK_TOKEN_INFO_PTR);
@@ -631,6 +641,7 @@ static void		p11_warn(const char *, CK_RV);
 static const char *	p11_slot_info_flags(CK_FLAGS);
 static const char *	p11_token_info_flags(CK_FLAGS);
 static const char *	p11_utf8_to_local(CK_UTF8CHAR *, size_t);
+static char *	p11_utf8_to_string(CK_UTF8CHAR *, size_t);
 static const char *	p11_flag_names(struct flag_info *, CK_FLAGS);
 static const char *	p11_mechanism_to_name(CK_MECHANISM_TYPE);
 static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *);
@@ -1139,6 +1150,16 @@ int main(int argc, char * argv[])
 				util_fatal("--tag-bits-len option needs a decimal value argument");
 			}
 			break;
+		case OPT_URI:
+			if (optarg == NULL) {
+				util_fatal("--uri option needs an argument");
+			}
+			opt_uri = pkcs11_uri_new();
+			if (parse_pkcs11_uri(optarg, opt_uri) != 0) {
+				pkcs11_uri_free(opt_uri);
+				util_fatal("--uri option argument invalid");
+			}
+			break;
 		case OPT_TEST_HOTPLUG:
 			opt_test_hotplug = 1;
 			action_count++;
@@ -1233,6 +1254,53 @@ int main(int argc, char * argv[])
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
 
+	if (opt_uri) {
+		/* Check that no interfering options were set */
+		if (opt_module || opt_slot_set || opt_slot_index_set || opt_slot_description ||
+				opt_pin || opt_object_label || opt_object_class_str || opt_object_id_len) {
+			fprintf(stderr, "Invalid combination of arguments when --uri used\n");
+			util_print_usage_and_die(app_name, options, option_help, NULL);
+		}
+		if (opt_uri->slot_id) {
+			opt_slot = (CK_SLOT_ID)strtoul(opt_uri->slot_id, NULL, 0);
+			opt_slot_set = 1;
+		}
+		opt_module = opt_uri->module_path;
+		util_get_pin(opt_uri->pin, &opt_pin);
+		util_get_pin(opt_uri->pin_source, &opt_pin);
+		if (opt_pin)
+			opt_login = 1;
+		opt_object_label = opt_uri->object;
+		if (opt_uri->type) {
+			if (strcmp(opt_uri->type, "cert") == 0) {
+				opt_object_class = CKO_CERTIFICATE;
+				opt_object_class_str = "cert";
+			} else if (strcmp(opt_uri->type, "private") == 0) {
+				opt_object_class = CKO_PRIVATE_KEY;
+				opt_object_class_str = "privkey";
+			} else if (strcmp(opt_uri->type, "secret-key") == 0) {
+				opt_object_class = CKO_SECRET_KEY;
+				opt_object_class_str = "secrkey";
+			} else if (strcmp(opt_uri->type, "public") == 0) {
+				opt_object_class = CKO_PUBLIC_KEY;
+				opt_object_class_str = "pubkey,";
+			} else if (strcmp(opt_uri->type, "data") == 0) {
+				opt_object_class = CKO_DATA;
+				opt_object_class_str = "data";
+			} else {
+				fprintf(stderr, "Unsupported object type \"%s\" specified in PKCS#11 URI\n", opt_uri->type);
+				util_print_usage_and_die(app_name, options, option_help, NULL);
+			}
+		}
+		if (opt_uri->id) {
+			opt_object_id_len = opt_uri->id_len;
+			memcpy(opt_object_id, opt_uri->id, opt_object_id_len);
+		}
+	}
+
+	if (!opt_module) {
+		opt_module = DEFAULT_PKCS11_PROVIDER;
+	}
 #ifdef _WIN32
 	expanded_len = PATH_MAX;
 	expanded_len = ExpandEnvironmentStringsA(opt_module, expanded_val, expanded_len);
@@ -1293,7 +1361,23 @@ int main(int argc, char * argv[])
 		goto end;
 	}
 
-	if (!opt_slot_set && (action_count > do_list_slots)) {
+	if (opt_uri && !opt_slot_set && (action_count > do_list_slots)) {
+		if (opt_uri->token_manufacturer || opt_uri->token_model || opt_uri->serial ||
+				opt_uri->slot_description || opt_uri->slot_manufacturer || opt_uri->token_label) {
+			if (!find_slot_by_uri(opt_uri, &opt_slot)) {
+				fprintf(stderr, "No slot matching URI found\n");
+				err = 1;
+				goto end;
+			}
+			if (verbose)
+				fprintf(stderr, "Using slot matched by URI(0x%lx)\n", opt_slot);
+		} else {
+			if (!get_default_slot(&opt_slot)) {
+				err = 1;
+				goto end;
+			}
+		}
+	} else if (!opt_slot_set && (action_count > do_list_slots)) {
 		if (opt_slot_description) {
 			if (!find_slot_by_description(opt_slot_description, &opt_slot)) {
 				fprintf(stderr, "No slot named \"%s\" found\n", opt_slot_description);
@@ -1321,26 +1405,10 @@ int main(int argc, char * argv[])
 				goto end;
 			}
 		} else {
-			/* use first slot with token present (or default slot on error) */
-			unsigned int i, found = 0;
-			for (i = 0; i < p11_num_slots; i++) {
-				CK_SLOT_INFO info;
-				rv = p11->C_GetSlotInfo(p11_slots[i], &info);
-				if (rv != CKR_OK)
-					p11_fatal("C_GetSlotInfo", rv);
-				if (info.flags & CKF_TOKEN_PRESENT) {
-					opt_slot = p11_slots[i];
-					fprintf(stderr, "Using slot %u with a present token (0x%lx)\n", i, opt_slot);
-					found = 1;
-					break;
-				}
-			}
-			if (!found) {
-				fprintf(stderr, "No slot with a token was found.\n");
+			if (!get_default_slot(&opt_slot)) {
 				err = 1;
 				goto end;
 			}
-
 		}
 	}
 
@@ -1410,7 +1478,6 @@ int main(int argc, char * argv[])
 	}
 
 	if (do_sign || do_derive) {
-
 		/*
 		 * Newer mechanisms have their details in the mechanism table, however
 		 * if it's not known fall back to the old code always assuming it was a
@@ -1418,14 +1485,30 @@ int main(int argc, char * argv[])
 		 */
 		if (mf_flags != MF_UNKNOWN) {
 			/* this function dies on error via util_fatal */
-			find_object_flags(session, mf_flags, &object,
-				opt_object_id_len ? opt_object_id : NULL,
-				opt_object_id_len, 0);
+			if (opt_uri) {
+				find_object_flags_and_type_or_id_or_label(session, mf_flags, &object,
+						opt_object_class, opt_uri->type == NULL ? 0 : 1,
+						opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0);
+			} else {
+				find_object_flags(session, mf_flags, &object,
+						opt_object_id_len ? opt_object_id : NULL,
+						opt_object_id_len, 0);
+			}
+		} else if (opt_uri && opt_uri->type) {
+			/* If type in PKCS#11 URI is set, check the type and use it */
+			if (opt_object_class != CKO_PRIVATE_KEY && opt_object_class != CKO_SECRET_KEY) {
+				util_fatal("Incorrect type of key");
+			}
+			if (!find_object_type_or_id_or_label(session, opt_object_class, opt_uri->type == NULL ? 0 : 1,
+						&object, opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
+				util_fatal("Private/secret key not found");
+			}
 		} else if (!find_object(session, CKO_PRIVATE_KEY, &object,
-					   opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+					   opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0)) {
 			if (!find_object(session, CKO_SECRET_KEY, &object,
 					    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
 				util_fatal("Private/secret key not found");
+		}
 	}
 
 	if (do_decrypt) {
@@ -1436,10 +1519,25 @@ int main(int argc, char * argv[])
 		 */
 		if (mf_flags != MF_UNKNOWN) {
 			/* this function dies on error via util_fatal */
-			find_object_flags(session, mf_flags, &object,
-				opt_object_id_len ? opt_object_id : NULL,
-				opt_object_id_len, 0);
-		} else if (!find_object(session, CKO_PRIVATE_KEY, &object,
+			if (opt_uri) {
+				find_object_flags_and_type_or_id_or_label(session, mf_flags, &object,
+						opt_object_class, opt_uri->type == NULL ? 0 : 1,
+						opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0);
+			} else {
+				find_object_flags(session, mf_flags, &object,
+						opt_object_id_len ? opt_object_id : NULL,
+						opt_object_id_len, 0);
+			}
+		} else if (opt_uri && opt_uri->type) {
+			/* If type in PKCS#11 URI is set, check the type and use it */
+			if (opt_object_class != CKO_PRIVATE_KEY && opt_object_class != CKO_SECRET_KEY) {
+				util_fatal("Incorrect type of key");
+			}
+			if (!find_object_type_or_id_or_label(session, opt_object_class, opt_uri->type == NULL ? 0 : 1,
+						&object, opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
+				util_fatal("Private/secret key not found");
+			}
+		}  else if (!find_object(session, CKO_PRIVATE_KEY, &object,
 				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
 			if (!find_object(session, CKO_SECRET_KEY, &object,
 					 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
@@ -1452,11 +1550,27 @@ int main(int argc, char * argv[])
 		 * if it's not known fall back to the old code always assuming it was a
 		 * CKO_PUBLIC_KEY then a CKO_CERTIFICATE.
 		 */
+
 		if (mf_flags != MF_UNKNOWN) {
 			/* this function dies on error via util_fatal */
-			find_object_flags(session, mf_flags, &object,
-				opt_object_id_len ? opt_object_id : NULL,
-				opt_object_id_len, 0);
+			if (opt_uri) {
+				find_object_flags_and_type_or_id_or_label(session, mf_flags, &object,
+						opt_object_class, opt_uri->type == NULL ? 0 : 1,
+						opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0);
+			} else {
+				find_object_flags(session, mf_flags, &object,
+						opt_object_id_len ? opt_object_id : NULL,
+						opt_object_id_len, 0);
+			}
+		} else if (opt_uri && opt_uri->type) {
+			/* If type in PKCS#11 URI is set, check the type and use it */
+			if (opt_object_class != CKO_PUBLIC_KEY && opt_object_class != CKO_SECRET_KEY) {
+				util_fatal("Incorrect type of key");
+			}
+			if (!find_object_type_or_id_or_label(session, opt_object_class, opt_uri->type == NULL ? 0 : 1,
+						&object, opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
+				util_fatal("Public/Secret key not found");
+			}
 		} else if (!find_object(session, CKO_PUBLIC_KEY, &object,
 					   opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
 			if (!find_object(session, CKO_SECRET_KEY, &object,
@@ -1470,11 +1584,27 @@ int main(int argc, char * argv[])
 		 * if it's not known fall back to the old code always assuming it was a
 		 * CKO_PUBLIC_KEY then a CKO_CERTIFICATE.
 		 */
+
 		if (mf_flags != MF_UNKNOWN) {
 			/* this function dies on error via util_fatal */
-			find_object_flags(session, mf_flags, &object,
-				opt_object_id_len ? opt_object_id : NULL,
-				opt_object_id_len, 0);
+			if (opt_uri) {
+				find_object_flags_and_type_or_id_or_label(session, mf_flags, &object,
+						opt_object_class, opt_uri->type == NULL ? 0 : 1,
+						opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0);
+			} else {
+				find_object_flags(session, mf_flags, &object,
+						opt_object_id_len ? opt_object_id : NULL,
+						opt_object_id_len, 0);
+			}
+		} else if (opt_uri && opt_uri->type) {
+			/* If type in PKCS#11 URI is set, check the type and use it */
+			if (opt_object_class != CKO_PUBLIC_KEY && opt_object_class != CKO_CERTIFICATE) {
+				util_fatal("Incorrect type of key");
+			}
+			if (!find_object_type_or_id_or_label(session, opt_object_class, opt_uri->type == NULL ? 0 : 1,
+					&object, opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
+				util_fatal("Public key nor certificate not found");
+			}
 		} else if (!find_object(session, CKO_PUBLIC_KEY, &object,
 		        opt_object_id_len ? opt_object_id : NULL,
 		        opt_object_id_len, 0) &&
@@ -1585,6 +1715,7 @@ end:
 		if (rv != CKR_OK)
 			p11_fatal("C_CloseSession", rv);
 	}
+	pkcs11_uri_free(opt_uri);
 
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
 	if (do_test_threads) {
@@ -1603,7 +1734,6 @@ end:
 
 	return err;
 }
-
 
 static void show_cryptoki_info(void)
 {
@@ -5028,7 +5158,7 @@ static void set_id_attr(CK_SESSION_HANDLE session)
 	CK_ATTRIBUTE templ[] = {{CKA_ID, new_object_id, new_object_id_len}};
 	CK_RV rv;
 
-	if (!find_object_id_or_label(session, opt_object_class, &obj, opt_object_id, opt_object_id_len, opt_object_label, 0)) {
+	if (!find_object_type_or_id_or_label(session, opt_object_class, 1, &obj, opt_object_id, opt_object_id_len, opt_object_label, 0)) {
 		fprintf(stderr, "set_id(): couldn't find the object by id %s label\n", (opt_object_label && opt_object_id_len) ? "and" : "or");
 		return;
 	}
@@ -5039,6 +5169,70 @@ static void set_id_attr(CK_SESSION_HANDLE session)
 
 	printf("Result:");
 	show_object(session, obj);
+}
+
+static int get_default_slot(CK_SLOT_ID_PTR result)
+{
+	/* use first slot with token present (or default slot on error) */
+	CK_RV rv;
+	for (unsigned int i = 0; i < p11_num_slots; i++) {
+		CK_SLOT_INFO info;
+		rv = p11->C_GetSlotInfo(p11_slots[i], &info);
+		if (rv != CKR_OK)
+			p11_fatal("C_GetSlotInfo", rv);
+		if (info.flags & CKF_TOKEN_PRESENT) {
+			*result = p11_slots[i];
+			fprintf(stderr, "Using slot %u with a present token (0x%lx)\n", i, *result);
+			return 1;
+		}
+	}
+	fprintf(stderr, "No slot with a token was found.\n");
+	return 0;
+}
+
+static int find_slot_by_uri(struct pkcs11_uri *uri, CK_SLOT_ID_PTR result)
+{
+	CK_SLOT_INFO slot_info;
+	CK_TOKEN_INFO token_info;
+	struct attr {
+		char *uri_attr;
+		char *actual_attr;
+	} attr_array[6];
+
+	for (CK_ULONG n = 0; n < p11_num_slots; n++) {
+		int invalid = 0;
+
+		if (p11->C_GetSlotInfo(p11_slots[n], &slot_info) != CKR_OK ||
+				p11->C_GetTokenInfo(p11_slots[n], &token_info) != CKR_OK) {
+			continue;
+		}
+
+		attr_array[0] = (struct attr){uri->slot_description, p11_utf8_to_string(slot_info.slotDescription, sizeof(slot_info.slotDescription))};
+		attr_array[1] = (struct attr){uri->slot_manufacturer, p11_utf8_to_string(slot_info.manufacturerID, sizeof(slot_info.manufacturerID))};
+		attr_array[2] = (struct attr){uri->token_manufacturer, p11_utf8_to_string(token_info.manufacturerID, sizeof(token_info.manufacturerID))};
+		attr_array[3] = (struct attr){uri->token_model, p11_utf8_to_string(token_info.model, sizeof(token_info.model))};
+		attr_array[4] = (struct attr){uri->serial, p11_utf8_to_string(token_info.serialNumber, sizeof(token_info.serialNumber))};
+		attr_array[5] = (struct attr){uri->token_label, p11_utf8_to_string(token_info.label, sizeof(token_info.label))};
+
+		for (int i = 0; i < 6; i++) {
+			if (!attr_array[i].uri_attr || !attr_array[i].actual_attr)
+				continue;
+			if (strlen(attr_array[i].uri_attr) != strlen(attr_array[i].actual_attr) ||
+					strncmp(attr_array[i].actual_attr, attr_array[i].uri_attr, strlen(attr_array[i].actual_attr))) {
+				invalid = 1;
+				break;
+			}
+		}
+		if (invalid)
+			continue;
+
+		for (int i = 0; i < 6; i++) {
+			free(attr_array[i].actual_attr);
+		}
+		*result = p11_slots[n];
+		return 1;
+	}
+	return 0;
 }
 
 static int find_slot_by_description(const char *label, CK_SLOT_ID_PTR result)
@@ -5091,8 +5285,8 @@ static int find_slot_by_token_label(const char *label, CK_SLOT_ID_PTR result)
 	return 0;
 }
 
-
-static int find_object_id_or_label(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
+static int find_object_type_or_id_or_label(CK_SESSION_HANDLE sess,
+		CK_OBJECT_CLASS cls, int cls_set,
 		CK_OBJECT_HANDLE_PTR ret,
 		const unsigned char *id, size_t id_len,
 		const char *label,
@@ -5104,10 +5298,12 @@ static int find_object_id_or_label(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 	CK_RV rv;
 	int i;
 
-	attrs[0].type = CKA_CLASS;
-	attrs[0].pValue = &cls;
-	attrs[0].ulValueLen = sizeof(cls);
-	nattrs++;
+	if (cls_set) {
+		attrs[nattrs].type = CKA_CLASS;
+		attrs[nattrs].pValue = &cls;
+		attrs[nattrs].ulValueLen = sizeof(cls);
+		nattrs++;
+	}
 	if (id && id_len) {
 		attrs[nattrs].type = CKA_ID;
 		attrs[nattrs].pValue = (void *) id;
@@ -5148,7 +5344,7 @@ static int find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 		CK_OBJECT_HANDLE_PTR ret,
 		const unsigned char *id, size_t id_len, int obj_index)
 {
-	return find_object_id_or_label(sess, cls, ret, id, id_len, NULL, obj_index);
+	return find_object_type_or_id_or_label(sess, cls, 1, ret, id, id_len, NULL, obj_index);
 }
 
 static int find_object_flags(CK_SESSION_HANDLE sess, uint16_t mf_flags,
@@ -5156,14 +5352,35 @@ static int find_object_flags(CK_SESSION_HANDLE sess, uint16_t mf_flags,
 		const unsigned char *id, size_t id_len, int obj_index)
 {
 	int count;
-	char err_key_types[1024] = { 0 };
+	char err_key_types[1024] = {0};
 
 	if (mf_flags & MF_CKO_SECRET_KEY) {
 		count = find_object(sess, CKO_SECRET_KEY, ret, id, id_len, obj_index);
 		if (count)
 			return count;
 
-		strncat(err_key_types, "Secret", sizeof(err_key_types)-1);
+		strncat(err_key_types, "Secret", sizeof(err_key_types) - 1);
+	}
+
+	util_fatal("Could not find key of type: %s", err_key_types);
+}
+
+static int find_object_flags_and_type_or_id_or_label(CK_SESSION_HANDLE sess,
+		uint16_t mf_flags, CK_OBJECT_HANDLE_PTR ret,
+		CK_OBJECT_CLASS cls, int cls_set,
+		const unsigned char *id, size_t id_len, const char *label, int obj_index)
+{
+	int count;
+	char err_key_types[1024] = {0};
+
+	if (mf_flags & MF_CKO_SECRET_KEY) {
+		if (!cls_set || (cls_set && cls == CKO_SECRET_KEY)) {
+			count = find_object_type_or_id_or_label(sess, cls, cls_set, ret, id, id_len, label, obj_index);
+			if (count)
+				return count;
+		}
+
+		strncat(err_key_types, "Secret", sizeof(err_key_types) - 1);
 	}
 
 	util_fatal("Could not find key of type: %s", err_key_types);
@@ -8996,6 +9213,28 @@ static const char *p11_utf8_to_local(CK_UTF8CHAR *string, size_t len)
 
 	/* For now, simply copy this thing */
 	for (n = m = 0; n < sizeof(buffer) - 1; n++) {
+		if (m >= len)
+			break;
+		buffer[n] = string[m++];
+	}
+	buffer[n] = '\0';
+	return buffer;
+}
+
+static char *p11_utf8_to_string(CK_UTF8CHAR *string, size_t len)
+{
+	char *buffer = NULL;
+	size_t n, m;
+
+	while (len && string[len - 1] == ' ')
+		len--;
+
+	if (len < 1 || !(buffer = calloc(len, sizeof(char)))) {
+		return NULL;
+	}
+
+	/* For now, simply copy this thing */
+	for (n = m = 0; n < len; n++) {
 		if (m >= len)
 			break;
 		buffer[n] = string[m++];
