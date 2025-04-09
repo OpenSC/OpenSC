@@ -53,6 +53,7 @@ sc_context_t *context = NULL;
 struct sc_pkcs11_config sc_pkcs11_conf;
 list_t sessions;
 list_t virtual_slots;
+void *reader_states = NULL;
 #if !defined(_WIN32)
 pid_t initialized_pid = (pid_t)-1;
 #endif
@@ -432,6 +433,9 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	}
 	list_destroy(&virtual_slots);
 
+	sc_wait_for_event(context, 0, NULL, NULL, 0, &reader_states);
+	reader_states = NULL;
+
 	sc_release_context(context);
 	context = NULL;
 
@@ -585,37 +589,9 @@ out:
 	return rv;
 }
 
-static sc_timestamp_t get_current_time(void)
-{
-#if HAVE_GETTIMEOFDAY
-	struct timeval tv;
-	struct timezone tz;
-	sc_timestamp_t curr;
-
-	if (gettimeofday(&tv, &tz) != 0)
-		return 0;
-
-	curr = tv.tv_sec;
-	curr *= 1000;
-	curr += tv.tv_usec / 1000;
-#else
-	struct _timeb time_buf;
-	sc_timestamp_t curr;
-
-	_ftime(&time_buf);
-
-	curr = time_buf.time;
-	curr *= 1000;
-	curr += time_buf.millitm;
-#endif
-
-	return curr;
-}
-
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 {
 	struct sc_pkcs11_slot *slot = NULL;
-	sc_timestamp_t now;
 	const char *name;
 	CK_RV rv;
 
@@ -644,18 +620,11 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 		if (slot->reader == NULL) {
 			rv = CKR_TOKEN_NOT_PRESENT;
 		} else {
-			now = get_current_time();
-			if (now >= slot->slot_state_expires || now == 0) {
-				/* Update slot status */
-				rv = card_detect(slot->reader);
-				sc_log(context, "C_GetSlotInfo() card detect rv 0x%lX", rv);
+			/* Update slot status */
+			card_detect_all();
 
-				if (rv == CKR_TOKEN_NOT_RECOGNIZED || rv == CKR_OK)
-					slot->slot_info.flags |= CKF_TOKEN_PRESENT;
-
-				/* Don't ask again within the next second */
-				slot->slot_state_expires = now + 1000;
-			}
+			if (slot->p11card && slot->p11card->card)
+				slot->slot_info.flags |= CKF_TOKEN_PRESENT;
 		}
 	}
 
