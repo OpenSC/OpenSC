@@ -958,7 +958,7 @@ AC_SUBST([completiondir])
 
 AC_ARG_ENABLE(p11_system_config_modules,
               AS_HELP_STRING([--enable-p11_system_config_modules=DIR],
-							 [directory containing P11-Kit cnfiguration files (default is determined by libp11-kit)]),
+							 [directory containing P11-Kit configuration files (default is determined by libp11-kit)]),
                              [p11_system_config_modules="${enableval}"],
                              [p11_system_config_modules=false])
 if test "${p11_system_config_modules}" = false ; then
