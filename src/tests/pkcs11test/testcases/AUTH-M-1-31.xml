@@ -1,0 +1,142 @@
+<!--
+     PKCS #11 Profiles Version 3.1
+     Committee Specification 01
+     14 July 2022
+     Copyright (c) OASIS Open 2022. All Rights Reserved.
+     Source: https://docs.oasis-open.org/pkcs11/pkcs11-profiles/v3.1/cs01/test-cases/
+     Latest version of narrative specification: https://docs.oasis-open.org/pkcs11/pkcs11-profiles/v3.1/pkcs11-profiles-v3.1.html
+     TC IPR Statement: https://www.oasis-open.org/committees/pkcs11/ipr.php
+-->
+<PKCS11>
+  <C_Initialize/>
+  <C_Initialize rv="OK"/>
+  <C_GetInfo/>
+  <C_GetInfo rv="OK">
+    <Info>
+      <CryptokiVersion major="3" minor="1"/>
+      <ManufacturerID value="OASIS PKCS#11 TC                "/>
+      <Flags value="0x0"/>
+      <LibraryDescription value="                                "/>
+      <LibraryVersion major="1" minor="0"/>
+    </Info>
+  </C_GetInfo>
+  <C_GetSlotList>
+    <TokenPresent value="true"/>
+    <SlotList/>
+  </C_GetSlotList>
+  <C_GetSlotList rv="OK">
+    <SlotList length="${SlotList.length}"/>
+  </C_GetSlotList>
+  <C_GetSlotList>
+    <TokenPresent value="true"/>
+    <SlotList length="${SlotList.length}"/>
+  </C_GetSlotList>
+  <C_GetSlotList rv="OK">
+    <SlotList>
+      <SlotID value="${SlotList.SlotID[0]}"/>
+    </SlotList>
+  </C_GetSlotList>
+  <C_OpenSession>
+    <SlotID value="${SlotList.SlotID[0]}"/>
+    <Flags value="RW_SESSION|SERIAL_SESSION"/>
+  </C_OpenSession>
+  <C_OpenSession rv="OK">
+    <Session value="${Session}"/>
+  </C_OpenSession>
+  <C_Login>
+    <Session value="${Session}"/>
+    <UserType value="USER"/>
+    <Pin value="${Pin}"/>
+  </C_Login>
+  <C_Login rv="OK"/>
+  <C_FindObjectsInit>
+    <Session value="${Session}"/>
+    <Template>
+      <Attribute type="TOKEN" value="TRUE"/>
+      <Attribute type="LABEL" value="testrsa-pub"/>
+      <Attribute type="CLASS" value="PUBLIC_KEY"/>
+    </Template>
+  </C_FindObjectsInit>
+  <C_FindObjectsInit rv="OK"/>
+  <C_FindObjects>
+    <Session value="${Session}"/>
+    <Object length="1"/>
+  </C_FindObjects>
+  <C_FindObjects rv="OK">
+    <Object>
+      <Object value="${Object.Object[0]}"/>
+    </Object>
+  </C_FindObjects>
+  <C_FindObjectsFinal>
+    <Session value="${Session}"/>
+  </C_FindObjectsFinal>
+  <C_FindObjectsFinal rv="OK"/>
+  <C_GetAttributeValue>
+    <Session value="${Session}"/>
+    <Object value="${Object.Object[0]}"/>
+    <Template>
+      <Attribute type="MODULUS" length="1024"/>
+      <Attribute type="PUBLIC_EXPONENT" length="1024"/>
+    </Template>
+  </C_GetAttributeValue>
+  <C_GetAttributeValue rv="OK">
+    <Template>
+      <Attribute type="MODULUS" value="dee53f9d7b97ebd0724cf4874cd1d16a24e4fa36642aedd57b7ae1bf238e41288ec90745b86a336eb580add41f359d44e9b526723b14165e797696ca306dd47e576830e16795858d6e6c2ca8474945578df6ea9936424dd9c5535cd92629500170a108b4bd6faeb132f98648b77cef07bf9dcd78838b2e25935cc5b500fec1d9859c201f819266e80fd743c6a2c12d859640979aeac0971da6ec6c1786f3054b870ad9f3bc7019fa36aaefd1ec27803c89b7770b4244fb5bc950d3527771eec110104e01a94cadd37a20536ade3f290e3e7881846cdeed32379832a6658fbd4cc60b6fa7c0d5640fe8be45b5581225fd0d69cc2d7b1e91fce9dafc917fcfd045"/>
+      <Attribute type="PUBLIC_EXPONENT" value="010001"/>
+    </Template>
+  </C_GetAttributeValue>
+  <C_FindObjectsInit>
+    <Session value="${Session}"/>
+    <Template>
+      <Attribute type="TOKEN" value="TRUE"/>
+      <Attribute type="LABEL" value="testrsa-pri"/>
+      <Attribute type="CLASS" value="PRIVATE_KEY"/>
+    </Template>
+  </C_FindObjectsInit>
+  <C_FindObjectsInit rv="OK"/>
+  <C_FindObjects>
+    <Session value="${Session}"/>
+    <Object length="1"/>
+  </C_FindObjects>
+  <C_FindObjects rv="OK">
+    <Object>
+      <Object value="${Object.Object[0]}"/>
+    </Object>
+  </C_FindObjects>
+  <C_FindObjectsFinal>
+    <Session value="${Session}"/>
+  </C_FindObjectsFinal>
+  <C_FindObjectsFinal rv="OK"/>
+  <C_SignInit>
+    <Session value="${Session}"/>
+    <Mechanism>
+      <Type value="SHA256_RSA_PKCS"/>
+      <Parameter length="0"/>
+    </Mechanism>
+    <Key value="${Object.Object[0]}"/>
+  </C_SignInit>
+  <C_SignInit rv="OK"/>
+  <C_Sign>
+    <Session value="${Session}"/>
+    <Data value="308201830201003056310b300906035504061302415531153013060355040a0c0c4f7267616e69736174696f6e311a3018060355040b0c114f7267616e69736174696f6e20556e69743114301206035504030c0b436f6d6d6f6e204e616d6530820122300d06092a864886f70d01010105000382010f003082010a0282010100dee53f9d7b97ebd0724cf4874cd1d16a24e4fa36642aedd57b7ae1bf238e41288ec90745b86a336eb580add41f359d44e9b526723b14165e797696ca306dd47e576830e16795858d6e6c2ca8474945578df6ea9936424dd9c5535cd92629500170a108b4bd6faeb132f98648b77cef07bf9dcd78838b2e25935cc5b500fec1d9859c201f819266e80fd743c6a2c12d859640979aeac0971da6ec6c1786f3054b870ad9f3bc7019fa36aaefd1ec27803c89b7770b4244fb5bc950d3527771eec110104e01a94cadd37a20536ade3f290e3e7881846cdeed32379832a6658fbd4cc60b6fa7c0d5640fe8be45b5581225fd0d69cc2d7b1e91fce9dafc917fcfd0450203010001a000"/>
+    <Signature length="256"/>
+  </C_Sign>
+  <C_Sign rv="OK">
+    <Signature value="1a7d66b88de270da0cee9039c0a1eedf1312118b578d7eb9bbb45b0ea64a58d382942cf4009ae094cc03b63dba899d392c52371fffb46f57e442dc4d632b8c8e383df32a9fe2a0f455c54a5f9691bc5b65cfd965a658e76ef38e2c65ed231396dc56c1ba0adf6624d45b5fb8af299fa94a85dc7289732af95a085fd03a66c435de5204f522a3d10b2efe3540e175b379ae1299fb33b166c2d50a155ad7d69467a37fe7e2c040f9a2c9059ddbaf84167e5de2b8dc2eae99ea349af9e05226d5ce62cfdb2a7bf51479ba3761f3603904099423a191a987d8dbc54162aaa3a83ae9f7198dc50cb251c7f57b905015f3876d2be27a79ebd8b0cebd68ddac9113464b"/>
+  </C_Sign>
+  <C_Logout>
+    <Session value="${Session}"/>
+  </C_Logout>
+  <C_Logout rv="OK"/>
+  <C_CloseSession>
+    <Session value="${Session}"/>
+  </C_CloseSession>
+  <C_CloseSession rv="OK"/>
+  <C_CloseAllSessions>
+    <SlotID value="${SlotList.SlotID[0]}"/>
+  </C_CloseAllSessions>
+  <C_CloseAllSessions rv="OK"/>
+  <C_Finalize/>
+  <C_Finalize rv="OK"/>
+</PKCS11>
+
