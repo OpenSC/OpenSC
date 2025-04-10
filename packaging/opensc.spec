@@ -210,6 +210,9 @@ rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
 
 %config(noreplace) %{_sysconfdir}/opensc-%{_arch}.conf
 # Co-owned with p11-kit so it is not hard dependency
+%dir %{_datadir}/p11-kit
+%dir %{_datadir}/p11-kit/modules
+%{_datadir}/p11-kit/modules/opensc.module
 %{_libdir}/lib*.so.*
 %{_libdir}/opensc-pkcs11.so
 %{_libdir}/pkcs11-spy.so
