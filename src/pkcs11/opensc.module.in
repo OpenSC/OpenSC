@@ -6,4 +6,4 @@
 # the p11-kit default path which is usually $(libdir)/pkcs11.
 # Doing it this way allows for packagers to package opensc for
 # 32-bit and 64-bit and make them parallel installable
-module: opensc-pkcs11.so
+module: opensc-pkcs11@DYN_LIB_EXT@
