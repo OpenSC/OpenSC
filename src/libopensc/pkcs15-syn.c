@@ -56,6 +56,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "coolkey",    sc_pkcs15emu_coolkey_init_ex	},
 	{ "din66291",   sc_pkcs15emu_din_66291_init_ex	},
 	{ "esteid2018", sc_pkcs15emu_esteid2018_init_ex	},
+	{ "esteid2025", sc_pkcs15emu_esteid2025_init_ex	},
 	{ "skeid",      sc_pkcs15emu_skeid_init_ex      },
 	{ "cardos",     sc_pkcs15emu_cardos_init_ex	},
 	{ "nqapplet",   sc_pkcs15emu_nqapplet_init_ex },
