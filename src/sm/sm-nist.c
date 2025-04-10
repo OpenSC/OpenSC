@@ -209,32 +209,6 @@ static const struct sc_asn1_entry c_asn1_piv_cvc[C_ASN1_PIV_CVC_SIZE] = {
 		{NULL,	       0,		  0,				   0, NULL, NULL}
 };
 
-#if 0
-#define C_ASN1_PIV_SM_RESPONSE_SIZE 4
-static const struct sc_asn1_entry c_asn1_sm_response[C_ASN1_PIV_SM_RESPONSE_SIZE] = {
-	{ "encryptedData",      SC_ASN1_CALLBACK,   SC_ASN1_CTX | 7,        SC_ASN1_OPTIONAL,       NULL, NULL },
-	{ "statusWord",         SC_ASN1_CALLBACK,   SC_ASN1_CTX | 0x19,     0,                      NULL, NULL },
-	{ "mac",                SC_ASN1_CALLBACK,   SC_ASN1_CTX | 0x0E,     0,                      NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
-#endif /* 0 */
-
-#if 0
-/*
- * SW internal apdu response table.
- *
- * Override APDU response error codes from iso7816.c to allow
- * handling of SM specific error
- */
-static const struct sc_card_error piv_sm_errors[] = {
-	{0x6882, SC_ERROR_SM, "SM not supported"},
-	{0x6982, SC_ERROR_SM_NO_SESSION_KEYS, "SM Security status not satisfied"}, /* no session established */
-	{0x6987, SC_ERROR_SM, "Expected SM Data Object missing"},
-	{0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"}, /* other process interference */
-	{0, 0, NULL}
-};
-#endif /* 0 */
-
 typedef struct sm_nist_private_data {
 	int magic;
 	sm_nist_params_t *params; /* card driver parameters and flags */
@@ -384,7 +358,7 @@ static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
-#endif /* TODO */
+#endif /* 0 TODO pairing */
 
 /* Verify one signature using pubkey */
 static int
@@ -1109,7 +1083,8 @@ piv_sm_open(struct sc_card *card)
 		}
 	}
 
-#if 0 
+#if 0
+/* TODO should card driver do this? */
 	/* VCI only needed for contactless */
 	if (*priv->sm_flags & PIV_SM_CONTACTLESS) {
 		/* Is pairing code required? */
@@ -1119,7 +1094,7 @@ piv_sm_open(struct sc_card *card)
 				goto err;
 		}
 	}
-#endif /* 0 */
+#endif /* 0  TODO pairing */
 
 	r = 0;
 	priv->params->flags |= PIV_SM_FLAGS_SM_IS_ACTIVE;
@@ -1188,322 +1163,6 @@ piv_get_asn1_obj(sc_context_t *ctx, void *arg, const u8 *obj, size_t len, int de
 	return SC_SUCCESS;
 }
 
-#if 0
-static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu)
-{
-	int r = SC_SUCCESS;
-	int i;
-	sm_nist_private_data_t * priv = SM_NIST_PRIV(card);
-	cipher_suite_t *cs = priv->cs;
-	struct sc_lv_data ee = {NULL, 0};
-	struct sc_lv_data status = {NULL, 0};
-	struct sc_lv_data rmac8 = {NULL, 0};
-	u8 zeros[16] = {0};
-	u8 IV[16];
-	u8 *p;
-	int outl;
-	int outli;
-	int outll;
-	int outdl;
-	u8 lastb[16];
-	u8 discard[8];
-	u8 *q = NULL;
-	int inlen;
-	int macdatalen;
-
-	size_t MCVlen = 16;
-	size_t R_MCVlen = 0;
-
-	EVP_CIPHER_CTX *ed_ctx = NULL;
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	CMAC_CTX *cmac_ctx  = NULL;
-#else
-	EVP_MAC *mac = NULL;
-	EVP_MAC_CTX *cmac_ctx = NULL;
-	OSSL_PARAM cmac_params[2];
-	size_t cmac_params_n = 0;
-#endif
-
-	struct sc_asn1_entry asn1_sm_response[C_ASN1_PIV_SM_RESPONSE_SIZE];
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	sc_copy_asn1_entry(c_asn1_sm_response, asn1_sm_response);
-
-	sc_format_asn1_entry(asn1_sm_response + 0, piv_get_asn1_obj, &ee, 0);
-	sc_format_asn1_entry(asn1_sm_response + 1, piv_get_asn1_obj, &status, 0);
-	sc_format_asn1_entry(asn1_sm_response + 2, piv_get_asn1_obj, &rmac8, 0);
-
-	r = sc_asn1_decode(card->ctx, asn1_sm_response, sm_apdu->resp, sm_apdu->resplen, NULL, NULL);
-
-	if (r < 0) {
-		sc_log(card->ctx,"SM decode failed");
-		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-		goto err;
-	}
-
-	if (asn1_sm_response[0].flags & SC_ASN1_PRESENT  /* optional */
-			&& ( ee.value == NULL || ee.len <= 2)) {
-		sc_log(card->ctx,"SM BER-TLV not valid");
-		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-		goto err;
-	}
-
-	if ((asn1_sm_response[1].flags & SC_ASN1_PRESENT) == 0
-			|| (asn1_sm_response[2].flags & SC_ASN1_PRESENT) == 0) {
-		sc_log(card->ctx,"SM missing status or R-MAC");
-		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-		goto err;
-	}
-
-	if (status.len != 2
-			|| status.value == NULL
-			|| rmac8.len != 8
-			|| rmac8.value == NULL) {
-		sc_log(card->ctx,"SM status or R-MAC length invalid");
-		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-		goto err;
-	}
-
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	cmac_ctx = CMAC_CTX_new();
-	if (cmac_ctx == NULL) {
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-#else
-	mac = EVP_MAC_fetch(PIV_LIBCTX, "cmac", NULL);
-	cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
-	cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
-	if (mac == NULL || (cmac_ctx = EVP_MAC_CTX_new(mac)) == NULL) {
-		sc_log_openssl(card->ctx);
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-#endif
-
-	/*  MCV is first, then BER TLV Encoded Encrypted PIV Data and Status */
-	macdatalen = status.value + status.len - sm_apdu->resp;
-
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	if (CMAC_Init(cmac_ctx, priv->sm_session.SKrmac, priv->sm_session.aes_size, (*cs->cipher_cbc)(), NULL) != 1
-			|| CMAC_Update(cmac_ctx, priv->sm_session.R_MCV, MCVlen) != 1
-			|| CMAC_Update(cmac_ctx, sm_apdu->resp, macdatalen) != 1
-			|| CMAC_Final(cmac_ctx, priv->sm_session.R_MCV, &R_MCVlen) != 1) {
-		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-		goto err;
-	}
-#else
-	if(!EVP_MAC_init(cmac_ctx, (const unsigned char *)priv->sm_session.SKrmac,
-				priv->sm_session.aes_size, cmac_params)
-			|| !EVP_MAC_update(cmac_ctx, priv->sm_session.R_MCV, MCVlen)
-			|| !EVP_MAC_update(cmac_ctx, sm_apdu->resp, macdatalen)
-			|| !EVP_MAC_final(cmac_ctx, priv->sm_session.R_MCV, &R_MCVlen, MCVlen)) {
-		sc_log_openssl(card->ctx);
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-#endif
-
-	if (memcmp(priv->sm_session.R_MCV, rmac8.value, 8) != 0) {
-		sc_log(card->ctx, "SM 8 bytes of R-MAC do not match received R-MAC");
-		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-		goto err;
-	}
-
-	ed_ctx = EVP_CIPHER_CTX_new();
-	if (ed_ctx == NULL) {
-		r = SC_ERROR_INTERNAL;
-		goto err;
-	}
-
-	/* generate same IV used to encrypt response on card */
-	if (EVP_EncryptInit_ex(ed_ctx, (*cs->cipher_ecb)(), NULL, priv->sm_session.SKenc, zeros) != 1
-			|| EVP_CIPHER_CTX_set_padding(ed_ctx,0) != 1
-			|| EVP_EncryptUpdate(ed_ctx, IV, &outli, priv->sm_session.resp_enc_counter, 16) != 1
-			|| EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1
-			|| outdl != 0) {
-		sc_log(card->ctx,"SM encode failed in OpenSSL");
-		sc_log_openssl(card->ctx);
-		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-		goto err;
-	}
-
-	/* some commands do not have response data */
-	if (ee.value == NULL) {
-		plain->resplen = 0;
-	} else {
-		p = ee.value;
-		inlen = ee.len;
-		if (inlen < 17 || *p != 0x01) { /*padding and padding indicator are required */
-			sc_log(card->ctx, "SM padding indicator not 0x01");
-			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-			goto err;
-		}
-
-		p++; /* skip padding indicator */
-		inlen --;
-
-		if ((inlen % 16) != 0) {
-			sc_log(card->ctx,"SM encrypted data not multiple of 16");
-			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-			goto err;
-		}
-
-		/*
-		 * Encrypted data has 1 to 16 pad bytes, so may be 1 to 16 bytes longer
-		 * then expected. i.e. plain->resp and resplen.So will do last block
-		 * and recombine.
-		 */
-
-		inlen -= 16;
-		if (plain->resplen < (unsigned) inlen || plain->resp == NULL) {
-			sc_log(card->ctx, "SM response will not fit in resp,resplen");
-			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-			goto err;
-		}
-
-		q = plain->resp;
-
-		/* first round encryptes counter with zero IV, and does not save the output */
-		if (EVP_CIPHER_CTX_reset(ed_ctx) != 1
-				|| EVP_DecryptInit_ex(ed_ctx, (*cs->cipher_cbc)(), NULL, priv->sm_session.SKenc, IV) != 1
-				|| EVP_CIPHER_CTX_set_padding(ed_ctx,0) != 1
-				|| EVP_DecryptUpdate(ed_ctx, q ,&outl, p, inlen) != 1
-				|| EVP_DecryptUpdate(ed_ctx, lastb, &outll, p + inlen, 16 ) != 1
-				|| EVP_DecryptFinal_ex(ed_ctx, discard, &outdl) != 1
-				|| outdl != 0
-				|| outll != 16) {  /* should not happen */
-			sc_log(card->ctx,"SM _decode failed in OpenSSL");
-			sc_log_openssl(card->ctx);
-			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-			goto err;
-		}
-
-		/* unpad last block and get bytes in last block */
-		for (i = 15; i >  0 ; i--) {
-			if (lastb[i] == 0x80)
-				break;
-			if (lastb[i] == 0x00)
-				continue;
-			sc_log(card->ctx, "SM Padding not correct");
-			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-			goto err;
-		}
-
-		if (lastb[i] != 0x80) {
-			sc_log(card->ctx, "SM Padding not correct");
-			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-			goto err;
-		}
-
-		/* will response fit in plain resp buffer */
-		if ((unsigned)inlen + i > plain->resplen || plain->resp == NULL) {
-			sc_log(card->ctx,"SM response bigger then resplen");
-			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
-			goto err;
-		}
-
-		/* copy bytes in last block  if any */
-		memcpy(plain->resp + inlen, lastb, i);
-		plain->resplen = inlen + i;
-	}
-
-	plain->sw1 = *(status.value);
-	plain->sw2 = *(status.value + 1);
-
-	piv_inc(priv->sm_session.resp_enc_counter, sizeof(priv->sm_session.resp_enc_counter));
-
-	r = SC_SUCCESS;
-err:
-	if (r != 0 && plain) {
-		plain->sw1 = 0x69;
-		plain->sw2 = 0x88;
-	}
-
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	CMAC_CTX_free(cmac_ctx);
-#else
-	EVP_MAC_CTX_free(cmac_ctx);
-	EVP_MAC_free(mac);
-#endif
-
-	EVP_CIPHER_CTX_free(ed_ctx);
-
-	LOG_FUNC_RETURN(card->ctx, r);
-}
-#endif
-
-#if 0
-static int piv_free_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu)
-{
-	int r = SC_SUCCESS;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	if (!sm_apdu)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	if (!(*sm_apdu))
-		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-
-	if (plain) {
-		plain->sw1 = (*sm_apdu)->sw1;
-		plain->sw2 = (*sm_apdu)->sw2;
-		if (((*sm_apdu)->sw1 == 0x90 && (*sm_apdu)->sw2 == 00)
-				|| (*sm_apdu)->sw1 == 61){
-			r  = piv_decode_apdu(card, plain, *sm_apdu);
-			goto err;
-		}
-		sc_log(card->ctx,"SM response sw1:0x%2.2x sw2:0x%2.2x", plain->sw1, plain->sw2);
-		if (plain->sw1 == 0x69 && plain->sw2 == 0x88) {
-			/* BUT plain->sw1 and sw2 are not passed back as expected */
-			r = SC_ERROR_SM_INVALID_CHECKSUM; /* will use this one one for now */
-			goto err;
-		} else {
-			r = SC_ERROR_SM;
-			goto err;
-		}
-	}
-
-err:
-	free((unsigned char **)(*sm_apdu)->data);
-	free((*sm_apdu)->resp);
-	free(*sm_apdu);
-	*sm_apdu = NULL;
-
-	LOG_FUNC_RETURN(card->ctx, r);
-}
-#endif
-
-#if 0
-static int piv_sm_close(sc_card_t *card)
-{
-	int r = 0;
-	sm_nist_private_data_t * priv = NULL;
-	struct iso_sm_ctx * ctx = NULL;
-
-	if (!card)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	ctx = card->sm_ctx.info.cmd_data;
-	if (!ctx)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
-
-	priv = (sm_nist_private_data_t *)ctx->priv_data;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx, "priv->sm_flags: 0x%8.8lu", *priv->sm_flags);
-
-	/* sm.c tries to restart sm. Will defer */
-	if ((*priv->sm_flags & PIV_SM_FLAGS_SM_IS_ACTIVE)) {
-		*priv->sm_flags |= PIV_SM_FLAGS_DEFER_OPEN;
-		*priv->sm_flags &= ~PIV_SM_FLAGS_SM_IS_ACTIVE;
-	}
-
-	LOG_FUNC_RETURN(card->ctx, r);
-}
-#endif /* 0 */
-
 static void
 piv_clear_cvc_content(piv_cvc_t *cvc)
 {
@@ -1546,14 +1205,14 @@ piv_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen,
 	size_t taglen;
 	size_t signaturebits;
 
-	if (buf == NULL || *buf == NULL || cvc == NULL) {
+	if (buf == NULL || *buf == NULL || buflen == NULL || cvc == NULL) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
-	
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* If already read and matches previous version return SC_SUCCESS */
-	if (cvc->der.value && (cvc->der.len == *buflen) && buf && *buf && (memcmp(cvc->der.value, *buf, *buflen) == 0))
+	if (cvc->der.value && cvc->der.len == *buflen && (memcmp(cvc->der.value, *buf, *buflen) == 0))
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 
 	piv_clear_cvc_content(cvc);
@@ -1628,6 +1287,7 @@ piv_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen,
 }
 
 #if 0
+/* TODO pairing */
 static int nist_parse_pairing_code(sc_card_t *card, const char *option)
 {
 	size_t i;
@@ -1647,7 +1307,7 @@ static int nist_parse_pairing_code(sc_card_t *card, const char *option)
 	}
 	return SC_SUCCESS;
 }
-#endif /* 0 */
+#endif /* 0 TODO pairing */
 
 static sm_nist_private_data_t *
 sm_nist_private_data_create(sm_nist_params_t *params)
@@ -1761,9 +1421,9 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 	sctx->finish = sm_nist_finish;
 	sctx->clear_free = sm_nist_clear_free;
 	sctx->padding_indicator = SM_ISO_PADDING;
-	sctx->padding_tag = 1;
-	sctx->use_sm_chaining = 1;
-	sctx->get_response_in_clear = 1;
+	sctx->always_add_padding_indicator = 1;
+	sctx->skip_mac_padding = 1;
+	sctx->sm_encrypt_once_then_chaining = 1;
 	sctx->block_length = 16; /* 800-73-4 uses 16 for both cipher suites */
 
 	r = iso_sm_start(card, sctx);
@@ -1929,7 +1589,6 @@ static int
 sm_nist_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *data, size_t datalen, u8 **macdata)
 {
-
 	//	u8 *p = NULL;
 	int r;
 	sm_nist_private_data_t *priv = NULL;
