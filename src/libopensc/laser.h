@@ -292,12 +292,20 @@ struct laser_private_data {
 	struct sc_file *last_ko;
 
 	int secure_verify;
-	int sm_min_level;
+	int sm_cur_level;
 
 	struct laser_card_capabilities caps;
 
 	// TEMP P15 DF RELOAD PRIVATE
 	struct laser_card_auth_state auth_state[2];
+};
+
+struct laser_cka {
+	unsigned long cka;
+	unsigned char internal_cka;
+
+	unsigned char *val;
+	size_t len;
 };
 
 #endif //  ENABLE_OPENSSL

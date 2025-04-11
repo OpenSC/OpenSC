@@ -17,31 +17,42 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
 
 #ifdef ENABLE_OPENSSL /* empty file without openssl */
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#include <ctype.h>
 
-#include "../libopensc/internal.h"
-#include "../libopensc/asn1.h"
-#include "../libopensc/opensc.h"
-#include "../libopensc/cardctl.h"
-#include "../libopensc/log.h"
-#include "../libopensc/aux-data.h"
-#include "../libopensc/asn1.h"
-#include "../libopensc/laser.h"
-#include "../pkcs11/pkcs11.h"
+#include "libopensc/asn1.h"
+#include "libopensc/aux-data.h"
+#include "libopensc/cardctl.h"
+#include "libopensc/internal.h"
+#include "libopensc/log.h"
+#include "libopensc/opensc.h"
+#include "libopensc/laser.h"
+#include "pkcs11/pkcs11.h"
 
 #include "pkcs15-init.h"
 #include "profile.h"
+
+#define LOG_ERROR_RET(ctx, r, text) \
+	do { \
+		int _ret = (r); \
+		sc_do_log_color(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
+				"%s: %d (%s)\n", (text), (_ret), sc_strerror(_ret)); \
+		return (r); \
+	} while (0)
+#define LOG_ERROR_GOTO(ctx, r, text) \
+	do { \
+		int _ret = (r);\
+		sc_do_log_color(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
+				"%s: %d (%s)\n", (text), (_ret), sc_strerror(_ret)); \
+		goto err; \
+	} while (0)
 
 #define LASER_ATTRS_PRKEY_RSA	   (SC_PKCS15_TYPE_VENDOR_DEFINED | SC_PKCS15_TYPE_PRKEY_RSA)
 #define LASER_ATTRS_PUBKEY_RSA	   (SC_PKCS15_TYPE_VENDOR_DEFINED | SC_PKCS15_TYPE_PUBKEY_RSA)
@@ -68,7 +79,7 @@ static int laser_emu_update_tokeninfo(struct sc_profile *profile,
 static int laser_cardid_create(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_file *file);
 static int laser_cmap_create(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_file *file);
+		const struct sc_file *file);
 static int laser_cmap_update(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		int remove, struct sc_pkcs15_object *object);
 static int laser_cardcf_create(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
@@ -81,7 +92,7 @@ static int laser_init_card_internal(struct sc_profile *profile, struct sc_pkcs15
 static int laser_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card);
 
 static int
-laser_strcpy_bp(unsigned char *dst, char *src, size_t dstsize)
+laser_strcpy_bp(unsigned char *dst, const char *src, size_t dstsize)
 {
 	size_t len;
 
@@ -119,7 +130,7 @@ laser_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 
 static int
 laser_create_pin_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_file *file, char *title)
+		struct sc_file *file, const char *title)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *pin_obj = NULL;
@@ -147,7 +158,7 @@ laser_create_pin_object(struct sc_profile *profile, struct sc_pkcs15_card *p15ca
 }
 
 static int
-laser_add_ee_tag(unsigned tag, unsigned char *data, size_t data_len,
+laser_add_ee_tag(unsigned tag, const unsigned char *data, size_t data_len,
 		unsigned char *eeee, size_t eeee_size, size_t *offs)
 {
 	if (!data || !eeee || !offs || !eeee_size)
@@ -195,7 +206,7 @@ laser_update_eeef(struct sc_profile *profile, struct sc_pkcs15_card *p15card, st
 	/* The End */
 	rv = sc_pkcs15init_update_file(profile, p15card, file, data, offs);
 	if ((int)offs > rv)
-		LOG_TEST_GOTO_ERR(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Cannot update EEEF file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Cannot update EEEF file");
 	rv = SC_SUCCESS;
 err:
 	free(gtime);
@@ -337,7 +348,7 @@ laser_update_eeee(struct sc_profile *profile, struct sc_pkcs15_card *p15card, st
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, eeee, offs);
 	if ((int)offs > rv)
-		LOG_TEST_GOTO_ERR(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Cannot update EEEE file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Cannot update EEEE file");
 	rv = SC_SUCCESS;
 err:
 	free(eeee);
@@ -420,20 +431,20 @@ laser_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 			} else if (!strcmp(to_create[ii], "Aladdin-UserPinType")) {
 
 				if (file->size < sizeof(user_pin_type))
-					LOG_TEST_GOTO_ERR(ctx, rv = SC_ERROR_INVALID_DATA, "Aladdin-UserPinType file size is insufficient");
+					LOG_ERROR_GOTO(ctx, (rv = SC_ERROR_INVALID_DATA), "Aladdin-UserPinType file size is insufficient");
 
 				rv = sc_pkcs15init_update_file(profile, p15card, file, &user_pin_type, sizeof(user_pin_type));
 				if ((int)sizeof(user_pin_type) > rv)
-					LOG_TEST_GOTO_ERR(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Cannot update Aladdin-UserPinType file.");
+					LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Cannot update Aladdin-UserPinType file.");
 			} else if (!strcmp(to_create[ii], "Aladdin-EEED")) {
 				unsigned char data[4] = {0x02, 0xD0, 0x01, 0x64};
 
 				if (file->size < sizeof(data))
-					LOG_TEST_GOTO_ERR(ctx, rv = SC_ERROR_INVALID_DATA, "Aladdin-EEED file size is insufficient");
+					LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "Aladdin-EEED file size is insufficient");
 
 				rv = sc_pkcs15init_update_file(profile, p15card, file, data, sizeof(data));
 				if ((int)sizeof(data) > rv)
-					LOG_TEST_GOTO_ERR(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Cannot update Aladdin-EEED file");
+					LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Cannot update Aladdin-EEED file");
 
 			} else if (!strcmp(to_create[ii], "Aladdin-EEEE")) {
 
@@ -443,7 +454,7 @@ laser_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 			} else if (!strcmp(to_create[ii], "Aladdin-EEEF")) {
 
 				if (SC_SUCCESS != laser_update_eeef(profile, p15card, file))
-					LOG_TEST_GOTO_ERR(ctx, rv = SC_ERROR_INTERNAL, "Cannot update Aladdin-EEEF file");
+					LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "Cannot update Aladdin-EEEF file");
 
 			} else if (!strcmp(to_create[ii], "laser-cmap-attributes")) {
 
@@ -504,7 +515,7 @@ laser_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *file_in_profile = NULL;
-	int rv, ii;
+	int ii;
 	static const char *path_to_delete[] = {
 			"Aladdin-AppDF",
 			"Aladdin-UserPinType",
@@ -522,10 +533,11 @@ laser_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 	for (ii = 0; path_to_delete[ii]; ii++) {
 		struct sc_file *file = NULL;
 		const struct sc_acl_entry *entry = NULL;
+		int rv;
 
 		if (sc_profile_get_file(profile, path_to_delete[ii], &file_in_profile)) {
 			sc_log(ctx, "Inconsistent profile: cannot find %s", path_to_delete[ii]);
-			LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Failed to erase card");
+			LOG_ERROR_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Failed to erase card");
 		}
 
 		sc_log(ctx, "delete file %s", sc_print_path(&file_in_profile->path));
@@ -567,7 +579,7 @@ laser_create_dir(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	LOG_FUNC_CALLED(ctx);
 
-	p15card->tokeninfo->flags = CKF_TOKEN_INITIALIZED | CKF_LOGIN_REQUIRED | CKF_RNG;
+	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_PRN_GENERATION;
 	p15card->card->version.hw_major = LASER_VERSION_HW_MAJOR;
 	p15card->card->version.hw_minor = LASER_VERSION_HW_MINOR;
 	p15card->card->version.fw_major = LASER_VERSION_FW_MAJOR;
@@ -605,17 +617,17 @@ laser_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	sc_log(ctx, "create '%s'; ref 0x%X; flags %X; max_tries %i", pin_obj->label, pin_attrs->reference, pin_attrs->flags, auth_info->max_tries);
 
 	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "PIN unblocking is not supported");
+		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "PIN unblocking is not supported");
 
 	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		if (pin_attrs->reference != 0x10)
-			LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid SOPIN reference");
+			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid SOPIN reference");
 
 		rv = sc_profile_get_file(profile, "Aladdin-SoPIN", &pin_file);
 		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get SOPIN file");
 	} else {
 		if (pin_attrs->reference != 0x20)
-			LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid UserPIN reference");
+			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid UserPIN reference");
 
 		rv = sc_profile_get_file(profile, "Aladdin-UserPIN", &pin_file);
 		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get UserPIN file");
@@ -808,7 +820,7 @@ laser_create_key_file(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 
 	LOG_FUNC_CALLED(ctx);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "Create key failed: RSA only supported");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_NOT_SUPPORTED, "Create key failed: RSA only supported");
 
 	sc_log(ctx, "create private key(type:%X) ID:%s key-ref:0x%X", object->type, sc_pkcs15_print_id(&key_info->id), key_info->key_reference);
 	/* Here, the path of private key file should be defined.
@@ -820,7 +832,7 @@ laser_create_key_file(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 
 	file->prop_attr = calloc(1, 5);
 	if (!file->prop_attr)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate prop attrs.");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate prop attrs.");
 	file->prop_attr_len = 5;
 
 	*(file->prop_attr + 0) = LASER_KO_CLASS_RSA_CRT;
@@ -882,7 +894,7 @@ laser_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	LOG_FUNC_CALLED(ctx);
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "For a while only RSA can be generated");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_NOT_SUPPORTED, "For a while only RSA can be generated");
 
 	rv = sc_select_file(card, &key_info->path, &key_file);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to generate key: cannot select private key file");
@@ -904,7 +916,7 @@ laser_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	args.modulus = malloc(key_info->modulus_length / 8);
 	args.exponent = malloc(sizeof(default_exponent));
 	if (!args.exponent || !args.modulus)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "laser_generate_key() cannot allocate exponent or/and modulus buffers");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "laser_generate_key() cannot allocate exponent or/and modulus buffers");
 	args.modulus_len = key_info->modulus_length / 8;
 	args.exponent_len = sizeof(default_exponent);
 	memcpy(args.exponent, default_exponent, sizeof(default_exponent));
@@ -1005,7 +1017,7 @@ laser_cmap_container_set_default(struct sc_pkcs15_card *p15card,
 		else if ((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_CERT)
 			rm_id = &((struct sc_pkcs15_cert_info *)object->data)->id;
 		else
-			LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "Invalid object type in update CMAP procedure");
+			LOG_ERROR_RET(ctx, SC_ERROR_INTERNAL, "Invalid object type in update CMAP procedure");
 		sc_log(ctx, "object(id:'%s',type:0x%X) to be removed", sc_pkcs15_print_id(rm_id), object->type);
 	}
 
@@ -1080,13 +1092,13 @@ laser_cardid_create(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, data, sizeof(data));
 	if ((int)sizeof(data) > rv)
-		LOG_TEST_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update CARDID file");
+		LOG_ERROR_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update CARDID file");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 static int
-laser_cmap_create(struct sc_profile *profile, struct sc_pkcs15_card *p15card, struct sc_file *file)
+laser_cmap_create(struct sc_profile *profile, struct sc_pkcs15_card *p15card, const struct sc_file *file)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object dobj;
@@ -1205,7 +1217,7 @@ laser_cardcf_create(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, &cardcf, sizeof(cardcf));
 	if ((int)sizeof(cardcf) > rv)
-		LOG_TEST_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update laser_md_cardcf");
+		LOG_ERROR_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update laser_md_cardcf");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1229,7 +1241,7 @@ laser_cardcf_save(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 		struct laser_cardcf *cardcf = &p15card->md_data->cardcf;
 		rv = sc_pkcs15init_update_file(profile, p15card, file, cardcf, sizeof(struct laser_cardcf));
 		if ((int)sizeof(struct laser_cardcf) > rv)
-			LOG_TEST_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update laser_md_cardcf");
+			LOG_ERROR_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update laser_md_cardcf");
 		rv = SC_SUCCESS;
 	}
 
@@ -1248,7 +1260,7 @@ laser_cardapps_create(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, &defaults_cardapps, sizeof(defaults_cardapps));
 	if ((int)sizeof(defaults_cardapps) > rv)
-		LOG_TEST_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update laser_md_cardapps");
+		LOG_ERROR_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update laser_md_cardapps");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1295,7 +1307,7 @@ laser_update_df_create_private_key(struct sc_profile *profile, struct sc_pkcs15_
 
 	file->size = attrs_len;
 
-	snprintf((char *)file->name, sizeof(file->name), "kxs%02zi", attrs_ref);
+	snprintf((char *)file->name, sizeof(file->name), "kxs%02u", (unsigned int)attrs_ref);
 	file->namelen = strlen((char *)file->name);
 
 	/* TODO: implement Laser's 'resize' file */
@@ -1305,7 +1317,7 @@ laser_update_df_create_private_key(struct sc_profile *profile, struct sc_pkcs15_
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
 	if ((int)attrs_len > rv)
-		LOG_TEST_GOTO_ERR(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update private key attributes file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update private key attributes file");
 
 	rv = laser_cmap_update(profile, p15card, 0, object);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update 'cmapfile'");
@@ -1319,7 +1331,7 @@ laser_update_df_create_public_key(struct sc_profile *profile, struct sc_pkcs15_c
 		struct sc_pkcs15_object *object)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *)object->data;
+	const struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *)object->data;
 	struct sc_file *file = NULL;
 	unsigned char *attrs = NULL;
 	size_t attrs_len = 0, attrs_ref;
@@ -1348,7 +1360,7 @@ laser_update_df_create_public_key(struct sc_profile *profile, struct sc_pkcs15_c
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
 	if ((int)attrs_len > rv)
-		LOG_TEST_GOTO_ERR(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update public key attributes file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update public key attributes file");
 	rv = SC_SUCCESS;
 err:
 	sc_file_free(file);
@@ -1361,7 +1373,7 @@ laser_need_update(struct sc_pkcs15_card *p15card,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *file = NULL;
-	struct sc_path *path = NULL;
+	const struct sc_path *path = NULL;
 	unsigned char *attrs = NULL;
 	size_t attrs_len = 0;
 	int rv;
@@ -1391,7 +1403,7 @@ laser_need_update(struct sc_pkcs15_card *p15card,
 	rv = sc_read_binary(p15card->card, 0x0C, sha1, SHA_DIGEST_LENGTH, 0);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot read current checksum");
 	if (rv != SHA_DIGEST_LENGTH)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid size of current checksum");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid size of current checksum");
 
 	switch (object->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_CERT:
@@ -1403,7 +1415,7 @@ laser_need_update(struct sc_pkcs15_card *p15card,
 		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode laser DATA attributes");
 		break;
 	default:
-		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_NOT_SUPPORTED, "Object type not supported");
 	}
 
 	*need_update = memcmp(sha1, attrs + 0x0C, SHA_DIGEST_LENGTH) ? 1 : 0;
@@ -1450,7 +1462,7 @@ laser_update_df_create_certificate(struct sc_profile *profile, struct sc_pkcs15_
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
 	if ((int)attrs_len > rv)
-		LOG_TEST_GOTO_ERR(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to update laser certificate attributes file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to update laser certificate attributes file");
 
 	rv = laser_cmap_update(profile, p15card, 0, NULL);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update 'cmapfile'");
@@ -1496,7 +1508,7 @@ laser_update_df_create_data_object(struct sc_profile *profile, struct sc_pkcs15_
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
 	if ((int)attrs_len > rv)
-		LOG_TEST_GOTO_ERR(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to update laser DATA attributes file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to update laser DATA attributes file");
 	rv = SC_SUCCESS;
 err:
 	sc_file_free(file);
@@ -1525,17 +1537,17 @@ laser_update_df_check_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15
 	sc_log(ctx, "checking '%s'; ref 0x%X; flags %X; max_tries %i", pin_obj->label, pin_attrs->reference, pin_attrs->flags, auth_info->max_tries);
 
 	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "PIN unblocking is not supported");
+		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "PIN unblocking is not supported");
 
 	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		if (pin_attrs->reference != 0x10)
-			LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid SOPIN reference");
+			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid SOPIN reference");
 
 		rv = sc_profile_get_file(profile, "Aladdin-SoPIN", &pin_file);
 		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get SOPIN file");
 	} else {
 		if (pin_attrs->reference != 0x20)
-			LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid UserPIN reference");
+			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid UserPIN reference");
 
 		rv = sc_profile_get_file(profile, "Aladdin-UserPIN", &pin_file);
 		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get UserPIN file");
@@ -1583,7 +1595,7 @@ laser_update_df_delete_private_key(struct sc_profile *profile, struct sc_pkcs15_
 		struct sc_pkcs15_object *object)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)object->data;
+	const struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)object->data;
 	struct sc_file *file = NULL;
 	size_t attrs_ref;
 	int rv;
@@ -1613,7 +1625,7 @@ laser_update_df_delete_public_key(struct sc_profile *profile, struct sc_pkcs15_c
 		struct sc_pkcs15_object *object)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *)object->data;
+	const struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *)object->data;
 	struct sc_file *file = NULL;
 	size_t attrs_ref;
 	int rv;
@@ -1786,7 +1798,7 @@ laser_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_card *p1
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, (unsigned char *)(&lti), sizeof(lti));
 	if ((int)sizeof(lti) > rv)
-		LOG_TEST_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update TokenInfo file");
+		LOG_ERROR_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update TokenInfo file");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1808,7 +1820,7 @@ laser_emu_store_pubkey(struct sc_pkcs15_card *p15card,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *)object->data;
-	struct sc_pkcs15_prkey_info *prkey_info = NULL;
+	const struct sc_pkcs15_prkey_info *prkey_info;
 	struct sc_pkcs15_object *prkey_object = NULL;
 	struct sc_pkcs15_pubkey pubkey;
 	struct sc_file *file = NULL;
@@ -1847,7 +1859,7 @@ laser_emu_store_pubkey(struct sc_pkcs15_card *p15card,
 
 	file->prop_attr = calloc(1, 5);
 	if (!file->prop_attr)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate prop attrs.");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate prop attrs.");
 	file->prop_attr_len = 5;
 
 	*(file->prop_attr + 0) = LASER_KO_CLASS_RSA_CRT;
@@ -1938,7 +1950,7 @@ laser_emu_store_certificate(struct sc_pkcs15_card *p15card,
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
 	if ((int)attrs_len > rv)
-		LOG_TEST_GOTO_ERR(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update laser certificate attributes file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update laser certificate attributes file");
 	rv = SC_SUCCESS;
 
 	info->path = file->path;
@@ -1977,7 +1989,7 @@ laser_emu_store_data_object(struct sc_pkcs15_card *p15card,
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
 	if ((int)attrs_len > rv)
-		LOG_TEST_GOTO_ERR(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update laser DATA object attributes file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update laser DATA object attributes file");
 	rv = SC_SUCCESS;
 
 	info->path = file->path;

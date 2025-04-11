@@ -17,27 +17,38 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
 #ifdef ENABLE_OPENSSL /* empty file without openssl */
 
 #include "config.h"
 
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <openssl/sha.h>
 
-#include "internal.h"
 #include "asn1.h"
-#include "pkcs15.h"
 #include "cardctl.h"
-#include "pkcs11/pkcs11.h"
 #include "common/compat_strlcpy.h"
+#include "internal.h"
 #include "laser.h"
+#include "pkcs11/pkcs11.h"
+#include "pkcs15.h"
 
+#define LOG_ERROR_RET(ctx, r, text) \
+	do { \
+		int _ret = (r); \
+		sc_do_log_color(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
+				"%s: %d (%s)\n", (text), (_ret), sc_strerror(_ret)); \
+		return (r); \
+	} while (0)
+#define LOG_ERROR_GOTO(ctx, r, text) \
+	do { \
+		int _ret = (r); \
+		sc_do_log_color(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
+				"%s: %d (%s)\n", (text), (_ret), sc_strerror(_ret)); \
+		goto err; \
+	} while (0)
 
 #define C_ASN1_CREATE_RSA_KEY_SIZE 2
 static struct sc_asn1_entry c_asn1_create_rsa_key[C_ASN1_CREATE_RSA_KEY_SIZE] = {
@@ -75,14 +86,6 @@ static struct sc_asn1_entry c_asn1_create_rsa_prv_coefficients[C_ASN1_RSA_PRV_CO
 		/* tag 0x94 */
 		{"privatePartialPrimes", SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 0x14, SC_ASN1_ALLOC, NULL, NULL},
 		{NULL,		       0,			  0,		     0,		NULL, NULL}
-};
-
-struct laser_cka {
-	unsigned long cka;
-	unsigned char internal_cka;
-
-	unsigned char *val;
-	size_t len;
 };
 
 static int
@@ -123,18 +126,18 @@ laser_encode_prvkey_rsa(struct sc_context *ctx, struct sc_pkcs15_prkey_rsa *key,
 	struct sc_asn1_entry asn1_rsa_coefficients[C_ASN1_RSA_PRV_COEFFICIENTS_SIZE];
 	unsigned char *primes = NULL, *partial_primes = NULL;
 	size_t primes_len = 0, partial_primes_len = 0;
-	int r;
+	int rv;
 
 	primes = malloc(key->p.len + key->q.len);
 	if (!primes)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate primes");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate primes");
 	memcpy(primes, key->p.data, key->p.len);
 	memcpy(primes + key->p.len, key->q.data, key->q.len);
 	primes_len = key->p.len + key->q.len;
 
 	partial_primes = malloc(key->dmp1.len + key->dmq1.len + key->iqmp.len);
 	if (!partial_primes)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate partial primes");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate partial primes");
 	memcpy(partial_primes, key->dmp1.data, key->dmp1.len);
 	memcpy(partial_primes + key->dmp1.len, key->dmq1.data, key->dmq1.len);
 	memcpy(partial_primes + key->dmp1.len + key->dmq1.len, key->iqmp.data, key->iqmp.len);
@@ -150,8 +153,8 @@ laser_encode_prvkey_rsa(struct sc_context *ctx, struct sc_pkcs15_prkey_rsa *key,
 	sc_format_asn1_entry(asn1_rsa_coefficients + 3, primes, &primes_len, 1);
 	sc_format_asn1_entry(asn1_rsa_coefficients + 4, partial_primes, &partial_primes_len, 1);
 
-	r = sc_asn1_encode(ctx, asn1_rsa_key, buf, buflen);
-	LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 encoding of RSA private key failed");
+	rv = sc_asn1_encode(ctx, asn1_rsa_key, buf, buflen);
+	LOG_TEST_GOTO_ERR(ctx, rv, "ASN.1 encoding of RSA private key failed");
 err:
 	free(primes);
 	free(partial_primes);
@@ -177,7 +180,6 @@ _get_attr(unsigned char *data, size_t length, size_t *in_offs, struct laser_cka 
 
 	/*
 	 * At the end of kxc/s files there are mysterious 4 bytes (like 'OD OO OD OO').
-	 * TODO: Get to know what they are for.
 	 */
 	for (offs = *in_offs; (offs < length - 4) && (*(data + offs) == 0xFF); offs++)
 		;
@@ -352,11 +354,11 @@ laser_attrs_cert_decode(struct sc_context *ctx,
 			rv = _cka_get_unsigned(&attr, &uval);
 			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_CLASS");
 			if (uval != CKO_CERTIFICATE)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid CKA_CLASS");
+				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid CKA_CLASS");
 			break;
 		case CKA_TOKEN:
 			if (*attr.val == 0)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
+				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
 			break;
 		case CKA_PRIVATE:
 			if (*attr.val)
@@ -374,7 +376,7 @@ laser_attrs_cert_decode(struct sc_context *ctx,
 			rv = _cka_get_unsigned(&attr, &uval);
 			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_CERTIFICATE_TYPE");
 			if (uval != CKC_X_509)
-				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Other then CKC_X_509 cert type is not supported");
+				LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Other then CKC_X_509 cert type is not supported");
 			break;
 		case CKA_ISSUER:
 			break;
@@ -444,11 +446,11 @@ laser_attrs_pubkey_decode(struct sc_context *ctx,
 			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_CLASS");
 
 			if (uval != CKO_PUBLIC_KEY)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Need to be CKO_PUBLIC_KEY CKA_CLASS");
+				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Need to be CKO_PUBLIC_KEY CKA_CLASS");
 			break;
 		case CKA_TOKEN:
 			if (*attr.val == 0)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
+				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
 			break;
 		case CKA_PRIVATE:
 			if (*attr.val)
@@ -469,7 +471,7 @@ laser_attrs_pubkey_decode(struct sc_context *ctx,
 			else if (uval == CKK_GOSTR3410)
 				object->type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410;
 			else
-				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported public key type");
+				LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported public key type");
 			break;
 		case CKA_SUBJECT:
 			break;
@@ -578,11 +580,11 @@ laser_attrs_prvkey_decode(struct sc_context *ctx,
 			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_CLASS");
 
 			if (uval != CKO_PRIVATE_KEY)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Need to be CKO_PRIVATE_KEY CKA_CLASS");
+				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Need to be CKO_PRIVATE_KEY CKA_CLASS");
 			break;
 		case CKA_TOKEN:
 			if (*attr.val == 0)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
+				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
 			break;
 		case CKA_PRIVATE:
 			if (*attr.val)
@@ -605,7 +607,7 @@ laser_attrs_prvkey_decode(struct sc_context *ctx,
 			else if (uval == CKK_GOSTR3410)
 				object->type = SC_PKCS15_TYPE_PRKEY_GOSTR3410;
 			else
-				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported private key type");
+				LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported private key type");
 			break;
 		case CKA_SUBJECT:
 			rv = _cka_get_blob(&attr, &info->subject);
@@ -708,18 +710,16 @@ laser_attrs_data_object_decode(struct sc_context *ctx,
 		case CKA_CERT_HASH:
 			if (hash_exists)
 				*hash_exists = 1;
-			// struct sc_pkcs15_der der;
-			// rv = _cka_get_blob(&attr, &der);
 			break;
 		case CKA_CLASS:
 			rv = _cka_get_unsigned(&attr, &uval);
 			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_CLASS");
 			if (uval != CKO_DATA)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid CKA_CLASS");
+				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid CKA_CLASS");
 			break;
 		case CKA_TOKEN:
 			if (*attr.val == 0)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
+				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
 			break;
 		case CKA_PRIVATE:
 			if (*attr.val)
@@ -867,7 +867,7 @@ laser_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 
 	data = malloc(7);
 	if (!data)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate prv.key repr.");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate prv.key repr.");
 
 	data_len = 0;
 	*(data + data_len++) = LASER_ATTRIBUTE_VALID;
@@ -1019,7 +1019,7 @@ laser_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 
 	data = malloc(7);
 	if (!data)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate pub.key repr.");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate pub.key repr.");
 
 	data_len = 0;
 	*(data + data_len++) = LASER_ATTRIBUTE_VALID;
@@ -1177,7 +1177,7 @@ laser_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object 
 
 	cert = malloc(sizeof(struct sc_pkcs15_cert));
 	if (!cert)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate cert.encode repr.");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate cert.encode repr.");
 
 	memset(cert, 0, sizeof(struct sc_pkcs15_cert));
 
@@ -1186,7 +1186,7 @@ laser_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object 
 
 	data = malloc(7);
 	if (!data)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Failed to allocate a small piece");
 
 	data_len = 0;
 	*(data + data_len++) = LASER_ATTRIBUTE_VALID;
@@ -1298,7 +1298,7 @@ laser_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 
 	data = malloc(7);
 	if (!data)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate obj.encode repr.");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate obj.encode repr.");
 
 	data_len = 0;
 	*(data + data_len++) = LASER_ATTRIBUTE_VALID;
@@ -1610,7 +1610,7 @@ laser_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigned bas
 			break;
 	}
 	if (ii > max)
-		LOG_TEST_RET(ctx, SC_ERROR_TOO_MANY_OBJECTS, "No more free object index");
+		LOG_ERROR_RET(ctx, SC_ERROR_TOO_MANY_OBJECTS, "No more free object index");
 
 	idx = ii;
 	sc_log(ctx, "return free index %i", idx);

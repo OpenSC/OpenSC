@@ -17,26 +17,31 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
 
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "libopensc/log.h"
-#include "libopensc/cards.h"
-#include "libopensc/pkcs15.h"
-#include "libopensc/cardctl.h"
-#include "pkcs11/pkcs11.h"
-#include "libopensc/aux-data.h"
-#include "libopensc/laser.h"
 #include "common/compat_strlcpy.h"
+#include "aux-data.h"
+#include "cardctl.h"
+#include "cards.h"
+#include "laser.h"
+#include "log.h"
+#include "pkcs15.h"
+#include "pkcs11/pkcs11.h"
 
 #ifdef ENABLE_OPENSSL /* empty file without openssl */
 
 #include <openssl/sha.h>
+
+#define LOG_ERROR_GOTO(ctx, r, text) \
+	do { \
+		int _ret = (r); \
+		sc_do_log_color(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
+				"%s: %d (%s)\n", (text), (_ret), sc_strerror(_ret)); \
+		goto err; \
+	} while (0)
 
 #define PATH_APPLICATION   "3F003000"
 #define PATH_TOKENINFO	   "3F003000C000"
@@ -80,14 +85,6 @@ struct laser_ko_props {
 	} pin_policy;
 };
 
-struct laser_cka {
-	unsigned cka;
-	unsigned char internal_cka;
-
-	unsigned char *val;
-	size_t len;
-};
-
 int sc_pkcs15emu_laser_init_ex(struct sc_pkcs15_card *, struct sc_aid *aid);
 
 static int
@@ -118,7 +115,7 @@ _laser_type(int id)
 }
 
 static int
-_alloc_ck_string(unsigned char *data, size_t max_len, char **out)
+_alloc_ck_string(const unsigned char *data, size_t max_len, char **out)
 {
 	char *str = NULL;
 	size_t idx;
@@ -168,7 +165,7 @@ _create_pin(struct sc_pkcs15_card *p15card, char *label,
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select USER PIN");
 
 	if (!file->prop_attr_len)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "No PIN attributes in FCP");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "No PIN attributes in FCP");
 	sc_log(ctx, "FCP User PIN attributes '%s'", sc_dump_hex(file->prop_attr, file->prop_attr_len));
 
 	props = (struct laser_ko_props *)file->prop_attr;
@@ -233,7 +230,7 @@ _create_certificate(struct sc_pkcs15_card *p15card, unsigned file_id)
 	LOG_TEST_RET(ctx, rv, "Error while getting file content.");
 
 	if (len < 11) /* header 7 bytes, tail 4 bytes */
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "certificate attributes file is too short");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "certificate attributes file is too short");
 
 	rv = laser_attrs_cert_decode(ctx, &obj, &info, data + 7, len - 11);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Decode certificate attributes error.");
@@ -246,7 +243,7 @@ _create_certificate(struct sc_pkcs15_card *p15card, unsigned file_id)
 	SHA1(data, len, sha1);
 
 	if (memcmp(sha1, sha1_attr, SHA_DIGEST_LENGTH))
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "invalid checksum of certificate attributes");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "invalid checksum of certificate attributes");
 err:
 	free(data);
 	LOG_FUNC_RETURN(ctx, rv);
@@ -280,7 +277,7 @@ _create_pubkey(struct sc_pkcs15_card *p15card, unsigned file_id)
 	LOG_TEST_GOTO_ERR(ctx, rv, "Error while getting file content.");
 
 	if (len < 11) /* header 7 bytes, tail 4 bytes */
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "invalid length of public key attributes data");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "invalid length of public key attributes data");
 
 	/* set info path to public key KO */
 	path.value[path.len - 2] = (ko_fid >> 8) & 0xFF;
@@ -301,8 +298,7 @@ _create_pubkey(struct sc_pkcs15_card *p15card, unsigned file_id)
 	LOG_TEST_GOTO_ERR(ctx, rv, "Decode public key attributes error.");
 
 	if (!info.id.len) {
-		free(data);
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_IMPLEMENTED, "Missing public key ID");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_NOT_IMPLEMENTED, "Missing public key ID");
 	}
 
 	rv = sc_pkcs15emu_add_rsa_pubkey(p15card, &obj, &info);
@@ -343,7 +339,7 @@ _create_prvkey(struct sc_pkcs15_card *p15card, unsigned file_id)
 	LOG_TEST_GOTO_ERR(ctx, rv, "Error while getting file content.");
 
 	if (len < 11) /* header 7 bytes, tail 4 bytes */
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "private key attributes file is too short");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "private key attributes file is too short");
 
 	/* set info path to private key KO */
 	path.value[path.len - 2] = ko_fid / 0x100;
@@ -365,7 +361,7 @@ _create_prvkey(struct sc_pkcs15_card *p15card, unsigned file_id)
 	LOG_TEST_GOTO_ERR(ctx, rv, "Decode private key attributes error.");
 
 	if (!info.id.len)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_IMPLEMENTED, "Missing private key ID");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_NOT_IMPLEMENTED, "Missing private key ID");
 
 	obj.auth_id.len = 1;
 	obj.auth_id.value[0] = LASER_USER_PIN_AUTH_ID;
@@ -423,7 +419,6 @@ _create_data_object(struct sc_pkcs15_card *p15card, const char *path, unsigned f
 	unsigned char fid[2] = {((file_id >> 8) & 0xFF), (file_id & 0xFF)};
 	unsigned char *data = NULL;
 	size_t len;
-	unsigned char sha1[SHA_DIGEST_LENGTH], sha1_attr[SHA_DIGEST_LENGTH];
 	int rv;
 	unsigned char hash_exists = 0;
 
@@ -442,7 +437,7 @@ _create_data_object(struct sc_pkcs15_card *p15card, const char *path, unsigned f
 		return SC_SUCCESS;
 
 	if (len < 11) /* header 7 bytes, tail 4 bytes */
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "data object file is too short");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "data object file is too short");
 
 	rv = laser_attrs_data_object_decode(ctx, &obj, &info, data + 7, len - 11, &hash_exists);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Decode data object error.");
@@ -457,15 +452,18 @@ _create_data_object(struct sc_pkcs15_card *p15card, const char *path, unsigned f
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to emu-add data object");
 
 	if (hash_exists) {
+		unsigned char sha1_attr[SHA_DIGEST_LENGTH];
+
 		memcpy(sha1_attr, data + 12, SHA_DIGEST_LENGTH);
 		memset(data + 12, 0, SHA_DIGEST_LENGTH);
 
 		// TEMP - disable check SHA for 0-filled hash
 		if (memcmp(sha1_attr, data + 12, SHA_DIGEST_LENGTH)) {
+			unsigned char sha1[SHA_DIGEST_LENGTH];
+
 			SHA1(data, len, sha1);
 			if (memcmp(sha1, sha1_attr, SHA_DIGEST_LENGTH)) {
-				free(data);
-				LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "invalid checksum of DATA attributes");
+				LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "invalid checksum of DATA attributes");
 			}
 		}
 	}
@@ -480,7 +478,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
-	size_t ii, count;
+	size_t ii;
 	char *df_paths[3] = {PATH_PUBLICDIR, PATH_PRIVATEDIR, NULL};
 	int rv = SC_SUCCESS;
 	int df;
@@ -501,6 +499,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 
 	for (df = 0; df_paths[df]; df++) {
 		struct sc_path path;
+		size_t count;
 
 		sc_format_path(df_paths[df], &path);
 		rv = sc_select_file(card, &path, NULL);
@@ -636,7 +635,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 					}
 				}
 				if (ii == prkeys_num) {
-					LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "CMAP record without corresponding PKCS#15 private key object");
+					LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "CMAP record without corresponding PKCS#15 private key object");
 				}
 			}
 
@@ -672,7 +671,7 @@ _set_md_data(struct sc_pkcs15_card *p15card)
 	rv = sc_pkcs15_read_file(p15card, &path, &buf, &buflen, 0);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select&read laser-md-cardcf file");
 	if ((int)sizeof(struct laser_cardcf) > buflen)
-		LOG_TEST_GOTO_ERR(ctx, 0 > rv ? rv : (rv = SC_ERROR_INVALID_DATA), "Incorrect laser-md-cardcf file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INVALID_DATA), "Incorrect laser-md-cardcf file");
 
 	p15card->md_data = (struct sc_md_data *)calloc(1, sizeof(struct sc_md_data));
 
@@ -680,7 +679,6 @@ _set_md_data(struct sc_pkcs15_card *p15card)
 		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	p15card->md_data->cardcf = *((struct laser_cardcf *)buf);
-
 err:
 	free(buf);
 	LOG_FUNC_RETURN(ctx, rv);
@@ -709,7 +707,7 @@ sc_pkcs15emu_laser_init(struct sc_pkcs15_card *p15card)
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select&read TOKEN-INFO file");
 
 	if (buflen < LASER_TOKEN_INFO_LENGTH)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Invalid TOKEN-INFO data");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "Invalid TOKEN-INFO data");
 
 	rv = _alloc_ck_string(buf + idx, labelSize, &p15card->tokeninfo->label);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot allocate token label");
@@ -771,8 +769,11 @@ laser_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *pdf)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
+	struct sc_path path;
 
-	if (pdf->type != SC_PKCS15_DODF)
+	sc_format_path(PATH_PRIVATEDIR, &path);
+
+	if (pdf->type != SC_PKCS15_DODF || !sc_compare_path(&path, &pdf->path))
 		return sc_pkcs15_parse_df(p15card, pdf);
 	if (pdf->enumerated)
 		return SC_SUCCESS;
@@ -793,11 +794,9 @@ laser_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *pdf)
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
 	size_t ii, count;
 	int rv;
-	struct sc_path path;
 
 	LOG_FUNC_CALLED(ctx);
 
-	sc_format_path(PATH_PRIVATEDIR, &path);
 	rv = sc_select_file(card, &path, NULL);
 	LOG_TEST_RET(ctx, rv, "Cannot select object's DF");
 
@@ -851,12 +850,12 @@ sc_pkcs15emu_laser_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	rv = laser_detect_card(p15card);
 	LOG_TEST_RET(ctx, rv, "Not JaCarta PKI token/card");
 
-	rv = sc_pkcs15emu_laser_init(p15card);
-	LOG_TEST_RET(ctx, rv, "Internal JaCarta PKI PKCS#15 error");
-
 	// P15 DF RELOAD PRIVATE
 	p15card->ops.parse_df = laser_parse_df;
 	p15card->ops.clear = laser_clear;
+
+	rv = sc_pkcs15emu_laser_init(p15card);
+	LOG_TEST_RET(ctx, rv, "Internal JaCarta PKI PKCS#15 error");
 
 	LOG_FUNC_RETURN(ctx, rv);
 }

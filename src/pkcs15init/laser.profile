@@ -183,7 +183,7 @@ filesystem {
 					file-id	= 0600;
 				}
 
-				#CMAP ile
+				#CMAP file
 				EF laser-cmap-attributes {
 					ACL = READ=NONE, WRITE=CHV48, ADMIN=CHV48, DELETE-SELF=CHV48;
 					file-id	= 867F;

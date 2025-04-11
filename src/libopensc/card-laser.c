@@ -21,10 +21,10 @@
 #include <config.h>
 #endif
 
-#ifdef ENABLE_OPENSSL   /* empty file without openssl */
+#ifdef ENABLE_OPENSSL /* empty file without openssl */
 
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #ifndef OPENSSL_SUPPRESS_DEPRECATED
@@ -32,24 +32,23 @@
 #endif
 
 #include <openssl/bn.h>
+#include <openssl/des.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
-#include <openssl/rsa.h>
 #include <openssl/pkcs12.h>
+#include <openssl/rand.h>
+#include <openssl/rsa.h>
+#include <openssl/sha.h>
 #include <openssl/x509v3.h>
-#include <openssl/des.h>
 
-#include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
-#include "opensc.h"
+#include "internal.h"
 #include "iso7816.h"
-#include "pkcs15.h"
 #include "laser.h"
-
+#include "opensc.h"
+#include "pkcs15.h"
 #include "sc-ossl-compat.h"
 
 #ifndef _WIN32
@@ -60,16 +59,22 @@
 #define getpid() _getpid()
 #endif
 
-#define LASER_CARD_DEFAULT_FLAGS ( SC_ALGORITHM_ONBOARD_KEY_GEN	\
-		| SC_ALGORITHM_RSA_RAW		\
-		| SC_ALGORITHM_RSA_PAD_ISO9796	\
-		| SC_ALGORITHM_RSA_PAD_PKCS1	\
-		| SC_ALGORITHM_RSA_HASH_NONE	\
-		| SC_ALGORITHM_RSA_HASH_SHA1	\
-		| SC_ALGORITHM_RSA_HASH_SHA224	\
-		| SC_ALGORITHM_RSA_HASH_SHA256	\
-		| SC_ALGORITHM_RSA_HASH_SHA384	\
-		| SC_ALGORITHM_RSA_HASH_SHA512)
+#define LOG_ERROR_RET(ctx, r, text) \
+	do { \
+		int _ret = (r); \
+		sc_do_log_color(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
+				"%s: %d (%s)\n", (text), (_ret), sc_strerror(_ret)); \
+		return (r); \
+	} while (0)
+#define LOG_ERROR_GOTO(ctx, r, text) \
+	do { \
+		int _ret = (r); \
+		sc_do_log_color(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
+				"%s: %d (%s)\n", (text), (_ret), sc_strerror(_ret)); \
+		goto err; \
+	} while (0)
+
+#define LASER_CARD_DEFAULT_FLAGS (SC_ALGORITHM_ONBOARD_KEY_GEN | SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_ISO9796 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_HASH_SHA224 | SC_ALGORITHM_RSA_HASH_SHA256 | SC_ALGORITHM_RSA_HASH_SHA384 | SC_ALGORITHM_RSA_HASH_SHA512)
 
 /* generic iso 7816 operations table */
 static const struct sc_card_operations *iso_ops = NULL;
@@ -143,15 +148,15 @@ static int laser_parse_sec_attrs(struct sc_card *, struct sc_file *);
 static int laser_process_fci(struct sc_card *, struct sc_file *, const unsigned char *, size_t);
 
 #if defined(ENABLE_SM)
-#   if OPENSSL_VERSION_NUMBER < 0x30000000L
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 static void _DES_3cbc_encrypt(sm_des_cblock *input, sm_des_cblock *output, long length,
 		DES_key_schedule *ks1, DES_key_schedule *ks2, sm_des_cblock *iv,
 		int enc);
-#   endif
-static int _sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
+#endif
+static int _sm_encrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key,
 		const unsigned char *in, size_t in_len,
 		unsigned char **out, size_t *out_len, int not_force_pad);
-static int _sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
+static int _sm_decrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key,
 		unsigned char *data, size_t data_len,
 		unsigned char **out, size_t *out_len);
 static void _sm_incr_ssc(unsigned char *ssc, size_t ssc_len);
@@ -165,7 +170,7 @@ static int laser_cbc_cksum(struct sc_context *ctx, unsigned char *key, size_t ke
 #endif
 
 static int
-laser_get_tag_data(struct sc_context *ctx, unsigned char *data, size_t data_len, struct sc_tlv_data *out)
+laser_get_tag_data(struct sc_context *ctx, const unsigned char *data, size_t data_len, struct sc_tlv_data *out)
 {
 	size_t taglen;
 	const unsigned char *ptr = NULL;
@@ -233,14 +238,14 @@ laser_get_caps(struct sc_card *card)
 	rv = laser_get_capability(card, 0x0180, buf, &buf_len);
 	LOG_TEST_RET(ctx, rv, "cannot get 'CRYPTO' card capability");
 	if (buf_len != sizeof(prv_data->caps.crypto))
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "invalid 'CRYPTO' capability data");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "invalid 'CRYPTO' capability data");
 	memcpy(prv_data->caps.crypto, buf, buf_len);
 
 	buf_len = sizeof(buf);
 	rv = laser_get_capability(card, 0x0188, buf, &buf_len);
 	LOG_TEST_RET(ctx, rv, "cannot get 'KEY LENGTHS' card capability");
 	if (buf_len != sizeof(prv_data->caps.supported_keys))
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "invalid 'KEY LENGTHS' capability data");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "invalid 'KEY LENGTHS' capability data");
 	memcpy(prv_data->caps.supported_keys, buf, buf_len);
 
 	LOG_FUNC_RETURN(ctx, rv);
@@ -299,12 +304,13 @@ laser_init(struct sc_card *card)
 	struct sc_path path;
 	unsigned int flags;
 	int rv = SC_ERROR_NO_CARD_SUPPORT;
+	int sm_min_level = 0;
 
 	LOG_FUNC_CALLED(ctx);
 
 	private_data = (struct laser_private_data *)calloc(1, sizeof(struct laser_private_data));
 	if (private_data == NULL)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate private blob for card driver.");
+		LOG_ERROR_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate private blob for card driver.");
 
 	memset(private_data, 0, sizeof(struct laser_private_data));
 
@@ -319,7 +325,7 @@ laser_init(struct sc_card *card)
 	if (0 > rv) {
 		free(card->drv_data);
 		card->drv_data = NULL;
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_CARD, "Failed to select Laser AID.");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_CARD, "Failed to select Laser AID.");
 	}
 
 	rv = laser_get_serialnr(card, NULL);
@@ -338,15 +344,15 @@ laser_init(struct sc_card *card)
 
 	atrblock = _sc_match_atr_block(ctx, card->driver, &card->atr);
 	if (atrblock) {
-		int min_level = scconf_get_int(atrblock, "sm_min_level", 0);
+		sm_min_level = scconf_get_int(atrblock, "sm_min_level", 0);
 
-		if (min_level != 0 && min_level != 1 && min_level != 3)
-			LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_CONFIGURATION, "Invalid SM min level configuration value");
-		private_data->sm_min_level = min_level;
+		if (sm_min_level != 0 && sm_min_level != 1 && sm_min_level != 3)
+			LOG_ERROR_RET(ctx, SC_ERROR_INCONSISTENT_CONFIGURATION, "Invalid SM min level configuration value");
 
 		private_data->secure_verify = scconf_get_bool(atrblock, "secure_verify", 0);
 	}
-	sc_log(ctx, "SM-min-level %i, secure-verify %i", private_data->sm_min_level, private_data->secure_verify);
+	sc_log(ctx, "SM-min-level %i, secure-verify %i", sm_min_level, private_data->secure_verify);
+	private_data->sm_cur_level = sm_min_level;
 
 #if defined(ENABLE_SM)
 	card->sm_ctx.ops.open = laser_sm_open;
@@ -354,7 +360,7 @@ laser_init(struct sc_card *card)
 	card->sm_ctx.ops.free_sm_apdu = laser_sm_free_apdu;
 	card->sm_ctx.ops.close = laser_sm_close;
 
-	if (private_data->sm_min_level) {
+	if (sm_min_level != SM_MODE_NONE) {
 		rv = laser_sm_open(card);
 		LOG_TEST_RET(ctx, rv, "Cannot open SM");
 	}
@@ -370,6 +376,8 @@ laser_read_binary(struct sc_card *card, unsigned int offs,
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
 	int rv;
+	const size_t leMax = 0x100U;
+	size_t binaryDataRead;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "laser_read_binary(card:%p) offs %i; count %zu", card, offs, count);
@@ -379,17 +387,66 @@ laser_read_binary(struct sc_card *card, unsigned int offs,
 	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, (offs >> 8) & 0x7F, offs & 0xFF);
-	apdu.le = MIN(count, 0x100);
+	apdu.le = MIN(count, leMax);
 	apdu.resplen = count;
 	apdu.resp = buf;
+ #ifdef ENABLE_SM
+	if (card->sm_ctx.sm_mode != SM_MODE_NONE)
+		apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
+ #endif
 
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	binaryDataRead = apdu.resplen;
+	if (apdu.sw1 == 0x61) {
+		// we can get here only when SM is on
+		unsigned char getRespBuf[0x100];
+		while (binaryDataRead < count) {
+			size_t getRespLen = leMax;
+			memset(getRespBuf, 0, sizeof(getRespBuf));
+			rv = card->ops->get_response(card, &getRespLen, getRespBuf);
+			LOG_TEST_RET(ctx, rv, "GET RESPONSE error");
+			if (getRespLen > 0) {
+				if (getRespLen > count - binaryDataRead)
+					getRespLen = count - binaryDataRead;
+				memcpy(buf + binaryDataRead, getRespBuf, getRespLen);
+				binaryDataRead += getRespLen;
+			}
+			if (rv == 0)
+				break;
+		}
+	} else
+		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, rv, "laser_read_binary() failed");
 	sc_log(ctx, "laser_read_binary() apdu.resplen %zu", apdu.resplen);
 
-	LOG_FUNC_RETURN(ctx, apdu.resplen);
+	LOG_FUNC_RETURN(ctx, binaryDataRead);
+}
+
+static int
+laser_update_binary(struct sc_card *card,
+		unsigned int idx, const u8 *buf, size_t count, unsigned long flags)
+{
+	int rv;
+#ifdef ENABLE_SM
+	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
+		const size_t smOverhead = 20;
+		const size_t chunkMax = sc_get_max_send_size(card) - smOverhead;
+		assert(chunkMax > 0);
+		int idxDone = 0;
+		do {
+			rv = iso_ops->update_binary(card, idx + idxDone, buf + idxDone, MIN(count - idxDone, chunkMax), flags);
+			if (rv <= 0)
+				break;
+			idxDone += rv;
+
+		} while ((size_t)idxDone < count);
+
+		rv = (idxDone > 0 ? idxDone : rv);
+	} else
+#endif
+		rv = iso_ops->update_binary(card, idx, buf, count, flags);
+	return rv;
 }
 
 static int
@@ -402,14 +459,14 @@ laser_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsign
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "laser_erase_binary(card:%p) count %zu", card, count);
 	if (!count)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "'ERASE BINARY' failed: invalid size to erase");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "'ERASE BINARY' failed: invalid size to erase");
 
 	tmp = malloc(count);
 	if (!tmp)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate temporary buffer");
+		LOG_ERROR_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate temporary buffer");
 	memset(tmp, 0xFF, count);
 
-	rv = sc_update_binary(card, offs, tmp, count, flags);
+	rv = laser_update_binary(card, offs, tmp, count, flags);
 	free(tmp);
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -423,15 +480,14 @@ laser_select_file(struct sc_card *card, const struct sc_path *in_path,
 	struct sc_apdu apdu;
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
 	unsigned char pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	/* int cache_valid = card->cache.valid, df_from_cache = 0; */
-	unsigned pathlen;
+	size_t pathlen;
 	int rv;
+	struct laser_private_data *private_data = (struct laser_private_data *)card->drv_data;
+	int reopen_sm_session = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!path)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "laser_select_file(card:%p) path(type:%i):%s out:%p", card, in_path->type, sc_print_path(in_path), file_out);
+	sc_log(ctx, "laser_select_file(card:%p) path(type:%i):%s, out:%p", card, in_path->type, sc_print_path(in_path), file_out);
 	sc_print_cache(card);
 
 	memcpy(path, in_path->value, in_path->len);
@@ -446,26 +502,26 @@ laser_select_file(struct sc_card *card, const struct sc_path *in_path,
 	case SC_PATH_TYPE_FILE_ID:
 		apdu.p1 = 0;
 		if (pathlen != 2)
-			return SC_ERROR_INVALID_ARGUMENTS;
+			LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_ARGUMENTS, "Invalid path");
 		break;
 	case SC_PATH_TYPE_DF_NAME:
 		apdu.p1 = 4;
-		if (laser_aid.len == pathlen && !memcmp(laser_aid.value, path, pathlen)) {
+		if (laser_aid.len == in_path->len && !memcmp(laser_aid.value, in_path->value, in_path->len)) {
 			/* JaCarta PKI application has to be selected by the standand ISO7816 command */
 			apdu.cla = 0x00;
 		}
 		break;
 	case SC_PATH_TYPE_PATH:
 		apdu.p1 = 8;
-		if (pathlen < 2) {
+		if (in_path->len < 2) {
 			apdu.p1 = 0;
 			break;
-		} else if (memcmp(path, "\x3F\x00", 2)) {
+		} else if (memcmp(in_path->value, "\x3F\x00", 2)) {
 			/* In a difference to ISO7816-4 specification (tab. 39)
 			 * leading 3F00 has to be included into 'path-from-MF'. */
-			memcpy(path + 2, path, pathlen);
 			memcpy(path, "\x3F\x00", 2);
-			pathlen += 2;
+			memcpy(path + 2, in_path->value, in_path->len);
+			pathlen = in_path->len + 2;
 		}
 		break;
 	case SC_PATH_TYPE_FROM_CURRENT:
@@ -477,8 +533,15 @@ laser_select_file(struct sc_card *card, const struct sc_path *in_path,
 		apdu.cse = SC_APDU_CASE_2_SHORT;
 		break;
 	default:
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_ARGUMENTS, "Invalid path type");
 	}
+
+	// reopening SM for select application
+	if (private_data->sm_cur_level != 0 && in_path->type == SC_PATH_TYPE_DF_NAME && laser_aid.len == pathlen && !memcmp(laser_aid.value, path, pathlen)) {
+		laser_sm_close(card);
+		reopen_sm_session = 1;
+	}
+
 	apdu.lc = pathlen;
 	apdu.data = path;
 	apdu.datalen = pathlen;
@@ -490,15 +553,15 @@ laser_select_file(struct sc_card *card, const struct sc_path *in_path,
 	apdu.le = 256; // card->max_recv_size > 0 ? card->max_recv_size : 256;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "Select file error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Select file error");
 
 	if (apdu.resplen < 2) {
 		if (file_out)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+			LOG_ERROR_GOTO(ctx, rv = SC_ERROR_UNKNOWN_DATA_RECEIVED, "Incorrect apdu resp.");
 		else
-			LOG_FUNC_RETURN(ctx, rv);
+			goto err;
 	}
 
 	switch (apdu.resp[0]) {
@@ -506,22 +569,22 @@ laser_select_file(struct sc_card *card, const struct sc_path *in_path,
 	case ISO7816_TAG_FCP:
 		file = sc_file_new();
 		if (file == NULL)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Failed to allocate sc_file");
 
 		file->path = *in_path;
 		if (card->ops->process_fci == NULL) {
 			sc_file_free(file);
-			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+			LOG_ERROR_GOTO(ctx, rv = SC_ERROR_NOT_SUPPORTED, "FCI processing not supported");
 		}
 
 		if ((size_t)apdu.resp[1] + 2 <= apdu.resplen) {
 			struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
 
 			rv = laser_process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
-			LOG_TEST_RET(ctx, rv, "Process FCI error");
+			LOG_TEST_GOTO_ERR(ctx, rv, "Process FCI error");
 
 			rv = laser_parse_sec_attrs(card, file);
-			LOG_TEST_RET(ctx, rv, "Security attributes parse error");
+			LOG_TEST_GOTO_ERR(ctx, rv, "Security attributes parse error");
 
 			if (file->type == SC_FILE_TYPE_INTERNAL_EF) {
 				sc_file_free(prv->last_ko);
@@ -535,13 +598,16 @@ laser_select_file(struct sc_card *card, const struct sc_path *in_path,
 			sc_file_free(file);
 		break;
 	case 0x00: /* proprietary coding */
-		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Proprietary encoding in 'SELECT' APDU response not supported");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_UNKNOWN_DATA_RECEIVED, "Proprietary encoding in 'SELECT' APDU response not supported");
 		break;
 	default:
-		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Unknown 'SELECT' APDU response tag");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_UNKNOWN_DATA_RECEIVED, "Unknown 'SELECT' APDU response tag");
 	}
+err:
+	if (reopen_sm_session)
+		laser_sm_open(card);
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
@@ -660,7 +726,7 @@ laser_parse_sec_attrs(struct sc_card *card, struct sc_file *file)
 	unsigned char *attrs = file->sec_attr;
 	size_t len = file->sec_attr_len;
 	unsigned char *ops = NULL;
-	size_t ii, ops_len;
+	size_t ii, ops_len = 0;
 
 	LOG_FUNC_CALLED(ctx);
 	if (type == SC_FILE_TYPE_INTERNAL_EF && len == sizeof(laser_ops_ko) * 2) {
@@ -692,7 +758,7 @@ laser_parse_sec_attrs(struct sc_card *card, struct sc_file *file)
 		ops = &laser_ops_df[0];
 		ops_len = sizeof(laser_ops_df) / sizeof(laser_ops_df[0]);
 	} else {
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported file type");
+		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported file type");
 	}
 	sc_log(ctx, "sec.attrs(%zu) %s, ops_len %zu", len, sc_dump_hex(attrs, len), ops_len);
 
@@ -727,20 +793,19 @@ laser_parse_sec_attrs(struct sc_card *card, struct sc_file *file)
 }
 
 static int
-laser_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *out, size_t out_len)
+laser_fcp_encode(struct sc_card *card, const struct sc_file *file, unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned char buf[0x400];
 	size_t offs = 0;
 	unsigned char *ops = NULL;
-	size_t ii, ops_len = 0, file_size;
+	size_t ii, ops_len = 0, file_size = 0;
 
 	LOG_FUNC_CALLED(ctx);
 
 	if (file->type == SC_FILE_TYPE_DF) {
 		ops = &laser_ops_df[0];
 		ops_len = sizeof(laser_ops_df);
-		file_size = 0;
 	} else if (file->type == SC_FILE_TYPE_WORKING_EF) {
 		ops = &laser_ops_ef[0];
 		ops_len = sizeof(laser_ops_ef);
@@ -750,7 +815,7 @@ laser_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *out,
 		ops_len = sizeof(laser_ops_ko);
 		file_size = file->size;
 	} else {
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported type of the file to be created.");
+		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported type of the file to be created.");
 	}
 
 	memset(buf, 0, sizeof(buf));
@@ -808,7 +873,7 @@ laser_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *out,
 			buf[offs++] = (entry->key_ref >> 8) & 0xFF;
 			buf[offs++] = entry->key_ref & 0xFF;
 		} else {
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non supported AC method");
+			LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non supported AC method");
 		}
 	}
 
@@ -819,7 +884,7 @@ laser_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *out,
 
 	if (out) {
 		if (out_len < offs)
-			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small to encode FCP");
+			LOG_ERROR_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small to encode FCP");
 		memcpy(out, buf, offs);
 	}
 
@@ -831,7 +896,7 @@ laser_create_file(struct sc_card *card, struct sc_file *file)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
-	unsigned char sbuf[0x400], fcp[0x400], p1;
+	unsigned char sbuf[0x400], fcp[0x400], p1 = (unsigned char)0;
 	size_t fcp_len, offs;
 	int rv;
 
@@ -858,7 +923,7 @@ laser_create_file(struct sc_card *card, struct sc_file *file)
 	else if (file->type == SC_FILE_TYPE_INTERNAL_EF)
 		p1 = file->ef_structure;
 	else
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported type of the file to create");
+		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported type of the file to create");
 
 	offs = 0;
 	sbuf[offs++] = ISO7816_TAG_FCP;
@@ -948,10 +1013,10 @@ laser_finish(struct sc_card *card)
 	LOG_FUNC_CALLED(ctx);
 
 	if (prv) {
-			sc_file_free(prv->last_ko);
+		sc_file_free(prv->last_ko);
 		free(prv);
+		card->drv_data = NULL;
 	}
-	card->drv_data = NULL;
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -993,7 +1058,6 @@ laser_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 	unsigned char p1s[] = {0x01, 0x38, 0x08};
 	unsigned ii;
 	size_t offs;
-	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x30, 0, 0);
@@ -1002,6 +1066,7 @@ laser_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 	for (ii = 0, offs = 0; ii < sizeof(p1s); ii++) {
 		size_t oo;
 		int jj;
+		int rv;
 
 		apdu.p1 = p1s[ii];
 		apdu.resplen = sizeof(rbuf);
@@ -1073,7 +1138,7 @@ laser_chv_secure_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
 	sc_log(ctx, "Verify CHV PIN(ref:%i,len:%zu)", pin_cmd->pin_reference, pin_cmd->pin1.len);
 
 	if (!pin_cmd->pin1.data || !pin_cmd->pin1.len)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "null value not allowed for secure PIN verify");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_ARGUMENTS, "null value not allowed for secure PIN verify");
 
 	srand((unsigned)getpid() ^ (unsigned)time(NULL));
 	for (ii = 0; ii < 8; ii++)
@@ -1087,31 +1152,30 @@ laser_chv_secure_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
 	sc_log(ctx, "key '%s'", sc_dump_hex(sha1, 16));
 	sc_log(ctx, "plain text '%s'", sc_dump_hex(plain_text, 16));
 	rv = _sm_encrypt_des_cbc3(ctx, sha1, plain_text, 16, &encrypted, &encrypted_len, 1);
-	LOG_TEST_RET(ctx, rv, "_encrypt_des_cbc3() failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "_encrypt_des_cbc3() failed");
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, pin_cmd->pin_reference);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, 0x00);
 	apdu.cla = 0x80;
 	apdu.data = encrypted;
 	apdu.datalen = encrypted_len;
 	apdu.lc = encrypted_len;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "APDU transmit failed");
 
 	if (tries_left && apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0)
 		*tries_left = apdu.sw2 & 0x0F;
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-
+err:
 	free(encrypted);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
-laser_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
+laser_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int secure_verify,
 		int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *private_data = (struct laser_private_data *)card->drv_data;
 	struct sc_apdu apdu;
 	int rv;
 
@@ -1121,11 +1185,11 @@ laser_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
 	if (pin_cmd->pin1.data && !pin_cmd->pin1.len) {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, pin_cmd->pin_reference);
 	} else if (pin_cmd->pin1.data && pin_cmd->pin1.len) {
-		if (private_data->secure_verify) {
+		if (secure_verify) {
 			rv = laser_chv_secure_verify(card, pin_cmd, tries_left);
 			LOG_FUNC_RETURN(ctx, rv);
 		} else {
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, pin_cmd->pin_reference);
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, 0x00);
 			apdu.data = pin_cmd->pin1.data;
 			apdu.datalen = pin_cmd->pin1.len;
 			apdu.lc = pin_cmd->pin1.len;
@@ -1145,7 +1209,7 @@ laser_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
 }
 
 static int
-laser_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd_data,
+laser_pin_is_verified(struct sc_card *card, const struct sc_pin_cmd_data *pin_cmd_data,
 		int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
@@ -1157,12 +1221,12 @@ laser_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd_data
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (pin_cmd_data->pin_type != SC_AC_CHV)
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non CHV PIN type is not supported for verification");
+		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non CHV PIN type is not supported for verification");
 
 	pin_cmd = *pin_cmd_data;
 	pin_cmd.pin1.data = (unsigned char *)"";
 	pin_cmd.pin1.len = 0;
-	rv = laser_chv_verify(card, &pin_cmd, tries_left);
+	rv = laser_chv_verify(card, &pin_cmd, 0, tries_left);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -1223,8 +1287,10 @@ laser_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_pin_cmd_data pin_cmd;
-	unsigned chv_ref = reference;
+	struct laser_private_data *private_data = (struct laser_private_data *)card->drv_data;
 	int rv;
+	unsigned int chv_ref = reference;
+	int secure_verify;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "Verify PIN(type:%X,ref:%i,data(len:%zu,%p)", type, reference, data_len, data);
@@ -1240,7 +1306,7 @@ laser_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 		if (!(reference & 0x80)) {
 			rv = laser_select_global_pin(card, reference, NULL);
 			LOG_TEST_RET(ctx, rv, "Select PIN file error");
-			chv_ref = 0;
+			chv_ref = 0; 
 		}
 	} else {
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -1257,12 +1323,13 @@ laser_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 		rv = laser_pin_is_verified(card, &pin_cmd, tries_left);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
+	// plain VERIFY for Transport PIN #1,#2
+	secure_verify = (reference != 0x01 && reference != 0x02 ? private_data->secure_verify : 0);
 
-	rv = laser_chv_verify(card, &pin_cmd, tries_left);
+	rv = laser_chv_verify(card, &pin_cmd, secure_verify, tries_left);
 	LOG_TEST_RET(ctx, rv, "PIN CHV verification error");
 
 	// TEMP P15 DF RELOAD PRIVATE
-	struct laser_private_data *private_data = (struct laser_private_data *)card->drv_data;
 	for (int i = 0; i != sizeof(private_data->auth_state) / sizeof(private_data->auth_state[0]); i++) {
 		if (private_data->auth_state[i].pin_reference == reference) {
 			private_data->auth_state[i].logged_in = 1;
@@ -1278,25 +1345,31 @@ static int
 laser_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, unsigned chv_ref,
 		int *tries_left, unsigned op_acl)
 {
-	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *private_data = (struct laser_private_data *)card->drv_data;
+	struct sc_context *ctx;
+	const struct laser_private_data *private_data;
 	struct sc_apdu apdu;
 	unsigned char pin_data[SC_MAX_APDU_BUFFER_SIZE];
 	size_t offs;
 	int rv;
+	int oneTimeSm = 0;
+
+	assert(card);
+	ctx = card->ctx;
+	private_data = (const struct laser_private_data *)card->drv_data;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "SM change CHV(ref %i, length %zu, op-acl %X)", chv_ref, data->pin2.len, op_acl);
 
 	if (!data->pin2.len)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unblock procedure needs new PIN defined");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unblock procedure needs new PIN defined");
 
 	if ((unsigned)(data->pin2.len) > sizeof(pin_data))
-		LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small for the 'SM change CHV' data");
+		LOG_ERROR_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small for the 'SM change CHV' data");
 
-	if (!private_data->sm_min_level) {
+	if (private_data->sm_cur_level == 0) {
 		rv = laser_sm_open(card);
 		LOG_TEST_RET(ctx, rv, "Cannot open SM");
+		oneTimeSm = 1;
 	}
 
 	card->sm_ctx.info.security_condition = op_acl;
@@ -1319,7 +1392,7 @@ laser_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, unsigned
 	if (!rv)
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
-	if (!private_data->sm_min_level)
+	if (oneTimeSm)
 		laser_sm_close(card);
 
 	card->sm_ctx.info.security_condition = 0;
@@ -1351,13 +1424,13 @@ laser_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 	}
 
 	if (!data->pin2.len)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Missing new PIN value");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Missing new PIN value");
 
 	if ((unsigned)(data->pin2.len) > sizeof(pin_data))
-		LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small for the 'Change PIN' data");
+		LOG_ERROR_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small for the 'Change PIN' data");
 
 	if (data->pin_reference & 0x80) {
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "TODO: local PINs");
+		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "TODO: local PINs");
 	} else {
 		const struct sc_acl_entry *entry;
 
@@ -1417,9 +1490,9 @@ laser_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 			if (entry) {
 				sc_log(ctx, "Acl(PIN_RESET): %04X", entry->key_ref);
 				if ((entry->key_ref & 0x00FF) == 0xFF) {
-					LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "Reset PIN not allowed");
+					LOG_ERROR_RET(ctx, SC_ERROR_NOT_ALLOWED, "Reset PIN not allowed");
 				} else if (entry->key_ref & 0xC000) {
-					LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Reset PIN protectd by SM: not supported (TODO)");
+					LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Reset PIN protectd by SM: not supported (TODO)");
 				} else if (entry->key_ref & 0x00FF) {
 					rv = laser_pin_verify(card, SC_AC_CHV, entry->key_ref & 0x00FF, data->pin1.data, data->pin1.len, tries_left);
 					LOG_TEST_RET(ctx, rv, "Verify PUK failed");
@@ -1490,7 +1563,7 @@ laser_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_lef
 		LOG_FUNC_RETURN(ctx, rv);
 	default:
 		sc_log(ctx, "PIN command 0x%X do not yet supported.", data->cmd);
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non-supported PIN command");
+		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non-supported PIN command");
 	}
 
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -1516,7 +1589,7 @@ laser_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 	LOG_TEST_RET(ctx, rv, "cannot get 'serial number' card capability");
 
 	if (sizeof(prv_data->caps.serial) != sn.len)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "invalid 'SERIAL NUMBER' data");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "invalid 'SERIAL NUMBER' data");
 	memcpy(&prv_data->caps.serial, sn.value, sn.len);
 
 	card->serialnr = sn;
@@ -1531,7 +1604,6 @@ laser_get_default_key(struct sc_card *card, struct sc_cardctl_default_key *data)
 {
 	struct sc_context *ctx = card->ctx;
 	scconf_block *atrblock = NULL;
-	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -1541,6 +1613,7 @@ laser_get_default_key(struct sc_card *card, struct sc_cardctl_default_key *data)
 
 	if (data->method == SC_AC_AUT && data->key_ref == 1) {
 		const char *default_key = scconf_get_str(atrblock, "default_transport_pin1", LASER_TRANSPORT_PIN1_VALUE);
+		int rv;
 
 		rv = sc_hex_to_bin(default_key, data->key_data, &data->len);
 		LOG_TEST_RET(ctx, rv, "Cannot get transport PIN01 default value: HEX to BIN conversion error");
@@ -1593,7 +1666,7 @@ laser_generate_key(struct sc_card *card, struct sc_cardctl_laser_genkey *args)
 	if (ptr)
 		ptr = sc_asn1_find_tag(ctx, ptr, taglen, 0x81, &taglen);
 	if (!ptr || (taglen != args->modulus_len))
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid modulus data length");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid modulus data length");
 	memcpy(args->modulus, ptr, taglen);
 
 	/* get exponent */
@@ -1601,13 +1674,13 @@ laser_generate_key(struct sc_card *card, struct sc_cardctl_laser_genkey *args)
 	if (ptr)
 		ptr = sc_asn1_find_tag(ctx, ptr, taglen, 0x82, &taglen);
 	if (!ptr || (taglen != args->exponent_len) || memcmp(ptr, args->exponent, taglen))
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid exponent data");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid exponent data");
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
-laser_update_key(struct sc_card *card, struct sc_cardctl_laser_updatekey *args)
+laser_update_key(struct sc_card *card, const struct sc_cardctl_laser_updatekey *args)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -1672,9 +1745,9 @@ laser_decipher(struct sc_card *card, const unsigned char *in, size_t in_len,
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "in-length:%zu, key-size:%zu, out-length:%zu", in_len, (prv->last_ko ? prv->last_ko->size : 0), out_len);
 	if (env->operation != SC_SEC_OPERATION_DECIPHER)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "has to be SC_SEC_OPERATION_DECIPHER");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "has to be SC_SEC_OPERATION_DECIPHER");
 	else if (in_len > (sizeof(sbuf) - 4))
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "invalid data length");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "invalid data length");
 
 	offs = 0;
 	sbuf[offs++] = 0x82;
@@ -1747,7 +1820,7 @@ laser_compute_signature_dst(struct sc_card *card,
 	LOG_FUNC_CALLED(ctx);
 
 	if (env->operation != SC_SEC_OPERATION_SIGN)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "It's not SC_SEC_OPERATION_SIGN");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "It's not SC_SEC_OPERATION_SIGN");
 
 	keySize = prv->last_ko != NULL ? prv->last_ko->size : 0;
 	sc_log(ctx, "SC_SEC_OPERATION: %04X, in-length:%zu, key-size:%zu", env->operation, in_len, keySize);
@@ -1782,7 +1855,7 @@ laser_compute_signature_dst(struct sc_card *card,
 	}
 
 	if ((keySize && (asn1PrefLen + in_len) > (keySize - tailReserved)) || (asn1PrefLen + in_len) > SC_MAX_EXT_APDU_DATA_SIZE)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "too much of the input data");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "too much of the input data");
 
 	sbuf[offs++] = dataTag;
 	if (0x100 <= asn1PrefLen + in_len) {
@@ -1819,7 +1892,7 @@ laser_compute_signature_dst(struct sc_card *card,
 		unsigned char tlvX;
 
 		if (0x80 != apdu.resp[sigOff++] || 5 > apdu.resplen)
-			LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "APDU response incorrect");
+			LOG_ERROR_RET(ctx, SC_ERROR_INTERNAL, "APDU response incorrect");
 
 		tlvX = apdu.resp[sigOff++];
 
@@ -1850,11 +1923,11 @@ laser_compute_signature_at(struct sc_card *card,
 {
 	struct sc_context *ctx = card->ctx;
 	struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
-	struct sc_security_env *env = &prv->security_env;
+	const struct sc_security_env *env = &prv->security_env;
 
 	LOG_FUNC_CALLED(ctx);
 	if (env->operation != SC_SEC_OPERATION_AUTHENTICATE)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "It's not SC_SEC_OPERATION_AUTHENTICATE");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "It's not SC_SEC_OPERATION_AUTHENTICATE");
 
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
@@ -1863,14 +1936,23 @@ static int
 laser_compute_signature(struct sc_card *card,
 		const unsigned char *in, size_t in_len, unsigned char *out, size_t out_len)
 {
-	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
-	struct sc_security_env *env = &prv->security_env;
+	struct sc_context *ctx;
+	struct laser_private_data *prv;
+	struct sc_security_env *env;
+
+	if (!card)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	ctx = card->ctx;
+	if (!in || !out)
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid compute signature arguments");
 
 	LOG_FUNC_CALLED(ctx);
+
+	prv = (struct laser_private_data *)card->drv_data;
+	assert(prv);
+	env = &prv->security_env;
+
 	sc_log(ctx, "op:%x, inlen %zu, outlen %zu", env->operation, in_len, out_len);
-	if (!card || !in || !out)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid compute signature arguments");
 
 	if (env->operation == SC_SEC_OPERATION_SIGN)
 		return laser_compute_signature_dst(card, in, in_len, out, out_len);
@@ -1903,7 +1985,7 @@ laser_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 #ifdef ENABLE_SM
 
 static int
-_sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
+_sm_decrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key,
 		unsigned char *data, size_t data_len,
 		unsigned char **out, size_t *out_len)
 {
@@ -1923,14 +2005,14 @@ _sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_SM);
 	if (!out || !out_len)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "SM decrypt_des_cbc3: invalid input arguments");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "SM decrypt_des_cbc3: invalid input arguments");
 
 	decrypted_len = data_len + 7;
 	decrypted_len -= decrypted_len % 8;
 
 	decrypted = malloc(decrypted_len);
 	if (!(decrypted))
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM decrypt_des_cbc3: allocation error");
+		LOG_ERROR_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM decrypt_des_cbc3: allocation error");
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	memcpy(&kk, key, 8);
@@ -1979,7 +2061,6 @@ _sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
 }
 
-
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 /*
  * Taken from sm/sm-common.c
@@ -2017,10 +2098,9 @@ _DES_3cbc_encrypt(sm_des_cblock *input, sm_des_cblock *output, long length,
 }
 #endif
 
-
 /* This function expects the data to be a multiple of DES block size */
 static int
-_sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
+_sm_encrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key,
 		const unsigned char *in, size_t in_len,
 		unsigned char **out, size_t *out_len, int not_force_pad)
 {
@@ -2043,7 +2123,7 @@ _sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 			"SM encrypt_des_cbc3: not_force_pad:%i,in_len:%" SC_FORMAT_LEN_SIZE_T "u",
 			not_force_pad, in_len);
 	if (!out || !out_len)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "SM encrypt_des_cbc3: invalid input arguments");
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "SM encrypt_des_cbc3: invalid input arguments");
 
 	if (!in)
 		in_len = 0;
@@ -2053,7 +2133,7 @@ _sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 
 	data = malloc(in_len + 8);
 	if (data == NULL)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM encrypt_des_cbc3: allocation error");
+		LOG_ERROR_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM encrypt_des_cbc3: allocation error");
 
 	if (in)
 		memcpy(data, in, in_len);
@@ -2069,7 +2149,7 @@ _sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	*out = calloc(data_len + 8, sizeof(unsigned char));
 	if (*out == NULL) {
 		free(data);
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM encrypt_des_cbc3: failure");
+		LOG_ERROR_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM encrypt_des_cbc3: failure");
 	}
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -2143,13 +2223,15 @@ laser_sm_open(struct sc_card *card)
 	struct sm_dh_session *dh_session = &card->sm_ctx.info.session.dh;
 	struct sc_apdu apdu;
 	BIGNUM *bn_ifd_y, *bn_N, *bn_g, *bn_icc_p;
-	DH *dh;
+	DH *dh = NULL;
 	unsigned char uu, rbuf[SC_MAX_APDU_BUFFER_SIZE * 2];
 	int rv, rd, dh_check;
+	const BIGNUM *pub_key = NULL;
 
 	LOG_FUNC_CALLED(ctx);
 	memset(&card->sm_ctx.info, 0, sizeof(card->sm_ctx.info));
 
+	// getting SM RSA public parameters
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x48, 0x00, 0x80);
 	apdu.cla = 0x80;
 	apdu.le = 256;
@@ -2157,28 +2239,28 @@ laser_sm_open(struct sc_card *card)
 	apdu.resp = rbuf;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "'GET PUBLIC KEY' failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "'GET PUBLIC KEY' failed");
 
-	dh_session->g.tag = LASER_SM_RSA_TAG_G;
+	dh_session->g.tag = LASER_SM_RSA_TAG_G;		// TLV tag 80H g
 	rv = laser_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->g);
-	LOG_TEST_RET(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'g'");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'g'");
 	bn_g = BN_bin2bn(dh_session->g.value, dh_session->g.len, NULL);
 
-	dh_session->N.tag = LASER_SM_RSA_TAG_N;
+	dh_session->N.tag = LASER_SM_RSA_TAG_N;		// TLV tag 81H N
 	rv = laser_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->N);
-	LOG_TEST_RET(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'N'");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'N'");
 	bn_N = BN_bin2bn(dh_session->N.value, dh_session->N.len, NULL);
 
-	dh_session->icc_p.tag = LASER_SM_RSA_TAG_ICC_P;
+	dh_session->icc_p.tag = LASER_SM_RSA_TAG_ICC_P;	// TLV tag 82H g^y mod N
 	rv = laser_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->icc_p);
-	LOG_TEST_RET(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'ICC-P'");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'ICC-P'");
 	bn_icc_p = BN_bin2bn(dh_session->icc_p.value, dh_session->icc_p.len, NULL);
 
 	dh_session->ifd_y.value = malloc(SHA_DIGEST_LENGTH);
 	if (!dh_session->ifd_y.value)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate private DH key");
 
 	srand((unsigned)getpid() ^ (unsigned)time(NULL));
 	rd = rand();
@@ -2188,20 +2270,16 @@ laser_sm_open(struct sc_card *card)
 
 	dh = DH_new();
 	if (!dh)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate DH key");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate DH key");
 
-	DH_set0_pqg(dh, bn_N, NULL, bn_g);
-	DH_set0_key(dh, NULL, bn_ifd_y);
-	// dh->p = bn_N;
-	// dh->g = bn_g;
-	// dh->priv_key = bn_ifd_y;
+	DH_set0_pqg(dh, bn_N, NULL, bn_g);	// dh->p, dh->g 
+	DH_set0_key(dh, NULL, bn_ifd_y);	// dh->priv_key
 
 	if (!DH_check(dh, &dh_check))
-		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "OpenSSL 'DH-check' failed");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "OpenSSL 'DH-check' failed");
 	if (!DH_generate_key(dh))
-		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "OpenSSL 'DH-generate-key' failed");
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "OpenSSL 'DH-generate-key' failed");
 
-	const BIGNUM *pub_key = NULL;
 	DH_get0_key(dh, &pub_key, NULL);
 
 	dh_session->ifd_p.value = (unsigned char *)OPENSSL_malloc(BN_num_bytes(pub_key));
@@ -2211,8 +2289,8 @@ laser_sm_open(struct sc_card *card)
 
 	dh_session->shared_secret.value = (unsigned char *)OPENSSL_malloc(DH_size(dh));
 	if (!dh_session->shared_secret.value)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	dh_session->shared_secret.len = DH_compute_key(dh_session->shared_secret.value, bn_icc_p, dh);
+		LOG_FUNC_RETURN(ctx, rv = SC_ERROR_OUT_OF_MEMORY);
+	dh_session->shared_secret.len = DH_compute_key_padded(dh_session->shared_secret.value, bn_icc_p, dh);
 	sc_log(ctx, "shared-secret(%zu) %s", dh_session->shared_secret.len,
 			sc_dump_hex(dh_session->shared_secret.value, dh_session->shared_secret.len));
 
@@ -2226,9 +2304,9 @@ laser_sm_open(struct sc_card *card)
 	apdu.resp = dh_session->card_challenge;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "'OPEN SM' failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "'OPEN SM' failed");
 
 	memcpy(dh_session->session_enc, dh_session->shared_secret.value, sizeof(dh_session->session_enc));
 	memcpy(dh_session->session_mac, dh_session->shared_secret.value + 24, sizeof(dh_session->session_mac));
@@ -2242,14 +2320,13 @@ laser_sm_open(struct sc_card *card)
 
 	memset(dh_session->ssc, 0, sizeof(dh_session->ssc));
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
-
-	if (dh)
-		DH_free(dh);
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+err:
+	DH_free(dh);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
-laser_sm_ignore(struct sc_apdu *apdu)
+laser_get_response(const struct sc_apdu *apdu)
 {
 	if (apdu->cla == 0x00 && apdu->ins == 0xC0 && apdu->p1 == 0x00 && apdu->p2 == 0x00)
 		return 1;
@@ -2257,15 +2334,16 @@ laser_sm_ignore(struct sc_apdu *apdu)
 }
 
 static struct sc_apdu *
-laser_sc_sm_allocate_apdu(struct sc_apdu *in_apdu)
+laser_sc_sm_allocate_apdu(struct sc_card *card, const struct sc_apdu *in_apdu)
 {
 	struct sc_apdu *apdu = NULL;
-	size_t resp_len = SC_MAX_APDU_BUFFER_SIZE * 2;
+	size_t resp_len = in_apdu->resplen + 32; // 26 byte SM response overhead
+	unsigned char *apduData;
 
-	assert(in_apdu != NULL);
+	assert(in_apdu);
 	apdu = (struct sc_apdu *)malloc(sizeof(struct sc_apdu));
-	if (!in_apdu || !apdu)
-		return apdu;
+	if (!apdu)
+		return NULL;
 	memcpy(apdu, in_apdu, sizeof(struct sc_apdu));
 	apdu->data = apdu->resp = NULL;
 	apdu->next = NULL;
@@ -2273,15 +2351,21 @@ laser_sc_sm_allocate_apdu(struct sc_apdu *in_apdu)
 	apdu->allocation_flags = SC_APDU_ALLOCATE_FLAG;
 
 	/* Always ready to acquire the SM input data. */
-	apdu->data = malloc(in_apdu->datalen + 48);
-	if (!apdu->data)
+	apduData = malloc(in_apdu->datalen + 48);
+	if (!apduData) {
+		free(apdu);
 		return NULL;
-	memcpy((unsigned char *)apdu->data, in_apdu->data, in_apdu->datalen);
+	}
+	memcpy(apduData, in_apdu->data, in_apdu->datalen);
+	apdu->data = apduData;
 	apdu->datalen = in_apdu->datalen;
 
 	apdu->resp = malloc(resp_len);
-	if (!apdu->resp)
+	if (!apdu->resp) {
+		free(apduData);
+		free(apdu);
 		return NULL;
+	}
 	if (in_apdu->resp && in_apdu->resplen)
 		memcpy(apdu->resp, in_apdu->resp, in_apdu->resplen);
 	apdu->resplen = resp_len;
@@ -2296,14 +2380,13 @@ laser_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *in_apdu, struct sc_apdu
 	struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
 	struct sm_dh_session *sess = &card->sm_ctx.info.session.dh;
 	struct sc_apdu *apdu = NULL;
-	int rv;
-	int sm_level = prv->sm_min_level;
+	int sm_level = prv->sm_cur_level;
 
 	LOG_FUNC_CALLED(ctx);
 	if (!in_apdu || !out_apdu)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	apdu = laser_sc_sm_allocate_apdu(in_apdu);
+	apdu = laser_sc_sm_allocate_apdu(card, in_apdu);
 	if (!apdu)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
@@ -2311,20 +2394,20 @@ laser_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *in_apdu, struct sc_apdu
 	if (card->sm_ctx.info.security_condition & LASER_SM_ACCESS_INPUT)
 		sm_level = 3;
 
-	if (sm_level == 3 && laser_sm_ignore(apdu))
+	if (sm_level == 3 && laser_get_response(in_apdu))
 		sm_level = 1;
 
 	sc_log(ctx, "Using SM level %i", sm_level);
 	if (sm_level == 3) {
-		unsigned char data[SC_MAX_APDU_BUFFER_SIZE * 2], *val = NULL;
+		unsigned char *val = NULL;
 		unsigned char edfb[SC_MAX_APDU_BUFFER_SIZE * 2];
 		unsigned char chsum_data[SC_MAX_APDU_BUFFER_SIZE * 2];
 		size_t offs, val_len, chsum_data_len;
 		size_t edfb_len = 0;
 		unsigned char icv[8];
+		int rv;
 
 		memset(icv, 0, sizeof(icv));
-		memset(data, 0, sizeof(data));
 		memset(edfb, 0, sizeof(edfb));
 		memset(chsum_data, 0, sizeof(chsum_data));
 
@@ -2385,6 +2468,7 @@ laser_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *in_apdu, struct sc_apdu
 		LOG_TEST_RET(ctx, rv, "Cannot get checksum CBC 3DES");
 
 		offs = 0;
+		// apdu->data: 48 byte topping apdu->datalen
 		memcpy((unsigned char *)apdu->data, edfb, edfb_len);
 		offs += edfb_len;
 
@@ -2415,11 +2499,11 @@ laser_cbc_cksum(struct sc_context *ctx, unsigned char *key, size_t key_size,
 		unsigned char *in, size_t in_len, DES_cblock *icv)
 {
 	DES_key_schedule ks, ks2;
-	size_t len = in_len;
+	size_t len;
 	DES_cblock out, last;
 	int ii;
 
-	if (!key || !in || !icv)
+	if (!key || !in || !icv || key_size != 16)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (in_len % 8)
 		return SC_ERROR_INVALID_DATA;
@@ -2442,8 +2526,8 @@ laser_cbc_cksum(struct sc_context *ctx, unsigned char *key, size_t key_size,
 }
 
 static int
-laser_sm_check_mac(struct sc_card *card, unsigned char *data, size_t data_len,
-		unsigned char *mac, size_t mac_len)
+laser_sm_check_mac(struct sc_card *card, const unsigned char *data, size_t data_len,
+		const unsigned char *mac, size_t mac_len, const unsigned char* ssc)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sm_dh_session *sess = &card->sm_ctx.info.session.dh;
@@ -2453,8 +2537,10 @@ laser_sm_check_mac(struct sc_card *card, unsigned char *data, size_t data_len,
 
 	LOG_FUNC_CALLED(ctx);
 
+	if (mac_len != 8)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	memset(icv, 0, sizeof(icv));
-	_sm_incr_ssc(sess->ssc, sizeof(sess->ssc));
 
 	/* Reserve place for SSC, data and padding. */
 	dt_len = data_len + sizeof(sess->ssc) + 8;
@@ -2463,7 +2549,7 @@ laser_sm_check_mac(struct sc_card *card, unsigned char *data, size_t data_len,
 	if (!dt)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
-	memcpy(ptr, sess->ssc, sizeof(sess->ssc));
+	memcpy(ptr, ssc, sizeof(sess->ssc));
 	ptr += sizeof(sess->ssc);
 
 	memcpy(ptr, data, data_len);
@@ -2486,8 +2572,8 @@ laser_sc_sm_free_apdu(struct sc_apdu *apdu)
 {
 	if (!apdu)
 		return;
-	free ((void*)apdu->data);
-		free(apdu->resp);
+	free((void *)apdu->data);
+	free(apdu->resp);
 	free(apdu);
 }
 
@@ -2513,8 +2599,12 @@ laser_sm_free_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **
 		(*sm_apdu)->sw1 = sm_resp.sw1;
 		(*sm_apdu)->sw2 = sm_resp.sw2;
 
+		_sm_incr_ssc(dh_session->ssc, sizeof(dh_session->ssc));
+
 		if (sm_resp.mac_len) {
-			rv = laser_sm_check_mac(card, (*sm_apdu)->resp, (*sm_apdu)->resplen - 10, sm_resp.mac, sm_resp.mac_len);
+			rv = laser_sm_check_mac(card, (*sm_apdu)->resp, (*sm_apdu)->resplen - 10, sm_resp.mac, sm_resp.mac_len, dh_session->ssc);
+			if (rv < 0)
+				sc_log(ctx, "Invalid checksum");
 			LOG_TEST_RET(ctx, rv, "Invalid checksum");
 			(*sm_apdu)->mac_len = sm_resp.mac_len;
 			memcpy((*sm_apdu)->mac, sm_resp.mac, sizeof(apdu->mac));
@@ -2523,7 +2613,7 @@ laser_sm_free_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **
 		if (sm_resp.data_len) {
 			sc_log(ctx, "encrypted data (%zu) %s", sm_resp.data_len, sc_dump_hex(sm_resp.data, sm_resp.data_len));
 			if (sm_resp.data[0] != 0x01)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid padding indicator");
+				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid padding indicator");
 			rv = _sm_decrypt_des_cbc3(ctx, dh_session->session_enc, sm_resp.data + 1, sm_resp.data_len - 1, &out, &out_len);
 			LOG_TEST_RET(ctx, rv, "DES CBC3 decrypt error");
 			sc_log(ctx, "decrypted data (%zu) %s", out_len, sc_dump_hex(out, out_len));
@@ -2531,7 +2621,7 @@ laser_sm_free_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **
 			while (*(out + out_len - 1) != 0x80 && out_len > 0)
 				out_len--;
 			if (!out_len)
-				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "No padding in decrypted data");
+				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "No padding in decrypted data");
 			out_len--;
 
 			memcpy((*sm_apdu)->resp, out, out_len);
@@ -2541,7 +2631,7 @@ laser_sm_free_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **
 		}
 		(*sm_apdu)->resplen = out_len;
 	} else {
-		rv = sc_check_sw(card, (*sm_apdu)->sw1, (*sm_apdu)->sw2);
+		sc_check_sw(card, (*sm_apdu)->sw1, (*sm_apdu)->sw2);
 	}
 
 	if (apdu->resplen < (*sm_apdu)->resplen)
@@ -2566,6 +2656,7 @@ laser_sm_close(struct sc_card *card)
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
 	int rv;
+	struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -2579,6 +2670,7 @@ laser_sm_close(struct sc_card *card)
 	LOG_TEST_RET(ctx, rv, "'CLOSE SM' failed");
 
 	memset(&card->sm_ctx.info, 0, sizeof(card->sm_ctx.info));
+
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 #endif // ENABLE_SM
@@ -2586,7 +2678,7 @@ laser_sm_close(struct sc_card *card)
 static struct sc_card_driver *
 sc_get_driver(void)
 {
-	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	const struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
 	if (!iso_ops)
 		iso_ops = iso_drv->ops;
@@ -2598,7 +2690,7 @@ sc_get_driver(void)
 	laser_ops.finish = laser_finish;
 	laser_ops.read_binary = laser_read_binary;
 	/*	write_binary: ISO7816 implementation works	*/
-	/*	update_binary: ISO7816 implementation works	*/
+	laser_ops.update_binary = laser_update_binary;
 	laser_ops.erase_binary = laser_erase_binary;
 	/*	resize_binary	*/
 	/*	read_record: Untested	*/
