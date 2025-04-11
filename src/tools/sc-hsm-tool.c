@@ -63,10 +63,7 @@ static char *opt_label = NULL;
 static int	verbose = 0;
 
 // Some reasonable maximums
-#define MAX_CERT		4096
-#define MAX_PRKD		256
-#define MAX_KEY			1500
-#define MAX_WRAPPED_KEY	(MAX_CERT + MAX_PRKD + MAX_KEY)
+#define MAX_KEY 1500
 
 #define SEED_LENGTH 16
 
@@ -1329,17 +1326,18 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
 	struct sc_pin_cmd_data data;
 	sc_path_t path;
+	sc_file_t *file = NULL;
 	FILE *out = NULL;
 	u8 fid[2];
-	u8 ef_prkd[MAX_PRKD];
-	u8 ef_cert[MAX_CERT];
+	u8 *ef_prkd = NULL;
+	u8 *ef_cert = NULL;
 	u8 wrapped_key_buff[MAX_KEY];
-	u8 keyblob[MAX_WRAPPED_KEY];
-	u8 *key;
-	u8 *ptr;
+	u8 *keyblob = NULL;
+	u8 *key = NULL;
+	u8 *ptr = NULL;
 	char *lpin = NULL;
-	size_t key_len;
-	int r, ef_prkd_len, ef_cert_len;
+	size_t key_len = 0, keyblob_len = MAX_KEY;
+	int r, ef_prkd_len = 0, ef_cert_len = 0;
 
 	if ((keyid < 1) || (keyid > 255)) {
 		fprintf(stderr, "Invalid key reference (must be 0 < keyid <= 255)\n");
@@ -1400,10 +1398,16 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 
 	/* Try to select a related EF containing the PKCS#15 description of the key */
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, NULL);
-
+	r = sc_select_file(card, &path, &file);
 	if (r == SC_SUCCESS) {
-		ef_prkd_len = sc_read_binary(card, 0, ef_prkd, sizeof(ef_prkd), 0);
+		if (!(ef_prkd = malloc(file->size))) {
+			r = -1;
+			goto err;
+		}
+
+		ef_prkd_len = sc_read_binary(card, 0, ef_prkd, file->size, 0);
+		sc_file_free(file);
+		file = NULL;
 
 		if (ef_prkd_len < 0) {
 			fprintf(stderr, "Error reading PRKD file %s. Skipping.\n", sc_strerror(ef_prkd_len));
@@ -1412,6 +1416,7 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 			ef_prkd_len = (int)determineLength(ef_prkd, ef_prkd_len);
 		}
 	}
+	keyblob_len += ef_prkd_len;
 
 	fid[0] = EE_CERTIFICATE_PREFIX;
 	fid[1] = (unsigned char)keyid;
@@ -1419,10 +1424,14 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 
 	/* Try to select a related EF containing the certificate for the key */
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, NULL);
+	r = sc_select_file(card, &path, &file);
 
 	if (r == SC_SUCCESS) {
-		ef_cert_len = sc_read_binary(card, 0, ef_cert, sizeof(ef_cert), 0);
+		if (!(ef_cert = malloc(file->size))) {
+			r = -1;
+			goto err;
+		}
+		ef_cert_len = sc_read_binary(card, 0, ef_cert, file->size, 0);
 
 		if (ef_cert_len < 0) {
 			fprintf(stderr, "Error reading certificate %s. Skipping\n", sc_strerror(ef_cert_len));
@@ -1430,6 +1439,12 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 		} else {
 			ef_cert_len = (int)determineLength(ef_cert, ef_cert_len);
 		}
+	}
+	keyblob_len += ef_cert_len;
+
+	if (!(keyblob = malloc(keyblob_len))) {
+		r = -1;
+		goto err;
 	}
 
 	ptr = keyblob;
@@ -1467,20 +1482,23 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 
 	if (out == NULL) {
 		perror(outf);
-		free(key);
-		return -1;
+		r = -1;
+		goto err;
 	}
 
 	if (fwrite(key, 1, key_len, out) != key_len) {
 		perror(outf);
-		free(key);
-		fclose(out);
-		return -1;
+		r = -1;
 	}
 
-	free(key);
 	fclose(out);
-	return 0;
+err:
+	free(key);
+	free(keyblob);
+	free(ef_cert);
+	free(ef_prkd);
+	sc_file_free(file);
+	return r;
 }
 
 
@@ -1528,17 +1546,14 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 {
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
 	struct sc_pin_cmd_data data;
-	u8 keyblob[MAX_WRAPPED_KEY];
-	const u8 *ptr,*prkd,*cert;
-	FILE *in = NULL;
+	u8 *keyblob;
+	const u8 *ptr, *prkd, *cert;
 	sc_path_t path;
 	u8 fid[2];
 	char *lpin = NULL;
 	unsigned int cla, tag;
 	int r;
-	size_t keybloblen;
-	size_t len, olen, prkd_len, cert_len;
-	ssize_t sz;
+	size_t keybloblen, len, olen, prkd_len, cert_len;
 
 	if ((keyid < 1) || (keyid > 255)) {
 		fprintf(stderr, "Invalid key reference (must be 0 < keyid <= 255)\n");
@@ -1550,34 +1565,27 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 		return -1;
 	}
 
-	in = fopen(inf, "rb");
-
-	if (in == NULL) {
+	if (!fread_to_eof(inf, &keyblob, &keybloblen)) {
 		perror(inf);
-		return -1;
+		r = -1;
+		goto err;
 	}
-
-	sz = fread(keyblob, 1, sizeof(keyblob), in);
-	fclose(in);
-	if (sz < 0) {
-		perror(inf);
-		return -1;
-	}
-	keybloblen = sz;
 
 	ptr = keyblob;
 	if ((sc_asn1_read_tag(&ptr, keybloblen, &cla, &tag, &len) != SC_SUCCESS)
 		   	|| ((cla & SC_ASN1_TAG_CONSTRUCTED) != SC_ASN1_TAG_CONSTRUCTED)
 		   	|| (tag != SC_ASN1_TAG_SEQUENCE) ){
 		fprintf(stderr, "Invalid wrapped key format (Outer sequence).\n");
-		return -1;
+		r = -1;
+		goto err;
 	}
 
 	if ((sc_asn1_read_tag(&ptr, len, &cla, &tag, &olen) != SC_SUCCESS)
 		   	|| ((cla & SC_ASN1_TAG_CONSTRUCTED) == SC_ASN1_TAG_CONSTRUCTED)
 		   	|| (tag != SC_ASN1_TAG_OCTET_STRING) ){
 		fprintf(stderr, "Invalid wrapped key format (Key binary).\n");
-		return -1;
+		r = -1;
+		goto err;
 	}
 
 	wrapped_key.wrapped_key = (u8 *)ptr;
@@ -1610,7 +1618,8 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 
 		if (r == SC_SUCCESS) {
 			fprintf(stderr, "Found existing private key description in EF with fid %02x%02x. Please remove key first, select unused key reference or use --force.\n", fid[0], fid[1]);
-			return -1;
+			r = -1;
+			goto err;
 		}
 	}
 
@@ -1624,7 +1633,8 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 
 		if (r == SC_SUCCESS) {
 			fprintf(stderr, "Found existing certificate in EF with fid %02x%02x. Please remove certificate first, select unused key reference or use --force.\n", fid[0], fid[1]);
-			return -1;
+			r = -1;
+			goto err;
 		}
 	}
 
@@ -1647,7 +1657,7 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 
 	if (r < 0) {
 		fprintf(stderr, "PIN verification failed with %s\n", sc_strerror(r));
-		return -1;
+		goto err;
 	}
 
 	if (pin == NULL) {
@@ -1668,17 +1678,17 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
 		fprintf(stderr, "Card not initialized for key wrap\n");
-		return -1;
+		goto err;
 	}
 
 	if (r == SC_ERROR_INCORRECT_PARAMETERS) {			// Not supported or not initialized for key shares
 		fprintf(stderr, "Wrapped key does not match DKEK\n");
-		return -1;
+		goto err;
 	}
 
 	if (r < 0) {
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_UNWRAP_KEY, *) failed with %s\n", sc_strerror(r));
-		return -1;
+		goto err;
 	}
 
 	if (prkd_len > 0) {
@@ -1686,7 +1696,7 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 
 		if (r < 0) {
 			fprintf(stderr, "Updating private key description failed with %s\n", sc_strerror(r));
-			return -1;
+			goto err;
 		}
 	}
 
@@ -1695,26 +1705,30 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 
 		if (r < 0) {
 			fprintf(stderr, "Updating certificate failed with %s\n", sc_strerror(r));
-			return -1;
+			goto err;
 		}
 	}
 
 	printf("Key successfully imported\n");
-	return 0;
+
+err:
+	free(keyblob);
+	return r;
 }
 
 
 static int export_key(sc_card_t *card, int keyid, const char *outf)
 {
 	sc_path_t path;
+	sc_file_t *file = NULL;
 	FILE *outfp = NULL;
 	u8 fid[2];
-	u8 ef_cert[MAX_CERT];
-	u8 dev_aut_cert[MAX_CERT];
-	u8 dica[MAX_CERT];
+	u8 *ef_cert = NULL;
+	u8 *dev_aut_cert = NULL;
+	u8 *dica = NULL;
 	u8 tag = SC_ASN1_TAG_CONSTRUCTED | SC_ASN1_TAG_SEQUENCE; /* 0x30 */
-	int r = 0, ef_cert_len, total_certs_len;
-	size_t dev_aut_cert_len, dica_len;
+	int r = 0, ef_cert_len = 0, total_certs_len;
+	size_t dev_aut_cert_len = 0, dica_len = 0;
 	u8 *data = NULL, *out = NULL, *ptr;
 	size_t datalen, outlen;
 
@@ -1729,19 +1743,26 @@ static int export_key(sc_card_t *card, int keyid, const char *outf)
 
 	/* Try to select a related EF containing the certificate for the key */
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, NULL);
+	r = sc_select_file(card, &path, &file);
 	if (r != SC_SUCCESS) {
 		fprintf(stderr, "Wrong key reference (-i %d)? Failed to select file: %s\n", keyid, sc_strerror(r));
 		return -1;
 	}
 
-	ef_cert_len = sc_read_binary(card, 0, ef_cert, sizeof(ef_cert), 0);
+	if (!(ef_cert = malloc(file->size))) {
+		r = -1;
+		goto err;
+	}
+
+	ef_cert_len = sc_read_binary(card, 0, ef_cert, file->size, 0);
 	if (ef_cert_len < 0) {
 		fprintf(stderr, "Error reading certificate %s. Skipping\n", sc_strerror(ef_cert_len));
 		ef_cert_len = 0;
 	} else {
 		ef_cert_len = (int)determineLength(ef_cert, ef_cert_len);
 	}
+	sc_file_free(file);
+	file = NULL;
 
 	/* C_DevAut */
 	fid[0] = 0x2F;
@@ -1750,30 +1771,42 @@ static int export_key(sc_card_t *card, int keyid, const char *outf)
 
 	/* Read concatenation of both certificates */
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, NULL);
+	r = sc_select_file(card, &path, &file);
 	if (r != SC_SUCCESS) {
 		fprintf(stderr, "Failed to select certificates: %s\n", sc_strerror(r));
-		return -1;
+		r = -1;
+		goto err;
 	}
 
-	total_certs_len = sc_read_binary(card, 0, dev_aut_cert, sizeof(dev_aut_cert), 0);
+	if (!(dev_aut_cert = malloc(file->size))) {
+		r = -1;
+		goto err;
+	}
+
+	total_certs_len = sc_read_binary(card, 0, dev_aut_cert, file->size, 0);
 	if (total_certs_len < 0) {
 		fprintf(stderr, "Error reading certificate: %s\n", sc_strerror(total_certs_len));
-		return -1;
+		r = -1;
+		goto err;
 	} else {
 		dev_aut_cert_len = determineLength(dev_aut_cert, total_certs_len);
 		dica_len = total_certs_len - dev_aut_cert_len;
+		if (!(dica = malloc(dica_len))) {
+			r = -1;
+			goto err;
+		}
 		memcpy(dica, dev_aut_cert + dev_aut_cert_len, dica_len);
 	}
 	if (dica_len == 0) {
 		fprintf(stderr, "Could not determine device issuer certificate\n");
-		return -1;
+		r = -1;
+		goto err;
 	}
 
 	if ((outfp = fopen(outf, "r"))) {
 		fprintf(stderr, "Output file '%s' already exists\n", outf);
-		fclose(outfp);
-		return -1;
+		r = -1;
+		goto err;
 	}
 	fprintf(stderr, "Warning: Device certificate chain not verified!\n");
 
@@ -1809,16 +1842,17 @@ static int export_key(sc_card_t *card, int keyid, const char *outf)
 	if (fwrite(out, 1, outlen, outfp) != (size_t)outlen) {
 		perror(outf);
 		r = -1;
-		goto err;
 	}
 
 err:
 	if (outfp)
 		fclose(outfp);
-	if (out)
-		free(out);
-	if (data)
-		free(data);
+	free(out);
+	free(data);
+	free(dica);
+	free(dev_aut_cert);
+	free(ef_cert);
+	sc_file_free(file);
 
 	return r;
 }
