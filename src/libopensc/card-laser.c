@@ -2656,7 +2656,6 @@ laser_sm_close(struct sc_card *card)
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
 	int rv;
-	struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
 
 	LOG_FUNC_CALLED(ctx);
 
