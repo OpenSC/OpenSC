@@ -66,7 +66,9 @@ typedef enum _pgp_access {		/* access flags for the respective DO/file */
 	WRITE_MASK	= 0x1F00
 } pgp_access_t;
 
+// clang-format off
 typedef enum _pgp_ext_caps {	/* extended capabilities/features: bit flags */
+	EXT_CAP_KDF_DO			= 0x0001,
 	EXT_CAP_ALG_ATTR_CHANGEABLE	= 0x0004,
 	EXT_CAP_PRIVATE_DO		= 0x0008,
 	EXT_CAP_C4_CHANGEABLE		= 0x0010,
@@ -78,6 +80,7 @@ typedef enum _pgp_ext_caps {	/* extended capabilities/features: bit flags */
 	EXT_CAP_APDU_EXT		= 0x2000,
 	EXT_CAP_MSE			= 0x4000
 } pgp_ext_caps_t;
+// clang-format on
 
 typedef enum _pgp_card_state {
 	CARD_STATE_UNKNOWN		= 0x00,
@@ -122,7 +125,14 @@ typedef struct pgp_blob {
 	struct pgp_blob *files;		/* pointer to 1st child */
 } pgp_blob_t;
 
+typedef struct _pgp_pin_kdf_info {
+	const char *hash_algo;
+	uint32_t iterations;
+	pgp_blob_t *userpw_salt;
+	pgp_blob_t *adminpw_salt;
+} pgp_pin_kdf_info_t;
 
+// clang-format off
 /* The DO holding X.509 certificate is constructed but does not contain a child DO.
  * We should notice this when building fake file system later. */
 #define DO_CERT                  0x7f21
@@ -145,6 +155,8 @@ typedef struct pgp_blob {
 #define DO_NAME                  0x5b
 #define DO_LANG_PREF             0x5f2d
 #define DO_SEX                   0x5f35
+/* KDF-DO */
+#define DO_KDF                   0xf9
 
 
 /* Maximum length for response buffer when reading pubkey.
@@ -158,7 +170,7 @@ typedef struct pgp_blob {
  * v3.0+: max. special DO size is at bytes 7-8 of Extended Capabilities DO 00C0
  * Theoretically we should have the 64k, but we currently limit to 8k. */
 #define	MAX_OPENPGP_DO_SIZE	8192
-
+// clang-format on
 
 typedef struct _pgp_ec_curves {
 	struct sc_object_id oid;
@@ -176,6 +188,7 @@ typedef struct _pgp_ec_curves_alt {
 
 #define DRVDATA(card)        ((struct pgp_priv_data *) ((card)->drv_data))
 
+// clang-format off
 struct pgp_priv_data {
 	pgp_blob_t		*mf;
 	pgp_blob_t		*current;	/* currently selected file */
@@ -188,6 +201,8 @@ struct pgp_priv_data {
 
 	pgp_sm_algo_t		sm_algo;	/* Secure Messaging algorithm */
 
+	pgp_pin_kdf_info_t	*pin_kdf_info;	/* KDF-DO */
+
 	size_t			max_challenge_size;
 	size_t			max_cert_size;
 	size_t			max_specialDO_size;
@@ -196,6 +211,7 @@ struct pgp_priv_data {
 
 	sc_security_env_t	sec_env;
 };
+// clang-format on
 
 #define BCD2UCHAR(x) (((((x) & 0xF0) >> 4) * 10) + ((x) & 0x0F))
 
