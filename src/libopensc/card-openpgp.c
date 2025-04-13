@@ -60,7 +60,10 @@ static const char default_cardname_v1[] = "OpenPGP card v1.x";
 static const char default_cardname_v2[] = "OpenPGP card v2.x";
 static const char default_cardname_v3[] = "OpenPGP card v3.x";
 
+/* Hint for card supports OpenPGP v3.1 and later but without proper SC_CARD_CAP_ISO7816_PIN_INFO implementation */
+#define SC_CARD_FLAG_NO_ISO7816_PIN_INFO 0x00000008
 
+// clang-format off
 static const struct sc_atr_table pgp_atrs[] = {
 	{ "3b:fa:13:00:ff:81:31:80:45:00:31:c1:73:c0:01:00:00:90:00:b1", NULL, default_cardname_v1, SC_CARD_TYPE_OPENPGP_V1, 0, NULL },
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:c5:73:c0:01:40:00:90:00:0c", NULL, default_cardname_v2, SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
@@ -71,11 +74,11 @@ static const struct sc_atr_table pgp_atrs[] = {
 	},
 	{ "3b:fc:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:4e:45:4f:72:33:e1", NULL, "Yubikey NEO (OpenPGP v2.0)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
 	{ "3b:f8:13:00:00:81:31:fe:15:59:75:62:69:6b:65:79:34:d4", NULL, "Yubikey 4 (OpenPGP v2.1)", SC_CARD_TYPE_OPENPGP_V2, 0, NULL },
-	{ "3b:fd:13:00:00:81:31:fe:15:80:73:c0:21:c0:57:59:75:62:69:4b:65:79:40", NULL, "Yubikey 5 (OpenPGP v3.4)", SC_CARD_TYPE_OPENPGP_V3, 0, NULL },
+	{ "3b:fd:13:00:00:81:31:fe:15:80:73:c0:21:c0:57:59:75:62:69:4b:65:79:40", NULL, "Yubikey 5 (OpenPGP v3.4)", SC_CARD_TYPE_OPENPGP_V3, SC_CARD_FLAG_NO_ISO7816_PIN_INFO, NULL },
 	{ "3b:da:18:ff:81:b1:fe:75:1f:03:00:31:f5:73:c0:01:60:00:90:00:1c", NULL, default_cardname_v3, SC_CARD_TYPE_OPENPGP_V3, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
-
+// clang-format on
 
 static struct sc_card_operations *iso_ops;
 static struct sc_card_operations pgp_ops;
@@ -327,6 +330,7 @@ pgp_match_card(sc_card_t *card)
 	i = _sc_match_atr(card, pgp_atrs, &card->type);
 	if (i >= 0) {
 		card->name = pgp_atrs[i].name;
+		card->flags = pgp_atrs[i].flags;
 		LOG_FUNC_RETURN(card->ctx, 1);
 	}
 	else {
@@ -852,7 +856,9 @@ pgp_get_card_features(sc_card_t *card)
 		}
 	}
 
-	if (priv->bcd_version >= OPENPGP_CARD_3_1) {
+	/* Some cards (eg. Yubikey 5) do not have proper VERIFY command implementation
+	for retrieving PIN status even though it claims to support that version */
+	if ((priv->bcd_version >= OPENPGP_CARD_3_1) && !(card->flags & SC_CARD_FLAG_NO_ISO7816_PIN_INFO)) {
 		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 	}
 
