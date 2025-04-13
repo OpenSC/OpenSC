@@ -100,7 +100,7 @@ enum {
 	SC_CARD_TYPE_OBERTHUR_32K_BIO,
 	SC_CARD_TYPE_OBERTHUR_64K,
 	/* Oberthur 'COSMO v7' with applet 'AuthentIC v3.2' */
-        SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2 = 11100,
+	SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2 = 11100,
 
 	/* belpic driver */
 	SC_CARD_TYPE_BELPIC_BASE = 12000,
@@ -122,6 +122,7 @@ enum {
 	SC_CARD_TYPE_PIV_II_PIVKEY,
 	SC_CARD_TYPE_PIV_II_SWISSBIT,
 	SC_CARD_TYPE_PIV_II_800_73_4,
+	SC_CARD_TYPE_PIV_II_MYEID,
 
 	/* MuscleApplet */
 	SC_CARD_TYPE_MUSCLE_BASE = 15000,
@@ -191,9 +192,9 @@ enum {
 
 	/* Spanish DNIe card */
 	SC_CARD_TYPE_DNIE_BASE = 27000,
-	SC_CARD_TYPE_DNIE_BLANK, /* ATR LC byte: 00 */
-	SC_CARD_TYPE_DNIE_ADMIN, /* ATR LC byte: 01 */
-	SC_CARD_TYPE_DNIE_USER,  /* ATR LC byte: 03 */
+	SC_CARD_TYPE_DNIE_BLANK,      /* ATR LC byte: 00 */
+	SC_CARD_TYPE_DNIE_ADMIN,      /* ATR LC byte: 01 */
+	SC_CARD_TYPE_DNIE_USER,	      /* ATR LC byte: 03 */
 	SC_CARD_TYPE_DNIE_TERMINATED, /* ATR LC byte: 0F */
 
 	/* JavaCards with isoApplet */
