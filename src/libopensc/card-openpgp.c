@@ -417,6 +417,9 @@ pgp_init(sc_card_t *card)
 
 	card->cla = 0x00;
 
+	priv->pw1_logged_in = SC_PIN_STATE_LOGGED_OUT;
+	priv->pw1_sig_logged_in = SC_PIN_STATE_LOGGED_OUT;
+
 	/* select application "OpenPGP" */
 	sc_format_path("D276:0001:2401", &path);
 	path.type = SC_PATH_TYPE_DF_NAME;
@@ -2088,6 +2091,81 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	LOG_FUNC_RETURN(card->ctx, (int)buf_len);
 }
 
+static int
+pgp_check_protected_object(sc_card_t *card, unsigned int id)
+{
+	int logged_in = SC_PIN_STATE_UNKNOWN;
+	struct pgp_priv_data *priv = DRVDATA(card);
+	if (priv->ext_caps & EXT_CAP_PRIVATE_DO) {
+		sc_apdu_t apdu;
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xCA, id >> 8, id & 0x0F);
+		apdu.resp = NULL;
+		apdu.resplen = 0;
+		apdu.le = 0;
+		int r = sc_transmit_apdu(card, &apdu);
+		if (r == SC_SUCCESS) {
+			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+			switch (r) {
+			case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+			case SC_ERROR_NOT_ALLOWED:
+			case SC_ERROR_PIN_CODE_INCORRECT:
+			case SC_ERROR_AUTH_METHOD_BLOCKED:
+				logged_in = SC_PIN_STATE_LOGGED_OUT;
+				break;
+			default:
+				if (r == SC_SUCCESS || apdu.sw1 == 0x61) {
+					logged_in = SC_PIN_STATE_LOGGED_IN;
+				}
+			}
+		}
+	}
+	return logged_in;
+}
+
+static int
+pgp_pin_cmd_get_info(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	/* emulate SC_PIN_CMD_GET_INFO command for cards not supporting it */
+	if ((card->caps & SC_CARD_CAP_ISO7816_PIN_INFO) == 0) {
+		u8 c4data[10];
+		int r;
+
+		r = sc_get_data(card, 0x00c4, c4data, sizeof(c4data));
+		LOG_TEST_RET(card->ctx, r, "reading CHV status bytes failed");
+
+		if (r != 7)
+			LOG_TEST_RET(card->ctx, SC_ERROR_OBJECT_NOT_VALID,
+					"CHV status bytes have unexpected length");
+
+		data->pin1.tries_left = c4data[4 + (data->pin_reference & 0x0F) - 1];
+		data->pin1.max_tries = 3;
+		int logged_in;
+		switch (data->pin_reference) {
+		case 0x81:
+			logged_in = priv->pw1_sig_logged_in;
+			break;
+		case 0x82:
+			/* Use DO_PRIV3 since it's the only data object requires verifying
+			PW1 (no. 82) for reading defined by the spec */
+			logged_in = pgp_check_protected_object(card, DO_PRIV3);
+			if (logged_in == SC_PIN_STATE_UNKNOWN) {
+				logged_in = priv->pw1_logged_in;
+			}
+			break;
+		default:
+			/* Use DO_PRIV4 since it's the only data object requires verifying
+			PW3 (no. 83) for reading defined by the spec */
+			logged_in = pgp_check_protected_object(card, DO_PRIV4);
+		}
+		data->pin1.logged_in = logged_in;
+		if (tries_left != NULL)
+			*tries_left = data->pin1.tries_left;
+
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	}
+	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
+}
 
 /**
  * ABI: ISO 7816-9 PIN CMD - verify/change/unblock a PIN.
@@ -2099,7 +2177,9 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	if (data->pin_type != SC_AC_CHV)
+	/* Allow pin_type to be SC_AC_CONTEXT_SPECIFIC since forcesig
+	 * may be enabled on token and we treat it as user consent */
+	if (data->pin_type != SC_AC_CHV && data->pin_type != SC_AC_CONTEXT_SPECIFIC)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid PIN type");
 
@@ -2166,28 +2246,47 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"Invalid key ID; must be 1, 2, or 3");
 
-	/* emulate SC_PIN_CMD_GET_INFO command for cards not supporting it */
-	if (data->cmd == SC_PIN_CMD_GET_INFO && (card->caps & SC_CARD_CAP_ISO7816_PIN_INFO) == 0) {
-		u8 c4data[10];
-		int r;
-
-		r = sc_get_data(card, 0x00c4, c4data, sizeof(c4data));
-		LOG_TEST_RET(card->ctx, r, "reading CHV status bytes failed");
-
-		if (r != 7)
-			LOG_TEST_RET(card->ctx, SC_ERROR_OBJECT_NOT_VALID,
-				"CHV status bytes have unexpected length");
-
-                data->pin1.tries_left = c4data[4 + (data->pin_reference & 0x0F)];
-                data->pin1.max_tries = 3;
-                data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
-		if (tries_left != NULL)
-			*tries_left = data->pin1.tries_left;
-
-                LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	if (data->cmd == SC_PIN_CMD_GET_INFO) {
+		return pgp_pin_cmd_get_info(card, data, tries_left);
 	}
 
-	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
+	/* taken from card-dtrust.c */
+	if (data->cmd == SC_PIN_CMD_VERIFY && data->pin_type == SC_AC_CONTEXT_SPECIFIC) {
+		struct sc_pin_cmd_data data2;
+
+		memset(&data2, 0, sizeof(struct sc_pin_cmd_data));
+		data2.pin_reference = data->pin_reference;
+		data2.pin1 = data->pin1;
+
+		/* Check verification state */
+		data2.cmd = SC_PIN_CMD_GET_INFO;
+		data2.pin_type = data->pin_type;
+		int r = pgp_pin_cmd_get_info(card, &data2, tries_left);
+
+		if (data2.pin1.logged_in == SC_PIN_STATE_LOGGED_IN) {
+			/* Return if we are already authenticated */
+			data->pin1 = data2.pin1;
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+	}
+
+	int r = iso_ops->pin_cmd(card, data, tries_left);
+	if ((card->caps & SC_CARD_CAP_ISO7816_PIN_INFO) == 0) {
+		if (data->cmd == SC_PIN_CMD_VERIFY) {
+			int logged_in = r == SC_SUCCESS ? SC_PIN_STATE_LOGGED_IN : SC_PIN_STATE_LOGGED_OUT;
+			switch (data->pin_reference) {
+			case 0x81:
+				priv->pw1_sig_logged_in = logged_in;
+				break;
+			case 0x82:
+				priv->pw1_logged_in = logged_in;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
@@ -2381,6 +2480,15 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	/* PW1 (no. 81) status will be reset if forcesig enabled */
+	if (env->key_ref[0] == 0x00 && !(card->caps & SC_CARD_CAP_ISO7816_PIN_INFO)) {
+		uint8_t c4data[10];
+		int r = sc_get_data(card, 0x00c4, c4data, sizeof(c4data));
+		if (r == 7 && c4data[0] == 0x0) {
+			priv->pw1_sig_logged_in = SC_PIN_STATE_LOGGED_OUT;
+		}
+	}
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
