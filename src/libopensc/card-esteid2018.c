@@ -32,18 +32,32 @@
 
 /* Helping defines */
 #define SIGNATURE_PAYLOAD_SIZE 0x30
-#define PIN1_REF 0x01
-#define PIN2_REF 0x85
-#define PUK_REF 0x02
+#define AUTH_REF	       0x81
+#define SIGN_REF	       0x9f
+#define PIN1_REF	       0x01
+#define PIN2_REF	       0x85
+#define PUK_REF		       0x02
 
 static const struct sc_atr_table esteid_atrs[] = {
-    {"3b:db:96:00:80:b1:fe:45:1f:83:00:12:23:3f:53:65:49:44:0f:90:00:f1", NULL, "EstEID 2018", SC_CARD_TYPE_ESTEID_2018, 0, NULL},
-    {NULL, NULL, NULL, 0, 0, NULL}};
+		{"3b:db:96:00:80:b1:fe:45:1f:83:00:12:23:3f:53:65:49:44:0f:90:00:f1",    NULL, "EstEID 2018", SC_CARD_TYPE_ESTEID_2018, 0, NULL},
+		{"3b:dc:96:00:80:b1:fe:45:1f:83:00:12:23:3f:54:65:49:44:32:0f:90:00:c3", NULL, "EstEID 2018", SC_CARD_TYPE_ESTEID_2018, 0, NULL},
+		{NULL,								   NULL, NULL,	   0,			      0, NULL}
+};
 
-static const struct sc_aid IASECC_AID = {{0xA0, 0x00, 0x00, 0x00, 0x77, 0x01, 0x08, 0x00, 0x07, 0x00, 0x00, 0xFE, 0x00, 0x00, 0x01, 0x00},
-                                         16};
+static const struct sc_aid IASECC_AID = {
+		{0xA0, 0x00, 0x00, 0x00, 0x77, 0x01, 0x08, 0x00, 0x07, 0x00, 0x00, 0xFE, 0x00, 0x00, 0x01, 0x00},
+		16
+};
 
-static const struct sc_path adf2 = {{0x3f, 0x00, 0xAD, 0xF2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 4, 0, 0, SC_PATH_TYPE_PATH, {{0}, 0}};
+static const struct sc_path MF = {
+		{0x3f, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		2, 0, 0, SC_PATH_TYPE_PATH, {{0}, 0}
+};
+
+static const struct sc_path adf2 = {
+		{0x3f, 0x00, 0xAD, 0xF2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		4, 0, 0, SC_PATH_TYPE_PATH, {{0}, 0}
+};
 
 static const struct sc_card_operations *iso_ops = NULL;
 static struct sc_card_operations esteid_ops;
@@ -56,10 +70,10 @@ struct esteid_priv_data {
 
 #define DRVDATA(card) ((struct esteid_priv_data *)((card)->drv_data))
 
-#define SC_TRANSMIT_TEST_RET(card, apdu, text)                                                                                                      \
-	do {                                                                                                                               \
-		LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");                                            \
-		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), text);                                                      \
+#define SC_TRANSMIT_TEST_RET(card, apdu, text) \
+	do { \
+		LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed"); \
+		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), text); \
 	} while (0)
 
 static int esteid_match_card(sc_card_t *card) {
@@ -72,40 +86,13 @@ static int esteid_match_card(sc_card_t *card) {
 	return 0;
 }
 
-static int esteid_check_sw(sc_card_t *card, unsigned int sw1, unsigned int sw2) {
-	if (sw1 == 0x6B && sw2 == 0x00)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_END_REACHED);
-	return iso_ops->check_sw(card, sw1, sw2);
-}
-
-static int esteid_select(struct sc_card *card, unsigned char p1, unsigned char id1, unsigned char id2) {
-	struct sc_apdu apdu;
-	unsigned char sbuf[2];
-
-	LOG_FUNC_CALLED(card->ctx);
-
-	// Select EF/DF
-	sbuf[0] = id1;
-	sbuf[1] = id2;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xA4, p1, 0x0C);
-	if (id1 != 0x3F && id2 != 0x00) {
-		apdu.cse = SC_APDU_CASE_3_SHORT;
-		apdu.lc = 2;
-		apdu.data = sbuf;
-		apdu.datalen = 2;
-	}
-	apdu.le = 0;
-	apdu.resplen = 0;
-
-	SC_TRANSMIT_TEST_RET(card, apdu, "SELECT failed");
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-}
-
 static int esteid_select_file(struct sc_card *card, const struct sc_path *in_path, struct sc_file **file_out) {
-	unsigned char pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	size_t pathlen;
+	const u8 *path = in_path->value;
+	u8 resp[SC_MAX_APDU_RESP_SIZE];
+	size_t resplen = sizeof(resp);
+	int r;
 	struct sc_file *file = NULL;
+	struct sc_apdu apdu;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -113,54 +100,45 @@ static int esteid_select_file(struct sc_card *card, const struct sc_path *in_pat
 	if (in_path->type != SC_PATH_TYPE_PATH) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
+	if (in_path->len % 2 != 0) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
 
-	memcpy(path, in_path->value, in_path->len);
-	pathlen = in_path->len;
-
-	while (pathlen >= 2) {
+	for (size_t pathlen = in_path->len; pathlen >= 2; pathlen -= 2, path += 2) {
 		if (memcmp(path, "\x3F\x00", 2) == 0) {
-			LOG_TEST_RET(card->ctx, esteid_select(card, 0x00, 0x3F, 0x00), "MF select failed");
-		} else if (path[0] == 0xAD) {
-			LOG_TEST_RET(card->ctx, esteid_select(card, 0x01, path[0], path[1]), "DF select failed");
-		} else if (pathlen == 2) {
-			LOG_TEST_RET(card->ctx, esteid_select(card, 0x02, path[0], path[1]), "EF select failed");
+			sc_format_apdu_ex(&apdu, card->cla, 0xA4, 0x00, 0x0C, path, 0, NULL, 0);
+			SC_TRANSMIT_TEST_RET(card, apdu, "MF select failed");
+		} else if (pathlen == 2 && path[0] == 0xAD) {
+			sc_format_apdu_ex(&apdu, card->cla, 0xA4, 0x01, 0x0C, path, 2, NULL, 0);
+			SC_TRANSMIT_TEST_RET(card, apdu, "DF select failed");
+		} else {
+			sc_format_apdu_ex(&apdu, card->cla, 0xA4, 0x09, 0x04, path, pathlen, resp, resplen);
+			SC_TRANSMIT_TEST_RET(card, apdu, "EF select failed");
 
-			if (file_out != NULL) // Just make a dummy file
-			{
+			if (file_out != NULL) {
 				file = sc_file_new();
 				if (file == NULL)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-				file->path = *in_path;
-				file->size = 1536; // Dummy size, to be above 1024
-
+				r = iso_ops->process_fci(card, file, resp, resplen);
+				if (r != SC_SUCCESS) {
+					sc_file_free(file);
+				}
+				LOG_TEST_RET(card->ctx, r, "Process fci failed");
 				*file_out = file;
 			}
+			break;
 		}
-		path += 2;
-		pathlen -= 2;
 	}
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-}
-
-// temporary hack, overload 6B00 SW processing
-static int esteid_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t count, unsigned long *flags) {
-	int r;
-	int (*saved)(struct sc_card *, unsigned int, unsigned int) = card->ops->check_sw;
-	LOG_FUNC_CALLED(card->ctx);
-	card->ops->check_sw = esteid_check_sw;
-	r = iso_ops->read_binary(card, idx, buf, count, flags);
-	card->ops->check_sw = saved;
-	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int esteid_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num) {
 	struct esteid_priv_data *priv;
 	struct sc_apdu apdu;
 
-	// XXX: could be const
-	unsigned char cse_crt_aut[] = {0x80, 0x04, 0xFF, 0x20, 0x08, 0x00, 0x84, 0x01, 0x81};
-	unsigned char cse_crt_sig[] = {0x80, 0x04, 0xFF, 0x15, 0x08, 0x00, 0x84, 0x01, 0x9F};
-	unsigned char cse_crt_dec[] = {0x80, 0x04, 0xFF, 0x30, 0x04, 0x00, 0x84, 0x01, 0x81};
+	static const u8 cse_crt_aut[] = {0x80, 0x04, 0xFF, 0x20, 0x08, 0x00, 0x84, 0x01, AUTH_REF};
+	static const u8 cse_crt_sig[] = {0x80, 0x04, 0xFF, 0x15, 0x08, 0x00, 0x84, 0x01, SIGN_REF};
+	static const u8 cse_crt_dec[] = {0x80, 0x04, 0xFF, 0x30, 0x04, 0x00, 0x84, 0x01, AUTH_REF};
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -169,11 +147,11 @@ static int esteid_set_security_env(sc_card_t *card, const sc_security_env_t *env
 
 	sc_log(card->ctx, "algo: %lu operation: %d keyref: %d", env->algorithm, env->operation, env->key_ref[0]);
 
-	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->key_ref[0] == 1) {
+	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->key_ref[0] == AUTH_REF) {
 		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xA4, cse_crt_aut, sizeof(cse_crt_aut), NULL, 0);
-	} else if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->key_ref[0] == 2) {
+	} else if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->key_ref[0] == SIGN_REF) {
 		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, cse_crt_sig, sizeof(cse_crt_sig), NULL, 0);
-	} else if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_DERIVE && env->key_ref[0] == 1) {
+	} else if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_DERIVE && env->key_ref[0] == AUTH_REF) {
 		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB8, cse_crt_dec, sizeof(cse_crt_dec), NULL, 0);
 	} else {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
@@ -189,7 +167,7 @@ static int esteid_compute_signature(sc_card_t *card, const u8 *data, size_t data
 	struct esteid_priv_data *priv = DRVDATA(card);
 	struct sc_security_env *env = NULL;
 	struct sc_apdu apdu;
-	u8 sbuf[SIGNATURE_PAYLOAD_SIZE];
+	u8 sbuf[SIGNATURE_PAYLOAD_SIZE] = {0};
 	size_t le = MIN(SC_MAX_APDU_RESP_SIZE, MIN(SIGNATURE_PAYLOAD_SIZE * 2, outlen));
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -199,11 +177,10 @@ static int esteid_compute_signature(sc_card_t *card, const u8 *data, size_t data
 	env = &priv->sec_env;
 	// left-pad if necessary
 	memcpy(&sbuf[SIGNATURE_PAYLOAD_SIZE - datalen], data, MIN(datalen, SIGNATURE_PAYLOAD_SIZE));
-	memset(sbuf, 0x00, SIGNATURE_PAYLOAD_SIZE - datalen);
 	datalen = SIGNATURE_PAYLOAD_SIZE;
 
 	switch (env->key_ref[0]) {
-	case 1: /* authentication key */
+	case AUTH_REF:
 		sc_format_apdu_ex(&apdu, 0x00, 0x88, 0, 0, sbuf, datalen, out, le);
 		break;
 	default:
@@ -216,22 +193,20 @@ static int esteid_compute_signature(sc_card_t *card, const u8 *data, size_t data
 }
 
 static int esteid_get_pin_remaining_tries(sc_card_t *card, int pin_reference) {
-	unsigned char get_pin_info[] = {0x4D, 0x08, 0x70, 0x06, 0xBF, 0x81, 0xFF, 0x02, 0xA0, 0x80};
-
+	const u8 get_pin_info[] = {0x4D, 0x08, 0x70, 0x06, 0xBF, 0x81, pin_reference & 0x0F, 0x02, 0xA0, 0x80}; // mask out local/global
 	struct sc_apdu apdu;
-	unsigned char apdu_resp[SC_MAX_APDU_RESP_SIZE];
+	u8 apdu_resp[SC_MAX_APDU_RESP_SIZE];
 	LOG_FUNC_CALLED(card->ctx);
 
 	// We don't get the file information here, so we need to be ugly
 	if (pin_reference == PIN1_REF || pin_reference == PUK_REF) {
-		LOG_TEST_RET(card->ctx, esteid_select(card, 0x00, 0x3F, 0x00), "Cannot select MF");
+		LOG_TEST_RET(card->ctx, esteid_select_file(card, &MF, NULL), "Cannot select MF");
 	} else if (pin_reference == PIN2_REF) {
 		LOG_TEST_RET(card->ctx, esteid_select_file(card, &adf2, NULL), "Cannot select QSCD AID");
 	} else {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
-	get_pin_info[6] = pin_reference & 0x0F; // mask out local/global
 	sc_format_apdu_ex(&apdu, 0x00, 0xCB, 0x3F, 0xFF, get_pin_info, sizeof(get_pin_info), apdu_resp, sizeof(apdu_resp));
 	SC_TRANSMIT_TEST_RET(card, apdu, "GET DATA(pin info) failed");
 	if (apdu.resplen < 32) {
@@ -260,14 +235,14 @@ static int esteid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tr
 	} else if (data->cmd == SC_PIN_CMD_UNBLOCK) {
 		// Verify PUK, then issue UNBLOCK
 		// VERIFY
-		memcpy(&tmp, data, sizeof(struct sc_pin_cmd_data));
+		tmp = *data;
 		tmp.cmd = SC_PIN_CMD_VERIFY;
 		tmp.pin_reference = PUK_REF;
 		tmp.pin2.len = 0;
 		r = iso_ops->pin_cmd(card, &tmp, tries_left);
 		LOG_TEST_RET(card->ctx, r, "VERIFY during unblock failed");
 
-		if (data->pin_reference == 0x85) {
+		if (data->pin_reference == PIN2_REF) {
 			LOG_TEST_RET(card->ctx, esteid_select_file(card, &adf2, NULL), "Cannot select QSCD AID");
 		}
 		// UNBLOCK
@@ -290,7 +265,6 @@ static int esteid_init(sc_card_t *card) {
 	if (!priv)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	card->drv_data = priv;
-	card->max_recv_size = 233; // XXX: empirical, not documented
 
 	flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
 	ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
@@ -322,7 +296,6 @@ struct sc_card_driver *sc_get_esteid2018_driver(void) {
 	esteid_ops.finish = esteid_finish;
 
 	esteid_ops.select_file = esteid_select_file;
-	esteid_ops.read_binary = esteid_read_binary;
 
 	esteid_ops.set_security_env = esteid_set_security_env;
 	esteid_ops.compute_signature = esteid_compute_signature;
