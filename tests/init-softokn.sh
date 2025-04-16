@@ -1,20 +1,18 @@
 #!/bin/bash
 
-softokn_paths=(
-    "/usr/lib64/libsoftokn3.so" # Fedora
-    "/usr/lib/x86_64-linux-gnu/libsoftokn3.so" # Ubuntu
-)
-P11LIB=""
-for lib in "${softokn_paths[@]}"; do
-    if [ -f "$lib" ]; then
-        echo "Using softokn path $lib"
-        P11LIB="$lib"
-        break
-    fi
+softokn_paths="/usr/lib64/libsoftokn3.so \
+	/usr/lib/x86_64-linux-gnu/libsoftokn3.so"
+
+for LIB in $softokn_paths; do
+	echo "Testing $LIB"
+	if [[ -f $LIB ]]; then
+		export P11LIB=$LIB
+		echo "Setting P11LIB=$LIB"
+		break
+	fi
 done
-if [ -z "$P11LIB" ]; then
-    echo "Unable to find softokn PKCS#11 library"
-    exit 1
+if [[ -z "$P11LIB" ]]; then
+	echo "Warning: Could not find the Softokn PKCS#11 module"
 fi
 
 function initialize_token() {
@@ -34,7 +32,6 @@ function initialize_token() {
 	certutil -N -d $TOKDIR -f $PINFILE
 
 	export NSS_LIB_PARAMS=configDir=$TMPPDIR/tokens
-	export PKCS11_TOOL="pkcs11-tool"
 	export PUB_ARGS=("--module=${P11LIB}" "--token-label=${TOKENLABEL}")
 	export PRIV_ARGS=("${PUB_ARGS[@]}" "--login" "--pin=${PINVALUE}")
 }
