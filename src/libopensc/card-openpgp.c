@@ -49,6 +49,7 @@
 #include "cardctl.h"
 #include "errors.h"
 #ifdef ENABLE_OPENSSL
+#include <openssl/evp.h>
 #include <openssl/sha.h>
 #endif /* ENABLE_OPENSSL */
 
@@ -218,7 +219,7 @@ static pgp_do_info_t	pgp34_objects[] = {	/**** OpenPGP card spec 3.4 ****/
 	/* DO FC is CONSTRUCTED in spec; we treat it as SIMPLE for the time being */
 	{ 0x00fc, SIMPLE,      READ_ALWAYS | WRITE_NEVER, NULL,               NULL        },
 	/**** OpenPGP card spec 3.3 ****/
-	{ 0x00f9, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
+	{ DO_KDF, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  sc_get_data,        sc_put_data },
 	/**** OpenPGP card spec 3.0 - 3.2 ****/
 	{ 0x00d6, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
 	{ 0x00d7, SIMPLE,      READ_ALWAYS | WRITE_PIN3,  NULL,               sc_put_data },
@@ -883,6 +884,9 @@ pgp_get_card_features(sc_card_t *card)
 		/* get "extended capabilities" DO */
 		if ((pgp_get_blob(card, blob73, 0x00c0, &blob) >= 0) &&
 		    (blob->data != NULL) && (blob->len > 0)) {
+			if ((blob->data[0] & 0x01) && (priv->bcd_version >= OPENPGP_CARD_3_3)) {
+				priv->ext_caps |= EXT_CAP_KDF_DO;
+			}
 			/* v2.0+: bit 0x04 in first byte means "algorithm attributes changeable" */
 			if ((blob->data[0] & 0x04) &&
 					(priv->bcd_version >= OPENPGP_CARD_2_0))
@@ -956,6 +960,83 @@ pgp_get_card_features(sc_card_t *card)
 			}
 		}
 
+#ifdef ENABLE_OPENSSL
+		if (priv->ext_caps & EXT_CAP_KDF_DO) {
+			pgp_blob_t *kdf_blob = NULL;
+			if ((pgp_get_blob(card, priv->mf, DO_KDF, &kdf_blob) == SC_SUCCESS) && (kdf_blob->len >= 3)) {
+				uint8_t *data = kdf_blob->data;
+				priv->pin_kdf_info = NULL;
+				/* KDF_ITERSALTED_S2K */
+				size_t i = 0;
+				pgp_pin_kdf_info *pin_kdf_info = (pgp_pin_kdf_info *)calloc(1, sizeof(pgp_pin_kdf_info));
+				if (!priv) {
+					free(priv);
+					pgp_free_blob(kdf_blob);
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+				}
+				int valid = 0;
+				if ((data[i] == 0x81) && (data[i + 1] == 0x01) && (data[i + 2] == 0x3)) {
+					valid = 1;
+					i += 3;
+				}
+
+				if (valid && (i + 3 <= kdf_blob->len)) {
+					valid = 0;
+					if (data[i] == 0x82 && data[i + 1] == 1) {
+						if (data[i + 2] == 0x08) {
+							pin_kdf_info->hash_algo = "SHA256";
+							valid = 1;
+						}
+						if (data[i + 2] == 0x0A) {
+							pin_kdf_info->hash_algo = "SHA512";
+							valid = 1;
+						}
+					}
+					i += 3;
+				}
+
+				if (valid && (i + 6 <= kdf_blob->len)) {
+					valid = 0;
+					if (data[i] == 0x83 && data[i + 1] == 0x04) {
+						pin_kdf_info->iterations = (uint32_t)bebytes2ulong(&data[i + 2]);
+						valid = 1;
+					}
+					i += 6;
+				}
+
+				if (valid && i < kdf_blob->len) {
+					pgp_blob_t *blob = NULL;
+					if (pgp_get_blob(card, kdf_blob, 0x84, &blob) == SC_SUCCESS && blob->len > 0) {
+						pin_kdf_info->userpw_salt = calloc(1, blob->len);
+						if (pin_kdf_info->userpw_salt) {
+							memcpy(pin_kdf_info->userpw_salt, blob->data, blob->len);
+							pin_kdf_info->userpw_saltlen = blob->len;
+						}
+						pgp_free_blob(blob);
+					}
+					if (pgp_get_blob(card, kdf_blob, 0x86, &blob) == SC_SUCCESS && blob->len > 0) {
+						pin_kdf_info->adminpw_salt = calloc(1, blob->len);
+						if (pin_kdf_info->adminpw_salt) {
+							memcpy(pin_kdf_info->adminpw_salt, blob->data, blob->len);
+							pin_kdf_info->adminpw_saltlen = blob->len;
+						}
+						pgp_free_blob(blob);
+					}
+				}
+				pgp_free_blob(kdf_blob);
+				if (valid) {
+					sc_log(card->ctx, "KDF derived PIN format enabled");
+					priv->pin_kdf_info = pin_kdf_info;
+				} else {
+					free(pin_kdf_info);
+					sc_log(card->ctx, "KDF derived format is not enabled or KDF-DO is invalid");
+				}
+			} else {
+				sc_log(card->ctx, "Failed to get KDF-DO(0xF9) from card but it claims to support it");
+			}
+		}
+#endif /* ENABLE_OPENSSL */
+
 		/* if we found at least one usable algo, let's skip other ways to find them */
 		if (handled_algos) {
 			sc_log(card->ctx, "Algo list populated from Algorithm Information DO");
@@ -997,6 +1078,18 @@ pgp_finish(sc_card_t *card)
 		struct pgp_priv_data *priv = DRVDATA(card);
 
 		if (priv != NULL) {
+
+			if (priv->pin_kdf_info != NULL) {
+				if (priv->pin_kdf_info->userpw_salt != NULL) {
+					free(priv->pin_kdf_info->userpw_salt);
+				}
+				if (priv->pin_kdf_info->adminpw_salt != NULL) {
+					free(priv->pin_kdf_info->adminpw_salt);
+				}
+				free(priv->pin_kdf_info);
+			}
+			priv->pin_kdf_info = NULL;
+
 			/* delete fake file hierarchy */
 			pgp_free_blobs(priv->mf);
 
@@ -2082,6 +2175,152 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	LOG_FUNC_RETURN(card->ctx, (int)buf_len);
 }
 
+#ifdef ENABLE_OPENSSL
+/* KDF_ITERSALTED_S2K algorithm, a simplified version of openpgp_s2k from libgcrypt[1] that
+ * has only only one-pass and its output key size same as the size of hash algorithm specified.
+ * [1]: https://github.com/gpg/libgcrypt/blob/libgcrypt-1.11.0/cipher/kdf.c#L32-L109 */
+static int
+kdf_itersalted_s2k(struct sc_context *ctx, const char *hash, const uint8_t *pin, size_t pinlen, const uint8_t *salt, size_t saltlen, uint32_t iterations, uint8_t **out, size_t *outlen)
+{
+	if (!ctx || !hash || !pin || pinlen == 0 || !salt || saltlen != 8 || !out || !outlen) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	EVP_MD *md = sc_evp_md(ctx, hash);
+	if (md == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	EVP_MD_CTX *hctx = EVP_MD_CTX_new();
+	if (hctx == NULL) {
+		sc_evp_md_free(md);
+		return SC_ERROR_INTERNAL;
+	}
+	if (!EVP_DigestInit(hctx, md)) {
+		EVP_MD_CTX_free(hctx);
+		sc_evp_md_free(md);
+		return SC_ERROR_INTERNAL;
+	}
+	int keysize = EVP_MD_size(md);
+	if (keysize <= 0) {
+		EVP_MD_CTX_free(hctx);
+		sc_evp_md_free(md);
+		return SC_ERROR_INTERNAL;
+	}
+	uint8_t *outkey = (uint8_t *)calloc(1, keysize);
+	if (outkey == NULL) {
+		EVP_MD_CTX_free(hctx);
+		sc_evp_md_free(md);
+		return SC_ERROR_NOT_ENOUGH_MEMORY;
+	}
+	size_t count = iterations;
+	if (count < pinlen + saltlen) {
+		count = pinlen + saltlen;
+	}
+	while (count >= pinlen + saltlen) {
+		EVP_DigestUpdate(hctx, salt, saltlen);
+		EVP_DigestUpdate(hctx, pin, pinlen);
+		count -= pinlen + saltlen;
+	}
+	if (count <= saltlen) {
+		EVP_DigestUpdate(hctx, salt, count);
+	} else {
+		EVP_DigestUpdate(hctx, salt, saltlen);
+		count -= saltlen;
+		EVP_DigestUpdate(hctx, pin, count);
+	}
+
+	unsigned int outsize = keysize;
+	EVP_DigestFinal(hctx, outkey, &outsize);
+	EVP_MD_CTX_free(hctx);
+	sc_evp_md_free(md);
+	if (outsize != (unsigned int)keysize) {
+		free(outkey);
+		return SC_ERROR_INTERNAL;
+	}
+	*out = outkey;
+	*outlen = outsize;
+	return SC_SUCCESS;
+}
+
+static int
+pgp_kdf_do_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+{
+	struct pgp_priv_data *priv = DRVDATA(card);
+	switch (data->cmd) {
+	case SC_PIN_CMD_VERIFY:
+	case SC_PIN_CMD_CHANGE:
+	case SC_PIN_CMD_UNBLOCK:
+		break;
+	default:
+		LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
+	}
+	pgp_pin_kdf_info *info = priv->pin_kdf_info;
+	uint8_t *pin1_derived = NULL;
+	uint8_t *pin2_derived = NULL;
+	size_t pin1_derived_size = 0;
+	size_t pin2_derived_size = 0;
+	const uint8_t *pin1 = data->pin1.data;
+	size_t pin1len = data->pin1.len;
+	const uint8_t *pin2 = data->pin2.data;
+	size_t pin2len = data->pin2.len;
+	uint8_t *salt = NULL;
+	size_t saltlen = 0;
+	switch (data->pin_reference) {
+	case 0x81:
+	case 0x82:
+		salt = info->userpw_salt;
+		saltlen = info->userpw_saltlen;
+		break;
+	case 0x83:
+		salt = info->adminpw_salt;
+		saltlen = info->adminpw_saltlen;
+	}
+	if (!salt || saltlen == 0) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+	}
+	int r = SC_SUCCESS;
+	switch (data->cmd) {
+	case SC_PIN_CMD_UNBLOCK:
+	case SC_PIN_CMD_CHANGE:
+		r = kdf_itersalted_s2k(card->ctx, info->hash_algo, pin2, pin2len, salt, saltlen, info->iterations, &pin2_derived, &pin2_derived_size);
+		if (r != 0) {
+			break;
+		}
+		data->pin2.data = pin2_derived;
+		data->pin2.len = pin2_derived_size;
+		if (data->cmd == SC_PIN_CMD_UNBLOCK) {
+			if (!info->adminpw_salt) {
+				r = SC_ERROR_INVALID_DATA;
+				break;
+			}
+			salt = info->adminpw_salt;
+			saltlen = info->adminpw_saltlen;
+		}
+		// fallthrough
+	case SC_PIN_CMD_VERIFY:
+		r = kdf_itersalted_s2k(card->ctx, info->hash_algo, pin1, pin1len, salt, saltlen, info->iterations, &pin1_derived, &pin1_derived_size);
+		if (r != 0) {
+			break;
+		}
+		data->pin1.data = pin1_derived;
+		data->pin1.len = pin1_derived_size;
+		break;
+	}
+	if (r == SC_SUCCESS) {
+		r = iso_ops->pin_cmd(card, data, tries_left);
+	}
+	if (pin1_derived) {
+		data->pin1.data = pin1;
+		data->pin1.len = pin1len;
+		free(pin1_derived);
+	}
+	if (pin2_derived) {
+		data->pin2.data = pin2;
+		data->pin2.len = pin2len;
+		free(pin2_derived);
+	}
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+#endif /* ENABLE_OPENSSL */
 
 /**
  * ABI: ISO 7816-9 PIN CMD - verify/change/unblock a PIN.
@@ -2172,16 +2411,24 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 			LOG_TEST_RET(card->ctx, SC_ERROR_OBJECT_NOT_VALID,
 				"CHV status bytes have unexpected length");
 
-                data->pin1.tries_left = c4data[4 + (data->pin_reference & 0x0F)];
-                data->pin1.max_tries = 3;
-                data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
+		data->pin1.tries_left = c4data[4 + (data->pin_reference & 0x0F)];
+		data->pin1.max_tries = 3;
+		data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
 		if (tries_left != NULL)
 			*tries_left = data->pin1.tries_left;
 
-                LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
-	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
+	struct sc_card_operations ops = {.pin_cmd = iso_ops->pin_cmd};
+
+#ifdef ENABLE_OPENSSL
+	if (priv->pin_kdf_info) {
+		ops.pin_cmd = &pgp_kdf_do_pin_cmd;
+	}
+#endif /* ENABLE_OPENSSL */
+
+	LOG_FUNC_RETURN(card->ctx, ops.pin_cmd(card, data, tries_left));
 }
 
 

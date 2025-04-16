@@ -66,17 +66,18 @@ typedef enum _pgp_access {		/* access flags for the respective DO/file */
 	WRITE_MASK	= 0x1F00
 } pgp_access_t;
 
-typedef enum _pgp_ext_caps {	/* extended capabilities/features: bit flags */
-	EXT_CAP_ALG_ATTR_CHANGEABLE	= 0x0004,
-	EXT_CAP_PRIVATE_DO		= 0x0008,
-	EXT_CAP_C4_CHANGEABLE		= 0x0010,
-	EXT_CAP_KEY_IMPORT		= 0x0020,
-	EXT_CAP_GET_CHALLENGE		= 0x0040,
-	EXT_CAP_SM			= 0x0080,
-	EXT_CAP_LCS			= 0x0100,
-	EXT_CAP_CHAINING		= 0x1000,
-	EXT_CAP_APDU_EXT		= 0x2000,
-	EXT_CAP_MSE			= 0x4000
+typedef enum _pgp_ext_caps { /* extended capabilities/features: bit flags */
+	EXT_CAP_KDF_DO = 0x0001,
+	EXT_CAP_ALG_ATTR_CHANGEABLE = 0x0004,
+	EXT_CAP_PRIVATE_DO = 0x0008,
+	EXT_CAP_C4_CHANGEABLE = 0x0010,
+	EXT_CAP_KEY_IMPORT = 0x0020,
+	EXT_CAP_GET_CHALLENGE = 0x0040,
+	EXT_CAP_SM = 0x0080,
+	EXT_CAP_LCS = 0x0100,
+	EXT_CAP_CHAINING = 0x1000,
+	EXT_CAP_APDU_EXT = 0x2000,
+	EXT_CAP_MSE = 0x4000
 } pgp_ext_caps_t;
 
 typedef enum _pgp_card_state {
@@ -122,6 +123,14 @@ typedef struct pgp_blob {
 	struct pgp_blob *files;		/* pointer to 1st child */
 } pgp_blob_t;
 
+typedef struct _pgp_pin_kdf_info {
+	const char *hash_algo;
+	uint32_t iterations;
+	uint8_t *userpw_salt;
+	size_t userpw_saltlen;
+	uint8_t *adminpw_salt;
+	size_t adminpw_saltlen;
+} pgp_pin_kdf_info;
 
 /* The DO holding X.509 certificate is constructed but does not contain a child DO.
  * We should notice this when building fake file system later. */
@@ -145,7 +154,8 @@ typedef struct pgp_blob {
 #define DO_NAME                  0x5b
 #define DO_LANG_PREF             0x5f2d
 #define DO_SEX                   0x5f35
-
+/* KDF-DO */
+#define DO_KDF 0xf9
 
 /* Maximum length for response buffer when reading pubkey.
  * This value is calculated with 4096-bit key length */
@@ -187,6 +197,8 @@ struct pgp_priv_data {
 	pgp_ext_caps_t		ext_caps;	/* extended capabilities */
 
 	pgp_sm_algo_t		sm_algo;	/* Secure Messaging algorithm */
+
+	pgp_pin_kdf_info *pin_kdf_info; /* KDF-DO */
 
 	size_t			max_challenge_size;
 	size_t			max_cert_size;
