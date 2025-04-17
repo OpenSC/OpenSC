@@ -33,6 +33,7 @@ function initialize_token() {
 
 	export PUB_ARGS=("--module=${P11LIB}")
 	export PRIV_ARGS=("${PUB_ARGS[@]}" "--login" "--pin=${PIN}")
+	export PRIV_ARGS_SOFTHSM=("${PRIV_ARGS[@]}")
 }
 
 function token_cleanup() {

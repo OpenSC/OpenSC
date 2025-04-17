@@ -34,6 +34,7 @@ function initialize_token() {
 	export NSS_LIB_PARAMS=configDir=$TMPPDIR/tokens
 	export PUB_ARGS=("--module=${P11LIB}" "--token-label=${TOKENLABEL}")
 	export PRIV_ARGS=("${PUB_ARGS[@]}" "--login" "--pin=${PINVALUE}")
+	export PRIV_ARGS_SOFTOKN=("${PRIV_ARGS[@]}")
 }
 
 function token_cleanup() {
