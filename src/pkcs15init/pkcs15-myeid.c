@@ -589,6 +589,14 @@ myeid_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	myeid_fixup_supported_algos(profile, p15card, object);
 
+	/* TODO For SM NIST, the CVC private key needs to be "insecure"
+	 * i.e. usable without a PIN  as it is used to authenticate the
+	 * card and setup SM to protect the user PIN verify. 
+	 * It could be done without using PKCS15 by using a fixed path
+	 * like 3F00 5015 5527 or 552E as was done in demo card 5 from 
+	 * MyEID. SM could be established before adding PKCS15 structures.
+	 * The CVC certificte could be in 5C27 or 5C3E
+	 */
 	if ((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY) {
 		id = &prkey_info->id;
 		path = &prkey_info->path;
