@@ -17,6 +17,11 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef ENABLE_OPENSSL /* empty file without openssl */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,8 +35,6 @@
 #include "log.h"
 #include "pkcs15.h"
 #include "pkcs11/pkcs11.h"
-
-#ifdef ENABLE_OPENSSL /* empty file without openssl */
 
 #include <openssl/sha.h>
 

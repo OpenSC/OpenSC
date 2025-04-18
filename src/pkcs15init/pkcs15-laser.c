@@ -17,6 +17,9 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #ifdef ENABLE_OPENSSL /* empty file without openssl */
 
@@ -116,16 +119,6 @@ laser_validate_attr_reference(int key_reference)
 		return SC_ERROR_INVALID_DATA;
 
 	return SC_SUCCESS;
-}
-
-int
-laser_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
-		struct sc_file *df)
-{
-	struct sc_context *ctx = p15card->card->ctx;
-
-	LOG_FUNC_CALLED(ctx);
-	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
 static int

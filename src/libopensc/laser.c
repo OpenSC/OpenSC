@@ -17,9 +17,11 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#ifdef ENABLE_OPENSSL /* empty file without openssl */
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
-#include "config.h"
+#ifdef ENABLE_OPENSSL /* empty file without openssl */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,9 +33,9 @@
 #include "cardctl.h"
 #include "common/compat_strlcpy.h"
 #include "internal.h"
-#include "laser.h"
 #include "pkcs11/pkcs11.h"
 #include "pkcs15.h"
+#include "laser.h"
 
 #define LOG_ERROR_RET(ctx, r, text) \
 	do { \
