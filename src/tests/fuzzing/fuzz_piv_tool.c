@@ -57,7 +57,6 @@ void initilize_global()
 	ctx = NULL;
 	card = NULL;
 	bp = NULL;
-	evpkey = NULL;
 	opt_reader = NULL;
 	opt_apdus = NULL;
 	opt_apdu_count = 0;
