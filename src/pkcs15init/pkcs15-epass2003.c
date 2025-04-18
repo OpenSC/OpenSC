@@ -37,8 +37,10 @@ static int epass2003_pkcs15_erase_card(struct sc_profile *profile,
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (sc_select_file(p15card->card, sc_get_mf_path(), NULL) < 0)
-		return SC_SUCCESS;
+	if (sc_select_file(p15card->card, sc_get_mf_path(), NULL) < 0) {
+		sc_do_log(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,NULL,0,NULL,
+			"epass2003_pkcs15__erase_card failed calling sc_select_file, continue with erase. \n");
+	}
 
 	return sc_card_ctl(p15card->card, SC_CARDCTL_ERASE_CARD, 0);
 }
