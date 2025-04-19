@@ -91,9 +91,12 @@ static int sc_compress_gzip(u8* out, size_t* outLen, const u8* in, size_t inLen)
 	gz.avail_out = (unsigned)*outLen;
 
 	err = deflateInit2(&gz, Z_BEST_COMPRESSION, Z_DEFLATED, window_size, 9, Z_DEFAULT_STRATEGY);
-	if(err != Z_OK) return zerr_to_opensc(err);
+	if (err != Z_OK) {
+		deflateEnd(&gz);
+		return zerr_to_opensc(err);
+	}
 	err = deflate(&gz, Z_FINISH);
-	if(err != Z_STREAM_END) {
+	if (err != Z_STREAM_END) {
 		deflateEnd(&gz);
 		return zerr_to_opensc(err);
 	}
