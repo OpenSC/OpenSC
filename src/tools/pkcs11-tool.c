@@ -2648,7 +2648,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			 */
 			tmp = bytes;
 			if (sc_asn1_read_tag((const u8 **)&tmp, len, &cla, &tag, &taglen) != SC_SUCCESS ||
-					len < 2 || len > 255) {
+					len < 2 || len > 255 || taglen < 1) {
 				free(bytes);
 				util_fatal("Key not supported");
 			}
