@@ -358,8 +358,6 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 
 	r = sc_pkcs15init_read_info(card, profile);
 	if (r < 0) {
-		if (profile->dll)
-			sc_dlclose(profile->dll);
 		sc_profile_free(profile);
 		LOG_TEST_RET(ctx, r, "Read info error");
 	}
@@ -390,9 +388,7 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 			sc_log(ctx, "Failed to finalize profile: %s", sc_strerror(r));
 	}  while (0);
 
-	if (r < 0)   {
-		if (profile->dll)
-			sc_dlclose(profile->dll);
+	if (r < 0) {
 		sc_profile_free(profile);
 		LOG_TEST_RET(ctx, r, "Load profile error");
 	}
@@ -440,8 +436,6 @@ sc_pkcs15init_unbind(struct sc_profile *profile)
 		if (r < 0)
 			sc_log(ctx, "Failed to update TokenInfo: %s", sc_strerror(r));
 	}
-	if (profile->dll)
-		sc_dlclose(profile->dll);
 	sc_profile_free(profile);
 }
 
