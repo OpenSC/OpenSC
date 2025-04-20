@@ -356,15 +356,6 @@ struct sc_ef_atr {
 	unsigned status;
 };
 
-struct sc_card_cache {
-	struct sc_path current_path;
-
-        struct sc_file *current_ef;
-        struct sc_file *current_df;
-
-	int valid;
-};
-
 #define SC_PROTO_T0		0x00000001
 #define SC_PROTO_T1		0x00000002
 #define SC_PROTO_RAW		0x00001000
@@ -616,8 +607,6 @@ typedef struct sc_card {
 	const char *name;
 	void *drv_data;
 	int max_pin_len;
-
-	struct sc_card_cache cache;
 
 	struct sc_serial_number serialnr;
 	struct sc_version version;
@@ -1612,9 +1601,6 @@ int sc_parse_ef_gdo(struct sc_card *card,
 		unsigned char *iccsn, size_t *iccsn_len,
 		unsigned char *chn, size_t *chn_len);
 int sc_update_dir(struct sc_card *card, sc_app_info_t *app);
-
-void sc_invalidate_cache(struct sc_card *card);
-void sc_print_cache(struct sc_card *card);
 
 struct sc_algorithm_info * sc_card_find_rsa_alg(struct sc_card *card,
 		size_t key_length);

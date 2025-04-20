@@ -764,11 +764,6 @@ static int starcos_select_aid(sc_card_t *card,
 	if (!(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) && apdu.sw1 != 0x61 )
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 
-	/* update cache */
-	card->cache.current_path.type = SC_PATH_TYPE_DF_NAME;
-	card->cache.current_path.len = len;
-	memcpy(card->cache.current_path.value, aid, len);
-
 	if (file_out) {
 		sc_file_t *file = sc_file_new();
 		if (!file)
@@ -876,26 +871,11 @@ static int starcos_select_fid(sc_card_t *card,
 	if (apdu.sw1 != 0x61 && (apdu.sw1 != 0x90 || apdu.sw2 != 0x00))
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 
-	/* update cache */
-	if (bIsDF || isMF) {
-		card->cache.current_path.type = SC_PATH_TYPE_PATH;
-		card->cache.current_path.value[0] = 0x3f;
-		card->cache.current_path.value[1] = 0x00;
-		if (id_hi == 0x3f && id_lo == 0x00)
-			card->cache.current_path.len = 2;
-		else {
-			card->cache.current_path.len = 4;
-			card->cache.current_path.value[2] = id_hi;
-			card->cache.current_path.value[3] = id_lo;
-		}
-	}
-
 	if (file_out) {
 		sc_file_t *file = sc_file_new();
 		if (!file)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-		file->id   = (id_hi << 8) + id_lo;
-		file->path = card->cache.current_path;
+		file->id = (id_hi << 8) + id_lo;
 
 		if (bIsDF || isMF) {
 			/* we have a DF */
@@ -938,18 +918,8 @@ static int starcos_select_file(sc_card_t *card,
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	int    r, pathtype;
 	size_t i, pathlen;
-	char pbuf[SC_MAX_PATH_STRING_SIZE];
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	r = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
-	if (r != SC_SUCCESS)
-		pbuf[0] = '\0';
-
-	sc_log(card->ctx,
-		 "current path (%s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
-		 card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
-		 "aid" : "path", pbuf, card->cache.current_path.len);
 
 	if ( in_path->len > sizeof(pathbuf) ) {
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_BUFFER_TOO_SMALL);
@@ -1407,7 +1377,6 @@ static int starcos_erase_card(sc_card_t *card)
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	sc_invalidate_cache(card);
 	if (apdu.sw1 == 0x69 && apdu.sw2 == 0x85)
 		/* no MF to delete, ignore error */
 		return SC_SUCCESS;

@@ -123,6 +123,15 @@ struct iasecc_io_buffer_sizes {
 	size_t recv_sc;
 };
 
+struct sc_card_cache {
+	struct sc_path current_path;
+
+	struct sc_file *current_ef;
+	struct sc_file *current_df;
+
+	int valid;
+};
+
 struct iasecc_private_data {
 	struct iasecc_version version;
 	struct iasecc_io_buffer_sizes max_sizes;
@@ -132,6 +141,8 @@ struct iasecc_private_data {
 	unsigned op_method, op_ref;
 
 	struct iasecc_se_info *se_info;
+
+	struct sc_card_cache cache;
 };
 
 #endif

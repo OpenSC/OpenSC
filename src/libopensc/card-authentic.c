@@ -89,7 +89,6 @@ static int authentic_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_dat
 static int authentic_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int *tries_left);
 static int authentic_select_mf(struct sc_card *card, struct sc_file **file_out);
 static int authentic_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr);
-static void authentic_debug_select_file(struct sc_card *card, const struct sc_path *path);
 
 #ifdef ENABLE_SM
 static int authentic_sm_open(struct sc_card *card);
@@ -488,10 +487,6 @@ authentic_erase_binary(struct sc_card *card, unsigned int offs, size_t count, un
 	if (!count)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "'ERASE BINARY' with ZERO count not supported");
 
-	if (card->cache.valid && card->cache.current_ef)
-		sc_log(ctx, "current_ef(type=%i) %s", card->cache.current_ef->path.type,
-				sc_print_path(&card->cache.current_ef->path));
-
 	buf_zero = calloc(1, count);
 	if (!buf_zero)
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cannot allocate buff 'zero'");
@@ -533,41 +528,6 @@ authentic_set_current_files(struct sc_card *card, struct sc_path *path,
 			LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
 		}
 
-		if (file->type == SC_FILE_TYPE_DF)   {
-			struct sc_path cur_df_path;
-
-			memset(&cur_df_path, 0, sizeof(cur_df_path));
-			if (card->cache.valid && card->cache.current_df)   {
-				cur_df_path = card->cache.current_df->path;
-				sc_file_free(card->cache.current_df);
-			}
-			card->cache.current_df = NULL;
-			sc_file_dup(&card->cache.current_df, file);
-
-			if (cur_df_path.len)   {
-				if (cur_df_path.len + card->cache.current_df->path.len > sizeof card->cache.current_df->path.value
-						|| cur_df_path.len > sizeof card->cache.current_df->path.value) {
-					sc_file_free(file);
-					LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-				}
-				memmove(card->cache.current_df->path.value + cur_df_path.len,
-						card->cache.current_df->path.value,
-						card->cache.current_df->path.len);
-				memcpy(card->cache.current_df->path.value, cur_df_path.value, cur_df_path.len);
-				card->cache.current_df->path.len += cur_df_path.len;
-			}
-
-			sc_file_free(card->cache.current_ef);
-			card->cache.current_ef = NULL;
-
-			card->cache.valid = 1;
-		}
-		else   {
-			sc_file_free(card->cache.current_ef);
-			card->cache.current_ef = NULL;
-			sc_file_dup(&card->cache.current_ef, file);
-		}
-
 		if (file_out)
 			*file_out = file;
 		else
@@ -593,16 +553,6 @@ authentic_select_mf(struct sc_card *card, struct sc_file **file_out)
 	sc_format_path("3F00", &mfpath);
 	mfpath.type = SC_PATH_TYPE_PATH;
 
-	if (card->cache.valid == 1
-			&& card->cache.current_df
-			&& card->cache.current_df->path.len == 2
-			&& !memcmp(card->cache.current_df->path.value, "\x3F\x00", 2))   {
-		if (file_out)
-			sc_file_dup(file_out, card->cache.current_df);
-
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-	}
-
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA4, 0x00, 0x00);
 
 	apdu.resp = rbuf;
@@ -613,106 +563,11 @@ authentic_select_mf(struct sc_card *card, struct sc_file **file_out)
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, rv, "authentic_select_file() check SW failed");
 
-	if (card->cache.valid == 1)   {
-		sc_file_free(card->cache.current_df);
-		card->cache.current_df = NULL;
-
-		sc_file_free(card->cache.current_ef);
-		card->cache.current_ef = NULL;
-	}
-
 	rv = authentic_set_current_files(card, &mfpath, apdu.resp, apdu.resplen, file_out);
 	LOG_TEST_RET(ctx, rv, "authentic_select_file() cannot set 'current_file'");
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
-
-
-static int
-authentic_reduce_path(struct sc_card *card, struct sc_path *path)
-{
-	struct sc_context *ctx = card->ctx;
-	struct sc_path in_path, cur_path;
-	size_t offs;
-
-	LOG_FUNC_CALLED(ctx);
-
-	if (!path || path->len <= 2 || path->type == SC_PATH_TYPE_DF_NAME)
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-
-	if (!card->cache.valid || !card->cache.current_df)
-		LOG_FUNC_RETURN(ctx, 0);
-
-	in_path = *path;
-	cur_path = card->cache.current_df->path;
-
-	if (!memcmp(cur_path.value, "\x3F\x00", 2) && memcmp(in_path.value, "\x3F\x00", 2))   {
-		memmove(in_path.value + 2, in_path.value, (in_path.len - 2));
-		memcpy(in_path.value, "\x3F\x00", 2);
-		in_path.len += 2;
-	}
-
-	for (offs = 0; (offs + 1) < in_path.len && (offs + 1) < cur_path.len; offs += 2)   {
-		if (cur_path.value[offs] != in_path.value[offs])
-			break;
-		if (cur_path.value[offs + 1] != in_path.value[offs + 1])
-			break;
-	}
-
-	memmove(in_path.value, in_path.value + offs, sizeof(in_path.value) - offs);
-	in_path.len -= offs;
-	*path = in_path;
-
-	LOG_FUNC_RETURN(ctx, (int)offs);
-}
-
-
-static void
-authentic_debug_select_file(struct sc_card *card, const struct sc_path *path)
-{
-	struct sc_context *ctx = card->ctx;
-	struct sc_card_cache *cache = &card->cache;
-
-	if (path)
-		sc_log(ctx, "try to select path(type:%i,len=%"SC_FORMAT_LEN_SIZE_T"u) %s",
-				path->type, path->len, sc_print_path(path));
-
-	if (!cache->valid)
-		return;
-
-	if (cache->current_df)
-		sc_log(ctx, "current_df(type=%i) %s",
-				cache->current_df->path.type, sc_print_path(&cache->current_df->path));
-	else
-		sc_log(ctx, "current_df empty");
-
-	if (cache->current_ef)
-		sc_log(ctx, "current_ef(type=%i) %s",
-				cache->current_ef->path.type, sc_print_path(&cache->current_ef->path));
-	else
-		sc_log(ctx, "current_ef empty");
-}
-
-
-static int
-authentic_is_selected(struct sc_card *card, const struct sc_path *path, struct sc_file **file_out)
-{
-	if (!path->len)   {
-		if (file_out && card->cache.valid && card->cache.current_df)
-			sc_file_dup(file_out, card->cache.current_df);
-		return SC_SUCCESS;
-	}
-	else if (path->len == 2 && card->cache.valid && card->cache.current_ef)   {
-		if (!memcmp(card->cache.current_ef->path.value, path->value, 2))   {
-			if (file_out)
-				sc_file_dup(file_out, card->cache.current_ef);
-			return SC_SUCCESS;
-		}
-	}
-
-	return SC_ERROR_FILE_NOT_FOUND;
-}
-
 
 static int
 authentic_select_file(struct sc_card *card, const struct sc_path *path,
@@ -726,34 +581,11 @@ authentic_select_file(struct sc_card *card, const struct sc_path *path,
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	authentic_debug_select_file(card, path);
 
 	memcpy(&lpath, path, sizeof(struct sc_path));
 
-	rv = authentic_reduce_path(card, &lpath);
-	LOG_TEST_RET(ctx, rv, "reduce path error");
-
-	if (lpath.len >= 2 && lpath.value[0] == 0x3F && lpath.value[1] == 0x00)   {
-		rv = authentic_select_mf(card, file_out);
-		LOG_TEST_RET(ctx, rv, "cannot select MF");
-
-		memmove(&lpath.value[0], &lpath.value[2], lpath.len - 2);
-		lpath.len -=  2;
-
-		if (lpath.len == 0) {
-			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-		} else if (file_out != NULL) {
-			sc_file_free(*file_out);
-			*file_out = NULL;
-		}
-	}
-
 	if (lpath.type == SC_PATH_TYPE_PATH && (lpath.len == 2))
 		lpath.type = SC_PATH_TYPE_FILE_ID;
-
-	rv = authentic_is_selected(card, &lpath, file_out);
-	if (!rv)
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	pathlen = lpath.len;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x00, 0x00);
@@ -1089,24 +921,12 @@ authentic_create_file(struct sc_card *card, struct sc_file *file)
 	if (file->type != SC_FILE_TYPE_WORKING_EF)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Creation of the file with of this type is not supported");
 
-	authentic_debug_select_file(card, &file->path);
-
 	rv = authentic_fcp_encode(card, file, sbuf + 2, sizeof(sbuf)-2);
 	LOG_TEST_RET(ctx, rv, "FCP encode error");
 	sbuf_len = rv;
 
 	sbuf[0] = ISO7816_TAG_FCP;
 	sbuf[1] = sbuf_len;
-
-	if (card->cache.valid  && card->cache.current_df)   {
-		const struct sc_acl_entry *entry = sc_file_get_acl_entry(card->cache.current_df, SC_AC_OP_CREATE);
-		if (!entry)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
-
-		sc_log(ctx, "CREATE method/reference %X/%X", entry->method, entry->key_ref);
-		if (entry->method == SC_AC_SCB)
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Not yet supported");
-	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0, 0);
 	apdu.data = sbuf;
@@ -1154,11 +974,6 @@ authentic_delete_file(struct sc_card *card, const struct sc_path *path)
 			break;
 	}
 	LOG_TEST_RET(ctx, rv, "Delete file failed");
-
-	if (card->cache.valid)   {
-		sc_file_free(card->cache.current_ef);
-		card->cache.current_ef = NULL;
-	}
 
 	LOG_FUNC_RETURN(ctx, rv);
 }

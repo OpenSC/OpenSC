@@ -159,6 +159,18 @@ static int _iasecc_sm_read_binary(struct sc_card *card, unsigned int offs, unsig
 static int _iasecc_sm_update_binary(struct sc_card *card, unsigned int offs, const unsigned char *buff, size_t count);
 #endif
 
+void
+sc_invalidate_cache(struct sc_card *card)
+{
+	if (card) {
+		struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
+		sc_file_free(prv->cache.current_ef);
+		sc_file_free(prv->cache.current_df);
+		memset(&prv->cache, 0, sizeof(prv->cache));
+		prv->cache.valid = 0;
+	}
+}
+
 static int
 iasecc_chv_cache_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 {
@@ -269,6 +281,7 @@ iasecc_chv_cache_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_c
 static int
 iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 {
+	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	struct sc_context *ctx = card->ctx;
 	struct sc_file *mf_file = NULL;
 	struct sc_path path;
@@ -323,18 +336,9 @@ iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 	mf_file->type = SC_FILE_TYPE_DF;
 	mf_file->path = path;
 
-	if (card->cache.valid) {
-		sc_file_free(card->cache.current_df);
-	}
-	card->cache.current_df = NULL;
-
-	if (card->cache.valid) {
-		sc_file_free(card->cache.current_ef);
-	}
-	card->cache.current_ef = NULL;
-
-	sc_file_dup(&card->cache.current_df, mf_file);
-	card->cache.valid = 1;
+	sc_invalidate_cache(card);
+	sc_file_dup(&prv->cache.current_df, mf_file);
+	prv->cache.valid = 1;
 
 	if (file_out && *file_out == NULL)
 		*file_out = mf_file;
@@ -765,6 +769,7 @@ static int
 _iasecc_sm_read_binary(struct sc_card *card, unsigned int offs,
 		unsigned char *buff, size_t count)
 {
+	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	struct sc_context *ctx = card->ctx;
 	const struct sc_acl_entry *entry = NULL;
 	int rv;
@@ -779,10 +784,8 @@ _iasecc_sm_read_binary(struct sc_card *card, unsigned int offs,
 	if (count == 0)
 		return 0;
 
-	sc_print_cache(card);
-
-	if (card->cache.valid && card->cache.current_ef)   {
-		entry = sc_file_get_acl_entry(card->cache.current_ef, SC_AC_OP_READ);
+	if (prv->cache.valid && prv->cache.current_ef) {
+		entry = sc_file_get_acl_entry(prv->cache.current_ef, SC_AC_OP_READ);
 		if (!entry)
 			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "iasecc_sm_read() 'READ' ACL not present");
 
@@ -803,6 +806,7 @@ static int
 _iasecc_sm_update_binary(struct sc_card *card, unsigned int offs,
 		const unsigned char *buff, size_t count)
 {
+	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	struct sc_context *ctx = card->ctx;
 	const struct sc_acl_entry *entry = NULL;
 	int rv;
@@ -812,12 +816,11 @@ _iasecc_sm_update_binary(struct sc_card *card, unsigned int offs,
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx,
-	       "iasecc_sm_read_binary() card:%p offs:%i count:%"SC_FORMAT_LEN_SIZE_T"u ",
-	       card, offs, count);
-	sc_print_cache(card);
+			"iasecc_sm_read_binary() card:%p offs:%i count:%" SC_FORMAT_LEN_SIZE_T "u ",
+			card, offs, count);
 
-	if (card->cache.valid && card->cache.current_ef)   {
-		entry = sc_file_get_acl_entry(card->cache.current_ef, SC_AC_OP_UPDATE);
+	if (prv->cache.valid && prv->cache.current_ef) {
+		entry = sc_file_get_acl_entry(prv->cache.current_ef, SC_AC_OP_UPDATE);
 		if (!entry)
 			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "iasecc_sm_update() 'UPDATE' ACL not present");
 
@@ -872,9 +875,9 @@ static int
 iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		 struct sc_file **file_out)
 {
+	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	struct sc_context *ctx = card->ctx;
 	struct sc_path lpath;
-	int cache_valid = card->cache.valid, df_from_cache = 0;
 	int rv, ii;
 
 	LOG_FUNC_CALLED(ctx);
@@ -887,7 +890,6 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 	       card, path->len, path->type, path->aid.len);
 	sc_log(ctx, "iasecc_select_file() path:%s", sc_print_path(path));
 
-	sc_print_cache(card);
 	if ((!iasecc_is_cpx(card)) &&
 	    (card->type != SC_CARD_TYPE_IASECC_GEMALTO) &&
 	    (path->type != SC_PATH_TYPE_DF_NAME
@@ -915,11 +917,6 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		ppath.len = lpath.aid.len;
 		ppath.type = SC_PATH_TYPE_DF_NAME;
 
-		if (card->cache.valid && card->cache.current_df
-				&& card->cache.current_df->path.len == lpath.aid.len
-				&& !memcmp(card->cache.current_df->path.value, lpath.aid.value, lpath.aid.len))
-			df_from_cache = 1;
-
 		rv = iasecc_select_file(card, &ppath, &file);
 		LOG_TEST_GOTO_ERR(ctx, rv, "select AID path failed");
 
@@ -942,21 +939,6 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			sc_file_free(*file_out);
 			*file_out = NULL;
 		}
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-	}
-
-	sc_print_cache(card);
-
-	if (card->cache.valid && card->cache.current_df && lpath.type == SC_PATH_TYPE_DF_NAME
-			&& card->cache.current_df->path.len == lpath.len
-			&& !memcmp(card->cache.current_df->path.value, lpath.value, lpath.len))   {
-		sc_log(ctx, "returns current DF path %s", sc_print_path(&card->cache.current_df->path));
-		if (file_out) {
-			sc_file_free(*file_out);
-			sc_file_dup(file_out, card->cache.current_df);
-		}
-
-		sc_print_cache(card);
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 
@@ -1054,22 +1036,6 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			break;
 		}
 
-		/*
-		 * Using of the cached DF and EF can cause problems in the multi-thread environment.
-		 * FIXME: introduce config. option that invalidates this cache outside the locked card session,
-		 *        (or invent something else)
-		 */
-		if (rv == SC_ERROR_FILE_NOT_FOUND && cache_valid && df_from_cache)   {
-			sc_invalidate_cache(card);
-			sc_log(ctx, "iasecc_select_file() file not found, retry without cached DF");
-			if (file_out) {
-				sc_file_free(*file_out);
-				*file_out = NULL;
-			}
-			rv = iasecc_select_file(card, path, file_out);
-			LOG_FUNC_RETURN(ctx, rv);
-		}
-
 		LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_select_file() check SW failed");
 
 		sc_log(ctx,
@@ -1111,23 +1077,14 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 			sc_log(ctx, "FileType %i", file->type);
 			if (file->type == SC_FILE_TYPE_DF)   {
-				if (card->cache.valid) {
-					sc_file_free(card->cache.current_df);
-				}
-				card->cache.current_df = NULL;
-
-				sc_file_dup(&card->cache.current_df, file);
-				card->cache.valid = 1;
+				sc_invalidate_cache(card);
+				sc_file_dup(&prv->cache.current_df, file);
+				prv->cache.valid = 1;
 			}
 			else   {
-				if (card->cache.valid) {
-					sc_file_free(card->cache.current_ef);
-				}
-
-				card->cache.current_ef = NULL;
-
-				sc_file_dup(&card->cache.current_ef, file);
-				card->cache.valid = 1;
+				sc_file_free(prv->cache.current_ef);
+				sc_file_dup(&prv->cache.current_ef, file);
+				prv->cache.valid = 1;
 			}
 
 			if (file_out)   {
@@ -1139,17 +1096,11 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			}
 		}
 		else if (lpath.type == SC_PATH_TYPE_DF_NAME)   {
-			sc_file_free(card->cache.current_df);
-			card->cache.current_df = NULL;
-
-			sc_file_free(card->cache.current_ef);
-			card->cache.current_ef = NULL;
-
-			card->cache.valid = 1;
+			sc_invalidate_cache(card);
+			prv->cache.valid = 1;
 		}
 	} while(0);
 
-	sc_print_cache(card);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 err:
 	if (file_out) {
@@ -1382,6 +1333,7 @@ iasecc_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *out
 static int
 iasecc_create_file(struct sc_card *card, struct sc_file *file)
 {
+	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
 	const struct sc_acl_entry *entry = NULL;
@@ -1390,7 +1342,6 @@ iasecc_create_file(struct sc_card *card, struct sc_file *file)
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_print_cache(card);
 
 	if (file->type != SC_FILE_TYPE_WORKING_EF)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Creation of the file with of this type is not supported");
@@ -1402,8 +1353,8 @@ iasecc_create_file(struct sc_card *card, struct sc_file *file)
 	sbuf[0] = IASECC_FCP_TAG;
 	sbuf[1] = sbuf_len;
 
-	if (card->cache.valid && card->cache.current_df)   {
-		entry = sc_file_get_acl_entry(card->cache.current_df, SC_AC_OP_CREATE);
+	if (prv->cache.valid && prv->cache.current_df) {
+		entry = sc_file_get_acl_entry(prv->cache.current_df, SC_AC_OP_CREATE);
 		if (!entry)
 			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "iasecc_create_file() 'CREATE' ACL not present");
 
@@ -1491,6 +1442,8 @@ iasecc_finish(struct sc_card *card)
 
 	LOG_FUNC_CALLED(ctx);
 
+	sc_invalidate_cache(card);
+
 	while (se_info)   {
 		sc_file_free(se_info->df);
 		next = se_info->next;
@@ -1515,7 +1468,6 @@ iasecc_delete_file(struct sc_card *card, const struct sc_path *path)
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_print_cache(card);
 
 	rv = iasecc_select_file(card, path, &file);
 	if (rv == SC_ERROR_FILE_NOT_FOUND)
@@ -1535,6 +1487,7 @@ iasecc_delete_file(struct sc_card *card, const struct sc_path *path)
 		sc_file_free(file);
 	}
 	else   {
+		struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 		sc_file_free(file);
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xE4, 0x00, 0x00);
 
@@ -1543,10 +1496,10 @@ iasecc_delete_file(struct sc_card *card, const struct sc_path *path)
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		LOG_TEST_RET(ctx, rv, "Delete file failed");
 
-		if (card->cache.valid) {
-			sc_file_free(card->cache.current_ef);
+		if (prv->cache.valid) {
+			sc_file_free(prv->cache.current_ef);
 		}
-		card->cache.current_ef = NULL;
+		prv->cache.current_ef = NULL;
 	}
 
 	LOG_FUNC_RETURN(ctx, rv);
@@ -1594,7 +1547,7 @@ iasecc_get_algorithm(struct sc_context *ctx, const struct sc_security_env *env,
 static int
 iasecc_se_cache_info(struct sc_card *card, struct iasecc_se_info *se)
 {
-	struct iasecc_private_data *prv = (struct iasecc_private_data *) card->drv_data;
+	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_se_info *se_info = NULL, *si = NULL;
 	int rv;
@@ -1606,8 +1559,8 @@ iasecc_se_cache_info(struct sc_card *card, struct iasecc_se_info *se)
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SE info allocation error");
 	memcpy(se_info, se, sizeof(struct iasecc_se_info));
 
-	if (card->cache.valid && card->cache.current_df)   {
-		sc_file_dup(&se_info->df, card->cache.current_df);
+	if (prv->cache.valid && prv->cache.current_df) {
+		sc_file_dup(&se_info->df, prv->cache.current_df);
 		if (se_info->df == NULL)   {
 			free(se_info);
 			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot duplicate current DF file");
@@ -1637,7 +1590,7 @@ iasecc_se_cache_info(struct sc_card *card, struct iasecc_se_info *se)
 static int
 iasecc_se_get_info_from_cache(struct sc_card *card, struct iasecc_se_info *se)
 {
-	struct iasecc_private_data *prv = (struct iasecc_private_data *) card->drv_data;
+	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_se_info *si = NULL;
 	int rv;
@@ -1647,12 +1600,12 @@ iasecc_se_get_info_from_cache(struct sc_card *card, struct iasecc_se_info *se)
 	for(si = prv->se_info; si; si = si->next)   {
 		if (si->reference != se->reference)
 			continue;
-		if (!(card->cache.valid && card->cache.current_df) && si->df)
+		if (!(prv->cache.valid && prv->cache.current_df) && si->df)
 			continue;
-		if (card->cache.valid && card->cache.current_df && !si->df)
+		if (prv->cache.valid && prv->cache.current_df && !si->df)
 			continue;
-		if (card->cache.valid && card->cache.current_df && si->df)
-			if (memcmp(&card->cache.current_df->path, &si->df->path, sizeof(struct sc_path)))
+		if (prv->cache.valid && prv->cache.current_df && si->df)
+			if (memcmp(&prv->cache.current_df->path, &si->df->path, sizeof(struct sc_path)))
 				continue;
 		break;
 	}
@@ -1733,7 +1686,7 @@ iasecc_set_security_env(struct sc_card *card,
 {
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_sdo sdo;
-	struct iasecc_private_data *prv = (struct iasecc_private_data *) card->drv_data;
+	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	unsigned algo_ref;
 	struct sc_apdu apdu;
 	unsigned sign_meth, sign_ref, auth_meth, auth_ref;
@@ -2086,6 +2039,7 @@ iasecc_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 static int
 iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struct iasecc_pin_policy *pin)
 {
+	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	struct sc_context *ctx = card->ctx;
 	struct sc_file *save_current_df = NULL, *save_current_ef = NULL;
 	struct iasecc_sdo sdo;
@@ -2100,8 +2054,8 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	if (card->cache.valid && card->cache.current_df)   {
-		sc_file_dup(&save_current_df, card->cache.current_df);
+	if (prv->cache.valid && prv->cache.current_df) {
+		sc_file_dup(&save_current_df, prv->cache.current_df);
 		if (save_current_df == NULL) {
 			rv = SC_ERROR_OUT_OF_MEMORY;
 			sc_log(ctx, "Cannot duplicate current DF file");
@@ -2109,8 +2063,8 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 		}
 	}
 
-	if (card->cache.valid && card->cache.current_ef)   {
-		sc_file_dup(&save_current_ef, card->cache.current_ef);
+	if (prv->cache.valid && prv->cache.current_ef) {
+		sc_file_dup(&save_current_ef, prv->cache.current_ef);
 		if (save_current_ef == NULL) {
 			rv = SC_ERROR_OUT_OF_MEMORY;
 			sc_log(ctx, "Cannot duplicate current EF file");
@@ -2118,7 +2072,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 		}
 	}
 
-	if (!(data->pin_reference & IASECC_OBJECT_REF_LOCAL) && card->cache.valid && card->cache.current_df) {
+	if (!(data->pin_reference & IASECC_OBJECT_REF_LOCAL) && prv->cache.valid && prv->cache.current_df) {
 		sc_format_path("3F00", &path);
 		path.type = SC_PATH_TYPE_FILE_ID;
 		rv = iasecc_select_file(card, &path, NULL);
@@ -3332,7 +3286,7 @@ iasecc_compute_signature_dst(struct sc_card *card,
 		const unsigned char *in, size_t in_len, unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx = card->ctx;
-	struct iasecc_private_data *prv = (struct iasecc_private_data *) card->drv_data;
+	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	struct sc_security_env *env = &prv->security_env;
 	struct iasecc_qsign_data qsign_data;
 	struct sc_apdu apdu;
@@ -3428,7 +3382,7 @@ iasecc_compute_signature_at(struct sc_card *card,
 		const unsigned char *in, size_t in_len, unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx = card->ctx;
-	struct iasecc_private_data *prv = (struct iasecc_private_data *) card->drv_data;
+	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	struct sc_security_env *env = &prv->security_env;
 	struct sc_apdu apdu;
 	size_t offs = 0, sz = 0;
@@ -3491,7 +3445,7 @@ iasecc_compute_signature(struct sc_card *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	ctx = card->ctx;
-	prv = (struct iasecc_private_data *) card->drv_data;
+	prv = (struct iasecc_private_data *)card->drv_data;
 	env = &prv->security_env;
 
 	LOG_FUNC_CALLED(ctx);
