@@ -513,20 +513,6 @@ static int entersafe_select_fid(sc_card_t *card,
 		sc_file_free(file);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-	/* update cache */
-	if (file->type == SC_FILE_TYPE_DF) {
-		card->cache.current_path.type = SC_PATH_TYPE_PATH;
-		card->cache.current_path.value[0] = 0x3f;
-		card->cache.current_path.value[1] = 0x00;
-		if (id_hi == 0x3f && id_lo == 0x00) {
-			card->cache.current_path.len = 2;
-		} else {
-			card->cache.current_path.len = 4;
-			card->cache.current_path.value[2] = id_hi;
-			card->cache.current_path.value[3] = id_lo;
-		}
-	}
-
 	if (file_out)
 		*file_out = file;
 	else
@@ -539,26 +525,11 @@ static int entersafe_select_aid(sc_card_t *card,
 								const sc_path_t *in_path,
 								sc_file_t **file_out)
 {
-	int r = 0;
+	int r;
 
-	if (card->cache.valid &&
-			card->cache.current_path.type == SC_PATH_TYPE_DF_NAME &&
-			card->cache.current_path.len == in_path->len &&
-			memcmp(card->cache.current_path.value, in_path->value, in_path->len) == 0) {
-		if (file_out) {
-			*file_out = sc_file_new();
-			if (!file_out)
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-		}
-	} else {
-		r = iso_ops->select_file(card, in_path, file_out);
-		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = iso_ops->select_file(card, in_path, file_out);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-		/* update cache */
-		card->cache.current_path.type = SC_PATH_TYPE_DF_NAME;
-		card->cache.current_path.len = in_path->len;
-		memcpy(card->cache.current_path.value, in_path->value, in_path->len);
-	}
 	if (file_out) {
 		sc_file_t *file = *file_out;
 		assert(file);
@@ -582,7 +553,6 @@ static int entersafe_select_path(sc_card_t *card,
 	u8 n_pathbuf[SC_MAX_PATH_SIZE];
 	const u8 *path = pathbuf;
 	size_t pathlen = len;
-	size_t bMatch = 0;
 	unsigned int i;
 	int r;
 
@@ -602,87 +572,20 @@ static int entersafe_select_path(sc_card_t *card,
 		pathlen += 2;
 	}
 
-	/* check current working directory */
-	if (card->cache.valid &&
-			card->cache.current_path.type == SC_PATH_TYPE_PATH &&
-			card->cache.current_path.len >= 2 &&
-			card->cache.current_path.len <= pathlen) {
-		for (i = 0; i < card->cache.current_path.len; i += 2) {
-			if (card->cache.current_path.value[i] == path[i] &&
-					card->cache.current_path.value[i + 1] == path[i + 1]) {
-				bMatch += 2;
-			}
-		}
+	for (i = 0; i < pathlen - 2; i += 2) {
+		r = entersafe_select_fid(card, path[i], path[i + 1], NULL);
+		LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
 	}
-
-	if (card->cache.valid && bMatch > 2) {
-		if (pathlen - bMatch == 2) {
-			/* we are in the right directory */
-			return entersafe_select_fid(card, path[bMatch], path[bMatch + 1], file_out);
-		} else if (pathlen - bMatch > 2) {
-			/* two more steps to go */
-			sc_path_t new_path;
-
-			/* first step: change directory */
-			r = entersafe_select_fid(card, path[bMatch], path[bMatch + 1], NULL);
-			LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
-
-			memset(&new_path, 0, sizeof(sc_path_t));
-
-			new_path.type = SC_PATH_TYPE_PATH;
-			new_path.len = pathlen - bMatch - 2;
-			memcpy(new_path.value, &(path[bMatch + 2]), new_path.len);
-			/* final step: select file */
-			return entersafe_select_file(card, &new_path, file_out);
-		} else { /* if (bMatch - pathlen == 0) */
-			/* done: we are already in the requested directory */
-			sc_log(card->ctx, "cache hit\n");
-			/* copy file info (if necessary) */
-			if (file_out) {
-				sc_file_t *file = sc_file_new();
-				if (!file)
-					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-				file->id = (path[pathlen - 2] << 8) + path[pathlen - 1];
-				file->path = card->cache.current_path;
-				file->type = SC_FILE_TYPE_DF;
-				file->ef_structure = SC_FILE_EF_UNKNOWN;
-				file->size = 0;
-				file->namelen = 0;
-				file->magic = SC_FILE_MAGIC;
-				*file_out = file;
-			}
-			/* nothing left to do */
-			return SC_SUCCESS;
-		}
-	} else {
-		/* no usable cache */
-		for (i = 0; i < pathlen - 2; i += 2) {
-			r = entersafe_select_fid(card, path[i], path[i + 1], NULL);
-			LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
-		}
-		return entersafe_select_fid(card, path[pathlen - 2], path[pathlen - 1], file_out);
-	}
+	return entersafe_select_fid(card, path[pathlen - 2], path[pathlen - 1], file_out);
 }
 
 static int entersafe_select_file(sc_card_t *card,
 								const sc_path_t *in_path,
 								sc_file_t **file_out)
 {
-	int r;
-	char pbuf[SC_MAX_PATH_STRING_SIZE];
 	assert(card);
 	assert(in_path);
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	r = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
-	if (r != SC_SUCCESS)
-		pbuf[0] = '\0';
-
-	sc_log(card->ctx,
-			"current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
-			card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?	"aid" : "path",
-			card->cache.valid ? "valid" : "invalid", pbuf,
-			card->cache.current_path.len);
 
 	switch (in_path->type) {
 		case SC_PATH_TYPE_FILE_ID:
@@ -1029,7 +932,6 @@ static int entersafe_erase_card(sc_card_t *card)
 
 	r = entersafe_transmit_apdu(card, &apdu, 0, 0, 0, 0);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	sc_invalidate_cache(card);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xEE, 0x00, 0x00);
 	apdu.cla = 0x84;
