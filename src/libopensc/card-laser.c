@@ -2216,6 +2216,42 @@ _sm_incr_ssc(unsigned char *ssc, size_t ssc_len)
 	}
 }
 
+#if defined(LIBRESSL_VERSION_NUMBER)
+static int
+_compute_key_padded(struct sc_card *card, unsigned char *key /* shared secret */, int keySize, const BIGNUM *bY /* g^y mod N */, const BIGNUM *bx /* x */, const BIGNUM *bN /* N */)
+{
+	struct sc_context *ctx = card->ctx;
+	BN_CTX *bnCtx = NULL;
+	BIGNUM *bnR2 = NULL;
+	int lZero;
+	int rv = SC_SUCCESS;
+
+	bnR2 = BN_new();
+	if (!bnR2)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Failed to allocate BN");
+
+	bnCtx = BN_CTX_new();
+	if (!bnCtx)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Failed to allocate BN_CTX");
+
+	if (0 == BN_mod_exp(bnR2, bY, bx, bN, bnCtx)) // computes bY to the bx-th power modulo bN
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "Failed to calculate shared secret");
+
+	lZero = keySize - BN_num_bytes(bnR2);
+	if (lZero > 0) {
+		memset(key, 0, lZero);
+		key += lZero;
+	}
+
+	BN_bn2bin(bnR2, key); // key buffer size: DH_size(dh)
+	rv = keySize;
+err:
+	BN_CTX_free(bnCtx);
+	BN_free(bnR2);
+	return rv;
+}
+#endif // LIBRESSL_VERSION_NUMBER
+
 static int
 laser_sm_open(struct sc_card *card)
 {
@@ -2290,7 +2326,14 @@ laser_sm_open(struct sc_card *card)
 	dh_session->shared_secret.value = (unsigned char *)OPENSSL_malloc(DH_size(dh));
 	if (!dh_session->shared_secret.value)
 		LOG_FUNC_RETURN(ctx, rv = SC_ERROR_OUT_OF_MEMORY);
+	
+#if !defined(LIBRESSL_VERSION_NUMBER)
 	dh_session->shared_secret.len = DH_compute_key_padded(dh_session->shared_secret.value, bn_icc_p, dh);
+#else
+	rv = _compute_key_padded(card, dh_session->shared_secret.value, DH_size(dh), bn_icc_p, bn_ifd_y, bn_N);
+	if (DH_size(dh) > rv) 
+		LOG_ERROR_GOTO(ctx, rv, "Failed to calculate shared secret");
+#endif
 	sc_log(ctx, "shared-secret(%zu) %s", dh_session->shared_secret.len,
 			sc_dump_hex(dh_session->shared_secret.value, dh_session->shared_secret.len));
 
