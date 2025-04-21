@@ -617,8 +617,6 @@ iasecc_init_cpx(struct sc_card *card)
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	rv = iasecc_parse_ef_atr(card);
-	if (rv)
-		sc_invalidate_cache(card); /* avoid memory leakage */
 	LOG_TEST_RET(ctx, rv, "Parse EF.ATR");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -686,6 +684,7 @@ iasecc_init(struct sc_card *card)
 
 err:
 	if (rv < 0) {
+		sc_invalidate_cache(card);
 		free(private_data);
 		card->drv_data = old_drv_data;
 	} else {
