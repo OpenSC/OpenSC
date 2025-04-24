@@ -783,7 +783,7 @@ app <replaceable>application</replaceable> {
 		</refsect2>
 
 		<refsect2 id="edo">
-			<title>Configuration Options for Polish eID Card</title>
+			<title>Configuration Options for Polish eID Card (edo and edo2021)</title>
 			<variablelist>
 				<varlistentry>
 					<term>
@@ -1241,6 +1241,7 @@ app <replaceable>application</replaceable> {
 							<literal>coolkey</literal>,
 							<literal>dnie</literal>,
 							<literal>edo</literal>,
+							<literal>edo2021</literal>,
 							<literal>esteid2018</literal>,
 							<literal>esteid2025</literal>,
 							<literal>flex</literal> (deactivated driver),

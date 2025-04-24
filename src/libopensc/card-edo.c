@@ -23,6 +23,7 @@
 
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 
+#include "libopensc/card-edo.h"
 #include "libopensc/internal.h"
 #include "libopensc/opensc.h"
 #include "libopensc/pace.h"
@@ -100,7 +101,7 @@ static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pac
 }
 
 
-static int edo_unlock(sc_card_t* card) {
+int edo_unlock(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	struct establish_pace_channel_input pace_input;
@@ -302,7 +303,7 @@ static int edo_init(sc_card_t* card) {
 }
 
 
-static int edo_logout(sc_card_t* card) {
+int edo_logout(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	sc_sm_stop(card);
@@ -311,7 +312,7 @@ static int edo_logout(sc_card_t* card) {
 }
 
 
-static int edo_card_reader_lock_obtained(sc_card_t* card, int was_reset) {
+int edo_card_reader_lock_obtained(sc_card_t* card, int was_reset) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* Re-establish CAN channel on demand after logout or concurrent non PACE access */

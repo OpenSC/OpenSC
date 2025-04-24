@@ -251,6 +251,7 @@ enum {
 
 	/* eDO cards */
 	SC_CARD_TYPE_EDO = 38000,
+	SC_CARD_TYPE_EDO2021,
 
 	/* JCOP4 cards with NQ-Applet */
 	SC_CARD_TYPE_NQ_APPLET = 39000,
@@ -309,6 +310,7 @@ extern sc_card_driver_t *sc_get_esteid2018_driver(void);
 extern sc_card_driver_t *sc_get_esteid2025_driver(void);
 extern sc_card_driver_t *sc_get_idprime_driver(void);
 extern sc_card_driver_t *sc_get_edo_driver(void);
+extern sc_card_driver_t *sc_get_edo2021_driver(void);
 extern sc_card_driver_t *sc_get_nqApplet_driver(void);
 extern sc_card_driver_t *sc_get_skeid_driver(void);
 extern sc_card_driver_t *sc_get_eoi_driver(void);
