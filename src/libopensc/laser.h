@@ -25,7 +25,6 @@
 #include "libopensc/errors.h"
 #include "libopensc/types.h"
 
-// from pkcs15.h
 #define SC_PKCS15_TYPE_VENDOR_DEFINED 0x4000
 
 #define LASER_MODEL "JaCarta PKI"
@@ -241,7 +240,7 @@ int laser_attrs_pubkey_decode(struct sc_context *ctx, struct sc_pkcs15_object *o
 int laser_attrs_data_object_decode(struct sc_context *ctx, struct sc_pkcs15_object *object,
 		struct sc_pkcs15_data_info *info, unsigned char *data, size_t data_len, unsigned char *hash_exists);
 
-int laser_md_cmap_record_decode(struct sc_context *ctx, struct sc_pkcs15_data *data, size_t *offs,
+int laser_md_cmap_record_decode(struct sc_context *ctx, const struct sc_pkcs15_data *data, size_t *offs,
 		struct laser_cmap_record **out);
 int laser_md_cmap_record_guid(struct sc_context *ctx, struct laser_cmap_record *rec,
 		unsigned char **out, size_t *out_len);

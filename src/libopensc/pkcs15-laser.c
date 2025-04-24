@@ -578,7 +578,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 
 	dobjs_num = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, dobjs, 12);
 	for (ii = 0; ii < dobjs_num; ii++) {
-		struct sc_pkcs15_data_info *dinfo = (struct sc_pkcs15_data_info *)dobjs[ii]->data;
+		const struct sc_pkcs15_data_info *dinfo = (const struct sc_pkcs15_data_info *)dobjs[ii]->data;
 		struct sc_pkcs15_object *prkeys[12];
 		size_t prkeys_num, offs = 0;
 		int rec_num;

@@ -482,7 +482,7 @@ laser_select_file(struct sc_card *card, const struct sc_path *in_path,
 	unsigned char pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	size_t pathlen;
 	int rv;
-	struct laser_private_data *private_data = (struct laser_private_data *)card->drv_data;
+	const struct laser_private_data *private_data = (struct laser_private_data *)card->drv_data;
 	int reopen_sm_session = 0;
 
 	LOG_FUNC_CALLED(ctx);
@@ -2258,7 +2258,8 @@ laser_sm_open(struct sc_card *card)
 	struct sc_context *ctx = card->ctx;
 	struct sm_dh_session *dh_session = &card->sm_ctx.info.session.dh;
 	struct sc_apdu apdu;
-	BIGNUM *bn_ifd_y, *bn_N, *bn_g, *bn_icc_p;
+	BIGNUM *bn_ifd_y, *bn_N, *bn_g;
+	const BIGNUM *bn_icc_p;
 	DH *dh = NULL;
 	unsigned char uu, rbuf[SC_MAX_APDU_BUFFER_SIZE * 2];
 	int rv, rd, dh_check;
@@ -2420,7 +2421,7 @@ static int
 laser_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *in_apdu, struct sc_apdu **out_apdu)
 {
 	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
+	const struct laser_private_data *prv = (const struct laser_private_data *)card->drv_data;
 	struct sm_dh_session *sess = &card->sm_ctx.info.session.dh;
 	struct sc_apdu *apdu = NULL;
 	int sm_level = prv->sm_cur_level;

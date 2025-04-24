@@ -684,7 +684,7 @@ laser_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
  * Allocate a file
  */
 static int
-laser_new_file(struct sc_profile *profile, struct sc_card *card,
+laser_new_file(struct sc_profile *profile, const struct sc_card *card,
 		const struct sc_pkcs15_object *object, unsigned int type, unsigned int num, struct sc_file **out)
 {
 	struct sc_context *ctx = card->ctx;
@@ -1183,7 +1183,7 @@ laser_cmap_update(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	cmap_dobj_info->data.value = calloc(1, data_len);
 	if (!cmap_dobj_info->data.value)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Failed to allocate cmap object info");
 
 	memcpy(cmap_dobj_info->data.value, cmap, cmap_len);
 	cmap_dobj_info->data.len = data_len;
