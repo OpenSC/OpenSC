@@ -90,3 +90,22 @@ jobs:
         env:
           LD_LIBRARY_PATH: /usr/local/lib
         run: tests/test-softhsm.sh
+  
+  test-interoperability:
+    runs-on: ubuntu-24.04
+    container:
+      image: fedora:latest
+    env:
+      SOURCE_PATH: ./
+      BUILD_PATH: ./
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Setup Fedora
+        run: .github/setup-fedora.sh kryoptic
+      - name: Install OpenSC
+        run: .github/build.sh
+      - name: Setup Kryoptic
+        run: .github/setup-kryoptic.sh
+      - name: Interoperability tests
+        run: tests/test-pkcs11-tool-unwrap-wrap-interoperability-test.sh
