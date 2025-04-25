@@ -4660,6 +4660,10 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_DERIVE, &_true, sizeof(_true));
 			n_privkey_attr++;
 		}
+		if (opt_key_usage_wrap) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_UNWRAP, &_true, sizeof(_true));
+			n_privkey_attr++;
+		}
 		if (opt_always_auth != 0) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_ALWAYS_AUTHENTICATE,
 				&_true, sizeof(_true));
@@ -4769,6 +4773,10 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		}
 		if (opt_key_usage_derive != 0) {
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_DERIVE, &_true, sizeof(_true));
+			n_pubkey_attr++;
+		}
+		if (opt_key_usage_wrap) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_WRAP, &_true, sizeof(_true));
 			n_pubkey_attr++;
 		}
 
