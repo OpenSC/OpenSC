@@ -24,9 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
+#include "gp.h"
+#include "internal.h"
 
 #define GEMSAFEV1_ALG_REF_FREEFORM	0x12
 #define GEMSAFEV3_ALG_REF_FREEFORM	0x02
@@ -84,11 +85,6 @@ static const u8 gemsafe_def_aid[] = {0xA0, 0x00, 0x00, 0x00, 0x63, 0x50,
 	0x4B, 0x43, 0x53, 0x2D, 0x31, 0x35};
 */
 
-typedef struct gemsafe_exdata_st {
-	u8	aid[16];
-	size_t	aid_len;
-} gemsafe_exdata;
-
 static int get_conf_aid(sc_card_t *card, u8 *aid, size_t *len)
 {
 	sc_context_t		*ctx = card->ctx;
@@ -120,32 +116,6 @@ static int get_conf_aid(sc_card_t *card, u8 *aid, size_t *len)
 	return sc_hex_to_bin(str_aid, aid, len);
 }
 
-static int gp_select_applet(sc_card_t *card, const u8 *aid, size_t aid_len)
-{
-	int	r;
-	u8	buf[MAX_RESP_BUFFER_SIZE];
-	struct sc_context *ctx = card->ctx;
-	struct sc_apdu    apdu;
-
-	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xa4, 0x04, 0x00);
-	apdu.lc      = aid_len;
-	apdu.data    = aid;
-	apdu.datalen = aid_len;
-	apdu.resp    = buf;
-	apdu.le      = 256;
-	apdu.resplen = sizeof(buf);
-
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r)
-		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
-
-	return SC_SUCCESS;
-}
-
 static int gemsafe_match_card(sc_card_t *card)
 {
 	int i;
@@ -160,38 +130,38 @@ static int gemsafe_match_card(sc_card_t *card)
 static int gemsafe_init(struct sc_card *card)
 {
 	int	r;
-	gemsafe_exdata *exdata = NULL;
+	struct sc_aid *exdata = NULL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	card->name = "GemSAFE V1";
 	card->cla  = 0x00;
 
-	exdata = (gemsafe_exdata *)calloc(1, sizeof(gemsafe_exdata));
+	exdata = (struct sc_aid *)calloc(1, sizeof(struct sc_aid));
 	if (!exdata)
 		return SC_ERROR_OUT_OF_MEMORY;
-	exdata->aid_len = sizeof(exdata->aid);
+	exdata->len = sizeof(exdata->value);
 	if(card->type == SC_CARD_TYPE_GEMSAFEV1_GENERIC) {
 		/* try to get a AID from the config file */
-		r = get_conf_aid(card, exdata->aid, &exdata->aid_len);
+		r = get_conf_aid(card, exdata->value, &exdata->len);
 		if (r < 0) {
 			/* failed, use default value */
-			memcpy(exdata->aid, gemsafe_def_aid, sizeof(gemsafe_def_aid));
-			exdata->aid_len = sizeof(gemsafe_def_aid);
+			memcpy(exdata->value, gemsafe_def_aid, sizeof(gemsafe_def_aid));
+			exdata->len = sizeof(gemsafe_def_aid);
 		}
 	} else if (card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID) {
-		memcpy(exdata->aid, gemsafe_pteid_aid, sizeof(gemsafe_pteid_aid));
-		exdata->aid_len = sizeof(gemsafe_pteid_aid);
+		memcpy(exdata->value, gemsafe_pteid_aid, sizeof(gemsafe_pteid_aid));
+		exdata->len = sizeof(gemsafe_pteid_aid);
 	} else if (card->type == SC_CARD_TYPE_GEMSAFEV1_SEEID) {
-		memcpy(exdata->aid, gemsafe_seeid_aid, sizeof(gemsafe_seeid_aid));
-		exdata->aid_len = sizeof(gemsafe_seeid_aid);
+		memcpy(exdata->value, gemsafe_seeid_aid, sizeof(gemsafe_seeid_aid));
+		exdata->len = sizeof(gemsafe_seeid_aid);
 	}
 
 	/* increase lock_count here to prevent sc_unlock to select
 	 * applet twice in gp_select_applet */
 	card->lock_count++;
 	/* SELECT applet */
-	r = gp_select_applet(card, exdata->aid, exdata->aid_len);
+	r = gp_select_aid(card, exdata);
 	if (r < 0) {
 		free(exdata);
 		sc_log(card->ctx,  "applet selection failed\n");
@@ -239,7 +209,7 @@ static int gemsafe_init(struct sc_card *card)
 
 static int gemsafe_finish(sc_card_t *card)
 {
-	gemsafe_exdata *exdata = (gemsafe_exdata *)card->drv_data;
+	struct sc_aid *exdata = (struct sc_aid *)card->drv_data;
 
 	if (exdata)
 		free(exdata);
@@ -572,12 +542,12 @@ static int gemsafe_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 static int gemsafe_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 {
 	int r = SC_SUCCESS;
-	gemsafe_exdata *exdata = (gemsafe_exdata *)card->drv_data;
+	struct sc_aid *exdata = (struct sc_aid *)card->drv_data;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (was_reset > 0 && exdata) {
-		r = gp_select_applet(card, exdata->aid, exdata->aid_len);
+		r = gp_select_aid(card, exdata);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -585,9 +555,9 @@ static int gemsafe_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 
 static int gemsafe_logout(sc_card_t *card)
 {
-	gemsafe_exdata *exdata = (gemsafe_exdata *)card->drv_data;
+	struct sc_aid *exdata = (struct sc_aid *)card->drv_data;
 
-	return gp_select_applet(card, exdata->aid, exdata->aid_len);
+	return gp_select_aid(card, exdata);
 }
 
 static struct sc_card_driver *sc_get_driver(void)

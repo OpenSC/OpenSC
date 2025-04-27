@@ -48,8 +48,11 @@ static const struct sc_aid gp_isd_rid = {
 int
 gp_select_aid(struct sc_card *card, const struct sc_aid *aid)
 {
+	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
 	int rv;
+
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
 	apdu.lc = aid->len;
@@ -57,14 +60,10 @@ gp_select_aid(struct sc_card *card, const struct sc_aid *aid)
 	apdu.datalen = aid->len;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	if (rv < 0)
-		return rv;
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (rv < 0)
-		return rv;
-
-	return (int)apdu.resplen;
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 /* Select the Open Platform Card Manager */

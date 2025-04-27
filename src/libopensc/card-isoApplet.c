@@ -23,6 +23,7 @@
 
 #include "asn1.h"
 #include "cardctl.h"
+#include "gp.h"
 #include "internal.h"
 #include "log.h"
 #include "opensc.h"
@@ -42,7 +43,10 @@
 #define ISOAPPLET_API_FEATURE_RSA_PSS 0x08
 #define ISOAPPLET_API_FEATURE_RSA_4096 0x20
 
-static const u8 isoApplet_aid[] = {0xf2,0x76,0xa2,0x88,0xbc,0xfb,0xa6,0x9d,0x34,0xf3,0x10,0x01};
+static const struct sc_aid isoApplet_aid = {
+		{0xf2, 0x76, 0xa2, 0x88, 0xbc, 0xfb, 0xa6, 0x9d, 0x34, 0xf3, 0x10, 0x01},
+		12
+};
 
 struct isoApplet_drv_data
 {
@@ -92,45 +96,6 @@ static struct isoapplet_supported_ec_curves {
 	{{{-1}}, 0, 0} /* This entry must not be touched. */
 };
 
-/*
- * SELECT an applet on the smartcard. (Not in the emulated filesystem.)
- * The response will be written to resp.
- *
- * @param[in]     card
- * @param[in]     aid      The applet ID.
- * @param[in]     aid_len  The length of aid.
- *
- * @return SC_SUCCESS: The applet is present and could be selected.
- *         any other:  Transmit failure or the card returned an error.
- *                     The card will return an error when the applet is
- *                     not present.
- */
-static int
-isoApplet_select_applet(sc_card_t *card, const u8 *aid, const size_t aid_len)
-{
-	int rv;
-	sc_context_t *ctx = card->ctx;
-	sc_apdu_t apdu;
-
-	LOG_FUNC_CALLED(card->ctx);
-
-	if(aid_len > SC_MAX_APDU_BUFFER_SIZE)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xa4, 0x04, 0x00);
-	apdu.lc = aid_len;
-	apdu.data = aid;
-	apdu.datalen = aid_len;
-
-	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failure.");
-
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, rv, "Card returned error");
-
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
-}
-
 static int
 isoApplet_finish(sc_card_t *card)
 {
@@ -150,7 +115,7 @@ isoApplet_match_card(sc_card_t *card)
 {
 	int rv;
 
-	rv = isoApplet_select_applet(card, isoApplet_aid, sizeof(isoApplet_aid));
+	rv = gp_select_aid(card, &isoApplet_aid);
 	if(rv != SC_SUCCESS)
 	{
 		return 0;
@@ -171,9 +136,9 @@ isoApplet_get_info(sc_card_t * card, struct isoApplet_drv_data * drvdata) {
 		 * applet information upon selection. For backward compatibility, try this. */
 		sc_apdu_t apdu;
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xa4, 0x04, 0x00);
-		apdu.lc = sizeof(isoApplet_aid);
-		apdu.data = isoApplet_aid;
-		apdu.datalen = sizeof(isoApplet_aid);
+		apdu.lc = isoApplet_aid.len;
+		apdu.data = isoApplet_aid.value;
+		apdu.datalen = isoApplet_aid.len;
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 256;
@@ -1285,7 +1250,7 @@ static int isoApplet_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (was_reset > 0) {
-		r = isoApplet_select_applet(card, isoApplet_aid, sizeof(isoApplet_aid));
+		r = gp_select_aid(card, &isoApplet_aid);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -1293,7 +1258,7 @@ static int isoApplet_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 
 static int isoApplet_logout(sc_card_t *card)
 {
-	return isoApplet_select_applet(card, isoApplet_aid, sizeof(isoApplet_aid));
+	return gp_select_aid(card, &isoApplet_aid);
 }
 
 static struct sc_card_driver *sc_get_driver(void)
