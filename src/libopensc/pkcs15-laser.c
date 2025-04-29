@@ -566,7 +566,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 	}
 
 	pubkeys_num = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY, pubkeys, 12);
-	sc_log(ctx, "Number of public keys %zu", pubkeys_num);
+	sc_log(ctx, "Number of public keys %"SC_FORMAT_LEN_SIZE_T"u", pubkeys_num);
 	for (ii = 0; ii < pubkeys_num; ii++) {
 		struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *)pubkeys[ii]->data;
 		struct sc_pkcs15_object *prkey_obj = NULL;

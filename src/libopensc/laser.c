@@ -28,6 +28,7 @@
 #include <string.h>
 
 #include <openssl/sha.h>
+#include <openssl/rand.h>
 
 #include "asn1.h"
 #include "cardctl.h"
@@ -690,7 +691,6 @@ laser_attrs_data_object_decode(struct sc_context *ctx,
 		unsigned char *data, size_t data_len, unsigned char *hash_exists)
 {
 	size_t offs, next;
-	int rv = SC_ERROR_INVALID_DATA;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -701,6 +701,7 @@ laser_attrs_data_object_decode(struct sc_context *ctx,
 	for (next = offs = 0; offs < data_len; offs = next) {
 		struct laser_cka attr;
 		unsigned uval;
+		int rv;
 
 		rv = _get_attr(data, data_len, &next, &attr);
 		LOG_TEST_RET(ctx, rv, "parsing error of laser object's attribute");
@@ -751,7 +752,7 @@ laser_attrs_data_object_decode(struct sc_context *ctx,
 	}
 
 	sc_log(ctx, "DATA object path %s", sc_print_path(&info->path));
-	if (info->path.len) {
+	if (info->path.len > 1) {
 		unsigned file_id = info->path.value[info->path.len - 2] * 0x100 + info->path.value[info->path.len - 1];
 
 		if (file_id == CMAP_FID) {
@@ -839,7 +840,7 @@ laser_attach_cache_stamp(struct sc_pkcs15_card *p15card, int zero_stamp,
 	} else {
 		unsigned rand_val;
 		srand((unsigned)time(NULL));
-		rand_val = rand();
+		RAND_bytes((unsigned char *)&rand_val, sizeof(rand_val));
 		*(ptr + *buf_sz + 0) = *(ptr + *buf_sz + 2) = rand_val & 0xFF;
 		*(ptr + *buf_sz + 1) = *(ptr + *buf_sz + 3) = (rand_val >> 8) & 0xFF;
 	}
@@ -860,7 +861,8 @@ laser_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	unsigned char *data = NULL;
 	size_t data_len = 0, attrs_num = 0;
 	CK_OBJECT_CLASS clazz = CKO_PRIVATE_KEY;
-	CK_BBOOL _true = TRUE, _false = FALSE, *flag;
+	CK_BBOOL _true = TRUE, _false = FALSE;
+	const CK_BBOOL *flag;
 	CK_KEY_TYPE type_rsa = CKK_RSA;
 	CK_ULONG ffff = 0xFFFFFFFFl;
 	int rv;
@@ -987,7 +989,7 @@ laser_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
 	attrs_num++;
 
-	sc_log(ctx, "Attributes(%zu) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	sc_log(ctx, "Attributes(%"SC_FORMAT_LEN_SIZE_T"u) '%s'", attrs_num, sc_dump_hex(data, data_len));
 	if (out && out_len) {
 		*out = data;
 		*out_len = data_len;
@@ -1009,7 +1011,8 @@ laser_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	unsigned char *data = NULL;
 	size_t data_len = 0, attrs_num = 0;
 	CK_OBJECT_CLASS clazz = CKO_PUBLIC_KEY;
-	CK_BBOOL _true = TRUE, _false = FALSE, *flag;
+	CK_BBOOL _true = TRUE, _false = FALSE;
+	const CK_BBOOL *flag;
 	CK_KEY_TYPE type_rsa = CKK_RSA;
 	int rv;
 
@@ -1131,7 +1134,7 @@ laser_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
 	attrs_num++;
 
-	sc_log(ctx, "Attributes(%zu) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	sc_log(ctx, "Attributes(%"SC_FORMAT_LEN_SIZE_T"u) '%s'", attrs_num, sc_dump_hex(data, data_len));
 	if (out && out_len) {
 		*out = data;
 		*out_len = data_len;
@@ -1169,7 +1172,8 @@ laser_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object 
 	size_t data_len = 0, attrs_num = 0;
 	CK_OBJECT_CLASS clazz = CKO_CERTIFICATE;
 	CK_CERTIFICATE_TYPE cert_type = CKC_X_509;
-	CK_BBOOL _true = TRUE, _false = FALSE, *flag;
+	CK_BBOOL _true = TRUE, _false = FALSE;
+	const CK_BBOOL *flag;
 	struct sc_pkcs15_cert *cert = NULL;
 	unsigned char sha1[SHA_DIGEST_LENGTH];
 	size_t sha1_offs;
@@ -1270,7 +1274,7 @@ laser_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object 
 	SHA1(data, data_len, sha1);
 	memcpy(data + sha1_offs, sha1, SHA_DIGEST_LENGTH);
 
-	sc_log(ctx, "Attributes(%zu) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	sc_log(ctx, "Attributes(%"SC_FORMAT_LEN_SIZE_T"u) '%s'", attrs_num, sc_dump_hex(data, data_len));
 	if (out && out_len) {
 		*out = data;
 		*out_len = data_len;
@@ -1291,7 +1295,8 @@ laser_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	unsigned char *data = NULL;
 	size_t data_len = 0, attrs_num = 0;
 	CK_OBJECT_CLASS clazz = CKO_DATA;
-	CK_BBOOL _true = TRUE, _false = FALSE, *flag;
+	CK_BBOOL _true = TRUE, _false = FALSE;
+	const CK_BBOOL *flag;
 	unsigned char sha1[SHA_DIGEST_LENGTH];
 	size_t sha1_offs;
 	int rv;
@@ -1371,7 +1376,7 @@ laser_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	SHA1(data, data_len, sha1);
 	memcpy(data + sha1_offs, sha1, SHA_DIGEST_LENGTH);
 
-	sc_log(ctx, "Attributes(%zu) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	sc_log(ctx, "Attributes(%"SC_FORMAT_LEN_SIZE_T"u) '%s'", attrs_num, sc_dump_hex(data, data_len));
 	if (out && out_len) {
 		*out = data;
 		*out_len = data_len;
@@ -1604,10 +1609,12 @@ laser_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigned bas
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 
-			sc_log(ctx, "object(type:%X) path %s", type, sc_print_path(&path));
-			id = path.value[path.len - 1] + path.value[path.len - 2] * 0x100;
-			if (id == base_id + ii)
-				break;
+			if (path.len > 1) {
+				sc_log(ctx, "object(type:%X) path %s", type, sc_print_path(&path));
+				id = path.value[path.len - 1] + path.value[path.len - 2] * 0x100;
+				if (id == base_id + ii)
+					break;
+			}
 		}
 		if (jj == objs_num)
 			break;

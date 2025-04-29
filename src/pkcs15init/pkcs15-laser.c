@@ -598,7 +598,7 @@ laser_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	int rv = 0, update_tokeninfo = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "pin_obj %p, pin %p/%zu, puk %p/%zu", pin_obj, pin, pin_len, puk, puk_len);
+	sc_log(ctx, "pin_obj %p, pin %p/%"SC_FORMAT_LEN_SIZE_T"u, puk %p/%"SC_FORMAT_LEN_SIZE_T"u", pin_obj, pin, pin_len, puk, puk_len);
 	if (!pin_obj)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
@@ -635,7 +635,7 @@ laser_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	}
 
 	pin_file->size = pin_attrs->max_length;
-	sc_log(ctx, "create PIN file: size %zu; EF-type %i/%i; path %s",
+	sc_log(ctx, "create PIN file: size %"SC_FORMAT_LEN_SIZE_T"u; EF-type %i/%i; path %s",
 			pin_file->size, pin_file->type, pin_file->ef_structure, sc_print_path(&pin_file->path));
 
 	offs = 0;
@@ -772,7 +772,7 @@ laser_new_file(struct sc_profile *profile, const struct sc_card *card,
 	if (file->type == SC_FILE_TYPE_INTERNAL_EF)
 		file->ef_structure = file_descriptor;
 
-	sc_log(ctx, "new laser file: size %zu; EF-type %i/%i; path %s",
+	sc_log(ctx, "new laser file: size %"SC_FORMAT_LEN_SIZE_T"u; EF-type %i/%i; path %s",
 			file->size, file->type, file->ef_structure, sc_print_path(&file->path));
 	*out = file;
 
@@ -955,7 +955,7 @@ laser_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	LOG_FUNC_CALLED(ctx);
 
 	sc_log(ctx, "store key ID %s, path %s", sc_pkcs15_print_id(&key_info->id), sc_print_path(&key_info->path));
-	sc_log(ctx, "store key %zu %zu %zu %zu %zu %zu", prkey->u.rsa.d.len, prkey->u.rsa.p.len,
+	sc_log(ctx, "store key %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u", prkey->u.rsa.d.len, prkey->u.rsa.p.len,
 			prkey->u.rsa.q.len, prkey->u.rsa.iqmp.len,
 			prkey->u.rsa.dmp1.len, prkey->u.rsa.dmq1.len);
 
@@ -1168,7 +1168,7 @@ laser_cmap_update(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	rv = laser_cmap_encode(p15card, (remove ? object : NULL), &cmap, &cmap_len);
 	LOG_TEST_RET(ctx, rv, "Failed to encode 'cmap' data");
-	sc_log(ctx, "encoded CMAP(%zu) '%s'", cmap_len, sc_dump_hex(cmap, cmap_len));
+	sc_log(ctx, "encoded CMAP(%"SC_FORMAT_LEN_SIZE_T"u) '%s'", cmap_len, sc_dump_hex(cmap, cmap_len));
 
 	rv = sc_pkcs15_find_data_object_by_name(p15card, CMAP_DO_APPLICATION_NAME, "cmapfile", &cmap_dobj);
 	LOG_TEST_RET(ctx, rv, "Failed to get 'cmapfile' DATA object");
@@ -1277,7 +1277,7 @@ laser_update_df_create_private_key(struct sc_profile *profile, struct sc_pkcs15_
 	rv = laser_validate_attr_reference(attrs_ref);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid attribute file reference");
 
-	sc_log(ctx, "Private key attributes file reference 0x%zX", attrs_ref);
+	sc_log(ctx, "Private key attributes file reference 0x%"SC_FORMAT_LEN_SIZE_T"X", attrs_ref);
 	rv = laser_new_file(profile, p15card->card, object, LASER_ATTRS_PRKEY_RSA, attrs_ref, &file);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate private key attributes file");
 
@@ -1336,7 +1336,7 @@ laser_update_df_create_public_key(struct sc_profile *profile, struct sc_pkcs15_c
 	rv = laser_validate_attr_reference(attrs_ref);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid attribute file reference");
 
-	sc_log(ctx, "Public key attributes file reference 0x%zX", attrs_ref);
+	sc_log(ctx, "Public key attributes file reference 0x%"SC_FORMAT_LEN_SIZE_T"X", attrs_ref);
 	rv = laser_new_file(profile, p15card->card, object, LASER_ATTRS_PUBKEY_RSA, attrs_ref, &file);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate public key attributes file");
 
@@ -1822,9 +1822,9 @@ laser_emu_store_pubkey(struct sc_pkcs15_card *p15card,
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "Public Key id '%s'", sc_pkcs15_print_id(&info->id));
 	if (data)
-		sc_log(ctx, "data(%zu) %p", data->len, data->value);
+		sc_log(ctx, "data(%"SC_FORMAT_LEN_SIZE_T"u) %p", data->len, data->value);
 	if (object->content.value)
-		sc_log(ctx, "content(%zu) %p", object->content.len, object->content.value);
+		sc_log(ctx, "content(%"SC_FORMAT_LEN_SIZE_T"u) %p", object->content.len, object->content.value);
 
 	pubkey.algorithm = SC_ALGORITHM_RSA;
 	rv = sc_pkcs15_decode_pubkey(ctx, &pubkey, object->content.value, object->content.len);
@@ -1841,7 +1841,7 @@ laser_emu_store_pubkey(struct sc_pkcs15_card *p15card,
 	info->key_reference = (prkey_info->key_reference & LASER_FS_REF_MASK) | LASER_FS_BASEFID_PUBKEY;
 	info->modulus_length = prkey_info->modulus_length;
 	info->native = prkey_info->native;
-	sc_log(ctx, "Public Key ref %X, length %zu", info->key_reference, info->modulus_length);
+	sc_log(ctx, "Public Key ref %X, length %"SC_FORMAT_LEN_SIZE_T"u", info->key_reference, info->modulus_length);
 
 	rv = laser_new_file(profile, p15card->card, object, SC_PKCS15_TYPE_PUBKEY_RSA, info->key_reference, &file);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate new laser public-key file");
