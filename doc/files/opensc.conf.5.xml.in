@@ -869,6 +869,82 @@ app <replaceable>application</replaceable> {
 			</variablelist>
 		</refsect2>
 
+		<refsect2 id="laser">
+			<title>Configuration Options for JaCarta PKI token/card</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>
+							sm_level = <replaceable>value</replaceable>;
+						</option>
+					</term>
+					<listitem>
+						<para>
+							Secure messaging mode:
+							<itemizedlist>
+								<listitem>
+									<para>
+										<literal>3</literal>:
+										cipher and sign mode
+										APDU commands are encrypted and MACed by IFD, sender
+										ICC answers are encrypted and MACed as well by applet
+										receiving party checks command/response
+										MAC on its secret key and decryts command/response.
+									</para>
+								</listitem>
+								<listitem>
+									<para>
+										<literal>1</literal>:
+										only sign mode
+										APDU commands are protected with MAC by IFD, sender
+										ICC answers are MACed by applet
+										receiving party checks command/response
+										MAC on its secret key.
+									</para>
+								</listitem>
+								<listitem>
+									<para>
+										<literal>0</literal>:
+										no SM mode
+										APDU commands and responsed are plain text.
+									</para>
+								</listitem>
+							</itemizedlist>
+						</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>
+							secure_verify = <replaceable>value</replaceable>;
+						</option>
+					</term>
+					<listitem>
+						<para>
+							Verify PIN in secure way:
+							<itemizedlist>
+								<listitem>
+									<para>
+										<literal>yes</literal>:
+										if there is no general SM mode in place
+										Verify PIN APDU and response are encrypted
+										and signed.
+									</para>
+								</listitem>
+								<listitem>
+									<para>
+										<literal>no</literal>:
+										Verify PIN APDU and response protected in accordance
+										with general SM mode in place.
+									</para>
+								</listitem>
+							</itemizedlist>
+						</para>
+					</listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
 		<refsect2 id="card_atr">
 			<title>Configuration based on ATR</title>
 			<para>
