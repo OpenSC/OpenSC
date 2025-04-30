@@ -63,7 +63,7 @@ AES_256_KEY="7070707070707070707070707070707070707070707070707070707070707070"
 echo -n $AES_256_KEY | xxd -p -r > aes.key
 
 echo "======================================================="
-echo " RSA Wrap/Unwrap tests"
+echo " RSA Wrap/Unwrap of secret key tests"
 echo "======================================================="
 ID_RSA_WRAP="85" # RSA wrapping key
 ID_GENERIC_UNWRAPPED_1="95" # GENERIC key
@@ -77,9 +77,9 @@ assert $? "Failed to Generate RSA key"
 $PKCS11_TOOL "${PRIV_ARGS[@]}" --read-object --type pubkey --id $ID_RSA_WRAP -o rsa_pub.key
 assert $? "Failed to export public key"
 
-echo "======================================================="
+echo "-------------------------------------------------------"
 echo " RSA-PKCS Unwrap generic key test"
-echo "======================================================="
+echo "-------------------------------------------------------"
 
 # Wrap with OpenSSL
 openssl rsautl -encrypt -pubin -keyform der -inkey rsa_pub.key -in aes.key -out openssl_wrapped.data
@@ -94,9 +94,9 @@ assert $? "RSA-PKCS unwrap GENERIC key failed"
 $PKCS11_TOOL "${PRIV_ARGS[@]}" --id $ID_GENERIC_UNWRAPPED_1 --read-object --type secrkey --output-file generic_extracted.key
 compare_keys $? generic_extracted.key aes.key
 
-echo "======================================================="
+echo "-------------------------------------------------------"
 echo " RSA-PKCS Unwrap AES key test"
-echo "======================================================="
+echo "-------------------------------------------------------"
 
 # Unwrap with pkcs11-tool as AES key
 $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m RSA-PKCS --id $ID_RSA_WRAP -i openssl_wrapped.data --key-type AES: \
@@ -112,9 +112,9 @@ compare_keys $? aes_extracted.key aes.key
 # Check if AES key was correctly unwrapped with encryption
 test_unwrapped_aes_encryption $AES_256_KEY $ID_AES_UNWRAPPED_1
 
-echo "======================================================="
+echo "-------------------------------------------------------"
 echo " RSA-PKCS Wrap AES key test"
-echo "======================================================="
+echo "-------------------------------------------------------"
 
 # Wrap with pkcs11-tool
 $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m RSA-PKCS --id $ID_RSA_WRAP --application-id $ID_AES_UNWRAPPED_1 --output-file pkcs11_wrapped.data
@@ -129,9 +129,9 @@ assert $? "Wrapped key after decipher does not match the original key"
 rm openssl_wrapped.data generic_extracted.key pkcs11_wrapped.data aes_wrapped_decrypted.key aes_extracted.key
 
 if [ "${TOKENTYPE}" != "softokn" ]; then
-    echo "======================================================="
+    echo "-------------------------------------------------------"
     echo " RSA-PKCS-OAEP Unwrap generic key test"
-    echo "======================================================="
+    echo "-------------------------------------------------------"
     # RSA-PKCS-OAEP mechanism takes both a hash algorithm and MGF algorithm as parameters.
     # For now we use SHA1, although it has been deprecated by NIST, because SoftHSM only supports SHA1 hash with OAEP currently.
     # Known issue: https://github.com/softhsm/SoftHSMv2/issues/474 . When this issue is fixed, we shall replace with SHA256 or higher.
@@ -157,9 +157,9 @@ if [ "${TOKENTYPE}" != "softokn" ]; then
     $PKCS11_TOOL "${PRIV_ARGS[@]}" --id $ID_GENERIC_UNWRAPPED_2 --read-object --type secrkey --output-file generic_extracted.key
     compare_keys $? generic_extracted.key aes.key
 
-    echo "======================================================="
+    echo "-------------------------------------------------------"
     echo " RSA-PKCS-OAEP Unwrap AES key test"
-    echo "======================================================="
+    echo "-------------------------------------------------------"
 
     # Unwrap with pkcs11-tool as AES key
     $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m RSA-PKCS-OAEP --hash-algorithm $P11_OAEP_HASH_ALG --mgf $P11_OAEP_MGF_ALG --id $ID_RSA_WRAP -i openssl_wrapped.data --key-type AES: \
@@ -173,9 +173,9 @@ if [ "${TOKENTYPE}" != "softokn" ]; then
     # Check if AES key was correctly unwrapped with encryption
     test_unwrapped_aes_encryption $AES_256_KEY $ID_AES_UNWRAPPED_3
 
-    echo "======================================================="
-    echo " RSA-PKCS-OAEP Wrap test"
-    echo "======================================================="
+    echo "-------------------------------------------------------"
+    echo " RSA-PKCS-OAEP Wrap AES key test"
+    echo "-------------------------------------------------------"
 
     # Wrap with pkcs11-tool
     $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m RSA-PKCS-OAEP --id $ID_RSA_WRAP --hash-algorithm $P11_OAEP_HASH_ALG --mgf $P11_OAEP_MGF_ALG --application-id $ID_GENERIC_UNWRAPPED_2 --output-file pkcs11_wrapped.data
@@ -194,7 +194,7 @@ fi
 rm rsa_pub.key
 
 echo "======================================================="
-echo " AES Wrap/Unwrap tests"
+echo " AES Wrap/Unwrap of secret key tests"
 echo "======================================================="
 ID_AES_WRAP="0101" # AES wrapping key
 ID_AES_UNWRAPPED_4="0102" # AES 256 CBC
@@ -215,9 +215,9 @@ if [[ "$TOKENTYPE" != "softhsm" || -n "$is_softhsm2_2_6_1" ]]; then
     # CKM_AES_CBC -- SoftHSM2 AES CBC wrapping currently has a bug, the IV is not correctly used. Only IV=0 will work --*
     IV="00000000000000000000000000000000"
 
-    echo "======================================================="
-    echo " AES 256 CBC Unwrap test"
-    echo "======================================================="
+    echo "-------------------------------------------------------"
+    echo " AES 256 CBC Unwrap AES key test"
+    echo "-------------------------------------------------------"
     # Wrap with OpenSSL
     openssl enc -aes-256-cbc -e -K $AES_WRAP -iv $IV -in aes.key -out openssl_wrapped.data -nopad
     assert $? "OpenSSL / Failed to AES CBC encrypt AES key"
@@ -241,9 +241,9 @@ if [[ "$TOKENTYPE" != "softhsm" || -n "$is_softhsm2_2_6_1" ]]; then
         # Check if AES key was correctly unwrapped with encryption
         test_unwrapped_aes_encryption $AES_256_KEY $ID_AES_UNWRAPPED_4
     fi
-    echo "======================================================="
-    echo " AES 256 CBC Wrap test"
-    echo "======================================================="
+    echo "-------------------------------------------------------"
+    echo " AES 256 CBC Wrap AES key test"
+    echo "-------------------------------------------------------"
     # Wrap with OpenSSL
     $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-CBC --id $ID_AES_WRAP --iv $IV --application-id $ID_AES_UNWRAPPED_4 \
         --output-file pkcs11_wrapped.data
@@ -258,9 +258,9 @@ fi
 
 if [[ "$TOKENTYPE" != "softhsm" ]]; then
     # SoftHSM2 currently doesn't support CKM_AES_CBC_PAD as a wrapping
-    echo "======================================================="
-    echo " AES 256 CBC PAD Wrap test"
-    echo "======================================================="
+    echo "-------------------------------------------------------"
+    echo " AES 256 CBC PAD Wrap AES test"
+    echo "-------------------------------------------------------"
     IV="000102030405060708090A0B0C0D0E0F"
     # Wrap with OpenSSL
     openssl enc -aes-256-cbc -e -K $AES_WRAP -iv $IV -in aes.key -out openssl_wrapped.data
@@ -276,9 +276,9 @@ if [[ "$TOKENTYPE" != "softhsm" ]]; then
 fi
 
 if [[ -n $is_openssl_3 ]]; then
-    echo "======================================================="
-    echo "AES-KEY-WRAP Wrap test"
-    echo "======================================================="
+    echo "-------------------------------------------------------"
+    echo "AES-KEY-WRAP Wrap AES test"
+    echo "-------------------------------------------------------"
     # RSA Key
     # --AES-KEY-WRAP is not suitable for asymmetric key wrapping since the length of the encoded private key is likely not aligned to 8 bytes
     IV="a6a6a6a6a6a6a6a6"
@@ -296,9 +296,9 @@ if [[ -n $is_openssl_3 ]]; then
     cmp pkcs11_wrapped.data openssl_wrapped.data 2>&1 >/dev/null
     assert $? "AES-KEY-WRAP wrapped keys do not match"
 
-    echo "======================================================="
-    echo "AES-KEY-WRAP Unwrap test"
-    echo "======================================================="
+    echo "-------------------------------------------------------"
+    echo "AES-KEY-WRAP Unwrap AES key test"
+    echo "-------------------------------------------------------"
     # Unwrap with pkcs11-tool
     $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP --id $ID_AES_WRAP --iv $IV --application-id $ID_AES_UNWRAPPED_5 \
         --key-type AES: --input-file pkcs11_wrapped.data --extractable --application-label "unwrap-aes-with-aes-key-wrap"
@@ -314,9 +314,9 @@ if [[ -n $is_openssl_3 ]]; then
     test_unwrapped_aes_encryption $AES_256_KEY $ID_AES_UNWRAPPED_4
 
     if [[ "$TOKENTYPE" != "kryoptic" ]]; then
-        echo "======================================================="
-        echo "AES-KEY-WRAP-PAD Wrap test"
-        echo "======================================================="
+        echo "-------------------------------------------------------"
+        echo "AES-KEY-WRAP-PAD Wrap AES key test"
+        echo "-------------------------------------------------------"
         IV="a65959a6"
 
         # Wrap with OpenSSL
@@ -336,9 +336,9 @@ if [[ -n $is_openssl_3 ]]; then
             echo "Comparing OpenSSL and pkcs11-tool wrapped keys for softokn fails"
         fi
 
-        echo "======================================================="
-        echo "AES-KEY-WRAP-PAD Unwrap test"
-        echo "======================================================="
+        echo "-------------------------------------------------------"
+        echo "AES-KEY-WRAP-PAD Unwrap AES key test"
+        echo "-------------------------------------------------------"
         # Unwrap with pkcs11-tool
         $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV --application-id $ID_AES_UNWRAPPED_6 \
                 --key-type AES: --input-file pkcs11_wrapped.data --extractable --application-label "unwrap-aes-with-aes-key-wrap-pad"
@@ -356,6 +356,110 @@ if [[ -n $is_openssl_3 ]]; then
 fi
 
 rm -f aes.key aes_kek.key pkcs11_wrapped.data openssl_wrapped.data unwrapped.key
+
+echo "======================================================="
+echo " AES Wrap/Unwrap of private key tests"
+echo "======================================================="
+
+function test_unwrapped_rsa_pkcs_decryption() {
+    ID_RSA_WRAPPED=$1
+    ID_RSA_UNWRAPPED=$2
+
+    echo "Testing unwrapped key with decryption"
+
+    (printf '\xAB%.0s' {1..64};) > plaintext.data
+    # Encrypt with original RSA key
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --encrypt --id $ID_RSA_WRAPPED -m RSA-PKCS \
+            --input-file plaintext.data --output-file ciphertext.data
+    assert $? "Fail/pkcs11-tool encrypt"
+    # Decrypt with unwrapped private key
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --decrypt --id $ID_RSA_UNWRAPPED -m RSA-PKCS \
+            --input-file ciphertext.data > decrypted_plaintext.data
+    # Compare plaintexts
+    cmp plaintext.data decrypted_plaintext.data >/dev/null 2>/dev/null
+    assert $? "RSA decrypted plaintexts do not match"
+    rm plaintext.data decrypted_plaintext.data
+}
+
+ID_AES_WRAP="0200"
+ID_RSA_WRAPPED="0201"
+ID_RSA_UNWRAPPED="0202"
+IV="00000000000000000000000000000000"
+
+# Generate AES key for unwrap/wrap operation
+AES_WRAP=$(head /dev/urandom | sha256sum | head -c 64)
+echo -n $AES_WRAP | xxd -p -r > aes_kek.key
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --write-object aes_kek.key --id $ID_AES_WRAP --type secrkey \
+    --key-type AES:32 --usage-wrap --usage-decrypt --extractable --label aes-32-wrapping-key
+assert $? "Failed to write AES key"
+
+# Generate RSA key to be wrapped/unwrapped
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --keypairgen --key-type rsa:2048 --id $ID_RSA_WRAPPED --usage-decrypt --extractable --label rsa-key
+assert $? "Failed to Generate RSA key"
+
+# AES-KEY-WRAP, AES-KEY-WRAP-PAD, AES-CBC, AES-CBC-PAD
+if [[ "$TOKENTYPE" == "softhsm" ]]; then
+    echo "-------------------------------------------------------"
+    echo "AES-KEY-WRAP Wrap/Unwrap RSA key test"
+    echo "-------------------------------------------------------"
+    # Wrap
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-KEY-WRAP --id $ID_AES_WRAP --iv $IV \
+        --application-id $ID_RSA_WRAPPED --output-file rsa_wrapped_key.data
+    assert $? "Failed to wrap RSA key"
+    # Unwrap
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP --id $ID_AES_WRAP --iv $IV \
+        --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --input-file rsa_wrapped_key.data
+    assert $? "Failed to unwrap RSA key with $MECH"
+    rm rsa_wrapped_key.data
+
+    # Test with decryption
+    test_unwrapped_rsa_pkcs_decryption $ID_RSA_WRAPPED $ID_RSA_UNWRAPPED
+
+    # Remove unwrapped RSA keys
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --delete-object --type privkey --id $ID_RSA_UNWRAPPED
+fi
+
+if [[ "$TOKENTYPE" != "kryoptic" ]]; then
+    echo "-------------------------------------------------------"
+    echo "AES-KEY-WRAP-PAD Wrap/Unwrap RSA key test"
+    echo "-------------------------------------------------------"
+    # Wrap
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
+        --application-id $ID_RSA_WRAPPED --output-file rsa_wrapped_key.data
+    assert $? "Failed to wrap RSA key"
+    # Unwrap
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
+        --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --input-file rsa_wrapped_key.data
+    assert $? "Failed to unwrap RSA key with $MECH"
+    rm rsa_wrapped_key.data
+
+    # Test with decryption
+    test_unwrapped_rsa_pkcs_decryption $ID_RSA_WRAPPED $ID_RSA_UNWRAPPED
+
+    # Remove unwrapped RSA key
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --delete-object --type privkey --id $ID_RSA_UNWRAPPED
+fi
+
+if [[ "$TOKENTYPE" != "softhsm" ]]; then
+    echo "-------------------------------------------------------"
+    echo "AES-CBC-PAD Wrap/Unwrap RSA key test"
+    echo "-------------------------------------------------------"
+    # Wrap
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-CBC-PAD --id $ID_AES_WRAP --iv $IV \
+        --application-id $ID_RSA_WRAPPED --output-file rsa_wrapped_key.data
+    assert $? "Failed to wrap RSA key"
+    # Unwrap
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-CBC-PAD --id $ID_AES_WRAP --iv $IV \
+        --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --input-file rsa_wrapped_key.data
+    assert $? "Failed to unwrap RSA key with $MECH"
+    rm rsa_wrapped_key.data
+
+    # Test with decryption
+    test_unwrapped_rsa_pkcs_decryption $ID_RSA_WRAPPED $ID_RSA_UNWRAPPED
+
+    # Remove unwrapped RSA key
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --delete-object --type privkey --id $ID_RSA_UNWRAPPED
+fi
 
 echo "======================================================="
 echo "Cleanup"
