@@ -30,6 +30,20 @@
 #include "cardctl.h"
 #include "types.h"
 
+/*
+ * WIP eventually PIV_SM_NIST will be the same as ENABLE_PIV_SM
+ * and !ENABLE_PIV_SM will mean do not build with any SM
+ */
+#if defined(ENABLE_PIV_SM)
+#if defined(ENABLE_SM_NIST)
+#define PIV_SM_NIST
+#endif
+#endif
+
+#ifdef PIV_SM_NIST
+#include "sm/sm-nist.h"
+#endif /* PIV_SM_NIST */
+
 /* Low byte is the MyEID card's key type specific component ID. High byte is used
  * internally for key type, so myeid_loadkey() is aware of the exact component. */
 #define LOAD_KEY_MODULUS		0x0080
@@ -53,6 +67,7 @@
 #define MYEID_CARD_CAP_ECC		0x08
 #define MYEID_CARD_CAP_GRIDPIN		0x10
 #define MYEID_CARD_CAP_PIV_EMU		0x20
+/* TODO what is 0x40 */
 
 #define MYEID_MAX_APDU_DATA_LEN		0xFF
 #define MYEID_MAX_RSA_KEY_LEN		4096
@@ -91,6 +106,9 @@ typedef struct myeid_private_data {
 	uint8_t sym_plain_buffer_len;
 	/* PSO for AES/DES need algo+flags from sec env */
 	unsigned long algorithm, algorithm_flags;
+#ifdef PIV_SM_NIST
+	sm_nist_params_t sm_params;
+#endif /* PIV_SM_NIST */
 } myeid_private_data_t;
 
 typedef struct myeid_card_caps {
@@ -117,6 +135,68 @@ static struct myeid_supported_ec_curves {
 
 static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen);
 static int myeid_get_card_caps(struct sc_card *card, myeid_card_caps_t* card_caps);
+
+#ifdef PIV_SM_NIST
+/* TODO  Proof of concept  */
+static int
+myeid_setup_sm_nist(struct sc_card *card)
+{
+
+	myeid_private_data_t *priv = (myeid_private_data_t *)card->drv_data;
+	struct sc_file *file = NULL;
+	sc_path_t path_cert_signer = {
+			{0x3F, 0x00, 0x50, 0x15, 0x5C, 0x00},
+			6, 0, 0, SC_PATH_TYPE_PATH, {{0}, 0}
+	};
+	//	sc_path_t path_cvc_27  = {"\x3F\x00\x50\x15\x5C\x2C", 6, 0, 0, SC_PATH_TYPE_PATH, {{0}}};
+	//	sc_path_t path_cvc_2E  = {"\x3F\x00\x50\x15\x5C\x2E", 6, 0, 0, SC_PATH_TYPE_PATH, {{0}}};
+	int r = 0;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	/*
+	 * Assume:
+	 * cert_signer can be read from 3F00 5015 5C00
+	 * There is no sm_in_cvc at this point
+	 * CVC for '27' is at 3F00 5015 5C27
+	 * CVC for '2E' is at 3F00 5015 5C2E
+	 * and can be read using select file and read_binary
+	 */
+
+	r = sc_select_file(card, &path_cert_signer, &file);
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "cert_signer not found");
+
+	priv->sm_params.signer_cert_der = calloc(1, file->size);
+	if (priv->sm_params.signer_cert_der == NULL)
+		r = SC_ERROR_OUT_OF_MEMORY;
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "cert_signer");
+	priv->sm_params.signer_cert_der_len = file->size;
+	sc_file_free(file);
+	file = NULL;
+
+	r = sc_read_binary(card, 0, priv->sm_params.signer_cert_der, priv->sm_params.signer_cert_der_len, 0);
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "failed to read signer_cert_der");
+
+	priv->sm_params.flags = PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT;
+	/* TODO set other flags if needed, for now will say to always use SM */
+	priv->sm_params.flags |= PIV_SM_FLAGS_ALWAYS;
+	/* TODO this implies card has reader_lock_obtained routine */
+	priv->sm_params.flags |= PIV_SM_FLAGS_DEFER_OPEN;
+	priv->sm_params.csID = 0x27;
+
+	r = sm_nist_start(card, &priv->sm_params);
+
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "sm)nist_start failed");
+
+err:
+	if (r < 0) {
+		sm_nist_params_cleanup(&priv->sm_params);
+	}
+
+	sc_file_free(file);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+#endif /* PIV_SM_NIST */
 
 static int myeid_match_card(struct sc_card *card)
 {
@@ -265,10 +345,13 @@ static int myeid_init(struct sc_card *card)
 		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 	flags |= SC_ALGORITHM_RSA_HASH_NONE;
 
-	_sc_card_add_rsa_alg(card,  512, flags, 0);
-	_sc_card_add_rsa_alg(card,  768, flags, 0);
-	_sc_card_add_rsa_alg(card, 1024, flags, 0);
-	_sc_card_add_rsa_alg(card, 1536, flags, 0);
+	/*  4.9.10 do no support 512, 768, 1024, 1536 */
+	if (card->version.fw_major < 49) {
+		_sc_card_add_rsa_alg(card, 512, flags, 0);
+		_sc_card_add_rsa_alg(card, 768, flags, 0);
+		_sc_card_add_rsa_alg(card, 1024, flags, 0);
+		_sc_card_add_rsa_alg(card, 1536, flags, 0);
+	}
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	if (card_caps.card_supported_features & MYEID_CARD_CAP_RSA) {
@@ -324,6 +407,13 @@ static int myeid_init(struct sc_card *card)
 	else
 		card->max_recv_size = 255;
 	card->max_send_size = 255;
+
+	/* TODO DEE for now use chaining vs extended */
+#ifdef PIV_SM_NIST
+	if (card_caps.card_supported_features & MYEID_CARD_CAP_PIV_EMU) {
+		rv = myeid_setup_sm_nist(card);
+	}
+#endif
 
 	rv = SC_SUCCESS;
 
@@ -1883,6 +1973,12 @@ static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 static int myeid_finish(sc_card_t * card)
 {
 	struct myeid_private_data *priv = (struct myeid_private_data *) card->drv_data;
+
+#ifdef PIV_SM_NIST
+	/* TODO may need to cleanup sm */
+	sm_nist_params_cleanup(&priv->sm_params);
+#endif
+
 	free(priv);
 	return SC_SUCCESS;
 }
