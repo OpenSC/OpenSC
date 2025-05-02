@@ -569,8 +569,6 @@ do_select(sc_card_t * card, u8 kind,
 		if (apdu.sw1 == 0x61)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if (!r && kind == MCRD_SEL_AID)
-			card->cache.current_path.len = 0;
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);

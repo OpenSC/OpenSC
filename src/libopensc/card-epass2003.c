@@ -1936,20 +1936,6 @@ epass2003_select_fid(struct sc_card *card, unsigned int id_hi, unsigned int id_l
 	r = epass2003_select_fid_(card, &path, &file);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-	/* update cache */
-	if (file && file->type == SC_FILE_TYPE_DF) {
-		card->cache.current_path.type = SC_PATH_TYPE_PATH;
-		card->cache.current_path.value[0] = 0x3f;
-		card->cache.current_path.value[1] = 0x00;
-		if (id_hi == 0x3f && id_lo == 0x00) {
-			card->cache.current_path.len = 2;
-		} else {
-			card->cache.current_path.len = 4;
-			card->cache.current_path.value[2] = id_hi;
-			card->cache.current_path.value[3] = id_lo;
-		}
-	}
-
 	if (file_out) {
 		*file_out = file;
 	} else {
@@ -1965,25 +1951,8 @@ epass2003_select_aid(struct sc_card *card, const sc_path_t * in_path, sc_file_t 
 {
 	int r = 0;
 
-	if (card->cache.valid
-			&& card->cache.current_path.type == SC_PATH_TYPE_DF_NAME
-			&& card->cache.current_path.len == in_path->len
-			&& memcmp(card->cache.current_path.value, in_path->value, in_path->len) == 0) {
-		if (file_out) {
-			*file_out = sc_file_new();
-			if (!file_out)
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-		}
-	}
-	else {
-		r = iso_ops->select_file(card, in_path, file_out);
-		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-
-		/* update cache */
-		card->cache.current_path.type = SC_PATH_TYPE_DF_NAME;
-		card->cache.current_path.len = in_path->len;
-		memcpy(card->cache.current_path.value, in_path->value, in_path->len);
-	}
+	r = iso_ops->select_file(card, in_path, file_out);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	if (file_out) {
 		sc_file_t *file = *file_out;
@@ -2009,7 +1978,6 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 	u8 n_pathbuf[SC_MAX_PATH_SIZE];
 	const u8 *path = pathbuf;
 	size_t pathlen = len;
-	size_t bMatch = 0;
 	unsigned int i;
 	int r;
 
@@ -2029,65 +1997,12 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 		pathlen += 2;
 	}
 
-	/* check current working directory */
-	if (card->cache.valid
-			&& card->cache.current_path.type == SC_PATH_TYPE_PATH
-			&& card->cache.current_path.len >= 2
-			&& card->cache.current_path.len <= pathlen) {
-		for (i = 0; i < card->cache.current_path.len; i += 2)
-			if (card->cache.current_path.value[i] == path[i]
-					&& card->cache.current_path.value[i + 1] == path[i + 1])
-				bMatch += 2;
+	for (i = 0; i < pathlen - 2; i += 2) {
+		r = epass2003_select_fid(card, path[i], path[i + 1], NULL);
+		LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
 	}
 
-	if (card->cache.valid && bMatch > 2) {
-		if (pathlen - bMatch == 2) {
-			/* we are in the right directory */
-			return epass2003_select_fid(card, path[bMatch], path[bMatch + 1], file_out);
-		} else if (pathlen - bMatch > 2) {
-			/* two more steps to go */
-			sc_path_t new_path;
-
-			/* first step: change directory */
-			r = epass2003_select_fid(card, path[bMatch], path[bMatch + 1], NULL);
-			LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
-
-			new_path.type = SC_PATH_TYPE_PATH;
-			new_path.len = pathlen - bMatch - 2;
-			memcpy(new_path.value, &(path[bMatch + 2]), new_path.len);
-
-			/* final step: select file */
-			return epass2003_select_file(card, &new_path, file_out);
-		} else { /* if (bMatch - pathlen == 0) */
-			/* done: we are already in the
-			 * requested directory */
-			sc_log(card->ctx, "cache hit\n");
-			/* copy file info (if necessary) */
-			if (file_out) {
-				sc_file_t *file = sc_file_new();
-				if (!file)
-					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-				file->id = (path[pathlen - 2] << 8) + path[pathlen - 1];
-				file->path = card->cache.current_path;
-				file->type = SC_FILE_TYPE_DF;
-				file->ef_structure = SC_FILE_EF_UNKNOWN;
-				file->size = 0;
-				file->namelen = 0;
-				file->magic = SC_FILE_MAGIC;
-				*file_out = file;
-			}
-			/* nothing left to do */
-			return SC_SUCCESS;
-		}
-	} else {
-		/* no usable cache */
-		for (i = 0; i < pathlen - 2; i += 2) {
-			r = epass2003_select_fid(card, path[i], path[i + 1], NULL);
-			LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
-		}
-
-		return epass2003_select_fid(card, path[pathlen - 2], path[pathlen - 1], file_out);
-	}
+	return epass2003_select_fid(card, path[pathlen - 2], path[pathlen - 1], file_out);
 }
 
 
@@ -2095,21 +2010,7 @@ static int
 epass2003_select_file(struct sc_card *card, const sc_path_t * in_path,
 		sc_file_t ** file_out)
 {
-	int r;
-	char pbuf[SC_MAX_PATH_STRING_SIZE];
-
 	LOG_FUNC_CALLED(card->ctx);
-
-	r = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
-	if (r != SC_SUCCESS)
-		pbuf[0] = '\0';
-
-	sc_log(card->ctx,
-	       "current path (%s, %s): %s (len: %"SC_FORMAT_LEN_SIZE_T"u)\n",
-	       card->cache.current_path.type == SC_PATH_TYPE_DF_NAME ?
-	       "aid" : "path",
-	       card->cache.valid ? "valid" : "invalid", pbuf,
-	       card->cache.current_path.len);
 
 	switch (in_path->type) {
 	case SC_PATH_TYPE_FILE_ID:
@@ -2124,7 +2025,6 @@ epass2003_select_file(struct sc_card *card, const sc_path_t * in_path,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 }
-
 
 static int
 epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, int se_num)
@@ -3058,7 +2958,6 @@ epass2003_erase_card(struct sc_card *card)
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_invalidate_cache(card);
 
 	/* install magic pin */
 	sc_format_apdu(card, &apdu, 0x03, 0xe3, 0x00, 0x00);

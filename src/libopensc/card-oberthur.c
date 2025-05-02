@@ -187,7 +187,6 @@ auth_select_aid(struct sc_card *card)
 	rv = iso_ops->select_file(card, &tmp_path, &auth_current_df);
 	LOG_TEST_RET(card->ctx, rv, "select parent failed");
 
-	sc_format_path("3F00", &card->cache.current_path);
 	sc_file_free(auth_current_ef);
 	auth_current_ef = NULL;
 	sc_file_dup(&auth_current_ef, auth_current_df);
@@ -944,10 +943,6 @@ auth_create_file(struct sc_card *card, struct sc_file *file)
 
 	if (file->id==0x0000 || file->id==0xFFFF || file->id==0x3FFF)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-	rv = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
-	if (rv != SC_SUCCESS)
-		pbuf[0] = '\0';
 
 	if (file->path.len)   {
 		memcpy(&path, &file->path, sizeof(path));
