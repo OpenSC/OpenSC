@@ -303,8 +303,27 @@ static int edo_init(sc_card_t* card) {
 
 
 static int edo_logout(sc_card_t* card) {
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
 	sc_sm_stop(card);
-	return edo_unlock(card);
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+
+static int edo_card_reader_lock_obtained(sc_card_t* card, int was_reset) {
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/* Re-establish CAN channel on demand after logout or concurrent non PACE access */
+	if (card->sm_ctx.sm_mode == SM_MODE_NONE) {
+		sc_path_t path;
+		sc_format_path("3F002F00", &path);
+		LOG_TEST_RET(card->ctx, sc_select_file(card, &path, NULL), "Cannot select EF.DIR file");
+
+		LOG_TEST_RET(card->ctx, edo_unlock(card), "Unlock card failed");
+	}
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 
@@ -316,6 +335,7 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 	edo_ops.set_security_env = edo_set_security_env;
 	edo_ops.compute_signature = edo_compute_signature;
 	edo_ops.logout = edo_logout;
+	edo_ops.card_reader_lock_obtained = edo_card_reader_lock_obtained;
 
 	return &edo_drv;
 }
