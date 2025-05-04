@@ -150,8 +150,8 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	u8 last_update[32], profile_indication[SC_PKCS15_MAX_LABEL_SIZE];
 	size_t lupdate_len = sizeof(last_update) - 1, pi_len = sizeof(profile_indication) - 1;
 	size_t flags_len   = sizeof(ti->flags);
-	u8 preferred_language[3];
-	size_t lang_length = sizeof(preferred_language);
+	u8 preferred_language[18];
+	size_t lang_length = sizeof(preferred_language) - 1;
 	struct sc_asn1_entry asn1_supported_algorithms[SC_MAX_SUPPORTED_ALGORITHMS + 1],
 			asn1_algo_infos[SC_MAX_SUPPORTED_ALGORITHMS][7],
 			asn1_algo_infos_parameters[SC_MAX_SUPPORTED_ALGORITHMS][3];
@@ -169,6 +169,7 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	memset(label, 0, sizeof(label));
 	memset(profile_indication, 0, sizeof(profile_indication));
 	memset(mnfid, 0, sizeof(mnfid));
+	memset(preferred_language, 0, sizeof(preferred_language));
 
 	sc_copy_asn1_entry(c_asn1_twlabel, asn1_twlabel);
 	sc_copy_asn1_entry(c_asn1_toki_attrs, asn1_toki_attrs);
@@ -265,9 +266,11 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 			sc_log(ctx, "LastUpdate.referencedTime present");
 		}
 	}
-	if (asn1_toki_attrs[12].flags & SC_ASN1_PRESENT) {
-		preferred_language[2] = 0;
-		ti->preferred_language = strdup((char *)preferred_language);
+	if (ti->preferred_language == NULL) {
+		if (asn1_toki_attrs[12].flags & SC_ASN1_PRESENT)
+			ti->preferred_language = strdup((char *)preferred_language);
+		else
+			ti->preferred_language = strdup("(unknown)");
 		if (ti->preferred_language == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 	}
