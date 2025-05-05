@@ -342,7 +342,7 @@ static int sc_hsm_soc_select_minbioclient(sc_card_t *card)
 #ifdef ENABLE_SM
 	sc_sm_stop(card);
 #endif
-	return gp_select_aid(card, &minBioClient_aid);
+	return gp_select_aid(card, &minBioClient_aid, NULL, NULL);
 }
 
 static int sc_hsm_soc_change(sc_card_t *card, struct sc_pin_cmd_data *data,

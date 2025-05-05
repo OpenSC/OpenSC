@@ -161,7 +161,7 @@ static int gemsafe_init(struct sc_card *card)
 	 * applet twice in gp_select_applet */
 	card->lock_count++;
 	/* SELECT applet */
-	r = gp_select_aid(card, exdata);
+	r = gp_select_aid(card, exdata, NULL, NULL);
 	if (r < 0) {
 		free(exdata);
 		sc_log(card->ctx,  "applet selection failed\n");
@@ -547,7 +547,7 @@ static int gemsafe_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (was_reset > 0 && exdata) {
-		r = gp_select_aid(card, exdata);
+		r = gp_select_aid(card, exdata, NULL, NULL);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -557,7 +557,7 @@ static int gemsafe_logout(sc_card_t *card)
 {
 	struct sc_aid *exdata = (struct sc_aid *)card->drv_data;
 
-	return gp_select_aid(card, exdata);
+	return gp_select_aid(card, exdata, NULL, NULL);
 }
 
 static struct sc_card_driver *sc_get_driver(void)

@@ -21,11 +21,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "opensc.h"
 #include "asn1.h"
 #include "cardctl.h"
+#include "gp.h"
 #include "internal.h"
 #include "log.h"
+#include "opensc.h"
 
 #define APPLET_VERSION_LEN  2
 #define APPLET_MEMTYPE_LEN  1
@@ -36,7 +37,10 @@ static const struct sc_atr_table nqapplet_atrs[] = {
 	{"3b:d5:18:ff:81:91:fe:1f:c3:80:73:c8:21:10:0a", NULL, NULL, SC_CARD_TYPE_NQ_APPLET, 0, NULL},
 	{NULL, NULL, NULL, 0, 0, NULL}};
 
-static const u8 nqapplet_aid[] = {0xd2, 0x76, 0x00, 0x01, 0x80, 0xBA, 0x01, 0x44, 0x02, 0x01, 0x00};
+static const struct sc_aid nqapplet_aid = {
+		{0xd2, 0x76, 0x00, 0x01, 0x80, 0xBA, 0x01, 0x44, 0x02, 0x01, 0x00},
+		11
+};
 
 static struct sc_card_operations nqapplet_operations;
 static struct sc_card_operations *iso_operations = NULL;
@@ -107,22 +111,15 @@ static int select_nqapplet(sc_card_t *card, u8 *version_major, u8 *version_minor
 {
 	int rv;
 	sc_context_t *ctx = card->ctx;
-	sc_apdu_t apdu;
 	u8 buffer[APPLET_VERSION_LEN + APPLET_MEMTYPE_LEN + APPLET_SERIALNR_LEN + 2];
 	size_t cb_buffer = sizeof(buffer);
-	size_t cb_aid = sizeof(nqapplet_aid);
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	sc_format_apdu_ex(&apdu, 0x00, 0xA4, 0x04, 0x00, nqapplet_aid, cb_aid, buffer, cb_buffer);
+	rv = gp_select_aid(card, &nqapplet_aid, buffer, &cb_buffer);
+	LOG_TEST_RET(card->ctx, rv, "Failed to select NQ-Applet.");
 
-	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failure.");
-
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, rv, "Card returned error");
-
-	if (apdu.resplen < APPLET_VERSION_LEN + APPLET_MEMTYPE_LEN + APPLET_SERIALNR_LEN) {
+	if (cb_buffer < APPLET_VERSION_LEN + APPLET_MEMTYPE_LEN + APPLET_SERIALNR_LEN) {
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_WRONG_LENGTH);
 	}
 
@@ -138,7 +135,7 @@ static int select_nqapplet(sc_card_t *card, u8 *version_major, u8 *version_minor
 		*serial_nr_len = cb;
 	}
 
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 /* driver operations API */

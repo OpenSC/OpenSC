@@ -46,7 +46,7 @@ static const struct sc_aid gp_isd_rid = {
 
 /* Select AID */
 int
-gp_select_aid(struct sc_card *card, const struct sc_aid *aid)
+gp_select_aid(struct sc_card *card, const struct sc_aid *aid, u8 *resp, size_t *resplen)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -54,12 +54,17 @@ gp_select_aid(struct sc_card *card, const struct sc_aid *aid)
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
+	sc_format_apdu(card, &apdu, resp == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, 0xA4, 0x04, resp == NULL ? 0x0C : 0x00);
 	apdu.lc = aid->len;
 	apdu.data = aid->value;
 	apdu.datalen = aid->len;
+	apdu.resp = resp;
+	apdu.resplen = resp == NULL ? 0 : *resplen;
+	apdu.le = resp == NULL ? 0 : 256;
 
 	rv = sc_transmit_apdu(card, &apdu);
+	if (resplen)
+		*resplen = apdu.resplen;
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -73,7 +78,7 @@ gp_select_card_manager(struct sc_card *card)
 	int rv;
 
 	LOG_FUNC_CALLED(card->ctx);
-	rv = gp_select_aid(card, &gp_card_manager);
+	rv = gp_select_aid(card, &gp_card_manager, NULL, NULL);
 	LOG_FUNC_RETURN(card->ctx, rv);
 }
 
@@ -84,7 +89,7 @@ gp_select_isd_rid(struct sc_card *card)
 	int rv;
 
 	LOG_FUNC_CALLED(card->ctx);
-	rv = gp_select_aid(card, &gp_isd_rid);
+	rv = gp_select_aid(card, &gp_isd_rid, NULL, NULL);
 	LOG_FUNC_RETURN(card->ctx, rv);
 }
 

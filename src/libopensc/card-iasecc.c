@@ -525,11 +525,13 @@ static int
 iasecc_mi_match(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
+	unsigned char resp[0x100];
+	size_t resp_len = sizeof(resp);
 	int rv = 0;
 
 	LOG_FUNC_CALLED(ctx);
 
-	rv = gp_select_aid(card, &MIIASECC_AID);
+	rv = gp_select_aid(card, &MIIASECC_AID, resp, &resp_len);
 	LOG_TEST_RET(ctx, rv, "IASECC: failed to select MI IAS/ECC applet");
 
 	if (!card->ef_atr)
