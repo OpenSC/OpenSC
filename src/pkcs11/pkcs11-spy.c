@@ -1631,10 +1631,10 @@ spy_interface_function_list(CK_INTERFACE_PTR pInterface, CK_INTERFACE_PTR_PTR re
 	}
 
 	version = (CK_VERSION *)pInterface->pFunctionList;
-	if (version->major == 2) {
-		(*retInterface)->pFunctionList = pkcs11_spy;
-	} else if (version->major == 3 && version->minor == 0) {
+	if (version->major == 3 && version->minor == 0) {
 		(*retInterface)->pFunctionList = pkcs11_spy_3_0;
+	} else {
+		(*retInterface)->pFunctionList = pkcs11_spy;
 	}
 }
 
