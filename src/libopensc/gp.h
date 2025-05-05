@@ -63,7 +63,7 @@ typedef struct  global_platform_cplc_data {
 	u8 ic_personalization_id[4];
 } PACKED global_platform_cplc_data_t;
 
-int gp_select_aid(struct sc_card *card, const struct sc_aid *aid);
+int gp_select_aid(struct sc_card *card, const struct sc_aid *aid, u8 *resp, size_t *resplen);
 int gp_select_card_manager(struct sc_card *card);
 int gp_select_isd_rid(struct sc_card *card);
 int gp_get_cplc_data(struct sc_card *card, global_platform_cplc_data_t *cplc_data);

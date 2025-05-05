@@ -29,9 +29,10 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
+#include "gp.h"
+#include "internal.h"
 #include "types.h"
 
 #include "card-sc-hsm.h"
@@ -64,9 +65,10 @@ static struct sc_card_driver sc_hsm_drv = {
 
 
 /* Our AID */
-struct sc_aid sc_hsm_aid = { { 0xE8,0x2B,0x06,0x01,0x04,0x01,0x81,0xC3,0x1F,0x02,0x01 }, 11 };
-
-
+struct sc_aid sc_hsm_aid = {
+		{0xE8, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x81, 0xC3, 0x1F, 0x02, 0x01},
+		11
+};
 
 /* Known ATRs for SmartCard-HSMs */
 const struct sc_atr_table sc_hsm_atrs[] = {
@@ -331,24 +333,16 @@ static int sc_hsm_encode_sopin(const u8 *sopin, u8 *sopinbin)
 
 static int sc_hsm_soc_select_minbioclient(sc_card_t *card)
 {
-	sc_apdu_t apdu;
-	struct sc_aid minBioClient_aid = {
-		{ 0xFF,'m','i','n','B','i','o','C','l','i','e','n','t',0x01 }, 14
-	};
+	static const struct sc_aid minBioClient_aid = {
+			{0xFF, 'm', 'i', 'n', 'B', 'i', 'o', 'C', 'l', 'i', 'e', 'n', 't', 0x01},
+			14
+	  };
 
 	/* Select MinBioClient */
 #ifdef ENABLE_SM
 	sc_sm_stop(card);
 #endif
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
-	apdu.data = minBioClient_aid.value;
-	apdu.datalen = minBioClient_aid.len;
-	apdu.lc = minBioClient_aid.len;
-	LOG_TEST_RET(card->ctx,
-			sc_transmit_apdu(card, &apdu),
-			"APDU transmit failed");
-
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+	return gp_select_aid(card, &minBioClient_aid, NULL, NULL);
 }
 
 static int sc_hsm_soc_change(sc_card_t *card, struct sc_pin_cmd_data *data,

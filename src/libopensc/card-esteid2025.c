@@ -56,7 +56,7 @@ esteid_match_card(sc_card_t *card)
 {
 	int i = _sc_match_atr(card, esteid_atrs, &card->type);
 
-	if (i >= 0 && gp_select_aid(card, &THALES_AID) == SC_SUCCESS) {
+	if (i >= 0 && gp_select_aid(card, &THALES_AID, NULL, NULL) == SC_SUCCESS) {
 		card->name = esteid_atrs[i].name;
 		return 1;
 	}
@@ -203,7 +203,7 @@ esteid_init(sc_card_t *card)
 static int
 esteid_logout(sc_card_t *card)
 {
-	return gp_select_aid(card, &THALES_AID);
+	return gp_select_aid(card, &THALES_AID, NULL, NULL);
 }
 
 struct sc_card_driver *
