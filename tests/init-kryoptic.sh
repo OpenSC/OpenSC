@@ -1,13 +1,18 @@
 #!/bin/bash
 
 # set paths
-KRYOPTIC_PWD="$BUILD_PATH/kryoptic/target/debug/libkryoptic_pkcs11.so"
-if test -f "$KRYOPTIC_PWD" ; then
-	echo "Using kryoptic path $KRYOPTIC_PWD"
-	P11LIB="$KRYOPTIC_PWD"
-else
-	echo "Kryoptic not found"
-	exit 0
+kryoptic_paths="$BUILD_PATH/kryoptic/target/debug/libkryoptic_pkcs11.so"
+
+for LIB in $kryoptic_paths; do
+	echo "Testing $LIB"
+	if [[ -f $LIB ]]; then
+		export P11LIB=$LIB
+		echo "Setting P11LIB=$LIB"
+		break
+	fi
+done
+if [[ -z "$P11LIB" ]]; then
+	echo "Warning: Could not find the Kryoptic PKCS#11 module"
 fi
 
 function initialize_token() {
