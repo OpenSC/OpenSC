@@ -694,6 +694,9 @@ static int idprime_init(sc_card_t *card)
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
+	if (card->type == SC_CARD_TYPE_IDPRIME_940) {
+		_sc_card_add_rsa_alg(card, 3072, flags, 0);
+	}
 	if (card->type == SC_CARD_TYPE_IDPRIME_930
 	    || card->type == SC_CARD_TYPE_IDPRIME_940) {
 		_sc_card_add_rsa_alg(card, 4096, flags, 0);
