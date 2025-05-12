@@ -433,80 +433,6 @@ cyberflex_process_file_attrs(sc_card_t *card, sc_file_t *file,
 	return 0;
 }
 
-static int check_path(sc_card_t *card, const u8 **pathptr, size_t *pathlen,
-		      int need_info)
-{
-	const u8 *curptr = card->cache.current_path.value;
-	const u8 *ptr = *pathptr;
-	size_t curlen = card->cache.current_path.len;
-	size_t len = *pathlen;
-
-	if (curlen < 2)
-		return 0;
-	if (len < 2)
-		return 0;
-	if (memcmp(ptr, "\x3F\x00", 2) != 0) {
-		/* Skip the MF id */
-		curptr += 2;
-		curlen -= 2;
-	}
-	if (len == curlen && memcmp(ptr, curptr, len) == 0) {
-		if (need_info)
-			return 0;
-		*pathptr = ptr + len;
-		*pathlen = 0;
-		return 1;
-	}
-	if (curlen < len && memcmp(ptr, curptr, curlen) == 0) {
-		*pathptr = ptr + curlen;
-		*pathlen = len - curlen;
-		return 1;
-	}
-	/* FIXME: Build additional logic */
-	return 0;
-}
-
-static void cache_path(sc_card_t *card, const sc_path_t *path,
-	int result)
-{
-	sc_path_t *curpath = &card->cache.current_path;
-
-	if (result < 0) {
-		curpath->len = 0;
-		return;
-	}
-
-	switch (path->type) {
-	case SC_PATH_TYPE_FILE_ID:
-		if (path->value[0] == 0x3F && path->value[1] == 0x00)
-			sc_format_path("3F00", curpath);
-		else {
-			if (curpath->len + 2 > SC_MAX_PATH_SIZE) {
-				curpath->len = 0;
-				return;
-			}
-			memcpy(curpath->value + curpath->len, path->value, 2);
-			curpath->len += 2;
-		}
-		break;
-	case SC_PATH_TYPE_PATH:
-		curpath->len = 0;
-		if (path->value[0] != 0x3F || path->value[1] != 0)
-			sc_format_path("3F00", curpath);
-		if (curpath->len + path->len > SC_MAX_PATH_SIZE) {
-			curpath->len = 0;
-			return;
-		}
-		memcpy(curpath->value + curpath->len, path->value, path->len);
-		curpath->len += path->len;
-		break;
-	case SC_PATH_TYPE_DF_NAME:
-		/* All bets are off */
-		curpath->len = 0;
-		break;
-	}
-}
-
 static int select_file_id(sc_card_t *card, const u8 *buf, size_t buflen,
 			  u8 p1, sc_file_t **file_out)
 {
@@ -566,29 +492,20 @@ static int flex_select_file(sc_card_t *card, const sc_path_t *path,
 	int r;
 	const u8 *pathptr = path->value;
 	size_t pathlen = path->len;
-	int locked = 0, magic_done;
+	int locked = 0;
 	u8 p1 = 0;
-	char pbuf[SC_MAX_PATH_STRING_SIZE];
-
-
-	r = sc_path_print(pbuf, sizeof(pbuf), &card->cache.current_path);
-	if (r != SC_SUCCESS)
-		pbuf[0] = '\0';
-
-	sc_log(card->ctx,  "called, cached path=%s\n", pbuf);
 
 	switch (path->type) {
 	case SC_PATH_TYPE_PATH:
 		if ((pathlen & 1) != 0) /* not divisible by 2 */
 			return SC_ERROR_INVALID_ARGUMENTS;
-		magic_done = check_path(card, &pathptr, &pathlen, file_out != NULL);
 		if (pathlen == 0)
 			return 0;
 		if (pathlen != 2 || memcmp(pathptr, "\x3F\x00", 2) != 0) {
 			locked = 1;
 			r = sc_lock(card);
 			LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
-			if (!magic_done && memcmp(pathptr, "\x3F\x00", 2) != 0) {
+			if (memcmp(pathptr, "\x3F\x00", 2) != 0) {
 				r = select_file_id(card, (const u8 *) "\x3F\x00", 2, 0, NULL);
 				if (r)
 					sc_unlock(card);
@@ -615,7 +532,6 @@ static int flex_select_file(sc_card_t *card, const sc_path_t *path,
 	r = select_file_id(card, pathptr, pathlen, p1, file_out);
 	if (locked)
 		sc_unlock(card);
-	cache_path(card, path, r);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
@@ -921,15 +837,7 @@ static int flex_create_file(sc_card_t *card, sc_file_t *file)
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "Card returned error");
-	if (card->cache.valid) {
-		u8 file_id[2];
-
-		file_id[0] = file->id >> 8;
-		file_id[1] = file->id & 0xFF;
-		if (card->cache.current_path.len != 0)
-			sc_append_path_id(&card->cache.current_path, file_id, 2);
-	}
-	return 0;
+	return SC_SUCCESS;
 }
 
 static int flex_set_security_env(sc_card_t *card,

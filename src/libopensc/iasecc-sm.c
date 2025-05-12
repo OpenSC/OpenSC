@@ -38,6 +38,7 @@
 static int
 sm_save_sc_context (struct sc_card *card, struct sm_info *sm_info)
 {
+	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	struct sc_context *ctx;
 	struct sc_card_cache *cache;
 
@@ -45,7 +46,7 @@ sm_save_sc_context (struct sc_card *card, struct sm_info *sm_info)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	ctx = card->ctx;
-	cache = &card->cache;
+	cache = &prv->cache;
 
 	sc_log(ctx, "SM save context: cache(valid:%i,current_df:%p)", cache->valid, cache->current_df);
 	if (cache->valid && cache->current_df)   {

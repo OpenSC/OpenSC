@@ -337,7 +337,6 @@ sc_pkcs15init_finalize_profile
 sc_card_find_rsa_alg
 sc_card_find_ec_alg
 sc_check_apdu
-sc_print_cache
 sc_find_app
 sc_remote_data_init
 sc_crc32
