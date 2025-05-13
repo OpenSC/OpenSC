@@ -164,12 +164,7 @@ static int edo_select_ef(struct sc_card* card, const u8 path[2], struct edo_buff
 
 static int edo_select_name(struct sc_card* card, const u8* name, size_t namelen, struct edo_buff* buff) {
 	LOG_FUNC_CALLED(card->ctx);
-	struct sc_apdu apdu;
-	sc_format_apdu_ex(&apdu, 00, 0xA4, 0x04, 0x00, name, namelen, buff->val, sizeof buff->val);
-	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
-	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SW check failed");
-	buff->len = apdu.resplen;
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(card->ctx, iso7816_select_aid(card, name, namelen, buff->val, &buff->len));
 }
 
 

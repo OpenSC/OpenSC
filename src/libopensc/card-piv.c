@@ -2833,31 +2833,6 @@ err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-
-static int piv_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response, size_t *responselen)
-{
-	sc_apdu_t apdu;
-	int r;
-
-	LOG_FUNC_CALLED(card->ctx);
-
-	sc_format_apdu(card, &apdu,
-		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
-	apdu.lc = aidlen;
-	apdu.data = aid;
-	apdu.datalen = aidlen;
-	apdu.resp = response;
-	apdu.resplen = responselen ? *responselen : 0;
-	apdu.le = response == NULL ? 0 : 256; /* could be 21  for fci */
-
-	r = sc_transmit_apdu(card, &apdu);
-	if (responselen)
-		*responselen = apdu.resplen;
-	LOG_TEST_RET(card->ctx, r, "PIV select failed");
-
-	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
-}
-
 /* find the PIV AID on the card. If card->type already filled in,
  * then look for specific AID only
  */
@@ -2888,7 +2863,7 @@ static int piv_find_aid(sc_card_t * card)
 	 * that we know about.
 	 */
 
-	r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, rbuf, &resplen);
+	r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, rbuf, &resplen);
 	if (r > 0 && priv->aid_der.value && resplen == priv->aid_der.len  && !memcmp(priv->aid_der.value, rbuf, resplen)) {
 		LOG_FUNC_RETURN(card->ctx,SC_SUCCESS);
 		/* no need to parse again, same as last time */
@@ -6265,8 +6240,8 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 
 	if (r < 0) {
 		if (was_reset > 0 || !(priv->card_issues & CI_PIV_AID_LOSE_STATE)) {
-			r = piv_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
-			sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "piv_select_aid card->type:%d r:%d\n", card->type, r);
+			r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+			sc_debug(card->ctx, SC_LOG_DEBUG_MATCH, "iso7816_select_aid card->type:%d r:%d\n", card->type, r);
 		} else {
 			r = 0; /* can't do anything with this card, hope there was no interference */
 		}
