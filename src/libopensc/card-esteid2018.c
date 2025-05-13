@@ -39,9 +39,9 @@
 #define PUK_REF		       0x02
 
 static const struct sc_atr_table esteid_atrs[] = {
-		{"3b:db:96:00:80:b1:fe:45:1f:83:00:12:23:3f:53:65:49:44:0f:90:00:f1",    NULL, "EstEID 2018", SC_CARD_TYPE_ESTEID_2018, 0, NULL},
-		{"3b:dc:96:00:80:b1:fe:45:1f:83:00:12:23:3f:54:65:49:44:32:0f:90:00:c3", NULL, "EstEID 2018", SC_CARD_TYPE_ESTEID_2018, 0, NULL},
-		{NULL,								   NULL, NULL,	   0,			      0, NULL}
+		{"3b:db:96:00:80:b1:fe:45:1f:83:00:12:23:3f:53:65:49:44:0f:90:00:f1",    NULL, "EstEID 2018",	   SC_CARD_TYPE_ESTEID_2018, 0, NULL},
+		{"3b:dc:96:00:80:b1:fe:45:1f:83:00:12:23:3f:54:65:49:44:32:0f:90:00:c3", NULL, "EstEID 2018 v2", SC_CARD_TYPE_ESTEID_2018, 0, NULL},
+		{NULL,								   NULL, NULL,		   0,			      0, NULL}
 };
 
 static const struct sc_aid IASECC_AID = {
