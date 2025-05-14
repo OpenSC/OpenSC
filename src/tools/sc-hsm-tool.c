@@ -1453,7 +1453,7 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 	key_len = 0;
 	r = wrap_with_tag(0x04, wrapped_key.wrapped_key, wrapped_key.wrapped_key_length,
 						&key, &key_len);
-	LOG_TEST_RET(ctx, r, "Out of memory");
+	LOG_TEST_GOTO_ERR(ctx, r, "Out of memory");
 
 	memcpy(ptr, key, key_len);
 	ptr += key_len;
@@ -1476,7 +1476,7 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 
 	// Encode key, key description and certificate object in sequence
 	r = wrap_with_tag(0x30, keyblob, ptr - keyblob, &key, &key_len);
-	LOG_TEST_RET(ctx, r, "Out of memory");
+	LOG_TEST_GOTO_ERR(ctx, r, "Out of memory");
 
 	out = fopen(outf, "wb");
 
