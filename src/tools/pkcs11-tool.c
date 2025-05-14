@@ -413,8 +413,8 @@ static const char *option_help[] = {
 #ifndef _WIN32
 		"Test forking and calling C_Initialize() in the child",
 #endif
-		"Call C_initialize() with CKF_OS_LOCKING_OK.",
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
+		"Call C_initialize() with CKF_OS_LOCKING_OK.",
 		"Test threads. Multiple times to start additional threads, arg is string or 2 byte commands",
 #endif
 		"Generate given amount of random data",
