@@ -1763,6 +1763,24 @@ int
 iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 		struct sc_pin_cmd_data *data, u8 *buf, size_t buf_len);
 
+/*
+ * @brief Send a SELECT AID APDU to the smart card.
+ *
+ * This function constructs and transmits a SELECT command using the provided
+ * AID (Application Identifier) to select an application on the card.
+ *
+ * @param[in]     card      Pointer to the smart card context.
+ * @param[in]     req       Pointer to the AID to be selected.
+ * @param[in]     reqlen    Length of the AID.
+ * @param[out]    resp      Optional. Buffer to receive the response from the card.
+ *                          May be NULL if the response is not needed.
+ * @param[in,out] resplen   Optional. On input, the maximum length of the response buffer.
+ *                          On output, the actual length of the response. May be NULL
+ *                          if resp is NULL or response length is not needed.
+ */
+int iso7816_select_aid(struct sc_card *card, const u8 *req,
+		size_t reqlen, u8 *resp, size_t *resplen);
+
 /**
  * Free a buffer returned by OpenSC.
  * Use this instead your C libraries free() to free memory allocated by OpenSC.

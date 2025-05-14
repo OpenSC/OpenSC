@@ -1393,7 +1393,32 @@ static int iso7816_get_data(struct sc_card *card, unsigned int tag,  u8 *buf, si
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+int
+iso7816_select_aid(struct sc_card *card, const u8 *req,
+		size_t reqlen, u8 *resp, size_t *resplen)
+{
+	struct sc_context *ctx = card->ctx;
+	struct sc_apdu apdu;
+	int rv;
 
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+
+	sc_format_apdu(card, &apdu, resp == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, 0xA4, 0x04, resp == NULL ? 0x0C : 0x00);
+	apdu.lc = reqlen;
+	apdu.data = req;
+	apdu.datalen = reqlen;
+	apdu.resp = resp;
+	apdu.resplen = resp == NULL ? 0 : *resplen;
+	apdu.le = resp == NULL ? 0 : 256;
+
+	rv = sc_transmit_apdu(card, &apdu);
+	if (resplen)
+		*resplen = apdu.resplen;
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
+
+	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_FUNC_RETURN(ctx, rv);
+}
 
 static int
 iso7816_init(struct sc_card *card)

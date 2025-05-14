@@ -385,38 +385,6 @@ authentic_get_cplc(struct sc_card *card)
 	return SC_SUCCESS;
 }
 
-
-static int
-authentic_select_aid(struct sc_card *card, unsigned char *aid, size_t aid_len,
-		unsigned char *out, size_t *out_len)
-{
-	struct sc_apdu apdu;
-	unsigned char apdu_resp[SC_MAX_APDU_BUFFER_SIZE];
-	int rv;
-
-	/* Select Card Manager (to deselect previously selected application) */
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x00);
-	apdu.lc = aid_len;
-	apdu.data = aid;
-	apdu.datalen = aid_len;
-	apdu.resplen = sizeof(apdu_resp);
-	apdu.resp = apdu_resp;
-
-	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, rv, "Cannot select AID");
-
-	if (out && out_len)   {
-		if (*out_len < apdu.resplen)
-			LOG_TEST_RET(card->ctx, SC_ERROR_BUFFER_TOO_SMALL, "Cannot select AID");
-		memcpy(out, apdu.resp, apdu.resplen);
-	}
-
-	return SC_SUCCESS;
-}
-
-
 static int
 authentic_match_card(struct sc_card *card)
 {
@@ -456,7 +424,7 @@ authentic_init_oberthur_authentic_3_2(struct sc_card *card)
 	card->sm_ctx.ops.free_sm_apdu = authentic_sm_free_wrapped_apdu;
 #endif
 
-	rv = authentic_select_aid(card, aid_AuthentIC_3_2, sizeof(aid_AuthentIC_3_2), NULL, NULL);
+	rv = iso7816_select_aid(card, aid_AuthentIC_3_2, sizeof(aid_AuthentIC_3_2), NULL, NULL);
 	LOG_TEST_RET(ctx, rv, "AuthentIC application select error");
 
 	rv = authentic_select_mf(card, NULL);
@@ -2085,7 +2053,7 @@ static int authentic_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 
 	if (was_reset > 0
 			&& card->type == SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2) {
-		r = authentic_select_aid(card, aid_AuthentIC_3_2, sizeof(aid_AuthentIC_3_2), NULL, NULL);
+		r = iso7816_select_aid(card, aid_AuthentIC_3_2, sizeof(aid_AuthentIC_3_2), NULL, NULL);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -2321,7 +2289,7 @@ int authentic_logout(sc_card_t *card)
 	int r = SC_ERROR_NOT_SUPPORTED;
 
 	if (card->type == SC_CARD_TYPE_OBERTHUR_AUTHENTIC_3_2) {
-		r = authentic_select_aid(card, aid_AuthentIC_3_2, sizeof(aid_AuthentIC_3_2), NULL, NULL);
+		r = iso7816_select_aid(card, aid_AuthentIC_3_2, sizeof(aid_AuthentIC_3_2), NULL, NULL);
 	}
 
 	return r;
