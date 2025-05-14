@@ -50,13 +50,16 @@ sc_pkcs15emu_esteid2025_init(sc_pkcs15_card_t *p15card)
 
 	/* Read document number to be used as serial */
 	sc_format_path("DFDD5007", &tmppath);
-	LOG_TEST_RET(card->ctx, sc_select_file(card, &tmppath, NULL), "SELECT docnr");
+	r = sc_select_file(card, &tmppath, NULL);
+	if (r < 0) {
+		free(buff);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
+	}
 	r = sc_read_binary(card, 0, buff, buflen, 0);
 	if (r < 0) {
 		free(buff);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_CARD);
 	}
-	LOG_TEST_RET(card->ctx, r, "read document number failed");
 
 	for (j = 0; j < buflen; j++) {
 		if (!isalnum(buff[j])) {
