@@ -576,6 +576,9 @@ struct gostkey_info {
 	struct sc_lv_data param_oid;
 	struct sc_lv_data public;
 	struct sc_lv_data private;
+#ifdef EC_POINT_NO_ASN1_OCTET_STRING
+	size_t header_len;
+#endif
 };
 
 static void		show_cryptoki_info(void);
@@ -4055,7 +4058,7 @@ do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 #define RSA_GET_BN(RSA, LOCALNAME, BNVALUE) \
 	do { \
 		if (BNVALUE) { \
-			RSA->LOCALNAME = malloc(BN_num_bytes(BNVALUE)); \
+			RSA->LOCALNAME = OPENSSL_malloc(BN_num_bytes(BNVALUE)); \
 			if (!RSA->LOCALNAME) \
 				util_fatal("malloc() failure\n"); \
 			RSA->LOCALNAME##_len = BN_bn2bin(BNVALUE, RSA->LOCALNAME); \
@@ -4167,7 +4170,7 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 	if (rv < 0)
 		return -1;
 
-	gost->param_oid.value = malloc(rv);
+	gost->param_oid.value = OPENSSL_malloc(rv);
 	if (!gost->param_oid.value)
 		return -1;
 
@@ -4183,7 +4186,7 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 			return -1;
 #endif
 		gost->private.len = BN_num_bytes(bignum);
-		gost->private.value = malloc(gost->private.len);
+		gost->private.value = OPENSSL_malloc(gost->private.len);
 		if (!gost->private.value) {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 			BN_free(bignum);
@@ -4203,21 +4206,22 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 #else
 		group = EC_GROUP_new_by_curve_name_ex(osslctx, NULL, nid);
 		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pubkey_len);
-		if (!(pubkey = malloc(pubkey_len)) ||
-			EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len, NULL) != 1 ||
-			!(point = EC_POINT_new(group)) ||
-			EC_POINT_oct2point(group, point, pubkey, pubkey_len, NULL) != 1) {
+		if (!(pubkey = OPENSSL_malloc(pubkey_len)) ||
+				EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len, NULL) != 1 ||
+				!(point = EC_POINT_new(group)) ||
+				EC_POINT_oct2point(group, point, pubkey, pubkey_len, NULL) != 1) {
 			EC_GROUP_free(group);
 			EC_POINT_free(point);
 			return -1;
 		}
+		OPENSSL_free(pubkey);
 #endif
 		rv = -1;
 		if (X && Y && point && group)
 			rv = EC_POINT_get_affine_coordinates(group, point, X, Y, NULL);
 		if (rv == 1) {
 			gost->public.len = BN_num_bytes(X) + BN_num_bytes(Y);
-			gost->public.value = malloc(gost->public.len);
+			gost->public.value = OPENSSL_malloc(gost->public.len);
 			if (!gost->public.value)
 				rv = -1;
 			else
@@ -4264,7 +4268,7 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 		}
 #endif
 		gost->private.len = BN_num_bytes(bignum);
-		gost->private.value = malloc(gost->private.len);
+		gost->private.value = OPENSSL_malloc(gost->private.len);
 		if (!gost->private.value) {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 			BN_free(bignum);
@@ -4289,7 +4293,7 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 #else
 		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, sizeof(buf), &point_len);
 #endif
-		gost->public.value = malloc(MAX_HEADER_LEN+point_len);
+		gost->public.value = OPENSSL_malloc(MAX_HEADER_LEN + point_len);
 		if (!gost->public.value)
 			return -1;
 		point = gost->public.value;
@@ -4300,6 +4304,8 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 #ifdef EC_POINT_NO_ASN1_OCTET_STRING // workaround for non-compliant cards not expecting DER encoding
 		gost->public.len   -= header_len;
 		gost->public.value += header_len;
+		// store header_len to restore public.value before free it
+		gost->header_len = header_len;
 #endif
 	}
 
@@ -4459,11 +4465,29 @@ parse_ed_mont_pkey(EVP_PKEY *pkey, CK_KEY_TYPE type, int pk_type, struct ec_curv
 	return 0;
 }
 #endif
-static void gost_info_free(struct gostkey_info gost)
+static void
+gost_info_free(struct gostkey_info gost)
 {
+#ifdef EC_POINT_NO_ASN1_OCTET_STRING // restore public.value before free it
+	if (gost.public.value)
+		gost.public.value -= gost.header_len;
+#endif
 	OPENSSL_free(gost.param_oid.value);
 	OPENSSL_free(gost.public.value);
 	OPENSSL_free(gost.private.value);
+}
+
+static void
+rsa_info_free(struct rsakey_info rsa)
+{
+	OPENSSL_free(rsa.modulus);
+	OPENSSL_free(rsa.public_exponent);
+	OPENSSL_free(rsa.private_exponent);
+	OPENSSL_free(rsa.prime_1);
+	OPENSSL_free(rsa.prime_2);
+	OPENSSL_free(rsa.exponent_1);
+	OPENSSL_free(rsa.exponent_2);
+	OPENSSL_free(rsa.coefficient);
 }
 #endif
 
@@ -5043,6 +5067,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 
 #ifdef ENABLE_OPENSSL
 	gost_info_free(gost);
+	rsa_info_free(rsa);
 	EVP_PKEY_free(evp_key);
 #endif /* ENABLE_OPENSSL */
 
@@ -6041,6 +6066,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		}
 		printf("\n");
 	}
+	free(mechs);
 	if ((unique_id = getUNIQUE_ID(sess, obj, NULL)) != NULL) {
 		printf("  Unique ID:  %s\n", unique_id);
 		free(unique_id);
