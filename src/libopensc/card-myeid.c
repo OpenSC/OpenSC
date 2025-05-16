@@ -137,7 +137,56 @@ static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen);
 static int myeid_get_card_caps(struct sc_card *card, myeid_card_caps_t* card_caps);
 
 #ifdef PIV_SM_NIST
-/* TODO  Proof of concept  */
+static int
+myeid_get_sm_cert_signer(struct sc_card *card, sc_path_t *path_cert_signer)
+{
+	sc_apdu_t apdu;
+	int r = 0;
+	u8 rbuf[256];
+
+	LOG_FUNC_CALLED(card->ctx);
+	
+	memset(&rbuf, 0, sizeof(rbuf));
+
+	r = sc_lock(card);
+	if (r != SC_SUCCESS)
+		LOG_FUNC_RETURN(card->ctx, r);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x55);
+	apdu.le =  sizeof(rbuf);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+
+
+	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0) {
+		sc_log(card->ctx, "Transmit failed");
+		goto err;
+	}
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	if (r < 0) {
+		sc_log(card->ctx,  "Card returned error ");
+		goto err;
+	}
+
+	/* parse to get cert signed path which is in 3F005015 */
+	/* SM Signer caet id first 80 tag len 2 with path */
+	/* TODO assume 0x27 for now look for multiple A0 tags */
+	if (apdu.resplen < 4 || apdu.resp[0] != 0x80 || apdu.resp[1] != 0x02){
+		sc_log(card->ctx,  "Invalid response");
+		r = SC_ERROR_INVALID_ASN1_OBJECT;
+		goto err;
+	}
+	path_cert_signer->value[4] = apdu.resp[2];
+	path_cert_signer->value[5] = apdu.resp[3];
+	r = 0;
+
+err:
+	sc_unlock(card);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
 static int
 myeid_setup_sm_nist(struct sc_card *card)
 {
@@ -145,7 +194,7 @@ myeid_setup_sm_nist(struct sc_card *card)
 	myeid_private_data_t *priv = (myeid_private_data_t *)card->drv_data;
 	struct sc_file *file = NULL;
 	sc_path_t path_cert_signer = {
-			{0x3F, 0x00, 0x50, 0x15, 0x5C, 0x00},
+			{0x3F, 0x00, 0x50, 0x15, 0x00, 0x00},
 			6, 0, 0, SC_PATH_TYPE_PATH, {{0}, 0}
 	};
 	//	sc_path_t path_cvc_27  = {"\x3F\x00\x50\x15\x5C\x2C", 6, 0, 0, SC_PATH_TYPE_PATH, {{0}}};
@@ -154,17 +203,11 @@ myeid_setup_sm_nist(struct sc_card *card)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/*
-	 * Assume:
-	 * cert_signer can be read from 3F00 5015 5C00
-	 * There is no sm_in_cvc at this point
-	 * CVC for '27' is at 3F00 5015 5C27
-	 * CVC for '2E' is at 3F00 5015 5C2E
-	 * and can be read using select file and read_binary
-	 */
+	r = myeid_get_sm_cert_signer(card, &path_cert_signer);
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "cert_signer path not found");
 
 	r = sc_select_file(card, &path_cert_signer, &file);
-	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "cert_signer not found");
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "cert_signer file not found");
 
 	priv->sm_params.signer_cert_der = calloc(1, file->size);
 	if (priv->sm_params.signer_cert_der == NULL)
