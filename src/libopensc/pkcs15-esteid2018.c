@@ -201,7 +201,8 @@ err:
 }
 
 int sc_pkcs15emu_esteid2018_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid) {
-	if (p15card->card->type == SC_CARD_TYPE_ESTEID_2018)
+	if (p15card->card->type == SC_CARD_TYPE_ESTEID_2018 ||
+			p15card->card->type == SC_CARD_TYPE_ESTEID_2018_V2_2025)
 		return sc_pkcs15emu_esteid2018_init(p15card);
 	return SC_ERROR_WRONG_CARD;
 }
