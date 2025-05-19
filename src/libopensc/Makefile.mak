@@ -29,6 +29,7 @@ OBJECTS			= \
 	card-masktech.obj card-gids.obj card-jpki.obj \
 	card-npa.obj card-esteid2018.obj card-esteid2025.obj card-idprime.obj \
 	card-edo.obj card-nqApplet.obj card-skeid.obj card-eoi.obj card-dtrust.obj \
+	card-laser.obj laser.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-starcert.obj pkcs15-cardos.obj pkcs15-tcos.obj \
 	pkcs15-actalis.obj pkcs15-atrust-acos.obj pkcs15-tccardos.obj pkcs15-piv.obj \
@@ -37,6 +38,7 @@ OBJECTS			= \
 	pkcs15-dnie.obj pkcs15-gids.obj pkcs15-iasecc.obj pkcs15-jpki.obj \
 	pkcs15-esteid2018.obj pkcs15-esteid2025.obj pkcs15-idprime.obj pkcs15-nqApplet.obj \
 	pkcs15-starcos-esign.obj pkcs15-skeid.obj pkcs15-eoi.obj pkcs15-dtrust.obj \
+	pkcs15-laser.obj \
 	compression.obj sm.obj aux-data.obj \
 	$(TOPDIR)\win32\versioninfo.res
 LIBS = $(TOPDIR)\src\scconf\scconf.lib \

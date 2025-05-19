@@ -165,6 +165,9 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 	{ "eOI",	(void *(*)(void)) sc_get_eoi_driver },
 #endif
+#ifdef ENABLE_OPENSSL
+	{ "sc-laser",	(void *(*)(void)) sc_get_laser_driver },
+#endif
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },

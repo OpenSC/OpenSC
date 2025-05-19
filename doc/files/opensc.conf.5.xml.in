@@ -929,6 +929,40 @@ app <replaceable>application</replaceable> {
 			</variablelist>
 		</refsect2>
 
+		<refsect2 id="laser">
+			<title>Configuration Options for JaCarta PKI token/card</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>
+							secure_verify = <replaceable>value</replaceable>;
+						</option>
+					</term>
+					<listitem>
+						<para>
+							Verify PIN in secure way:
+							<itemizedlist>
+								<listitem>
+									<para>
+										<literal>yes</literal>:
+										PIN verified in secure way. PIN SHA1 is used as a key
+										for card challenge encrypt. The result is sent to the applet.
+										Command can be wrapped in SM envelope if SM is in place.
+									</para>
+								</listitem>
+								<listitem>
+									<para>
+										<literal>no</literal>:
+										PIN sent as plain text for verification. 
+									</para>
+								</listitem>
+							</itemizedlist>
+						</para>
+					</listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
 		<refsect2 id="card_atr">
 			<title>Configuration based on ATR</title>
 			<para>
