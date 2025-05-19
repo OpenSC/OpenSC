@@ -39,9 +39,9 @@
 #define PUK_REF		       0x02
 
 static const struct sc_atr_table esteid_atrs[] = {
-		{"3b:db:96:00:80:b1:fe:45:1f:83:00:12:23:3f:53:65:49:44:0f:90:00:f1",    NULL, "EstEID 2018",	   SC_CARD_TYPE_ESTEID_2018, 0, NULL},
-		{"3b:dc:96:00:80:b1:fe:45:1f:83:00:12:23:3f:54:65:49:44:32:0f:90:00:c3", NULL, "EstEID 2018 v2", SC_CARD_TYPE_ESTEID_2018, 0, NULL},
-		{NULL,								   NULL, NULL,		   0,			      0, NULL}
+		{"3b:db:96:00:80:b1:fe:45:1f:83:00:12:23:3f:53:65:49:44:0f:90:00:f1",    NULL, "EstEID 2018",	   SC_CARD_TYPE_ESTEID_2018,	     0, NULL},
+		{"3b:dc:96:00:80:b1:fe:45:1f:83:00:12:23:3f:54:65:49:44:32:0f:90:00:c3", NULL, "EstEID 2018 v2", SC_CARD_TYPE_ESTEID_2018_V2_2025, 0, NULL},
+		{NULL,								   NULL, NULL,		   0,				      0, NULL}
 };
 
 static const struct sc_aid IASECC_AID = {
@@ -265,6 +265,11 @@ static int esteid_init(sc_card_t *card) {
 	if (!priv)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	card->drv_data = priv;
+	card->max_recv_size = 233; // XXX: empirical, not documented
+	// Workaround for the 2018 v2 card, with reader Alcor Micro AU9540
+	if (card->type == SC_CARD_TYPE_ESTEID_2018_V2_2025) {
+		card->max_recv_size = 0xC0;
+	}
 
 	flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
 	ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
