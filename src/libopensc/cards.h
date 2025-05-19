@@ -231,6 +231,7 @@ enum {
 
 	/* EstEID cards */
 	SC_CARD_TYPE_ESTEID_2018 = 35000,
+	SC_CARD_TYPE_ESTEID_2018_V2,
 	SC_CARD_TYPE_ESTEID_2025,
 
 	/* Rutoken cards */
