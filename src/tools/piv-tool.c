@@ -423,6 +423,7 @@ static int gen_key(const char * key_info)
 			goto out;
 		}
 
+		OSSL_PARAM_BLD_free(bld);
 		BN_free(newkey_n);
 		BN_free(newkey_e);
 
@@ -448,17 +449,20 @@ static int gen_key(const char * key_info)
 	} else if (nid == NID_ED25519 || nid == NID_X25519) {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		fprintf(stderr, "This build of OpenSSL does not support ED25519 or X25519 keys\n");
-		return -1;
+		r = 1;
+		goto out;
 #else
 		if (!keydata.ecpoint) {
 			fprintf(stderr, "gen_key failed\n");
-			return 1;
+			r = 1;
+			goto out;
 		}
 		evpkey = EVP_PKEY_new_raw_public_key(nid, NULL, keydata.ecpoint, keydata.ecpoint_len);
 		if (!evpkey) {
 			sc_log_openssl(ctx);
 			fprintf(stderr, "gen key failed ti copy 25519 pubkey\n");
-			return 1;
+			r = 1;
+			goto out;
 		}
 
 		if (verbose)
@@ -524,12 +528,21 @@ static int gen_key(const char * key_info)
 		}
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		eckey = EC_KEY_new();
+		if (eckey == NULL) {
+			sc_log_openssl(ctx);
+			fprintf(stderr, "EC_KEY_new failed\n");
+			EC_GROUP_free(ecgroup);
+			EC_POINT_free(ecpoint);
+			r = 1;
+			goto out;
+		}
 		r = EC_KEY_set_group(eckey, ecgroup);
 		EC_GROUP_free(ecgroup);
 		if (r == 0) {
 			sc_log_openssl(ctx);
 			fprintf(stderr, "EC_KEY_set_group failed\n");
 			EC_POINT_free(ecpoint);
+			EC_KEY_free(eckey);
 			r = 1;
 			goto out;
 		}
@@ -538,6 +551,7 @@ static int gen_key(const char * key_info)
 		if (r == 0) {
 			sc_log_openssl(ctx);
 			fprintf(stderr, "EC_KEY_set_public_key failed\n");
+			EC_KEY_free(eckey);
 			r = 1;
 			goto out;
 		}
@@ -546,6 +560,7 @@ static int gen_key(const char * key_info)
 			EC_KEY_print_fp(stdout, eckey, 0);
 
 		if (EVP_PKEY_assign_EC_KEY(evpkey, eckey) != 1) {
+			EC_KEY_free(eckey);
 			sc_log_openssl(ctx);
 			r = 1;
 			goto out;
