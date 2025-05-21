@@ -14,7 +14,7 @@ noinst_HEADERS = cards.h ctbcs.h internal.h muscle.h muscle-filesystem.h \
 	pace.h cwa14890.h cwa-dnie.h card-gids.h aux-data.h \
 	jpki.h sc-ossl-compat.h card-npa.h card-openpgp.h \
 	card-eoi.h card-dtrust.h ccid-types.h reader-tr03119.h \
-	card-cac-common.h card-cardos-common.h laser.h
+	card-cac-common.h card-cardos-common.h jacartapki.h
 
 AM_CPPFLAGS = -D'OPENSC_CONF_PATH="$(sysconfdir)/opensc.conf"' \
      -D'DEFAULT_SM_MODULE_PATH="$(DEFAULT_SM_MODULE_PATH)"' \
@@ -51,7 +51,7 @@ libopensc_la_SOURCES_BASE = \
 	card-isoApplet.c card-masktech.c card-gids.c card-jpki.c \
 	card-npa.c card-esteid2018.c card-esteid2025.c card-idprime.c \
 	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c card-dtrust.c \
-	card-laser.c laser.c \
+	card-jacartapki.c jacartapki.c \
 	\
 	pkcs15-openpgp.c pkcs15-starcert.c pkcs15-cardos.c pkcs15-tcos.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
@@ -60,7 +60,7 @@ libopensc_la_SOURCES_BASE = \
 	pkcs15-coolkey.c pkcs15-din-66291.c pkcs15-idprime.c pkcs15-nqApplet.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c pkcs15-esteid2018.c \
 	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-eoi.c pkcs15-dtrust.c compression.c sm.c \
-	pkcs15-laser.c \
+	pkcs15-jacartapki.c \
 	aux-data.c
 
 if ENABLE_CRYPTOTOKENKIT
@@ -134,7 +134,7 @@ TIDY_FILES = \
 	card-isoApplet.c card-masktech.c card-jpki.c \
 	card-npa.c card-esteid2018.c card-idprime.c \
 	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c card-dtrust.c \
-	card-laser.c laser.c \
+	card-jacartapki.c jacartapki.c \
 	\
 	pkcs15-openpgp.c pkcs15-cardos.c pkcs15-tcos.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c \
@@ -143,7 +143,7 @@ TIDY_FILES = \
 	pkcs15-coolkey.c pkcs15-din-66291.c pkcs15-idprime.c pkcs15-nqApplet.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c pkcs15-esteid2018.c \
 	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-dtrust.c compression.c sm.c \
-	pkcs15-laser.c \
+	pkcs15-jacartapki.c \
 	aux-data.c \
 	#$(SOURCES)
 

@@ -246,7 +246,7 @@ app default {
 	}
 
 	# JaCarta PKI token and smart card
-	card_driver laser {
+	card_driver jacartapki {
 		# 
 		name = "JaCarta PKI";
 
@@ -830,7 +830,7 @@ app default {
 	# JaCarta PKI token and smart card
 	card_atr 3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:01:00:00:50:00:00:08 {
 		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:F0:00:F0:FF:F0:0F";
-		driver = "laser";
+		driver = "jacartapki";
 		name = "JaCarta PKI";
 	}
 

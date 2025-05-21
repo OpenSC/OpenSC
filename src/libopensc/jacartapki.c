@@ -1,5 +1,5 @@
 /*
- * pkcs15-laser.c: Support for JaCarta PKI applet
+ * pkcs15-jacartapki.c: Support for JaCarta PKI applet
  *
  * Copyright (C) 2025  Andrey Khodunov <a.khodunov@aladdin.ru>
  *
@@ -34,24 +34,10 @@
 #include "cardctl.h"
 #include "common/compat_strlcpy.h"
 #include "internal.h"
+#include "log.h"
 #include "pkcs11/pkcs11.h"
 #include "pkcs15.h"
-#include "laser.h"
-
-#define LOG_ERROR_RET(ctx, r, text) \
-	do { \
-		int _ret = (r); \
-		sc_do_log_color(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
-				"%s: %d (%s)\n", (text), (_ret), sc_strerror(_ret)); \
-		return (r); \
-	} while (0)
-#define LOG_ERROR_GOTO(ctx, r, text) \
-	do { \
-		int _ret = (r); \
-		sc_do_log_color(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
-				"%s: %d (%s)\n", (text), (_ret), sc_strerror(_ret)); \
-		goto err; \
-	} while (0)
+#include "jacartapki.h"
 
 #define C_ASN1_CREATE_RSA_KEY_SIZE 2
 static struct sc_asn1_entry c_asn1_create_rsa_key[C_ASN1_CREATE_RSA_KEY_SIZE] = {
@@ -92,7 +78,7 @@ static struct sc_asn1_entry c_asn1_create_rsa_prv_coefficients[C_ASN1_RSA_PRV_CO
 };
 
 static int
-laser_encode_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key,
+jacartapki_encode_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key,
 		unsigned char **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_rsa_key[C_ASN1_CREATE_RSA_KEY_SIZE];
@@ -113,16 +99,16 @@ laser_encode_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key
 }
 
 int
-laser_encode_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key,
+jacartapki_encode_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key,
 		unsigned char **buf, size_t *len)
 {
 	if (key->algorithm == SC_ALGORITHM_RSA)
-		return laser_encode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
+		return jacartapki_encode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 static int
-laser_encode_prvkey_rsa(struct sc_context *ctx, struct sc_pkcs15_prkey_rsa *key,
+jacartapki_encode_prvkey_rsa(struct sc_context *ctx, struct sc_pkcs15_prkey_rsa *key,
 		unsigned char **buf, size_t *buflen)
 {
 	struct sc_asn1_entry asn1_rsa_key[C_ASN1_UPDATE_RSA_KEY_SIZE];
@@ -165,16 +151,16 @@ err:
 }
 
 int
-laser_encode_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *key,
+jacartapki_encode_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *key,
 		unsigned char **buf, size_t *len)
 {
 	if (key->algorithm == SC_ALGORITHM_RSA)
-		return laser_encode_prvkey_rsa(ctx, &key->u.rsa, buf, len);
+		return jacartapki_encode_prvkey_rsa(ctx, &key->u.rsa, buf, len);
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
 static size_t
-_get_attr(unsigned char *data, size_t length, size_t *in_offs, struct laser_cka *attr)
+_get_attr(unsigned char *data, size_t length, size_t *in_offs, struct jacartapki_cka *attr)
 {
 	size_t offs;
 
@@ -202,7 +188,7 @@ _get_attr(unsigned char *data, size_t length, size_t *in_offs, struct laser_cka 
 }
 
 static int
-_cka_get_unsigned(const struct laser_cka *attr, unsigned *out)
+_cka_get_unsigned(const struct jacartapki_cka *attr, unsigned *out)
 {
 	int ii;
 
@@ -218,7 +204,7 @@ _cka_get_unsigned(const struct laser_cka *attr, unsigned *out)
 }
 
 static int
-_cka_set_label(const struct laser_cka *attr, struct sc_pkcs15_object *obj)
+_cka_set_label(const struct jacartapki_cka *attr, struct sc_pkcs15_object *obj)
 {
 	size_t len;
 
@@ -234,7 +220,7 @@ _cka_set_label(const struct laser_cka *attr, struct sc_pkcs15_object *obj)
 }
 
 static int
-_cka_set_application(const struct laser_cka *attr, struct sc_pkcs15_data_info *info)
+_cka_set_application(const struct jacartapki_cka *attr, struct sc_pkcs15_data_info *info)
 {
 	size_t len;
 
@@ -250,7 +236,7 @@ _cka_set_application(const struct laser_cka *attr, struct sc_pkcs15_data_info *i
 }
 
 static int
-_cka_get_object_id(const struct laser_cka *attr, struct sc_pkcs15_data_info *info)
+_cka_get_object_id(const struct jacartapki_cka *attr, struct sc_pkcs15_data_info *info)
 {
 	int ii;
 
@@ -265,7 +251,7 @@ _cka_get_object_id(const struct laser_cka *attr, struct sc_pkcs15_data_info *inf
 }
 
 static int
-_cka_get_blob(const struct laser_cka *attr, struct sc_pkcs15_der *out)
+_cka_get_blob(const struct jacartapki_cka *attr, struct sc_pkcs15_der *out)
 {
 	struct sc_pkcs15_der der;
 
@@ -283,7 +269,7 @@ _cka_get_blob(const struct laser_cka *attr, struct sc_pkcs15_der *out)
 }
 
 static int
-_cka_set_id(const struct laser_cka *attr, struct sc_pkcs15_id *out)
+_cka_set_id(const struct jacartapki_cka *attr, struct sc_pkcs15_id *out)
 {
 	if (!attr || !out)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -298,7 +284,7 @@ _cka_set_id(const struct laser_cka *attr, struct sc_pkcs15_id *out)
 }
 
 static int
-laser_add_attribute(unsigned char **buf, size_t *buf_sz, unsigned char flags,
+jacartapki_add_attribute(unsigned char **buf, size_t *buf_sz, unsigned char flags,
 		CK_ULONG cka, size_t cka_len, const void *data)
 {
 	unsigned char *ptr = NULL;
@@ -333,7 +319,7 @@ laser_add_attribute(unsigned char **buf, size_t *buf_sz, unsigned char flags,
 }
 
 int
-laser_attrs_cert_decode(struct sc_context *ctx,
+jacartapki_attrs_cert_decode(struct sc_context *ctx,
 		struct sc_pkcs15_object *object, struct sc_pkcs15_cert_info *info,
 		unsigned char *data, size_t data_len)
 {
@@ -343,7 +329,7 @@ laser_attrs_cert_decode(struct sc_context *ctx,
 	LOG_FUNC_CALLED(ctx);
 
 	for (next = offs = 0; offs < data_len; offs = next) {
-		struct laser_cka attr;
+		struct jacartapki_cka attr;
 		unsigned uval;
 
 		rv = _get_attr(data, data_len, &next, &attr);
@@ -420,7 +406,7 @@ laser_attrs_cert_decode(struct sc_context *ctx,
 }
 
 int
-laser_attrs_pubkey_decode(struct sc_context *ctx,
+jacartapki_attrs_pubkey_decode(struct sc_context *ctx,
 		struct sc_pkcs15_object *object, struct sc_pkcs15_pubkey_info *info,
 		unsigned char *data, size_t data_len)
 {
@@ -434,7 +420,7 @@ laser_attrs_pubkey_decode(struct sc_context *ctx,
 	memset(&pub_key, 0, sizeof(pub_key));
 
 	for (next = offs = 0; offs < data_len; offs = next) {
-		struct laser_cka attr;
+		struct jacartapki_cka attr;
 		unsigned uval;
 
 		rv = _get_attr(data, data_len, &next, &attr);
@@ -554,7 +540,7 @@ laser_attrs_pubkey_decode(struct sc_context *ctx,
 }
 
 int
-laser_attrs_prvkey_decode(struct sc_context *ctx,
+jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 		struct sc_pkcs15_object *object, struct sc_pkcs15_prkey_info *info,
 		unsigned char *data, size_t data_len)
 {
@@ -568,7 +554,7 @@ laser_attrs_prvkey_decode(struct sc_context *ctx,
 	memset(&key_rsa, 0, sizeof(key_rsa));
 
 	for (next = offs = 0; offs < data_len; offs = next) {
-		struct laser_cka attr;
+		struct jacartapki_cka attr;
 		unsigned uval;
 
 		rv = _get_attr(data, data_len, &next, &attr);
@@ -686,7 +672,7 @@ laser_attrs_prvkey_decode(struct sc_context *ctx,
 }
 
 int
-laser_attrs_data_object_decode(struct sc_context *ctx,
+jacartapki_attrs_data_object_decode(struct sc_context *ctx,
 		struct sc_pkcs15_object *object, struct sc_pkcs15_data_info *info,
 		unsigned char *data, size_t data_len, unsigned char *hash_exists)
 {
@@ -699,7 +685,7 @@ laser_attrs_data_object_decode(struct sc_context *ctx,
 
 	sc_log(ctx, "DATA object path %s", sc_print_path(&info->path));
 	for (next = offs = 0; offs < data_len; offs = next) {
-		struct laser_cka attr;
+		struct jacartapki_cka attr;
 		unsigned uval;
 		int rv;
 
@@ -767,8 +753,8 @@ laser_attrs_data_object_decode(struct sc_context *ctx,
 }
 
 int
-laser_md_cmap_record_decode(struct sc_context *ctx, const struct sc_pkcs15_data *data, size_t *offs,
-		struct laser_cmap_record **out)
+jacartapki_md_cmap_record_decode(struct sc_context *ctx, const struct sc_pkcs15_data *data, size_t *offs,
+		struct jacartapki_cmap_record **out)
 {
 	LOG_FUNC_CALLED(ctx);
 
@@ -776,20 +762,20 @@ laser_md_cmap_record_decode(struct sc_context *ctx, const struct sc_pkcs15_data 
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	*out = NULL;
-	if (data->data_len - *offs < sizeof(struct laser_cmap_record))
+	if (data->data_len - *offs < sizeof(struct jacartapki_cmap_record))
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-	*out = calloc(1, sizeof(struct laser_cmap_record));
+	*out = calloc(1, sizeof(struct jacartapki_cmap_record));
 	if (*out == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	memcpy(*out, data->data + *offs, sizeof(struct laser_cmap_record));
+	memcpy(*out, data->data + *offs, sizeof(struct jacartapki_cmap_record));
 
-	*offs += sizeof(struct laser_cmap_record);
+	*offs += sizeof(struct jacartapki_cmap_record);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 int
-laser_md_cmap_record_guid(struct sc_context *ctx, struct laser_cmap_record *rec,
+jacartapki_md_cmap_record_guid(struct sc_context *ctx, struct jacartapki_cmap_record *rec,
 		unsigned char **out, size_t *out_len)
 {
 	int ii;
@@ -816,7 +802,7 @@ laser_md_cmap_record_guid(struct sc_context *ctx, struct laser_cmap_record *rec,
 }
 
 static int
-laser_attach_cache_stamp(struct sc_pkcs15_card *p15card, int zero_stamp,
+jacartapki_attach_cache_stamp(struct sc_pkcs15_card *p15card, int zero_stamp,
 		unsigned char **buf, size_t *buf_sz)
 {
 	unsigned char *ptr = NULL;
@@ -831,7 +817,7 @@ laser_attach_cache_stamp(struct sc_pkcs15_card *p15card, int zero_stamp,
 	if (zero_stamp) {
 		memset(ptr + *buf_sz, 0, 4);
 	} else if (p15card->md_data) {
-		const struct laser_cardcf *cardcf = &p15card->md_data->cardcf;
+		const struct jacartapki_cardcf *cardcf = &p15card->md_data->cardcf;
 
 		*(ptr + *buf_sz + 0) = cardcf->cont_freshness & 0xFF;
 		*(ptr + *buf_sz + 1) = (cardcf->cont_freshness >> 8) & 0xFF;
@@ -852,7 +838,7 @@ laser_attach_cache_stamp(struct sc_pkcs15_card *p15card, int zero_stamp,
 }
 
 int
-laser_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
+jacartapki_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
 		unsigned file_id,
 		unsigned char **out, size_t *out_len)
 {
@@ -874,7 +860,7 @@ laser_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate prv.key repr.");
 
 	data_len = 0;
-	*(data + data_len++) = LASER_ATTRIBUTE_VALID;
+	*(data + data_len++) = JACARTAPKI_ATTRIBUTE_VALID;
 	*(data + data_len++) = (file_id >> 8) & 0xFF;
 	*(data + data_len++) = (file_id >> 8) & 0xFF;
 	*(data + data_len++) = file_id & 0xFF;
@@ -882,102 +868,102 @@ laser_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	*(data + data_len++) = 0xFF;
 	*(data + data_len++) = 0xFF;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_CLASS private key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_TOKEN, sizeof(CK_BBOOL), &_true);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_TOKEN, sizeof(CK_BBOOL), &_true);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_TOKEN private key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_true);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_true);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_PRIVATE private key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_LABEL, strlen(object->label), object->label);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_LABEL, strlen(object->label), object->label);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_LABEL private key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_KEY_TYPE, sizeof(uint32_t), &type_rsa);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_KEY_TYPE, sizeof(uint32_t), &type_rsa);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_KEY_TYPE private key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_SUBJECT, info->subject.len, info->subject.value);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_SUBJECT, info->subject.len, info->subject.value);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_SUBJECT private key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_ID, info->id.len, info->id.value);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_ID, info->id.len, info->id.value);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ID private key attribute");
 	attrs_num++;
 
 	flag = info->access_flags & SC_PKCS15_PRKEY_ACCESS_SENSITIVE ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE_TO_TRUE, CKA_SENSITIVE, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE_TO_TRUE, CKA_SENSITIVE, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_SENSITIVE private key attribute");
 	attrs_num++;
 
 	flag = info->usage & SC_PKCS15_PRKEY_USAGE_DECRYPT ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_DECRYPT, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_DECRYPT, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_DECRYPT private key attribute");
 	attrs_num++;
 
 	flag = info->usage & SC_PKCS15_PRKEY_USAGE_UNWRAP ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_UNWRAP, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_UNWRAP, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_UNWRAP private key attribute");
 	attrs_num++;
 
 	flag = info->usage & SC_PKCS15_PRKEY_USAGE_SIGN ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_SIGN, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_SIGN, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_SIGN private key attribute");
 	attrs_num++;
 
 	flag = info->usage & SC_PKCS15_PRKEY_USAGE_SIGNRECOVER ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_SIGN_RECOVER, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_SIGN_RECOVER, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_SIGN_RECOVER private key attribute");
 	attrs_num++;
 
 	flag = info->usage & SC_PKCS15_PRKEY_USAGE_DERIVE ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_DERIVE, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_DERIVE, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_DERIVE private key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_START_DATE, 0, NULL);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_START_DATE, 0, NULL);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_START_DATE private key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_END_DATE, 0, NULL);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_END_DATE, 0, NULL);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_START_END private key attribute");
 	attrs_num++;
 
 	flag = info->access_flags & SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE_TO_FALSE, CKA_EXTRACTABLE, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE_TO_FALSE, CKA_EXTRACTABLE, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_EXTRACTABLE private key attribute");
 	attrs_num++;
 
 	flag = info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_LOCAL, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_LOCAL, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_LOCAL private key attribute");
 	attrs_num++;
 
 	flag = info->access_flags & SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_NEVER_EXTRACTABLE, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_NEVER_EXTRACTABLE, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_NEVER_EXTRACTABLE private key attribute");
 	attrs_num++;
 
 	flag = info->access_flags & SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_ALWAYS_SENSITIVE, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_ALWAYS_SENSITIVE, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALWAYS_SENSITIVE private key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_KEY_GEN_MECHANISM, sizeof(uint32_t), &ffff);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_KEY_GEN_MECHANISM, sizeof(uint32_t), &ffff);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_KEY_GEN_MECHANISM private key attribute");
 	attrs_num++;
 
 	flag = object->flags & SC_PKCS15_CO_FLAG_MODIFIABLE ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_MODIFIABLE, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_MODIFIABLE, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_MODIFIABLE private key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_ALADDIN, sizeof(CK_BBOOL), &_false);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_ALADDIN, sizeof(CK_BBOOL), &_false);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN private key attribute");
 	attrs_num++;
 
@@ -985,7 +971,7 @@ laser_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	*(data + 5) = data_len & 0xFF;
 	*(data + 6) = attrs_num;
 
-	rv = laser_attach_cache_stamp(p15card, 0, &data, &data_len);
+	rv = jacartapki_attach_cache_stamp(p15card, 0, &data, &data_len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
 	attrs_num++;
 
@@ -1001,7 +987,7 @@ err:
 }
 
 int
-laser_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
+jacartapki_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
 		unsigned file_id,
 		unsigned char **out, size_t *out_len)
 {
@@ -1027,7 +1013,7 @@ laser_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate pub.key repr.");
 
 	data_len = 0;
-	*(data + data_len++) = LASER_ATTRIBUTE_VALID;
+	*(data + data_len++) = JACARTAPKI_ATTRIBUTE_VALID;
 	*(data + data_len++) = (file_id >> 8) & 0xFF;
 	*(data + data_len++) = (file_id >> 8) & 0xFF;
 	*(data + data_len++) = file_id & 0xFF;
@@ -1035,94 +1021,94 @@ laser_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	*(data + data_len++) = 0xFF;
 	*(data + data_len++) = 0xFF;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_CLASS public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_TOKEN, sizeof(CK_BBOOL), &_true);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_TOKEN, sizeof(CK_BBOOL), &_true);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_TOKEN public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_false);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_false);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_PRIVATE public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_LABEL, strlen(object->label), object->label);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_LABEL, strlen(object->label), object->label);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_LABEL public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_ONLY_SO_CAN_SET | CKFP_MODIFIABLE_TO_TRUE, CKA_TRUSTED, sizeof(CK_BBOOL), &_false);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_ONLY_SO_CAN_SET | CKFP_MODIFIABLE_TO_TRUE, CKA_TRUSTED, sizeof(CK_BBOOL), &_false);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_TRUSTED public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_KEY_TYPE, sizeof(uint32_t), &type_rsa);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_KEY_TYPE, sizeof(uint32_t), &type_rsa);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_KEY_TYPE public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_SUBJECT, info->subject.len, info->subject.value);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_SUBJECT, info->subject.len, info->subject.value);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_SUBJECT public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_ID, info->id.len, info->id.value);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_ID, info->id.len, info->id.value);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ID public key attribute");
 	attrs_num++;
 
 	flag = info->usage & SC_PKCS15_PRKEY_USAGE_ENCRYPT ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_ENCRYPT, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_ENCRYPT, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ENCRYPT public key attribute");
 	attrs_num++;
 
 	flag = info->usage & SC_PKCS15_PRKEY_USAGE_WRAP ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_WRAP, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_WRAP, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_WRAP public key attribute");
 	attrs_num++;
 
 	flag = info->usage & SC_PKCS15_PRKEY_USAGE_VERIFY ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_VERIFY, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_VERIFY, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_VERIFY public key attribute");
 	attrs_num++;
 
 	flag = info->usage & SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_VERIFY_RECOVER, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_VERIFY_RECOVER, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_VERIFY_RECOVER public key attribute");
 	attrs_num++;
 
 	flag = info->usage & SC_PKCS15_PRKEY_USAGE_DERIVE ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_DERIVE, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_DERIVE, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_DERIVE public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_START_DATE, sizeof(CK_DATE), NULL);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_START_DATE, sizeof(CK_DATE), NULL);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_START_DATE public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_END_DATE, sizeof(CK_DATE), NULL);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_END_DATE, sizeof(CK_DATE), NULL);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_START_END public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_MODULUS, pubkey.u.rsa.modulus.len, pubkey.u.rsa.modulus.data);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_MODULUS, pubkey.u.rsa.modulus.len, pubkey.u.rsa.modulus.data);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_MODULUS public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_MODULUS_BITS, sizeof(uint32_t), &info->modulus_length);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_MODULUS_BITS, sizeof(uint32_t), &info->modulus_length);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_MODULUS_BITS public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_PUBLIC_EXPONENT, pubkey.u.rsa.exponent.len, pubkey.u.rsa.exponent.data);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_PUBLIC_EXPONENT, pubkey.u.rsa.exponent.len, pubkey.u.rsa.exponent.data);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_PUBLIC_EXPONENT public key attribute");
 	attrs_num++;
 
 	flag = info->access_flags & SC_PKCS15_PRKEY_ACCESS_LOCAL ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_LOCAL, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_LOCAL, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_LOCAL public key attribute");
 	attrs_num++;
 
 	flag = object->flags & SC_PKCS15_CO_FLAG_MODIFIABLE ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_MODIFIABLE, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_MODIFIABLE, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_MODIFIABLE public key attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_ALADDIN, sizeof(CK_BBOOL), &_true);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_ALADDIN, sizeof(CK_BBOOL), &_true);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN public key attribute");
 	attrs_num++;
 
@@ -1130,7 +1116,7 @@ laser_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	*(data + 5) = data_len & 0xFF;
 	*(data + 6) = attrs_num;
 
-	rv = laser_attach_cache_stamp(p15card, 0, &data, &data_len);
+	rv = jacartapki_attach_cache_stamp(p15card, 0, &data, &data_len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
 	attrs_num++;
 
@@ -1146,8 +1132,8 @@ err:
 }
 
 int
-laser_encode_update_key(struct sc_context *ctx, struct sc_pkcs15_prkey *prkey,
-		struct sc_cardctl_laser_updatekey *update)
+jacartapki_encode_update_key(struct sc_context *ctx, struct sc_pkcs15_prkey *prkey,
+		struct sc_cardctl_jacartapki_updatekey *update)
 {
 	int rv;
 
@@ -1156,13 +1142,13 @@ laser_encode_update_key(struct sc_context *ctx, struct sc_pkcs15_prkey *prkey,
 
 	LOG_FUNC_CALLED(ctx);
 
-	rv = laser_encode_prvkey(ctx, prkey, &update->data, &update->len);
+	rv = jacartapki_encode_prvkey(ctx, prkey, &update->data, &update->len);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 int
-laser_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
+jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
 		unsigned file_id,
 		unsigned char **out, size_t *out_len)
 {
@@ -1195,7 +1181,7 @@ laser_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object 
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Failed to allocate a small piece");
 
 	data_len = 0;
-	*(data + data_len++) = LASER_ATTRIBUTE_VALID;
+	*(data + data_len++) = JACARTAPKI_ATTRIBUTE_VALID;
 	*(data + data_len++) = (file_id >> 8) & 0xFF;
 	*(data + data_len++) = (file_id >> 8) & 0xFF;
 	*(data + data_len++) = file_id & 0xFF;
@@ -1204,62 +1190,62 @@ laser_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object 
 	*(data + data_len++) = 0xFF;
 
 	memset(sha1, 0, sizeof(sha1));
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_CERT_HASH, SHA_DIGEST_LENGTH, sha1);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_CERT_HASH, SHA_DIGEST_LENGTH, sha1);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN certificate attribute");
 	attrs_num++;
 	sha1_offs = data_len - SHA_DIGEST_LENGTH;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_CLASS certificate attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_TOKEN, sizeof(CK_BBOOL), &_true);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_TOKEN, sizeof(CK_BBOOL), &_true);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_TOKEN certificate attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_false);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_false);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_PRIVATE certificate attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_LABEL, strlen(object->label), object->label);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_LABEL, strlen(object->label), object->label);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_LABEL certificate attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_VALUE, object->content.len, object->content.value);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_VALUE, object->content.len, object->content.value);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_VALUE certificate attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_CERTIFICATE_TYPE, sizeof(uint32_t), &cert_type);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_CERTIFICATE_TYPE, sizeof(uint32_t), &cert_type);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_CERTIFICATE_TYPE certificate attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_ISSUER, cert->issuer_len, cert->issuer);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_ISSUER, cert->issuer_len, cert->issuer);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ISSUER certificate attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_SERIAL_NUMBER, cert->serial_len, cert->serial);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_SERIAL_NUMBER, cert->serial_len, cert->serial);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_SERIAL_NUMBER certificate attribute");
 	attrs_num++;
 
 	flag = info->authority ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE_TO_FALSE, CKA_TRUSTED, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE_TO_FALSE, CKA_TRUSTED, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_TRUSTED certificate attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_SUBJECT, cert->subject_len, cert->subject);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_SUBJECT, cert->subject_len, cert->subject);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_SUBJECT certificate attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_ID, info->id.len, info->id.value);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_ID, info->id.len, info->id.value);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ID certificate attribute");
 	attrs_num++;
 
 	flag = object->flags & SC_PKCS15_CO_FLAG_MODIFIABLE ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_MODIFIABLE, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_MODIFIABLE, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_MODIFIABLE certificate attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_ALADDIN, sizeof(CK_BBOOL), &_true);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_ALADDIN, sizeof(CK_BBOOL), &_true);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN certificate attribute");
 	attrs_num++;
 
@@ -1267,7 +1253,7 @@ laser_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object 
 	*(data + 5) = data_len & 0xFF;
 	*(data + 6) = attrs_num;
 
-	rv = laser_attach_cache_stamp(p15card, 0, &data, &data_len);
+	rv = jacartapki_attach_cache_stamp(p15card, 0, &data, &data_len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
 	attrs_num++;
 
@@ -1287,7 +1273,7 @@ err:
 }
 
 int
-laser_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
+jacartapki_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
 		unsigned file_id, unsigned char **out, size_t *out_len)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -1308,7 +1294,7 @@ laser_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate obj.encode repr.");
 
 	data_len = 0;
-	*(data + data_len++) = LASER_ATTRIBUTE_VALID;
+	*(data + data_len++) = JACARTAPKI_ATTRIBUTE_VALID;
 	*(data + data_len++) = (file_id >> 8) & 0xFF;
 	*(data + data_len++) = (file_id >> 8) & 0xFF;
 	*(data + data_len++) = file_id & 0xFF;
@@ -1317,51 +1303,51 @@ laser_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	*(data + data_len++) = 0xFF;
 
 	memset(sha1, 0, sizeof(sha1));
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_CERT_HASH, SHA_DIGEST_LENGTH, sha1);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_CERT_HASH, SHA_DIGEST_LENGTH, sha1);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN DATA object attribute");
 	attrs_num++;
 	sha1_offs = data_len - SHA_DIGEST_LENGTH;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_CLASS DATA object attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_TOKEN, sizeof(CK_BBOOL), &_true);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_TOKEN, sizeof(CK_BBOOL), &_true);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_TOKEN DATA object attribute");
 	attrs_num++;
 
 	/* TEMP data object private attribute */
 	if ((object->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0)
-		rv = laser_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_true);
+		rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_true);
 	else
-		rv = laser_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_false);
+		rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_PRIVATE, sizeof(CK_BBOOL), &_false);
 
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_PRIVATE DATA object attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_LABEL, strlen(object->label), object->label);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_LABEL, strlen(object->label), object->label);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_LABEL DATA object attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_APPLICATION, strlen(info->app_label), info->app_label);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_APPLICATION, strlen(info->app_label), info->app_label);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_LABEL DATA object attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_VALUE, info->data.len, info->data.value);
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_VALUE, info->data.len, info->data.value);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_VALUE DATA object attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_OBJECT_ID,
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_OBJECT_ID,
 			sizeof(info->app_oid), (unsigned char *)(&info->app_oid.value[0]));
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_OBJECT_ID DATA object attribute");
 	attrs_num++;
 
 	flag = object->flags & SC_PKCS15_CO_FLAG_MODIFIABLE ? &_true : &_false;
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_MODIFIABLE, sizeof(CK_BBOOL), flag);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_MODIFIABLE, sizeof(CK_BBOOL), flag);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_MODIFIABLE DATA object attribute");
 	attrs_num++;
 
-	rv = laser_add_attribute(&data, &data_len, 0x00, CKA_ALADDIN, sizeof(CK_BBOOL), &_false);
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_ALADDIN, sizeof(CK_BBOOL), &_false);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN DATA object attribute");
 	attrs_num++;
 
@@ -1369,7 +1355,7 @@ laser_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	*(data + 5) = data_len & 0xFF;
 	*(data + 6) = attrs_num;
 
-	rv = laser_attach_cache_stamp(p15card, (file_id == CMAP_FID), &data, &data_len);
+	rv = jacartapki_attach_cache_stamp(p15card, (file_id == CMAP_FID), &data, &data_len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
 	attrs_num++;
 
@@ -1388,7 +1374,7 @@ err:
 }
 
 int
-laser_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info *info, int *is_converted)
+jacartapki_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info *info, int *is_converted)
 {
 	unsigned char guid[CMAP_GUID_INFO_SIZE / 2];
 	unsigned char bits[5];
@@ -1460,8 +1446,8 @@ laser_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info *inf
 }
 
 static int
-laser_cmap_record_init(struct sc_context *ctx, struct sc_pkcs15_object *key_obj,
-		struct laser_cmap_record *cmap_rec)
+jacartapki_cmap_record_init(struct sc_context *ctx, struct sc_pkcs15_object *key_obj,
+		struct jacartapki_cmap_record *cmap_rec)
 {
 	struct sc_pkcs15_prkey_info *info = NULL;
 	unsigned ii;
@@ -1481,7 +1467,7 @@ laser_cmap_record_init(struct sc_context *ctx, struct sc_pkcs15_object *key_obj,
 			sc_dump_hex(info->aux_data->data.cmap_record.guid, info->aux_data->data.cmap_record.guid_len), info->aux_data->data.cmap_record.flags);
 	sc_log(ctx, "key ID %s", sc_pkcs15_print_id(&info->id));
 
-	memset(cmap_rec, 0, sizeof(struct laser_cmap_record));
+	memset(cmap_rec, 0, sizeof(struct jacartapki_cmap_record));
 	for (ii = 0; ii < info->aux_data->data.cmap_record.guid_len; ii++)
 		cmap_rec->guid[2 * ii] = *(info->aux_data->data.cmap_record.guid + ii);
 
@@ -1495,7 +1481,7 @@ laser_cmap_record_init(struct sc_context *ctx, struct sc_pkcs15_object *key_obj,
 }
 
 int
-laser_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object_to_ignore,
+jacartapki_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object_to_ignore,
 		unsigned char **out, size_t *out_len)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -1522,7 +1508,7 @@ laser_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *objec
 	for (ii = 0, idx_max = 0; ii < prkeys_num; ii++) {
 		const struct sc_pkcs15_prkey_info *info = (const struct sc_pkcs15_prkey_info *)prkeys[ii]->data;
 
-		idx = (info->key_reference & LASER_FS_REF_MASK) - LASER_FS_KEY_REF_MIN;
+		idx = (info->key_reference & JACARTAPKI_FS_REF_MASK) - JACARTAPKI_FS_KEY_REF_MIN;
 		if (idx > sizeof(ordered_prkeys) / sizeof(struct sc_pkcs15_object *) - 1)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
@@ -1532,7 +1518,7 @@ laser_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *objec
 	}
 
 	for (idx = 0; idx < idx_max + 1; idx++) {
-		struct laser_cmap_record cmap_rec;
+		struct jacartapki_cmap_record cmap_rec;
 
 		memset(&cmap_rec, 0, sizeof(cmap_rec));
 
@@ -1541,7 +1527,7 @@ laser_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *objec
 
 			if (!(ignore_id && sc_pkcs15_compare_id(ignore_id, &info->id))) {
 				int rv;
-				rv = laser_cmap_record_init(ctx, ordered_prkeys[idx], &cmap_rec);
+				rv = jacartapki_cmap_record_init(ctx, ordered_prkeys[idx], &cmap_rec);
 				LOG_TEST_RET(ctx, rv, "Failed encode CMAP record");
 
 				if (info->id.len == SHA_DIGEST_LENGTH + 5) {
@@ -1564,7 +1550,7 @@ laser_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *objec
 }
 
 int
-laser_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigned base_id)
+jacartapki_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigned base_id)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *objs[32];
@@ -1578,7 +1564,7 @@ laser_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigned bas
 
 	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_PRKEY:
-		min = LASER_FS_KEY_REF_MIN, max = LASER_FS_KEY_REF_MAX;
+		min = JACARTAPKI_FS_KEY_REF_MIN, max = JACARTAPKI_FS_KEY_REF_MAX;
 		break;
 	case SC_PKCS15_TYPE_CERT:
 		min = 0, max = 0xFF;

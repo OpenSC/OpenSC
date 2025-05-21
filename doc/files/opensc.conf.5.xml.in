@@ -929,7 +929,7 @@ app <replaceable>application</replaceable> {
 			</variablelist>
 		</refsect2>
 
-		<refsect2 id="laser">
+		<refsect2 id="jacartapki">
 			<title>Configuration Options for JaCarta PKI token/card</title>
 			<variablelist>
 				<varlistentry>
