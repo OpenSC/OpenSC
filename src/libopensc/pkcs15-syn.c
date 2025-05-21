@@ -64,7 +64,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "eOI",        sc_pkcs15emu_eoi_init_ex },
 	{ "dtrust",     sc_pkcs15emu_dtrust_init_ex },
 #ifdef ENABLE_OPENSSL
-	{ "laser",	sc_pkcs15emu_laser_init_ex	},
+	{ "jacartapki", sc_pkcs15emu_jacartapki_init_ex },
 #endif
 	{ NULL, NULL }
 };
@@ -129,7 +129,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
 		case SC_CARD_TYPE_DTRUST_V5_1_M100:
 		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
-		case SC_CARD_TYPE_ALADDIN_LASER:
+		case SC_CARD_TYPE_JACARTA_PKI:
 			return 1;
 		default:
 			return 0;
