@@ -1,5 +1,5 @@
 /*
- * card-laser.c: Support for JaCarta PKI applet
+ * card-jacartapki.c: Support for JaCarta PKI applet
  *
  * Copyright (C) 2025  Andrey Khodunov <a.khodunov@aladdin.ru>
  *
@@ -47,12 +47,13 @@
 #include "cardctl.h"
 #include "internal.h"
 #include "iso7816.h"
-#include "laser.h"
+#include "jacartapki.h"
 #include "opensc.h"
 #include "pkcs15.h"
 #include "sc-ossl-compat.h"
 #include "sm/sm-iso.h"
 #include "sm/sm-iso-internal.h"
+#include "internal.h"
 
 #ifndef _WIN32
 #include <sys/types.h>
@@ -62,85 +63,64 @@
 #define getpid() _getpid()
 #endif
 
-#define LOG_ERROR_RET(ctx, r, text) \
-	do { \
-		int _ret = (r); \
-		sc_do_log_color(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
-				"%s: %d (%s)\n", (text), (_ret), sc_strerror(_ret)); \
-		return (r); \
-	} while (0)
-#define LOG_ERROR_GOTO(ctx, r, text) \
-	do { \
-		int _ret = (r); \
-		sc_do_log_color(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
-				"%s: %d (%s)\n", (text), (_ret), sc_strerror(_ret)); \
-		goto err; \
-	} while (0)
-
-#define LASER_CARD_DEFAULT_FLAGS (SC_ALGORITHM_ONBOARD_KEY_GEN | SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_ISO9796 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_HASH_SHA224 | SC_ALGORITHM_RSA_HASH_SHA256 | SC_ALGORITHM_RSA_HASH_SHA384 | SC_ALGORITHM_RSA_HASH_SHA512)
+#define JACARTAPKI_CARD_DEFAULT_FLAGS (SC_ALGORITHM_ONBOARD_KEY_GEN | SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_ISO9796 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_HASH_SHA224 | SC_ALGORITHM_RSA_HASH_SHA256 | SC_ALGORITHM_RSA_HASH_SHA384 | SC_ALGORITHM_RSA_HASH_SHA512)
 
 /* generic iso 7816 operations table */
 static const struct sc_card_operations *iso_ops = NULL;
 
 /* our operations table with overrides */
-static struct sc_card_operations laser_ops;
+static struct sc_card_operations jacartapki_ops;
 
-static struct sc_card_driver laser_drv = {
+static struct sc_card_driver jacartapki_drv = {
 		"JaCarta PKI driver",
-		"laser",
-		&laser_ops,
+		"jacartapki",
+		&jacartapki_ops,
 		NULL, 0, NULL};
 
-static struct sc_atr_table laser_known_atrs[] = {
+static struct sc_atr_table jacartapki_known_atrs[] = {
 		{"FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF",
 			"3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:01:06:11:59:00:01:28",
-			"JaCarta PKI",								   SC_CARD_TYPE_ALADDIN_LASER, 0, NULL},
+			"JaCarta PKI",								   SC_CARD_TYPE_JACARTA_PKI, 0, NULL},
 
 		{"FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF",
 			"3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:01:0B:03:52:00:05:38",
-			"JaCarta PKI",								   SC_CARD_TYPE_ALADDIN_LASER, 0, NULL},
+			"JaCarta PKI",								   SC_CARD_TYPE_JACARTA_PKI, 0, NULL},
 
 		{"FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF",
 			"3B:8C:80:01:80:73:C8:21:13:66:01:06:11:59:00:01:2C",
-			"JaCarta PKI/BIO",							       SC_CARD_TYPE_ALADDIN_LASER, 0, NULL},
+			"JaCarta PKI/BIO",							       SC_CARD_TYPE_JACARTA_PKI, 0, NULL},
 
 		{"FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF",
 			"3B:6C:00:FF:80:73:C8:21:13:66:01:06:11:59:00:01",
-			"JaCarta PKI/BIO",							       SC_CARD_TYPE_ALADDIN_LASER, 0, NULL},
+			"JaCarta PKI/BIO",							       SC_CARD_TYPE_JACARTA_PKI, 0, NULL},
 
 		{"FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF",
 			"3B:9F:11:81:11:3D:00:11:00:00:00:00:00:00:00:00:00:00:00:00:00:32",
-			"JaCarta-2 PKI",								 SC_CARD_TYPE_ALADDIN_LASER, 0, NULL},
+			"JaCarta-2 PKI",								 SC_CARD_TYPE_JACARTA_PKI, 0, NULL},
 
 		{NULL,								NULL, NULL, 0,			      0, NULL}
 };
 
-static struct sc_aid laser_aid = {
+static struct sc_aid jacartapki_aid = {
 		{0xA0, 0x00, 0x00, 0x01, 0x64, 0x4C, 0x41, 0x53, 0x45, 0x52, 0x00, 0x01},
 		12
 };
 
-unsigned char laser_ops_df[6] = {
+unsigned char jacartapki_ops_df[6] = {
 		SC_AC_OP_CREATE, SC_AC_OP_CREATE_DF, SC_AC_OP_ADMIN, SC_AC_OP_DELETE_SELF, SC_AC_OP_ACTIVATE, SC_AC_OP_DEACTIVATE};
-unsigned char laser_ops_ef[4] = {
+unsigned char jacartapki_ops_ef[4] = {
 		SC_AC_OP_READ, SC_AC_OP_WRITE, SC_AC_OP_ADMIN, SC_AC_OP_DELETE_SELF};
-unsigned char laser_ops_do[3] = {
+unsigned char jacartapki_ops_do[3] = {
 		SC_AC_OP_READ, SC_AC_OP_WRITE, SC_AC_OP_ADMIN};
-unsigned char laser_ops_ko[7] = {
+unsigned char jacartapki_ops_ko[7] = {
 		SC_AC_OP_READ, SC_AC_OP_UPDATE, SC_AC_OP_ADMIN, SC_AC_OP_DELETE_SELF, SC_AC_OP_GENERATE, SC_AC_OP_PIN_RESET, SC_AC_OP_CRYPTO};
-unsigned char laser_ops_pin[7] = {
+unsigned char jacartapki_ops_pin[7] = {
 		SC_AC_OP_READ, SC_AC_OP_PIN_CHANGE, SC_AC_OP_ADMIN, SC_AC_OP_DELETE_SELF, SC_AC_OP_GENERATE, SC_AC_OP_PIN_RESET, SC_AC_OP_CRYPTO};
 
-static const unsigned char laser_sha1_digest_pref[] = {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2B, 0x0E, 0x03, 0x02, 0x1A, 0x05, 0x00, 0x04, 0x14};
-static const unsigned char laser_sha224_digest_pref[] = {0x30, 0x2D, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x04, 0x05, 0x00, 0x04, 0x1C};
-static const unsigned char laser_sha256_digest_pref[] = {0x30, 0x31, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20};
-static const unsigned char laser_sha384_digest_pref[] = {0x30, 0x41, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02, 0x05, 0x00, 0x04, 0x30};
-static const unsigned char laser_sha512_digest_pref[] = {0x30, 0x51, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40};
-
-static int laser_get_serialnr(struct sc_card *, struct sc_serial_number *);
-static int laser_get_default_key(struct sc_card *, struct sc_cardctl_default_key *);
-static int laser_parse_sec_attrs(struct sc_card *, struct sc_file *);
-static int laser_process_fci(struct sc_card *, struct sc_file *, const unsigned char *, size_t);
+static int jacartapki_get_serialnr(struct sc_card *, struct sc_serial_number *);
+static int jacartapki_get_default_key(struct sc_card *, struct sc_cardctl_default_key *);
+static int jacartapki_parse_sec_attrs(struct sc_card *, struct sc_file *);
+static int jacartapki_process_fci(struct sc_card *, struct sc_file *, const unsigned char *, size_t);
 
 /*
 * Presently JaCarta PKI Secure Messaging does not fully comply to ISO/IEC 7816-4 (OpenPGP Application on ISO Smart Card Operating Systems).
@@ -148,9 +128,9 @@ static int laser_process_fci(struct sc_card *, struct sc_file *, const unsigned 
 * 
 * To overcome this we change APDU INS code several times for odd commands: get capabilities CBh, generate key pair 47h.
 * 
-* in laser_do_something methods: make INS even (+1) for sc_transmit_apdu argument
-* in laser_iso_sm_authenticate method: modify APDU INS back (-1) in temporary buffer for MAC calculation
-* in laser_iso_sm_get_apdu method: modify APDU INS back (-1) after all handling for PCSC layer to send
+* in jacartapki_do_something methods: make INS even (+1) for sc_transmit_apdu argument
+* in jacartapki_iso_sm_authenticate method: modify APDU INS back (-1) in temporary buffer for MAC calculation
+* in jacartapki_iso_sm_get_apdu method: modify APDU INS back (-1) after all handling for PCSC layer to send
 * fortunately not stomp on other INS codes
 * 
 */
@@ -168,24 +148,24 @@ static int _sm_encrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key
 		unsigned char **out, size_t *out_len, int not_force_pad);
 static void _sm_incr_ssc(unsigned char *ssc, size_t ssc_len);
 
-static int laser_sm_open(struct sc_card *card);
-static int laser_cbc_cksum(struct sc_context *ctx, unsigned char *key, size_t key_size, unsigned char *in, size_t in_len, DES_cblock *icv);
-static int laser_sm_compute_mac(struct sc_card *card, const unsigned char *data, size_t data_len, DES_cblock *mac);
-static int laser_sm_check_mac(struct sc_card *card, const unsigned char *data, size_t data_len, const unsigned char *mac, size_t mac_len);
-static int laser_sm_close(struct sc_card *card);
-static int laser_iso_sm_open(struct sc_card *card);
-static int laser_iso_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx, const u8 *data, size_t datalen, u8 **enc);
-static int laser_iso_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx, const u8 *enc, size_t enclen, u8 **data);
-static int laser_iso_sm_get_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
-static int laser_iso_sm_free_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
-static int laser_iso_sm_close(struct sc_card *card);
-static int laser_iso_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx, const u8 *data, size_t datalen, u8 **outdata);
-static int laser_iso_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx, const u8 *mac, size_t maclen, const u8 *macdata, size_t macdatalen);
+static int jacartapki_sm_open(struct sc_card *card);
+static int jacartapki_cbc_cksum(struct sc_context *ctx, unsigned char *key, size_t key_size, unsigned char *in, size_t in_len, DES_cblock *icv);
+static int jacartapki_sm_compute_mac(struct sc_card *card, const unsigned char *data, size_t data_len, DES_cblock *mac);
+static int jacartapki_sm_check_mac(struct sc_card *card, const unsigned char *data, size_t data_len, const unsigned char *mac, size_t mac_len);
+static int jacartapki_sm_close(struct sc_card *card);
+static int jacartapki_iso_sm_open(struct sc_card *card);
+static int jacartapki_iso_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx, const u8 *data, size_t datalen, u8 **enc);
+static int jacartapki_iso_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx, const u8 *enc, size_t enclen, u8 **data);
+static int jacartapki_iso_sm_get_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
+static int jacartapki_iso_sm_free_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu);
+static int jacartapki_iso_sm_close(struct sc_card *card);
+static int jacartapki_iso_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx, const u8 *data, size_t datalen, u8 **outdata);
+static int jacartapki_iso_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx, const u8 *mac, size_t maclen, const u8 *macdata, size_t macdatalen);
 
 #endif /* ENABLE_SM */
 
 static int
-laser_get_tag_data(struct sc_context *ctx, const unsigned char *data, size_t data_len, struct sc_tlv_data *out)
+jacartapki_get_tag_data(struct sc_context *ctx, const unsigned char *data, size_t data_len, struct sc_tlv_data *out)
 {
 	size_t taglen;
 	const unsigned char *ptr = NULL;
@@ -207,7 +187,7 @@ laser_get_tag_data(struct sc_context *ctx, const unsigned char *data, size_t dat
 }
 
 static int
-laser_get_capability(struct sc_card *card, unsigned tag,
+jacartapki_get_capability(struct sc_card *card, unsigned tag,
 		unsigned char *out, size_t *out_len)
 {
 	struct sc_context *ctx = card->ctx;
@@ -246,23 +226,23 @@ laser_get_capability(struct sc_card *card, unsigned tag,
 }
 
 static int
-laser_get_caps(struct sc_card *card)
+jacartapki_get_caps(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *prv_data = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *prv_data = (struct jacartapki_private_data *)card->drv_data;
 	unsigned char buf[8];
 	size_t buf_len;
 	int rv;
 
 	buf_len = sizeof(buf);
-	rv = laser_get_capability(card, 0x0180, buf, &buf_len);
+	rv = jacartapki_get_capability(card, 0x0180, buf, &buf_len);
 	LOG_TEST_RET(ctx, rv, "cannot get 'CRYPTO' card capability");
 	if (buf_len != sizeof(prv_data->caps.crypto))
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "invalid 'CRYPTO' capability data");
 	memcpy(prv_data->caps.crypto, buf, buf_len);
 
 	buf_len = sizeof(buf);
-	rv = laser_get_capability(card, 0x0188, buf, &buf_len);
+	rv = jacartapki_get_capability(card, 0x0188, buf, &buf_len);
 	LOG_TEST_RET(ctx, rv, "cannot get 'KEY LENGTHS' card capability");
 	if (buf_len != sizeof(prv_data->caps.supported_keys))
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "invalid 'KEY LENGTHS' capability data");
@@ -272,26 +252,26 @@ laser_get_caps(struct sc_card *card)
 }
 
 static int
-laser_match_card(struct sc_card *card)
+jacartapki_match_card(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
 	int i;
 
-	i = _sc_match_atr(card, laser_known_atrs, &card->type);
+	i = _sc_match_atr(card, jacartapki_known_atrs, &card->type);
 	if (i < 0) {
 		return 0;
 	}
 
-	sc_debug(ctx, SC_LOG_DEBUG_MATCH, "'%s' card matched", laser_known_atrs[i].name);
+	sc_debug(ctx, SC_LOG_DEBUG_MATCH, "'%s' card matched", jacartapki_known_atrs[i].name);
 	return 1;
 }
 
 static int
-laser_load_options(struct sc_card* card)
+jacartapki_load_options(struct sc_card* card)
 {
 	struct sc_context *ctx = card->ctx;
 	int i, j;
-	struct laser_private_data *private_data = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
 	private_data->secure_verify = 0;
 
 	for (i = 0; card->ctx->conf_blocks[i]; i++) {
@@ -314,29 +294,29 @@ laser_load_options(struct sc_card* card)
 }
 
 static int
-laser_init(struct sc_card *card)
+jacartapki_init(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *private_data = NULL;
+	struct jacartapki_private_data *private_data = NULL;
 	struct sc_path path;
 	unsigned int flags;
 	int rv = SC_ERROR_NO_CARD_SUPPORT;
 
 	LOG_FUNC_CALLED(ctx);
 
-	private_data = (struct laser_private_data *)calloc(1, sizeof(struct laser_private_data));
+	private_data = (struct jacartapki_private_data *)calloc(1, sizeof(struct jacartapki_private_data));
 	if (private_data == NULL)
 		LOG_ERROR_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate private blob for card driver.");
 
-	memset(private_data, 0, sizeof(struct laser_private_data));
+	memset(private_data, 0, sizeof(struct jacartapki_private_data));
 
-	private_data->auth_state[0].pin_reference = LASER_USER_PIN_REFERENCE;
-	private_data->auth_state[1].pin_reference = LASER_SO_PIN_REFERENCE;
+	private_data->auth_state[0].pin_reference = JACARTAPKI_USER_PIN_REFERENCE;
+	private_data->auth_state[1].pin_reference = JACARTAPKI_SO_PIN_REFERENCE;
 
 	card->cla = 0x00;
 	card->drv_data = private_data;
 
-	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, laser_aid.value, laser_aid.len, 0, 0);
+	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, jacartapki_aid.value, jacartapki_aid.len, 0, 0);
 	rv = sc_select_file(card, &path, NULL);
 	if (0 > rv) {
 		free(card->drv_data);
@@ -344,13 +324,13 @@ laser_init(struct sc_card *card)
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_CARD, "Failed to select Laser AID.");
 	}
 
-	rv = laser_get_serialnr(card, NULL);
+	rv = jacartapki_get_serialnr(card, NULL);
 	LOG_TEST_RET(ctx, rv, "Cannot get card serial");
 
-	rv = laser_get_caps(card);
+	rv = jacartapki_get_caps(card);
 	LOG_TEST_RET(ctx, rv, "Cannot get card capabilities");
 
-	flags = LASER_CARD_DEFAULT_FLAGS;
+	flags = JACARTAPKI_CARD_DEFAULT_FLAGS;
 	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0x10001);
 	_sc_card_add_rsa_alg(card, 4096, flags, 0x10001);
@@ -358,19 +338,19 @@ laser_init(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_RNG;
 	card->caps |= SC_CARD_CAP_APDU_EXT;
 
-	rv = laser_load_options(card);
+	rv = jacartapki_load_options(card);
 	LOG_TEST_RET(ctx, rv, "Failed to read card driver configuration");
 
 #if defined(ENABLE_SM)
-	card->sm_ctx.ops.open = laser_iso_sm_open;
-	card->sm_ctx.ops.get_sm_apdu = laser_iso_sm_get_apdu;
-	card->sm_ctx.ops.free_sm_apdu = laser_iso_sm_free_apdu;
+	card->sm_ctx.ops.open = jacartapki_iso_sm_open;
+	card->sm_ctx.ops.get_sm_apdu = jacartapki_iso_sm_get_apdu;
+	card->sm_ctx.ops.free_sm_apdu = jacartapki_iso_sm_free_apdu;
 #endif
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
-laser_read_binary(struct sc_card *card, unsigned int offs,
+jacartapki_read_binary(struct sc_card *card, unsigned int offs,
 		u8 *buf, size_t count, unsigned long *flags)
 {
 	struct sc_context *ctx = card->ctx;
@@ -380,7 +360,7 @@ laser_read_binary(struct sc_card *card, unsigned int offs,
 	size_t binaryDataRead;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "laser_read_binary(card:%p) offs %i; count %"SC_FORMAT_LEN_SIZE_T"u", card, offs, count);
+	sc_log(ctx, "jacartapki_read_binary(card:%p) offs %i; count %"SC_FORMAT_LEN_SIZE_T"u", card, offs, count);
 	if (offs > 0x7fff) {
 		sc_log(ctx, "invalid EF offset: 0x%X > 0x7FFF", offs);
 		return SC_ERROR_OFFSET_TOO_LARGE;
@@ -417,14 +397,14 @@ laser_read_binary(struct sc_card *card, unsigned int offs,
 		}
 	} else
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "laser_read_binary() failed");
-	sc_log(ctx, "laser_read_binary() apdu.resplen %"SC_FORMAT_LEN_SIZE_T"u", apdu.resplen);
+	LOG_TEST_RET(ctx, rv, "jacartapki_read_binary() failed");
+	sc_log(ctx, "jacartapki_read_binary() apdu.resplen %"SC_FORMAT_LEN_SIZE_T"u", apdu.resplen);
 
 	LOG_FUNC_RETURN(ctx, binaryDataRead);
 }
 
 static int
-laser_update_binary(struct sc_card *card,
+jacartapki_update_binary(struct sc_card *card,
 		unsigned int idx, const u8 *buf, size_t count, unsigned long flags)
 {
 	int rv;
@@ -450,14 +430,14 @@ laser_update_binary(struct sc_card *card,
 }
 
 static int
-laser_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsigned long flags)
+jacartapki_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsigned long flags)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned char *tmp = NULL;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "laser_erase_binary(card:%p) count %"SC_FORMAT_LEN_SIZE_T"u", card, count);
+	sc_log(ctx, "jacartapki_erase_binary(card:%p) count %"SC_FORMAT_LEN_SIZE_T"u", card, count);
 	if (!count)
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "'ERASE BINARY' failed: invalid size to erase");
 
@@ -466,13 +446,13 @@ laser_erase_binary(struct sc_card *card, unsigned int offs, size_t count, unsign
 		LOG_ERROR_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate temporary buffer");
 	memset(tmp, 0xFF, count);
 
-	rv = laser_update_binary(card, offs, tmp, count, flags);
+	rv = jacartapki_update_binary(card, offs, tmp, count, flags);
 	free(tmp);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
-laser_select_file(struct sc_card *card, const struct sc_path *in_path,
+jacartapki_select_file(struct sc_card *card, const struct sc_path *in_path,
 		struct sc_file **file_out)
 {
 	struct sc_context *ctx = card->ctx;
@@ -486,7 +466,7 @@ laser_select_file(struct sc_card *card, const struct sc_path *in_path,
 
 	LOG_FUNC_CALLED(ctx);
 
-	sc_log(ctx, "laser_select_file(card:%p) path(type:%i):%s, out:%p", card, in_path->type, sc_print_path(in_path), file_out);
+	sc_log(ctx, "jacartapki_select_file(card:%p) path(type:%i):%s, out:%p", card, in_path->type, sc_print_path(in_path), file_out);
 	sc_print_cache(card);
 
 	memcpy(path, in_path->value, in_path->len);
@@ -505,7 +485,7 @@ laser_select_file(struct sc_card *card, const struct sc_path *in_path,
 		break;
 	case SC_PATH_TYPE_DF_NAME:
 		apdu.p1 = 4;
-		if (laser_aid.len == in_path->len && !memcmp(laser_aid.value, in_path->value, in_path->len)) {
+		if (jacartapki_aid.len == in_path->len && !memcmp(jacartapki_aid.value, in_path->value, in_path->len)) {
 			/* JaCarta PKI application has to be selected by the standand ISO7816 command */
 			apdu.cla = 0x00;
 		}
@@ -536,8 +516,8 @@ laser_select_file(struct sc_card *card, const struct sc_path *in_path,
 	}
 
 	/* reopening SM for select application */
-	if (card->sm_ctx.sm_mode != SM_MODE_NONE && in_path->type == SC_PATH_TYPE_DF_NAME && laser_aid.len == pathlen && !memcmp(laser_aid.value, path, pathlen)) {
-		laser_iso_sm_close(card);
+	if (card->sm_ctx.sm_mode != SM_MODE_NONE && in_path->type == SC_PATH_TYPE_DF_NAME && jacartapki_aid.len == pathlen && !memcmp(jacartapki_aid.value, path, pathlen)) {
+		jacartapki_iso_sm_close(card);
 		reopen_sm_session = 1;
 	}
 
@@ -577,12 +557,12 @@ laser_select_file(struct sc_card *card, const struct sc_path *in_path,
 		}
 
 		if ((size_t)apdu.resp[1] + 2 <= apdu.resplen) {
-			struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
+			struct jacartapki_private_data *prv = (struct jacartapki_private_data *)card->drv_data;
 
-			rv = laser_process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
+			rv = jacartapki_process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
 			LOG_TEST_GOTO_ERR(ctx, rv, "Process FCI error");
 
-			rv = laser_parse_sec_attrs(card, file);
+			rv = jacartapki_parse_sec_attrs(card, file);
 			LOG_TEST_GOTO_ERR(ctx, rv, "Security attributes parse error");
 
 			if (file->type == SC_FILE_TYPE_INTERNAL_EF) {
@@ -604,13 +584,13 @@ laser_select_file(struct sc_card *card, const struct sc_path *in_path,
 	}
 err:
 	if (reopen_sm_session)
-		laser_iso_sm_open(card);
+		jacartapki_iso_sm_open(card);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
-laser_process_fci(struct sc_card *card, struct sc_file *file, const u8 *buf, size_t buflen)
+jacartapki_process_fci(struct sc_card *card, struct sc_file *file, const u8 *buf, size_t buflen)
 {
 	struct sc_context *ctx = card->ctx;
 	size_t taglen, len = buflen;
@@ -718,7 +698,7 @@ laser_process_fci(struct sc_card *card, struct sc_file *file, const u8 *buf, siz
 }
 
 static int
-laser_parse_sec_attrs(struct sc_card *card, struct sc_file *file)
+jacartapki_parse_sec_attrs(struct sc_card *card, struct sc_file *file)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned type = file->type;
@@ -728,34 +708,34 @@ laser_parse_sec_attrs(struct sc_card *card, struct sc_file *file)
 	size_t ii, ops_len = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	if (type == SC_FILE_TYPE_INTERNAL_EF && len == sizeof(laser_ops_ko) * 2) {
+	if (type == SC_FILE_TYPE_INTERNAL_EF && len == sizeof(jacartapki_ops_ko) * 2) {
 		if (file->prop_attr_len > 2) {
-			if (*(file->prop_attr + 2) == LASER_KO_ALGORITHM_PIN) {
+			if (*(file->prop_attr + 2) == JACARTAPKI_KO_ALGORITHM_PIN) {
 				sc_log(ctx, "KO-PIN");
-				ops = &laser_ops_pin[0];
-				ops_len = sizeof(laser_ops_pin) / sizeof(laser_ops_pin[0]);
+				ops = &jacartapki_ops_pin[0];
+				ops_len = sizeof(jacartapki_ops_pin) / sizeof(jacartapki_ops_pin[0]);
 			} else {
 				sc_log(ctx, "KO algo:%X", *(file->prop_attr + 2));
-				ops = &laser_ops_ko[0];
-				ops_len = sizeof(laser_ops_ko) / sizeof(laser_ops_ko[0]);
+				ops = &jacartapki_ops_ko[0];
+				ops_len = sizeof(jacartapki_ops_ko) / sizeof(jacartapki_ops_ko[0]);
 			}
 		} else {
 			sc_log(ctx, "KO");
-			ops = &laser_ops_ko[0];
-			ops_len = sizeof(laser_ops_ko) / sizeof(laser_ops_ko[0]);
+			ops = &jacartapki_ops_ko[0];
+			ops_len = sizeof(jacartapki_ops_ko) / sizeof(jacartapki_ops_ko[0]);
 		}
-	} else if (type == SC_FILE_TYPE_INTERNAL_EF && len == sizeof(laser_ops_do) * 2) {
+	} else if (type == SC_FILE_TYPE_INTERNAL_EF && len == sizeof(jacartapki_ops_do) * 2) {
 		sc_log(ctx, "DO");
-		ops = &laser_ops_do[0];
-		ops_len = sizeof(laser_ops_do) / sizeof(laser_ops_do[0]);
+		ops = &jacartapki_ops_do[0];
+		ops_len = sizeof(jacartapki_ops_do) / sizeof(jacartapki_ops_do[0]);
 	} else if (type == SC_FILE_TYPE_WORKING_EF) {
 		sc_log(ctx, "EF");
-		ops = &laser_ops_ef[0];
-		ops_len = sizeof(laser_ops_ef) / sizeof(laser_ops_ef[0]);
+		ops = &jacartapki_ops_ef[0];
+		ops_len = sizeof(jacartapki_ops_ef) / sizeof(jacartapki_ops_ef[0]);
 	} else if (type == SC_FILE_TYPE_DF) {
 		sc_log(ctx, "DF");
-		ops = &laser_ops_df[0];
-		ops_len = sizeof(laser_ops_df) / sizeof(laser_ops_df[0]);
+		ops = &jacartapki_ops_df[0];
+		ops_len = sizeof(jacartapki_ops_df) / sizeof(jacartapki_ops_df[0]);
 	} else {
 		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported file type");
 	}
@@ -773,7 +753,7 @@ laser_parse_sec_attrs(struct sc_card *card, struct sc_file *file)
 			sc_file_add_acl_entry(file, *(ops + ii), SC_AC_NEVER, SC_AC_KEY_REF_NONE);
 		} else if (*(attrs + ii * 2 + 1)) {
 			unsigned char ref = *(attrs + ii * 2 + 1);
-			unsigned method = (ref == LASER_TRANSPORT_PIN1_REFERENCE) ? SC_AC_AUT : SC_AC_CHV;
+			unsigned method = (ref == JACARTAPKI_TRANSPORT_PIN1_REFERENCE) ? SC_AC_AUT : SC_AC_CHV;
 			/* TODO: normally, here we should check the type of referenced KO */
 
 			if (ref == 0x30) {
@@ -792,7 +772,7 @@ laser_parse_sec_attrs(struct sc_card *card, struct sc_file *file)
 }
 
 static int
-laser_fcp_encode(struct sc_card *card, const struct sc_file *file, unsigned char *out, size_t out_len)
+jacartapki_fcp_encode(struct sc_card *card, const struct sc_file *file, unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned char buf[0x400];
@@ -803,15 +783,15 @@ laser_fcp_encode(struct sc_card *card, const struct sc_file *file, unsigned char
 	LOG_FUNC_CALLED(ctx);
 
 	if (file->type == SC_FILE_TYPE_DF) {
-		ops = &laser_ops_df[0];
-		ops_len = sizeof(laser_ops_df);
+		ops = &jacartapki_ops_df[0];
+		ops_len = sizeof(jacartapki_ops_df);
 	} else if (file->type == SC_FILE_TYPE_WORKING_EF) {
-		ops = &laser_ops_ef[0];
-		ops_len = sizeof(laser_ops_ef);
+		ops = &jacartapki_ops_ef[0];
+		ops_len = sizeof(jacartapki_ops_ef);
 		file_size = file->size;
-	} else if (file->type == SC_FILE_TYPE_INTERNAL_EF && file->ef_structure == LASER_FILE_DESCRIPTOR_KO) {
-		ops = &laser_ops_ko[0];
-		ops_len = sizeof(laser_ops_ko);
+	} else if (file->type == SC_FILE_TYPE_INTERNAL_EF && file->ef_structure == JACARTAPKI_FILE_DESCRIPTOR_KO) {
+		ops = &jacartapki_ops_ko[0];
+		ops_len = sizeof(jacartapki_ops_ko);
 		file_size = file->size;
 	} else {
 		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported type of the file to be created.");
@@ -891,7 +871,7 @@ laser_fcp_encode(struct sc_card *card, const struct sc_file *file, unsigned char
 }
 
 static int
-laser_create_file(struct sc_card *card, struct sc_file *file)
+jacartapki_create_file(struct sc_card *card, struct sc_file *file)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -908,11 +888,11 @@ laser_create_file(struct sc_card *card, struct sc_file *file)
 		struct sc_path parent_path = file->path;
 
 		parent_path.len -= 2;
-		rv = laser_select_file(card, &parent_path, NULL);
+		rv = jacartapki_select_file(card, &parent_path, NULL);
 		LOG_TEST_RET(ctx, rv, "Cannot select newly created file");
 	}
 
-	fcp_len = laser_fcp_encode(card, file, fcp, sizeof(fcp));
+	fcp_len = jacartapki_fcp_encode(card, file, fcp, sizeof(fcp));
 	LOG_TEST_RET(ctx, fcp_len, "FCP encode error");
 
 	if (file->type == SC_FILE_TYPE_WORKING_EF)
@@ -951,24 +931,24 @@ laser_create_file(struct sc_card *card, struct sc_file *file)
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "laser_create_file() create file error");
+	LOG_TEST_RET(ctx, rv, "jacartapki_create_file() create file error");
 
 	if (!file->path.len) {
 		sc_append_file_id(&file->path, file->id);
 		file->path.type = SC_PATH_TYPE_FILE_ID;
 	}
 
-	rv = laser_select_file(card, &file->path, NULL);
+	rv = jacartapki_select_file(card, &file->path, NULL);
 	LOG_TEST_RET(ctx, rv, "Cannot select newly created file");
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
-laser_logout(struct sc_card *card)
+jacartapki_logout(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *prv = (struct jacartapki_private_data *)card->drv_data;
 	struct sc_apdu apdu;
 	u8 pin_data[(sizeof(prv->auth_state) / sizeof(prv->auth_state[0])) * 4];
 	int offs;
@@ -1004,10 +984,10 @@ laser_logout(struct sc_card *card)
 }
 
 static int
-laser_finish(struct sc_card *card)
+jacartapki_finish(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *private_data = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -1025,7 +1005,7 @@ laser_finish(struct sc_card *card)
 }
 
 static int
-laser_delete_file(struct sc_card *card, const struct sc_path *path)
+jacartapki_delete_file(struct sc_card *card, const struct sc_path *path)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_file *file = NULL;
@@ -1034,7 +1014,7 @@ laser_delete_file(struct sc_card *card, const struct sc_path *path)
 
 	LOG_FUNC_CALLED(ctx);
 
-	rv = laser_select_file(card, path, &file);
+	rv = jacartapki_select_file(card, path, &file);
 	LOG_TEST_RET(ctx, rv, "Cannot select file to delete");
 
 	if (file->type == SC_FILE_TYPE_DF)
@@ -1053,7 +1033,7 @@ laser_delete_file(struct sc_card *card, const struct sc_path *path)
 }
 
 static int
-laser_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
+jacartapki_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -1100,7 +1080,7 @@ laser_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 }
 
 static int
-laser_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
+jacartapki_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 {
 	if (sw1 == 0x62 && sw2 == 0x82)
 		return SC_SUCCESS;
@@ -1109,25 +1089,25 @@ laser_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 }
 
 static int
-laser_set_security_env(struct sc_card *card,
+jacartapki_set_security_env(struct sc_card *card,
 		const struct sc_security_env *senv, int se_num)
 {
 	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *prv = (struct jacartapki_private_data *)card->drv_data;
 	struct sc_security_env *env = &prv->security_env;
 
 	LOG_FUNC_CALLED(ctx);
 	if (!senv)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "laser_set_security_env() op:%X,flags:%lX,algo:(%lX,ref:%lX,flags:%lX)",
+	sc_log(ctx, "jacartapki_set_security_env() op:%X,flags:%lX,algo:(%lX,ref:%lX,flags:%lX)",
 			senv->operation, senv->flags, senv->algorithm, senv->algorithm_ref, senv->algorithm_flags);
 	*env = *senv;
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 static int
-laser_chv_secure_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
+jacartapki_chv_secure_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
 		int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
@@ -1173,7 +1153,7 @@ err:
 }
 
 static int
-laser_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int secure_verify,
+jacartapki_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int secure_verify,
 		int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
@@ -1187,7 +1167,7 @@ laser_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int secu
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, pin_cmd->pin_reference);
 	} else if (pin_cmd->pin1.data && pin_cmd->pin1.len) {
 		if (secure_verify) {
-			rv = laser_chv_secure_verify(card, pin_cmd, tries_left);
+			rv = jacartapki_chv_secure_verify(card, pin_cmd, tries_left);
 			LOG_FUNC_RETURN(ctx, rv);
 		} else {
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, 0x00);
@@ -1210,7 +1190,7 @@ laser_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int secu
 }
 
 static int
-laser_pin_is_verified(struct sc_card *card, const struct sc_pin_cmd_data *pin_cmd_data,
+jacartapki_pin_is_verified(struct sc_card *card, const struct sc_pin_cmd_data *pin_cmd_data,
 		int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
@@ -1227,12 +1207,12 @@ laser_pin_is_verified(struct sc_card *card, const struct sc_pin_cmd_data *pin_cm
 	pin_cmd = *pin_cmd_data;
 	pin_cmd.pin1.data = (unsigned char *)"";
 	pin_cmd.pin1.len = 0;
-	rv = laser_chv_verify(card, &pin_cmd, 0, tries_left);
+	rv = jacartapki_chv_verify(card, &pin_cmd, 0, tries_left);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
-laser_pin_from_ko_le(struct sc_context *ctx, unsigned reference, unsigned *out)
+jacartapki_pin_from_ko_le(struct sc_context *ctx, unsigned reference, unsigned *out)
 {
 	if (!out)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -1246,7 +1226,7 @@ laser_pin_from_ko_le(struct sc_context *ctx, unsigned reference, unsigned *out)
 }
 
 static int
-laser_select_global_pin(struct sc_card *card, unsigned reference, struct sc_file **out_file)
+jacartapki_select_global_pin(struct sc_card *card, unsigned reference, struct sc_file **out_file)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_file *file = NULL;
@@ -1259,18 +1239,18 @@ laser_select_global_pin(struct sc_card *card, unsigned reference, struct sc_file
 	sc_format_path("3F0000FF", &path);
 	path.value[path.len - 1] = reference;
 
-	rv = laser_select_file(card, &path, &file);
+	rv = jacartapki_select_file(card, &path, &file);
 	LOG_TEST_RET(ctx, rv, "Failed to select PIN file");
 
-	if (file->prop_attr && (file->prop_attr_len >= 3) && (*(file->prop_attr + 2) == LASER_KO_ALGORITHM_LOGIC)) {
+	if (file->prop_attr && (file->prop_attr_len >= 3) && (*(file->prop_attr + 2) == JACARTAPKI_KO_ALGORITHM_LOGIC)) {
 		unsigned ref;
 
-		rv = laser_pin_from_ko_le(ctx, reference, &ref);
+		rv = jacartapki_pin_from_ko_le(ctx, reference, &ref);
 		LOG_TEST_RET(ctx, rv, "Unknown LogicalExpression KO");
 		path.value[path.len - 1] = ref;
 
 		sc_file_free(file);
-		rv = laser_select_file(card, &path, &file);
+		rv = jacartapki_select_file(card, &path, &file);
 		LOG_TEST_RET(ctx, rv, "Failed to select PIN file");
 	}
 
@@ -1283,12 +1263,12 @@ laser_select_global_pin(struct sc_card *card, unsigned reference, struct sc_file
 }
 
 static int
-laser_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
+jacartapki_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 		const unsigned char *data, size_t data_len, int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_pin_cmd_data pin_cmd;
-	struct laser_private_data *private_data = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
 	int rv;
 	unsigned int chv_ref = reference;
 	int secure_verify;
@@ -1296,7 +1276,7 @@ laser_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "Verify PIN(type:%X,ref:%i,data(len:%"SC_FORMAT_LEN_SIZE_T"u,%p)", type, reference, data_len, data);
 
-	if (type == SC_AC_AUT && reference == LASER_TRANSPORT_PIN1_REFERENCE)
+	if (type == SC_AC_AUT && reference == JACARTAPKI_TRANSPORT_PIN1_REFERENCE)
 		type = SC_AC_CHV;
 
 	if (type == SC_AC_AUT) {
@@ -1305,7 +1285,7 @@ laser_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 	} else if (type == SC_AC_CHV) {
 		if (!(reference & 0x80)) {
-			rv = laser_select_global_pin(card, reference, NULL);
+			rv = jacartapki_select_global_pin(card, reference, NULL);
 			LOG_TEST_RET(ctx, rv, "Select PIN file error");
 			chv_ref = 0; 
 		}
@@ -1321,13 +1301,13 @@ laser_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 	pin_cmd.pin1.len = data_len;
 
 	if (data && !data_len) {
-		rv = laser_pin_is_verified(card, &pin_cmd, tries_left);
+		rv = jacartapki_pin_is_verified(card, &pin_cmd, tries_left);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
 	/* plain VERIFY for Transport PIN #1,#2 */
 	secure_verify = (reference != 0x01 && reference != 0x02 ? private_data->secure_verify : 0);
 
-	rv = laser_chv_verify(card, &pin_cmd, secure_verify, tries_left);
+	rv = jacartapki_chv_verify(card, &pin_cmd, secure_verify, tries_left);
 	LOG_TEST_RET(ctx, rv, "PIN CHV verification error");
 
 	/* TEMP P15 DF RELOAD PRIVATE */
@@ -1343,7 +1323,7 @@ laser_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 
 #if defined(ENABLE_SM)
 static int
-laser_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, unsigned chv_ref,
+jacartapki_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, unsigned chv_ref,
 		int *tries_left, unsigned op_acl)
 {
 	struct sc_context *ctx;
@@ -1366,7 +1346,7 @@ laser_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, unsigned
 		LOG_ERROR_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Buffer too small for the 'SM change CHV' data");
 
 	if (card->sm_ctx.sm_mode == SM_MODE_NONE) {
-		rv = laser_iso_sm_open(card);
+		rv = jacartapki_iso_sm_open(card);
 		LOG_TEST_RET(ctx, rv, "Cannot open SM");
 		oneTimeSm = 1;
 	}
@@ -1392,7 +1372,7 @@ laser_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, unsigned
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	if (oneTimeSm)
-		laser_iso_sm_close(card);
+		jacartapki_iso_sm_close(card);
 
 	card->sm_ctx.info.security_condition = 0;
 
@@ -1402,7 +1382,7 @@ laser_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, unsigned
 #endif
 
 static int
-laser_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+jacartapki_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -1418,7 +1398,7 @@ laser_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 
 	if (data->pin1.len) {
-		rv = laser_pin_verify(card, data->pin_type, data->pin_reference, data->pin1.data, data->pin1.len, tries_left);
+		rv = jacartapki_pin_verify(card, data->pin_type, data->pin_reference, data->pin1.data, data->pin1.len, tries_left);
 		LOG_TEST_RET(ctx, rv, "Cannot verify old PIN");
 	}
 
@@ -1433,14 +1413,14 @@ laser_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 	} else {
 		const struct sc_acl_entry *entry;
 
-		rv = laser_select_global_pin(card, data->pin_reference, &pin_file);
+		rv = jacartapki_select_global_pin(card, data->pin_reference, &pin_file);
 		LOG_TEST_RET(ctx, rv, "Select PIN file error");
 
 		chv_ref = 0;
 		entry = sc_file_get_acl_entry(pin_file, SC_AC_OP_PIN_CHANGE);
 		if (entry) {
 #if defined(ENABLE_SM)
-			rv = laser_sm_chv_change(card, data, chv_ref, tries_left, entry->key_ref);
+			rv = jacartapki_sm_chv_change(card, data, chv_ref, tries_left, entry->key_ref);
 			LOG_FUNC_RETURN(ctx, rv);
 #else
 			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -1465,7 +1445,7 @@ laser_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 }
 
 static int
-laser_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+jacartapki_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -1481,7 +1461,7 @@ laser_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 	if (!(data->pin_reference & 0x80)) {
 		const struct sc_acl_entry *entry;
 
-		rv = laser_select_global_pin(card, data->pin_reference, &pin_file);
+		rv = jacartapki_select_global_pin(card, data->pin_reference, &pin_file);
 		LOG_TEST_RET(ctx, rv, "Select PIN file error");
 
 		if (data->pin1.len) {
@@ -1493,10 +1473,10 @@ laser_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 				} else if (entry->key_ref & 0xC000) {
 					LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Reset PIN protectd by SM: not supported (TODO)");
 				} else if (entry->key_ref & 0x00FF) {
-					rv = laser_pin_verify(card, SC_AC_CHV, entry->key_ref & 0x00FF, data->pin1.data, data->pin1.len, tries_left);
+					rv = jacartapki_pin_verify(card, SC_AC_CHV, entry->key_ref & 0x00FF, data->pin1.data, data->pin1.len, tries_left);
 					LOG_TEST_RET(ctx, rv, "Verify PUK failed");
 
-					rv = laser_select_global_pin(card, data->pin_reference, &pin_file);
+					rv = jacartapki_select_global_pin(card, data->pin_reference, &pin_file);
 					LOG_TEST_RET(ctx, rv, "Select PIN file error");
 				}
 			}
@@ -1515,7 +1495,7 @@ laser_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 		int save_len = data->pin1.len;
 
 		data->pin1.len = 0;
-		rv = laser_pin_change(card, data, tries_left);
+		rv = jacartapki_pin_change(card, data, tries_left);
 		data->pin1.len = save_len;
 		LOG_TEST_RET(ctx, rv, "Cannot set new PIN value");
 	}
@@ -1524,9 +1504,9 @@ laser_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 }
 
 static int
-laser_pin_getinfo(struct sc_card *card, struct sc_pin_cmd_data *data)
+jacartapki_pin_getinfo(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
-	struct laser_private_data *private_data = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
 	for (int i = 0; i != sizeof(private_data->auth_state) / sizeof(private_data->auth_state[0]); i++) {
 		if (private_data->auth_state[i].pin_reference == (unsigned int)data->pin_reference) {
 			data->pin1.logged_in = private_data->auth_state[i].logged_in;
@@ -1538,27 +1518,27 @@ laser_pin_getinfo(struct sc_card *card, struct sc_pin_cmd_data *data)
 }
 
 static int
-laser_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+jacartapki_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
 	struct sc_context *ctx = card->ctx;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "laser_pin_cmd() cmd 0x%X, PIN type 0x%X, PIN reference %i, PIN-1 %p:%"SC_FORMAT_LEN_SIZE_T"u, PIN-2 %p:%"SC_FORMAT_LEN_SIZE_T"u",
+	sc_log(ctx, "jacartapki_pin_cmd() cmd 0x%X, PIN type 0x%X, PIN reference %i, PIN-1 %p:%"SC_FORMAT_LEN_SIZE_T"u, PIN-2 %p:%"SC_FORMAT_LEN_SIZE_T"u",
 			data->cmd, data->pin_type, data->pin_reference,
 			data->pin1.data, data->pin1.len, data->pin2.data, data->pin2.len);
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
-		rv = laser_pin_verify(card, data->pin_type, data->pin_reference, data->pin1.data, data->pin1.len, tries_left);
+		rv = jacartapki_pin_verify(card, data->pin_type, data->pin_reference, data->pin1.data, data->pin1.len, tries_left);
 		LOG_FUNC_RETURN(ctx, rv);
 	case SC_PIN_CMD_CHANGE:
-		rv = laser_pin_change(card, data, tries_left);
+		rv = jacartapki_pin_change(card, data, tries_left);
 		LOG_FUNC_RETURN(ctx, rv);
 	case SC_PIN_CMD_UNBLOCK:
-		rv = laser_pin_reset(card, data, tries_left);
+		rv = jacartapki_pin_reset(card, data, tries_left);
 		LOG_FUNC_RETURN(ctx, rv);
 	case SC_PIN_CMD_GET_INFO:
-		rv = laser_pin_getinfo(card, data);
+		rv = jacartapki_pin_getinfo(card, data);
 		LOG_FUNC_RETURN(ctx, rv);
 	default:
 		sc_log(ctx, "PIN command 0x%X do not yet supported.", data->cmd);
@@ -1569,10 +1549,10 @@ laser_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_lef
 }
 
 static int
-laser_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
+jacartapki_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 {
 	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *prv_data = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *prv_data = (struct jacartapki_private_data *)card->drv_data;
 	struct sc_serial_number sn;
 	int rv;
 
@@ -1584,7 +1564,7 @@ laser_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 	}
 
 	sn.len = sizeof(sn.value);
-	rv = laser_get_capability(card, 0x0114, sn.value, &sn.len);
+	rv = jacartapki_get_capability(card, 0x0114, sn.value, &sn.len);
 	LOG_TEST_RET(ctx, rv, "cannot get 'serial number' card capability");
 
 	if (sizeof(prv_data->caps.serial) != sn.len)
@@ -1599,7 +1579,7 @@ laser_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 }
 
 static int
-laser_get_default_key(struct sc_card *card, struct sc_cardctl_default_key *data)
+jacartapki_get_default_key(struct sc_card *card, struct sc_cardctl_default_key *data)
 {
 	struct sc_context *ctx = card->ctx;
 	scconf_block *atrblock = NULL;
@@ -1611,7 +1591,7 @@ laser_get_default_key(struct sc_card *card, struct sc_cardctl_default_key *data)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NO_DEFAULT_KEY);
 
 	if (data->method == SC_AC_AUT && data->key_ref == 1) {
-		const char *default_key = scconf_get_str(atrblock, "default_transport_pin1", LASER_TRANSPORT_PIN1_VALUE);
+		const char *default_key = scconf_get_str(atrblock, "default_transport_pin1", JACARTAPKI_TRANSPORT_PIN1_VALUE);
 		int rv;
 
 		rv = sc_hex_to_bin(default_key, data->key_data, &data->len);
@@ -1624,7 +1604,7 @@ laser_get_default_key(struct sc_card *card, struct sc_cardctl_default_key *data)
 }
 
 static int
-laser_generate_key(struct sc_card *card, struct sc_cardctl_laser_genkey *args)
+jacartapki_generate_key(struct sc_card *card, struct sc_cardctl_jacartapki_genkey *args)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -1683,7 +1663,7 @@ laser_generate_key(struct sc_card *card, struct sc_cardctl_laser_genkey *args)
 }
 
 static int
-laser_update_key(struct sc_card *card, const struct sc_cardctl_laser_updatekey *args)
+jacartapki_update_key(struct sc_card *card, const struct sc_cardctl_jacartapki_updatekey *args)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -1710,21 +1690,21 @@ laser_update_key(struct sc_card *card, const struct sc_cardctl_laser_updatekey *
 }
 
 static int
-laser_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
+jacartapki_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
 	struct sc_context *ctx = card->ctx;
 
 	switch (cmd) {
 	case SC_CARDCTL_GET_SERIALNR:
-		return laser_get_serialnr(card, (struct sc_serial_number *)ptr);
+		return jacartapki_get_serialnr(card, (struct sc_serial_number *)ptr);
 	case SC_CARDCTL_GET_DEFAULT_KEY:
-		return laser_get_default_key(card, (struct sc_cardctl_default_key *)ptr);
+		return jacartapki_get_default_key(card, (struct sc_cardctl_default_key *)ptr);
 	case SC_CARDCTL_ALADDIN_GENERATE_KEY:
 		sc_log(ctx, "CMD SC_CARDCTL_ALADDIN_GENERATE_KEY");
-		return laser_generate_key(card, (struct sc_cardctl_laser_genkey *)ptr);
+		return jacartapki_generate_key(card, (struct sc_cardctl_jacartapki_genkey *)ptr);
 	case SC_CARDCTL_ALADDIN_UPDATE_KEY:
 		sc_log(ctx, "CMD SC_CARDCTL_ALADDIN_UPDATE_KEY");
-		return laser_update_key(card, (struct sc_cardctl_laser_updatekey *)ptr);
+		return jacartapki_update_key(card, (struct sc_cardctl_jacartapki_updatekey *)ptr);
 	case SC_CARDCTL_PKCS11_INIT_TOKEN:
 		sc_log(ctx, "CMD SC_CARDCTL_PKCS11_INIT_TOKEN");
 		return SC_ERROR_NOT_SUPPORTED;
@@ -1733,11 +1713,11 @@ laser_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 }
 
 static int
-laser_decipher(struct sc_card *card, const unsigned char *in, size_t in_len,
+jacartapki_decipher(struct sc_card *card, const unsigned char *in, size_t in_len,
 		unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *prv = (struct jacartapki_private_data *)card->drv_data;
 	struct sc_security_env *env = &prv->security_env;
 	struct sc_apdu apdu;
 	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], rbuf[SC_MAX_EXT_APDU_RESP_SIZE];
@@ -1796,11 +1776,11 @@ laser_decipher(struct sc_card *card, const unsigned char *in, size_t in_len,
 }
 
 static int
-laser_compute_signature_dst(struct sc_card *card,
+jacartapki_compute_signature_dst(struct sc_card *card,
 		const unsigned char *in, size_t in_len, unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *prv = (struct jacartapki_private_data *)card->drv_data;
 	struct sc_security_env *env = &prv->security_env;
 	struct sc_apdu apdu;
 	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], rbuf[MAX(SC_MAX_EXT_APDU_DATA_SIZE, SC_MAX_EXT_APDU_RESP_SIZE)];
@@ -1810,9 +1790,9 @@ laser_compute_signature_dst(struct sc_card *card,
 	unsigned char tailReserved;
 	int rv;
 	size_t offs = 0;
-	const unsigned char *asn1Pref = NULL;
-	size_t asn1PrefLen = 0;
 	size_t keySize;
+	unsigned long digestEncodeFlags;
+	size_t digestLength;
 	size_t sigValueLength;
 	u8 *tagPtr;
 	const u8 *sigValuePtr;
@@ -1825,22 +1805,25 @@ laser_compute_signature_dst(struct sc_card *card,
 	keySize = prv->last_ko != NULL ? prv->last_ko->size : 0;
 	sc_log(ctx, "SC_SEC_OPERATION: %04X, in-length:%"SC_FORMAT_LEN_SIZE_T"u, key-size:%"SC_FORMAT_LEN_SIZE_T"u", env->operation, in_len, keySize);
 
-	if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) {
-		asn1Pref = laser_sha1_digest_pref;
-		asn1PrefLen = sizeof(laser_sha1_digest_pref);
-	} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA224) {
-		asn1Pref = laser_sha224_digest_pref;
-		asn1PrefLen = sizeof(laser_sha224_digest_pref);
-	} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) {
-		asn1Pref = laser_sha256_digest_pref;
-		asn1PrefLen = sizeof(laser_sha256_digest_pref);
-	} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA384) {
-		asn1Pref = laser_sha384_digest_pref;
-		asn1PrefLen = sizeof(laser_sha384_digest_pref);
-	} else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA512) {
-		asn1Pref = laser_sha512_digest_pref;
-		asn1PrefLen = sizeof(laser_sha512_digest_pref);
+	if ((env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) ||
+			(env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA224) ||
+			(env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256) ||
+			(env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA384) ||
+			(env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA512) ||
+			(env->algorithm_flags & SC_ALGORITHM_RSA_HASH_NONE)) {
+
+		digestEncodeFlags = (env->algorithm_flags & SC_ALGORITHM_RSA_HASHES) | SC_ALGORITHM_RSA_PAD_NONE;
+
+	} else if (env->algorithm_flags & SC_ALGORITHM_RSA_RAW) {
+
+		digestEncodeFlags = SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_PAD_NONE;
+	} else {
+		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported digest type");
 	}
+
+	digestLength = sizeof(rbuf); /* rbuf reuse */
+	rv = sc_pkcs1_encode(ctx, digestEncodeFlags, in, in_len, rbuf, &digestLength, keySize, NULL);
+	LOG_TEST_RET(ctx, rv, "Failed to encode digest");
 
 	if (env->algorithm_flags & SC_ALGORITHM_RSA_RAW) {
 		dataTag = 0x82; /* tag 82H ciphertext */
@@ -1854,12 +1837,10 @@ laser_compute_signature_dst(struct sc_card *card,
 		tailReserved = 11;
 	}
 
-	if ((keySize && (asn1PrefLen + in_len) > (keySize - tailReserved)) || (asn1PrefLen + in_len) > SC_MAX_EXT_APDU_DATA_SIZE)
+	if ((keySize && digestLength > (keySize - tailReserved)) || digestLength > SC_MAX_EXT_APDU_DATA_SIZE)
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "too much of the input data");
 
-	memcpy(rbuf, asn1Pref, asn1PrefLen); /* rbuf reuse */
-	memcpy(rbuf + asn1PrefLen, in, in_len);
-	rv = sc_asn1_put_tag(dataTag, rbuf, asn1PrefLen + in_len, sbuf, sizeof(sbuf), &tagPtr);
+	rv = sc_asn1_put_tag(dataTag, rbuf, digestLength, sbuf, sizeof(sbuf), &tagPtr);
 	assert(rv >= 0);
 	offs = tagPtr - sbuf;
 
@@ -1900,11 +1881,11 @@ laser_compute_signature_dst(struct sc_card *card,
 }
 
 static int
-laser_compute_signature_at(struct sc_card *card,
+jacartapki_compute_signature_at(struct sc_card *card,
 		const unsigned char *in, size_t in_len, unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *prv = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *prv = (struct jacartapki_private_data *)card->drv_data;
 	const struct sc_security_env *env = &prv->security_env;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1915,11 +1896,11 @@ laser_compute_signature_at(struct sc_card *card,
 }
 
 static int
-laser_compute_signature(struct sc_card *card,
+jacartapki_compute_signature(struct sc_card *card,
 		const unsigned char *in, size_t in_len, unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx;
-	struct laser_private_data *prv;
+	struct jacartapki_private_data *prv;
 	struct sc_security_env *env;
 
 	if (!card)
@@ -1930,23 +1911,23 @@ laser_compute_signature(struct sc_card *card,
 
 	LOG_FUNC_CALLED(ctx);
 
-	prv = (struct laser_private_data *)card->drv_data;
+	prv = (struct jacartapki_private_data *)card->drv_data;
 	assert(prv);
 	env = &prv->security_env;
 
 	sc_log(ctx, "op:%x, inlen %"SC_FORMAT_LEN_SIZE_T"u, outlen %"SC_FORMAT_LEN_SIZE_T"u", env->operation, in_len, out_len);
 
 	if (env->operation == SC_SEC_OPERATION_SIGN)
-		return laser_compute_signature_dst(card, in, in_len, out, out_len);
+		return jacartapki_compute_signature_dst(card, in, in_len, out, out_len);
 	else if (env->operation == SC_SEC_OPERATION_AUTHENTICATE)
-		return laser_compute_signature_at(card, in, in_len, out, out_len);
+		return jacartapki_compute_signature_at(card, in, in_len, out, out_len);
 
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
 /* card reader lock obtained - re-select card applet if necessary. */
 static int
-laser_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+jacartapki_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_path path;
@@ -1955,7 +1936,7 @@ laser_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	LOG_FUNC_CALLED(ctx);
 
 	if (was_reset > 0) {
-		sc_path_set(&path, SC_PATH_TYPE_DF_NAME, laser_aid.value, laser_aid.len, 0, 0);
+		sc_path_set(&path, SC_PATH_TYPE_DF_NAME, jacartapki_aid.value, jacartapki_aid.len, 0, 0);
 		rv = sc_select_file(card, &path, NULL);
 		LOG_TEST_RET(ctx, rv, "Cannot select Laser AID");
 	}
@@ -2236,10 +2217,10 @@ err:
 #endif /* LIBRESSL_VERSION_NUMBER */
 
 static int
-laser_sm_open(struct sc_card *card)
+jacartapki_sm_open(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
-	struct laser_private_data *private_data = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
 	struct sm_dh_session *dh_session = &card->sm_ctx.info.session.dh;
 	struct sc_apdu apdu;
 	BIGNUM *bn_ifd_y, *bn_N, *bn_g;
@@ -2265,18 +2246,18 @@ laser_sm_open(struct sc_card *card)
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_GOTO_ERR(ctx, rv, "'GET PUBLIC KEY' failed");
 
-	dh_session->g.tag = LASER_SM_RSA_TAG_G;		/* TLV tag 80H g */
-	rv = laser_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->g);
+	dh_session->g.tag = JACARTAPKI_SM_RSA_TAG_G;		/* TLV tag 80H g */
+	rv = jacartapki_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->g);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'g'");
 	bn_g = BN_bin2bn(dh_session->g.value, dh_session->g.len, NULL);
 
-	dh_session->N.tag = LASER_SM_RSA_TAG_N;		/* TLV tag 81H N */
-	rv = laser_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->N);
+	dh_session->N.tag = JACARTAPKI_SM_RSA_TAG_N;		/* TLV tag 81H N */
+	rv = jacartapki_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->N);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'N'");
 	bn_N = BN_bin2bn(dh_session->N.value, dh_session->N.len, NULL);
 
-	dh_session->icc_p.tag = LASER_SM_RSA_TAG_ICC_P;	/* TLV tag 82H g^y mod N */
-	rv = laser_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->icc_p);
+	dh_session->icc_p.tag = JACARTAPKI_SM_RSA_TAG_ICC_P;	/* TLV tag 82H g^y mod N */
+	rv = jacartapki_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->icc_p);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'ICC-P'");
 	bn_icc_p = BN_bin2bn(dh_session->icc_p.value, dh_session->icc_p.len, NULL);
 
@@ -2357,7 +2338,7 @@ err:
 }
 
 static int
-laser_cbc_cksum(struct sc_context *ctx, unsigned char *key, size_t key_size,
+jacartapki_cbc_cksum(struct sc_context *ctx, unsigned char *key, size_t key_size,
 		unsigned char *in, size_t in_len, DES_cblock *icv)
 {
 	DES_key_schedule ks, ks2;
@@ -2390,7 +2371,7 @@ laser_cbc_cksum(struct sc_context *ctx, unsigned char *key, size_t key_size,
 }
 
 static int
-laser_sm_compute_mac(struct sc_card *card, const unsigned char *data, size_t data_len, DES_cblock *mac)
+jacartapki_sm_compute_mac(struct sc_card *card, const unsigned char *data, size_t data_len, DES_cblock *mac)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sm_dh_session *sess = &card->sm_ctx.info.session.dh;
@@ -2416,7 +2397,7 @@ laser_sm_compute_mac(struct sc_card *card, const unsigned char *data, size_t dat
 
 	memcpy(ptr, data, data_len);
 
-	rv = laser_cbc_cksum(ctx, sess->session_mac, sizeof(sess->session_mac), dt, dt_len, mac);
+	rv = jacartapki_cbc_cksum(ctx, sess->session_mac, sizeof(sess->session_mac), dt, dt_len, mac);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get checksum CBC 3DES");
 err:
 	free(dt);
@@ -2424,7 +2405,7 @@ err:
 }
 
 static int
-laser_sm_check_mac(struct sc_card* card, const unsigned char* data, size_t data_len,
+jacartapki_sm_check_mac(struct sc_card* card, const unsigned char* data, size_t data_len,
 	const unsigned char* mac, size_t mac_len)
 {
 	struct sc_context *ctx = card->ctx;
@@ -2434,7 +2415,7 @@ laser_sm_check_mac(struct sc_card* card, const unsigned char* data, size_t data_
 	if (mac_len != sizeof(macComputed))
 		LOG_ERROR_RET(ctx, SC_ERROR_SM_INVALID_CHECKSUM, "Invalid checksum length");
 
-	rv = laser_sm_compute_mac(card, data, data_len, &macComputed);
+	rv = jacartapki_sm_compute_mac(card, data, data_len, &macComputed);
 	LOG_TEST_RET(ctx, rv, "Failed to compute checksum");
 			
 	if (memcmp(mac, macComputed, mac_len))
@@ -2444,7 +2425,7 @@ laser_sm_check_mac(struct sc_card* card, const unsigned char* data, size_t data_
 }
 
 static int
-laser_sm_close(struct sc_card *card)
+jacartapki_sm_close(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
 	int rv = SC_SUCCESS;
@@ -2472,16 +2453,16 @@ laser_sm_close(struct sc_card *card)
 }
 
 static int
-laser_iso_sm_open(struct sc_card *card)
+jacartapki_iso_sm_open(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
 	struct iso_sm_ctx *sctx = NULL;
-	struct laser_private_data *prv_data = (struct laser_private_data *)card->drv_data;
+	struct jacartapki_private_data *prv_data = (struct jacartapki_private_data *)card->drv_data;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 
-	rv =  laser_sm_open(card);
+	rv =  jacartapki_sm_open(card);
 	LOG_TEST_GOTO_ERR(ctx, rv, "SM init failed");
 
 	sctx = iso_sm_ctx_create();
@@ -2491,17 +2472,17 @@ laser_iso_sm_open(struct sc_card *card)
 	sctx->priv_data = prv_data;
 	sctx->padding_indicator = SM_ISO_PADDING;
 	sctx->block_length = sizeof(DES_cblock);
-	sctx->authenticate = laser_iso_sm_authenticate;
-	sctx->encrypt = laser_iso_sm_encrypt;
-	sctx->decrypt = laser_iso_sm_decrypt;
-	sctx->verify_authentication = laser_iso_sm_verify_authentication;
+	sctx->authenticate = jacartapki_iso_sm_authenticate;
+	sctx->encrypt = jacartapki_iso_sm_encrypt;
+	sctx->decrypt = jacartapki_iso_sm_decrypt;
+	sctx->verify_authentication = jacartapki_iso_sm_verify_authentication;
 
 	rv = iso_sm_start(card, sctx);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Iso-sm start failed.");
 
-	card->sm_ctx.ops.close = laser_iso_sm_close;
-	card->sm_ctx.ops.get_sm_apdu = laser_iso_sm_get_apdu;
-	card->sm_ctx.ops.free_sm_apdu = laser_iso_sm_free_apdu;
+	card->sm_ctx.ops.close = jacartapki_iso_sm_close;
+	card->sm_ctx.ops.get_sm_apdu = jacartapki_iso_sm_get_apdu;
+	card->sm_ctx.ops.free_sm_apdu = jacartapki_iso_sm_free_apdu;
 
 	card->max_send_size = 0xEF; /* 0x10 SM overhead */
 
@@ -2513,7 +2494,7 @@ err:
 }
 
 static int
-laser_iso_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
+jacartapki_iso_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	const u8* data, size_t datalen, u8** enc)
 {
 	struct sm_dh_session *sess = &card->sm_ctx.info.session.dh;
@@ -2526,7 +2507,7 @@ laser_iso_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 }
 
 static int
-laser_iso_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
+jacartapki_iso_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	const u8* enc, size_t enclen, u8** data)
 {
 	struct sm_dh_session *sess = &card->sm_ctx.info.session.dh;
@@ -2539,9 +2520,9 @@ laser_iso_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 }
 
 static int
-laser_iso_sm_get_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu)
+jacartapki_iso_sm_get_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu)
 {
-	const struct laser_private_data *private_data = (const struct laser_private_data *)card->drv_data;
+	const struct jacartapki_private_data *private_data = (const struct jacartapki_private_data *)card->drv_data;
 	int rv;
 
 	if (private_data->sm_establish != 0)
@@ -2565,7 +2546,7 @@ laser_iso_sm_get_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu
 }
 
 static int
-laser_iso_sm_free_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu)
+jacartapki_iso_sm_free_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu **sm_apdu)
 {
 	int rv;
 	struct sc_apdu *p;
@@ -2579,21 +2560,21 @@ laser_iso_sm_free_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apd
 }
 
 static int
-laser_iso_sm_close(struct sc_card *card)
+jacartapki_iso_sm_close(struct sc_card *card)
 {
 	int rv;
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	laser_sm_close(card);
+	jacartapki_sm_close(card);
 	rv = iso_sm_close(card);
-	card->max_send_size = 0xFF; // no SM overhead
+	card->max_send_size = 0xFF; /* no SM overhead */
 
 	return rv;
 }
 
 static int
-laser_iso_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
+jacartapki_iso_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	const u8* data, size_t datalen, u8** outdata)
 {
 	int rv;
@@ -2618,7 +2599,7 @@ laser_iso_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if (!mac)
 		LOG_ERROR_GOTO(card->ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Failed to allocate MAC buffer");
 
-	rv = laser_sm_compute_mac(card, data, datalen, mac);
+	rv = jacartapki_sm_compute_mac(card, data, datalen, mac);
 	LOG_TEST_GOTO_ERR(card->ctx, rv, "Failed to compute MAC checksum");
 
 	*outdata = (u8*)mac;
@@ -2630,11 +2611,11 @@ err:
 }
 
 static int
-laser_iso_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
+jacartapki_iso_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	const u8* mac, size_t maclen,
 	const u8* macdata, size_t macdatalen)
 {
-	return laser_sm_check_mac(card, macdata, macdatalen, mac, maclen);
+	return jacartapki_sm_check_mac(card, macdata, macdatalen, mac, maclen);
 }
 
 #endif  /* ENABLE_SM */
@@ -2647,49 +2628,49 @@ sc_get_driver(void)
 	if (!iso_ops)
 		iso_ops = iso_drv->ops;
 
-	laser_ops = *iso_ops;
+	jacartapki_ops = *iso_ops;
 
-	laser_ops.match_card = laser_match_card;
-	laser_ops.init = laser_init;
-	laser_ops.finish = laser_finish;
-	laser_ops.read_binary = laser_read_binary;
+	jacartapki_ops.match_card = jacartapki_match_card;
+	jacartapki_ops.init = jacartapki_init;
+	jacartapki_ops.finish = jacartapki_finish;
+	jacartapki_ops.read_binary = jacartapki_read_binary;
 	/*	write_binary: ISO7816 implementation works	*/
-	laser_ops.update_binary = laser_update_binary;
-	laser_ops.erase_binary = laser_erase_binary;
+	jacartapki_ops.update_binary = jacartapki_update_binary;
+	jacartapki_ops.erase_binary = jacartapki_erase_binary;
 	/*	resize_binary	*/
 	/*	read_record: Untested	*/
 	/*	write_record: Untested	*/
 	/*	append_record: Untested	*/
 	/*	update_record: Untested	*/
-	laser_ops.select_file = laser_select_file;
+	jacartapki_ops.select_file = jacartapki_select_file;
 	/*	get_response: Untested	*/
 	/*	get_challenge: ISO7816 implementation works	*/
-	laser_ops.logout = laser_logout;
+	jacartapki_ops.logout = jacartapki_logout;
 	/*	restore_security_env	*/
-	laser_ops.set_security_env = laser_set_security_env;
-	laser_ops.decipher = laser_decipher;
-	laser_ops.compute_signature = laser_compute_signature;
-	laser_ops.create_file = laser_create_file;
-	laser_ops.delete_file = laser_delete_file;
-	laser_ops.list_files = laser_list_files;
-	laser_ops.check_sw = laser_check_sw;
-	laser_ops.card_ctl = laser_card_ctl;
-	laser_ops.process_fci = laser_process_fci;
+	jacartapki_ops.set_security_env = jacartapki_set_security_env;
+	jacartapki_ops.decipher = jacartapki_decipher;
+	jacartapki_ops.compute_signature = jacartapki_compute_signature;
+	jacartapki_ops.create_file = jacartapki_create_file;
+	jacartapki_ops.delete_file = jacartapki_delete_file;
+	jacartapki_ops.list_files = jacartapki_list_files;
+	jacartapki_ops.check_sw = jacartapki_check_sw;
+	jacartapki_ops.card_ctl = jacartapki_card_ctl;
+	jacartapki_ops.process_fci = jacartapki_process_fci;
 	/*	construct_fci: Not needed	*/
-	laser_ops.pin_cmd = laser_pin_cmd;
+	jacartapki_ops.pin_cmd = jacartapki_pin_cmd;
 	/*	get_data: Not implemented	*/
 	/*	put_data: Not implemented	*/
 	/*	delete_record: Not implemented	*/
 
-	/* laser_ops.read_public_key = laser_read_public_key	*/
+	/* jacartapki_ops.read_public_key = jacartapki_read_public_key	*/
 
-	laser_ops.card_reader_lock_obtained = laser_card_reader_lock_obtained;
+	jacartapki_ops.card_reader_lock_obtained = jacartapki_card_reader_lock_obtained;
 
-	return &laser_drv;
+	return &jacartapki_drv;
 }
 
 struct sc_card_driver *
-sc_get_laser_driver(void)
+sc_get_jacartapki_driver(void)
 {
 	return sc_get_driver();
 }
