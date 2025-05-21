@@ -271,7 +271,7 @@ sm_nist_params_cleanup(sm_nist_params_t *params)
 
 	free(params->signer_cert_der);
 	free(params->sm_in_cvc_der);
-	memset(&params, 0, sizeof(params));
+	memset(params, 0, sizeof(sm_nist_params_t));
 
 	return 0;
 }
