@@ -920,11 +920,12 @@ iso7816_get_response(struct sc_card *card, size_t *count, u8 *buf)
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	if (apdu.resplen == 0)
-		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 
 	*count = apdu.resplen;
 
+	if (apdu.resplen == 0) {
+		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	}
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		r = 0;					/* no more data to read */
 	else if (apdu.sw1 == 0x61)
