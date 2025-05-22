@@ -751,6 +751,13 @@
 					<listitem><para>Specify the file containing the info for HKDF (optional)</para></listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--uri</option> <replaceable>value</replaceable>
+					</term>
+					<listitem><para>Specify the PKCS#11 URI for module, slot, token or object</para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>
