@@ -34,6 +34,11 @@ extern "C" {
 #define CMDLINE_PARSER_VERSION VERSION
 #endif
 
+enum enum_skip_chrome { skip_chrome__NULL = -1, skip_chrome_arg_on = 0, skip_chrome_arg_off };
+enum enum_skip_firefox { skip_firefox__NULL = -1, skip_firefox_arg_on = 0, skip_firefox_arg_off };
+enum enum_skip_thunderbird { skip_thunderbird__NULL = -1, skip_thunderbird_arg_on = 0, skip_thunderbird_arg_off };
+enum enum_skip_seamonkey { skip_seamonkey__NULL = -1, skip_seamonkey_arg_on = 0, skip_seamonkey_arg_off };
+
 /** @brief Where the command line options are stored */
 struct gengetopt_args_info
 {
@@ -42,13 +47,17 @@ struct gengetopt_args_info
   char * module_arg;	/**< @brief Specify the module to load (default='OpenSC's PKCS#11 module').  */
   char * module_orig;	/**< @brief Specify the module to load original value given at command line.  */
   const char *module_help; /**< @brief Specify the module to load help description.  */
-  int skip_chrome_flag;	/**< @brief Don't install module to Chrome (default=on).  */
+  enum enum_skip_chrome skip_chrome_arg;	/**< @brief Don't install module to Chrome (default='on').  */
+  char * skip_chrome_orig;	/**< @brief Don't install module to Chrome original value given at command line.  */
   const char *skip_chrome_help; /**< @brief Don't install module to Chrome help description.  */
-  int skip_firefox_flag;	/**< @brief Don't install module to Firefox (default=on).  */
+  enum enum_skip_firefox skip_firefox_arg;	/**< @brief Don't install module to Firefox (default='on').  */
+  char * skip_firefox_orig;	/**< @brief Don't install module to Firefox original value given at command line.  */
   const char *skip_firefox_help; /**< @brief Don't install module to Firefox help description.  */
-  int skip_thunderbird_flag;	/**< @brief Don't install module to Thunderbird (default=off).  */
+  enum enum_skip_thunderbird skip_thunderbird_arg;	/**< @brief Don't install module to Thunderbird (default='off').  */
+  char * skip_thunderbird_orig;	/**< @brief Don't install module to Thunderbird original value given at command line.  */
   const char *skip_thunderbird_help; /**< @brief Don't install module to Thunderbird help description.  */
-  int skip_seamonkey_flag;	/**< @brief Don't install module to SeaMonkey (default=off).  */
+  enum enum_skip_seamonkey skip_seamonkey_arg;	/**< @brief Don't install module to SeaMonkey (default='off').  */
+  char * skip_seamonkey_orig;	/**< @brief Don't install module to SeaMonkey original value given at command line.  */
   const char *skip_seamonkey_help; /**< @brief Don't install module to SeaMonkey help description.  */
   
   unsigned int help_given ;	/**< @brief Whether help was given.  */
@@ -181,6 +190,11 @@ void cmdline_parser_free (struct gengetopt_args_info *args_info);
  */
 int cmdline_parser_required (struct gengetopt_args_info *args_info,
   const char *prog_name);
+
+extern const char *cmdline_parser_skip_chrome_values[];  /**< @brief Possible values for skip-chrome. */
+extern const char *cmdline_parser_skip_firefox_values[];  /**< @brief Possible values for skip-firefox. */
+extern const char *cmdline_parser_skip_thunderbird_values[];  /**< @brief Possible values for skip-thunderbird. */
+extern const char *cmdline_parser_skip_seamonkey_values[];  /**< @brief Possible values for skip-seamonkey. */
 
 
 #ifdef __cplusplus
