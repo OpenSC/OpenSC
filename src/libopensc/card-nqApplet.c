@@ -184,9 +184,10 @@ static int nqapplet_finish(struct sc_card *card)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static int nqapplet_get_response(struct sc_card *card, size_t *cb_resp, u8 *resp)
+static int
+nqapplet_get_response(struct sc_card *card, size_t *cb_resp, u8 *resp)
 {
-	struct sc_apdu apdu;
+	struct sc_apdu apdu = {0};
 	int rv;
 	size_t resplen;
 
@@ -198,12 +199,12 @@ static int nqapplet_get_response(struct sc_card *card, size_t *cb_resp, u8 *resp
 
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
-	if (apdu.resplen == 0) {
-		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
-	}
 
 	*cb_resp = apdu.resplen;
 
+	if (apdu.resplen == 0) {
+		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	}
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		rv = SC_SUCCESS;
 	} else if (apdu.sw1 == 0x61) {
