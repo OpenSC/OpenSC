@@ -42,6 +42,15 @@ After that, you can download reproducer from the oss-fuzz dashboard and run it l
 ```
 python3 infra/helper.py reproduce opensc fuzz_pkcs15_decode /path/to/testcase
 ```
+For creating a docker image for debugging the issue, run the following command:
+```
+python infra/helper.py shell base-runner-debug
+```
+This gives a shell inside a Docker image containing GDB. Now you can reproduce the issue and inspect the backtrace:
+```
+# Shell inside Docker debug image
+gdb -ex 'break __sanitizer::Die' -ex 'run' --args /out/opensc/fuzz_pkcs15_decode /out/opensc/testcase
+```
 
 ### Expanding incomplete backtraces
 Sometimes the backtrace visible in the oss-fuzz dashboard is not useful, for example showing only part of the
