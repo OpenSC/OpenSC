@@ -2413,7 +2413,8 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
-	unsigned char	in_buffer[1025], sig_buffer[512];
+	unsigned char in_buffer[1025];
+	CK_BYTE_PTR sig_buffer = NULL;
 	CK_MECHANISM	mech;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
 	CK_MAC_GENERAL_PARAMS mac_gen_param;
@@ -2421,7 +2422,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			.phFlag = CK_FALSE,
 	};
 	CK_RV		rv;
-	CK_ULONG	sig_len;
+	CK_ULONG sig_len = 0;
 	int		fd;
 	ssize_t sz;
 	unsigned long	hashlen;
@@ -2491,8 +2492,13 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		if ((getCLASS(session, key) == CKO_PRIVATE_KEY) && getALWAYS_AUTHENTICATE(session, key))
 			login(session,CKU_CONTEXT_SPECIFIC);
 
-		sig_len = sizeof(sig_buffer);
 		rv = p11->C_Sign(session, in_buffer, sz, sig_buffer, &sig_len);
+		if (rv == CKR_OK) {
+			sig_buffer = malloc(sig_len);
+			if (!sig_buffer)
+				util_fatal("malloc() failure\n");
+			rv = p11->C_Sign(session, in_buffer, sz, sig_buffer, &sig_len);
+		}
 	}
 
 	if (rv != CKR_OK)   {
@@ -2512,6 +2518,12 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 		sig_len = sizeof(sig_buffer);
 		rv = p11->C_SignFinal(session, sig_buffer, &sig_len);
+		if ((rv == CKR_OK) && !sig_buffer) {
+			sig_buffer = malloc(sig_len);
+			if (!sig_buffer)
+				util_fatal("malloc() failure\n");
+			rv = p11->C_SignFinal(session, sig_buffer, &sig_len);
+		}
 		if (rv != CKR_OK)
 			p11_fatal("C_SignFinal", rv);
 	}
@@ -2552,12 +2564,14 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("Failed to write to %s: %m", opt_output);
 	if (fd != 1)
 		close(fd);
+	free(sig_buffer);
 }
 
 static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
-	unsigned char	in_buffer[1025], sig_buffer[512];
+	unsigned char	in_buffer[1025];
+	CK_BYTE_PTR sig_buffer = NULL;
 	CK_MECHANISM	mech;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
 	CK_MAC_GENERAL_PARAMS mac_gen_param;
@@ -2565,8 +2579,9 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			.phFlag = CK_FALSE,
 	};
 	CK_RV		rv;
-	CK_ULONG	sig_len;
+	CK_ULONG	sig_len = 0;
 	int		fd, fd2;
+	struct stat sig_st;
 	ssize_t sz, sz2;
 	unsigned long   hashlen;
 
@@ -2618,8 +2633,13 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("No file with signature provided. Use --signature-file");
 	else if ((fd2 = open(opt_signature_file, O_RDONLY|O_BINARY)) < 0)
 		util_fatal("Cannot open %s: %m", opt_signature_file);
-
-	sz2 = read(fd2, sig_buffer, sizeof(sig_buffer));
+	else if (fstat(fd2, &sig_st) != 0)
+		util_fatal("Couldn't get size of file \"", opt_signature_file);
+	sig_len = sig_st.st_size;
+	sig_buffer = malloc(sig_len);
+	if (!sig_buffer)
+		util_fatal("malloc() failure\n");
+	sz2 = read(fd2, sig_buffer, sig_len);
 	if (sz2 < 0)
 		util_fatal("Cannot read from %s: %m", opt_signature_file);
 
@@ -2729,6 +2749,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		util_fatal("Invalid signature");
 	else
 		util_fatal("Signature verification failed: rv = %s (0x%0x)\n", CKR2Str(rv), (unsigned int)rv);
+	free(sig_buffer);
 }
 
 static void
