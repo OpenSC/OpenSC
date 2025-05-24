@@ -2413,8 +2413,8 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
-	unsigned char	in_buffer[1025];
-        CK_BYTE_PTR	sig_buffer = NULL;
+	unsigned char in_buffer[1025];
+	CK_BYTE_PTR sig_buffer = NULL;
 	CK_MECHANISM	mech;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
 	CK_MAC_GENERAL_PARAMS mac_gen_param;
@@ -2422,7 +2422,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			.phFlag = CK_FALSE,
 	};
 	CK_RV		rv;
-	CK_ULONG	sig_len = 0;
+	CK_ULONG sig_len = 0;
 	int		fd;
 	ssize_t sz;
 	unsigned long	hashlen;
