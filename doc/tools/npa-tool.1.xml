@@ -10,7 +10,7 @@
 
 	<refnamediv>
 		<refname>npa-tool</refname>
-		<refpurpose>displays information on the German eID card (neuer Personalausweis, <abbrev>nPA</abbrev>).
+		<refpurpose>displays information of an ID card or ePassport.
 		</refpurpose>
 	</refnamediv>
 
@@ -25,13 +25,15 @@
 		<title>Description</title>
 		<para>
 			The <command>npa-tool</command> utility is used to display information
-			stored on the German eID card (neuer Personalausweis, <abbrev>nPA</abbrev>),
-			and to perform some write and verification operations.
+            stored on an ID card or on a passport and to perform some write and
+            verification operations.
 		</para>
 		<para>
 			Extended Access Control version 2 is performed according to ICAO Doc
-			9303 or BSI TR-03110 so that other identity cards and machine
-			readable travel documents (MRTDs) may be read as well.
+            9303 or BSI TR-03110 so that an ICAO compliant machine readable
+			travel document (<abbrev>MRTD</abbrev>) as well as EAC compliant ID
+			cards, for example the German ID card (neuer Personalausweis,
+			<abbrev>nPA</abbrev>), may be read.
 		</para>
 	</refsect1>
 
