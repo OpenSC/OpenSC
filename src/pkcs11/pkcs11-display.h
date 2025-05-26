@@ -51,17 +51,18 @@ typedef struct {
   void *            arg;
 } type_spec;
 
-enum ck_type{
-  OBJ_T,
-  PROFILE_T,
-  KEY_T,
-  CRT_T,
-  MEC_T,
-  MGF_T,
-  USR_T,
-  STA_T,
-  CKD_T,
-  RV_T
+enum ck_type {
+	OBJ_T,
+	PROFILE_T,
+	KEY_T,
+	CRT_T,
+	MEC_T,
+	MGF_T,
+	GENERATE_T,
+	USR_T,
+	STA_T,
+	CKD_T,
+	RV_T
 };
 
 const char *lookup_enum_spec(enum_spec *spec, CK_ULONG value);
