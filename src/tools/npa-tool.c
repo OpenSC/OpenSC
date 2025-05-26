@@ -125,7 +125,7 @@ static void read_dg(sc_card_t *card, unsigned char sfid, const char *dg_str,
 		/* 32768 is the maximum size of dg according to ICAO Doc 9303 */
 		char buf[32768*5];
 		sc_hex_dump(*dg, *dg_len, buf, sizeof buf);
-		fprintf(stdout, "Read %s", buf);
+		fprintf(stdout, "Read DG %02u %s:\n%s", sfid, dg_str, buf);
 	}
 }
 
