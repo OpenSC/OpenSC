@@ -19,8 +19,9 @@
 
 #include "config.h"
 
-#include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef _WIN32
@@ -418,7 +419,7 @@ spy_attribute_list_out(const char *name, CK_ATTRIBUTE_PTR pTemplate,
 }
 
 static void
-spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
+spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism, bool is_c_message)
 {
 	char param_name[64];
 	const char *mec_name;
@@ -441,118 +442,130 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism)
 		}
 	}
 
+	/* This is common case for all mechanisms */
+	if (pMechanism->pParameter == NULL) {
+		fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
+		return;
+	}
+
 	switch (pMechanism->mechanism) {
-	case CKM_AES_GCM:
-		if (pMechanism->pParameter != NULL) {
-			CK_GCM_PARAMS *param =
-				(CK_GCM_PARAMS *) pMechanism->pParameter;
+	case CKM_AES_GCM: {
+		if (!is_c_message && pMechanism->ulParameterLen == sizeof(CK_GCM_PARAMS)) {
+			CK_GCM_PARAMS *param = (CK_GCM_PARAMS *)pMechanism->pParameter;
 			snprintf(param_name, sizeof(param_name), "%s->pParameter->pIv[ulIvLen]", name);
-			spy_dump_string_in(param_name,
-				param->pIv, param->ulIvLen);
+			spy_dump_string_in(param_name, param->pIv, param->ulIvLen);
 			snprintf(param_name, sizeof(param_name), "%s->pParameter->ulIvBits", name);
 			spy_dump_ulong_in(param_name, param->ulIvBits);
 			snprintf(param_name, sizeof(param_name), "%s->pParameter->pAAD[ulAADLen]", name);
-			spy_dump_string_in(param_name,
-				param->pAAD, param->ulAADLen);
-			fprintf(spy_output, "[in] %s->pParameter->ulTagBits = %lu\n", name, param->ulTagBits);
-		} else {
-			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
-			break;
-		}
-		break;
-	case CKM_AES_CCM:
-		if (pMechanism->pParameter != NULL) {
-			CK_CCM_PARAMS *param = (CK_CCM_PARAMS *)pMechanism->pParameter;
-			snprintf(param_name, sizeof(param_name), "%s->pParameter->ulDataLen", name);
-			spy_dump_ulong_in(param_name, param->ulDataLen);
-			snprintf(param_name, sizeof(param_name), "%s->pParameter->pNonce[ulNonceLen]", name);
-			spy_dump_string_in(param_name, param->pNonce, param->ulNonceLen);
-			snprintf(param_name, sizeof(param_name), "%s->pParameter->pAAD[ulAADLen]", name);
 			spy_dump_string_in(param_name, param->pAAD, param->ulAADLen);
-			fprintf(spy_output, "[in] %s->pParameter->ulMacLen = %lu\n", name, param->ulMACLen);
+			fprintf(spy_output, "[in] %s->pParameter->ulTagBits = %lu\n", name, param->ulTagBits);
+		} else if (is_c_message && pMechanism->ulParameterLen == sizeof(CK_GCM_MESSAGE_PARAMS)) {
+			CK_GCM_MESSAGE_PARAMS *param = (CK_GCM_MESSAGE_PARAMS *)pMechanism->pParameter;
+			snprintf(param_name, sizeof(param_name), "%s->pParameter->pIv[ulIvLen]", name);
+			spy_dump_string_in(param_name, param->pIv, param->ulIvLen);
+			snprintf(param_name, sizeof(param_name), "%s->pParameter->ulIvFixedBits", name);
+			spy_dump_ulong_in(param_name, param->ulIvFixedBits);
+			fprintf(spy_output, "[in] %s->pParameter->ivGenerator = %s\n", name,
+					lookup_enum(GENERATE_T, param->ivGenerator));
+			snprintf(param_name, sizeof(param_name), "%s->pParameter->pTag", name);
+			spy_dump_string_in(param_name, param->pTag, param->ulTagBits / 8);
 		} else {
-			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
-			break;
+			snprintf(param_name, sizeof(param_name), "%s->pParameter[ulParameterLen]", name);
+			spy_dump_string_in(param_name, pMechanism->pParameter, pMechanism->ulParameterLen);
+			fprintf(spy_output, "(unknown type -- the length does not match any known type\n");
 		}
 		break;
+	}
+	case CKM_AES_CCM: {
+		if (pMechanism->ulParameterLen != sizeof(CK_CCM_PARAMS)) {
+			snprintf(param_name, sizeof(param_name), "%s->pParameter[ulParameterLen]", name);
+			spy_dump_string_in(param_name, pMechanism->pParameter, pMechanism->ulParameterLen);
+			fprintf(spy_output, "(unknown type -- the length does not match any known type\n");
+			break;
+		}
+
+		CK_CCM_PARAMS *param = (CK_CCM_PARAMS *)pMechanism->pParameter;
+		snprintf(param_name, sizeof(param_name), "%s->pParameter->ulDataLen", name);
+		spy_dump_ulong_in(param_name, param->ulDataLen);
+		snprintf(param_name, sizeof(param_name), "%s->pParameter->pNonce[ulNonceLen]", name);
+		spy_dump_string_in(param_name, param->pNonce, param->ulNonceLen);
+		snprintf(param_name, sizeof(param_name), "%s->pParameter->pAAD[ulAADLen]", name);
+		spy_dump_string_in(param_name, param->pAAD, param->ulAADLen);
+		fprintf(spy_output, "[in] %s->pParameter->ulMacLen = %lu\n", name, param->ulMACLen);
+		break;
+	}
 	case CKM_ECDH1_DERIVE:
-	case CKM_ECDH1_COFACTOR_DERIVE:
-		if (pMechanism->pParameter != NULL) {
-			CK_ECDH1_DERIVE_PARAMS *param =
-				(CK_ECDH1_DERIVE_PARAMS *) pMechanism->pParameter;
-			fprintf(spy_output, "[in] %s->pParameter->kdf = %s\n", name,
-				lookup_enum(CKD_T, param->kdf));
-			fprintf(spy_output, "[in] %s->pParameter->pSharedData[ulSharedDataLen] = ", name);
-			print_generic(spy_output, 0, param->pSharedData,
-				param->ulSharedDataLen, NULL);
-			fprintf(spy_output, "[in] %s->pParameter->pPublicData[ulPublicDataLen] = ", name);
-			print_generic(spy_output, 0, param->pPublicData,
-				param->ulPublicDataLen, NULL);
-		} else {
-			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
+	case CKM_ECDH1_COFACTOR_DERIVE: {
+		if (pMechanism->ulParameterLen != sizeof(CK_ECDH1_DERIVE_PARAMS)) {
+			snprintf(param_name, sizeof(param_name), "%s->pParameter[ulParameterLen]", name);
+			spy_dump_string_in(param_name, pMechanism->pParameter, pMechanism->ulParameterLen);
+			fprintf(spy_output, "(unknown type -- the length does not match any known type\n");
 			break;
 		}
+
+		CK_ECDH1_DERIVE_PARAMS *param = (CK_ECDH1_DERIVE_PARAMS *)pMechanism->pParameter;
+		fprintf(spy_output, "[in] %s->pParameter->kdf = %s\n", name, lookup_enum(CKD_T, param->kdf));
+		fprintf(spy_output, "[in] %s->pParameter->pSharedData[ulSharedDataLen] = ", name);
+		print_generic(spy_output, 0, param->pSharedData, param->ulSharedDataLen, NULL);
+		fprintf(spy_output, "[in] %s->pParameter->pPublicData[ulPublicDataLen] = ", name);
+		print_generic(spy_output, 0, param->pPublicData, param->ulPublicDataLen, NULL);
 		break;
-	case CKM_ECMQV_DERIVE:
-		if (pMechanism->pParameter != NULL) {
-			CK_ECMQV_DERIVE_PARAMS *param =
-				(CK_ECMQV_DERIVE_PARAMS *) pMechanism->pParameter;
-			fprintf(spy_output, "[in] %s->pParameter->kdf = %s\n", name,
-				lookup_enum(CKD_T, param->kdf));
-			fprintf(spy_output, "%s->pParameter->pSharedData[ulSharedDataLen] = ", name);
-			print_generic(spy_output, 0, param->pSharedData,
-				param->ulSharedDataLen, NULL);
-			fprintf(spy_output, "%s->pParameter->pPublicData[ulPublicDataLen] = ", name);
-			print_generic(spy_output, 0, param->pPublicData,
-				param->ulPublicDataLen, NULL);
-			fprintf(spy_output, "%s->pParameter->ulPrivateDataLen = %lu", name,
-				param->ulPrivateDataLen);
-			fprintf(spy_output, "%s->pParameter->hPrivateData = %lu", name, param->hPrivateData);
-			fprintf(spy_output, "%s->pParameter->pPublicData2[ulPublicDataLen2] = ", name);
-			print_generic(spy_output, 0, param->pPublicData2,
-				param->ulPublicDataLen2, NULL);
-			fprintf(spy_output, "%s->pParameter->publicKey = %lu", name, param->publicKey);
-		} else {
-			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
+	}
+	case CKM_ECMQV_DERIVE: {
+		if (pMechanism->ulParameterLen != sizeof(CK_ECMQV_DERIVE_PARAMS)) {
+			snprintf(param_name, sizeof(param_name), "%s->pParameter[ulParameterLen]", name);
+			spy_dump_string_in(param_name, pMechanism->pParameter, pMechanism->ulParameterLen);
+			fprintf(spy_output, "(unknown type -- the length does not match any known type\n");
 			break;
 		}
+
+		CK_ECMQV_DERIVE_PARAMS *param = (CK_ECMQV_DERIVE_PARAMS *)pMechanism->pParameter;
+		fprintf(spy_output, "[in] %s->pParameter->kdf = %s\n", name, lookup_enum(CKD_T, param->kdf));
+		fprintf(spy_output, "%s->pParameter->pSharedData[ulSharedDataLen] = ", name);
+		print_generic(spy_output, 0, param->pSharedData, param->ulSharedDataLen, NULL);
+		fprintf(spy_output, "%s->pParameter->pPublicData[ulPublicDataLen] = ", name);
+		print_generic(spy_output, 0, param->pPublicData, param->ulPublicDataLen, NULL);
+		fprintf(spy_output, "%s->pParameter->ulPrivateDataLen = %lu", name, param->ulPrivateDataLen);
+		fprintf(spy_output, "%s->pParameter->hPrivateData = %lu", name, param->hPrivateData);
+		fprintf(spy_output, "%s->pParameter->pPublicData2[ulPublicDataLen2] = ", name);
+		print_generic(spy_output, 0, param->pPublicData2, param->ulPublicDataLen2, NULL);
+		fprintf(spy_output, "%s->pParameter->publicKey = %lu", name, param->publicKey);
 		break;
-	case CKM_RSA_PKCS_OAEP:
-		if (pMechanism->pParameter != NULL) {
-			CK_RSA_PKCS_OAEP_PARAMS *param =
-				(CK_RSA_PKCS_OAEP_PARAMS *) pMechanism->pParameter;
-			fprintf(spy_output, "[in] %s->pParameter->hashAlg = %s\n", name,
+	}
+	case CKM_RSA_PKCS_OAEP: {
+		if (pMechanism->ulParameterLen != sizeof(CK_RSA_PKCS_OAEP_PARAMS)) {
+			snprintf(param_name, sizeof(param_name), "%s->pParameter[ulParameterLen]", name);
+			spy_dump_string_in(param_name, pMechanism->pParameter, pMechanism->ulParameterLen);
+			fprintf(spy_output, "(unknown type -- the length does not match any known type\n");
+			break;
+		}
+		CK_RSA_PKCS_OAEP_PARAMS *param = (CK_RSA_PKCS_OAEP_PARAMS *)pMechanism->pParameter;
+		fprintf(spy_output, "[in] %s->pParameter->hashAlg = %s\n", name,
 				lookup_enum(MEC_T, param->hashAlg));
-			fprintf(spy_output, "[in] %s->pParameter->mgf = %s\n", name,
-				lookup_enum(MGF_T, param->mgf));
-			fprintf(spy_output, "[in] %s->pParameter->source = %lu\n", name, param->source);
-			snprintf(param_name, sizeof(param_name), "%s->pParameter->pSourceData[ulSourceDalaLen]", name);
-			spy_dump_string_in(param_name,
-				param->pSourceData, param->ulSourceDataLen);
-		} else {
-			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
-			break;
-		}
+		fprintf(spy_output, "[in] %s->pParameter->mgf = %s\n", name, lookup_enum(MGF_T, param->mgf));
+		fprintf(spy_output, "[in] %s->pParameter->source = %lu\n", name, param->source);
+		snprintf(param_name, sizeof(param_name), "%s->pParameter->pSourceData[ulSourceDalaLen]", name);
+		spy_dump_string_in(param_name, param->pSourceData, param->ulSourceDataLen);
 		break;
+	}
 	case CKM_RSA_PKCS_PSS:
 	case CKM_SHA1_RSA_PKCS_PSS:
 	case CKM_SHA256_RSA_PKCS_PSS:
 	case CKM_SHA384_RSA_PKCS_PSS:
-	case CKM_SHA512_RSA_PKCS_PSS:
-		if (pMechanism->pParameter != NULL) {
-			CK_RSA_PKCS_PSS_PARAMS *param =
-				(CK_RSA_PKCS_PSS_PARAMS *) pMechanism->pParameter;
-			fprintf(spy_output, "[in] %s->pParameter->hashAlg = %s\n", name,
-				lookup_enum(MEC_T, param->hashAlg));
-			fprintf(spy_output, "[in] %s->pParameter->mgf = %s\n", name,
-				lookup_enum(MGF_T, param->mgf));
-			fprintf(spy_output, "[in] %s->pParameter->sLen = %lu\n", name,
-				param->sLen);
-		} else {
-			fprintf(spy_output, "[in] %s->pParameter = NULL\n", name);
+	case CKM_SHA512_RSA_PKCS_PSS: {
+		if (pMechanism->ulParameterLen != sizeof(CK_RSA_PKCS_PSS_PARAMS)) {
+			snprintf(param_name, sizeof(param_name), "%s->pParameter[ulParameterLen]", name);
+			spy_dump_string_in(param_name, pMechanism->pParameter, pMechanism->ulParameterLen);
+			fprintf(spy_output, "(unknown type -- the length does not match any known type\n");
 			break;
 		}
+		CK_RSA_PKCS_PSS_PARAMS *param = (CK_RSA_PKCS_PSS_PARAMS *)pMechanism->pParameter;
+		fprintf(spy_output, "[in] %s->pParameter->hashAlg = %s\n", name,
+				lookup_enum(MEC_T, param->hashAlg));
+		fprintf(spy_output, "[in] %s->pParameter->mgf = %s\n", name, lookup_enum(MGF_T, param->mgf));
+		fprintf(spy_output, "[in] %s->pParameter->sLen = %lu\n", name, param->sLen);
 		break;
+	}
 	default:
 		snprintf(param_name, sizeof(param_name), "%s->pParameter[ulParameterLen]", name);
 		spy_dump_string_in(param_name, pMechanism->pParameter, pMechanism->ulParameterLen);
@@ -1029,7 +1042,7 @@ C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT
 
 	enter("C_EncryptInit");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_EncryptInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1093,7 +1106,7 @@ C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT
 
 	enter("C_DecryptInit");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_DecryptInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1158,7 +1171,7 @@ C_DigestInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism)
 
 	enter("C_DigestInit");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
 	rv = po->C_DigestInit(hSession, pMechanism);
 	return retne(rv);
 }
@@ -1224,7 +1237,7 @@ C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HA
 
 	enter("C_SignInit");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_SignInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1285,7 +1298,7 @@ C_SignRecoverInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OB
 
 	enter("C_SignRecoverInit");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_SignRecoverInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1316,7 +1329,7 @@ C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_
 
 	enter("C_VerifyInit");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_VerifyInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1369,7 +1382,7 @@ C_VerifyRecoverInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
 
 	enter("C_VerifyRecoverInit");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_VerifyRecoverInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1462,7 +1475,7 @@ C_GenerateKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
 
 	enter("C_GenerateKey");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
 	spy_attribute_list_in("pTemplate", pTemplate, ulCount);
 	rv = po->C_GenerateKey(hSession, pMechanism, pTemplate, ulCount, phKey);
 	if (rv == CKR_OK)
@@ -1481,7 +1494,7 @@ C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
 
 	enter("C_GenerateKeyPair");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
 	spy_attribute_list_in("pPublicKeyTemplate", pPublicKeyTemplate, ulPublicKeyAttributeCount);
 	spy_attribute_list_in("pPrivateKeyTemplate", pPrivateKeyTemplate, ulPrivateKeyAttributeCount);
 	rv = po->C_GenerateKeyPair(hSession, pMechanism,
@@ -1504,7 +1517,7 @@ C_WrapKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
 
 	enter("C_WrapKey");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
 	spy_dump_ulong_in("hWrappingKey", hWrappingKey);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_WrapKey(hSession, pMechanism, hWrappingKey, hKey, pWrappedKey, pulWrappedKeyLen);
@@ -1527,7 +1540,7 @@ C_UnwrapKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
 
 	enter("C_UnwrapKey");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
 	spy_dump_ulong_in("hUnwrappingKey", hUnwrappingKey);
 	spy_dump_string_in("pWrappedKey[ulWrappedKeyLen]", pWrappedKey, ulWrappedKeyLen);
 	spy_attribute_list_in("pTemplate", pTemplate, ulAttributeCount);
@@ -1546,7 +1559,7 @@ C_DeriveKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_H
 
 	enter("C_DeriveKey");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
 	spy_dump_ulong_in("hBaseKey", hBaseKey);
 	spy_attribute_list_in("pTemplate", pTemplate, ulAttributeCount);
 	rv = po->C_DeriveKey(hSession, pMechanism, hBaseKey, pTemplate, ulAttributeCount, phKey);
@@ -1829,7 +1842,7 @@ C_MessageEncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK
 
 	enter("C_MessageEncryptInit");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, true);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_MessageEncryptInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1912,7 +1925,7 @@ C_MessageDecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK
 
 	enter("C_MessageDecryptInit");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, true);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_MessageDecryptInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -1995,7 +2008,7 @@ C_MessageSignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OB
 
 	enter("C_MessageSignInit");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, true);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_MessageSignInit(hSession, pMechanism, hKey);
 	return retne(rv);
@@ -2067,7 +2080,7 @@ C_MessageVerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 
 	enter("C_MessageVerifyInit");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_mechanism_in("pMechanism", pMechanism);
+	spy_dump_mechanism_in("pMechanism", pMechanism, true);
 	spy_dump_ulong_in("hKey", hKey);
 	rv = po->C_MessageVerifyInit(hSession, pMechanism, hKey);
 	return retne(rv);
