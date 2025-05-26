@@ -588,6 +588,14 @@ static enum_specs ck_mgf_s[] = {
   { CKG_MGF1_SHA3_512, "CKG_MGF1_SHA3_512" },
 };
 
+static enum_specs ck_generate_s[] = {
+  { CKG_NO_GENERATE         , "CKG_NO_GENERATE         " },
+  { CKG_GENERATE            , "CKG_GENERATE            " },
+  { CKG_GENERATE_COUNTER    , "CKG_GENERATE_COUNTER    " },
+  { CKG_GENERATE_RANDOM     , "CKG_GENERATE_RANDOM     " },
+  { CKG_GENERATE_COUNTER_XOR, "CKG_GENERATE_COUNTER_XOR" },
+};
+
 static enum_specs ck_err_s[] = {
   { CKR_OK,                               "CKR_OK" },
   { CKR_CANCEL,                           "CKR_CANCEL" },
@@ -702,16 +710,17 @@ static enum_specs ck_ckd_s[] = {
 #define SZ_SPECS sizeof(enum_specs)
 
 enum_spec ck_types[] = {
-  { OBJ_T, ck_cls_s, sizeof(ck_cls_s) / SZ_SPECS, "CK_OBJECT_CLASS"     },
-  { PROFILE_T, ck_profile_s, sizeof(ck_profile_s)/SZ_SPECS, "CK_PROFILE"},
-  { KEY_T, ck_key_s, sizeof(ck_key_s) / SZ_SPECS, "CK_KEY_TYPE"         },
-  { CRT_T, ck_crt_s, sizeof(ck_crt_s) / SZ_SPECS, "CK_CERTIFICATE_TYPE" },
-  { MEC_T, ck_mec_s, sizeof(ck_mec_s) / SZ_SPECS, "CK_MECHANISM_TYPE"   },
-  { MGF_T, ck_mgf_s, sizeof(ck_mgf_s) / SZ_SPECS, "CK_RSA_PKCS_MGF_TYPE"},
-  { USR_T, ck_usr_s, sizeof(ck_usr_s) / SZ_SPECS, "CK_USER_TYPE"        },
-  { STA_T, ck_sta_s, sizeof(ck_sta_s) / SZ_SPECS, "CK_STATE"        },
-  { CKD_T, ck_ckd_s, sizeof(ck_ckd_s) / SZ_SPECS, "CK_EC_KDF_TYPE"      },
-  { RV_T,  ck_err_s, sizeof(ck_err_s) / SZ_SPECS, "CK_RV"               },
+  { OBJ_T,      ck_cls_s,      sizeof(ck_cls_s) / SZ_SPECS,     "CK_OBJECT_CLASS"       },
+  { PROFILE_T,  ck_profile_s,  sizeof(ck_profile_s)/SZ_SPECS,   "CK_PROFILE"            },
+  { KEY_T,      ck_key_s,      sizeof(ck_key_s) / SZ_SPECS,     "CK_KEY_TYPE"           },
+  { CRT_T,      ck_crt_s,      sizeof(ck_crt_s) / SZ_SPECS,     "CK_CERTIFICATE_TYPE"   },
+  { MEC_T,      ck_mec_s,      sizeof(ck_mec_s) / SZ_SPECS,     "CK_MECHANISM_TYPE"     },
+  { MGF_T,      ck_mgf_s,      sizeof(ck_mgf_s) / SZ_SPECS,     "CK_RSA_PKCS_MGF_TYPE"  },
+  { GENERATE_T, ck_generate_s, sizeof(ck_generate_s) / SZ_SPECS, "CK_GENERATOR_FUNCTION"},
+  { USR_T,      ck_usr_s,      sizeof(ck_usr_s) / SZ_SPECS,      "CK_USER_TYPE"         },
+  { STA_T,      ck_sta_s,      sizeof(ck_sta_s) / SZ_SPECS,      "CK_STATE"             },
+  { CKD_T,      ck_ckd_s,      sizeof(ck_ckd_s) / SZ_SPECS,      "CK_EC_KDF_TYPE"       },
+  { RV_T,       ck_err_s,      sizeof(ck_err_s) / SZ_SPECS,      "CK_RV"                },
 };
 
 static enum_spec ck_key_t[] = { { KEY_T, ck_key_s, sizeof(ck_key_s) / SZ_SPECS, "CK_KEY_TYPE" } };

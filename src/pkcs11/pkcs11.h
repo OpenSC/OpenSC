@@ -155,6 +155,8 @@ extern "C" {
 
 #define ck_rsa_pkcs_mgf_type_t CK_RSA_PKCS_MGF_TYPE
 
+#define ck_generator_function_t CK_GENERATOR_FUNCTION
+
 #define ck_mechanism _CK_MECHANISM
 #define parameter pParameter
 #define parameter_len ulParameterLen
@@ -909,6 +911,8 @@ typedef struct CK_ECMQV_DERIVE_PARAMS {
 typedef unsigned long ck_rsa_pkcs_mgf_type_t;
 typedef unsigned long CK_RSA_PKCS_OAEP_SOURCE_TYPE;
 
+typedef unsigned long ck_generator_function_t;
+
 typedef struct CK_RSA_PKCS_OAEP_PARAMS {
 	CK_MECHANISM_TYPE hashAlg;
 	CK_RSA_PKCS_MGF_TYPE mgf;
@@ -943,6 +947,22 @@ typedef struct CK_GCM_PARAMS {
 	unsigned long ulAADLen;
 	unsigned long ulTagBits;
 } CK_GCM_PARAMS;
+
+/* CKG (GCM) */
+#define CKG_NO_GENERATE		 (0x00000000UL)
+#define CKG_GENERATE		 (0x00000001UL)
+#define CKG_GENERATE_COUNTER	 (0x00000002UL)
+#define CKG_GENERATE_RANDOM	 (0x00000003UL)
+#define CKG_GENERATE_COUNTER_XOR (0x00000004UL)
+
+typedef struct CK_GCM_MESSAGE_PARAMS {
+	void *pIv;
+	unsigned long ulIvLen;
+	unsigned long ulIvFixedBits;
+	CK_GENERATOR_FUNCTION ivGenerator;
+	void *pTag;
+	unsigned long ulTagBits;
+} CK_GCM_MESSAGE_PARAMS;
 
 typedef struct CK_CCM_PARAMS {
 	unsigned long ulDataLen;
@@ -1799,6 +1819,8 @@ typedef ck_mechanism_type_t *CK_MECHANISM_TYPE_PTR;
 
 typedef ck_rsa_pkcs_mgf_type_t *CK_RSA_PKCS_MGF_TYPE_PTR;
 
+typedef ck_generator_function_t *CK_GENERATOR_FUNCTION_PTR;
+
 typedef struct ck_mechanism CK_MECHANISM;
 typedef struct ck_mechanism *CK_MECHANISM_PTR;
 
@@ -1878,6 +1900,8 @@ typedef struct ck_c_initialize_args *CK_C_INITIALIZE_ARGS_PTR;
 #undef ck_mechanism_type_t
 
 #undef ck_rsa_pkcs_mgf_type_t
+
+#undef ck_generator_function_t
 
 #undef ck_mechanism
 #undef parameter
