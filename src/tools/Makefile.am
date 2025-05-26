@@ -27,7 +27,7 @@ EXTRA_DIST = Makefile.mak versioninfo-tools.rc versioninfo-opensc-notify.rc goid
 noinst_HEADERS = util.h fread_to_eof.h \
 	egk-tool-cmdline.h goid-tool-cmdline.h npa-tool-cmdline.h \
 	opensc-asn1-cmdline.h opensc-notify-cmdline.h pkcs11-register-cmdline.h \
-	openpgp-tool-helpers.h
+	openpgp-tool-helpers.h pkcs11_uri.h
 bin_PROGRAMS = opensc-tool opensc-explorer opensc-asn1 \
 	pkcs15-tool pkcs15-crypt pkcs11-tool pkcs11-register \
 	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool goid-tool \
@@ -67,7 +67,7 @@ opensc_explorer_SOURCES = opensc-explorer.c util.c
 opensc_explorer_LDADD = $(OPTIONAL_READLINE_LIBS)
 pkcs15_tool_SOURCES = pkcs15-tool.c util.c ../pkcs11/pkcs11-display.c ../pkcs11/pkcs11-display.h
 pkcs15_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
-pkcs11_tool_SOURCES = pkcs11-tool.c util.c
+pkcs11_tool_SOURCES = pkcs11-tool.c util.c pkcs11_uri.c
 pkcs11_tool_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(PTHREAD_CFLAGS)
 pkcs11_tool_LDADD = \
 	$(top_builddir)/src/common/libpkcs11.la \
