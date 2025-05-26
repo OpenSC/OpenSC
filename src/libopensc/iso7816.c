@@ -157,9 +157,8 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r == SC_ERROR_FILE_END_REACHED
-			|| r == SC_ERROR_INCORRECT_PARAMETERS)
-		LOG_FUNC_RETURN(ctx, apdu.resplen);
+	if (r == SC_ERROR_FILE_END_REACHED || r == SC_ERROR_INCORRECT_PARAMETERS)
+		LOG_FUNC_RETURN(ctx, (int)apdu.resplen);
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
 	LOG_FUNC_RETURN(ctx, (int)apdu.resplen);
@@ -1530,11 +1529,7 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 	/* emulate the behaviour of iso7816_read_binary */
 	r = (int)apdu.resplen;
 
-	while(1) {
-		if (r >= 0 && ((size_t) r) != read) {
-			*ef_len += r;
-			break;
-		}
+	while (1) {
 		if (r <= 0) {
 			if (*ef_len > 0)
 				break;
