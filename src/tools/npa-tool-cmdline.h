@@ -34,6 +34,8 @@ extern "C" {
 #define CMDLINE_PARSER_VERSION VERSION
 #endif
 
+enum enum_application { application__NULL = -1, application_arg_eID = 0, application_arg_eMRTD };
+
 /** @brief Where the command line options are stored */
 struct gengetopt_args_info
 {
@@ -83,73 +85,78 @@ struct gengetopt_args_info
   char * private_key_arg;	/**< @brief Terminal's private key.  */
   char * private_key_orig;	/**< @brief Terminal's private key original value given at command line.  */
   const char *private_key_help; /**< @brief Terminal's private key help description.  */
-  char * cvc_dir_arg;	/**< @brief Where to look for the CVCA's certificate (default='').  */
+  char * cvc_dir_arg;	/**< @brief Where to look for the CVCA's certificate (default='/home/fm/.local/etc/eac/cvc').  */
   char * cvc_dir_orig;	/**< @brief Where to look for the CVCA's certificate original value given at command line.  */
   const char *cvc_dir_help; /**< @brief Where to look for the CVCA's certificate help description.  */
-  char * x509_dir_arg;	/**< @brief Where to look for the CSCA's certificate (default='').  */
+  char * x509_dir_arg;	/**< @brief Where to look for the CSCA's certificate (default='/home/fm/.local/etc/eac/x509').  */
   char * x509_dir_orig;	/**< @brief Where to look for the CSCA's certificate original value given at command line.  */
   const char *x509_dir_help; /**< @brief Where to look for the CSCA's certificate help description.  */
   int disable_ta_checks_flag;	/**< @brief Disable checking the validity period of CV certificates (default=off).  */
   const char *disable_ta_checks_help; /**< @brief Disable checking the validity period of CV certificates help description.  */
   int disable_ca_checks_flag;	/**< @brief Disable passive authentication (default=off).  */
   const char *disable_ca_checks_help; /**< @brief Disable passive authentication help description.  */
-  int read_dg1_flag;	/**< @brief Read DG 1   (Document Type) (default=off).  */
-  const char *read_dg1_help; /**< @brief Read DG 1   (Document Type) help description.  */
-  int read_dg2_flag;	/**< @brief Read DG 2   (Issuing State) (default=off).  */
-  const char *read_dg2_help; /**< @brief Read DG 2   (Issuing State) help description.  */
-  int read_dg3_flag;	/**< @brief Read DG 3   (Date of Expiry) (default=off).  */
-  const char *read_dg3_help; /**< @brief Read DG 3   (Date of Expiry) help description.  */
-  int read_dg4_flag;	/**< @brief Read DG 4   (Given Names) (default=off).  */
-  const char *read_dg4_help; /**< @brief Read DG 4   (Given Names) help description.  */
-  int read_dg5_flag;	/**< @brief Read DG 5   (Family Names) (default=off).  */
-  const char *read_dg5_help; /**< @brief Read DG 5   (Family Names) help description.  */
-  int read_dg6_flag;	/**< @brief Read DG 6   (Religious/Artistic Name) (default=off).  */
-  const char *read_dg6_help; /**< @brief Read DG 6   (Religious/Artistic Name) help description.  */
-  int read_dg7_flag;	/**< @brief Read DG 7   (Academic Title) (default=off).  */
-  const char *read_dg7_help; /**< @brief Read DG 7   (Academic Title) help description.  */
-  int read_dg8_flag;	/**< @brief Read DG 8   (Date of Birth) (default=off).  */
-  const char *read_dg8_help; /**< @brief Read DG 8   (Date of Birth) help description.  */
-  int read_dg9_flag;	/**< @brief Read DG 9   (Place of Birth) (default=off).  */
-  const char *read_dg9_help; /**< @brief Read DG 9   (Place of Birth) help description.  */
-  int read_dg10_flag;	/**< @brief Read DG 10  (Nationality) (default=off).  */
-  const char *read_dg10_help; /**< @brief Read DG 10  (Nationality) help description.  */
-  int read_dg11_flag;	/**< @brief Read DG 11  (Sex) (default=off).  */
-  const char *read_dg11_help; /**< @brief Read DG 11  (Sex) help description.  */
-  int read_dg12_flag;	/**< @brief Read DG 12  (Optional Data) (default=off).  */
-  const char *read_dg12_help; /**< @brief Read DG 12  (Optional Data) help description.  */
-  int read_dg13_flag;	/**< @brief Read DG 13  (Birth Name) (default=off).  */
-  const char *read_dg13_help; /**< @brief Read DG 13  (Birth Name) help description.  */
-  int read_dg14_flag;	/**< @brief Read DG 14 (default=off).  */
-  const char *read_dg14_help; /**< @brief Read DG 14 help description.  */
-  int read_dg15_flag;	/**< @brief Read DG 15 (default=off).  */
-  const char *read_dg15_help; /**< @brief Read DG 15 help description.  */
-  int read_dg16_flag;	/**< @brief Read DG 16 (default=off).  */
-  const char *read_dg16_help; /**< @brief Read DG 16 help description.  */
-  int read_dg17_flag;	/**< @brief Read DG 17  (Normal Place of Residence) (default=off).  */
-  const char *read_dg17_help; /**< @brief Read DG 17  (Normal Place of Residence) help description.  */
-  int read_dg18_flag;	/**< @brief Read DG 18  (Community ID) (default=off).  */
-  const char *read_dg18_help; /**< @brief Read DG 18  (Community ID) help description.  */
-  int read_dg19_flag;	/**< @brief Read DG 19  (Residence Permit I) (default=off).  */
-  const char *read_dg19_help; /**< @brief Read DG 19  (Residence Permit I) help description.  */
-  int read_dg20_flag;	/**< @brief Read DG 20  (Residence Permit II) (default=off).  */
-  const char *read_dg20_help; /**< @brief Read DG 20  (Residence Permit II) help description.  */
-  int read_dg21_flag;	/**< @brief Read DG 21  (Optional Data) (default=off).  */
-  const char *read_dg21_help; /**< @brief Read DG 21  (Optional Data) help description.  */
-  char * write_dg17_arg;	/**< @brief Write DG 17 (Normal Place of Residence).  */
-  char * write_dg17_orig;	/**< @brief Write DG 17 (Normal Place of Residence) original value given at command line.  */
-  const char *write_dg17_help; /**< @brief Write DG 17 (Normal Place of Residence) help description.  */
-  char * write_dg18_arg;	/**< @brief Write DG 18 (Community ID).  */
-  char * write_dg18_orig;	/**< @brief Write DG 18 (Community ID) original value given at command line.  */
-  const char *write_dg18_help; /**< @brief Write DG 18 (Community ID) help description.  */
-  char * write_dg19_arg;	/**< @brief Write DG 19 (Residence Permit I).  */
-  char * write_dg19_orig;	/**< @brief Write DG 19 (Residence Permit I) original value given at command line.  */
-  const char *write_dg19_help; /**< @brief Write DG 19 (Residence Permit I) help description.  */
-  char * write_dg20_arg;	/**< @brief Write DG 20 (Residence Permit II).  */
-  char * write_dg20_orig;	/**< @brief Write DG 20 (Residence Permit II) original value given at command line.  */
-  const char *write_dg20_help; /**< @brief Write DG 20 (Residence Permit II) help description.  */
-  char * write_dg21_arg;	/**< @brief Write DG 21 (Optional Data).  */
-  char * write_dg21_orig;	/**< @brief Write DG 21 (Optional Data) original value given at command line.  */
-  const char *write_dg21_help; /**< @brief Write DG 21 (Optional Data) help description.  */
+  enum enum_application application_arg;	/**< @brief What card application to select (default='eID').  */
+  char * application_orig;	/**< @brief What card application to select original value given at command line.  */
+  const char *application_help; /**< @brief What card application to select help description.  */
+  int read_all_dgs_flag;	/**< @brief Read all available data groups (default=off).  */
+  const char *read_all_dgs_help; /**< @brief Read all available data groups help description.  */
+  int read_dg1_flag;	/**< @brief Read data group 1 (default=off).  */
+  const char *read_dg1_help; /**< @brief Read data group 1 help description.  */
+  int read_dg2_flag;	/**< @brief Read data group 2 (default=off).  */
+  const char *read_dg2_help; /**< @brief Read data group 2 help description.  */
+  int read_dg3_flag;	/**< @brief Read data group 3 (default=off).  */
+  const char *read_dg3_help; /**< @brief Read data group 3 help description.  */
+  int read_dg4_flag;	/**< @brief Read data group 4 (default=off).  */
+  const char *read_dg4_help; /**< @brief Read data group 4 help description.  */
+  int read_dg5_flag;	/**< @brief Read data group 5 (default=off).  */
+  const char *read_dg5_help; /**< @brief Read data group 5 help description.  */
+  int read_dg6_flag;	/**< @brief Read data group 6 (default=off).  */
+  const char *read_dg6_help; /**< @brief Read data group 6 help description.  */
+  int read_dg7_flag;	/**< @brief Read data group 7 (default=off).  */
+  const char *read_dg7_help; /**< @brief Read data group 7 help description.  */
+  int read_dg8_flag;	/**< @brief Read data group 8 (default=off).  */
+  const char *read_dg8_help; /**< @brief Read data group 8 help description.  */
+  int read_dg9_flag;	/**< @brief Read data group 9 (default=off).  */
+  const char *read_dg9_help; /**< @brief Read data group 9 help description.  */
+  int read_dg10_flag;	/**< @brief Read data group 10 (default=off).  */
+  const char *read_dg10_help; /**< @brief Read data group 10 help description.  */
+  int read_dg11_flag;	/**< @brief Read data group 11 (default=off).  */
+  const char *read_dg11_help; /**< @brief Read data group 11 help description.  */
+  int read_dg12_flag;	/**< @brief Read data group 12 (default=off).  */
+  const char *read_dg12_help; /**< @brief Read data group 12 help description.  */
+  int read_dg13_flag;	/**< @brief Read data group 13 (default=off).  */
+  const char *read_dg13_help; /**< @brief Read data group 13 help description.  */
+  int read_dg14_flag;	/**< @brief Read data group 14 (default=off).  */
+  const char *read_dg14_help; /**< @brief Read data group 14 help description.  */
+  int read_dg15_flag;	/**< @brief Read data group 15 (default=off).  */
+  const char *read_dg15_help; /**< @brief Read data group 15 help description.  */
+  int read_dg16_flag;	/**< @brief Read data group 16 (default=off).  */
+  const char *read_dg16_help; /**< @brief Read data group 16 help description.  */
+  int read_dg17_flag;	/**< @brief Read data group 17 (default=off).  */
+  const char *read_dg17_help; /**< @brief Read data group 17 help description.  */
+  int read_dg18_flag;	/**< @brief Read data group 18 (default=off).  */
+  const char *read_dg18_help; /**< @brief Read data group 18 help description.  */
+  int read_dg19_flag;	/**< @brief Read data group 19 (default=off).  */
+  const char *read_dg19_help; /**< @brief Read data group 19 help description.  */
+  int read_dg20_flag;	/**< @brief Read data group 20 (default=off).  */
+  const char *read_dg20_help; /**< @brief Read data group 20 help description.  */
+  int read_dg21_flag;	/**< @brief Read data group 21 (default=off).  */
+  const char *read_dg21_help; /**< @brief Read data group 21 help description.  */
+  char * write_dg17_arg;	/**< @brief Write data group 17.  */
+  char * write_dg17_orig;	/**< @brief Write data group 17 original value given at command line.  */
+  const char *write_dg17_help; /**< @brief Write data group 17 help description.  */
+  char * write_dg18_arg;	/**< @brief Write data group 18.  */
+  char * write_dg18_orig;	/**< @brief Write data group 18 original value given at command line.  */
+  const char *write_dg18_help; /**< @brief Write data group 18 help description.  */
+  char * write_dg19_arg;	/**< @brief Write data group 19.  */
+  char * write_dg19_orig;	/**< @brief Write data group 19 original value given at command line.  */
+  const char *write_dg19_help; /**< @brief Write data group 19 help description.  */
+  char * write_dg20_arg;	/**< @brief Write data group 20.  */
+  char * write_dg20_orig;	/**< @brief Write data group 20 original value given at command line.  */
+  const char *write_dg20_help; /**< @brief Write data group 20 help description.  */
+  char * write_dg21_arg;	/**< @brief Write data group 21.  */
+  char * write_dg21_orig;	/**< @brief Write data group 21 original value given at command line.  */
+  const char *write_dg21_help; /**< @brief Write data group 21 help description.  */
   char * verify_validity_arg;	/**< @brief Verify chip's validity with a reference date.  */
   char * verify_validity_orig;	/**< @brief Verify chip's validity with a reference date original value given at command line.  */
   const char *verify_validity_help; /**< @brief Verify chip's validity with a reference date help description.  */
@@ -188,6 +195,8 @@ struct gengetopt_args_info
   unsigned int x509_dir_given ;	/**< @brief Whether x509-dir was given.  */
   unsigned int disable_ta_checks_given ;	/**< @brief Whether disable-ta-checks was given.  */
   unsigned int disable_ca_checks_given ;	/**< @brief Whether disable-ca-checks was given.  */
+  unsigned int application_given ;	/**< @brief Whether application was given.  */
+  unsigned int read_all_dgs_given ;	/**< @brief Whether read-all-dgs was given.  */
   unsigned int read_dg1_given ;	/**< @brief Whether read-dg1 was given.  */
   unsigned int read_dg2_given ;	/**< @brief Whether read-dg2 was given.  */
   unsigned int read_dg3_given ;	/**< @brief Whether read-dg3 was given.  */
@@ -343,6 +352,8 @@ void cmdline_parser_free (struct gengetopt_args_info *args_info);
  */
 int cmdline_parser_required (struct gengetopt_args_info *args_info,
   const char *prog_name);
+
+extern const char *cmdline_parser_application_values[];  /**< @brief Possible values for application. */
 
 
 #ifdef __cplusplus
