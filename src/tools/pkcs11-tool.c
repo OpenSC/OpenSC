@@ -2570,7 +2570,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
-	unsigned char	in_buffer[1025];
+	unsigned char in_buffer[1025];
 	CK_BYTE_PTR sig_buffer = NULL;
 	CK_MECHANISM	mech;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
@@ -2579,7 +2579,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			.phFlag = CK_FALSE,
 	};
 	CK_RV		rv;
-	CK_ULONG	sig_len = 0;
+	CK_ULONG sig_len = 0;
 	int		fd, fd2;
 	struct stat sig_st;
 	ssize_t sz, sz2;
