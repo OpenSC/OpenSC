@@ -3,6 +3,9 @@
 set -ex -o xtrace
 
 brew install automake gengetopt help2man libtool
+if [ "$1" == "libressl" ]; then
+    brew install libressl
+fi
 
 # openSCToken
 export PATH="/usr/local/opt/ccache/libexec:$PATH"

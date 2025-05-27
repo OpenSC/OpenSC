@@ -28,8 +28,13 @@ else
 fi
 
 if [ "$RUNNER_OS" == "macOS" ]; then
-	./MacOSX/build
-	exit $?
+	if [ "$1" == "libressl" ]; then
+		export OPENSSL_LIBS="-L/opt/homebrew/opt/libressl/lib -lcrypto"
+		export OPENSSL_CFLAGS="-I/opt/homebrew/opt/libressl/include"
+	else
+		./MacOSX/build
+		exit $?
+	fi
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
@@ -54,7 +59,10 @@ else
 	fi
 	# normal procedure
 
-	CONFIGURE_FLAGS="--disable-dependency-tracking --enable-doc"
+	CONFIGURE_FLAGS="--disable-dependency-tracking"
+	if [ "$RUNNER_OS" != "macOS" ]; then
+		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --enable-doc"
+	fi
 	if [ "$1" != "clang-tidy" ]; then
 		CONFIGURE_FLAGS="$CONFIGURE_FLAGS CLANGTIDY=/bin/no-clang-tidy"
 	fi
@@ -109,7 +117,9 @@ if [ "$1" == "dist" -o "$2" == "dist" ]; then
 	make dist
 fi
 
-$SUDO make install
+if [ "$RUNNER_OS" != "macOS" ]; then
+	$SUDO make install
+fi
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	# pack installed files
 	wine "C:/Program Files/Inno Setup 5/ISCC.exe" win32/OpenSC.iss
