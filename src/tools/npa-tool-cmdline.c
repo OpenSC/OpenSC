@@ -538,7 +538,7 @@ check_possible_values(const char *val, const char *values[])
           ++found;
           last = i;
           if (strlen(values[i]) == len)
-            return i; /* exact macth no need to check more */
+            return i; /* exact match no need to check more */
         }
     }
 

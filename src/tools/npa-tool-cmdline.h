@@ -85,10 +85,10 @@ struct gengetopt_args_info
   char * private_key_arg;	/**< @brief Terminal's private key.  */
   char * private_key_orig;	/**< @brief Terminal's private key original value given at command line.  */
   const char *private_key_help; /**< @brief Terminal's private key help description.  */
-  char * cvc_dir_arg;	/**< @brief Where to look for the CVCA's certificate (default='/home/fm/.local/etc/eac/cvc').  */
+  char * cvc_dir_arg;	/**< @brief Where to look for the CVCA's certificate (default='').  */
   char * cvc_dir_orig;	/**< @brief Where to look for the CVCA's certificate original value given at command line.  */
   const char *cvc_dir_help; /**< @brief Where to look for the CVCA's certificate help description.  */
-  char * x509_dir_arg;	/**< @brief Where to look for the CSCA's certificate (default='/home/fm/.local/etc/eac/x509').  */
+  char * x509_dir_arg;	/**< @brief Where to look for the CSCA's certificate (default='').  */
   char * x509_dir_orig;	/**< @brief Where to look for the CSCA's certificate original value given at command line.  */
   const char *x509_dir_help; /**< @brief Where to look for the CSCA's certificate help description.  */
   int disable_ta_checks_flag;	/**< @brief Disable checking the validity period of CV certificates (default=off).  */
