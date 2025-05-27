@@ -398,46 +398,48 @@ $PKCS11_TOOL "${PRIV_ARGS[@]}" --keypairgen --key-type rsa:2048 --id $ID_RSA_WRA
 assert $? "Failed to Generate RSA key"
 
 # AES-KEY-WRAP, AES-KEY-WRAP-PAD, AES-CBC, AES-CBC-PAD
-if [[ "$TOKENTYPE" == "softhsm" ]]; then
-    echo "-------------------------------------------------------"
-    echo "AES-KEY-WRAP Wrap/Unwrap RSA key test"
-    echo "-------------------------------------------------------"
-    # Wrap
-    $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-KEY-WRAP --id $ID_AES_WRAP --iv $IV \
-        --application-id $ID_RSA_WRAPPED --output-file rsa_wrapped_key.data
-    assert $? "Failed to wrap RSA key"
-    # Unwrap
-    $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP --id $ID_AES_WRAP --iv $IV \
-        --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --input-file rsa_wrapped_key.data
-    assert $? "Failed to unwrap RSA key with $MECH"
-    rm rsa_wrapped_key.data
+if [[ -n $is_openssl_3 ]]; then
+    if [[ "$TOKENTYPE" == "softhsm" ]]; then
+        echo "-------------------------------------------------------"
+        echo "AES-KEY-WRAP Wrap/Unwrap RSA key test"
+        echo "-------------------------------------------------------"
+        # Wrap
+        $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-KEY-WRAP --id $ID_AES_WRAP --iv $IV \
+            --application-id $ID_RSA_WRAPPED --output-file rsa_wrapped_key.data
+        assert $? "Failed to wrap RSA key"
+        # Unwrap
+        $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP --id $ID_AES_WRAP --iv $IV \
+            --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --input-file rsa_wrapped_key.data
+        assert $? "Failed to unwrap RSA key with $MECH"
+        rm rsa_wrapped_key.data
 
-    # Test with decryption
-    test_unwrapped_rsa_pkcs_decryption $ID_RSA_WRAPPED $ID_RSA_UNWRAPPED
+        # Test with decryption
+        test_unwrapped_rsa_pkcs_decryption $ID_RSA_WRAPPED $ID_RSA_UNWRAPPED
 
-    # Remove unwrapped RSA keys
-    $PKCS11_TOOL "${PRIV_ARGS[@]}" --delete-object --type privkey --id $ID_RSA_UNWRAPPED
-fi
+        # Remove unwrapped RSA keys
+        $PKCS11_TOOL "${PRIV_ARGS[@]}" --delete-object --type privkey --id $ID_RSA_UNWRAPPED
+    fi
 
-if [[ "$TOKENTYPE" != "kryoptic" ]]; then
-    echo "-------------------------------------------------------"
-    echo "AES-KEY-WRAP-PAD Wrap/Unwrap RSA key test"
-    echo "-------------------------------------------------------"
-    # Wrap
-    $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
-        --application-id $ID_RSA_WRAPPED --output-file rsa_wrapped_key.data
-    assert $? "Failed to wrap RSA key"
-    # Unwrap
-    $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
-        --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --input-file rsa_wrapped_key.data
-    assert $? "Failed to unwrap RSA key with $MECH"
-    rm rsa_wrapped_key.data
+    if [[ "$TOKENTYPE" != "kryoptic" ]]; then
+        echo "-------------------------------------------------------"
+        echo "AES-KEY-WRAP-PAD Wrap/Unwrap RSA key test"
+        echo "-------------------------------------------------------"
+        # Wrap
+        $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
+            --application-id $ID_RSA_WRAPPED --output-file rsa_wrapped_key.data
+        assert $? "Failed to wrap RSA key"
+        # Unwrap
+        $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
+            --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --input-file rsa_wrapped_key.data
+        assert $? "Failed to unwrap RSA key with $MECH"
+        rm rsa_wrapped_key.data
 
-    # Test with decryption
-    test_unwrapped_rsa_pkcs_decryption $ID_RSA_WRAPPED $ID_RSA_UNWRAPPED
+        # Test with decryption
+        test_unwrapped_rsa_pkcs_decryption $ID_RSA_WRAPPED $ID_RSA_UNWRAPPED
 
-    # Remove unwrapped RSA key
-    $PKCS11_TOOL "${PRIV_ARGS[@]}" --delete-object --type privkey --id $ID_RSA_UNWRAPPED
+        # Remove unwrapped RSA key
+        $PKCS11_TOOL "${PRIV_ARGS[@]}" --delete-object --type privkey --id $ID_RSA_UNWRAPPED
+    fi
 fi
 
 if [[ "$TOKENTYPE" != "softhsm" ]]; then
