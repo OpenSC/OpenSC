@@ -253,59 +253,78 @@
 		</refsect2>
 
 		<refsect2>
+			<title>Card application</title>
+			<variablelist>
+				<varlistentry>
+					<term><option>--application</option> <replaceable>app</replaceable></term>
+					<listitem><para>
+						What application to select on the card, use <literal>eID</literal> for the
+						electronic identification application and <literal>eMRTD</literal> for the
+						ePassport application. (default=<literal>eID</literal>)
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+
+		<refsect2>
 			<title>Read and write data groups</title>
 			<variablelist>
 				<varlistentry>
+					<term><option>--read-all-dgs</option></term>
+					<listitem><para>Read all available data groups.</para></listitem>
+				</varlistentry>
+				<varlistentry>
 					<term><option>--read-dg1</option></term>
-					<listitem><para>Read data group 1: Document Type.</para></listitem>
+					<listitem><para>Read data group 1.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg2</option></term>
-					<listitem><para>Read data group 2: Issuing State.</para></listitem>
+					<listitem><para>Read data group 2.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg3</option></term>
-					<listitem><para>Read data group 3: Date of Expiry.</para></listitem>
+					<listitem><para>Read data group 3.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg4</option></term>
-					<listitem><para>Read data group 4: Given Name(s).</para></listitem>
+					<listitem><para>Read data group 4.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg5</option></term>
-					<listitem><para>Read data group 5: Family Name.</para></listitem>
+					<listitem><para>Read data group 5.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg6</option></term>
-					<listitem><para>Read data group 6: Religious/Artistic Name.</para></listitem>
+					<listitem><para>Read data group 6.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg7</option></term>
-					<listitem><para>Read data group 7: Academic Title.</para></listitem>
+					<listitem><para>Read data group 7.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg8</option></term>
-					<listitem><para>Read data group 8: Date of Birth.</para></listitem>
+					<listitem><para>Read data group 8.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg9</option></term>
-					<listitem><para>Read data group 9: Place of Birth.</para></listitem>
+					<listitem><para>Read data group 9.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg10</option></term>
-					<listitem><para>Read data group 10: Nationality.</para></listitem>
+					<listitem><para>Read data group 10.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg11</option></term>
-					<listitem><para>Read data group 11: Sex.</para></listitem>
+					<listitem><para>Read data group 11.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg12</option></term>
-					<listitem><para>Read data group 12: Optional Data.</para></listitem>
+					<listitem><para>Read data group 12.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg13</option></term>
-					<listitem><para>Read data group 13: Birth Name.</para></listitem>
+					<listitem><para>Read data group 13.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg14</option></term>
@@ -321,47 +340,47 @@
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg17</option></term>
-					<listitem><para>Read data group 17: Normal Place of Residence.</para></listitem>
+					<listitem><para>Read data group 17.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg18</option></term>
-					<listitem><para>Read data group 18: Community ID.</para></listitem>
+					<listitem><para>Read data group 18.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg19</option></term>
-					<listitem><para>Read data group 19: Residence Permit I.</para></listitem>
+					<listitem><para>Read data group 19.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg20</option></term>
-					<listitem><para>Read data group 20: Residence Permit II.</para></listitem>
+					<listitem><para>Read data group 20.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--read-dg21</option></term>
-					<listitem><para>Read data group 21: Optional Data.</para></listitem>
+					<listitem><para>Read data group 21.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
 					<option>--write-dg17</option> <replaceable>HEX_STRING</replaceable></term>
-					<listitem><para>Write data group 17: Normal Place of Residence.</para></listitem>
+					<listitem><para>Write data group 17.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
 					<option>--write-dg18</option> <replaceable>HEX_STRING</replaceable></term>
-					<listitem><para>Write data group 18: Community ID.</para></listitem>
+					<listitem><para>Write data group 18.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
 					<option>--write-dg19</option> <replaceable>HEX_STRING</replaceable></term>
-					<listitem><para>Write data group 19: Residence Permit I.</para></listitem>
+					<listitem><para>Write data group 19.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
 					<option>--write-dg20</option> <replaceable>HEX_STRING</replaceable></term>
-					<listitem><para>Write data group 20: Residence Permit II.</para></listitem>
+					<listitem><para>Write data group 20.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term><option>--write-dg21</option> <replaceable>HEX_STRING</replaceable></term>
-					<listitem><para>Write data group 21: Optional Data.</para></listitem>
+					<listitem><para>Write data group 21.</para></listitem>
 				</varlistentry>
 			</variablelist>
 		</refsect2>
