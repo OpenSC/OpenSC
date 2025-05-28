@@ -2520,12 +2520,12 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		free(sig_buffer);
 		sig_buffer = NULL;
 		rv = p11->C_SignFinal(session, sig_buffer, &sig_len);
-		if (rv == CKR_OK) {
-			sig_buffer = malloc(sig_len);
-			if (!sig_buffer)
-				util_fatal("malloc() failure\n");
-			rv = p11->C_SignFinal(session, sig_buffer, &sig_len);
-		}
+		if (rv != CKR_OK)
+			p11_fatal("C_SignFinal", rv);
+		sig_buffer = malloc(sig_len);
+		if (!sig_buffer)
+			util_fatal("malloc() failure\n");
+		rv = p11->C_SignFinal(session, sig_buffer, &sig_len);
 		if (rv != CKR_OK)
 			p11_fatal("C_SignFinal", rv);
 	}
