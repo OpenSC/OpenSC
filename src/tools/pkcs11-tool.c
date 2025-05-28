@@ -2516,9 +2516,11 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			sz = read(fd, in_buffer, sizeof(in_buffer));
 		} while (sz > 0);
 
-		sig_len = sizeof(sig_buffer);
+		/* Signature buffer may have been allocated above */
+		free(sig_buffer);
+		sig_buffer = NULL;
 		rv = p11->C_SignFinal(session, sig_buffer, &sig_len);
-		if ((rv == CKR_OK) && !sig_buffer) {
+		if (rv == CKR_OK) {
 			sig_buffer = malloc(sig_len);
 			if (!sig_buffer)
 				util_fatal("malloc() failure\n");
@@ -2552,10 +2554,9 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				util_fatal("Failed to convert signature to ASN.1 sequence format");
 			}
 
-			memcpy(sig_buffer, seq, seqlen);
+			free(sig_buffer);
+			sig_buffer = seq;
 			sig_len = seqlen;
-
-			free(seq);
 		}
 	}
 	sz = write(fd, sig_buffer, sig_len);
