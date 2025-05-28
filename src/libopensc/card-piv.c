@@ -410,6 +410,7 @@ typedef struct piv_private_data {
 	unsigned int card_issues; /* card_issues flags for this card */
 	int object_test_verify; /* Can test this object to set verification state of card */
 	int yubico_version; /* 3 byte version number of NEO or Yubikey4  as integer */
+	int swissbit_version; /* 4 byte version number of Swissbit iShield Key 2 as integer */
 	unsigned int ccc_flags;	    /* From  CCC indicate if CAC card */
 	unsigned int pin_policy; /* from discovery */
 	unsigned int init_flags;
@@ -531,9 +532,9 @@ static const struct sc_atr_table piv_atrs[] = {
 	{ "3b:87:80:01:69:53:68:69:65:6c:64:50", NULL, NULL, SC_CARD_TYPE_PIV_II_SWISSBIT, 0, NULL },
 	/* Swissbit iShield Key 2 with PIV endpoint applet */
 	{ "3b:d5:18:ff:81:b1:fe:45:1f:c3:80:73:c8:21:10:6f", NULL, NULL,
-	SC_CARD_TYPE_PIV_II_SWISSBIT, 0, NULL },
+	SC_CARD_TYPE_PIV_II_SWISSBIT2, 0, NULL },
 	/* Swissbit iShield Key 2 with PIV endpoint applet contactless */
-	{ "3b:85:80:01:80:73:c8:21:10:0e", NULL, NULL, SC_CARD_TYPE_PIV_II_SWISSBIT, 0, NULL },
+	{ "3b:85:80:01:80:73:c8:21:10:0e", NULL, NULL, SC_CARD_TYPE_PIV_II_SWISSBIT2, 0, NULL },
 
 	/* ID-One PIV 2.4.1 on Cosmo V8.1 NIST sp800-73-4 with Secure Messaging and VCI  2020 */
 	{ "3b:d6:96:00:81:b1:fe:45:1f:87:80:31:c1:52:41:1a:2a", NULL, NULL, SC_CARD_TYPE_PIV_II_800_73_4, 0, NULL },
@@ -5322,6 +5323,7 @@ static int piv_match_card(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_OBERTHUR:
 		case SC_CARD_TYPE_PIV_II_PIVKEY:
 		case SC_CARD_TYPE_PIV_II_SWISSBIT:
+		case SC_CARD_TYPE_PIV_II_SWISSBIT2:
 		case SC_CARD_TYPE_PIV_II_800_73_4:
 			break;
 		default:
@@ -5354,6 +5356,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	int saved_type = card->type;
 	sc_apdu_t apdu;
 	u8 yubico_version_buf[3] = {0};
+	u8 swissbit_version_buf[4] = {0};
 
 	/* piv_match_card may be called with card->type, set by opensc.conf */
 	/* User provided card type must be one we know */
@@ -5373,6 +5376,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_OBERTHUR:
 		case SC_CARD_TYPE_PIV_II_PIVKEY:
 		case SC_CARD_TYPE_PIV_II_SWISSBIT:
+		case SC_CARD_TYPE_PIV_II_SWISSBIT2:
 		case SC_CARD_TYPE_PIV_II_800_73_4:
 			type = card->type;
 			break;
@@ -5538,8 +5542,26 @@ static int piv_match_card_continued(sc_card_t *card)
 				priv->yubico_version = (yubico_version_buf[0]<<16) | (yubico_version_buf[1] <<8) | yubico_version_buf[2];
 				sc_log(card->ctx, "Yubico card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->yubico_version);
 			}
-	}
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
+        }
+
+        switch (card->type) {
+                case SC_CARD_TYPE_PIV_II_SWISSBIT2:
+                        sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xFD, 0x00, 0x00);
+                        apdu.lc = 0;
+                        apdu.data = NULL;
+                        apdu.datalen = 0;
+                        apdu.resp = swissbit_version_buf;
+                        apdu.resplen = sizeof(swissbit_version_buf);
+                        apdu.le = apdu.resplen;
+                        r2 = sc_transmit_apdu(card, &apdu); /* on error swissbit_version == 0 */
+                        if (apdu.resplen == 4) {
+                                priv->swissbit_version = (swissbit_version_buf[0] << 24) | (swissbit_version_buf[1] << 16) |
+                                    (swissbit_version_buf[2] << 8) | swissbit_version_buf[3];
+                                sc_log(card->ctx, "Swissbit card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->swissbit_version);
+                        }
+        }
+
+        sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
 	 /* We now know PIV AID is active, test CCC object. 800-73-* say CCC is required */
 	 /* CCC not readable over contactless, unless using VCI. but dont need CCC for SC_CARD_TYPE_PIV_II_800_73_4 */
@@ -5661,6 +5683,12 @@ static int piv_match_card_continued(sc_card_t *card)
 			priv->card_issues |= 0; /* could add others here */
 			break;
 
+		case SC_CARD_TYPE_PIV_II_SWISSBIT2:
+			priv->card_issues |= 0; /* could add others here */
+                        if (priv->swissbit_version >= 0x01020000)
+				priv->card_issues |= CI_RSA_4096;
+			break;
+
 		case SC_CARD_TYPE_PIV_II_BASE:
 		case SC_CARD_TYPE_PIV_II_HIST:
 		case SC_CARD_TYPE_PIV_II_800_73_4:
@@ -5778,7 +5806,7 @@ static int piv_init(sc_card_t *card)
 
 	flags = SC_ALGORITHM_RSA_RAW;
 
-	if (card->type == SC_CARD_TYPE_PIV_II_SWISSBIT) {
+	if (card->type == SC_CARD_TYPE_PIV_II_SWISSBIT || card->type == SC_CARD_TYPE_PIV_II_SWISSBIT2) {
 		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 	}
 
