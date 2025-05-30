@@ -1,5 +1,10 @@
 NEWS for OpenSC -- History of user visible changes
 
+# Unreleased
+
+## General improvements
+* Add experimental support for Meson
+
 # New in 0.26.1; 2025-01-14
 
 ## General improvements
