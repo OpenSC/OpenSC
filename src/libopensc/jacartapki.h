@@ -22,6 +22,8 @@
 
 #ifdef ENABLE_OPENSSL /* empty file without openssl */
 
+#include <openssl/evp.h>
+
 #include "libopensc/errors.h"
 #include "libopensc/types.h"
 
@@ -295,6 +297,12 @@ struct jacartapki_private_data {
 
 	/* TEMP P15 DF RELOAD PRIVATE */
 	struct jacartapki_card_auth_state auth_state[2];
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+	OSSL_PROVIDER *legacyOsslProvider;
+	EVP_CIPHER *desCbcCipher;
+	EVP_CIPHER *desEcbCipher;
+#endif
 };
 
 struct jacartapki_cka {
