@@ -27,10 +27,6 @@
 #include <string.h>
 #include <time.h>
 
-#ifndef OPENSSL_SUPPRESS_DEPRECATED
-#define OPENSSL_SUPPRESS_DEPRECATED
-#endif
-
 #include <openssl/bn.h>
 #include <openssl/des.h>
 #include <openssl/err.h>
@@ -42,6 +38,8 @@
 #include <openssl/sha.h>
 #include <openssl/x509v3.h>
 #include <openssl/rand.h>
+#include <openssl/core_names.h>
+#include <openssl/param_build.h>
 
 #include "asn1.h"
 #include "cardctl.h"
@@ -135,7 +133,7 @@ static int jacartapki_process_fci(struct sc_card *, struct sc_file *, const unsi
 * 
 */
 #if defined(ENABLE_SM)
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
+#if OPENSSL_VERSION_NUMBER < 0x30000000L || defined(LIBRESSL_VERSION_NUMBER)
 static void _DES_3cbc_encrypt(sm_des_cblock *input, sm_des_cblock *output, long length,
 		DES_key_schedule *ks1, DES_key_schedule *ks2, sm_des_cblock *iv,
 		int enc);
@@ -149,7 +147,7 @@ static int _sm_encrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key
 static void _sm_incr_ssc(unsigned char *ssc, size_t ssc_len);
 
 static int jacartapki_sm_open(struct sc_card *card);
-static int jacartapki_cbc_cksum(struct sc_context *ctx, unsigned char *key, size_t key_size, unsigned char *in, size_t in_len, DES_cblock *icv);
+static int jacartapki_cbc_cksum(struct sc_card *card, unsigned char *key, size_t key_size, unsigned char *in, size_t in_len, DES_cblock *icv);
 static int jacartapki_sm_compute_mac(struct sc_card *card, const unsigned char *data, size_t data_len, DES_cblock *mac);
 static int jacartapki_sm_check_mac(struct sc_card *card, const unsigned char *data, size_t data_len, const unsigned char *mac, size_t mac_len);
 static int jacartapki_sm_close(struct sc_card *card);
@@ -325,10 +323,10 @@ jacartapki_init(struct sc_card *card)
 	}
 
 	rv = jacartapki_get_serialnr(card, NULL);
-	LOG_TEST_RET(ctx, rv, "Cannot get card serial");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get card serial");
 
 	rv = jacartapki_get_caps(card);
-	LOG_TEST_RET(ctx, rv, "Cannot get card capabilities");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get card capabilities");
 
 	flags = JACARTAPKI_CARD_DEFAULT_FLAGS;
 	_sc_card_add_rsa_alg(card, 1024, flags, 0x10001);
@@ -339,12 +337,44 @@ jacartapki_init(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_APDU_EXT;
 
 	rv = jacartapki_load_options(card);
-	LOG_TEST_RET(ctx, rv, "Failed to read card driver configuration");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to read card driver configuration");
 
 #if defined(ENABLE_SM)
 	card->sm_ctx.ops.open = jacartapki_iso_sm_open;
 	card->sm_ctx.ops.get_sm_apdu = jacartapki_iso_sm_get_apdu;
 	card->sm_ctx.ops.free_sm_apdu = jacartapki_iso_sm_free_apdu;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+
+    OSSL_PROVIDER_load(NULL, "default");
+	private_data->legacyOsslProvider = OSSL_PROVIDER_load(NULL, "legacy");
+	if (!private_data->legacyOsslProvider)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "No Legacy OpenSSL provider.");
+
+	private_data->desCbcCipher = EVP_CIPHER_fetch(NULL, "DES-CBC", NULL); /* "provider=legacy" */
+	if (!private_data->desCbcCipher)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "No DES-CBC cipher");
+
+	private_data->desEcbCipher = EVP_CIPHER_fetch(NULL, "DES-ECB", NULL);
+	if (!private_data->desEcbCipher)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "No DES-ECB cipher");
+
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER) */
+
+#endif
+	rv = SC_SUCCESS;
+err:
+#if defined(ENABLE_SM) && OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+	if (rv < 0) {
+		EVP_CIPHER_free(private_data->desEcbCipher);
+		private_data->desEcbCipher = NULL;
+
+		EVP_CIPHER_free(private_data->desCbcCipher);
+		private_data->desCbcCipher = NULL;
+
+		OSSL_PROVIDER_unload(private_data->legacyOsslProvider);
+		private_data->legacyOsslProvider = NULL;
+	}
 #endif
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -994,8 +1024,22 @@ jacartapki_finish(struct sc_card *card)
 #ifdef ENABLE_SM
 	if (card->sm_ctx.sm_mode != SM_MODE_NONE && card->sm_ctx.ops.close)
 		card->sm_ctx.ops.close(card);
-#endif
+
 	if (private_data) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+		EVP_CIPHER_free(private_data->desEcbCipher);
+		private_data->desEcbCipher = NULL;
+
+		EVP_CIPHER_free(private_data->desCbcCipher);
+		private_data->desCbcCipher = NULL;
+
+		OSSL_PROVIDER_unload(private_data->legacyOsslProvider);
+		private_data->legacyOsslProvider = NULL;
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER) */
+
+#else
+	if (private_data) {
+#endif
 		sc_file_free(private_data->last_ko);
 		free(private_data);
 		card->drv_data = NULL;
@@ -1956,7 +2000,7 @@ _sm_decrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key,
 		unsigned char *data, size_t data_len,
 		unsigned char **out, size_t *out_len)
 {
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
+#if OPENSSL_VERSION_NUMBER < 0x30000000L || defined(LIBRESSL_VERSION_NUMBER)
 	sm_des_cblock kk, k2;
 	DES_key_schedule ks, ks2;
 	sm_des_cblock icv = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -1981,7 +2025,7 @@ _sm_decrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key,
 	if (!(decrypted))
 		LOG_ERROR_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM decrypt_des_cbc3: allocation error");
 
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
+#if OPENSSL_VERSION_NUMBER < 0x30000000L || defined(LIBRESSL_VERSION_NUMBER)
 	memcpy(&kk, key, 8);
 	memcpy(&k2, key + 8, 8);
 
@@ -2028,7 +2072,7 @@ _sm_decrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key,
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
 }
 
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
+#if OPENSSL_VERSION_NUMBER < 0x30000000L || defined(LIBRESSL_VERSION_NUMBER)
 static void
 _DES_3cbc_encrypt(sm_des_cblock *input, sm_des_cblock *output, long length,
 		DES_key_schedule *ks1, DES_key_schedule *ks2, sm_des_cblock *iv,
@@ -2068,7 +2112,7 @@ _sm_encrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key,
 		const unsigned char *in, size_t in_len,
 		unsigned char **out, size_t *out_len, int not_force_pad)
 {
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
+#if OPENSSL_VERSION_NUMBER < 0x30000000L || defined(LIBRESSL_VERSION_NUMBER)
 	sm_des_cblock kk, k2;
 	DES_key_schedule ks, ks2;
 	sm_des_cblock icv = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -2116,7 +2160,7 @@ _sm_encrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key,
 		LOG_ERROR_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM encrypt_des_cbc3: failure");
 	}
 
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
+#if OPENSSL_VERSION_NUMBER < 0x30000000L || defined(LIBRESSL_VERSION_NUMBER)
 	memcpy(&kk, key, 8);
 	memcpy(&k2, key + 8, 8);
 
@@ -2159,7 +2203,7 @@ _sm_encrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key,
 	*out_len += tmplen;
 	EVP_CIPHER_CTX_free(cctx);
 	sc_evp_cipher_free(alg);
-#endif
+#endif /* OPENSSL_VERSION_NUMBER < 0x30000000L || defined(LIBRESSL_VERSION_NUMBER) */
 
 	free(data);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
@@ -2216,6 +2260,160 @@ err:
 }
 #endif /* LIBRESSL_VERSION_NUMBER */
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+
+static EVP_PKEY *
+icc_DH(struct sc_card *card, const BIGNUM *prime /* N */, const BIGNUM *generator /* g */, const u8 *icc_p /* g^y mod N */, size_t icc_p_length)
+{
+	struct sc_context *ctx = card->ctx;
+	OSSL_PARAM_BLD *param_builder = NULL;
+	OSSL_PARAM *params = NULL;
+	EVP_PKEY_CTX *dh_key_ctx = NULL;
+	EVP_PKEY *publicKey = NULL;
+
+	param_builder = OSSL_PARAM_BLD_new();
+	if (!param_builder)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "OSSL_PARAM_BLD_new failed");
+
+	if (!OSSL_PARAM_BLD_push_BN(param_builder, OSSL_PKEY_PARAM_FFC_P, prime))
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "OSSL_PARAM_BLD_push_BN prime failed");
+
+	if (!OSSL_PARAM_BLD_push_BN(param_builder, OSSL_PKEY_PARAM_FFC_G, generator))
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "OSSL_PARAM_BLD_push_BN generator failed");
+
+	params = OSSL_PARAM_BLD_to_param(param_builder);
+	if (!params)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "OSSL_PARAM_BLD_to_param failed");
+
+	dh_key_ctx = EVP_PKEY_CTX_new_from_name(NULL, "DHX", NULL); /*"provider=default"*/
+	if (!dh_key_ctx)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "EVP_PKEY_CTX_new_from_name( DHX ) failed");
+
+	if (EVP_PKEY_fromdata_init(dh_key_ctx) <= 0)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "EVP_PKEY_fromdata_init failed");
+
+	publicKey = EVP_PKEY_new();
+	if (!publicKey)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "EVP_PKEY_new failed");
+
+	if (EVP_PKEY_fromdata(dh_key_ctx, &publicKey, EVP_PKEY_KEY_PARAMETERS, params) <= 0 ||
+		!EVP_PKEY_set1_encoded_public_key(publicKey, icc_p, icc_p_length)) {
+
+		EVP_PKEY_free(publicKey);
+		publicKey = NULL;
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "EVP_PKEY_fromdata failed");
+	}
+	
+err:
+	OSSL_PARAM_BLD_free(param_builder);
+	OSSL_PARAM_free(params);
+	EVP_PKEY_CTX_free(dh_key_ctx);
+	return publicKey;
+}
+
+static EVP_PKEY *
+ifd_DH(struct sc_card *card, const BIGNUM *prime /* N */, const BIGNUM *generator /* G */, u8 **publicKey, size_t *publicKeyLength)
+{
+	struct sc_context *ctx = card->ctx;
+	OSSL_PARAM_BLD *param_builder;
+	OSSL_PARAM *params = NULL;
+	EVP_PKEY_CTX *dh_key_ctx = NULL;
+	EVP_PKEY *dh_key_param = NULL;
+	EVP_PKEY_CTX *key_ctx = NULL;
+	EVP_PKEY *pkey = NULL;
+
+	param_builder = OSSL_PARAM_BLD_new();
+	if (!param_builder)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "OSSL_PARAM_BLD_new failed");
+
+	if (!OSSL_PARAM_BLD_push_BN(param_builder, OSSL_PKEY_PARAM_FFC_P, prime))
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "OSSL_PARAM_BLD_push_BN prime failed");
+
+	if (!OSSL_PARAM_BLD_push_BN(param_builder, OSSL_PKEY_PARAM_FFC_G, generator))
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "OSSL_PARAM_BLD_push_BN generator failed");
+	/*
+	* to use predefined private key BIGNUM:
+	* OSSL_PARAM_BLD_push_BN(param_builder,OSSL_PKEY_PARAM_PRIV_KEY, privKey)
+	* EVP_PKEY_fromdata(dh_key_ctx, &dh_key_param, EVP_PKEY_KEYPAIR, params)
+	* no key gen
+	*/
+	params = OSSL_PARAM_BLD_to_param(param_builder);
+	if (!params)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "OSSL_PARAM_BLD_to_param failed");
+
+	dh_key_ctx = EVP_PKEY_CTX_new_from_name(NULL, "DHX", NULL); /*"provider=default"*/
+	if (!dh_key_ctx)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "EVP_PKEY_CTX_new_from_name( DHX ) failed");
+
+	if (EVP_PKEY_fromdata_init(dh_key_ctx) <= 0)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "EVP_PKEY_fromdata_init failed");
+
+	if (EVP_PKEY_fromdata(dh_key_ctx, &dh_key_param, EVP_PKEY_KEY_PARAMETERS, params) <= 0)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "EVP_PKEY_fromdata failed");
+
+	key_ctx = EVP_PKEY_CTX_new_from_pkey(NULL, dh_key_param, NULL);
+	if (!key_ctx)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "EVP_PKEY_CTX_new_from_pkey failed");
+
+	if (EVP_PKEY_keygen_init(key_ctx) <= 0)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "EVP_PKEY_keygen_init failed");
+
+	if (EVP_PKEY_generate(key_ctx, &pkey) <= 0)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "EVP_PKEY_generate failed");
+
+	*publicKeyLength = EVP_PKEY_get1_encoded_public_key(pkey, publicKey);
+
+err:
+	OSSL_PARAM_BLD_free(param_builder);
+	OSSL_PARAM_free(params);
+	EVP_PKEY_CTX_free(dh_key_ctx);
+	EVP_PKEY_CTX_free(key_ctx);
+	return pkey;
+}
+
+static int
+derive_icc_ifd_key(struct sc_card *card, EVP_PKEY *icc_pkey, EVP_PKEY *ifd_pkey, u8 **sharedKey, size_t *keyLength)
+{
+	struct sc_context *ctx = card->ctx;
+	EVP_PKEY_CTX *shared_key_ctx = NULL;
+	u8 *shared_key;
+	size_t shared_key_length;
+	int rv;
+
+	shared_key_ctx = EVP_PKEY_CTX_new_from_pkey(NULL, ifd_pkey, NULL);
+	if (!shared_key_ctx)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "EVP_PKEY_CTX_new failed");
+
+	rv = EVP_PKEY_derive_init(shared_key_ctx);
+	if (rv <= 0)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "EVP_PKEY_derive_init failed");
+
+	rv = EVP_PKEY_derive_set_peer_ex(shared_key_ctx, icc_pkey, 0);
+	if (rv <= 0)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "EVP_PKEY_derive_set_peer failed");
+
+	rv = EVP_PKEY_derive(shared_key_ctx, NULL, &shared_key_length);
+	if (rv <= 0)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "EVP_PKEY_derive failed");
+
+	shared_key = OPENSSL_malloc(shared_key_length);
+	if (!shared_key)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "OPENSSL_malloc failed to allocate shared key buffer");
+
+	rv = EVP_PKEY_derive(shared_key_ctx, shared_key, &shared_key_length);
+	if (rv <= 0)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "EVP_PKEY_derive failed");
+
+	*sharedKey = shared_key;
+	*keyLength = shared_key_length;
+	rv = SC_SUCCESS;
+err:
+	EVP_PKEY_CTX_free(shared_key_ctx);
+	return rv;
+}
+
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER) */
+
 static int
 jacartapki_sm_open(struct sc_card *card)
 {
@@ -2223,17 +2421,29 @@ jacartapki_sm_open(struct sc_card *card)
 	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
 	struct sm_dh_session *dh_session = &card->sm_ctx.info.session.dh;
 	struct sc_apdu apdu;
-	BIGNUM *bn_ifd_y, *bn_N, *bn_g;
-	const BIGNUM *bn_icc_p;
-	DH *dh = NULL;
+	BIGNUM *bn_N, *bn_g;
 	unsigned char uu, rbuf[SC_MAX_APDU_BUFFER_SIZE * 2];
-	int rv, rd, dh_check;
-	const BIGNUM *pub_key = NULL;
+	int rv;
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+	EVP_PKEY *icc_pkey = NULL;
+	EVP_PKEY *ifd_pkey = NULL;
+	u8 *ifd_public_key = NULL;
+	size_t ifd_public_key_length = 0;
+	u8 *shared_key = NULL;
+	size_t shared_key_length = 0;
+#else
+	const BIGNUM *bn_icc_p;
+	BIGNUM *bn_ifd_y;
+	int rd, dh_check;
+	DH *dh = NULL;
+	const BIGNUM *pub_key = NULL;
+#endif
 	LOG_FUNC_CALLED(ctx);
 	memset(&card->sm_ctx.info, 0, sizeof(card->sm_ctx.info));
 
 	private_data->sm_establish = 1;
+
 	/* getting SM RSA public parameters */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x48, 0x00, 0x80);
 	apdu.cla = 0x80;
@@ -2259,6 +2469,34 @@ jacartapki_sm_open(struct sc_card *card)
 	dh_session->icc_p.tag = JACARTAPKI_SM_RSA_TAG_ICC_P;	/* TLV tag 82H g^y mod N */
 	rv = jacartapki_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->icc_p);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'ICC-P'");
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+	/* ----------------------------- ICC key ----------------------------- */
+	icc_pkey = icc_DH(card, bn_N, bn_g, dh_session->icc_p.value, dh_session->icc_p.len);
+	if (!icc_pkey)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "Failed to form icc key.");
+
+	/* ----------------------------- IFD key ----------------------------- */
+	ifd_pkey = ifd_DH(card, bn_N, bn_g, &ifd_public_key, &ifd_public_key_length);
+	if (!ifd_pkey)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "Failed to generate ifd key.");
+	assert(ifd_public_key &&ifd_public_key_length);
+
+	/* ----------------------------- shared key ----------------------------- */
+	rv = derive_icc_ifd_key(card, icc_pkey, ifd_pkey, &shared_key, &shared_key_length);
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to derive ICC IFD shared key");
+	assert(shared_key && shared_key_length);
+
+	dh_session->ifd_p.value = ifd_public_key;
+	dh_session->ifd_p.len = ifd_public_key_length;
+	ifd_public_key = NULL;
+	ifd_public_key_length = 0;
+
+	dh_session->shared_secret.value = shared_key;
+	dh_session->shared_secret.len = shared_key_length;
+	shared_key = NULL;
+	shared_key_length = 0;
+#else
 	bn_icc_p = BN_bin2bn(dh_session->icc_p.value, dh_session->icc_p.len, NULL);
 
 	dh_session->ifd_y.value = malloc(SHA_DIGEST_LENGTH);
@@ -2292,14 +2530,16 @@ jacartapki_sm_open(struct sc_card *card)
 	dh_session->shared_secret.value = (unsigned char *)OPENSSL_malloc(DH_size(dh));
 	if (!dh_session->shared_secret.value)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Failed to allocate shared secret part");
-	
+
 #if !defined(LIBRESSL_VERSION_NUMBER)
 	dh_session->shared_secret.len = DH_compute_key_padded(dh_session->shared_secret.value, bn_icc_p, dh);
 #else
 	rv = _compute_key_padded(card, dh_session->shared_secret.value, DH_size(dh), bn_icc_p, bn_ifd_y, bn_N);
-	if (DH_size(dh) > rv) 
+	if (DH_size(dh) > rv)
 		LOG_ERROR_GOTO(ctx, rv, "Failed to calculate shared secret");
-#endif
+#endif /* !defined(LIBRESSL_VERSION_NUMBER) */
+#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER) */
+
 	sc_log(ctx, "shared-secret(%"SC_FORMAT_LEN_SIZE_T"u) %s", dh_session->shared_secret.len,
 			sc_dump_hex(dh_session->shared_secret.value, dh_session->shared_secret.len));
 
@@ -2331,32 +2571,96 @@ jacartapki_sm_open(struct sc_card *card)
 
 	card->sm_ctx.info.sm_type = SM_TYPE_DH_RSA;
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
+
 err:
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+	EVP_PKEY_free(icc_pkey);
+	EVP_PKEY_free(ifd_pkey);
+	OPENSSL_free(ifd_public_key);
+	OPENSSL_free(shared_key);
+#else
 	DH_free(dh);
+#endif
 	private_data->sm_establish = 0;
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
-jacartapki_cbc_cksum(struct sc_context *ctx, unsigned char *key, size_t key_size,
+jacartapki_cbc_cksum(struct sc_card *card, unsigned char *key, size_t key_size,
 		unsigned char *in, size_t in_len, DES_cblock *icv)
 {
-	DES_key_schedule ks, ks2;
-	size_t len;
+	struct sc_context *ctx = card->ctx;
 	DES_cblock out, last;
 	size_t ii;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
+	EVP_CIPHER_CTX *evpK1Ctx = NULL;
+	EVP_CIPHER_CTX *evpK2Ctx = NULL;
+	OSSL_PARAM desParams[2] = {OSSL_PARAM_END, OSSL_PARAM_END};
+	DES_cblock *updatedIV;
+	unsigned int padding;
+	int len;
+#else
+	DES_key_schedule ks, ks2;
+	size_t len;
+#endif
+	int rv = SC_SUCCESS;
 
 	if (!key || !in || !icv || key_size != 2 * sizeof(DES_cblock))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (in_len % sizeof(DES_cblock))
 		return SC_ERROR_INVALID_DATA;
 
+	memset(icv, 0, sizeof(*icv));
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+
+	evpK1Ctx = EVP_CIPHER_CTX_new();
+	evpK2Ctx = EVP_CIPHER_CTX_new();
+	if (!evpK1Ctx || !evpK2Ctx)
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Failed to allocate EVP_CIPHER_CTX");
+
+	desParams[0] = OSSL_PARAM_construct_uint(OSSL_CIPHER_PARAM_PADDING, &padding); /* desParams reuse */
+	if (!EVP_CipherInit_ex2(evpK1Ctx, private_data->desCbcCipher, &key[0], *icv, 1, desParams))
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "DES-CBC cipher init failed");
+
+	sc_log(ctx, "data for checksum (%" SC_FORMAT_LEN_SIZE_T "u) %s", in_len, sc_dump_hex(in, in_len));
+	for (len = in_len; len > (int)sizeof(DES_cblock); len -= sizeof(DES_cblock), in += sizeof(DES_cblock)) {
+		int tmpLen = 0;
+		if (!EVP_EncryptUpdate(evpK1Ctx, out, &tmpLen, in, (int)sizeof(DES_cblock)))
+			LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "DES-CBC encrypt failed");
+	}
+
+	updatedIV = NULL;
+	desParams[0] = OSSL_PARAM_construct_octet_ptr(OSSL_CIPHER_PARAM_UPDATED_IV, (void **)&updatedIV, 0); /* desParams reuse */
+	if (!EVP_CIPHER_CTX_get_params(evpK1Ctx, desParams) || desParams[0].return_size != sizeof(*icv))
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "Failed to get DES cipher params");
+
+	for (ii = 0; ii < sizeof(DES_cblock); ii++)
+		last[ii] = *(in + ii) ^ (*updatedIV)[ii];
+
+	EVP_CIPHER_CTX_reset(evpK1Ctx); /* evpCtx reuse */
+
+	padding = 0;
+	desParams[0] = OSSL_PARAM_construct_uint(OSSL_CIPHER_PARAM_PADDING, &padding);
+	/* for DESX, DES-EDE there is no ecb2_encrypt */
+	if (!EVP_CipherInit_ex2(evpK1Ctx, private_data->desEcbCipher, &key[0], NULL, 1, desParams))
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "DES-ECB cipher init failed");
+	if (!EVP_CipherInit_ex2(evpK2Ctx, private_data->desEcbCipher, &key[sizeof(DES_cblock)], NULL, 0, desParams))
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "DES-ECB cipher init failed");
+
+	if (!EVP_EncryptUpdate(evpK1Ctx, out, &len, last, sizeof(DES_cblock)))
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "DES-ECB failed");
+	if (!EVP_DecryptUpdate(evpK2Ctx, out, &len, out, sizeof(DES_cblock)))
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "DES-ECB failed");
+	if (!EVP_EncryptUpdate(evpK1Ctx, *icv, &len, out, sizeof(DES_cblock)))
+		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "DES-ECB failed");
+
+#else
 	DES_set_key((const_DES_cblock *)&key[0], &ks);
 	DES_set_key((const_DES_cblock *)&key[sizeof(DES_cblock)], &ks2);
 
-	memset(icv, 0, sizeof(*icv));
-
-	sc_log(ctx, "data for checksum (%"SC_FORMAT_LEN_SIZE_T"u) %s", in_len, sc_dump_hex(in, in_len));
+	sc_log(ctx, "data for checksum (%" SC_FORMAT_LEN_SIZE_T "u) %s", in_len, sc_dump_hex(in, in_len));
 	for (len = in_len; len > sizeof(DES_cblock); len -= sizeof(DES_cblock), in += sizeof(DES_cblock))
 		DES_ncbc_encrypt(in, out, sizeof(DES_cblock), &ks, icv, DES_ENCRYPT);
 
@@ -2365,9 +2669,15 @@ jacartapki_cbc_cksum(struct sc_context *ctx, unsigned char *key, size_t key_size
 
 	DES_ecb2_encrypt(&last, &out, &ks, &ks2, DES_ENCRYPT);
 	memcpy(icv, &out, sizeof(*icv));
-
+#endif
 	sc_log(ctx, "cksum %s", sc_dump_hex((unsigned char *)icv, sizeof(*icv)));
-	return SC_SUCCESS;
+	rv = SC_SUCCESS;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+err:
+	EVP_CIPHER_CTX_free(evpK1Ctx);
+	EVP_CIPHER_CTX_free(evpK2Ctx);
+#endif
+	return rv;
 }
 
 static int
@@ -2397,7 +2707,7 @@ jacartapki_sm_compute_mac(struct sc_card *card, const unsigned char *data, size_
 
 	memcpy(ptr, data, data_len);
 
-	rv = jacartapki_cbc_cksum(ctx, sess->session_mac, sizeof(sess->session_mac), dt, dt_len, mac);
+	rv = jacartapki_cbc_cksum(card, sess->session_mac, sizeof(sess->session_mac), dt, dt_len, mac);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get checksum CBC 3DES");
 err:
 	free(dt);
