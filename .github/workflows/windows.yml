@@ -22,7 +22,7 @@ jobs:
       matrix:
         platform: [x86, x64, arm64]
         configuration: [Light, Release]
-        image: [windows-2019, windows-2022]
+        image: [windows-2022]
         include:
           - platform: x86
             setenv: amd64_x86
@@ -72,7 +72,7 @@ jobs:
         if: matrix.configuration == 'Release'
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: e4644bd15436d406bba71928d086c809e5c9ca45
+          vcpkgGitCommitId: 0d5cae153065957df7f382de7c1549ccc88027e5
           vcpkgJsonGlob: .github/vcpkg.json
           runVcpkgInstall: true
         env:
