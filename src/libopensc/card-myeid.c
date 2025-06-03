@@ -72,6 +72,8 @@
 #define MYEID_MAX_APDU_DATA_LEN		0xFF
 #define MYEID_MAX_RSA_KEY_LEN		4096
 
+#define MYEID_SET_ENABLE_CRYPTO		0x0001
+
 #define MYEID_MAX_EXT_APDU_BUFFER_SIZE	(MYEID_MAX_RSA_KEY_LEN/8+16)
 
 static const char *myeid_card_name = "MyEID";
@@ -109,6 +111,7 @@ typedef struct myeid_private_data {
 #ifdef PIV_SM_NIST
 	sm_nist_params_t sm_params;
 #endif /* PIV_SM_NIST */
+	uint8_t set_session_flags[2];
 } myeid_private_data_t;
 
 typedef struct myeid_card_caps {
@@ -151,7 +154,7 @@ myeid_get_sm_cert_signer(struct sc_card *card, sc_path_t *path_cert_signer)
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
 		LOG_FUNC_RETURN(card->ctx, r);
-
+	/* get data of Secure Messaging Parmeters See table 81 */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x55);
 	apdu.le =  sizeof(rbuf);
 	apdu.resp = rbuf;
@@ -171,9 +174,17 @@ myeid_get_sm_cert_signer(struct sc_card *card, sc_path_t *path_cert_signer)
 		goto err;
 	}
 
-	/* parse to get cert signed path which is in 3F005015 */
-	/* SM Signer caet id first 80 tag len 2 with path */
-	/* TODO assume 0x27 for now look for multiple A0 tags */
+	if (apdu.resplen == 0) {
+		sc_log(card->ctx,  "Secure Messaging Parametrs no present");
+		r = SC_ERROR_SM_NOT_INITIALIZED;
+		goto err;
+	}
+	/* Tag 0x80  L=2 is FID of Signer Certificate FID */
+	/* SM Signer cert is first 80 tag len 2 with path */
+	/* Tag 0x81 l=1  V=1 is Exclusize Pin Mode */
+	/* Tag A0 has 1 or 2 sub tags with 0x27 or 0x2E with FID of CVCs */
+	/* TODO assume 0x27 for now */
+
 	if (apdu.resplen < 4 || apdu.resp[0] != 0x80 || apdu.resp[1] != 0x02){
 		sc_log(card->ctx,  "Invalid response");
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
@@ -417,6 +428,10 @@ static int myeid_init(struct sc_card *card)
 	else
 		card->max_recv_size = 255;
 	card->max_send_size = 255;
+
+	/* for now allow crypto in creation mode */
+	rv = myeid_set_session_flags(card, MYEID_SET_ENABLE_CRYPTO);
+
 
 	/* TODO DEE for now use chaining vs extended */
 #ifdef PIV_SM_NIST
@@ -814,7 +829,10 @@ static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 	if (data->cmd == SC_PIN_CMD_VERIFY && priv->card_state == SC_FILE_STATUS_CREATION) {
 		sc_log(card->ctx, "Card in creation state, no need to verify");
-		return SC_SUCCESS;
+		if (getenv("DEE_DO_VERIFY") != NULL)
+			sc_log(card->ctx, "DEE_DO_VERIFY set, forcing verify");
+		else
+			return SC_SUCCESS;
 	}
 
 	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));

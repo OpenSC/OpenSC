@@ -216,6 +216,19 @@ filesystem {
                     structure = transparent;
                     acl       = READ=NONE, UPDATE=$PIN, DELETE=$PIN;
                 }
+
+# TODO OpenSC pkcs15 does not support CVC certificates,
+# So we will write  the CVC certs to 53XX with XX as 27 or 2E
+# This avoids some X509 certificate overwriting the SM CVC certificate
+# The CVC keys are assigned 4BXX and 55XX  as normal
+# this definition is never used but reserves the 53XX paths
+
+                EF cvcertificate {
+                    file-id	  = 5301;
+                    structure = transparent;
+                    acl       = READ=NONE, UPDATE=$PIN, DELETE=$PIN;
+                }
+
                 EF privdata {
                     file-id   = 4501;
                     structure = transparent;
