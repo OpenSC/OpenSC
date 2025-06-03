@@ -1127,7 +1127,7 @@ auth_compute_signature(struct sc_card *card, const unsigned char *in, size_t ile
 	apdu.lc = ilen;
 	apdu.le = olen > 256 ? 256 : olen;
 	apdu.resp = resp;
-	apdu.resplen = olen;
+	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
 
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
