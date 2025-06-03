@@ -2,15 +2,17 @@ OPENSC_FEATURES = pcsc
 
 #Include support for minidriver
 MINIDRIVER_DEF = /DENABLE_MINIDRIVER
+WIXFLAGS = -d ENABLE_MINIDRIVER
 
 #Build MSI with the Windows Installer XML (WIX) toolkit
 !IF "$(WIX_PACKAGES)" == ""
 WIX_PACKAGES = $(TOPDIR)\win32\packages
+WIX_VERSION = 6.0.0
 !ENDIF
-WIX_INCL_DIR = "/I$(WIX_PACKAGES)/wixtoolset.dutil/5.0.2/build/native/include" \
-	"/I$(WIX_PACKAGES)/wixtoolset.wcautil/5.0.2/build/native/include"
-WIX_LIBS = "$(WIX_PACKAGES)/wixtoolset.dutil/5.0.2/build/native/v14/$(PLATFORM)/dutil.lib" \
-	"$(WIX_PACKAGES)/wixtoolset.wcautil/5.0.2/build/native/v14/$(PLATFORM)/wcautil.lib"
+WIX_INCL_DIR = "/I$(WIX_PACKAGES)/wixtoolset.dutil/$(WIX_VERSION)/build/native/include" \
+	"/I$(WIX_PACKAGES)/wixtoolset.wcautil/$(WIX_VERSION)/build/native/include"
+WIX_LIBS = "$(WIX_PACKAGES)/wixtoolset.dutil/$(WIX_VERSION)/build/native/v14/$(PLATFORM)/dutil.lib" \
+	"$(WIX_PACKAGES)/wixtoolset.wcautil/$(WIX_VERSION)/build/native/v14/$(PLATFORM)/wcautil.lib"
 
 # We do not build tests on windows
 #TESTS_DEF = /DENABLE_TESTS
