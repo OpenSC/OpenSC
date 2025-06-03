@@ -2245,14 +2245,16 @@ auth_read_record(struct sc_card *card, unsigned int nr_rec, unsigned int idx,
 	if (flags & SC_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
 
-	apdu.le = count;
-	apdu.resplen = count;
+	apdu.le = count > SC_MAX_APDU_BUFFER_SIZE ? SC_MAX_APDU_BUFFER_SIZE : count;
+	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
 	apdu.resp = recvbuf;
 
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	if (count < apdu.resplen)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
 	memcpy(buf, recvbuf, apdu.resplen);
 
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
