@@ -78,7 +78,7 @@ static int get_cert_len(sc_card_t *card, sc_path_t *path)
 	if (r < 0)
 		return 0;
 	r = sc_read_binary(card, 0, buf, sizeof(buf), 0);
-	if (r < 0)
+	if (r < 4)
 		return 0;
 	if (buf[0] != 0x30 || buf[1] != 0x82)
 		return 0;
