@@ -862,7 +862,8 @@ iasecc_emulate_fcp(struct sc_context *ctx, struct sc_apdu *apdu)
 	memcpy(dummy_df_fcp + 16, apdu->data, apdu->datalen);
 	dummy_df_fcp[15] = apdu->datalen;
 	dummy_df_fcp[1] = apdu->datalen + 14;
-	memcpy(apdu->resp, dummy_df_fcp, apdu->datalen + 16);
+	apdu->resplen = apdu->datalen + 16;
+	memcpy(apdu->resp, dummy_df_fcp, apdu->resplen);
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
