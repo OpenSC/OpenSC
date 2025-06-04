@@ -111,7 +111,7 @@ typedef struct myeid_private_data {
 #ifdef PIV_SM_NIST
 	sm_nist_params_t sm_params;
 #endif /* PIV_SM_NIST */
-	uint8_t set_session_flags[2];
+	unsigned short set_session_flags;
 } myeid_private_data_t;
 
 typedef struct myeid_card_caps {
@@ -138,6 +138,41 @@ static struct myeid_supported_ec_curves {
 
 static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen);
 static int myeid_get_card_caps(struct sc_card *card, myeid_card_caps_t* card_caps);
+static int myeid_set_session_flags(struct sc_card *card, unsigned short *flags);
+
+static int
+myeid_set_session_flags(struct sc_card *card, unsigned short *flags)
+{
+	sc_apdu_t apdu;
+	int r = 0;
+	u8 session_flags[2];
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	r = sc_lock(card);
+	if (r != SC_SUCCESS)
+		LOG_FUNC_RETURN(card->ctx, r);
+
+	/* set session flag to allow crypto during creation to sign CSRs */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, 0x01, 0xE5);
+	apdu.lc = 2;
+	apdu.datalen = 2;
+	session_flags[0] = (*flags >> 8) & 0xFF;
+	session_flags[1] = *flags & 0xFF;
+	apdu.data = session_flags;
+
+	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0) {
+		sc_log(card->ctx, "Transmit failed");
+		goto end;
+	}
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+end:
+	sc_unlock(card);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
 
 #ifdef PIV_SM_NIST
 static int
@@ -148,18 +183,17 @@ myeid_get_sm_cert_signer(struct sc_card *card, sc_path_t *path_cert_signer)
 	u8 rbuf[256];
 
 	LOG_FUNC_CALLED(card->ctx);
-	
+
 	memset(&rbuf, 0, sizeof(rbuf));
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)
 		LOG_FUNC_RETURN(card->ctx, r);
-	/* get data of Secure Messaging Parmeters See table 81 */
+	/* get data of Secure Messaging Parameters See table 81 */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x55);
-	apdu.le =  sizeof(rbuf);
+	apdu.le = sizeof(rbuf);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
-
 
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0) {
@@ -170,12 +204,12 @@ myeid_get_sm_cert_signer(struct sc_card *card, sc_path_t *path_cert_signer)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	if (r < 0) {
-		sc_log(card->ctx,  "Card returned error ");
+		sc_log(card->ctx, "Card returned error");
 		goto err;
 	}
 
 	if (apdu.resplen == 0) {
-		sc_log(card->ctx,  "Secure Messaging Parametrs no present");
+		sc_log(card->ctx, "Secure Messaging Parameters no present");
 		r = SC_ERROR_SM_NOT_INITIALIZED;
 		goto err;
 	}
@@ -185,7 +219,7 @@ myeid_get_sm_cert_signer(struct sc_card *card, sc_path_t *path_cert_signer)
 	/* Tag A0 has 1 or 2 sub tags with 0x27 or 0x2E with FID of CVCs */
 	/* TODO assume 0x27 for now */
 
-	if (apdu.resplen < 4 || apdu.resp[0] != 0x80 || apdu.resp[1] != 0x02){
+	if (apdu.resplen < 4 || apdu.resp[0] != 0x80 || apdu.resp[1] != 0x02) {
 		sc_log(card->ctx,  "Invalid response");
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		goto err;
@@ -207,9 +241,7 @@ myeid_setup_sm_nist(struct sc_card *card)
 	sc_path_t path_cert_signer = {
 			{0x3F, 0x00, 0x50, 0x15, 0x00, 0x00},
 			6, 0, 0, SC_PATH_TYPE_PATH, {{0}, 0}
-	};
-	//	sc_path_t path_cvc_27  = {"\x3F\x00\x50\x15\x5C\x2C", 6, 0, 0, SC_PATH_TYPE_PATH, {{0}}};
-	//	sc_path_t path_cvc_2E  = {"\x3F\x00\x50\x15\x5C\x2E", 6, 0, 0, SC_PATH_TYPE_PATH, {{0}}};
+			};
 	int r = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -429,9 +461,12 @@ static int myeid_init(struct sc_card *card)
 		card->max_recv_size = 255;
 	card->max_send_size = 255;
 
-	/* for now allow crypto in creation mode */
-	rv = myeid_set_session_flags(card, MYEID_SET_ENABLE_CRYPTO);
-
+	/* for now allow crypto in creation mode. Should be a parameter in opensc.conf */
+	if (card->version.fw_major >= 49) {
+		priv->set_session_flags = MYEID_SET_ENABLE_CRYPTO;
+		rv = myeid_set_session_flags(card, &priv->set_session_flags);
+		/* Ignore error if card is not in creation state */
+	}
 
 	/* TODO DEE for now use chaining vs extended */
 #ifdef PIV_SM_NIST
