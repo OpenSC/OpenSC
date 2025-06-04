@@ -695,6 +695,7 @@ cosm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	}
 	memcpy(pubkey->u.rsa.exponent.data, "\x01\x00\x01", 3);
 	memcpy(pubkey->u.rsa.modulus.data, args.pubkey, args.pubkey_len);
+	pubkey->u.rsa.modulus.len = args.pubkey_len;
 
 	key_info->key_reference = prkf->path.value[prkf->path.len - 1] & 0xFF;
 	key_info->path = prkf->path;
