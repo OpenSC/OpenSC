@@ -2089,9 +2089,11 @@ build_argv(struct state *cur, const char *cmdname,
 			/* When str contains macro inside, macro reference loop needs to be checked */
 			const char *macro_name = NULL;
 			if ((macro_name = strchr(str, '$'))) {
-				/* Macro does not to start at the first position */
+				/* Macro does not have to start at the first position */
 				char word[WORD_SIZE];
-				get_inner_word(macro_name + 1, word);
+				if (get_inner_word(macro_name + 1, word) != 0) {
+					return SC_ERROR_SYNTAX_ERROR;
+				}
 				if ((macro = find_macro(cur->profile, word))
 				    && check_macro_reference_loop(macro->name, macro, cur->profile, 0)) {
 					return SC_ERROR_SYNTAX_ERROR;
