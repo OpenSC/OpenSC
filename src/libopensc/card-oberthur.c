@@ -602,7 +602,7 @@ auth_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 	if (apdu.resplen == 0x100 && rbuf[0]==0 && rbuf[1]==0)
 		LOG_FUNC_RETURN(card->ctx, 0);
 
-	buflen = buflen < apdu.resplen ? buflen : apdu.resplen;
+	buflen = MIN(buflen, apdu.resplen);
 	memcpy(buf, rbuf, buflen);
 
 	LOG_FUNC_RETURN(card->ctx, (int)buflen);
@@ -1125,7 +1125,7 @@ auth_compute_signature(struct sc_card *card, const unsigned char *in, size_t ile
 	apdu.datalen = ilen;
 	apdu.data = in;
 	apdu.lc = ilen;
-	apdu.le = olen > 256 ? 256 : olen;
+	apdu.le = MIN(olen, 256);
 	apdu.resp = resp;
 	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
 
@@ -2245,7 +2245,7 @@ auth_read_record(struct sc_card *card, unsigned int nr_rec, unsigned int idx,
 	if (flags & SC_RECORD_BY_REC_NR)
 		apdu.p2 |= 0x04;
 
-	apdu.le = count > SC_MAX_APDU_BUFFER_SIZE ? SC_MAX_APDU_BUFFER_SIZE : count;
+	apdu.le = MIN(count, SC_MAX_APDU_BUFFER_SIZE);
 	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
 	apdu.resp = recvbuf;
 
