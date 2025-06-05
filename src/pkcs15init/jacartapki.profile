@@ -128,7 +128,7 @@ filesystem {
 				size	= 0;
 
 				# Private RSA keys
-				EF laser-private-key-attributes   {
+				EF jacartapki-private-key-attributes   {
 					ACL = READ=NONE, WRITE=CHV32, ADMIN=NEVER, DELETE-SELF=CHV32;
 					file-id	= 0200;
 				}
@@ -141,7 +141,7 @@ filesystem {
 				}
 
 				#Private DATA object
-				EF laser-private-data-attributes {
+				EF jacartapki-private-data-attributes {
 					ACL = READ=CHV32, WRITE=CHV32, ADMIN=CHV32, DELETE-SELF=CHV32;
 					file-id	= 0600;
 				}
@@ -154,19 +154,19 @@ filesystem {
 				size	= 0;
 
 				# Certificate
-				EF laser-certificate-attributes  {
+				EF jacartapki-certificate-attributes  {
 					ACL = READ=NONE, WRITE=CHV32, ADMIN=NEVER, DELETE-SELF=CHV32;
 					file-id	= 0440;		# Certificate object
 				}
 
 				# Certificate with private key
-				EF laser-cmap-certificate-attributes  {
+				EF jacartapki-cmap-certificate-attributes  {
 					ACL = READ=NONE, WRITE=CHV32, ADMIN=NEVER, DELETE-SELF=CHV32;
 					file-id	= 8400;		# Certificate object appear in cmapfile
 				}
 
 				#Public Key
-				EF laser-public-key-attributes {
+				EF jacartapki-public-key-attributes {
 					ACL = READ=NONE, WRITE=CHV32, ADMIN=NEVER, DELETE-SELF=CHV32;
 					file-id	= 0140;
 				}
@@ -178,13 +178,13 @@ filesystem {
 				}
 
 				#Public DATA object
-				EF laser-public-data-attributes {
+				EF jacartapki-public-data-attributes {
 					ACL = READ=NONE, WRITE=NONE, ADMIN=NEVER, DELETE-SELF=NONE;
 					file-id	= 0600;
 				}
 
 				#CMAP file
-				EF laser-cmap-attributes {
+				EF jacartapki-cmap-attributes {
 					ACL = READ=NONE, WRITE=CHV48, ADMIN=CHV48, DELETE-SELF=CHV48;
 					file-id	= 867F;
 					aid	= 63:6d:61:70:66:69:6c:65;
@@ -198,21 +198,21 @@ filesystem {
 				aid	= 4d:44;
 				size	= 0;
 
-				EF laser-md-cardid {
+				EF jacartapki-md-cardid {
 					ACL = READ=NONE, WRITE=CHV16, ADMIN=NEVER, DELETE-SELF=CHV16;
 					file-id	= 4000;
 					aid	= 63:61:72:64:69:64;
 					size	= 18;
 				}
 
-				EF laser-md-cardcf {
+				EF jacartapki-md-cardcf {
 					ACL	= READ=NONE, WRITE=CHV50, ADMIN=NEVER, DELETE-SELF=CHV50;
 					file-id	= 4001;
 					aid	= 63:61:72:64:63:66;
 					size	= 8;
 				}
 
-				EF laser-md-cardapps {
+				EF jacartapki-md-cardapps {
 					ACL	= READ=NONE, WRITE=CHV48, ADMIN=NEVER, DELETE-SELF=CHV48;
 					file-id	= 4002;
 					aid	= 63:61:72:64:61:70:70:73;
