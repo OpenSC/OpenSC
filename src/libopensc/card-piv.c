@@ -2270,7 +2270,7 @@ static int piv_sm_open(struct sc_card *card)
 	r = len2b = sc_asn1_put_tag(0x80, NULL, 0, NULL, 0, NULL);
 	if (r < 0)
 		goto err;
-	r = sbuflen = sc_asn1_put_tag(0x7C, NULL, len2a + len2b, NULL, 0, NULL);
+	sbuflen = r = sc_asn1_put_tag(0x7C, NULL, len2a + len2b, NULL, 0, NULL);
 	if (r < 0)
 		goto err;
 
@@ -5496,9 +5496,9 @@ static int piv_match_card_continued(sc_card_t *card)
 	 */
 
 	/*
-	* if ATR matched or user forced card type 
-	* test if PIV is active applet without using AID If fails use the AID 
-	*/
+	 * if ATR matched or user forced card type
+	 * test if PIV is active applet without using AID If fails use the AID
+	 */
 
 	if (card->type != SC_CARD_TYPE_PIV_II_BASE)
 		r = piv_find_discovery(card);
