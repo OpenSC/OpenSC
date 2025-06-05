@@ -2951,8 +2951,10 @@ pgp_parse_and_set_pubkey_output(sc_card_t *card, u8 *data, size_t data_len,
 
 	/* store creation time */
 	r = pgp_store_creationtime(card, key_info->key_id, &ctime);
-	/* TODO for now with GNUK at least, log but do not return error */
-	sc_log(card->ctx, "Cannot store creation time");
+	if (r != SC_SUCCESS) {
+		/* TODO for now with GNUK at least, log but do not return error */
+		sc_log(card->ctx, "Cannot store creation time");
+	}
 
 	/* parse response. Ref: pgp_enumerate_blob() */
 	while (data_len > (size_t) (in - data)) {
@@ -3196,8 +3198,9 @@ pgp_gen_key(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t *key_info)
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Card returned error");
 
 	/* parse response data and set output */
-	pgp_parse_and_set_pubkey_output(card, apdu.resp, apdu.resplen, key_info);
-	pgp_update_card_algorithms(card, key_info);
+	r = pgp_parse_and_set_pubkey_output(card, apdu.resp, apdu.resplen, key_info);
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to parse pubkey output");
+	r = pgp_update_card_algorithms(card, key_info);
 
 err:
 	free(apdu.resp);
