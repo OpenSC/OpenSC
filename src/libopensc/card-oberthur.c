@@ -1125,7 +1125,7 @@ auth_compute_signature(struct sc_card *card, const unsigned char *in, size_t ile
 	apdu.datalen = ilen;
 	apdu.data = in;
 	apdu.lc = ilen;
-	apdu.le = MIN(olen, 256);
+	apdu.le = MIN(olen, SC_MAX_APDU_RESP_SIZE);
 	apdu.resp = resp;
 	apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
 
@@ -1172,14 +1172,14 @@ auth_decipher(struct sc_card *card, const unsigned char *in, size_t inlen,
 	}
 
 	_inlen = inlen;
-	if (_inlen == 256)   {
+	if (_inlen == SC_MAX_APDU_RESP_SIZE)   {
 		apdu.cla |= 0x10;
 		apdu.data = in;
 		apdu.datalen = 8;
 		apdu.resp = resp;
 		apdu.resplen = SC_MAX_APDU_BUFFER_SIZE;
 		apdu.lc = 8;
-		apdu.le = 256;
+		apdu.le = SC_MAX_APDU_RESP_SIZE;
 
 		rv = sc_transmit_apdu(card, &apdu);
 		sc_log(card->ctx, "rv %i", rv);
@@ -1503,7 +1503,7 @@ auth_read_component(struct sc_card *card, enum SC_CARDCTL_OBERTHUR_KEY_TYPE type
 {
 	struct sc_apdu apdu;
 	int rv;
-	unsigned char resp[256];
+	unsigned char resp[SC_MAX_APDU_RESP_SIZE];
 
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx, "num %i, outlen %"SC_FORMAT_LEN_SIZE_T"u, type %i",
@@ -2159,7 +2159,7 @@ auth_read_binary(struct sc_card *card, unsigned int offset,
 	if (auth_current_ef->magic==SC_FILE_MAGIC &&
 			auth_current_ef->ef_structure == SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC)   {
 		int jj;
-		unsigned char resp[256];
+		unsigned char resp[SC_MAX_APDU_RESP_SIZE];
 		size_t resp_len, out_len;
 		struct sc_pkcs15_pubkey_rsa key;
 
