@@ -38,28 +38,23 @@
 #include <openssl/sha.h>
 #include <openssl/x509v3.h>
 #include <openssl/rand.h>
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
 #include <openssl/core_names.h>
 #include <openssl/param_build.h>
+#endif
 
+#include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
-#include "internal.h"
-#include "iso7816.h"
-#include "jacartapki.h"
 #include "opensc.h"
-#include "pkcs15.h"
 #include "sc-ossl-compat.h"
-#include "sm/sm-iso.h"
+#include "pkcs15.h"
+#include "iso7816.h"
 #include "sm/sm-iso-internal.h"
-#include "internal.h"
+#include "sm/sm-iso.h"
 
-#ifndef _WIN32
-#include <sys/types.h>
-#include <unistd.h>
-#else
-#include <process.h>
-#define getpid() _getpid()
-#endif
+#include "jacartapki.h"
 
 #define JACARTAPKI_CARD_DEFAULT_FLAGS (SC_ALGORITHM_ONBOARD_KEY_GEN | SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_ISO9796 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_HASH_SHA224 | SC_ALGORITHM_RSA_HASH_SHA256 | SC_ALGORITHM_RSA_HASH_SHA384 | SC_ALGORITHM_RSA_HASH_SHA512)
 
@@ -96,6 +91,10 @@ static struct sc_atr_table jacartapki_known_atrs[] = {
 			"3B:9F:11:81:11:3D:00:11:00:00:00:00:00:00:00:00:00:00:00:00:00:32",
 			"JaCarta-2 PKI",								 SC_CARD_TYPE_JACARTA_PKI, 0, NULL},
 
+		{"FF:FF:FF:00:00:00:FF:FF:FF:FF:FF:0F:0F:FF:FF:00:0F:FF",
+			"3B:FC:16:00:00:00:73:C8:21:13:66:01:06:11:59:00:01:2C",
+			"JaCarta-2 PKI",								 SC_CARD_TYPE_JACARTA_PKI, 0, NULL},
+
 		{NULL,								NULL, NULL, 0,			      0, NULL}
 };
 
@@ -121,17 +120,17 @@ static int jacartapki_parse_sec_attrs(struct sc_card *, struct sc_file *);
 static int jacartapki_process_fci(struct sc_card *, struct sc_file *, const unsigned char *, size_t);
 
 /*
-* Presently JaCarta PKI Secure Messaging does not fully comply to ISO/IEC 7816-4 (OpenPGP Application on ISO Smart Card Operating Systems).
-* For commands we must wrap APDU data into 87 tag with 01 padding indicator indiscriminately of even/odd INS code.
-* 
-* To overcome this we change APDU INS code several times for odd commands: get capabilities CBh, generate key pair 47h.
-* 
-* in jacartapki_do_something methods: make INS even (+1) for sc_transmit_apdu argument
-* in jacartapki_iso_sm_authenticate method: modify APDU INS back (-1) in temporary buffer for MAC calculation
-* in jacartapki_iso_sm_get_apdu method: modify APDU INS back (-1) after all handling for PCSC layer to send
-* fortunately not stomp on other INS codes
-* 
-*/
+ * Presently JaCarta PKI Secure Messaging does not fully comply to ISO/IEC 7816-4 (OpenPGP Application on ISO Smart Card Operating Systems).
+ * For commands we must wrap APDU data into 87 tag with 01 padding indicator indiscriminately of even/odd INS code.
+ * 
+ * To overcome this we change APDU INS code several times for odd commands: get capabilities CBh, generate key pair 47h.
+ * 
+ * in jacartapki_do_something methods: make INS even (+1) for sc_transmit_apdu argument
+ * in jacartapki_iso_sm_authenticate method: modify APDU INS back (-1) in temporary buffer for MAC calculation
+ * in jacartapki_iso_sm_get_apdu method: modify APDU INS back (-1) after all handling for PCSC layer to send
+ * fortunately not stomp on other INS codes
+ * 
+ */
 #if defined(ENABLE_SM)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L || defined(LIBRESSL_VERSION_NUMBER)
 static void _DES_3cbc_encrypt(sm_des_cblock *input, sm_des_cblock *output, long length,
@@ -265,7 +264,7 @@ jacartapki_match_card(struct sc_card *card)
 }
 
 static int
-jacartapki_load_options(struct sc_card* card)
+jacartapki_load_options(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
 	int i, j;
@@ -276,7 +275,7 @@ jacartapki_load_options(struct sc_card* card)
 		scconf_block **found_blocks, *block;
 
 		found_blocks = scconf_find_blocks(card->ctx->conf, card->ctx->conf_blocks[i],
-				"card_driver", "laser");
+				"card_driver", "jacartapki");
 		if (!found_blocks)
 			continue;
 
@@ -346,7 +345,7 @@ jacartapki_init(struct sc_card *card)
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
 
-    OSSL_PROVIDER_load(NULL, "default");
+	OSSL_PROVIDER_load(NULL, "default");
 	private_data->legacyOsslProvider = OSSL_PROVIDER_load(NULL, "legacy");
 	if (!private_data->legacyOsslProvider)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "No Legacy OpenSSL provider.");
@@ -359,7 +358,7 @@ jacartapki_init(struct sc_card *card)
 	if (!private_data->desEcbCipher)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "No DES-ECB cipher");
 
-#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER) */
+#endif
 
 #endif
 	rv = SC_SUCCESS;
@@ -390,7 +389,7 @@ jacartapki_read_binary(struct sc_card *card, unsigned int offs,
 	size_t binaryDataRead;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "jacartapki_read_binary(card:%p) offs %i; count %"SC_FORMAT_LEN_SIZE_T"u", card, offs, count);
+	sc_log(ctx, "jacartapki_read_binary(card:%p) offs %i; count %" SC_FORMAT_LEN_SIZE_T "u", card, offs, count);
 	if (offs > 0x7fff) {
 		sc_log(ctx, "invalid EF offset: 0x%X > 0x7FFF", offs);
 		return SC_ERROR_OFFSET_TOO_LARGE;
@@ -400,10 +399,10 @@ jacartapki_read_binary(struct sc_card *card, unsigned int offs,
 	apdu.le = MIN(count, leMax);
 	apdu.resplen = count;
 	apdu.resp = buf;
- #ifdef ENABLE_SM
+#ifdef ENABLE_SM
 	if (card->sm_ctx.sm_mode != SM_MODE_NONE)
 		apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
- #endif
+#endif
 
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
@@ -428,7 +427,7 @@ jacartapki_read_binary(struct sc_card *card, unsigned int offs,
 	} else
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, rv, "jacartapki_read_binary() failed");
-	sc_log(ctx, "jacartapki_read_binary() apdu.resplen %"SC_FORMAT_LEN_SIZE_T"u", apdu.resplen);
+	sc_log(ctx, "jacartapki_read_binary() apdu.resplen %" SC_FORMAT_LEN_SIZE_T "u", apdu.resplen);
 
 	LOG_FUNC_RETURN(ctx, binaryDataRead);
 }
@@ -467,7 +466,7 @@ jacartapki_erase_binary(struct sc_card *card, unsigned int offs, size_t count, u
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "jacartapki_erase_binary(card:%p) count %"SC_FORMAT_LEN_SIZE_T"u", card, count);
+	sc_log(ctx, "jacartapki_erase_binary(card:%p) count %" SC_FORMAT_LEN_SIZE_T "u", card, count);
 	if (!count)
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "'ERASE BINARY' failed: invalid size to erase");
 
@@ -497,7 +496,6 @@ jacartapki_select_file(struct sc_card *card, const struct sc_path *in_path,
 	LOG_FUNC_CALLED(ctx);
 
 	sc_log(ctx, "jacartapki_select_file(card:%p) path(type:%i):%s, out:%p", card, in_path->type, sc_print_path(in_path), file_out);
-	sc_print_cache(card);
 
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
@@ -638,7 +636,7 @@ jacartapki_process_fci(struct sc_card *card, struct sc_file *file, const u8 *buf
 		file->size = tag[0];
 		if (taglen == 2)
 			file->size = (file->size << 8) + tag[1];
-		sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"d", file->size);
+		sc_log(ctx, "  bytes in file: %" SC_FORMAT_LEN_SIZE_T "d", file->size);
 	}
 	if (tag == NULL) {
 		tag = sc_asn1_find_tag(ctx, p, len, ISO7816_TAG_FCP_SIZE_FULL, &taglen);
@@ -769,7 +767,7 @@ jacartapki_parse_sec_attrs(struct sc_card *card, struct sc_file *file)
 	} else {
 		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported file type");
 	}
-	sc_log(ctx, "sec.attrs(%"SC_FORMAT_LEN_SIZE_T"u) %s, ops_len %"SC_FORMAT_LEN_SIZE_T"u", len, sc_dump_hex(attrs, len), ops_len);
+	sc_log(ctx, "sec.attrs(%" SC_FORMAT_LEN_SIZE_T "u) %s, ops_len %" SC_FORMAT_LEN_SIZE_T "u", len, sc_dump_hex(attrs, len), ops_len);
 
 	for (ii = 0; ii < ops_len; ii++) {
 		unsigned val = *(attrs + ii * 2) * 0x100 + *(attrs + ii * 2 + 1);
@@ -910,7 +908,6 @@ jacartapki_create_file(struct sc_card *card, struct sc_file *file)
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_print_cache(card);
 	sc_log(ctx, "create file (type:%i, ID:0x%X, path:%s)", file->type, file->id, sc_print_path(&file->path));
 
 	/* Select parent */
@@ -1035,7 +1032,7 @@ jacartapki_finish(struct sc_card *card)
 
 		OSSL_PROVIDER_unload(private_data->legacyOsslProvider);
 		private_data->legacyOsslProvider = NULL;
-#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER) */
+#endif
 
 #else
 	if (private_data) {
@@ -1162,7 +1159,7 @@ jacartapki_chv_secure_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_c
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "Verify CHV PIN(ref:%i,len:%"SC_FORMAT_LEN_SIZE_T"u)", pin_cmd->pin_reference, pin_cmd->pin1.len);
+	sc_log(ctx, "Verify CHV PIN(ref:%i,len:%" SC_FORMAT_LEN_SIZE_T "u)", pin_cmd->pin_reference, pin_cmd->pin1.len);
 
 	if (!pin_cmd->pin1.data || !pin_cmd->pin1.len)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_ARGUMENTS, "null value not allowed for secure PIN verify");
@@ -1205,7 +1202,7 @@ jacartapki_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "Verify CHV PIN(ref:%i,len:%"SC_FORMAT_LEN_SIZE_T"u)", pin_cmd->pin_reference, pin_cmd->pin1.len);
+	sc_log(ctx, "Verify CHV PIN(ref:%i,len:%" SC_FORMAT_LEN_SIZE_T "u)", pin_cmd->pin_reference, pin_cmd->pin1.len);
 
 	if (pin_cmd->pin1.data && !pin_cmd->pin1.len) {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, pin_cmd->pin_reference);
@@ -1318,7 +1315,7 @@ jacartapki_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 	int secure_verify;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "Verify PIN(type:%X,ref:%i,data(len:%"SC_FORMAT_LEN_SIZE_T"u,%p)", type, reference, data_len, data);
+	sc_log(ctx, "Verify PIN(type:%X,ref:%i,data(len:%" SC_FORMAT_LEN_SIZE_T "u,%p)", type, reference, data_len, data);
 
 	if (type == SC_AC_AUT && reference == JACARTAPKI_TRANSPORT_PIN1_REFERENCE)
 		type = SC_AC_CHV;
@@ -1381,7 +1378,7 @@ jacartapki_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, uns
 	ctx = card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM change CHV(ref %i, length %"SC_FORMAT_LEN_SIZE_T"u, op-acl %X)", chv_ref, data->pin2.len, op_acl);
+	sc_log(ctx, "SM change CHV(ref %i, length %" SC_FORMAT_LEN_SIZE_T "u, op-acl %X)", chv_ref, data->pin2.len, op_acl);
 
 	if (!data->pin2.len)
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unblock procedure needs new PIN defined");
@@ -1436,7 +1433,7 @@ jacartapki_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *t
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "Change PIN(type:%i,ref:%i,lengths:%"SC_FORMAT_LEN_SIZE_T"u/%"SC_FORMAT_LEN_SIZE_T"u)", data->pin_type, data->pin_reference, data->pin1.len, data->pin2.len);
+	sc_log(ctx, "Change PIN(type:%i,ref:%i,lengths:%" SC_FORMAT_LEN_SIZE_T "u/%" SC_FORMAT_LEN_SIZE_T "u)", data->pin_type, data->pin_reference, data->pin1.len, data->pin2.len);
 
 	if (data->pin_type != SC_AC_CHV)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -1468,7 +1465,7 @@ jacartapki_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *t
 			LOG_FUNC_RETURN(ctx, rv);
 #else
 			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
-#endif /* ifdef ENABLE_SM */
+#endif
 		}
 	}
 
@@ -1497,7 +1494,7 @@ jacartapki_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "Reset PIN(type:%i,ref:%i,lengths:%"SC_FORMAT_LEN_SIZE_T"u/%"SC_FORMAT_LEN_SIZE_T"u)", data->pin_type, data->pin_reference, data->pin1.len, data->pin2.len);
+	sc_log(ctx, "Reset PIN(type:%i,ref:%i,lengths:%" SC_FORMAT_LEN_SIZE_T "u/%" SC_FORMAT_LEN_SIZE_T "u)", data->pin_type, data->pin_reference, data->pin1.len, data->pin2.len);
 
 	if (data->pin_type != SC_AC_CHV)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -1568,7 +1565,7 @@ jacartapki_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *trie
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "jacartapki_pin_cmd() cmd 0x%X, PIN type 0x%X, PIN reference %i, PIN-1 %p:%"SC_FORMAT_LEN_SIZE_T"u, PIN-2 %p:%"SC_FORMAT_LEN_SIZE_T"u",
+	sc_log(ctx, "jacartapki_pin_cmd() cmd 0x%X, PIN type 0x%X, PIN reference %i, PIN-1 %p:%" SC_FORMAT_LEN_SIZE_T "u, PIN-2 %p:%" SC_FORMAT_LEN_SIZE_T "u",
 			data->cmd, data->pin_type, data->pin_reference,
 			data->pin1.data, data->pin1.len, data->pin2.data, data->pin2.len);
 	switch (data->cmd) {
@@ -1618,7 +1615,7 @@ jacartapki_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 	card->serialnr = sn;
 	if (serial)
 		*serial = sn;
-	sc_log(ctx, "card laser serial '%s'", sc_dump_hex(sn.value, sn.len));
+	sc_log(ctx, "jacartapki serial '%s'", sc_dump_hex(sn.value, sn.len));
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -1773,7 +1770,7 @@ jacartapki_decipher(struct sc_card *card, const unsigned char *in, size_t in_len
 	unsigned int tagClass;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "in-length:%"SC_FORMAT_LEN_SIZE_T"u, key-size:%"SC_FORMAT_LEN_SIZE_T"u, out-length:%"SC_FORMAT_LEN_SIZE_T"u", in_len, (prv->last_ko ? prv->last_ko->size : 0), out_len);
+	sc_log(ctx, "in-length:%" SC_FORMAT_LEN_SIZE_T "u, key-size:%" SC_FORMAT_LEN_SIZE_T "u, out-length:%" SC_FORMAT_LEN_SIZE_T "u", in_len, (prv->last_ko ? prv->last_ko->size : 0), out_len);
 	if (env->operation != SC_SEC_OPERATION_DECIPHER)
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "has to be SC_SEC_OPERATION_DECIPHER");
 	else if (in_len > (sizeof(sbuf) - 4))
@@ -1799,17 +1796,17 @@ jacartapki_decipher(struct sc_card *card, const unsigned char *in, size_t in_len
 	LOG_TEST_RET(ctx, rv, "PSO DST failed");
 
 	responseTagPtr = rbuf;
-	rv = sc_asn1_read_tag((const u8**)&responseTagPtr, apdu.resplen, &tagClass, &tlv.tag, &tlv.len);
+	rv = sc_asn1_read_tag((const u8 **)&responseTagPtr, apdu.resplen, &tagClass, &tlv.tag, &tlv.len);
 	LOG_TEST_RET(ctx, rv, "Invalid response from PSO DST");
 	tlv.value = responseTagPtr;
 
 	if (tagClass != 0x80 || tlv.tag != 0x00) {
-		sc_log(ctx, "invalid decrypted data tag. response(%"SC_FORMAT_LEN_SIZE_T"u) %s ...", apdu.resplen, sc_dump_hex(apdu.resp, 12));
+		sc_log(ctx, "invalid decrypted data tag. response(%" SC_FORMAT_LEN_SIZE_T "u) %s ...", apdu.resplen, sc_dump_hex(apdu.resp, 12));
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 	}
 
 	if (tlv.len > out_len) {
-		sc_log(ctx, "PSO Decipher failed: response data too long: %"SC_FORMAT_LEN_SIZE_T"u\n", tlv.len);
+		sc_log(ctx, "PSO Decipher failed: response data too long: %" SC_FORMAT_LEN_SIZE_T "u\n", tlv.len);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 	} else if (tlv.len == 0) {
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "PSO Decipher failed: response data missing.");
@@ -1847,7 +1844,7 @@ jacartapki_compute_signature_dst(struct sc_card *card,
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "It's not SC_SEC_OPERATION_SIGN");
 
 	keySize = prv->last_ko != NULL ? prv->last_ko->size : 0;
-	sc_log(ctx, "SC_SEC_OPERATION: %04X, in-length:%"SC_FORMAT_LEN_SIZE_T"u, key-size:%"SC_FORMAT_LEN_SIZE_T"u", env->operation, in_len, keySize);
+	sc_log(ctx, "SC_SEC_OPERATION: %04X, in-length:%" SC_FORMAT_LEN_SIZE_T "u, key-size:%" SC_FORMAT_LEN_SIZE_T "u", env->operation, in_len, keySize);
 
 	if ((env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) ||
 			(env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA224) ||
@@ -1916,7 +1913,7 @@ jacartapki_compute_signature_dst(struct sc_card *card,
 	}
 
 	if (sigValueLength > out_len) {
-		sc_log(ctx, "Compute signature failed: invalid response length %"SC_FORMAT_LEN_SIZE_T"u\n", sigValueLength);
+		sc_log(ctx, "Compute signature failed: invalid response length %" SC_FORMAT_LEN_SIZE_T "u\n", sigValueLength);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_CARD_CMD_FAILED);
 	}
 
@@ -1959,7 +1956,7 @@ jacartapki_compute_signature(struct sc_card *card,
 	assert(prv);
 	env = &prv->security_env;
 
-	sc_log(ctx, "op:%x, inlen %"SC_FORMAT_LEN_SIZE_T"u, outlen %"SC_FORMAT_LEN_SIZE_T"u", env->operation, in_len, out_len);
+	sc_log(ctx, "op:%x, inlen %" SC_FORMAT_LEN_SIZE_T "u, outlen %" SC_FORMAT_LEN_SIZE_T "u", env->operation, in_len, out_len);
 
 	if (env->operation == SC_SEC_OPERATION_SIGN)
 		return jacartapki_compute_signature_dst(card, in, in_len, out, out_len);
@@ -2203,7 +2200,7 @@ _sm_encrypt_des_cbc3(struct sc_context *ctx, const unsigned char *key,
 	*out_len += tmplen;
 	EVP_CIPHER_CTX_free(cctx);
 	sc_evp_cipher_free(alg);
-#endif /* OPENSSL_VERSION_NUMBER < 0x30000000L || defined(LIBRESSL_VERSION_NUMBER) */
+#endif
 
 	free(data);
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
@@ -2258,7 +2255,7 @@ err:
 	BN_free(bnR2);
 	return rv;
 }
-#endif /* LIBRESSL_VERSION_NUMBER */
+#endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
 
@@ -2297,7 +2294,7 @@ icc_DH(struct sc_card *card, const BIGNUM *prime /* N */, const BIGNUM *generato
 		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "EVP_PKEY_new failed");
 
 	if (EVP_PKEY_fromdata(dh_key_ctx, &publicKey, EVP_PKEY_KEY_PARAMETERS, params) <= 0 ||
-		!EVP_PKEY_set1_encoded_public_key(publicKey, icc_p, icc_p_length)) {
+			!EVP_PKEY_set1_encoded_public_key(publicKey, icc_p, icc_p_length)) {
 
 		EVP_PKEY_free(publicKey);
 		publicKey = NULL;
@@ -2332,11 +2329,11 @@ ifd_DH(struct sc_card *card, const BIGNUM *prime /* N */, const BIGNUM *generato
 	if (!OSSL_PARAM_BLD_push_BN(param_builder, OSSL_PKEY_PARAM_FFC_G, generator))
 		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "OSSL_PARAM_BLD_push_BN generator failed");
 	/*
-	* to use predefined private key BIGNUM:
-	* OSSL_PARAM_BLD_push_BN(param_builder,OSSL_PKEY_PARAM_PRIV_KEY, privKey)
-	* EVP_PKEY_fromdata(dh_key_ctx, &dh_key_param, EVP_PKEY_KEYPAIR, params)
-	* no key gen
-	*/
+	 * to use predefined private key BIGNUM:
+	 * OSSL_PARAM_BLD_push_BN(param_builder,OSSL_PKEY_PARAM_PRIV_KEY, privKey)
+	 * EVP_PKEY_fromdata(dh_key_ctx, &dh_key_param, EVP_PKEY_KEYPAIR, params)
+	 * no key gen
+	 */
 	params = OSSL_PARAM_BLD_to_param(param_builder);
 	if (!params)
 		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "OSSL_PARAM_BLD_to_param failed");
@@ -2412,7 +2409,7 @@ err:
 	return rv;
 }
 
-#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER) */
+#endif
 
 static int
 jacartapki_sm_open(struct sc_card *card)
@@ -2456,17 +2453,17 @@ jacartapki_sm_open(struct sc_card *card)
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_GOTO_ERR(ctx, rv, "'GET PUBLIC KEY' failed");
 
-	dh_session->g.tag = JACARTAPKI_SM_RSA_TAG_G;		/* TLV tag 80H g */
+	dh_session->g.tag = JACARTAPKI_SM_RSA_TAG_G; /* TLV tag 80H g */
 	rv = jacartapki_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->g);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'g'");
 	bn_g = BN_bin2bn(dh_session->g.value, dh_session->g.len, NULL);
 
-	dh_session->N.tag = JACARTAPKI_SM_RSA_TAG_N;		/* TLV tag 81H N */
+	dh_session->N.tag = JACARTAPKI_SM_RSA_TAG_N; /* TLV tag 81H N */
 	rv = jacartapki_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->N);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'N'");
 	bn_N = BN_bin2bn(dh_session->N.value, dh_session->N.len, NULL);
 
-	dh_session->icc_p.tag = JACARTAPKI_SM_RSA_TAG_ICC_P;	/* TLV tag 82H g^y mod N */
+	dh_session->icc_p.tag = JACARTAPKI_SM_RSA_TAG_ICC_P; /* TLV tag 82H g^y mod N */
 	rv = jacartapki_get_tag_data(ctx, apdu.resp, apdu.resplen, &dh_session->icc_p);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid 'GET PUBLIC KEY' data: missing 'ICC-P'");
 
@@ -2480,7 +2477,7 @@ jacartapki_sm_open(struct sc_card *card)
 	ifd_pkey = ifd_DH(card, bn_N, bn_g, &ifd_public_key, &ifd_public_key_length);
 	if (!ifd_pkey)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "Failed to generate ifd key.");
-	assert(ifd_public_key &&ifd_public_key_length);
+	assert(ifd_public_key && ifd_public_key_length);
 
 	/* ----------------------------- shared key ----------------------------- */
 	rv = derive_icc_ifd_key(card, icc_pkey, ifd_pkey, &shared_key, &shared_key_length);
@@ -2503,7 +2500,7 @@ jacartapki_sm_open(struct sc_card *card)
 	if (!dh_session->ifd_y.value)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate private DH key");
 
-	RAND_bytes((unsigned char*)&rd, sizeof(rd));
+	RAND_bytes((unsigned char *)&rd, sizeof(rd));
 	SHA1((unsigned char *)(&rd), sizeof(rd), dh_session->ifd_y.value);
 	dh_session->ifd_y.len = SHA_DIGEST_LENGTH;
 	bn_ifd_y = BN_bin2bn(dh_session->ifd_y.value, dh_session->ifd_y.len, NULL);
@@ -2512,8 +2509,8 @@ jacartapki_sm_open(struct sc_card *card)
 	if (!dh)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate DH key");
 
-	DH_set0_pqg(dh, bn_N, NULL, bn_g);	/* dh->p, dh->g */
-	DH_set0_key(dh, NULL, bn_ifd_y);	/* dh->priv_key */
+	DH_set0_pqg(dh, bn_N, NULL, bn_g); /* dh->p, dh->g */
+	DH_set0_key(dh, NULL, bn_ifd_y); /* dh->priv_key */
 
 	if (!DH_check(dh, &dh_check))
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "OpenSSL 'DH-check' failed");
@@ -2537,10 +2534,10 @@ jacartapki_sm_open(struct sc_card *card)
 	rv = _compute_key_padded(card, dh_session->shared_secret.value, DH_size(dh), bn_icc_p, bn_ifd_y, bn_N);
 	if (DH_size(dh) > rv)
 		LOG_ERROR_GOTO(ctx, rv, "Failed to calculate shared secret");
-#endif /* !defined(LIBRESSL_VERSION_NUMBER) */
-#endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER) */
+#endif
+#endif
 
-	sc_log(ctx, "shared-secret(%"SC_FORMAT_LEN_SIZE_T"u) %s", dh_session->shared_secret.len,
+	sc_log(ctx, "shared-secret(%" SC_FORMAT_LEN_SIZE_T "u) %s", dh_session->shared_secret.len,
 			sc_dump_hex(dh_session->shared_secret.value, dh_session->shared_secret.len));
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x86, 0x00, 0x00);
@@ -2597,7 +2594,7 @@ jacartapki_cbc_cksum(struct sc_card *card, unsigned char *key, size_t key_size,
 	EVP_CIPHER_CTX *evpK1Ctx = NULL;
 	EVP_CIPHER_CTX *evpK2Ctx = NULL;
 	OSSL_PARAM desParams[2] = {OSSL_PARAM_END, OSSL_PARAM_END};
-	DES_cblock *updatedIV;
+	void *updatedIV; /* DES_cblock */
 	unsigned int padding;
 	int len;
 #else
@@ -2620,7 +2617,7 @@ jacartapki_cbc_cksum(struct sc_card *card, unsigned char *key, size_t key_size,
 	if (!evpK1Ctx || !evpK2Ctx)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Failed to allocate EVP_CIPHER_CTX");
 
-	desParams[0] = OSSL_PARAM_construct_uint(OSSL_CIPHER_PARAM_PADDING, &padding); /* desParams reuse */
+	desParams[0] = OSSL_PARAM_construct_uint(OSSL_CIPHER_PARAM_PADDING, &padding);
 	if (!EVP_CipherInit_ex2(evpK1Ctx, private_data->desCbcCipher, &key[0], *icv, 1, desParams))
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "DES-CBC cipher init failed");
 
@@ -2637,7 +2634,7 @@ jacartapki_cbc_cksum(struct sc_card *card, unsigned char *key, size_t key_size,
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "Failed to get DES cipher params");
 
 	for (ii = 0; ii < sizeof(DES_cblock); ii++)
-		last[ii] = *(in + ii) ^ (*updatedIV)[ii];
+		last[ii] = *(in + ii) ^ (*(DES_cblock*)updatedIV)[ii]; 
 
 	EVP_CIPHER_CTX_reset(evpK1Ctx); /* evpCtx reuse */
 
@@ -2715,8 +2712,8 @@ err:
 }
 
 static int
-jacartapki_sm_check_mac(struct sc_card* card, const unsigned char* data, size_t data_len,
-	const unsigned char* mac, size_t mac_len)
+jacartapki_sm_check_mac(struct sc_card *card, const unsigned char *data, size_t data_len,
+	const unsigned char *mac, size_t mac_len)
 {
 	struct sc_context *ctx = card->ctx;
 	int rv;
@@ -2742,8 +2739,7 @@ jacartapki_sm_close(struct sc_card *card)
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (card->sm_ctx.sm_mode != SM_MODE_NONE)
-	{
+	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
 		struct sc_apdu apdu;
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x86, 0xFF, 0xFF);
@@ -2772,7 +2768,7 @@ jacartapki_iso_sm_open(struct sc_card *card)
 
 	LOG_FUNC_CALLED(ctx);
 
-	rv =  jacartapki_sm_open(card);
+	rv = jacartapki_sm_open(card);
 	LOG_TEST_GOTO_ERR(ctx, rv, "SM init failed");
 
 	sctx = iso_sm_ctx_create();
@@ -2805,7 +2801,7 @@ err:
 
 static int
 jacartapki_iso_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
-	const u8* data, size_t datalen, u8** enc)
+		const u8* data, size_t datalen, u8** enc)
 {
 	struct sm_dh_session *sess = &card->sm_ctx.info.session.dh;
 	size_t valLen;
@@ -2818,7 +2814,7 @@ jacartapki_iso_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 static int
 jacartapki_iso_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
-	const u8* enc, size_t enclen, u8** data)
+		const u8* enc, size_t enclen, u8** data)
 {
 	struct sm_dh_session *sess = &card->sm_ctx.info.session.dh;
 	size_t valLen;
@@ -2839,8 +2835,7 @@ jacartapki_iso_sm_get_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc
 		return SC_ERROR_SM_NOT_APPLIED;
 
 	rv = iso_get_sm_apdu(card, apdu, sm_apdu);
-	if (rv == SC_SUCCESS)
-	{
+	if (rv == SC_SUCCESS) {
 		struct sc_apdu *sm_apdu_correct = *sm_apdu;
 		/*
 		INS translation back
@@ -2900,8 +2895,7 @@ jacartapki_iso_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	data[1]: apdu->ins;
 	...
 	*/
-	if (data[1] == 0xCC || data[1] == 0x48)	
-	{
+	if (data[1] == 0xCC || data[1] == 0x48) {
 		u8 *patchableApdu = (u8 *)data;
 		patchableApdu[1] = (patchableApdu[1] == 0xCC ? 0xCB : 0x47); /* not a good practice too */
 	}
@@ -2912,7 +2906,7 @@ jacartapki_iso_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	rv = jacartapki_sm_compute_mac(card, data, datalen, mac);
 	LOG_TEST_GOTO_ERR(card->ctx, rv, "Failed to compute MAC checksum");
 
-	*outdata = (u8*)mac;
+	*outdata = (u8 *)mac;
 	rv = (int)macLen;
 err:
 	if (rv < 0)
@@ -2922,13 +2916,13 @@ err:
 
 static int
 jacartapki_iso_sm_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
-	const u8* mac, size_t maclen,
-	const u8* macdata, size_t macdatalen)
+	const u8 *mac, size_t maclen,
+	const u8 *macdata, size_t macdatalen)
 {
 	return jacartapki_sm_check_mac(card, macdata, macdatalen, mac, maclen);
 }
 
-#endif  /* ENABLE_SM */
+#endif /* ENABLE_SM */
 
 static struct sc_card_driver *
 sc_get_driver(void)

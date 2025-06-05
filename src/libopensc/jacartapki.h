@@ -31,30 +31,31 @@
 
 #define JACARTAPKI_MODEL "JaCarta PKI"
 
-#define JACARTAPKI_KO_ALLOW_TICKET	     0x80
+#define JACARTAPKI_KO_ALLOW_TICKET	  0x80
 #define JACARTAPKI_KO_ALLOW_SECURE_VERIFY 0x40
 
 #define JACARTAPKI_KO_NON_CRYPTO    0x00
 #define JACARTAPKI_KO_CLASS_SKEY    0x01
-#define JACARTAPKI_KO_CLASS_ECC     0x03
-#define JACARTAPKI_KO_CLASS_RSA     0x04
+#define JACARTAPKI_KO_CLASS_ECC	    0x03
+#define JACARTAPKI_KO_CLASS_RSA	    0x04
 #define JACARTAPKI_KO_CLASS_RSA_CRT 0x05
 
-#define JACARTAPKI_KO_USAGE_AUTH_EXT	     0x01
-#define JACARTAPKI_KO_USAGE_AUTH_INT	     0x02
-#define JACARTAPKI_KO_USAGE_SIGN	     0x04
-#define JACARTAPKI_KO_USAGE_VERIFY	     0x04
-#define JACARTAPKI_KO_USAGE_ENCRYPT	     0x08
-#define JACARTAPKI_KO_USAGE_DECRYPT	     0x08
-#define JACARTAPKI_KO_USAGE_KEY_AGREEMENT 0x80
+#define JACARTAPKI_KO_USAGE_AUTH_EXT 0x01
+#define JACARTAPKI_KO_USAGE_AUTH_INT 0x02
+#define JACARTAPKI_KO_USAGE_SIGN 0x04
+#define JACARTAPKI_KO_USAGE_VERIFY 0x04
+#define JACARTAPKI_KO_USAGE_ENCRYPT 0x08
+#define JACARTAPKI_KO_USAGE_DECRYPT 0x08
+#define JACARTAPKI_KO_USAGE_KEY_AGREEMENT																																																										   0x80
 
 #define JACARTAPKI_KO_ALGORITHM_PIN	     0x00
 #define JACARTAPKI_KO_ALGORITHM_BIOMETRIC 0x01
-#define JACARTAPKI_KO_ALGORITHM_LOGIC     0x0F
-#define JACARTAPKI_KO_ALGORITHM_TDES	     0x10
-#define JACARTAPKI_KO_ALGORITHM_AES	     0x11
-#define JACARTAPKI_KO_ALGORITHM_RSA	     0x20
-#define JACARTAPKI_KO_ALGORITHM_ECC	     0x30
+#define JACARTAPKI_KO_ALGORITHM_LOGIC	  0x0F
+#define JACARTAPKI_KO_ALGORITHM_TDES	  0x10
+#define JACARTAPKI_KO_ALGORITHM_AES	  0x11
+#define JACARTAPKI_KO_ALGORITHM_RSA	  0x20
+#define JACARTAPKI_KO_ALGORITHM_ECC	  0x30
+
 
 #define JACARTAPKI_KO_PADDING_NO  0x00
 #define JACARTAPKI_KO_PADDING_YES 0x01
@@ -67,31 +68,31 @@
 #define JACARTAPKI_KO_DATA_TAG_PIN 0x81
 #define JACARTAPKI_KO_DATA_TAG_RSA 0x71
 
-#define JACARTAPKI_PIV_ALGO_RSA_1024	 0x06
-#define JACARTAPKI_PIV_ALGO_RSA_2048	 0x07
-#define JACARTAPKI_PIV_ALGO_RSA_4096	 0x08
+#define JACARTAPKI_PIV_ALGO_RSA_1024  0x06
+#define JACARTAPKI_PIV_ALGO_RSA_2048  0x07
+#define JACARTAPKI_PIV_ALGO_RSA_4096  0x08
 #define JACARTAPKI_PIV_ALGO_ECC_FP224 0x0E
 #define JACARTAPKI_PIV_ALGO_ECC_FP256 0x11
 
-#define JACARTAPKI_SM_RSA_TAG_G     0x80
-#define JACARTAPKI_SM_RSA_TAG_N     0x81
+#define JACARTAPKI_SM_RSA_TAG_G	    0x80
+#define JACARTAPKI_SM_RSA_TAG_N	    0x81
 #define JACARTAPKI_SM_RSA_TAG_ICC_P 0x82
 
 #define JACARTAPKI_SM_ACCESS_INPUT  0x4000
 #define JACARTAPKI_SM_ACCESS_OUTPUT 0x8000
 
-#define JACARTAPKI_FS_REF_MASK	0x3F
+#define JACARTAPKI_FS_REF_MASK	     0x3F
 #define JACARTAPKI_FS_BASEFID_PUBKEY 0x0080
 /* TODO: Private key can have different 'BASEFID's */
-#define JACARTAPKI_FS_BASEFID_PRVKEY_EXCH 0x0040 /* laser.profile -> template-private-key file-id */
+#define JACARTAPKI_FS_BASEFID_PRVKEY_EXCH 0x0040 /* jacartapki.profile -> template-private-key file-id */
 #define JACARTAPKI_FS_BASEFID_PRVKEY_SIGN 0x0060
 
-#define JACARTAPKI_FS_BASEFID_DATA 0x0600 /* laser.profile -> laser-public-data-attributes, laser-private-data-attributes file-id */
+#define JACARTAPKI_FS_BASEFID_DATA 0x0600 /* jacartapki.profile -> jacartapki-public-data-attributes, jacartapki-private-data-attributes file-id */
 
-#define JACARTAPKI_FS_BASEFID_CERT	   0x0440 /* laser.profile -> laser-certificate-attributes file-id */
+#define JACARTAPKI_FS_BASEFID_CERT	0x0440 /* jacartapki.profile -> jacartapki-certificate-attributes file-id */
 #define JACARTAPKI_FS_BASEFID_CERT_CMAP 0x8400
 
-#define JACARTAPKI_ATTRIBUTE_VALID	0
+#define JACARTAPKI_ATTRIBUTE_VALID 0
 #define JACARTAPKI_ATTRIBUTE_INVALID 1
 
 #define JACARTAPKI_FS_KEY_REF_MIN 0x01
@@ -120,18 +121,18 @@
 
 #define JACARTAPKI_TOKEN_INFO_LENGTH 160
 
-#define JACARTAPKI_TRANSPORT_PIN1_VALUE     "31:32:33:34"
+#define JACARTAPKI_TRANSPORT_PIN1_VALUE   "31:32:33:34"
 #define JACARTAPKI_TRANSPORT_PIN1_REFERENCE 0x01
 #define JACARTAPKI_TRANSPORT_PIN1_AUTH_ID   0x01
-#define JACARTAPKI_TRANSPORT_PIN1_PATH      "3F000001"
+#define JACARTAPKI_TRANSPORT_PIN1_PATH    "3F000001"
 
 #define JACARTAPKI_USER_PIN_REFERENCE 0x20
-#define JACARTAPKI_USER_PIN_AUTH_ID	 0x20
-#define JACARTAPKI_SO_PIN_REFERENCE	 0x10
-#define JACARTAPKI_SO_PIN_AUTH_ID	 0x10
+#define JACARTAPKI_USER_PIN_AUTH_ID   0x20
+#define JACARTAPKI_SO_PIN_REFERENCE   0x10
+#define JACARTAPKI_SO_PIN_AUTH_ID     0x10
 
-#define JACARTAPKI_USER_PIN_TYPE_PIN	    0x01
-#define JACARTAPKI_USER_PIN_TYPE_BIO	    0x03
+#define JACARTAPKI_USER_PIN_TYPE_PIN	 0x01
+#define JACARTAPKI_USER_PIN_TYPE_BIO	 0x03
 #define JACARTAPKI_USER_PIN_TYPE_PIN_BIO 0x04
 
 #define JACARTAPKI_VERSION_HW_MAJOR 0x01
@@ -208,24 +209,24 @@ struct jacartapki_version {
 };
 
 struct jacartapki_token_info {
-	unsigned char label[32];	       /* 0   */
-	unsigned char manufacturer_id[32];     /* 32  */
-	unsigned char model[16];	       /* 64  */
-	unsigned char serial_number[16];       /* 80  */
-	uint32_t flags;			       /* 96  */
-	uint32_t max_session_count;	       /* 100 */
-	uint32_t session_count;		       /* 104 */
-	uint32_t max_rw_session_count;	       /* 108 */
-	uint32_t rw_session_count;	       /* 112 */
-	uint32_t max_pin_len;		       /* 116 */
-	uint32_t min_pin_len;		       /* 120 */
-	uint32_t total_public_memory;	       /* 124 */
-	uint32_t free_public_memory;	       /* 128 */
-	uint32_t total_private_memory;	       /* 132 */
-	uint32_t free_private_memory;	       /* 136 */
+	unsigned char label[32];		    /* 0   */
+	unsigned char manufacturer_id[32];	    /* 32  */
+	unsigned char model[16];		    /* 64  */
+	unsigned char serial_number[16];	    /* 80  */
+	uint32_t flags;				    /* 96  */
+	uint32_t max_session_count;		    /* 100 */
+	uint32_t session_count;			    /* 104 */
+	uint32_t max_rw_session_count;		    /* 108 */
+	uint32_t rw_session_count;		    /* 112 */
+	uint32_t max_pin_len;			    /* 116 */
+	uint32_t min_pin_len;			    /* 120 */
+	uint32_t total_public_memory;		    /* 124 */
+	uint32_t free_public_memory;		    /* 128 */
+	uint32_t total_private_memory;		    /* 132 */
+	uint32_t free_private_memory;		    /* 136 */
 	struct jacartapki_version hardware_version; /* 140 */
 	struct jacartapki_version firmware_version; /* 142 */
-	unsigned char utc_time[16];	       /* 144 */
+	unsigned char utc_time[16];		    /* 144 */
 }; /* 160 */
 
 int jacartapki_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigned base_file_id);
