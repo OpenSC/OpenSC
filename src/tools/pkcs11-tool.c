@@ -425,6 +425,7 @@ static const char *option_help[] = {
 		"Specify the required length (in bits) for the authentication tag for AEAD ciphers",
 		"Specify the file containing the salt for HKDF (optional)",
 		"Specify the file containing the info for HKDF (optional)",
+		"When reading a public key, try to read PUBLIC_KEY_INFO (DER encoding of SPKI)",
 };
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
