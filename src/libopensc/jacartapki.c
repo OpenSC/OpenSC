@@ -27,16 +27,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <openssl/sha.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 
+#include "internal.h"
 #include "asn1.h"
 #include "cardctl.h"
 #include "common/compat_strlcpy.h"
-#include "internal.h"
 #include "log.h"
 #include "pkcs11/pkcs11.h"
 #include "pkcs15.h"
+
 #include "jacartapki.h"
 
 #define C_ASN1_CREATE_RSA_KEY_SIZE 2
@@ -333,7 +334,7 @@ jacartapki_attrs_cert_decode(struct sc_context *ctx,
 		unsigned uval;
 
 		rv = _get_attr(data, data_len, &next, &attr);
-		LOG_TEST_RET(ctx, rv, "parsing error of laser object's attribute");
+		LOG_TEST_RET(ctx, rv, "parsing error of jacartapki object's attribute");
 		if (next == offs)
 			break;
 		sc_log(ctx, "Attribute(%lX) to parse '%s'", attr.cka, sc_dump_hex(attr.val, attr.len));
@@ -424,7 +425,7 @@ jacartapki_attrs_pubkey_decode(struct sc_context *ctx,
 		unsigned uval;
 
 		rv = _get_attr(data, data_len, &next, &attr);
-		LOG_TEST_RET(ctx, rv, "parsing error of laser object's attribute");
+		LOG_TEST_RET(ctx, rv, "parsing error of jacartapki object's attribute");
 		if (next == offs)
 			break;
 		sc_log(ctx, "Attribute(%lX) to parse '%s'", attr.cka, sc_dump_hex(attr.val, attr.len));
@@ -558,7 +559,7 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 		unsigned uval;
 
 		rv = _get_attr(data, data_len, &next, &attr);
-		LOG_TEST_RET(ctx, rv, "parsing error of laser object's attribute");
+		LOG_TEST_RET(ctx, rv, "parsing error of jacartapki object's attribute");
 		if (next == offs)
 			break;
 		sc_log(ctx, "Attribute(%lX) to parse '%s'", attr.cka, sc_dump_hex(attr.val, attr.len));
@@ -690,7 +691,7 @@ jacartapki_attrs_data_object_decode(struct sc_context *ctx,
 		int rv;
 
 		rv = _get_attr(data, data_len, &next, &attr);
-		LOG_TEST_RET(ctx, rv, "parsing error of laser object's attribute");
+		LOG_TEST_RET(ctx, rv, "parsing error of jacartapki object's attribute");
 		if (next == offs)
 			break;
 		sc_log(ctx, "Attribute(%lX) to parse '%s'", attr.cka, sc_dump_hex(attr.val, attr.len));
@@ -975,7 +976,7 @@ jacartapki_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
 	attrs_num++;
 
-	sc_log(ctx, "Attributes(%"SC_FORMAT_LEN_SIZE_T"u) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	sc_log(ctx, "Attributes(%" SC_FORMAT_LEN_SIZE_T "u) '%s'", attrs_num, sc_dump_hex(data, data_len));
 	if (out && out_len) {
 		*out = data;
 		*out_len = data_len;
@@ -1260,7 +1261,7 @@ jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_ob
 	SHA1(data, data_len, sha1);
 	memcpy(data + sha1_offs, sha1, SHA_DIGEST_LENGTH);
 
-	sc_log(ctx, "Attributes(%"SC_FORMAT_LEN_SIZE_T"u) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	sc_log(ctx, "Attributes(%" SC_FORMAT_LEN_SIZE_T "u) '%s'", attrs_num, sc_dump_hex(data, data_len));
 	if (out && out_len) {
 		*out = data;
 		*out_len = data_len;
@@ -1362,7 +1363,7 @@ jacartapki_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pk
 	SHA1(data, data_len, sha1);
 	memcpy(data + sha1_offs, sha1, SHA_DIGEST_LENGTH);
 
-	sc_log(ctx, "Attributes(%"SC_FORMAT_LEN_SIZE_T"u) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	sc_log(ctx, "Attributes(%" SC_FORMAT_LEN_SIZE_T "u) '%s'", attrs_num, sc_dump_hex(data, data_len));
 	if (out && out_len) {
 		*out = data;
 		*out_len = data_len;

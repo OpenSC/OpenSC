@@ -27,16 +27,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <openssl/sha.h>
+
 #include "common/compat_strlcpy.h"
 #include "aux-data.h"
 #include "cardctl.h"
 #include "cards.h"
-#include "jacartapki.h"
 #include "log.h"
 #include "pkcs15.h"
 #include "pkcs11/pkcs11.h"
 
-#include <openssl/sha.h>
+#include "jacartapki.h"
 
 #define PATH_APPLICATION   "3F003000"
 #define PATH_TOKENINFO	   "3F003000C000"
@@ -664,9 +665,9 @@ _set_md_data(struct sc_pkcs15_card *p15card)
 	sc_append_path_id(&path, cardcf_fid, sizeof(cardcf_fid));
 
 	rv = sc_pkcs15_read_file(p15card, &path, &buf, &buflen, 0);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select&read laser-md-cardcf file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select&read jacartapki-md-cardcf file");
 	if ((int)sizeof(struct jacartapki_cardcf) > buflen)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INVALID_DATA), "Incorrect laser-md-cardcf file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INVALID_DATA), "Incorrect jacartapki-md-cardcf file");
 
 	p15card->md_data = (struct sc_md_data *)calloc(1, sizeof(struct sc_md_data));
 

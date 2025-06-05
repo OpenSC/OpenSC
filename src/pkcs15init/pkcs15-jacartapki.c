@@ -34,19 +34,19 @@
 #include "libopensc/aux-data.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/internal.h"
+#include "libopensc/jacartapki.h"
 #include "libopensc/log.h"
 #include "libopensc/opensc.h"
-#include "libopensc/jacartapki.h"
 #include "pkcs11/pkcs11.h"
 
 #include "pkcs15-init.h"
 #include "profile.h"
 
-#define JACARTAPKI_ATTRS_PRKEY_RSA	   (SC_PKCS15_TYPE_VENDOR_DEFINED | SC_PKCS15_TYPE_PRKEY_RSA)
-#define JACARTAPKI_ATTRS_PUBKEY_RSA	   (SC_PKCS15_TYPE_VENDOR_DEFINED | SC_PKCS15_TYPE_PUBKEY_RSA)
-#define JACARTAPKI_ATTRS_CERT_X509	   (SC_PKCS15_TYPE_VENDOR_DEFINED | SC_PKCS15_TYPE_CERT_X509)
+#define JACARTAPKI_ATTRS_PRKEY_RSA	(SC_PKCS15_TYPE_VENDOR_DEFINED | SC_PKCS15_TYPE_PRKEY_RSA)
+#define JACARTAPKI_ATTRS_PUBKEY_RSA	(SC_PKCS15_TYPE_VENDOR_DEFINED | SC_PKCS15_TYPE_PUBKEY_RSA)
+#define JACARTAPKI_ATTRS_CERT_X509	(SC_PKCS15_TYPE_VENDOR_DEFINED | SC_PKCS15_TYPE_CERT_X509)
 #define JACARTAPKI_ATTRS_CERT_X509_CMAP (SC_PKCS15_TYPE_VENDOR_DEFINED | SC_PKCS15_TYPE_CERT_X509 | JACARTAPKI_PKCS15_TYPE_PRESENT_IN_CMAP)
-#define JACARTAPKI_ATTRS_DATA_OBJECT	   (SC_PKCS15_TYPE_VENDOR_DEFINED | SC_PKCS15_TYPE_DATA_OBJECT)
+#define JACARTAPKI_ATTRS_DATA_OBJECT	(SC_PKCS15_TYPE_VENDOR_DEFINED | SC_PKCS15_TYPE_DATA_OBJECT)
 
 static struct sc_aid jacartapki_aid = {
 		{0xA0, 0x00, 0x00, 0x01, 0x64, 0x4C, 0x41, 0x53, 0x45, 0x52, 0x00, 0x01},
@@ -358,10 +358,10 @@ jacartapki_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card 
 			"Aladdin-EEED",
 			"Aladdin-EEEE",
 			"Aladdin-EEEF",
-			"laser-cmap-attributes",
-			"laser-md-cardid",
-			"laser-md-cardcf",
-			"laser-md-cardapps",
+			"jacartapki-cmap-attributes",
+			"jacartapki-md-cardid",
+			"jacartapki-md-cardcf",
+			"jacartapki-md-cardapps",
 			"MiniDriver-mscp",
 			NULL};
 	struct sc_file *file = NULL;
@@ -434,25 +434,25 @@ jacartapki_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card 
 				if (SC_SUCCESS != jacartapki_update_eeef(profile, p15card, file))
 					LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "Cannot update Aladdin-EEEF file");
 
-			} else if (!strcmp(to_create[ii], "laser-cmap-attributes")) {
+			} else if (!strcmp(to_create[ii], "jacartapki-cmap-attributes")) {
 
 				rv = jacartapki_cmap_create(profile, p15card, file);
-				LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update laser-cmap-attributes");
+				LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update jacartapki-cmap-attributes");
 
-			} else if (!strcmp(to_create[ii], "laser-md-cardid")) {
+			} else if (!strcmp(to_create[ii], "jacartapki-md-cardid")) {
 
 				rv = jacartapki_cardid_create(profile, p15card, file);
-				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot update laser-md-cardid file");
+				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot update jacartapki-md-cardid file");
 
-			} else if (!strcmp(to_create[ii], "laser-md-cardcf")) {
+			} else if (!strcmp(to_create[ii], "jacartapki-md-cardcf")) {
 
 				rv = jacartapki_cardcf_create(profile, p15card, file);
-				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot update laser-md-cardcf file");
+				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot update jacartapki-md-cardcf file");
 
-			} else if (!strcmp(to_create[ii], "laser-md-cardapps")) {
+			} else if (!strcmp(to_create[ii], "jacartapki-md-cardapps")) {
 
 				rv = jacartapki_cardapps_create(profile, p15card, file);
-				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot update laser-md-cardapps file");
+				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot update jacartapki-md-cardapps file");
 			}
 		}
 
@@ -583,7 +583,7 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 	int rv = 0, update_tokeninfo = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "pin_obj %p, pin %p/%"SC_FORMAT_LEN_SIZE_T"u, puk %p/%"SC_FORMAT_LEN_SIZE_T"u", pin_obj, pin, pin_len, puk, puk_len);
+	sc_log(ctx, "pin_obj %p, pin %p/%" SC_FORMAT_LEN_SIZE_T "u, puk %p/%" SC_FORMAT_LEN_SIZE_T "u", pin_obj, pin, pin_len, puk, puk_len);
 	if (!pin_obj)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
@@ -620,7 +620,7 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 	}
 
 	pin_file->size = pin_attrs->max_length;
-	sc_log(ctx, "create PIN file: size %"SC_FORMAT_LEN_SIZE_T"u; EF-type %i/%i; path %s",
+	sc_log(ctx, "create PIN file: size %" SC_FORMAT_LEN_SIZE_T "u; EF-type %i/%i; path %s",
 			pin_file->size, pin_file->type, pin_file->ef_structure, sc_print_path(&pin_file->path));
 
 	offs = 0;
@@ -678,7 +678,7 @@ jacartapki_new_file(struct sc_profile *profile, const struct sc_card *card,
 	unsigned file_descriptor = 0x01;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "jacartapki_new_file() type 0x%X; num %i", type, num);
+	sc_log(ctx, "jacartapki_new_file() type 0x%X; num %u", type, num);
 	while (1) {
 		switch (type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
@@ -704,31 +704,31 @@ jacartapki_new_file(struct sc_profile *profile, const struct sc_card *card,
 			file_descriptor = JACARTAPKI_FILE_DESCRIPTOR_EF;
 			break;
 		case JACARTAPKI_ATTRS_PRKEY_RSA:
-			desc = "private key Laser attributes";
-			_template = "laser-private-key-attributes";
+			desc = "private key jacartapki attributes";
+			_template = "jacartapki-private-key-attributes";
 			file_descriptor = JACARTAPKI_FILE_DESCRIPTOR_EF;
 			break;
 		case JACARTAPKI_ATTRS_PUBKEY_RSA:
-			desc = "public key Laser attributes";
-			_template = "laser-public-key-attributes";
+			desc = "public key jacartapki attributes";
+			_template = "jacartapki-public-key-attributes";
 			file_descriptor = JACARTAPKI_FILE_DESCRIPTOR_EF;
 			break;
 		case JACARTAPKI_ATTRS_CERT_X509:
-			desc = "certificate Laser attributes";
-			_template = "laser-certificate-attributes";
+			desc = "certificate jacartapki attributes";
+			_template = "jacartapki-certificate-attributes";
 			file_descriptor = JACARTAPKI_FILE_DESCRIPTOR_EF;
 			break;
 		case JACARTAPKI_ATTRS_CERT_X509_CMAP:
-			desc = "certificate Laser attributes";
-			_template = "laser-cmap-certificate-attributes";
+			desc = "certificate jacartapki attributes";
+			_template = "jacartapki-cmap-certificate-attributes";
 			file_descriptor = JACARTAPKI_FILE_DESCRIPTOR_EF;
 			break;
 		case JACARTAPKI_ATTRS_DATA_OBJECT:
-			desc = "DATA object Laser attributes";
+			desc = "DATA object jacartapki attributes";
 			if ((object->flags & SC_PKCS15_CO_FLAG_PRIVATE) != 0)
-				_template = "laser-private-data-attributes";
+				_template = "jacartapki-private-data-attributes";
 			else
-				_template = "laser-public-data-attributes";
+				_template = "jacartapki-public-data-attributes";
 			file_descriptor = JACARTAPKI_FILE_DESCRIPTOR_EF;
 			break;
 		}
@@ -745,7 +745,7 @@ jacartapki_new_file(struct sc_profile *profile, const struct sc_card *card,
 	}
 
 	/* TODO: do not use the file-id from profile, but macro BASEFID */
-	sc_log(ctx, "jacartapki_new_file() template %s; num %i", _template, num);
+	sc_log(ctx, "jacartapki_new_file() template %s; num %u", _template, num);
 	if (sc_profile_get_file(profile, _template, &file) < 0) {
 		sc_log(ctx, "Profile doesn't define %s template '%s'", desc, _template);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -757,7 +757,7 @@ jacartapki_new_file(struct sc_profile *profile, const struct sc_card *card,
 	if (file->type == SC_FILE_TYPE_INTERNAL_EF)
 		file->ef_structure = file_descriptor;
 
-	sc_log(ctx, "new laser file: size %"SC_FORMAT_LEN_SIZE_T"u; EF-type %i/%i; path %s",
+	sc_log(ctx, "new jacartapki file: size %" SC_FORMAT_LEN_SIZE_T "u; EF-type %i/%i; path %s",
 			file->size, file->type, file->ef_structure, sc_print_path(&file->path));
 	*out = file;
 
@@ -940,7 +940,7 @@ jacartapki_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	LOG_FUNC_CALLED(ctx);
 
 	sc_log(ctx, "store key ID %s, path %s", sc_pkcs15_print_id(&key_info->id), sc_print_path(&key_info->path));
-	sc_log(ctx, "store key %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u", prkey->u.rsa.d.len, prkey->u.rsa.p.len,
+	sc_log(ctx, "store key %" SC_FORMAT_LEN_SIZE_T "u %" SC_FORMAT_LEN_SIZE_T "u %" SC_FORMAT_LEN_SIZE_T "u %" SC_FORMAT_LEN_SIZE_T "u %" SC_FORMAT_LEN_SIZE_T "u %" SC_FORMAT_LEN_SIZE_T "u", prkey->u.rsa.d.len, prkey->u.rsa.p.len,
 			prkey->u.rsa.q.len, prkey->u.rsa.iqmp.len,
 			prkey->u.rsa.dmp1.len, prkey->u.rsa.dmq1.len);
 
@@ -1141,7 +1141,7 @@ jacartapki_cmap_update(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 
 		/* All new keys are 'key-exchange' keys.
 		 * FIXME: implement 'sign' key. */
-		info->aux_data->data.cmap_record.keysize_keyexchange = info->modulus_length;
+		info->aux_data->data.cmap_record.keysize_keyexchange = (unsigned int)info->modulus_length;
 		info->aux_data->data.cmap_record.keysize_sign = 0;
 
 		info->aux_data->data.cmap_record.flags = SC_MD_CONTAINER_MAP_VALID_CONTAINER;
@@ -1153,7 +1153,7 @@ jacartapki_cmap_update(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 
 	rv = jacartapki_cmap_encode(p15card, (remove ? object : NULL), &cmap, &cmap_len);
 	LOG_TEST_RET(ctx, rv, "Failed to encode 'cmap' data");
-	sc_log(ctx, "encoded CMAP(%"SC_FORMAT_LEN_SIZE_T"u) '%s'", cmap_len, sc_dump_hex(cmap, cmap_len));
+	sc_log(ctx, "encoded CMAP(%" SC_FORMAT_LEN_SIZE_T "u) '%s'", cmap_len, sc_dump_hex(cmap, cmap_len));
 
 	rv = sc_pkcs15_find_data_object_by_name(p15card, CMAP_DO_APPLICATION_NAME, "cmapfile", &cmap_dobj);
 	LOG_TEST_RET(ctx, rv, "Failed to get 'cmapfile' DATA object");
@@ -1205,7 +1205,7 @@ jacartapki_cardcf_save(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	int rv = SC_SUCCESS;
-	const char *profileCardcf = "laser-md-cardcf";
+	const char *profileCardcf = "jacartapki-md-cardcf";
 	struct sc_file *file = NULL;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1251,7 +1251,8 @@ jacartapki_update_df_create_private_key(struct sc_profile *profile, struct sc_pk
 	struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)object->data;
 	struct sc_file *file = NULL;
 	unsigned char *attrs = NULL;
-	size_t attrs_len = 0, attrs_ref;
+	size_t attrs_len = 0;
+	int attrs_ref;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1262,7 +1263,7 @@ jacartapki_update_df_create_private_key(struct sc_profile *profile, struct sc_pk
 	rv = jacartapki_validate_attr_reference(attrs_ref);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid attribute file reference");
 
-	sc_log(ctx, "Private key attributes file reference 0x%"SC_FORMAT_LEN_SIZE_T"X", attrs_ref);
+	sc_log(ctx, "Private key attributes file reference 0x%X", attrs_ref);
 	rv = jacartapki_new_file(profile, p15card->card, object, JACARTAPKI_ATTRS_PRKEY_RSA, attrs_ref, &file);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate private key attributes file");
 
@@ -1312,7 +1313,8 @@ jacartapki_update_df_create_public_key(struct sc_profile *profile, struct sc_pkc
 	const struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *)object->data;
 	struct sc_file *file = NULL;
 	unsigned char *attrs = NULL;
-	size_t attrs_len = 0, attrs_ref;
+	size_t attrs_len = 0;
+	int attrs_ref;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1321,7 +1323,7 @@ jacartapki_update_df_create_public_key(struct sc_profile *profile, struct sc_pkc
 	rv = jacartapki_validate_attr_reference(attrs_ref);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid attribute file reference");
 
-	sc_log(ctx, "Public key attributes file reference 0x%"SC_FORMAT_LEN_SIZE_T"X", attrs_ref);
+	sc_log(ctx, "Public key attributes file reference 0x%X", attrs_ref);
 	rv = jacartapki_new_file(profile, p15card->card, object, JACARTAPKI_ATTRS_PUBKEY_RSA, attrs_ref, &file);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate public key attributes file");
 
@@ -1373,10 +1375,10 @@ jacartapki_need_update(struct sc_pkcs15_card *p15card,
 	default:
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 	}
-	sc_log(ctx, "check laser attribute file's 'update' status; path %s", sc_print_path(path));
+	sc_log(ctx, "check jacartapki attribute file's 'update' status; path %s", sc_print_path(path));
 
 	rv = sc_select_file(p15card->card, path, &file);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select laser attributes file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select jacartapki attributes file");
 
 	rv = sc_read_binary(p15card->card, 0x0C, sha1, SHA_DIGEST_LENGTH, 0);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot read current checksum");
@@ -1386,11 +1388,11 @@ jacartapki_need_update(struct sc_pkcs15_card *p15card,
 	switch (object->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_CERT:
 		rv = jacartapki_attrs_cert_encode(p15card, object, file->id, &attrs, &attrs_len);
-		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode laser certificate attributes");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode jacartapki certificate attributes");
 		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
 		rv = jacartapki_attrs_data_object_encode(p15card, object, file->id, &attrs, &attrs_len);
-		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode laser DATA attributes");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode jacartapki DATA attributes");
 		break;
 	default:
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_NOT_SUPPORTED, "Object type not supported");
@@ -1427,20 +1429,20 @@ jacartapki_update_df_create_certificate(struct sc_profile *profile, struct sc_pk
 	}
 
 	rv = sc_select_file(p15card->card, &info->path, &file);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update DF: cannot select laser certificate file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update DF: cannot select jacartapki certificate file");
 
 	rv = jacartapki_attrs_cert_encode(p15card, object, file->id, &attrs, &attrs_len);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode laser certificate attributes");
-	sc_log(ctx, "update laser certificate attributes '%s'", sc_dump_hex(attrs, attrs_len));
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode jacartapki certificate attributes");
+	sc_log(ctx, "update jacartapki certificate attributes '%s'", sc_dump_hex(attrs, attrs_len));
 
 	file->size = attrs_len;
 	/* TODO: implement Laser's 'resize' file */
 	rv = sc_pkcs15init_delete_by_path(profile, p15card, &file->path);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update DF: cannot delete laser certificate");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update DF: cannot delete jacartapki certificate");
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
 	if ((int)attrs_len > rv)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to update laser certificate attributes file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to update jacartapki certificate attributes file");
 
 	rv = jacartapki_cmap_update(profile, p15card, 0, NULL);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update 'cmapfile'");
@@ -1472,21 +1474,21 @@ jacartapki_update_df_create_data_object(struct sc_profile *profile, struct sc_pk
 	}
 
 	rv = sc_select_file(p15card->card, &info->path, &file);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update DF: cannot select laser DATA file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update DF: cannot select jacartapki DATA file");
 
 	rv = jacartapki_attrs_data_object_encode(p15card, object, file->id, &attrs, &attrs_len);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode laser DATA attributes");
-	sc_log(ctx, "update laser DATA attributes '%s'", sc_dump_hex(attrs, attrs_len));
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode jacartapki DATA attributes");
+	sc_log(ctx, "update jacartapki DATA attributes '%s'", sc_dump_hex(attrs, attrs_len));
 
 	file->size = attrs_len;
 
 	/* TODO: implement Laser's 'resize' file */
 	rv = sc_pkcs15init_delete_by_path(profile, p15card, &file->path);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update DF: cannot delete laser DATA");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update DF: cannot delete jacartapki DATA");
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
 	if ((int)attrs_len > rv)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to update laser DATA attributes file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to update jacartapki DATA attributes file");
 	rv = SC_SUCCESS;
 err:
 	sc_file_free(file);
@@ -1575,7 +1577,7 @@ jacartapki_update_df_delete_private_key(struct sc_profile *profile, struct sc_pk
 	struct sc_context *ctx = p15card->card->ctx;
 	const struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)object->data;
 	struct sc_file *file = NULL;
-	size_t attrs_ref;
+	int attrs_ref;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1605,7 +1607,7 @@ jacartapki_update_df_delete_public_key(struct sc_profile *profile, struct sc_pkc
 	struct sc_context *ctx = p15card->card->ctx;
 	const struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *)object->data;
 	struct sc_file *file = NULL;
-	size_t attrs_ref;
+	int attrs_ref;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1807,9 +1809,9 @@ jacartapki_emu_store_pubkey(struct sc_pkcs15_card *p15card,
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "Public Key id '%s'", sc_pkcs15_print_id(&info->id));
 	if (data)
-		sc_log(ctx, "data(%"SC_FORMAT_LEN_SIZE_T"u) %p", data->len, data->value);
+		sc_log(ctx, "data(%" SC_FORMAT_LEN_SIZE_T "u) %p", data->len, data->value);
 	if (object->content.value)
-		sc_log(ctx, "content(%"SC_FORMAT_LEN_SIZE_T"u) %p", object->content.len, object->content.value);
+		sc_log(ctx, "content(%" SC_FORMAT_LEN_SIZE_T "u) %p", object->content.len, object->content.value);
 
 	pubkey.algorithm = SC_ALGORITHM_RSA;
 	rv = sc_pkcs15_decode_pubkey(ctx, &pubkey, object->content.value, object->content.len);
@@ -1826,10 +1828,10 @@ jacartapki_emu_store_pubkey(struct sc_pkcs15_card *p15card,
 	info->key_reference = (prkey_info->key_reference & JACARTAPKI_FS_REF_MASK) | JACARTAPKI_FS_BASEFID_PUBKEY;
 	info->modulus_length = prkey_info->modulus_length;
 	info->native = prkey_info->native;
-	sc_log(ctx, "Public Key ref %X, length %"SC_FORMAT_LEN_SIZE_T"u", info->key_reference, info->modulus_length);
+	sc_log(ctx, "Public Key ref %X, length %" SC_FORMAT_LEN_SIZE_T "u", info->key_reference, info->modulus_length);
 
 	rv = jacartapki_new_file(profile, p15card->card, object, SC_PKCS15_TYPE_PUBKEY_RSA, info->key_reference, &file);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate new laser public-key file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate new jacartapki public-key file");
 
 	file->size = info->modulus_length / 8;
 	if (info->path.len)
@@ -1903,7 +1905,7 @@ jacartapki_emu_store_certificate(struct sc_pkcs15_card *p15card,
 
 		idx = (key_path.value[key_path.len - 1] & JACARTAPKI_FS_REF_MASK) - 1;
 		rv = jacartapki_new_file(profile, p15card->card, object, JACARTAPKI_ATTRS_CERT_X509_CMAP, idx, &file);
-		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate laser certificate attributes file");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate jacartapki certificate attributes file");
 
 		snprintf((char *)file->name, sizeof(file->name), "kxc%02i", idx);
 		file->namelen = strlen((char *)file->name);
@@ -1915,20 +1917,20 @@ jacartapki_emu_store_certificate(struct sc_pkcs15_card *p15card,
 		LOG_TEST_GOTO_ERR(ctx, idx, "Cannot get free certificate index");
 
 		rv = jacartapki_new_file(profile, p15card->card, object, JACARTAPKI_ATTRS_CERT_X509, idx, &file);
-		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate laser certificate attributes file");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate jacartapki certificate attributes file");
 	}
 
 	sc_log(ctx, "create certificate attribute file %s", sc_print_path(&file->path));
 
 	rv = jacartapki_attrs_cert_encode(p15card, object, file->id, &attrs, &attrs_len);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode laser certificate attributes");
-	sc_log(ctx, "laser certificate attributes '%s'", sc_dump_hex(attrs, attrs_len));
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode jacartapki certificate attributes");
+	sc_log(ctx, "jacartapki certificate attributes '%s'", sc_dump_hex(attrs, attrs_len));
 
 	file->size = attrs_len;
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
 	if ((int)attrs_len > rv)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update laser certificate attributes file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update jacartapki certificate attributes file");
 	rv = SC_SUCCESS;
 
 	info->path = file->path;
@@ -1955,19 +1957,19 @@ jacartapki_emu_store_data_object(struct sc_pkcs15_card *p15card,
 	LOG_TEST_GOTO_ERR(ctx, idx, "Cannot get free DATA object index");
 
 	rv = jacartapki_new_file(profile, p15card->card, object, JACARTAPKI_ATTRS_DATA_OBJECT, idx, &file);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate laser DATA object attributes file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate jacartapki DATA object attributes file");
 
 	sc_log(ctx, "create DATA object attribute file %s", sc_print_path(&file->path));
 
 	rv = jacartapki_attrs_data_object_encode(p15card, object, file->id, &attrs, &attrs_len);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode laser DATA object attributes");
-	sc_log(ctx, "laser DATA object attributes '%s'", sc_dump_hex(attrs, attrs_len));
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode jacartapki DATA object attributes");
+	sc_log(ctx, "jacartapki DATA object attributes '%s'", sc_dump_hex(attrs, attrs_len));
 
 	file->size = attrs_len;
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
 	if ((int)attrs_len > rv)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update laser DATA object attributes file");
+		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update jacartapki DATA object attributes file");
 	rv = SC_SUCCESS;
 
 	info->path = file->path;
@@ -2012,14 +2014,14 @@ static struct sc_pkcs15init_operations
 		sc_pkcs15init_jacartapki_operations = {
 				jacartapki_erase_card,
 				jacartapki_init_card,
-				jacartapki_create_dir,	    /* create_dir */
-				NULL,			    /* create_domain */
-				NULL,			    /* select_pin_reference */
-				jacartapki_create_pin,	    /* create_pin*/
+				jacartapki_create_dir,		 /* create_dir */
+				NULL,				 /* create_domain */
+				NULL,				 /* select_pin_reference */
+				jacartapki_create_pin,		 /* create_pin*/
 				jacartapki_select_key_reference, /* select_key_reference */
-				jacartapki_create_key_file,	    /* create_key */
-				jacartapki_store_key,	    /* store_key */
-				jacartapki_generate_key,	    /* generate_key */
+				jacartapki_create_key_file,	 /* create_key */
+				jacartapki_store_key,		 /* store_key */
+				jacartapki_generate_key,	 /* generate_key */
 				NULL,
 				NULL, /* encode private/public key */
 				NULL, /* finalize_card */

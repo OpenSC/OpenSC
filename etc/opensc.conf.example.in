@@ -832,6 +832,7 @@ app default {
 		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:F0:00:F0:FF:F0:0F";
 		driver = "jacartapki";
 		name = "JaCarta PKI";
+		default_transport_pin1 = "31:32:33:34";
 	}
 
 	# Disable PKCS#1 v1.5 padding in HW.
