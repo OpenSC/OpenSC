@@ -29,13 +29,13 @@
 
 #include <openssl/sha.h>
 
-#include "common/compat_strlcpy.h"
 #include "aux-data.h"
 #include "cardctl.h"
 #include "cards.h"
+#include "common/compat_strlcpy.h"
 #include "log.h"
-#include "pkcs15.h"
 #include "pkcs11/pkcs11.h"
+#include "pkcs15.h"
 
 #include "jacartapki.h"
 
@@ -47,17 +47,17 @@
 #define PATH_USERPIN	   "3F000020"
 #define PATH_SOPIN	   "3F000010"
 
-#define JACARTAPKI_BASEKX_MASK    0x7F00
-#define JACARTAPKI_TYPE_KX_CERT   0x11
+#define JACARTAPKI_BASEKX_MASK	  0x7F00
+#define JACARTAPKI_TYPE_KX_CERT	  0x11
 #define JACARTAPKI_TYPE_KX_PRVKEY 0x12
 #define JACARTAPKI_TYPE_KX_PUBKEY 0x13
-#define JACARTAPKI_TYPE_KX_SKEY   0x14
-#define JACARTAPKI_TYPE_KX_DATA   0x15
-#define JACARTAPKI_TYPE_CERT	     0x20
-#define JACARTAPKI_TYPE_PRVKEY    0x30
-#define JACARTAPKI_TYPE_PUBKEY    0x40
-#define JACARTAPKI_TYPE_SKEY	     0x50
-#define JACARTAPKI_TYPE_DATA	     0x60
+#define JACARTAPKI_TYPE_KX_SKEY	  0x14
+#define JACARTAPKI_TYPE_KX_DATA	  0x15
+#define JACARTAPKI_TYPE_CERT	  0x20
+#define JACARTAPKI_TYPE_PRVKEY	  0x30
+#define JACARTAPKI_TYPE_PUBKEY	  0x40
+#define JACARTAPKI_TYPE_SKEY	  0x50
+#define JACARTAPKI_TYPE_DATA	  0x60
 
 struct jacartapki_ko_props {
 	unsigned char class;
@@ -489,7 +489,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 	 * Add folder for data-objects manually for reload private data-objects in jacartapki_parse_df after login.
 	 * If not add folder manually, it will be added automatically and the "enumerated" flag will be set to true
 	 * consequently jacartapki_parse_df will not be called.
-	*/
+	 */
 	struct sc_path path_private_df;
 	sc_format_path(PATH_PRIVATEDIR, &path_private_df);
 	sc_pkcs15_add_df(p15card, SC_PKCS15_DODF, &path_private_df);
@@ -560,7 +560,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 	}
 
 	pubkeys_num = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY, pubkeys, 12);
-	sc_log(ctx, "Number of public keys %"SC_FORMAT_LEN_SIZE_T"u", pubkeys_num);
+	sc_log(ctx, "Number of public keys %" SC_FORMAT_LEN_SIZE_T "u", pubkeys_num);
 	for (ii = 0; ii < pubkeys_num; ii++) {
 		struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *)pubkeys[ii]->data;
 		struct sc_pkcs15_object *prkey_obj = NULL;
@@ -760,7 +760,7 @@ jacartapki_detect_card(sc_pkcs15_card_t *p15card)
 
 /* TEMP P15 DF RELOAD PRIVATE
  * Called from C_Login only if (userType == CKU_USER)
-*/
+ */
 static int
 jacartapki_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *pdf)
 {
