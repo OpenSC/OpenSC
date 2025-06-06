@@ -91,6 +91,15 @@ deb http://ddebs.ubuntu.com $(lsb_release -cs 2> /dev/null)-updates main restric
 deb http://ddebs.ubuntu.com $(lsb_release -cs 2> /dev/null)-proposed main restricted universe multiverse" | \
 	$SUDO tee -a /etc/apt/sources.list.d/ddebs.list
 	$SUDO apt-get update -qq
+
+	# Github Actions images are terribly large containing a lot of nonsense that takes ages just to upgrade
+	if [ -n "$GITHUB_ACTIONS" ]; then
+		$SUDO apt-get autopurge snapd
+		$SUDO apt-mark hold snapd
+		$SUDO apt-get remove -y -qq mysql* php* firefox ruby* dotnet*
+	fi
+
+	$SUDO apt-get upgrade -qq
 	ARCH_TRIPLET=$(dpkg-architecture -qDEB_HOST_MULTIARCH)
 	DEP="libssl1.1-dbgsym"
 	if [ -f "/usr/lib/${ARCH_TRIPLET}/libssl.so.3" ]; then
@@ -98,7 +107,7 @@ deb http://ddebs.ubuntu.com $(lsb_release -cs 2> /dev/null)-proposed main restri
 		DEPX=`dpkg -S "/usr/lib/${ARCH_TRIPLET}/libssl.so.3"`
 		DEP="${DEPX%%:*}-dbgsym"
 	fi
-	$SUDO apt-get install -y openssl-dbgsym "$DEP" softhsm2-dbgsym libsofthsm2-dbgsym
+	$SUDO apt-get install -y openssl-dbgsym "$DEP" softhsm2-dbgsym libsofthsm2-dbgsym libc6-dbg
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
