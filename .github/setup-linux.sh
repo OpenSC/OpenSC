@@ -107,7 +107,7 @@ deb http://ddebs.ubuntu.com $(lsb_release -cs 2> /dev/null)-proposed main restri
 		DEPX=`dpkg -S "/usr/lib/${ARCH_TRIPLET}/libssl.so.3"`
 		DEP="${DEPX%%:*}-dbgsym"
 	fi
-	$SUDO apt-get install -y openssl-dbgsym "$DEP" softhsm2-dbgsym libsofthsm2-dbgsym
+	$SUDO apt-get install -y openssl-dbgsym "$DEP" softhsm2-dbgsym libsofthsm2-dbgsym libc6-dbg
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
