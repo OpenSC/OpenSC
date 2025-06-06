@@ -681,7 +681,7 @@ fail:
 		if (key) {
 			sc_pkcs15_free_pubkey(key);
 		}
-		if (r < 0) {
+		if (r != SC_SUCCESS) {
 			free(cert_info.value.value);
 		}
 	}

@@ -38,13 +38,14 @@
 static int
 sm_save_sc_context (struct sc_card *card, struct sm_info *sm_info)
 {
-	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
+	struct iasecc_private_data *prv;
 	struct sc_context *ctx;
 	struct sc_card_cache *cache;
 
 	if (!card || !sm_info)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
+	prv = (struct iasecc_private_data *)card->drv_data;
 	ctx = card->ctx;
 	cache = &prv->cache;
 
