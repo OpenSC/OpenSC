@@ -30,6 +30,20 @@
 #include "cardctl.h"
 #include "types.h"
 
+/*
+ * WIP eventually PIV_SM_NIST will be the same as ENABLE_PIV_SM
+ * and !ENABLE_PIV_SM will mean do not build with any SM
+ */
+#if defined(ENABLE_PIV_SM)
+#if defined(ENABLE_SM_NIST)
+#define PIV_SM_NIST
+#endif
+#endif
+
+#ifdef PIV_SM_NIST
+#include "sm/sm-nist.h"
+#endif /* PIV_SM_NIST */
+
 /* Low byte is the MyEID card's key type specific component ID. High byte is used
  * internally for key type, so myeid_loadkey() is aware of the exact component. */
 #define LOAD_KEY_MODULUS		0x0080
@@ -53,9 +67,12 @@
 #define MYEID_CARD_CAP_ECC		0x08
 #define MYEID_CARD_CAP_GRIDPIN		0x10
 #define MYEID_CARD_CAP_PIV_EMU		0x20
+/* TODO what is 0x40 */
 
 #define MYEID_MAX_APDU_DATA_LEN		0xFF
 #define MYEID_MAX_RSA_KEY_LEN		4096
+
+#define MYEID_SET_ENABLE_CRYPTO		0x0001
 
 #define MYEID_MAX_EXT_APDU_BUFFER_SIZE	(MYEID_MAX_RSA_KEY_LEN/8+16)
 
@@ -91,6 +108,10 @@ typedef struct myeid_private_data {
 	uint8_t sym_plain_buffer_len;
 	/* PSO for AES/DES need algo+flags from sec env */
 	unsigned long algorithm, algorithm_flags;
+#ifdef PIV_SM_NIST
+	sm_nist_params_t sm_params;
+#endif /* PIV_SM_NIST */
+	unsigned short set_session_flags;
 } myeid_private_data_t;
 
 typedef struct myeid_card_caps {
@@ -117,6 +138,151 @@ static struct myeid_supported_ec_curves {
 
 static int myeid_get_info(struct sc_card *card, u8 *rbuf, size_t buflen);
 static int myeid_get_card_caps(struct sc_card *card, myeid_card_caps_t* card_caps);
+static int myeid_set_session_flags(struct sc_card *card, unsigned short *flags);
+
+static int
+myeid_set_session_flags(struct sc_card *card, unsigned short *flags)
+{
+	sc_apdu_t apdu;
+	int r = 0;
+	u8 session_flags[2];
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	r = sc_lock(card);
+	if (r != SC_SUCCESS)
+		LOG_FUNC_RETURN(card->ctx, r);
+
+	/* set session flag to allow crypto during creation to sign CSRs */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, 0x01, 0xE5);
+	apdu.lc = 2;
+	apdu.datalen = 2;
+	session_flags[0] = (*flags >> 8) & 0xFF;
+	session_flags[1] = *flags & 0xFF;
+	apdu.data = session_flags;
+
+	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0) {
+		sc_log(card->ctx, "Transmit failed");
+		goto end;
+	}
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+end:
+	sc_unlock(card);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+#ifdef PIV_SM_NIST
+static int
+myeid_get_sm_cert_signer(struct sc_card *card, sc_path_t *path_cert_signer)
+{
+	sc_apdu_t apdu;
+	int r = 0;
+	u8 rbuf[256];
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	memset(&rbuf, 0, sizeof(rbuf));
+
+	r = sc_lock(card);
+	if (r != SC_SUCCESS)
+		LOG_FUNC_RETURN(card->ctx, r);
+	/* get data of Secure Messaging Parameters See table 81 */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x55);
+	apdu.le = sizeof(rbuf);
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+
+	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0) {
+		sc_log(card->ctx, "Transmit failed");
+		goto err;
+	}
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	if (r < 0) {
+		sc_log(card->ctx, "Card returned error");
+		goto err;
+	}
+
+	if (apdu.resplen == 0) {
+		sc_log(card->ctx, "Secure Messaging Parameters no present");
+		r = SC_ERROR_SM_NOT_INITIALIZED;
+		goto err;
+	}
+	/* Tag 0x80  L=2 is FID of Signer Certificate FID */
+	/* SM Signer cert is first 80 tag len 2 with path */
+	/* Tag 0x81 l=1  V=1 is Exclusize Pin Mode */
+	/* Tag A0 has 1 or 2 sub tags with 0x27 or 0x2E with FID of CVCs */
+	/* TODO assume 0x27 for now */
+
+	if (apdu.resplen < 4 || apdu.resp[0] != 0x80 || apdu.resp[1] != 0x02) {
+		sc_log(card->ctx,  "Invalid response");
+		r = SC_ERROR_INVALID_ASN1_OBJECT;
+		goto err;
+	}
+	path_cert_signer->value[4] = apdu.resp[2];
+	path_cert_signer->value[5] = apdu.resp[3];
+	r = 0;
+
+err:
+	sc_unlock(card);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+static int
+myeid_setup_sm_nist(struct sc_card *card)
+{
+
+	myeid_private_data_t *priv = (myeid_private_data_t *)card->drv_data;
+	struct sc_file *file = NULL;
+	sc_path_t path_cert_signer = {
+			{0x3F, 0x00, 0x50, 0x15, 0x00, 0x00},
+			6, 0, 0, SC_PATH_TYPE_PATH, {{0}, 0}
+			};
+	int r = 0;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	r = myeid_get_sm_cert_signer(card, &path_cert_signer);
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "cert_signer path not found");
+
+	r = sc_select_file(card, &path_cert_signer, &file);
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "cert_signer file not found");
+
+	priv->sm_params.signer_cert_der = calloc(1, file->size);
+	if (priv->sm_params.signer_cert_der == NULL)
+		r = SC_ERROR_OUT_OF_MEMORY;
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "cert_signer");
+	priv->sm_params.signer_cert_der_len = file->size;
+	sc_file_free(file);
+	file = NULL;
+
+	r = sc_read_binary(card, 0, priv->sm_params.signer_cert_der, priv->sm_params.signer_cert_der_len, 0);
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "failed to read signer_cert_der");
+
+	priv->sm_params.flags = PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT;
+	/* TODO set other flags if needed, for now will say to always use SM */
+	priv->sm_params.flags |= PIV_SM_FLAGS_ALWAYS;
+	/* TODO this implies card has reader_lock_obtained routine */
+	priv->sm_params.flags |= PIV_SM_FLAGS_DEFER_OPEN;
+	priv->sm_params.csID = 0x27;
+
+	r = sm_nist_start(card, &priv->sm_params);
+
+	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "sm)nist_start failed");
+
+err:
+	if (r < 0) {
+		sm_nist_params_cleanup(&priv->sm_params);
+	}
+
+	sc_file_free(file);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+#endif /* PIV_SM_NIST */
 
 static int myeid_match_card(struct sc_card *card)
 {
@@ -232,10 +398,13 @@ static int myeid_init(struct sc_card *card)
 		flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
 	flags |= SC_ALGORITHM_RSA_HASH_NONE;
 
-	_sc_card_add_rsa_alg(card,  512, flags, 0);
-	_sc_card_add_rsa_alg(card,  768, flags, 0);
-	_sc_card_add_rsa_alg(card, 1024, flags, 0);
-	_sc_card_add_rsa_alg(card, 1536, flags, 0);
+	/*  4.9.10 do no support 512, 768, 1024, 1536 */
+	if (card->version.fw_major < 49) {
+		_sc_card_add_rsa_alg(card, 512, flags, 0);
+		_sc_card_add_rsa_alg(card, 768, flags, 0);
+		_sc_card_add_rsa_alg(card, 1024, flags, 0);
+		_sc_card_add_rsa_alg(card, 1536, flags, 0);
+	}
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	if (card_caps.card_supported_features & MYEID_CARD_CAP_RSA) {
@@ -291,6 +460,20 @@ static int myeid_init(struct sc_card *card)
 	else
 		card->max_recv_size = 255;
 	card->max_send_size = 255;
+
+	/* for now allow crypto in creation mode. Should be a parameter in opensc.conf */
+	if (card->version.fw_major >= 49) {
+		priv->set_session_flags = MYEID_SET_ENABLE_CRYPTO;
+		rv = myeid_set_session_flags(card, &priv->set_session_flags);
+		/* Ignore error if card is not in creation state */
+	}
+
+	/* TODO DEE for now use chaining vs extended */
+#ifdef PIV_SM_NIST
+	if (card_caps.card_supported_features & MYEID_CARD_CAP_PIV_EMU) {
+		rv = myeid_setup_sm_nist(card);
+	}
+#endif
 
 	rv = SC_SUCCESS;
 
@@ -681,7 +864,10 @@ static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 	if (data->cmd == SC_PIN_CMD_VERIFY && priv->card_state == SC_FILE_STATUS_CREATION) {
 		sc_log(card->ctx, "Card in creation state, no need to verify");
-		return SC_SUCCESS;
+		if (getenv("DEE_DO_VERIFY") != NULL)
+			sc_log(card->ctx, "DEE_DO_VERIFY set, forcing verify");
+		else
+			return SC_SUCCESS;
 	}
 
 	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
@@ -1850,6 +2036,12 @@ static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 static int myeid_finish(sc_card_t * card)
 {
 	struct myeid_private_data *priv = (struct myeid_private_data *) card->drv_data;
+
+#ifdef PIV_SM_NIST
+	/* TODO may need to cleanup sm */
+	sm_nist_params_cleanup(&priv->sm_params);
+#endif
+
 	free(priv);
 	return SC_SUCCESS;
 }

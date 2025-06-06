@@ -3,7 +3,7 @@
  * card-default.c: Support for cards with no driver
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2005-2024  Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2005-2025  Douglas E. Engert <deengert@gmail.com>
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  *
@@ -52,10 +52,33 @@
 #include "internal.h"
 
 /* 800-73-4 SM and VCI need: ECC, SM and OpenSSL or LibreSSL */
+
+/*
+ * WIP eventually PIV_LOCAL will be removed
+ * and PIV_SM_NIST will be the same as ENABLE_PIV_SM
+ * and !ENABLE_PIV_SM will mean do not build with any SM
+ */
 #if defined(ENABLE_PIV_SM)
-#include <openssl/cmac.h>
-#include "compression.h"
+#if defined(ENABLE_SM_NIST)
+#define PIV_SM_NIST
+#include "sm/sm-nist.h"
+#else
+#define PIV_SM_LOCAL
+#include "sm/sm-nist.h"
 #endif
+#endif
+
+// #ifdef PIV_SM_NIST
+// #include "sm/sm-nist.h"
+// #endif /* PIV_SM_NIST */
+
+#ifdef PIV_SM_LOCAL
+#include <openssl/cmac.h>
+#endif /* PIV_SM_LOCAL */
+
+#ifdef ENABLE_PIV_SM
+#include "compression.h"
+#endif /* ENABLE_PIV_SM */
 
 #include "asn1.h"
 #include "cardctl.h"
@@ -173,45 +196,46 @@ enum {
 #define PIV_CS_CS2		0x27
 #define PIV_CS_CS7		0x2E
 
-#ifdef ENABLE_PIV_SM
 #ifdef USE_OPENSSL3_LIBCTX
 #define PIV_LIBCTX card->ctx->ossl3ctx->libctx
 #else
 #define PIV_LIBCTX NULL
 #endif
 
-	/* Table 14 and other constants */
-	typedef struct cipher_suite {
-		u8 id; /* taken from AID "AC" tag */
-		int field_length;
-		int nid;     /* for OpenSSL curves */
-		struct sc_object_id oid; /* for opensc */
-		int p1;	     /* for APDU */
-		size_t Qlen; /* size of pubkey 04||x||y for all keys */
-		size_t AuthCryptogramlen; /* both H and ICC must match */
-		size_t Zlen; /* size of shared secret from ECDH */
-		size_t otherinfolen; /* used in 4.1.6  Key Derivation */
+#ifdef PIV_SM_LOCAL
+/* Table 14 and other constants */
+typedef struct cipher_suite {
+	u8 id; /* taken from AID "AC" tag */
+	int field_length;
+	int nid;		  /* for OpenSSL curves */
+	struct sc_object_id oid;  /* for opensc */
+	int p1;			  /* for APDU */
+	size_t Qlen;		  /* size of pubkey 04||x||y for all keys */
+	size_t AuthCryptogramlen; /* both H and ICC must match */
+	size_t Zlen;		  /* size of shared secret from ECDH */
+	size_t otherinfolen;	  /* used in 4.1.6  Key Derivation */
 
-		int o0len; /* first in otherinfo */
-		u8 o0_char;
-		size_t CBhlen;
-		size_t T16Qehlen;
-		size_t IDsicclen;
-		size_t Nicclen;
-		size_t CBicclen; /* last in otherinfo */
+	int o0len; /* first in otherinfo */
+	u8 o0_char;
+	size_t CBhlen;
+	size_t T16Qehlen;
+	size_t IDsicclen;
+	size_t Nicclen;
+	size_t CBicclen; /* last in otherinfo */
 
-		int naeskeys; /* number of aes key generated */
-		int aeskeylen; /* size of aes key bytes*/
-		int kdf_hash_size; /* size of hash in bytes */
-		EVP_MD *(*kdf_md)(void);
-		const EVP_CIPHER *(*cipher_cbc)(void);
-		const EVP_CIPHER *(*cipher_ecb)(void);
-		char *cipher_cbc_name;
-		char *cipher_ecb_name;
-		char *curve_group;
-	} cipher_suite_t;
+	int naeskeys;	   /* number of aes key generated */
+	int aeskeylen;	   /* size of aes key bytes*/
+	int kdf_hash_size; /* size of hash in bytes */
+	EVP_MD *(*kdf_md)(void);
+	const EVP_CIPHER *(*cipher_cbc)(void);
+	const EVP_CIPHER *(*cipher_ecb)(void);
+	char *cipher_cbc_name;
+	char *cipher_ecb_name;
+	char *curve_group;
+} cipher_suite_t;
 
 // clang-fromat off
+
 #define PIV_CSS_SIZE 2
 static cipher_suite_t css[PIV_CSS_SIZE] = {
 		{PIV_CS_CS2, 256, NID_X9_62_prime256v1, {{1, 2, 840, 10045, 3, 1, 7, -1}},
@@ -234,6 +258,7 @@ static cipher_suite_t css[PIV_CSS_SIZE] = {
 		"aes-256-cbc", "aes-256-ecb",
 		"secp384r1"}
 	};
+#endif /* PIV_SM_LOCAL */
 // clang-format on
 
 /* 800-73-4  4.1.5 Card Verifiable Certificates */
@@ -258,24 +283,28 @@ typedef struct piv_cvc {
 #define PIV_SM_MAX_FIELD_LENGTH  384
 #define PIV_SM_MAX_MD_LENGTH	SHA384_DIGEST_LENGTH
 
-#define PIV_SM_FLAGS_SM_CERT_SIGNER_VERIFIED	0x000000001lu
-#define PIV_SM_FLAGS_SM_CVC_VERIFIED		0X000000002lu
-#define PIV_SM_FLAGS_SM_IN_CVC_VERIFIED		0x000000004lu
-#define PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT	0x000000010lu
-#define PIV_SM_FLAGS_SM_CVC_PRESENT		0X000000020lu
-#define PIV_SM_FLAGS_SM_IN_CVC_PRESENT		0x000000040lu
-#define PIV_SM_FLAGS_SM_IS_ACTIVE		0x000000080lu	/* SM has been started */
-	/* if card supports SP800-73-4 SM: */
-#define PIV_SM_FLAGS_NEVER			0x000000100lu	/* Don't use SM even if card support it */
-								/* Default is use if card supports it */
-								/* will use VCI if card supports it for contactless */
-#define PIV_SM_FLAGS_ALWAYS			0x000000200lu	/* Use SM or quit, VCI requires SM */
-#define PIV_SM_FLAGS_DEFER_OPEN			0x000001000lu	/* call sm_open from reader_lock_obtained */
-#define PIV_SM_VCI_ACTIVE			0x000002000lu   /* VCI is active */
-#define PIV_SM_GET_DATA_IN_CLEAR		0x000004000lu	/* OK to do this GET DATA in the clear */
+/* sm-nist.h has this for ENABLE_SM_NIST */
+#ifdef PIV_SM_LOCAL
+#define PIV_SM_FLAGS_SM_CERT_SIGNER_VERIFIED 0x00000001lu
+#define PIV_SM_FLAGS_SM_CVC_VERIFIED	     0x00000002lu
+#define PIV_SM_FLAGS_SM_IN_CVC_VERIFIED	     0x00000004lu
+#define PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT  0x00000010lu
+#define PIV_SM_FLAGS_SM_CVC_PRESENT	     0x00000020lu
+#define PIV_SM_FLAGS_SM_IN_CVC_PRESENT	     0x00000040lu
+#define PIV_SM_FLAGS_SM_IS_ACTIVE	     0x00000080lu /* SM has been started */
+							  /* if card supports SP800-73-4 SM: */
+#define PIV_SM_FLAGS_NEVER 0x00000100lu			  /* Don't use SM even if card support it */
+/* Default is use if card supports it */
+/* will use VCI if card supports it for contactless */
+#define PIV_SM_FLAGS_ALWAYS		       0x00000200lu /* Use SM or quit, VCI requires SM */
+#define PIV_SM_FLAGS_DEFER_OPEN		       0x00001000lu /* call sm_open from reader_lock_obtained */
+#define PIV_SM_VCI_ACTIVE		       0x00002000lu /* VCI is active */
+#define PIV_SM_GET_DATA_IN_CLEAR	       0x00004000lu /* OK to do this GET DATA in the clear */
+#define PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED 0x00008000lu /* compressed */
+#define PIV_SM_CONTACTLESS		       0x00010000lu /* contacless */
 
 typedef struct piv_sm_session {
-	/* set by piv_sm_open */
+	/* set by piv_sm_open  or sm-nist */
 	int aes_size; /* 128 or 256 */
 
 	u8 SKcfrm[32];
@@ -347,6 +376,9 @@ static const struct sc_asn1_entry c_asn1_sm_response[C_ASN1_PIV_SM_RESPONSE_SIZE
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
+#endif /* PIV_SM_LOCAL */
+
+#if defined(ENABLE_PIV_SM)
 /*
  * SW internal apdu response table.
  *
@@ -360,7 +392,7 @@ static const struct sc_card_error piv_sm_errors[] = {
 	{0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"}, /* other process interference */
 	{0, 0, NULL}
 };
-#endif /* ENABLE_PIV_SM */
+#endif /* defined(ENABLE_PIV_SM) */
 
 /* 800-73-4 3.3.2 Discovery Object - PIN Usage Policy */
 #define PIV_PP_PIN		0x00004000u
@@ -414,14 +446,21 @@ typedef struct piv_private_data {
 	unsigned int pin_policy; /* from discovery */
 	unsigned int init_flags;
 	u8  csID; /* 800-73-4 Cipher Suite ID 0x27 or 0x2E */
-#ifdef ENABLE_PIV_SM
+#ifdef PIV_SM_LOCAL
 	cipher_suite_t *cs; /* active cipher_suite */
 	piv_cvc_t sm_cvc;  /* 800-73-4:  SM CVC Table 15 */
 	piv_cvc_t sm_in_cvc; /* Intermediate CVC Table 16 */
-	unsigned long  sm_flags;
-	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
 	piv_sm_session_t sm_session;
-#endif /* ENABLE_PIV_SM */
+#endif							  /* PIV_SM_LOCAL */
+	unsigned long sm_flags;				  /* share with sm-nist */
+	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
+	u8 *signer_cert_der;
+	size_t cert_signer_len;
+	u8 *sm_in_cvc_der;
+	size_t sm_in_cvc_len;
+#ifdef ENABLE_PIV_SM
+	sm_nist_params_t sm_params;
+#endif /* PIV_SM_NIST */
 } piv_private_data_t;
 
 #define PIV_DATA(card) ((piv_private_data_t*)card->drv_data)
@@ -453,88 +492,97 @@ struct piv_aid {
 
 /* ATRs of cards known to have PIV applet. But must still be tested for a PIV applet */
 static const struct sc_atr_table piv_atrs[] = {
-	/* CAC cards with PIV from: CAC-utilziation-and-variation-matrix-v2.03-20May2016.doc */
-	/*
-	 * https://www.cac.mil/Common-Access-Card/Developer-Resources/
-	 * https://www.cac.mil/Portals/53/Documents/DoD%20Token%20utilziation%20and%20variation%20matrix%20v2_06_17October2019.docx?ver=2019-10-18-102519-120
-	 */
-	/* Oberthur Card Systems (PIV Endpoint) with PIV endpoint applet and PIV auth cert OBSOLETE */
-	{ "3B:DB:96:00:80:1F:03:00:31:C0:64:77:E3:03:00:82:90:00:C1", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
+		/* CAC cards with PIV from: CAC-utilziation-and-variation-matrix-v2.03-20May2016.doc */
+		/*
+		 * https://www.cac.mil/Common-Access-Card/Developer-Resources/
+		 * https://www.cac.mil/Portals/53/Documents/DoD%20Token%20utilziation%20and%20variation%20matrix%20v2_06_17October2019.docx?ver=2019-10-18-102519-120
+		 */
+		/* Oberthur Card Systems (PIV Endpoint) with PIV endpoint applet and PIV auth cert OBSOLETE */
+		{"3B:DB:96:00:80:1F:03:00:31:C0:64:77:E3:03:00:82:90:00:C1",	     NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR,       0, NULL},
 
-	/* Gemalto (PIV Endpoint) with PIV endpoint applet and PIV auth cert OBSOLETE */
-	{ "3B 7D 96 00 00 80 31 80 65 B0 83 11 13 AC 83 00 90 00", NULL, NULL, SC_CARD_TYPE_PIV_II_GEMALTO, 0, NULL },
+		/* Gemalto (PIV Endpoint) with PIV endpoint applet and PIV auth cert OBSOLETE */
+		{"3B 7D 96 00 00 80 31 80 65 B0 83 11 13 AC 83 00 90 00",		  NULL, NULL, SC_CARD_TYPE_PIV_II_GEMALTO,	   0, NULL},
 
-	/* Gemalto (PIV Endpoint) 2 entries  2016, 2019 */
-	{ "3B:7D:96:00:00:80:31:80:65:B0:83:11:17:D6:83:00:90:00", NULL, NULL, SC_CARD_TYPE_PIV_II_GEMALTO, 0, NULL },
+		/* Gemalto (PIV Endpoint) 2 entries  2016, 2019 */
+		{"3B:7D:96:00:00:80:31:80:65:B0:83:11:17:D6:83:00:90:00",		  NULL, NULL, SC_CARD_TYPE_PIV_II_GEMALTO,	   0, NULL},
 
-	/* Oberthur Card System (PIV Endpoint)  2 entries 2016, 2019 */
-	{ "3B:DB:96:00:80:1F:03:00:31:C0:64:B0:F3:10:00:07:90:00:80", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
-	/* Oberthur Card System  with LCS 0F - Some VA cards have Terminated state */
-	{ "3B:DB:96:00:80:1F:03:00:31:C0:64:B0:F3:10:00:0F:90:00:88", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
+		/* Oberthur Card System (PIV Endpoint)  2 entries 2016, 2019 */
+		{"3B:DB:96:00:80:1F:03:00:31:C0:64:B0:F3:10:00:07:90:00:80",	     NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR,       0, NULL},
+		/* Oberthur Card System  with LCS 0F - Some VA cards have Terminated state */
+		{"3B:DB:96:00:80:1F:03:00:31:C0:64:B0:F3:10:00:0F:90:00:88",	     NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR,       0, NULL},
 
-	/* Giesecke & Devrient (PIV Endpoint)  2 entries 2016, 2019 */
-	{ "3B:7A:18:00:00:73:66:74:65:20:63:64:31:34:34", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL },
-	/* Giesecke & Devrient (CAC PIV Endpoint) 2019 */
-	{ "3B:F9:18:00:00:00:53:43:45:37:20:03:00:20:46", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL },
+		/* Giesecke & Devrient (PIV Endpoint)  2 entries 2016, 2019 */
+		{"3B:7A:18:00:00:73:66:74:65:20:63:64:31:34:34",			 NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL},
+		/* Giesecke & Devrient (CAC PIV Endpoint) 2019 */
+		{"3B:F9:18:00:00:00:53:43:45:37:20:03:00:20:46",			 NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL},
 
-	/* IDEMIA (new name for Oberthur) (DoD Alternate Token IDEMIA Cosmo V8.0 2019*/
-	{ "3B:D8:18:00:80:B1:FE:45:1F:07:80:31:C1:64:08:06:92:0F:D5", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
-	{ "3b:86:80:01:80:31:c1:52:41:1a:7e", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL }, /* contactless */
+		/* IDEMIA (new name for Oberthur) (DoD Alternate Token IDEMIA Cosmo V8.0 2019*/
+		{"3B:D8:18:00:80:B1:FE:45:1F:07:80:31:C1:64:08:06:92:0F:D5",	     NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR,       0, NULL},
+		{"3b:86:80:01:80:31:c1:52:41:1a:7e",				     NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR,       0, NULL}, /* contactless */
 
-	/* Following PIVKEY entries are from Windows registry provided by gw@taglio.com 2022-09-05 */
-	/* PIVKEY PIVKey Feitian (02) */
-	{ "3b:9f:95:81:31:fe:9f:00:66:46:53:05:10:00:11:71:df:00:00:00:00:00:02", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey Feitian (7C)  aka C910 contactless */
-	{ "3b:8c:80:01:90:67:46:4a:00:64:16:06:f2:72:7e:00:7c", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/*PIVKey Feitian (E0)  aka C910 */
-	{ "3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:16:06:f2:72:7e:00:e0", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey Feitian (FE)  aka PIVKEY T600 token and T800  on Feitian eJAVA */
-	{ "3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:2d:70:c1:72:fe:e0:fe", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP241 (AD) */
-	{ "3b:f9:13:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:ad", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP242R2 (16) */
-	{ "3b:88:80:01:50:49:56:4b:45:59:37:30:16", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP242R2 (5E) */
-	{ "3b:88:80:01:4a:43:4f:50:76:32:34:31:5e", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP242R2 (B7) */
-	{ "3b:f8:13:00:00:81:31:fe:45:4a:43:4f:50:76:32:34:31:b7", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP3 (67) */
-	{ "3b:88:80:01:46:49:44:45:53:4d:4f:31:67", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP3 (8E) */
-	{ "3b:f8:13:00:00:81:31:fe:45:46:49:44:45:53:4d:4f:31:8e", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP31 (57) */
-	{ "3b:f9:18:00:ff:81:31:fe:45:4a:43:4f:50:33:31:56:32:32:57", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey NXP JCOP (03) */
-	{ "3b:8a:80:01:01:50:49:56:4b:45:59:37:30:16:03", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey NXP JCOP (FF)  aka CP70 */
-	{ "3b:f8:13:00:00:81:31:fe:45:50:49:56:4b:45:59:37:30:ff", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey SLE78 (3B) */
-	{ "3b:8d:80:01:53:4c:4a:35:32:47:44:4c:31:32:38:43:52:3b", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey SLE78 (6D) */
-	{ "3b:88:80:01:00:00:00:11:77:81:83:00:6d", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey SLE78 (28) aka C980 */
-	{ "3b:f9:96:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:28", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey SLE78 (44) aka C980 contactless */
-	{ "3b:89:80:01:53:50:49:56:4b:45:59:37:30:44", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey SLE78 (57B) */
-	{ "3b:fd:96:00:00:81:31:fe:45:53:4c:4a:35:32:47:44:4c:31:32:38:43:52:57", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey uTrust (01) ISO 14443 Type B without historical bytes */
-	{ "3b:80:80:01:01", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey uTrust (73) */
-	{ "3b:96:11:81:21:75:75:54:72:75:73:74:73", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey uTrust FIDO2 (73) */
-	{ "3b:96:11:81:21:75:75:54:72:75:73:74:73", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+		/* Following PIVKEY entries are from Windows registry provided by gw@taglio.com 2022-09-05 */
+		/* PIVKEY PIVKey Feitian (02) */
+		{"3b:9f:95:81:31:fe:9f:00:66:46:53:05:10:00:11:71:df:00:00:00:00:00:02", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	 0, NULL},
+		/* PIVKey Feitian (7C)  aka C910 contactless */
+		{"3b:8c:80:01:90:67:46:4a:00:64:16:06:f2:72:7e:00:7c",		       NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	       0, NULL},
+		/*PIVKey Feitian (E0)  aka C910 */
+		{"3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:16:06:f2:72:7e:00:e0",    NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	      0, NULL},
+		/* PIVKey Feitian (FE)  aka PIVKEY T600 token and T800  on Feitian eJAVA */
+		{"3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:2d:70:c1:72:fe:e0:fe",    NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	      0, NULL},
+		/* PIVKey JCOP241 (AD) */
+		{"3b:f9:13:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:ad",	     NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	     0, NULL},
+		/* PIVKey JCOP242R2 (16) */
+		{"3b:88:80:01:50:49:56:4b:45:59:37:30:16",				   NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
+		/* PIVKey JCOP242R2 (5E) */
+		{"3b:88:80:01:4a:43:4f:50:76:32:34:31:5e",				   NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
+		/* PIVKey JCOP242R2 (B7) */
+		{"3b:f8:13:00:00:81:31:fe:45:4a:43:4f:50:76:32:34:31:b7",		  NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	  0, NULL},
+		/* PIVKey JCOP3 (67) */
+		{"3b:88:80:01:46:49:44:45:53:4d:4f:31:67",				   NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
+		/* PIVKey JCOP3 (8E) */
+		{"3b:f8:13:00:00:81:31:fe:45:46:49:44:45:53:4d:4f:31:8e",		  NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	  0, NULL},
+		/* PIVKey JCOP31 (57) */
+		{"3b:f9:18:00:ff:81:31:fe:45:4a:43:4f:50:33:31:56:32:32:57",	     NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	     0, NULL},
+		/* PIVKey NXP JCOP (03) */
+		{"3b:8a:80:01:01:50:49:56:4b:45:59:37:30:16:03",			 NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	 0, NULL},
+		/* PIVKey NXP JCOP (FF)  aka CP70 */
+		{"3b:f8:13:00:00:81:31:fe:45:50:49:56:4b:45:59:37:30:ff",		  NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	  0, NULL},
+		/* PIVKey SLE78 (3B) */
+		{"3b:8d:80:01:53:4c:4a:35:32:47:44:4c:31:32:38:43:52:3b",		  NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	  0, NULL},
+		/* PIVKey SLE78 (6D) */
+		{"3b:88:80:01:00:00:00:11:77:81:83:00:6d",				   NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
+		/* PIVKey SLE78 (28) aka C980 */
+		{"3b:f9:96:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:28",	     NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	     0, NULL},
+		/* PIVKey SLE78 (44) aka C980 contactless */
+		{"3b:89:80:01:53:50:49:56:4b:45:59:37:30:44",			      NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	      0, NULL},
+		/* PIVKey SLE78 (57B) */
+		{"3b:fd:96:00:00:81:31:fe:45:53:4c:4a:35:32:47:44:4c:31:32:38:43:52:57", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	 0, NULL},
+		/* PIVKey uTrust (01) ISO 14443 Type B without historical bytes */
+		{"3b:80:80:01:01",						       NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
+		/* PIVKey uTrust (73) */
+		{"3b:96:11:81:21:75:75:54:72:75:73:74:73",				   NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
+		/* PIVKey uTrust FIDO2 (73) */
+		{"3b:96:11:81:21:75:75:54:72:75:73:74:73",				   NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
 
-	/* Swissbit iShield Key Pro with PIV endpoint applet */
-	{ "3b:97:11:81:21:75:69:53:68:69:65:6c:64:05", NULL, NULL, SC_CARD_TYPE_PIV_II_SWISSBIT, 0, NULL },
+		/* Swissbit iShield Key Pro with PIV endpoint applet */
+		{"3b:97:11:81:21:75:69:53:68:69:65:6c:64:05",			      NULL, NULL, SC_CARD_TYPE_PIV_II_SWISSBIT,	0, NULL},
 
-	/* ID-One PIV 2.4.1 on Cosmo V8.1 NIST sp800-73-4 with Secure Messaging and VCI  2020 */
-	{ "3b:d6:96:00:81:b1:fe:45:1f:87:80:31:c1:52:41:1a:2a", NULL, NULL, SC_CARD_TYPE_PIV_II_800_73_4, 0, NULL },
-	{ "3b:d6:97:00:81:b1:fe:45:1f:87:80:31:c1:52:41:12:23",
-	  "ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00", NULL, SC_CARD_TYPE_PIV_II_800_73_4, 0, NULL },
-	{ "3b:86:80:01:80:31:c1:52:41:12:76", NULL, NULL, SC_CARD_TYPE_PIV_II_800_73_4, 0, NULL }, /* contactless */
+		/* ID-One PIV 2.4.1 on Cosmo V8.1 NIST sp800-73-4 with Secure Messaging and VCI  2020 */
+		{"3b:d6:96:00:81:b1:fe:45:1f:87:80:31:c1:52:41:1a:2a",		       NULL, NULL, SC_CARD_TYPE_PIV_II_800_73_4,	 0, NULL},
+		{"3b:d6:97:00:81:b1:fe:45:1f:87:80:31:c1:52:41:12:23",
+			"ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00",			      NULL, SC_CARD_TYPE_PIV_II_800_73_4,	  0, NULL},
+		{"3b:86:80:01:80:31:c1:52:41:12:76",				     NULL, NULL, SC_CARD_TYPE_PIV_II_800_73_4,       0, NULL}, /* contactless */
 
-	{ NULL, NULL, NULL, 0, 0, NULL }
+		/*
+		 * MyEID cards version >= 4 may have limited PIV applet enabled but will not be found if MyEID card driver
+		 * matches ATR first. MyEID's intent is to use the card-myeid.c and only provide the PIV applet to be used
+		 * where MyEID sodtware will not run, So these changes to card-piv.c are more for testing their PIV changes.
+		 * To use PIV driver, set env OPENSC_DRIVER="PIV_II" or change driver order in opensc.conf.
+		 * See https://github.com/OpenSC/OpenSC/wiki/Aventra-MyEID-PKI-card for initializing cards.
+		 * SC_CARD_TYPE_PIV_II_MYEID
+		 */
+
+		{NULL,								   NULL, NULL, 0,				      0, NULL}
 };
 
 static struct piv_supported_ec_curves {
@@ -843,7 +891,7 @@ static int piv_logout(sc_card_t *card);
 static int piv_match_card_continued(sc_card_t *card);
 static int piv_obj_cache_free_entry(sc_card_t *card, int enumtag, int flags);
 
-#ifdef ENABLE_PIV_SM
+#ifdef PIV_SM_LOCAL
 static void piv_inc(u8 *counter, size_t size);
 static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
 static int piv_get_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu);
@@ -856,14 +904,18 @@ static void piv_clear_cvc_content(piv_cvc_t *cvc);
 static void piv_clear_sm_session(piv_sm_session_t *session);
 static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen, piv_cvc_t *cvc);
 static int piv_parse_pairing_code(sc_card_t *card, const char *option);
-static int Q2OS(int fsize, u8 *Q, size_t Qlen, u8 * OS, size_t *OSlen);
-static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code);
+static int Q2OS(int fsize, u8 *Q, size_t Qlen, u8 *OS, size_t *OSlen);
 static int piv_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
 		EVP_PKEY *pkey, u8 *data, size_t data_size,
 		unsigned char *sig, size_t siglen);
 static int piv_sm_verify_certs(struct sc_card *card);
+#endif /* PIV_SM_LOCAL */
 
+#ifdef PIV_SM_NIST
+static int piv_parse_pairing_code(sc_card_t *card, const char *option);
+#endif /* PIV_SM_NIST */
 
+#ifdef PIV_SM_LOCAL
 static void piv_inc(u8 *counter, size_t size)
 {
 	unsigned int c = 1;
@@ -1130,11 +1182,9 @@ static int piv_get_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apd
 		case 0xCB: /* GET_DATA */
 			/* If not contactless, could read in clear */
 			/* Discovery object never has PIV_SM_GET_DATA_IN_CLEAR set */
-			sc_log(card->ctx,"init_flags:0x%8.8x sm_flags:0x%8.8lx",priv->init_flags,priv->sm_flags);
-			if (!(priv->init_flags & PIV_INIT_CONTACTLESS)
-					&& !(priv->init_flags & PIV_INIT_IN_READER_LOCK_OBTAINED)
-					&& (priv->sm_flags & PIV_SM_GET_DATA_IN_CLEAR)) {
-					priv->sm_flags &= ~PIV_SM_GET_DATA_IN_CLEAR;
+			sc_log(card->ctx, "init_flags:0x%8.8x sm_flags:0x%8.8lx", priv->init_flags, priv->sm_params.flags);
+			if (!(priv->init_flags & PIV_INIT_CONTACTLESS) && !(priv->init_flags & PIV_INIT_IN_READER_LOCK_OBTAINED) && (priv->sm_params.flags & PIV_SM_GET_DATA_IN_CLEAR)) {
+				priv->sm_params.flags &= ~PIV_SM_GET_DATA_IN_CLEAR;
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_SM_NOT_APPLIED);
 			}
 			break;
@@ -1467,12 +1517,12 @@ static int piv_sm_close(sc_card_t *card)
 	piv_private_data_t * priv = PIV_DATA(card);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx, "priv->sm_flags: 0x%8.8lu", priv->sm_flags);
+	sc_log(card->ctx, "priv->sm_params.flags: 0x%8.8lu", priv->sm_flags);
 
 	/* sm.c tries to restart sm. Will defer */
-	if ((priv->sm_flags & PIV_SM_FLAGS_SM_IS_ACTIVE)) {
-		priv->sm_flags |= PIV_SM_FLAGS_DEFER_OPEN;
-		priv->sm_flags &= ~PIV_SM_FLAGS_SM_IS_ACTIVE;
+	if ((priv->sm_params.flags & PIV_SM_FLAGS_SM_IS_ACTIVE)) {
+		priv->sm_params.flags |= PIV_SM_FLAGS_DEFER_OPEN;
+		priv->sm_params.flags &= ~PIV_SM_FLAGS_SM_IS_ACTIVE;
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -1598,7 +1648,9 @@ static int piv_decode_cvc(sc_card_t * card, u8 **buf, size_t *buflen,
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+#endif /* PIV_SM_LOCAL */
 
+#if defined(ENABLE_PIV_SM)
 static int piv_parse_pairing_code(sc_card_t *card, const char *option)
 {
 	size_t i;
@@ -1615,7 +1667,7 @@ static int piv_parse_pairing_code(sc_card_t *card, const char *option)
 	}
 	return SC_SUCCESS;
 }
-#endif
+#endif /* defined(ENABLE_PIV_SM) */
 
 static int piv_load_options(sc_card_t *card)
 {
@@ -1623,7 +1675,7 @@ static int piv_load_options(sc_card_t *card)
 	size_t i, j;
 	scconf_block **found_blocks, *block;
 
-#ifdef ENABLE_PIV_SM
+#if defined(ENABLE_PIV_SM)
 	piv_private_data_t * priv = PIV_DATA(card);
 	const char *option = NULL;
 	int piv_pairing_code_found = 0;
@@ -1633,7 +1685,7 @@ static int piv_load_options(sc_card_t *card)
 	if ((option = getenv("PIV_PAIRING_CODE")) != NULL) {
 		sc_log(card->ctx,"getenv(\"PIV_PAIRING_CODE\") found");
 		if (piv_parse_pairing_code(card, option) == SC_SUCCESS) {
-			memcpy(priv->pairing_code, option, PIV_PAIRING_CODE_LEN);
+			memcpy(priv->sm_params.pairing_code, option, PIV_PAIRING_CODE_LEN);
 			piv_pairing_code_found = 1;
 		}
 	}
@@ -1641,18 +1693,18 @@ static int piv_load_options(sc_card_t *card)
 	if ((option = getenv("PIV_USE_SM"))!= NULL) {
 		sc_log(card->ctx,"getenv(\"PIV_USE_SM\")=\"%s\"", option);
 		if (!strcmp(option, "never")) {
-			priv->sm_flags |= PIV_SM_FLAGS_NEVER;
+			priv->sm_params.flags |= PIV_SM_FLAGS_NEVER;
 			piv_use_sm_found = 1;
 		}
 		else if (!strcmp(option, "always")) {
-			priv->sm_flags |= PIV_SM_FLAGS_ALWAYS;
+			priv->sm_params.flags |= PIV_SM_FLAGS_ALWAYS;
 			piv_use_sm_found = 1;
 		}
 		else {
 			sc_log(card->ctx,"Invalid piv_use_sm: \"%s\"", option);
 		}
 	}
-#endif
+#endif /* defined(ENABLE_PIV_SM) */
 
 	for (i = 0; card->ctx->conf_blocks[i]; i++) {
 		found_blocks = scconf_find_blocks(card->ctx->conf, card->ctx->conf_blocks[i],
@@ -1662,12 +1714,12 @@ static int piv_load_options(sc_card_t *card)
 
 		for (j = 0, block = found_blocks[j]; block; j++, block = found_blocks[j]) {
 
-#ifdef ENABLE_PIV_SM
+#if defined(ENABLE_SM_NIST) || defined(ENABLE_PIV_SM)
 
-/*
- * FIXME TODO - Names and locations of piv_pairing_code and piv_use_sm are likely to change in the future.
- * See https://github.com/OpenSC/OpenSC/pull/2053/files#r1267388721
- */
+			/*
+			 * FIXME TODO - Names and locations of piv_pairing_code and piv_use_sm are likely to change in the future.
+			 * See https://github.com/OpenSC/OpenSC/pull/2053/files#r1267388721
+			 */
 			/*
 			 * "piv_use_sm" if card supports NIST sp800-73-4 sm, when should it be used
 			 * never - use card like 800-73-3, i.e. contactless is very limited on
@@ -1685,10 +1737,10 @@ static int piv_load_options(sc_card_t *card)
 					/* no new flags */
 				}
 				else if (!strcmp(option, "never")) {
-					priv->sm_flags |= PIV_SM_FLAGS_NEVER;
+					priv->sm_params.flags |= PIV_SM_FLAGS_NEVER;
 				}
 				else if (!strcmp(option, "always")) {
-					priv->sm_flags |= PIV_SM_FLAGS_ALWAYS;
+					priv->sm_params.flags |= PIV_SM_FLAGS_ALWAYS;
 				}
 				else {
 					sc_log(card->ctx,"Invalid piv_use_sm: \"%s\"", option);
@@ -1699,10 +1751,10 @@ static int piv_load_options(sc_card_t *card)
 			if (piv_pairing_code_found == 0) {
 				option = scconf_get_str(block, "piv_pairing_code", NULL);
 				if (option && piv_parse_pairing_code(card, option) == SC_SUCCESS) {
-					memcpy(priv->pairing_code, option, PIV_PAIRING_CODE_LEN);
+					memcpy(priv->sm_params.pairing_code, option, PIV_PAIRING_CODE_LEN);
 				}
 			}
-#endif
+#endif /* defined(ENABLE_PIV_SM) */
 		}
 		free(found_blocks);
 	 }
@@ -1749,12 +1801,13 @@ static int piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 			recvbuf ? SC_APDU_CASE_4_SHORT: SC_APDU_CASE_3_SHORT,
 			ins, p1, p2);
 	apdu.flags |= SC_APDU_FLAGS_CHAINING;
-#ifdef ENABLE_PIV_SM
-	if (card->sm_ctx.sm_mode != SM_MODE_NONE && sendbuflen > 255) {
+// TODO REMOVE 20230916  #endif /* defined(ENABLE_SM_NIST) || defined(ENABLE_PIV_SM) */
+#if defined(ENABLE_SM_NIST) || defined(ENABLE_PIV_SM)
+	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
 		/* tell apdu.c to not do the chaining, let the SM get_apdu do it */
 		apdu.flags |= SC_APDU_FLAGS_SM_CHAINING;
 	}
-#endif
+#endif /* defined(ENABLE_PIV_SM) || defined(USE_PIV_SM) */
 	apdu.lc = sendbuflen;
 	apdu.datalen = sendbuflen;
 	apdu.data = sendbuf;
@@ -1794,8 +1847,7 @@ err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-
-#ifdef ENABLE_PIV_SM
+#ifdef PIV_SM_LOCAL
 /* convert q as 04||x||y used in standard point formats to expanded leading
  * zeros and concatenated X||Y as specified in SP80056A Appendix C.2
  * Field-Element-to-Byte-String Conversion which
@@ -1855,7 +1907,7 @@ static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	sm_apdu.flags += SC_APDU_FLAGS_NO_SM; /* run as is */
+	sm_apdu.flags |= SC_APDU_FLAGS_NO_SM; /* run as is */
 	r = sc_transmit_apdu(card, &sm_apdu);
 	if (r < 0) {
 		free(sm_apdu.resp);
@@ -1923,8 +1975,8 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	u8 *cert_blob = NULL; /* do not free */
 	size_t cert_bloblen = 0;
 
-	u8 *rbuf; /* do not free*/
-	size_t rbuflen;
+	//	u8 *rbuf; /* do not free*/
+	//	size_t rbuflen;
 	X509 *cert = NULL;
 	EVP_PKEY *cert_pkey =  NULL; /* do not free */
 	EVP_PKEY *in_cvc_pkey = NULL;
@@ -1951,10 +2003,10 @@ static int piv_sm_verify_certs(struct sc_card *card)
 
 	/*
 	 * Get the PIV_OBJ_SM_CERT_SIGNER and optional sm_in_cvc in cache
-	 * both are in same object. Rbuf, and rbuflen are needed but not used here
+	 * both are in same object. Do not need the object, just the cert in it
 	 * sm_cvc and sm_in_cvc both have EC_keys sm_in_cvc may have RSA signature
 	 */
-	r = piv_get_cached_data(card, PIV_OBJ_SM_CERT_SIGNER, &rbuf, &rbuflen);
+	r = piv_get_cached_data(card, PIV_OBJ_SM_CERT_SIGNER, NULL, NULL);
 	if (r < 0) {
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
@@ -1965,7 +2017,7 @@ static int piv_sm_verify_certs(struct sc_card *card)
 		goto err;
 	}
 
-	priv->sm_flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
+	priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
 
 	/* get PIV_OBJ_SM_CERT_SIGNER cert DER  from cache */
 	if (priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].flags & PIV_OBJ_CACHE_COMPRESSED) {
@@ -2003,7 +2055,7 @@ static int piv_sm_verify_certs(struct sc_card *card)
 	}
 
 	/* if intermediate sm_in_cvc present, cert signed it and sm_cvc is signed by sm_in_cvc */
-	if (priv->sm_flags & PIV_SM_FLAGS_SM_IN_CVC_PRESENT) {
+	if (priv->sm_params.flags & PIV_SM_FLAGS_SM_IN_CVC_PRESENT) {
 		r = piv_sm_verify_sig(card, cs->kdf_md(), cert_pkey,
 				priv->sm_in_cvc.body, priv->sm_in_cvc.bodylen,
 				priv->sm_in_cvc.signature,priv->sm_in_cvc.signaturelen);
@@ -2192,7 +2244,7 @@ static int piv_sm_open(struct sc_card *card)
 	 * some other application without getting anything done or in
 	 * a loop, each trying to reestablish a SM session and run command.
 	 */
-	if (!(priv->sm_flags & PIV_SM_FLAGS_DEFER_OPEN)) {
+	if (!(priv->sm_params.flags & PIV_SM_FLAGS_DEFER_OPEN)) {
 		LOG_FUNC_RETURN(card->ctx,SC_ERROR_NOT_ALLOWED);
 	}
 	if (cs == NULL)
@@ -2361,7 +2413,7 @@ static int piv_sm_open(struct sc_card *card)
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
-		priv->sm_flags |= PIV_SM_FLAGS_SM_CVC_PRESENT;
+		priv->sm_params.flags |= PIV_SM_FLAGS_SM_CVC_PRESENT;
 	}
 
 	/* Step H5 Verify Cicc CVC and pubkey */
@@ -2643,11 +2695,11 @@ static int piv_sm_open(struct sc_card *card)
 	}
 
 	r = 0;
-	priv->sm_flags |= PIV_SM_FLAGS_SM_IS_ACTIVE;
+	priv->sm_params.flags |= PIV_SM_FLAGS_SM_IS_ACTIVE;
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 
 err:
-	priv->sm_flags &= ~PIV_SM_FLAGS_DEFER_OPEN;
+	priv->sm_params.flags &= ~PIV_SM_FLAGS_DEFER_OPEN;
 	if (r != 0) {
 		memset(&priv->sm_session, 0, sizeof(piv_sm_session_t));
 		sc_log_openssl(card->ctx); /* catch any not logged above */
@@ -2682,7 +2734,7 @@ err:
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
-#endif /* ENABLE_PIV_SM */
+#endif /* PIV_SM_LOCAL */
 
 /* Add the PIV-II operations */
 /* Should use our own keydata, actually should be common to all cards */
@@ -2852,18 +2904,26 @@ static int piv_find_aid(sc_card_t * card)
 	const u8 *csai; /* Cipher Suite Algorithm Identifier */
 	size_t csailen;
 	size_t resplen = sizeof(rbuf);
-#ifdef ENABLE_PIV_SM
+#ifdef PIV_SM_LOCAL
 	int found_csai = 0;
-#endif
+#endif /* PIV_SM_LOCAL */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 
 	/* first  see if the default application will return a template
 	 * that we know about.
 	 */
 
 	r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, rbuf, &resplen);
+
+	/* temp fix for MyEID which does not return tag=61: add a 0x61 and length */
+	if (r >= 0 && resplen > 2 && rbuf[0] != 0x61 && resplen < (sizeof(rbuf) - 2)) {
+		memmove(rbuf + 2, rbuf, resplen);
+		rbuf[0] = 0x61;
+		rbuf[1] = (unsigned int)resplen;
+		resplen += 2;
+	}
+
 	if (r > 0 && priv->aid_der.value && resplen == priv->aid_der.len  && !memcmp(priv->aid_der.value, rbuf, resplen)) {
 		LOG_FUNC_RETURN(card->ctx,SC_SUCCESS);
 		/* no need to parse again, same as last time */
@@ -2884,7 +2944,13 @@ static int piv_find_aid(sc_card_t * card)
 				if (csai != NULL) {
 					if (csailen == 1) {
 						sc_log(card->ctx,"found csID=0x%2.2x",*csai);
-#ifdef ENABLE_PIV_SM
+#if defined(ENABLE_PIV_SM)
+						if (*csai == 0x27 || *csai == 0x2E) {
+							priv->csID = *csai;
+							priv->init_flags |= PIV_INIT_AID_AC;
+						}
+#endif /* ENABLE_PIV_SM */
+#ifdef PIV_SM_LOCAL
 						for (i = 0; i < PIV_CSS_SIZE; i++) {
 							if (*csai != css[i].id)
 								continue;
@@ -2897,7 +2963,7 @@ static int piv_find_aid(sc_card_t * card)
 								priv->init_flags |= PIV_INIT_AID_AC;
 							}
 						}
-#endif /* ENABLE_PIV_SM */
+#endif /* PIV_SM_LOCAL */
 					}
 				}
 			}
@@ -3047,27 +3113,25 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		}
 	}
 
-#ifdef ENABLE_PIV_SM
+#if defined(ENABLE_PIV_SM)
 	/*
 	 * Over contact reader, OK to read non sensitive object in clear even when SM is active
 	 * but only if using default policy and we are not in reader_lock_obtained
 	 * Discovery object will use SM from reader_lock_obtained to catch if SM is still valid
 	 * i.e. no interference from other applications
 	 */
-	sc_log(card->ctx,"enumtag:%d sm_ctx.sm_mode:%d piv_objects[enumtag].flags:0x%8.8x sm_flags:0x%8.8lx it_flags:0x%8.8x",
-			enumtag, card->sm_ctx.sm_mode, piv_objects[enumtag].flags, priv->sm_flags, priv->init_flags);
-	if (priv->sm_flags & PIV_SM_FLAGS_SM_IS_ACTIVE
-			&& enumtag != PIV_OBJ_DISCOVERY
-			&& card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
-			&& !(piv_objects[enumtag].flags & PIV_OBJECT_NEEDS_PIN)
-			&& !(priv->sm_flags & (PIV_SM_FLAGS_NEVER | PIV_SM_FLAGS_ALWAYS))
-			&& !(priv->init_flags & ( PIV_INIT_CONTACTLESS | PIV_INIT_IN_READER_LOCK_OBTAINED))) {
-			sc_log(card->ctx,"Set PIV_SM_GET_DATA_IN_CLEAR");
-		priv->sm_flags |= PIV_SM_GET_DATA_IN_CLEAR;
+	sc_log(card->ctx, "enumtag:%d sm_ctx.sm_mode:%d piv_objects[enumtag].flags:0x%8.8x sm_flags:0x%8.8lx it_flags:0x%8.8x",
+			enumtag, card->sm_ctx.sm_mode, piv_objects[enumtag].flags, priv->sm_params.flags, priv->init_flags);
+	if (priv->sm_params.flags & PIV_SM_FLAGS_SM_IS_ACTIVE && enumtag != PIV_OBJ_DISCOVERY && card->sm_ctx.sm_mode == SM_MODE_TRANSMIT && !(piv_objects[enumtag].flags & PIV_OBJECT_NEEDS_PIN) && !(priv->sm_params.flags & (PIV_SM_FLAGS_NEVER | PIV_SM_FLAGS_ALWAYS)) && !(priv->init_flags & (PIV_INIT_CONTACTLESS | PIV_INIT_IN_READER_LOCK_OBTAINED))) {
+		sc_log(card->ctx, "Set PIV_SM_GET_DATA_IN_CLEAR");
+		priv->sm_params.flags |= PIV_SM_GET_DATA_IN_CLEAR;
 	}
 
-#endif /* ENABLE_PIV_SM */
+#endif /* defined(ENABLE_PIV_SM) */
 	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, *buf, *buf_len);
+#if defined(ENABLE_PIV_SM)
+	priv->sm_params.flags &= ~PIV_SM_GET_DATA_IN_CLEAR; /* reset */
+#endif							    /* defined(ENABLE_PIV_SM) */
 	if (r > 0) {
 		int r_tag;
 		unsigned int cla_out, tag_out;
@@ -3142,9 +3206,15 @@ piv_get_cached_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 			sc_log(card->ctx, "#%d found but len=0", enumtag);
 			goto err;
 		}
-		*buf = priv->obj_cache[enumtag].obj_data;
-		*buf_len = priv->obj_cache[enumtag].obj_len;
-		r = (int)*buf_len;
+		/* Caller may not need the object */
+		if (buf) {
+			*buf = priv->obj_cache[enumtag].obj_data;
+		}
+		if (buf_len) {
+			*buf_len = priv->obj_cache[enumtag].obj_len;
+		}
+
+		r = (int)priv->obj_cache[enumtag].obj_len;
 		goto ok;
 	}
 
@@ -3169,8 +3239,10 @@ piv_get_cached_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		priv->obj_cache[enumtag].flags |= PIV_OBJ_CACHE_VALID;
 		priv->obj_cache[enumtag].obj_len = r;
 		priv->obj_cache[enumtag].obj_data = rbuf;
-		*buf = rbuf;
-		*buf_len = r;
+		if (buf)
+			*buf = rbuf;
+		if (buf_len)
+			*buf_len = r;
 
 		sc_log(card->ctx,
 				"added #%d  %p:%"SC_FORMAT_LEN_SIZE_T"u %p:%"SC_FORMAT_LEN_SIZE_T"u",
@@ -3207,10 +3279,10 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 	size_t bodylen;
 	int compressed = 0;
 	int r = SC_SUCCESS;
-#ifdef ENABLE_PIV_SM
+#if defined(ENABLE_PIV_SM)
 	u8* cvc_start = NULL;
 	size_t cvc_len = 0;
-#endif
+#endif /* defined(ENABLE_PIV_SM) */
 
 	/* if already cached */
 	if (priv->obj_cache[enumtag].internal_obj_data && priv->obj_cache[enumtag].internal_obj_len) {
@@ -3231,7 +3303,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
 
 	/* get the certificate out */
-	 if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_CERT) {
+	if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_CERT) {
 
 		tag = sc_asn1_find_tag(card->ctx, body, bodylen, 0x71, &taglen);
 		/* 800-72-1 not clear if this is 80 or 01 Sent comment to NIST for 800-72-2 */
@@ -3239,7 +3311,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 		if (tag && taglen > 0 && (((*tag) & 0x80) || ((*tag) & 0x01)))
 			compressed = 1;
 
-#ifdef ENABLE_PIV_SM
+#if defined(ENABLE_PIV_SM)
 		cvc_start = (u8 *)tag + taglen; /* save for later as cvs (if present) follows  0x71 */
 #endif
 
@@ -3260,7 +3332,29 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 		memcpy(priv->obj_cache[enumtag].internal_obj_data, tag, taglen);
 		priv->obj_cache[enumtag].internal_obj_len = taglen;
 
-#ifdef ENABLE_PIV_SM
+#ifdef PIV_SM_NIST
+		/* save priv->sm_params.signer_cert_der for sm_nist early before pkcs15 is active */
+		if (piv_objects[enumtag].enumtag == PIV_OBJ_SM_CERT_SIGNER) {
+			if (priv->sm_params.signer_cert_der) { /* free if already set */
+				free(priv->sm_params.signer_cert_der);
+				priv->sm_params.signer_cert_der_len = 0;
+				priv->sm_params.flags &= ~PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
+			}
+
+			priv->sm_params.signer_cert_der = malloc(taglen);
+			if (!priv->sm_params.signer_cert_der)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+
+			memcpy(priv->sm_params.signer_cert_der, tag, taglen);
+			priv->sm_params.signer_cert_der_len = taglen;
+			priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
+
+			if (compressed)
+				priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
+		}
+#endif /* PIV_SM_NIST */
+
+#if defined(ENABLE_PIV_SM)
 		/* PIV_OBJ_SM_CERT_SIGNER  CERT OBJECT may also have a intermediate CVC */
 		if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_CVC) {
 			/* cvc if present should be at cvc_start.
@@ -3272,19 +3366,35 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 					&& cvc_start && cvc_start < tag
 					&& cvc_start[0] == 0x7f && cvc_start[1] == 0x21) {
 				cvc_len = tag - cvc_start + taglen;
+#ifdef PIV_SM_LOCAL
 				/* decode the intermediate CVC */
 				r = piv_decode_cvc(card, &cvc_start, &cvc_len, &priv->sm_in_cvc);
 				if (r < 0) {
 					sc_log(card->ctx,"unable to parse intermediate CVC: %d skipping",r);
 				}
-				priv->sm_flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
+#endif /* PIV_SM_LOCAL */
+				/* set for both local or sm-nist */
+				priv->sm_params.flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
+#ifdef PIV_SM_NIST
+				/* save for sm-nist */
+				if (priv->sm_params.sm_in_cvc_der) {
+					free(priv->sm_params.sm_in_cvc_der);
+					priv->sm_params.sm_in_cvc_der_len = 0;
+				}
+
+				priv->sm_params.sm_in_cvc_der = malloc(cvc_len);
+				if (!priv->sm_params.sm_in_cvc_der)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+
+				memcpy(priv->sm_params.sm_in_cvc_der, cvc_start, cvc_len);
+				priv->sm_params.sm_in_cvc_der_len = cvc_len;
+#endif /* PIV_SM_NIST */
 			}
 		}
-#endif /* ENABLE_PIV_SM */
+#endif /* PIV_SM NIST) */
 
-	/* convert pub key to internal */
-	}
-	else if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_PUBKEY) {
+		/* convert pub key to internal */
+	} else if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_PUBKEY) {
 		tag = sc_asn1_find_tag(card->ctx, body, bodylen, *body, &taglen);
 		if (tag == NULL)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
@@ -3297,8 +3407,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 
 		memcpy(priv->obj_cache[enumtag].internal_obj_data, tag, taglen);
 		priv->obj_cache[enumtag].internal_obj_len = taglen;
-	}
-	else {
+	} else {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
@@ -4377,11 +4486,12 @@ static int piv_is_object_present(sc_card_t *card, u8 *ptr)
  * or the global pin for the card 0x00. Look at Discovery object to get this.
  * called by pkcs15-piv.c  via cardctl when setting up the pins.
  */
-static int piv_get_pin_preference(sc_card_t *card, int *pin_ref)
+static int
+piv_get_pin_preference(sc_card_t *card, int *ptr)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 
-	*pin_ref = priv->pin_preference;
+	*ptr = priv->pin_preference;
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -5281,12 +5391,15 @@ piv_finish(sc_card_t *card)
 		for (i = 0; i < PIV_OBJ_LAST_ENUM - 1; i++) {
 			piv_obj_cache_free_entry(card, i, 0);
 		}
-#ifdef ENABLE_PIV_SM
+#ifdef PIV_SM_LOCAL
 		piv_clear_cvc_content(&priv->sm_cvc);
 		piv_clear_cvc_content(&priv->sm_in_cvc);
 		piv_clear_sm_session(&priv->sm_session);
-#endif /* ENABLE_PIV_SM */
+#endif /* PIV_SM_LOCAL */
 
+#ifdef ENABLE_PIV_SM
+		free(priv->sm_params.signer_cert_der);
+#endif /* ENABLE_PIV_SM */
 		free(priv);
 		card->drv_data = NULL; /* priv */
 	}
@@ -5393,10 +5506,13 @@ static int piv_match_card_continued(sc_card_t *card)
 			else if (card->reader->atr_info.hist_bytes_len >= 6 &&
 					!(memcmp(card->reader->atr_info.hist_bytes, "PIVKEY", 6))) {
 				type = SC_CARD_TYPE_PIV_II_PIVKEY;
+			} else if (card->reader->atr_info.hist_bytes_len >= 5 &&
+					!(memcmp(&card->reader->atr_info.hist_bytes[card->reader->atr_info.hist_bytes_len - 5], "MyEID", 5))) {
+				type = SC_CARD_TYPE_PIV_II_MYEID;
 			}
+
 			/* look for TLV historic data */
-			else if (card->reader->atr_info.hist_bytes_len > 0
-					&& card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
+			else if (card->reader->atr_info.hist_bytes_len > 0 && card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
 				size_t datalen;
 				const u8 *data;
 
@@ -5462,13 +5578,13 @@ static int piv_match_card_continued(sc_card_t *card)
 	priv->logged_in = SC_PIN_STATE_UNKNOWN;
 	priv->pstate = PIV_STATE_MATCH;
 
-#ifdef ENABLE_PIV_SM
+#ifdef PIV_SM_LOCAL
 	memset(&card->sm_ctx, 0, sizeof card->sm_ctx);
 	card->sm_ctx.ops.open =  piv_sm_open;
 	card->sm_ctx.ops.get_sm_apdu = piv_get_sm_apdu;
 	card->sm_ctx.ops.free_sm_apdu = piv_free_sm_apdu;
 	card->sm_ctx.ops.close = piv_sm_close;
-#endif /* ENABLE_PIV_SM */
+#endif /* PIV_SM_LOCAL */
 
 	/* see if contactless */
 	if (card->reader->atr.len >= 4
@@ -5602,12 +5718,12 @@ static int piv_match_card_continued(sc_card_t *card)
 
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
-#ifdef ENABLE_PIV_SM
+#if defined(ENABLE_SM_NIST) || defined(ENABLE_PIV_SM)
 	/* Discovery object has pin policy. 800-74-4 bits, its at least SC_CARD_TYPE_PIV_II_800_73_4 */
 	if ((priv->pin_policy & (PIV_PP_OCC | PIV_PP_VCI_IMPL | PIV_PP_VCI_WITHOUT_PC)) != 0) {
 		card->type = SC_CARD_TYPE_PIV_II_800_73_4;
 	}
-#endif
+#endif /* defined(ENABLE_SM_NIST) || defined(ENABLE_PIV_SM) */
 	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
 	/*
@@ -5814,12 +5930,16 @@ static int piv_init(sc_card_t *card)
 	 * 800-73-4 with VCI must have it as it has the pin policy needed for VCI .
 	 */
 
-#ifdef ENABLE_PIV_SM
+#if defined(ENABLE_PIV_SM)
 	/*
 	 * 800-73-4
 	 * Response of AID says if SM is supported. Look for Cipher Suite
 	 */
-	if (priv->csID && priv->cs != NULL) {
+	if (priv->csID
+#ifdef PIV_SM_LOCAL
+			&& priv->cs != NULL
+#endif /* PIV_SM_LOCAL */
+	) {
 		/*
 		 * TODO look closer at reset of card by other process
 		 * Main point in SM and VCI is to allow contactless access
@@ -5827,29 +5947,63 @@ static int piv_init(sc_card_t *card)
 		/* Only piv_init and piv_reader_lock_obtained should call piv_sm_open */
 
 		/* If user said PIV_SM_FLAGS_NEVER, dont start SM; implies limited contatless access */
-		if (priv->sm_flags & PIV_SM_FLAGS_NEVER) {
+		if (priv->sm_params.flags & PIV_SM_FLAGS_NEVER) {
 			sc_log(card->ctx,"User has requested PIV_SM_FLAGS_NEVER");
 			r = SC_SUCCESS; /* Users choice */
 
-		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS)
-				&& !(priv->pin_policy & PIV_PP_VCI_IMPL)) {
+		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS) && !(priv->pin_policy & PIV_PP_VCI_IMPL)) {
 			sc_log(card->ctx,"Contactless and no card support for VCI");
 			r = SC_SUCCESS; /* User should know VCI is not possible with their card; use like 800-73-3 contactless  */
 
-		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS)
-				&& !(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC)
-				&& (priv->pairing_code[0] == 0x00)) {
+		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS) && !(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC) && (priv->sm_params.pairing_code[0] == 0x00)) {
 			sc_log(card->ctx,"Contactless, pairing_code required and no pairing code");
 			r = SC_ERROR_PIN_CODE_INCORRECT; /* User should know they need to set pairing code */
 
 		} else {
-			priv->sm_flags |= PIV_SM_FLAGS_DEFER_OPEN; /* tell priv_sm_open, OK to open */
+			priv->sm_params.flags |= PIV_SM_FLAGS_DEFER_OPEN; /* tell priv_sm_open, OK to open */
+#ifdef PIV_SM_LOCAL
 			r = piv_sm_open(card);
 			sc_log(card->ctx,"piv_sm_open returned:%d", r);
+#endif /* PIV_SM_LOCAL */
+
+#ifdef PIV_SM_NIST
+			if (priv->init_flags & PIV_INIT_CONTACTLESS)
+				priv->sm_params.flags |= PIV_SM_CONTACTLESS;
+
+			/*
+			 * Get the PIV_OBJ_SM_CERT_SIGNER and optional sm_in_cvc in cache
+			 * both are in same object. Do not need the object, just the cert in it
+			 * sm_cvc and sm_in_cvc both have EC_keys sm_in_cvc may have RSA signature
+			 * if not found, sm_nist_start will provide error messages
+			 */
+			r = piv_get_cached_data(card, PIV_OBJ_SM_CERT_SIGNER, NULL, NULL);
+			if (r > 0) {
+				r = piv_cache_internal_data(card, PIV_OBJ_SM_CERT_SIGNER);
+				if (r > 0 &&
+						priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data &&
+						priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len &&
+						((priv->sm_params.signer_cert_der = malloc(priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len)))) {
+					memcpy(priv->sm_params.signer_cert_der,
+							priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data,
+							priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len);
+					priv->sm_params.signer_cert_der_len = priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len;
+					priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
+					if (priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].flags & PIV_OBJ_CACHE_COMPRESSED) {
+						priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
+					}
+				}
+			}
+			/* TODO did we have a sm_in_cvc?  Needed if Signing cert was using RSA */
+
+			priv->sm_params.csID = priv->csID;
+
+			r = sm_nist_start(card, &priv->sm_params);
+			sc_log(card->ctx, "sm_nist_start returned:%d", r);
+#endif /* PIV_SM_NIST */
 		}
 
 		/* If failed, and user said PIV_SM_FLAGS_ALWAYS quit */
-		if (priv->sm_flags & PIV_SM_FLAGS_ALWAYS && r < 0) {
+		if (priv->sm_params.flags & PIV_SM_FLAGS_ALWAYS && r < 0) {
 			sc_log(card->ctx,"User has requested PIV_SM_FLAGS_ALWAYS, SM has failed to start, don't use the card");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 		}
@@ -5860,7 +6014,7 @@ static int piv_init(sc_card_t *card)
 
 		/* If SM did not start, or is not expected to start, continue on without it */
 	}
-#endif /* ENABLE_PIV_SM */
+#endif /* defined(USE_PIV_SM) || defined(USE_SM_NIST) */
 
 	/*
 	 * 800-73-3 cards may have a history object
@@ -5880,9 +6034,10 @@ static int piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
 	int r;
-#ifdef ENABLE_PIV_SM
+#if defined(ENABLE_SM_NIST) || defined(ENABLE_PIV_SM)
 	int i;
-#endif
+#endif /* defined(ENABLE_SM_NIST) || defined(ENABLE_PIV_SM) */
+
 	piv_private_data_t * priv = PIV_DATA(card);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -5922,7 +6077,7 @@ static int piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2
 			}
 		}
 	}
-#ifdef ENABLE_PIV_SM
+#if defined(ENABLE_PIV_SM)
 	/* Note 6982 is map to SC_ERROR_SM_NO_SESSION_KEYS but iso maps it to SC_ERROR_SECURITY_STATUS_NOT_SATISFIED */
 	/* we do this because 6982 could also mean a verify is not allowed over contactless without VCI */
 	/* we stashed the sw1 and sw2 above for verify */
@@ -5933,7 +6088,7 @@ static int piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2
 			return piv_sm_errors[i].errorno;
 		}
 	}
-#endif
+#endif /* defined(ENABLE_SM_NIST) || defined(ENABLE_PIV_SM) */
 	r = iso_drv->ops->check_sw(card, sw1, sw2);
 	return r;
 }
@@ -6087,14 +6242,10 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	priv->pin_cmd_verify = 0;
 
 	/* tell user verify not supported on contactless without VCI */
-	if (priv->pin_cmd_verify_sw1 == 0x69 && priv->pin_cmd_verify_sw2 == 0x82
-			&& priv->init_flags & PIV_INIT_CONTACTLESS
-			&& card->type == SC_CARD_TYPE_PIV_II_800_73_4) {
-				sc_log(card->ctx, "Token does not support pin verify over contacless reader");
-				/* TODO maybe true for other contactless cards */
-				r = SC_ERROR_NOT_SUPPORTED;
+	if (priv->pin_cmd_verify_sw1 == 0x69 && priv->pin_cmd_verify_sw2 == 0x82 && priv->init_flags & PIV_INIT_CONTACTLESS && card->type == SC_CARD_TYPE_PIV_II_800_73_4) {
+		/* TODO maybe true for other contactless cards */
+		r = SC_ERROR_NOT_SUPPORTED;
 	}
-
 
 	/* if verify failed, release the lock */
 	if (data->cmd == SC_PIN_CMD_VERIFY && r < 0 &&  priv->context_specific) {
@@ -6161,6 +6312,13 @@ static int piv_logout(sc_card_t *card)
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	/* TODO may not want to do this if "leave" is default */
+	switch (card->type) {
+	case SC_CARD_TYPE_PIV_II_800_73_4:
+		break;
+	default:
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	}
 	if (priv) {
 		/* logout defined since 800-73-4 */
 		r = iso7816_logout(card, priv->pin_preference);
@@ -6168,7 +6326,6 @@ static int piv_logout(sc_card_t *card)
 			priv->logged_in = SC_PIN_STATE_LOGGED_OUT;
 		}
 	}
-
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -6221,8 +6378,9 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		r =  SC_ERROR_NO_CARD_SUPPORT;
 	} else {
 		r = piv_find_discovery(card);
-#ifdef ENABLE_PIV_SM
+#if defined(ENABLE_PIV_SM)
 		/*
+		 * TODO MYeid may not
 		 * All 800-73-4 cards that support SM, also have a discovery object with
 		 * the pin_policy, so can not have CI_DISCOVERY_USELESS
 		 * Discovery object can be read with contact or contactless
@@ -6230,12 +6388,15 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		 * sm.c will close the SM connectrion, and set defer
 		 * TODO may be with reset?
 		 */
-		 if (was_reset == 0 && (r == SC_ERROR_SM_INVALID_SESSION_KEY || priv->sm_flags & PIV_SM_FLAGS_DEFER_OPEN)) {
+		if (was_reset == 0 && (r == SC_ERROR_SM_INVALID_SESSION_KEY || priv->sm_params.flags & PIV_SM_FLAGS_DEFER_OPEN)) {
 			sc_log(card->ctx,"SC_ERROR_SM_INVALID_SESSION_KEY || PIV_SM_FLAGS_DEFER_OPEN");
+#ifdef PIV_SM_LOCAL
 			piv_sm_open(card);
+#endif /* PIV_SM_LOCAL */
+			/* TODO  20230916 - need to tell sm-nist.c to do piv_sm_open */
 			r = piv_find_discovery(card);
-			}
-#endif /* ENABLE_PIV_SM */
+		}
+#endif /* defined(ENABLE_SM_NIST) || defined(ENABLE_PIV_SM) */
 	}
 
 	if (r < 0) {
