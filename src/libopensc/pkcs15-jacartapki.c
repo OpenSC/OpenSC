@@ -580,10 +580,13 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 		if (strcmp(dobjs[ii]->label, "cmapfile") || strcmp(dinfo->app_label, CMAP_DO_APPLICATION_NAME))
 			continue;
 
-		prkeys_num = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, prkeys, 12);
-		LOG_TEST_GOTO_ERR(ctx, prkeys_num, "Failed to get private key objects");
-		if (prkeys_num == 0)
+		rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, prkeys, 12);
+		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to get private key objects");
+		if (rv == 0) {
+			LOG_ERROR_GOTO(ctx, rv, "No private key objects");
 			break;
+		}
+		prkeys_num = rv;
 
 		rv = sc_pkcs15_read_data_object(p15card, dinfo, 0, &data);
 		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot create data PKCS#15 object");

@@ -930,7 +930,7 @@ app <replaceable>application</replaceable> {
 								<listitem>
 									<para>
 										<literal>no</literal>:
-										PIN sent as plain text for verification. 
+										PIN sent to the applet as plain text for verification.
 									</para>
 								</listitem>
 							</itemizedlist>
