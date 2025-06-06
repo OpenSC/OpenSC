@@ -121,14 +121,14 @@ static int jacartapki_process_fci(struct sc_card *, struct sc_file *, const unsi
 /*
  * Presently JaCarta PKI Secure Messaging does not fully comply to ISO/IEC 7816-4 (OpenPGP Application on ISO Smart Card Operating Systems).
  * For commands we must wrap APDU data into 87 tag with 01 padding indicator indiscriminately of even/odd INS code.
- * 
+ *
  * To overcome this we change APDU INS code several times for odd commands: get capabilities CBh, generate key pair 47h.
- * 
+ *
  * in jacartapki_do_something methods: make INS even (+1) for sc_transmit_apdu argument
  * in jacartapki_iso_sm_authenticate method: modify APDU INS back (-1) in temporary buffer for MAC calculation
  * in jacartapki_iso_sm_get_apdu method: modify APDU INS back (-1) after all handling for PCSC layer to send
  * fortunately not stomp on other INS codes
- * 
+ *
  */
 #if defined(ENABLE_SM)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L || defined(LIBRESSL_VERSION_NUMBER)
@@ -1328,7 +1328,7 @@ jacartapki_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 		if (!(reference & 0x80)) {
 			rv = jacartapki_select_global_pin(card, reference, NULL);
 			LOG_TEST_RET(ctx, rv, "Select PIN file error");
-			chv_ref = 0; 
+			chv_ref = 0;
 		}
 	} else {
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -1905,7 +1905,7 @@ jacartapki_compute_signature_dst(struct sc_card *card,
 		unsigned int tagOut;
 		rv = sc_asn1_read_tag(&sigValuePtr, apdu.resplen, &valueClass, &tagOut, &sigValueLength);
 		LOG_TEST_RET(ctx, rv, "Incorrect ASN1 in PSO Decrypt response");
-		
+
 		if (0x00 != tagOut || 0x80 != valueClass || 5 > apdu.resplen)
 			LOG_ERROR_RET(ctx, SC_ERROR_INTERNAL, "APDU response incorrect");
 	} else {
@@ -2300,7 +2300,7 @@ icc_DH(struct sc_card *card, const BIGNUM *prime /* N */, const BIGNUM *generato
 		publicKey = NULL;
 		LOG_ERROR_GOTO(ctx, SC_ERROR_INTERNAL, "EVP_PKEY_fromdata failed");
 	}
-	
+
 err:
 	OSSL_PARAM_BLD_free(param_builder);
 	OSSL_PARAM_free(params);
@@ -2634,7 +2634,7 @@ jacartapki_cbc_cksum(struct sc_card *card, unsigned char *key, size_t key_size,
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "Failed to get DES cipher params");
 
 	for (ii = 0; ii < sizeof(DES_cblock); ii++)
-		last[ii] = *(in + ii) ^ (*(DES_cblock *)updatedIV)[ii]; 
+		last[ii] = *(in + ii) ^ (*(DES_cblock *)updatedIV)[ii];
 
 	EVP_CIPHER_CTX_reset(evpK1Ctx); /* evpCtx reuse */
 
@@ -2724,7 +2724,7 @@ jacartapki_sm_check_mac(struct sc_card *card, const unsigned char *data, size_t 
 
 	rv = jacartapki_sm_compute_mac(card, data, data_len, &macComputed);
 	LOG_TEST_RET(ctx, rv, "Failed to compute checksum");
-			
+
 	if (memcmp(mac, macComputed, mac_len))
 		LOG_ERROR_RET(ctx, SC_ERROR_SM_INVALID_CHECKSUM, "Invalid checksum");
 
@@ -2845,7 +2845,6 @@ jacartapki_iso_sm_get_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc
 		if (sm_apdu_correct->ins == 0xCC || sm_apdu_correct->ins == 0x48) {
 			sm_apdu_correct->ins = (sm_apdu_correct->ins == 0xCC ? 0xCB : 0x47); /* not a good practice */
 		}
-
 	}
 	return rv;
 }
