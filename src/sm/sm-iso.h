@@ -162,6 +162,14 @@ struct iso_sm_ctx {
 
 	/** @brief Padding-content indicator byte (ISO 7816-4 Table 30) */
 	u8 padding_indicator;
+	/** @brief If 1 always include padding_indicator even for tag 87 */
+	u8 always_add_padding_indicator;
+	/** @brief do not add padding on data to be mac'ed */
+	u8 skip_mac_padding;
+	/** @brief Do sm_encrypt of all the data. If needed use command chaining to send chunks to card.
+	 * Card will then return response using get_response commands in multiple chunks if needed.
+	 * Then do the sm decrypt and verify once on the full response. */
+	u8 sm_encrypt_once_then_chaining;
 	/** @brief Pad to this block length */
 	size_t block_length;
 
