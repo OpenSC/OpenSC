@@ -1,5 +1,5 @@
 /*
- * pkcs15-jacartapki.c: Support for JaCarta PKI applet
+ * jacartapki.c: Support for JaCarta PKI applet
  *
  * Copyright (C) 2025  Andrey Khodunov <a.khodunov@aladdin.ru>
  *
@@ -119,15 +119,19 @@ jacartapki_encode_prvkey_rsa(struct sc_context *ctx, struct sc_pkcs15_prkey_rsa 
 	int rv;
 
 	primes = malloc(key->p.len + key->q.len);
-	if (!primes)
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate primes");
+	if (primes == NULL) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		LOG_ERROR_GOTO(ctx, rv, "Cannot allocate primes");
+	}
 	memcpy(primes, key->p.data, key->p.len);
 	memcpy(primes + key->p.len, key->q.data, key->q.len);
 	primes_len = key->p.len + key->q.len;
 
 	partial_primes = malloc(key->dmp1.len + key->dmq1.len + key->iqmp.len);
-	if (!partial_primes)
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate partial primes");
+	if (partial_primes == NULL) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		LOG_ERROR_GOTO(ctx, rv, "Cannot allocate partial primes");
+	}
 	memcpy(partial_primes, key->dmp1.data, key->dmp1.len);
 	memcpy(partial_primes + key->dmp1.len, key->dmq1.data, key->dmq1.len);
 	memcpy(partial_primes + key->dmp1.len + key->dmq1.len, key->iqmp.data, key->iqmp.len);
@@ -171,17 +175,17 @@ _get_attr(unsigned char *data, size_t length, size_t *in_offs, struct jacartapki
 	/*
 	 * At the end of kxc/s files there are mysterious 4 bytes (like 'OD OO OD OO').
 	 */
-	for (offs = *in_offs; (offs < length - 4) && (*(data + offs) == 0xFF); offs++)
+	for (offs = *in_offs; (offs < length - 4) && (data[offs] == 0xFF); offs++)
 		;
 	if (offs >= length - 4)
 		return;
 
-	if (*(data + offs + 0) == 0x80)
-		attr->cka = CKA_VENDOR_DEFINED + *(data + offs + 1);
+	if (data[offs + 0] == 0x80)
+		attr->cka = CKA_VENDOR_DEFINED + data[offs + 1];
 	else
-		attr->cka = *(data + offs + 0) * 0x100 + *(data + offs + 1);
-	attr->internal_cka = *(data + offs + 2);
-	attr->len = *(data + offs + 3) * 0x100 + *(data + offs + 4);
+		attr->cka = data[offs + 0] * 0x100 + data[offs + 1];
+	attr->internal_cka = data[offs + 2];
+	attr->len = data[offs + 3] * 0x100 + data[offs + 4];
 	attr->val = data + offs + 5;
 
 	*in_offs = offs + 5 + attr->len;
@@ -193,13 +197,13 @@ _cka_get_unsigned(const struct jacartapki_cka *attr, unsigned *out)
 {
 	int ii;
 
-	if (!attr || !out)
+	if (attr == NULL || out == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (attr->len != 4)
 		return SC_ERROR_INVALID_DATA;
 
 	for (ii = 0, *out = 0; ii < 4; ii++)
-		*out = *out * 0x100 + *(attr->val + 3 - ii);
+		*out = (*out << 8) + attr->val[3 - ii];
 
 	return SC_SUCCESS;
 }
@@ -209,12 +213,12 @@ _cka_set_label(const struct jacartapki_cka *attr, struct sc_pkcs15_object *obj)
 {
 	size_t len;
 
-	if (!attr || !obj)
+	if (attr == NULL || obj == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	memset(obj->label, 0, sizeof(obj->label));
 	len = MIN(attr->len, sizeof(obj->label) - 1);
-	if (len)
+	if (len > 0)
 		memcpy(obj->label, attr->val, len);
 
 	return SC_SUCCESS;
@@ -256,11 +260,11 @@ _cka_get_blob(const struct jacartapki_cka *attr, struct sc_pkcs15_der *out)
 {
 	struct sc_pkcs15_der der;
 
-	if (!attr || !out)
+	if (attr == NULL || out == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	der.value = malloc(attr->len);
-	if (!der.value)
+	if (der.value == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	memcpy(der.value, attr->val, attr->len);
 	der.len = attr->len;
@@ -272,7 +276,7 @@ _cka_get_blob(const struct jacartapki_cka *attr, struct sc_pkcs15_der *out)
 static int
 _cka_set_id(const struct jacartapki_cka *attr, struct sc_pkcs15_id *out)
 {
-	if (!attr || !out)
+	if (attr == NULL || out == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (attr->len > SC_PKCS15_MAX_ID_SIZE)
@@ -291,25 +295,25 @@ jacartapki_add_attribute(unsigned char **buf, size_t *buf_sz, unsigned char flag
 	unsigned char *ptr = NULL;
 	size_t offs = 0;
 
-	if (!buf || !buf_sz)
+	if (buf == NULL || buf_sz == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	ptr = realloc(*buf, *buf_sz + cka_len + 5);
-	if (!ptr)
+	if (ptr == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 
 	offs = *buf_sz;
 	if (cka & CKA_VENDOR_DEFINED)
-		*(ptr + offs++) = (cka >> 24) & 0xFF; /* cka type: MSB | LSB */
+		ptr[offs++] = (cka >> 24) & 0xFF; /* cka type: MSB | LSB */
 	else
-		*(ptr + offs++) = (cka >> 8) & 0xFF; /* cka type: 2 LSBs */
-	*(ptr + offs++) = cka & 0xFF;
-	*(ptr + offs++) = flags;
-	*(ptr + offs++) = (cka_len >> 8) & 0xFF; /* cka length: 2 bytes*/
-	*(ptr + offs++) = cka_len & 0xFF;
+		ptr[offs++] = (cka >> 8) & 0xFF; /* cka type: 2 LSBs */
+	ptr[offs++] = cka & 0xFF;
+	ptr[offs++] = flags;
+	ptr[offs++] = (cka_len >> 8) & 0xFF; /* cka length: 2 bytes*/
+	ptr[offs++] = cka_len & 0xFF;
 
 	memset(ptr + offs, 0, cka_len);
-	if (data)
+	if (data != NULL)
 		memcpy(ptr + offs, (const unsigned char *)data, cka_len);
 	offs += cka_len;
 
@@ -387,11 +391,11 @@ jacartapki_attrs_cert_decode(struct sc_context *ctx,
 		}
 	}
 
-	if (info->value.len) {
+	if (info->value.len > 0) {
 		/* TODO: get certificate authority:
 		 * see 'sc_oberthur_get_certificate_authority' and do likewise.
 		 */
-		if (!info->id.len) {
+		if (info->id.len == 0) {
 			struct sc_pkcs15_pubkey *pubkey = NULL;
 
 			rv = sc_pkcs15_pubkey_from_cert(ctx, &info->value, &pubkey);
@@ -543,14 +547,14 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 		struct sc_pkcs15_object *object, struct sc_pkcs15_prkey_info *info,
 		unsigned char *data, size_t data_len)
 {
-	struct sc_pkcs15_prkey_rsa key_rsa;
+	struct sc_pkcs15_prkey private_key;
 	struct sc_pkcs15_der der;
 	size_t offs, next;
 	int rv = SC_ERROR_INVALID_DATA;
 
 	LOG_FUNC_CALLED(ctx);
 
-	memset(&key_rsa, 0, sizeof(key_rsa));
+	memset(&private_key, 0, sizeof(private_key));
 
 	for (next = offs = 0; offs < data_len; offs = next) {
 		struct jacartapki_cka attr;
@@ -629,10 +633,16 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 		case CKA_PUBLIC_EXPONENT:
 			rv = _cka_get_blob(&attr, &der);
 			LOG_TEST_RET(ctx, rv, "Cannot get public exponent");
-			/*
-			key_rsa.exponent.data = der.value;
-			key_rsa.exponent.len = der.len;
-			*/
+
+			private_key.algorithm = SC_ALGORITHM_RSA;
+
+			if (attr.cka == CKA_MODULUS) {
+				private_key.u.rsa.modulus.data = der.value;
+				private_key.u.rsa.modulus.len = der.len;
+			} else {
+				private_key.u.rsa.exponent.data = der.value;
+				private_key.u.rsa.exponent.len = der.len;
+			}
 			break;
 		case CKA_EXTRACTABLE:
 			sc_log(ctx, "CKA_EXTRACTABLE: %s", (*attr.val) ? "yes" : "no");
@@ -665,6 +675,9 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 			break;
 		}
 	}
+	/* not implemented:
+	sc_pkcs15_encode_prkey(ctx, &private_key, &object->content.value, &object->content.len);
+	}*/
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -678,7 +691,7 @@ jacartapki_attrs_data_object_decode(struct sc_context *ctx,
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (hash_exists)
+	if (hash_exists != NULL)
 		*hash_exists = 0;
 
 	sc_log(ctx, "DATA object path %s", sc_print_path(&info->path));
@@ -740,9 +753,9 @@ jacartapki_attrs_data_object_decode(struct sc_context *ctx,
 
 		if (file_id == CMAP_FID) {
 			if (!strlen(info->app_label))
-				strncpy(info->app_label, CMAP_DO_APPLICATION_NAME, sizeof(info->app_label) - 1);
+				strlcpy(info->app_label, CMAP_DO_APPLICATION_NAME, sizeof(info->app_label));
 			if (!strlen(object->label))
-				strncpy(object->label, "cmapfile", sizeof(object->label) - 1);
+				strlcpy(object->label, "cmapfile", sizeof(object->label));
 		}
 	}
 
@@ -755,7 +768,7 @@ jacartapki_md_cmap_record_decode(struct sc_context *ctx, const struct sc_pkcs15_
 {
 	LOG_FUNC_CALLED(ctx);
 
-	if (!data || !offs || !out)
+	if (data == NULL || offs == NULL || out == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	*out = NULL;
@@ -779,7 +792,7 @@ jacartapki_md_cmap_record_guid(struct sc_context *ctx, struct jacartapki_cmap_re
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (!rec || !out)
+	if (rec == NULL || out == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_log(ctx, "cmap.record.guid(%i) 0x'%s'", rec->guid_len, sc_dump_hex(rec->guid, rec->guid_len * 2));
@@ -804,28 +817,28 @@ jacartapki_attach_cache_stamp(struct sc_pkcs15_card *p15card, int zero_stamp,
 {
 	unsigned char *ptr = NULL;
 
-	if (!buf || !buf_sz)
+	if (buf == NULL || buf_sz == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	ptr = realloc(*buf, *buf_sz + 4);
-	if (!ptr)
+	if (ptr == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 
 	if (zero_stamp) {
 		memset(ptr + *buf_sz, 0, 4);
-	} else if (p15card->md_data) {
+	} else if (p15card->md_data != NULL) {
 		const struct jacartapki_cardcf *cardcf = &p15card->md_data->cardcf;
 
-		*(ptr + *buf_sz + 0) = cardcf->cont_freshness & 0xFF;
-		*(ptr + *buf_sz + 1) = (cardcf->cont_freshness >> 8) & 0xFF;
-		*(ptr + *buf_sz + 2) = cardcf->files_freshness & 0xFF;
-		*(ptr + *buf_sz + 3) = (cardcf->files_freshness >> 8) & 0xFF;
+		ptr[*buf_sz + 0] = cardcf->cont_freshness & 0xFF;
+		ptr[*buf_sz + 1] = (cardcf->cont_freshness >> 8) & 0xFF;
+		ptr[*buf_sz + 2] = cardcf->files_freshness & 0xFF;
+		ptr[*buf_sz + 3] = (cardcf->files_freshness >> 8) & 0xFF;
 	} else {
 		unsigned rand_val;
 		srand((unsigned)time(NULL));
 		RAND_bytes((unsigned char *)&rand_val, sizeof(rand_val));
-		*(ptr + *buf_sz + 0) = *(ptr + *buf_sz + 2) = rand_val & 0xFF;
-		*(ptr + *buf_sz + 1) = *(ptr + *buf_sz + 3) = (rand_val >> 8) & 0xFF;
+		ptr[*buf_sz + 0] = ptr[*buf_sz + 2] = rand_val & 0xFF;
+		ptr[*buf_sz + 1] = ptr[*buf_sz + 3] = (rand_val >> 8) & 0xFF;
 	}
 
 	*buf = ptr;
@@ -857,13 +870,13 @@ jacartapki_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate prv.key repr.");
 
 	data_len = 0;
-	*(data + data_len++) = JACARTAPKI_ATTRIBUTE_VALID;
-	*(data + data_len++) = (file_id >> 8) & 0xFF;
-	*(data + data_len++) = (file_id >> 8) & 0xFF;
-	*(data + data_len++) = file_id & 0xFF;
-	*(data + data_len++) = 0xFF;
-	*(data + data_len++) = 0xFF;
-	*(data + data_len++) = 0xFF;
+	data[data_len++] = JACARTAPKI_ATTRIBUTE_VALID;
+	data[data_len++] = (file_id >> 8) & 0xFF;
+	data[data_len++] = (file_id >> 8) & 0xFF;
+	data[data_len++] = file_id & 0xFF;
+	data[data_len++] = 0xFF;
+	data[data_len++] = 0xFF;
+	data[data_len++] = 0xFF;
 
 	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_CLASS private key attribute");
@@ -964,9 +977,9 @@ jacartapki_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN private key attribute");
 	attrs_num++;
 
-	*(data + 4) = (data_len >> 8) & 0xFF;
-	*(data + 5) = data_len & 0xFF;
-	*(data + 6) = attrs_num;
+	data[4] = (data_len >> 8) & 0xFF;
+	data[5] = data_len & 0xFF;
+	data[6] = attrs_num;
 
 	rv = jacartapki_attach_cache_stamp(p15card, 0, &data, &data_len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
@@ -1006,17 +1019,17 @@ jacartapki_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	LOG_TEST_GOTO_ERR(ctx, rv, "Invalid public key data (object's content)");
 
 	data = malloc(7);
-	if (!data)
+	if (data == NULL)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate pub.key repr.");
 
 	data_len = 0;
-	*(data + data_len++) = JACARTAPKI_ATTRIBUTE_VALID;
-	*(data + data_len++) = (file_id >> 8) & 0xFF;
-	*(data + data_len++) = (file_id >> 8) & 0xFF;
-	*(data + data_len++) = file_id & 0xFF;
-	*(data + data_len++) = 0xFF;
-	*(data + data_len++) = 0xFF;
-	*(data + data_len++) = 0xFF;
+	data[data_len++] = JACARTAPKI_ATTRIBUTE_VALID;
+	data[data_len++] = (file_id >> 8) & 0xFF;
+	data[data_len++] = (file_id >> 8) & 0xFF;
+	data[data_len++] = file_id & 0xFF;
+	data[data_len++] = 0xFF;
+	data[data_len++] = 0xFF;
+	data[data_len++] = 0xFF;
 
 	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_CLASS public key attribute");
@@ -1109,16 +1122,16 @@ jacartapki_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN public key attribute");
 	attrs_num++;
 
-	*(data + 4) = (data_len >> 8) & 0xFF;
-	*(data + 5) = data_len & 0xFF;
-	*(data + 6) = attrs_num;
+	data[4] = (data_len >> 8) & 0xFF;
+	data[5] = data_len & 0xFF;
+	data[6] = attrs_num;
 
 	rv = jacartapki_attach_cache_stamp(p15card, 0, &data, &data_len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
 	attrs_num++;
 
 	sc_log(ctx, "Attributes(%" SC_FORMAT_LEN_SIZE_T "u) '%s'", attrs_num, sc_dump_hex(data, data_len));
-	if (out && out_len) {
+	if (out != NULL && out_len != NULL) {
 		*out = data;
 		*out_len = data_len;
 		data = NULL;
@@ -1134,7 +1147,7 @@ jacartapki_encode_update_key(struct sc_context *ctx, struct sc_pkcs15_prkey *prk
 {
 	int rv;
 
-	if (!ctx || !prkey || !update)
+	if (ctx == NULL || prkey == NULL || update == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1165,7 +1178,7 @@ jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_ob
 	LOG_FUNC_CALLED(ctx);
 
 	cert = malloc(sizeof(struct sc_pkcs15_cert));
-	if (!cert)
+	if (cert == NULL)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate cert.encode repr.");
 
 	memset(cert, 0, sizeof(struct sc_pkcs15_cert));
@@ -1174,23 +1187,26 @@ jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_ob
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot read/parse X509 certificate");
 
 	data = malloc(7);
-	if (!data)
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Failed to allocate a small piece");
+	if (data) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		LOG_ERROR_GOTO(ctx, rv, "Failed to allocate a small piece");
+	}
 
 	data_len = 0;
-	*(data + data_len++) = JACARTAPKI_ATTRIBUTE_VALID;
-	*(data + data_len++) = (file_id >> 8) & 0xFF;
-	*(data + data_len++) = (file_id >> 8) & 0xFF;
-	*(data + data_len++) = file_id & 0xFF;
-	*(data + data_len++) = 0xFF;
-	*(data + data_len++) = 0xFF;
-	*(data + data_len++) = 0xFF;
+	data[data_len++] = JACARTAPKI_ATTRIBUTE_VALID;
+	data[data_len++] = (file_id >> 8) & 0xFF;
+	data[data_len++] = (file_id >> 8) & 0xFF;
+	data[data_len++] = file_id & 0xFF;
+	data[data_len++] = 0xFF;
+	data[data_len++] = 0xFF;
+	data[data_len++] = 0xFF;
 
 	memset(sha1, 0, sizeof(sha1));
 	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_CERT_HASH, SHA_DIGEST_LENGTH, sha1);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN certificate attribute");
 	attrs_num++;
 	sha1_offs = data_len - SHA_DIGEST_LENGTH;
+	assert(sha1_offs == JACARTAPKI_ATTRS_DIGEST_OFFSET);
 
 	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_CLASS certificate attribute");
@@ -1246,9 +1262,9 @@ jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_ob
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN certificate attribute");
 	attrs_num++;
 
-	*(data + 4) = (data_len >> 8) & 0xFF;
-	*(data + 5) = data_len & 0xFF;
-	*(data + 6) = attrs_num;
+	data[4] = (data_len >> 8) & 0xFF;
+	data[5] = data_len & 0xFF;
+	data[6] = attrs_num;
 
 	rv = jacartapki_attach_cache_stamp(p15card, 0, &data, &data_len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
@@ -1258,7 +1274,7 @@ jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_ob
 	memcpy(data + sha1_offs, sha1, SHA_DIGEST_LENGTH);
 
 	sc_log(ctx, "Attributes(%" SC_FORMAT_LEN_SIZE_T "u) '%s'", attrs_num, sc_dump_hex(data, data_len));
-	if (out && out_len) {
+	if (out != NULL && out_len != NULL) {
 		*out = data;
 		*out_len = data_len;
 		data = NULL;
@@ -1287,23 +1303,26 @@ jacartapki_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pk
 	LOG_FUNC_CALLED(ctx);
 
 	data = malloc(7);
-	if (!data)
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate obj.encode repr.");
+	if (data == NULL) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		LOG_ERROR_GOTO(ctx, rv, "Cannot allocate obj.encode repr.");
+	}
 
 	data_len = 0;
-	*(data + data_len++) = JACARTAPKI_ATTRIBUTE_VALID;
-	*(data + data_len++) = (file_id >> 8) & 0xFF;
-	*(data + data_len++) = (file_id >> 8) & 0xFF;
-	*(data + data_len++) = file_id & 0xFF;
-	*(data + data_len++) = 0xFF;
-	*(data + data_len++) = 0xFF;
-	*(data + data_len++) = 0xFF;
+	data[data_len++] = JACARTAPKI_ATTRIBUTE_VALID;
+	data[data_len++] = (file_id >> 8) & 0xFF;
+	data[data_len++] = (file_id >> 8) & 0xFF;
+	data[data_len++] = file_id & 0xFF;
+	data[data_len++] = 0xFF;
+	data[data_len++] = 0xFF;
+	data[data_len++] = 0xFF;
 
 	memset(sha1, 0, sizeof(sha1));
 	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_CERT_HASH, SHA_DIGEST_LENGTH, sha1);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN DATA object attribute");
 	attrs_num++;
 	sha1_offs = data_len - SHA_DIGEST_LENGTH;
+	assert(sha1_offs == JACARTAPKI_ATTRS_DIGEST_OFFSET);
 
 	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_CLASS DATA object attribute");
@@ -1348,9 +1367,9 @@ jacartapki_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pk
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN DATA object attribute");
 	attrs_num++;
 
-	*(data + 4) = (data_len >> 8) & 0xFF;
-	*(data + 5) = data_len & 0xFF;
-	*(data + 6) = attrs_num;
+	data[4] = (data_len >> 8) & 0xFF;
+	data[5] = data_len & 0xFF;
+	data[6] = attrs_num;
 
 	rv = jacartapki_attach_cache_stamp(p15card, (file_id == CMAP_FID), &data, &data_len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
@@ -1360,7 +1379,7 @@ jacartapki_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pk
 	memcpy(data + sha1_offs, sha1, SHA_DIGEST_LENGTH);
 
 	sc_log(ctx, "Attributes(%" SC_FORMAT_LEN_SIZE_T "u) '%s'", attrs_num, sc_dump_hex(data, data_len));
-	if (out && out_len) {
+	if (out != NULL && out_len != NULL) {
 		*out = data;
 		*out_len = data_len;
 		data = NULL;
@@ -1380,10 +1399,10 @@ jacartapki_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!info)
+	if (info == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	if (is_converted)
+	if (is_converted != NULL)
 		*is_converted = 0;
 
 	sc_log(ctx, "Encode CMAP GUID from key ID %s", sc_pkcs15_print_id(&info->id));
@@ -1450,7 +1469,7 @@ jacartapki_cmap_record_init(struct sc_context *ctx, struct sc_pkcs15_object *key
 	unsigned ii;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!key_obj || !cmap_rec)
+	if (key_obj == NULL || cmap_rec == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	info = (struct sc_pkcs15_prkey_info *)key_obj->data;
@@ -1489,12 +1508,12 @@ jacartapki_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (!out || !out_len)
+	if (out == NULL || out_len == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	*out = NULL;
 	*out_len = 0;
 
-	if (object_to_ignore)
+	if (object_to_ignore != NULL)
 		ignore_id = &((struct sc_pkcs15_prkey_info *)(object_to_ignore->data))->id;
 
 	memset(ordered_prkeys, 0, sizeof(ordered_prkeys));
@@ -1522,13 +1541,13 @@ jacartapki_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *
 		if (ordered_prkeys[idx]) {
 			struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)ordered_prkeys[idx]->data;
 
-			if (!(ignore_id && sc_pkcs15_compare_id(ignore_id, &info->id))) {
+			if (ignore_id == NULL || sc_pkcs15_compare_id(ignore_id, &info->id) == 0) {
 				int rv;
 				rv = jacartapki_cmap_record_init(ctx, ordered_prkeys[idx], &cmap_rec);
 				LOG_TEST_RET(ctx, rv, "Failed encode CMAP record");
 
 				if (info->id.len == SHA_DIGEST_LENGTH + 5) {
-					sc_log(ctx, "Applied Laser style of CKA_ID to GUID conversion.");
+					sc_log(ctx, "Applied JaCarta PKI style of CKA_ID to GUID conversion.");
 					cmap_rec.rfu |= 0x80;
 				}
 			} else {
