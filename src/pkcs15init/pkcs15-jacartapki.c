@@ -30,6 +30,7 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include "common/compat_strlcpy.h"
 #include "libopensc/asn1.h"
 #include "libopensc/aux-data.h"
 #include "libopensc/cardctl.h"
@@ -84,7 +85,7 @@ jacartapki_strcpy_bp(unsigned char *dst, const char *src, size_t dstsize)
 {
 	size_t len;
 
-	if (!dst || !src || !dstsize)
+	if (dst == NULL || src == NULL || dstsize == 0)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	memset((char *)dst, ' ', dstsize);
@@ -139,15 +140,15 @@ static int
 jacartapki_add_ee_tag(unsigned tag, const unsigned char *data, size_t data_len,
 		unsigned char *eeee, size_t eeee_size, size_t *offs)
 {
-	if (!data || !eeee || !offs || !eeee_size)
+	if (data == NULL || eeee == NULL || offs == NULL || eeee_size == 0)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (*offs + data_len >= eeee_size)
+	if (*offs + data_len + 3 > eeee_size)
 		return SC_ERROR_INVALID_DATA;
 
-	*(eeee + *offs) = (tag >> 8) & 0xFF;
-	*(eeee + *offs + 1) = tag & 0xFF;
-	*(eeee + *offs + 2) = data_len;
+	eeee[*offs] = (tag >> 8) & 0xFF;
+	eeee[*offs + 1] = tag & 0xFF;
+	eeee[*offs + 2] = data_len;
 	memcpy(eeee + *offs + 3, data, data_len);
 	*offs += data_len + 3;
 
@@ -166,7 +167,7 @@ jacartapki_update_eeef(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 	LOG_FUNC_CALLED(ctx);
 
 	data = calloc(1, file->size);
-	if (!data)
+	if (data == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	offs = 0;
@@ -183,8 +184,11 @@ jacartapki_update_eeef(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 
 	/* The End */
 	rv = sc_pkcs15init_update_file(profile, p15card, file, data, offs);
-	if ((int)offs > rv)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Cannot update EEEF file");
+	if ((int)offs > rv) {
+		if (rv >= 0)
+			rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "Cannot update EEEF file");
+	}
 	rv = SC_SUCCESS;
 err:
 	free(gtime);
@@ -204,7 +208,7 @@ jacartapki_update_eeee(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 	LOG_FUNC_CALLED(ctx);
 
 	eeee = calloc(1, file->size);
-	if (!eeee)
+	if (eeee == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	offs = 0;
@@ -325,15 +329,18 @@ jacartapki_update_eeee(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 	/* The END */
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, eeee, offs);
-	if ((int)offs > rv)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Cannot update EEEE file");
+	if ((int)offs > rv) {
+		if (rv >= 0)
+			rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "Cannot update EEEE file");
+	}
 	rv = SC_SUCCESS;
 err:
 	free(eeee);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 /*
- * Laser init card implementation
+ * JaCarta PKI init card implementation
  */
 static int
 jacartapki_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
@@ -371,12 +378,12 @@ jacartapki_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card 
 
 	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, jacartapki_aid.value, jacartapki_aid.len, 0, 0);
 	rv = sc_select_file(p15card->card, &path, NULL);
-	LOG_TEST_RET(ctx, rv, "Cannot select Laser AID");
+	LOG_TEST_RET(ctx, rv, "Cannot select JaCarta PKI AID");
 
 	for (ii = 0; to_create[ii]; ii++) {
 		unsigned char user_pin_type = JACARTAPKI_USER_PIN_TYPE_PIN;
 
-		if (sc_profile_get_file(profile, to_create[ii], &file)) {
+		if (sc_profile_get_file(profile, to_create[ii], &file) < 0) {
 			sc_log(ctx, "Inconsistent profile: cannot find %s", to_create[ii]);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INCONSISTENT_PROFILE);
 		}
@@ -412,8 +419,11 @@ jacartapki_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card 
 					LOG_ERROR_GOTO(ctx, (rv = SC_ERROR_INVALID_DATA), "Aladdin-UserPinType file size is insufficient");
 
 				rv = sc_pkcs15init_update_file(profile, p15card, file, &user_pin_type, sizeof(user_pin_type));
-				if ((int)sizeof(user_pin_type) > rv)
-					LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Cannot update Aladdin-UserPinType file.");
+				if ((int)sizeof(user_pin_type) > rv) {
+					if (rv >= 0)
+						rv = SC_ERROR_INTERNAL;
+					LOG_ERROR_GOTO(ctx, rv, "Cannot update Aladdin-UserPinType file.");
+				}
 			} else if (!strcmp(to_create[ii], "Aladdin-EEED")) {
 				unsigned char data[4] = {0x02, 0xD0, 0x01, 0x64};
 
@@ -421,8 +431,11 @@ jacartapki_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card 
 					LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "Aladdin-EEED file size is insufficient");
 
 				rv = sc_pkcs15init_update_file(profile, p15card, file, data, sizeof(data));
-				if ((int)sizeof(data) > rv)
-					LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Cannot update Aladdin-EEED file");
+				if ((int)sizeof(data) > rv) {
+					if (rv >= 0)
+						rv = SC_ERROR_INTERNAL;
+					LOG_ERROR_GOTO(ctx, rv, "Cannot update Aladdin-EEED file");
+				}
 
 			} else if (!strcmp(to_create[ii], "Aladdin-EEEE")) {
 
@@ -431,8 +444,10 @@ jacartapki_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card 
 
 			} else if (!strcmp(to_create[ii], "Aladdin-EEEF")) {
 
-				if (SC_SUCCESS != jacartapki_update_eeef(profile, p15card, file))
-					LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INTERNAL, "Cannot update Aladdin-EEEF file");
+				if (SC_SUCCESS != jacartapki_update_eeef(profile, p15card, file)) {
+					rv = SC_ERROR_INTERNAL;
+					LOG_ERROR_GOTO(ctx, rv, "Cannot update Aladdin-EEEF file");
+				}
 
 			} else if (!strcmp(to_create[ii], "jacartapki-cmap-attributes")) {
 
@@ -465,7 +480,7 @@ err:
 }
 
 /*
- * Laser init card
+ * JaCarta PKI init card
  */
 static int
 jacartapki_init_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
@@ -474,8 +489,8 @@ jacartapki_init_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 	int rv;
 
 	rv = jacartapki_init_card_internal(profile, p15card);
-	if (0 > rv) {
-		sc_do_log(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, "Failed to init Laser PKI, trying to erase FS first");
+	if (rv < 0) {
+		sc_log(ctx, "Failed to init JaCarta PKI, trying to erase FS first");
 
 		jacartapki_erase_card(profile, p15card);
 
@@ -513,7 +528,7 @@ jacartapki_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 		const struct sc_acl_entry *entry = NULL;
 		int rv;
 
-		if (sc_profile_get_file(profile, path_to_delete[ii], &file_in_profile)) {
+		if (sc_profile_get_file(profile, path_to_delete[ii], &file_in_profile) < 0) {
 			sc_log(ctx, "Inconsistent profile: cannot find %s", path_to_delete[ii]);
 			LOG_ERROR_RET(ctx, SC_ERROR_INCONSISTENT_PROFILE, "Failed to erase card");
 		}
@@ -522,8 +537,8 @@ jacartapki_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 		rv = sc_select_file(p15card->card, &file_in_profile->path, &file);
 		if (rv == SC_ERROR_FILE_NOT_FOUND) {
 			continue;
-		} else if (0 > rv) {
-			sc_do_log(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, "Failed to select %s to delete", path_to_delete[ii]);
+		} else if (rv < 0) {
+			sc_log(ctx, "Failed to select %s to delete", path_to_delete[ii]);
 			continue;
 		}
 
@@ -531,15 +546,15 @@ jacartapki_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 		if (entry && entry->key_ref != JACARTAPKI_TRANSPORT_PIN1_REFERENCE) {
 			sc_log(ctx, "Found 'DELETE-SELF' acl");
 			rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_DELETE_SELF);
-			if (0 > rv) {
-				sc_do_log(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, "Cannot authenticate 'DELETE-SELF' for %s", path_to_delete[ii]);
+			if (rv < 0) {
+				sc_log(ctx, "Cannot authenticate 'DELETE-SELF' for %s", path_to_delete[ii]);
 			}
 		}
 
 		if (SC_SUCCESS == rv) {
 			rv = sc_delete_file(p15card->card, &file->path);
-			if (0 > rv) {
-				sc_do_log(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, "Cannot delete file %s", path_to_delete[ii]);
+			if (rv < 0) {
+				sc_log(ctx, "Cannot delete file %s", path_to_delete[ii]);
 			}
 		}
 
@@ -584,7 +599,7 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "pin_obj %p, pin %p/%" SC_FORMAT_LEN_SIZE_T "u, puk %p/%" SC_FORMAT_LEN_SIZE_T "u", pin_obj, pin, pin_len, puk, puk_len);
-	if (!pin_obj)
+	if (pin_obj == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
@@ -594,18 +609,18 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 	pin_attrs = &auth_info->attrs.pin;
 	sc_log(ctx, "create '%s'; ref 0x%X; flags %X; max_tries %i", pin_obj->label, pin_attrs->reference, pin_attrs->flags, auth_info->max_tries);
 
-	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
-		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "PIN unblocking is not supported");
+	if ((pin_attrs->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) != 0)
+		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unblocking PIN is not supported");
 
 	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		if (pin_attrs->reference != 0x10)
-			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid SOPIN reference");
+			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid SO PIN reference");
 
 		rv = sc_profile_get_file(profile, "Aladdin-SoPIN", &pin_file);
 		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get SOPIN file");
 	} else {
 		if (pin_attrs->reference != 0x20)
-			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid UserPIN reference");
+			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid User PIN reference");
 
 		rv = sc_profile_get_file(profile, "Aladdin-UserPIN", &pin_file);
 		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get UserPIN file");
@@ -624,29 +639,29 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 			pin_file->size, pin_file->type, pin_file->ef_structure, sc_print_path(&pin_file->path));
 
 	offs = 0;
-	pin_file->prop_attr = calloc(1, 16);
-	if (!pin_file->prop_attr)
+	pin_file->prop_attr = calloc(1, 14);
+	if (pin_file->prop_attr == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	*(pin_file->prop_attr + offs++) = JACARTAPKI_KO_NON_CRYPTO | JACARTAPKI_KO_ALLOW_TICKET | JACARTAPKI_KO_ALLOW_SECURE_VERIFY;
-	*(pin_file->prop_attr + offs++) = JACARTAPKI_KO_USAGE_AUTH_EXT;
-	*(pin_file->prop_attr + offs++) = JACARTAPKI_KO_ALGORITHM_PIN;
-	*(pin_file->prop_attr + offs++) = JACARTAPKI_KO_PADDING_NO;
-	*(pin_file->prop_attr + offs++) = (auth_info->max_tries & 0x0F) | ((auth_info->max_tries << 4) & 0xF0); /* tries/unlocks */
-	*(pin_file->prop_attr + offs++) = pin_attrs->min_length;
-	*(pin_file->prop_attr + offs++) = pin_attrs->max_length;
-	*(pin_file->prop_attr + offs++) = 0;			 /* upper case */
-	*(pin_file->prop_attr + offs++) = 0;			 /* lower case */
-	*(pin_file->prop_attr + offs++) = 0;			 /* digit */
-	*(pin_file->prop_attr + offs++) = 0;			 /* alpha */
-	*(pin_file->prop_attr + offs++) = 0;			 /* special */
-	*(pin_file->prop_attr + offs++) = pin_attrs->max_length; /* occurrence */
-	*(pin_file->prop_attr + offs++) = pin_attrs->max_length; /* sequenve */
+	pin_file->prop_attr[offs++] = JACARTAPKI_KO_NON_CRYPTO | JACARTAPKI_KO_ALLOW_TICKET | JACARTAPKI_KO_ALLOW_SECURE_VERIFY;
+	pin_file->prop_attr[offs++] = JACARTAPKI_KO_USAGE_AUTH_EXT;
+	pin_file->prop_attr[offs++] = JACARTAPKI_KO_ALGORITHM_PIN;
+	pin_file->prop_attr[offs++] = JACARTAPKI_KO_PADDING_NO;
+	pin_file->prop_attr[offs++] = (auth_info->max_tries & 0x0F) | ((auth_info->max_tries << 4) & 0xF0); /* tries/unlocks */
+	pin_file->prop_attr[offs++] = pin_attrs->min_length;
+	pin_file->prop_attr[offs++] = pin_attrs->max_length;
+	pin_file->prop_attr[offs++] = 0; /* upper case */
+	pin_file->prop_attr[offs++] = 0; /* lower case */
+	pin_file->prop_attr[offs++] = 0; /* digit */
+	pin_file->prop_attr[offs++] = 0; /* alpha */
+	pin_file->prop_attr[offs++] = 0; /* special */
+	pin_file->prop_attr[offs++] = pin_attrs->max_length; /* occurrence */
+	pin_file->prop_attr[offs++] = pin_attrs->max_length; /* sequenve */
 	pin_file->prop_attr_len = offs;
 
-	if (pin && pin_len) {
+	if (pin != NULL && pin_len != 0) {
 		pin_file->encoded_content = realloc(pin_file->encoded_content, 2 + pin_len);
-		*(pin_file->encoded_content + 0) = JACARTAPKI_KO_DATA_TAG_PIN;
-		*(pin_file->encoded_content + 1) = pin_len;
+		pin_file->encoded_content[0] = JACARTAPKI_KO_DATA_TAG_PIN;
+		pin_file->encoded_content[1] = pin_len;
 		memcpy(pin_file->encoded_content + 2, pin, pin_len);
 		pin_file->encoded_content_len = 2 + pin_len;
 	}
@@ -656,7 +671,7 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 
 	sc_file_free(pin_file);
 
-	if (update_tokeninfo) {
+	if (update_tokeninfo != 0) {
 		p15card->tokeninfo->flags |= CKF_USER_PIN_INITIALIZED;
 		rv = jacartapki_emu_update_tokeninfo(profile, p15card, p15card->tokeninfo);
 		LOG_TEST_RET(ctx, rv, "Failed to update TokenInfo");
@@ -691,13 +706,6 @@ jacartapki_new_file(struct sc_profile *profile, const struct sc_card *card,
 			_template = "template-public-key";
 			file_descriptor = JACARTAPKI_FILE_DESCRIPTOR_KO;
 			break;
-#ifdef SC_PKCS15_TYPE_PUBKEY_DSA
-		case SC_PKCS15_TYPE_PUBKEY_DSA:
-			desc = "DSA public key";
-			_template = "template-public-key";
-			file_descriptor = JACARTAPKI_FILE_DESCRIPTOR_KO;
-			break;
-#endif
 		case SC_PKCS15_TYPE_DATA_OBJECT:
 			desc = "data object";
 			_template = "template-public-data";
@@ -797,8 +805,10 @@ jacartapki_create_key_file(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	int rv = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_NOT_SUPPORTED, "Create key failed: RSA only supported");
+	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA) {
+		rv = SC_ERROR_NOT_SUPPORTED;
+		LOG_ERROR_GOTO(ctx, rv, "Create key failed: RSA only supported");
+	}
 
 	sc_log(ctx, "create private key(type:%X) ID:%s key-ref:0x%X", object->type, sc_pkcs15_print_id(&key_info->id), key_info->key_reference);
 	/* Here, the path of private key file should be defined.
@@ -809,29 +819,31 @@ jacartapki_create_key_file(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	file->size = key_info->modulus_length / 8;
 
 	file->prop_attr = calloc(1, 5);
-	if (!file->prop_attr)
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate prop attrs.");
+	if (file->prop_attr == NULL) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		LOG_ERROR_GOTO(ctx, rv, "Cannot allocate prop attrs.");
+	}
 	file->prop_attr_len = 5;
 
-	*(file->prop_attr + 0) = JACARTAPKI_KO_CLASS_RSA_CRT;
+	file->prop_attr[0] = JACARTAPKI_KO_CLASS_RSA_CRT;
 
 	if (key_info->usage & (SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP))
-		*(file->prop_attr + 1) |= JACARTAPKI_KO_USAGE_DECRYPT;
+		file->prop_attr[1] |= JACARTAPKI_KO_USAGE_DECRYPT;
 	if (key_info->usage & (SC_PKCS15_PRKEY_USAGE_NONREPUDIATION | SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER))
-		*(file->prop_attr + 1) |= JACARTAPKI_KO_USAGE_SIGN;
+		file->prop_attr[1] |= JACARTAPKI_KO_USAGE_SIGN;
 
 	/* FIXME: all usages are allowed, as native MW do */
-	*(file->prop_attr + 1) |= JACARTAPKI_KO_USAGE_SIGN | JACARTAPKI_KO_USAGE_DECRYPT;
+	file->prop_attr[1] |= JACARTAPKI_KO_USAGE_SIGN | JACARTAPKI_KO_USAGE_DECRYPT;
 
-	*(file->prop_attr + 2) = JACARTAPKI_KO_ALGORITHM_RSA;
-	*(file->prop_attr + 3) = JACARTAPKI_KO_PADDING_NO;
-	*(file->prop_attr + 4) = 0xA3; /* Max retry counter 10, 3 tries to unlock. FIXME: what's this ? */
+	file->prop_attr[2] = JACARTAPKI_KO_ALGORITHM_RSA;
+	file->prop_attr[3] = JACARTAPKI_KO_PADDING_NO;
+	file->prop_attr[4] = 0xA3; /* Max retry counter 10, 3 tries to unlock. FIXME: what's this ? */
 
 	sc_log(ctx, "Create private key file: path %s, propr. info %s",
 			sc_print_path(&file->path), sc_dump_hex(file->prop_attr, file->prop_attr_len));
 
 	rv = sc_select_file(p15card->card, &file->path, NULL);
-	if (rv == 0) {
+	if (rv == SC_SUCCESS) {
 		rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_DELETE_SELF);
 		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot authenticate SC_AC_OP_DELETE_SELF");
 
@@ -893,8 +905,10 @@ jacartapki_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15ca
 
 	args.modulus = malloc(key_info->modulus_length / 8);
 	args.exponent = malloc(sizeof(default_exponent));
-	if (!args.exponent || !args.modulus)
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "jacartapki_generate_key() cannot allocate exponent or/and modulus buffers");
+	if (args.exponent == NULL || args.modulus == NULL) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		LOG_ERROR_GOTO(ctx, rv, "jacartapki_generate_key() cannot allocate exponent/modulus buffers");
+	}
 	args.modulus_len = key_info->modulus_length / 8;
 	args.exponent_len = sizeof(default_exponent);
 	memcpy(args.exponent, default_exponent, sizeof(default_exponent));
@@ -989,7 +1003,7 @@ jacartapki_cmap_container_set_default(struct sc_pkcs15_card *p15card,
 	keys_num = rv;
 	sc_log(ctx, "Found %i private keys", keys_num);
 
-	if (remove && object) {
+	if (remove != 0 && object != NULL) {
 		if ((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY)
 			rm_id = &((struct sc_pkcs15_prkey_info *)object->data)->id;
 		else if ((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_CERT)
@@ -1007,7 +1021,7 @@ jacartapki_cmap_container_set_default(struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, rv, "Cannot get private key cmap-flags");
 
 		sc_log(ctx, "check key object '%s', cmap flags 0x%X", sc_pkcs15_print_id(&key_info->id), cmap_flags);
-		if ((rm_id && sc_pkcs15_compare_id(&key_info->id, rm_id)) || !(cmap_flags & SC_MD_CONTAINER_MAP_VALID_CONTAINER)) {
+		if ((rm_id != NULL && sc_pkcs15_compare_id(&key_info->id, rm_id)) || (cmap_flags & SC_MD_CONTAINER_MAP_VALID_CONTAINER) == 0) {
 
 			cmap_flags &= ~SC_MD_CONTAINER_MAP_DEFAULT_CONTAINER;
 			sc_aux_data_set_md_flags(ctx, key_info->aux_data, cmap_flags);
@@ -1016,7 +1030,7 @@ jacartapki_cmap_container_set_default(struct sc_pkcs15_card *p15card,
 			continue;
 		}
 
-		if (cmap_flags & SC_MD_CONTAINER_MAP_DEFAULT_CONTAINER) {
+		if ((cmap_flags & SC_MD_CONTAINER_MAP_DEFAULT_CONTAINER) != 0) {
 			sc_log(ctx, "Default container exists: %s", sc_pkcs15_print_id(&key_info->id));
 			LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 		}
@@ -1069,8 +1083,11 @@ jacartapki_cardid_create(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 	memcpy(data + 2 + 0x10 - sn.len, sn.value, sn.len);
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, data, sizeof(data));
-	if ((int)sizeof(data) > rv)
-		LOG_ERROR_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update CARDID file");
+	if ((int)sizeof(data) > rv) {
+		if (rv >= 0)
+			rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_RET(ctx, rv, "Cannot update CARDID file");
+	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1094,13 +1111,13 @@ jacartapki_cmap_create(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 
 	dobj.type = SC_PKCS15_TYPE_DATA_OBJECT;
 	dobj.flags = SC_PKCS15_CO_FLAG_MODIFIABLE;
-	strncpy(dobj.label, "cmapfile", sizeof(dobj.label) - 1);
+	strlcpy(dobj.label, "cmapfile", sizeof(dobj.label));
 
 	dobj_info.path = file->path;
 	sc_init_oid(&dobj_info.app_oid);
 	dobj_info.data.value = zero_data;
 	dobj_info.data.len = sizeof(zero_data);
-	strncpy(dobj_info.app_label, CMAP_DO_APPLICATION_NAME, sizeof(dobj_info.app_label) - 1);
+	strlcpy(dobj_info.app_label, CMAP_DO_APPLICATION_NAME, sizeof(dobj_info.app_label));
 
 	rv = jacartapki_update_df_create_data_object(profile, p15card, &dobj);
 	LOG_TEST_RET(ctx, rv, "Failed to update CMAP DATA file");
@@ -1136,7 +1153,7 @@ jacartapki_cmap_update(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 			int is_converted = 0;
 
 			rv = jacartapki_cmap_set_key_guid(ctx, info, &is_converted);
-			LOG_TEST_RET(ctx, rv, "Cannot set Laser style GUID");
+			LOG_TEST_RET(ctx, rv, "Cannot set JaCarta PKI style GUID");
 		}
 
 		/* All new keys are 'key-exchange' keys.
@@ -1167,8 +1184,10 @@ jacartapki_cmap_update(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 		data_len = 5 * sizeof(struct jacartapki_cmap_record);
 
 	cmap_dobj_info->data.value = calloc(1, data_len);
-	if (!cmap_dobj_info->data.value)
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Failed to allocate cmap object info");
+	if (cmap_dobj_info->data.value == NULL) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		LOG_ERROR_GOTO(ctx, rv, "Failed to allocate cmap object info");
+	}
 
 	memcpy(cmap_dobj_info->data.value, cmap, cmap_len);
 	cmap_dobj_info->data.len = data_len;
@@ -1194,8 +1213,11 @@ jacartapki_cardcf_create(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 	LOG_FUNC_CALLED(ctx);
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, &cardcf, sizeof(cardcf));
-	if ((int)sizeof(cardcf) > rv)
-		LOG_ERROR_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update jacartapki_md_cardcf");
+	if ((int)sizeof(cardcf) > rv) {
+		if (rv >= 0)
+			rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_RET(ctx, rv, "Cannot update jacartapki_md_cardcf");
+	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1210,20 +1232,22 @@ jacartapki_cardcf_save(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (sc_profile_get_file(profile, profileCardcf, &file)) {
+	if (sc_profile_get_file(profile, profileCardcf, &file) < 0) {
 		sc_log(ctx, "Inconsistent profile: cannot find %s", profileCardcf);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INCONSISTENT_PROFILE);
 	}
 
-	if (p15card->md_data) {
+	if (p15card->md_data != NULL) {
 		struct jacartapki_cardcf *cardcf = &p15card->md_data->cardcf;
 		rv = sc_pkcs15init_update_file(profile, p15card, file, cardcf, sizeof(struct jacartapki_cardcf));
-		if ((int)sizeof(struct jacartapki_cardcf) > rv)
-			LOG_ERROR_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update jacartapki_md_cardcf");
+		if ((int)sizeof(struct jacartapki_cardcf) > rv) {
+			if (rv >= 0)
+				rv = SC_ERROR_INTERNAL;
+			LOG_ERROR_RET(ctx, rv, "Cannot update jacartapki_md_cardcf");
+		}
 		rv = SC_SUCCESS;
 	}
 
-	LOG_FUNC_CALLED(ctx);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -1237,8 +1261,11 @@ jacartapki_cardapps_create(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	LOG_FUNC_CALLED(ctx);
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, &defaults_cardapps, sizeof(defaults_cardapps));
-	if ((int)sizeof(defaults_cardapps) > rv)
-		LOG_ERROR_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update jacartapki_md_cardapps");
+	if ((int)sizeof(defaults_cardapps) > rv) {
+		if (rv >= 0)
+			rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_RET(ctx, rv, "Cannot update jacartapki_md_cardapps");
+	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1275,7 +1302,7 @@ jacartapki_update_df_create_private_key(struct sc_profile *profile, struct sc_pk
 	info->access_flags &= ~SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE;
 	info->access_flags &= ~SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
 	object->flags &= ~SC_PKCS15_CO_FLAG_MODIFIABLE;
-	if (!info->subject.value) {
+	if (info->subject.value == NULL) {
 		sc_asn1_encode(ctx, c_asn1_prkey_default_subject, &info->subject.value, &info->subject.len);
 	}
 
@@ -1289,14 +1316,17 @@ jacartapki_update_df_create_private_key(struct sc_profile *profile, struct sc_pk
 	snprintf((char *)file->name, sizeof(file->name), "kxs%02u", (unsigned int)attrs_ref);
 	file->namelen = strlen((char *)file->name);
 
-	/* TODO: implement Laser's 'resize' file */
+	/* TODO: implement JaCarta PKI 'resize' file */
 	rv = sc_pkcs15init_delete_by_path(profile, p15card, &file->path);
 	if (rv != SC_ERROR_FILE_NOT_FOUND)
 		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update DF: cannot delete private key attributes");
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
-	if ((int)attrs_len > rv)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update private key attributes file");
+	if ((int)attrs_len > rv) {
+		if (rv >= 0)
+			rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "Failed to create/update private key attributes file");
+	}
 
 	rv = jacartapki_cmap_update(profile, p15card, 0, object);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update 'cmapfile'");
@@ -1333,14 +1363,17 @@ jacartapki_update_df_create_public_key(struct sc_profile *profile, struct sc_pkc
 
 	file->size = attrs_len;
 
-	/* TODO: implement Laser's 'resize' file */
+	/* TODO: implement JaCarta PKI 'resize' file */
 	rv = sc_pkcs15init_delete_by_path(profile, p15card, &file->path);
 	if (rv != SC_ERROR_FILE_NOT_FOUND)
 		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update DF: cannot delete public key attributes");
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
-	if ((int)attrs_len > rv)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update public key attributes file");
+	if ((int)attrs_len > rv) {
+		if (rv >= 0)
+			rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "Failed to create/update public key attributes file");
+	}
 	rv = SC_SUCCESS;
 err:
 	sc_file_free(file);
@@ -1361,7 +1394,7 @@ jacartapki_need_update(struct sc_pkcs15_card *p15card,
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (!need_update)
+	if (need_update == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	*need_update = 1;
 
@@ -1380,10 +1413,12 @@ jacartapki_need_update(struct sc_pkcs15_card *p15card,
 	rv = sc_select_file(p15card->card, path, &file);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select jacartapki attributes file");
 
-	rv = sc_read_binary(p15card->card, 0x0C, sha1, SHA_DIGEST_LENGTH, 0);
+	rv = sc_read_binary(p15card->card, JACARTAPKI_ATTRS_DIGEST_OFFSET, sha1, SHA_DIGEST_LENGTH, 0);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot read current checksum");
-	if (rv != SHA_DIGEST_LENGTH)
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_UNKNOWN_DATA_RECEIVED, "Invalid size of current checksum");
+	if (rv != SHA_DIGEST_LENGTH) {
+		rv = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+		LOG_ERROR_GOTO(ctx, rv, "Invalid size of current checksum");
+	}
 
 	switch (object->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_CERT:
@@ -1395,10 +1430,16 @@ jacartapki_need_update(struct sc_pkcs15_card *p15card,
 		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to encode jacartapki DATA attributes");
 		break;
 	default:
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_NOT_SUPPORTED, "Object type not supported");
+		rv = SC_ERROR_NOT_SUPPORTED;
+		LOG_ERROR_GOTO(ctx, rv, "Object type not supported");
 	}
 
-	*need_update = memcmp(sha1, attrs + 0x0C, SHA_DIGEST_LENGTH) ? 1 : 0;
+	if (JACARTAPKI_ATTRS_DIGEST_OFFSET + SHA_DIGEST_LENGTH > attrs_len) {
+		rv = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+		LOG_ERROR_GOTO(ctx, rv, "Invalid attributes received");
+	}
+
+	*need_update = memcmp(sha1, attrs + JACARTAPKI_ATTRS_DIGEST_OFFSET, SHA_DIGEST_LENGTH) ? 1 : 0;
 err:
 	sc_file_free(file);
 	sc_log(ctx, "returns 'need-update' status %s", *need_update ? "yes" : "no");
@@ -1423,8 +1464,8 @@ jacartapki_update_df_create_certificate(struct sc_profile *profile, struct sc_pk
 	rv = jacartapki_need_update(p15card, object, &need_update);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to get 'need-update' status of certificate data");
 
-	if (!need_update) {
-		sc_log(ctx, "No need to update Laser CDF");
+	if (need_update == 0) {
+		sc_log(ctx, "No need to update JaCarta PKI CDF");
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 
@@ -1436,13 +1477,16 @@ jacartapki_update_df_create_certificate(struct sc_profile *profile, struct sc_pk
 	sc_log(ctx, "update jacartapki certificate attributes '%s'", sc_dump_hex(attrs, attrs_len));
 
 	file->size = attrs_len;
-	/* TODO: implement Laser's 'resize' file */
+	/* TODO: implement JaCarta PKI 'resize' file */
 	rv = sc_pkcs15init_delete_by_path(profile, p15card, &file->path);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update DF: cannot delete jacartapki certificate");
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
-	if ((int)attrs_len > rv)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to update jacartapki certificate attributes file");
+	if ((int)attrs_len > rv) {
+		if (rv >= 0)
+			rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "Failed to update jacartapki certificate attributes file");
+	}
 
 	rv = jacartapki_cmap_update(profile, p15card, 0, NULL);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update 'cmapfile'");
@@ -1468,8 +1512,8 @@ jacartapki_update_df_create_data_object(struct sc_profile *profile, struct sc_pk
 	rv = jacartapki_need_update(p15card, object, &need_update);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to get 'need-update' status of DATA object");
 
-	if (!need_update) {
-		sc_log(ctx, "No need to update Laser DataDF");
+	if (need_update == 0) {
+		sc_log(ctx, "No need to update JaCarta PKI DataDF");
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 
@@ -1482,13 +1526,16 @@ jacartapki_update_df_create_data_object(struct sc_profile *profile, struct sc_pk
 
 	file->size = attrs_len;
 
-	/* TODO: implement Laser's 'resize' file */
+	/* TODO: implement JaCarta PKI 'resize' file */
 	rv = sc_pkcs15init_delete_by_path(profile, p15card, &file->path);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update DF: cannot delete jacartapki DATA");
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
-	if ((int)attrs_len > rv)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to update jacartapki DATA attributes file");
+	if ((int)attrs_len > rv) {
+		if (rv >= 0)
+			rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "Failed to update jacartapki DATA attributes file");
+	}
 	rv = SC_SUCCESS;
 err:
 	sc_file_free(file);
@@ -1506,7 +1553,7 @@ jacartapki_update_df_check_pin(struct sc_profile *profile, struct sc_pkcs15_card
 	int rv = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!pin_obj)
+	if (pin_obj == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
@@ -1516,18 +1563,18 @@ jacartapki_update_df_check_pin(struct sc_profile *profile, struct sc_pkcs15_card
 	pin_attrs = &auth_info->attrs.pin;
 	sc_log(ctx, "checking '%s'; ref 0x%X; flags %X; max_tries %i", pin_obj->label, pin_attrs->reference, pin_attrs->flags, auth_info->max_tries);
 
-	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
-		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "PIN unblocking is not supported");
+	if ((pin_attrs->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) != 0)
+		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unblocking PIN is not supported");
 
-	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
+	if ((pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN) != 0) {
 		if (pin_attrs->reference != 0x10)
-			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid SOPIN reference");
+			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid SO PIN reference");
 
 		rv = sc_profile_get_file(profile, "Aladdin-SoPIN", &pin_file);
 		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get SOPIN file");
 	} else {
 		if (pin_attrs->reference != 0x20)
-			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid UserPIN reference");
+			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid User PIN reference");
 
 		rv = sc_profile_get_file(profile, "Aladdin-UserPIN", &pin_file);
 		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get UserPIN file");
@@ -1701,7 +1748,7 @@ jacartapki_emu_update_df(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (p15card->md_data) {
+	if (p15card->md_data != NULL) {
 		struct jacartapki_cardcf *cardcf = &p15card->md_data->cardcf;
 		cardcf->cont_freshness++;
 		cardcf->files_freshness++;
@@ -1718,11 +1765,11 @@ jacartapki_emu_update_df(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 		break;
 	}
 
-	if (0 <= rv) {
+	if (rv >= 0) {
 		rv = jacartapki_cardcf_save(profile, p15card);
 		LOG_TEST_RET(ctx, rv, "Failed to update CARDCF");
 	}
-	if (0 > rv && p15card->md_data) {
+	if (rv < 0 && p15card->md_data != NULL) {
 		struct jacartapki_cardcf *cardcf = &p15card->md_data->cardcf;
 		cardcf->cont_freshness--;
 		cardcf->files_freshness--;
@@ -1742,7 +1789,7 @@ jacartapki_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_car
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (!tinfo)
+	if (tinfo == NULL)
 		tinfo = p15card->tokeninfo;
 
 	memset(&lti, 0, sizeof(lti));
@@ -1777,8 +1824,11 @@ jacartapki_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_car
 	LOG_TEST_RET(ctx, rv, "'Aladdin-TokenInfo' not defined");
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, (unsigned char *)(&lti), sizeof(lti));
-	if ((int)sizeof(lti) > rv)
-		LOG_ERROR_RET(ctx, 0 > rv ? rv : SC_ERROR_INTERNAL, "Cannot update TokenInfo file");
+	if ((int)sizeof(lti) > rv) {
+		if (rv >= 0)
+			rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_RET(ctx, rv, "Cannot update TokenInfo file");
+	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1808,9 +1858,9 @@ jacartapki_emu_store_pubkey(struct sc_pkcs15_card *p15card,
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "Public Key id '%s'", sc_pkcs15_print_id(&info->id));
-	if (data)
+	if (data != NULL)
 		sc_log(ctx, "data(%" SC_FORMAT_LEN_SIZE_T "u) %p", data->len, data->value);
-	if (object->content.value)
+	if (object->content.value != NULL)
 		sc_log(ctx, "content(%" SC_FORMAT_LEN_SIZE_T "u) %p", object->content.len, object->content.value);
 
 	pubkey.algorithm = SC_ALGORITHM_RSA;
@@ -1838,20 +1888,20 @@ jacartapki_emu_store_pubkey(struct sc_pkcs15_card *p15card,
 		file->path = info->path;
 
 	file->prop_attr = calloc(1, 5);
-	if (!file->prop_attr)
+	if (file->prop_attr == NULL)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate prop attrs.");
 	file->prop_attr_len = 5;
 
-	*(file->prop_attr + 0) = JACARTAPKI_KO_CLASS_RSA_CRT;
+	file->prop_attr[0] = JACARTAPKI_KO_CLASS_RSA_CRT;
 
-	if (info->usage & (SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP))
-		*(file->prop_attr + 1) |= JACARTAPKI_KO_USAGE_ENCRYPT;
-	if (info->usage & SC_PKCS15_PRKEY_USAGE_VERIFY)
-		*(file->prop_attr + 1) |= JACARTAPKI_KO_USAGE_VERIFY;
+	if ((info->usage & (SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP)) != 0)
+		file->prop_attr[1] |= JACARTAPKI_KO_USAGE_ENCRYPT;
+	if ((info->usage & SC_PKCS15_PRKEY_USAGE_VERIFY) != 0)
+		file->prop_attr[1] |= JACARTAPKI_KO_USAGE_VERIFY;
 
-	*(file->prop_attr + 2) = JACARTAPKI_KO_ALGORITHM_RSA;
-	*(file->prop_attr + 3) = JACARTAPKI_KO_PADDING_NO;
-	*(file->prop_attr + 4) = 0xA3; /* Max retry counter 10, 3 tries to unlock. TODO what's this ????? */
+	file->prop_attr[2] = JACARTAPKI_KO_ALGORITHM_RSA;
+	file->prop_attr[3] = JACARTAPKI_KO_PADDING_NO;
+	file->prop_attr[4] = 0xA3; /* Max retry counter 10, 3 tries to unlock. TODO what's this ????? */
 
 	sc_log(ctx, "Create public key file: path %s, propr.info %s",
 			sc_print_path(&file->path), sc_dump_hex(file->prop_attr, file->prop_attr_len));
@@ -1900,7 +1950,7 @@ jacartapki_emu_store_certificate(struct sc_pkcs15_card *p15card,
 
 	sc_log(ctx, "store certificate with ID '%s'", sc_pkcs15_print_id(&info->id));
 	rv = sc_pkcs15_find_prkey_by_id(p15card, &info->id, &key);
-	if (!rv) {
+	if (rv == SC_SUCCESS) {
 		struct sc_path key_path = ((struct sc_pkcs15_prkey_info *)key->data)->path;
 
 		idx = (key_path.value[key_path.len - 1] & JACARTAPKI_FS_REF_MASK) - 1;
@@ -1929,8 +1979,11 @@ jacartapki_emu_store_certificate(struct sc_pkcs15_card *p15card,
 	file->size = attrs_len;
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
-	if ((int)attrs_len > rv)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update jacartapki certificate attributes file");
+	if ((int)attrs_len > rv) {
+		if (rv >= 0)
+			rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "Failed to create/update jacartapki certificate attributes file");
+	}
 	rv = SC_SUCCESS;
 
 	info->path = file->path;
@@ -1968,8 +2021,11 @@ jacartapki_emu_store_data_object(struct sc_pkcs15_card *p15card,
 	file->size = attrs_len;
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, attrs, attrs_len);
-	if ((int)attrs_len > rv)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INTERNAL), "Failed to create/update jacartapki DATA object attributes file");
+	if ((int)attrs_len > rv) {
+		if (rv >= 0)
+			rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "Failed to create/update jacartapki DATA object attributes file");
+	}
 	rv = SC_SUCCESS;
 
 	info->path = file->path;

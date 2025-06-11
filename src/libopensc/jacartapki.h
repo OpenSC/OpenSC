@@ -118,6 +118,8 @@
 #define SHA_DIGEST_LENGTH 20
 #endif
 
+#define JACARTAPKI_ATTRS_DIGEST_OFFSET 0x0C
+
 #define JACARTAPKI_TOKEN_INFO_LENGTH 160
 
 #define JACARTAPKI_TRANSPORT_PIN1_VALUE	    "31:32:33:34"
@@ -299,7 +301,6 @@ struct jacartapki_private_data {
 	struct jacartapki_card_auth_state auth_state[2];
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
-	OSSL_PROVIDER *legacyOsslProvider;
 	EVP_CIPHER *desCbcCipher;
 	EVP_CIPHER *desEcbCipher;
 #endif

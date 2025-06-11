@@ -33,6 +33,7 @@
 #include "cardctl.h"
 #include "cards.h"
 #include "common/compat_strlcpy.h"
+#include "common/compat_strnlen.h"
 #include "log.h"
 #include "pkcs11/pkcs11.h"
 #include "pkcs15.h"
@@ -116,25 +117,20 @@ _alloc_ck_string(const unsigned char *data, size_t max_len, char **out)
 	char *str = NULL;
 	size_t idx;
 
-	if (!out)
+	if (data == NULL || max_len == 0 || out == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	str = calloc(1, max_len + 1);
+	for (idx = strnlen((const char *)data, max_len); idx > 0 && (char)data[idx - 1] == ' '; --idx)
+		;
 
-	if (!str)
+	str = calloc(1, idx + 1);
+	if (str == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 
-	memcpy(str, data, max_len);
+	memcpy(str, data, idx);
 
-	for (idx = strlen(str); idx && str[--idx] == ' ';)
-		str[idx] = '\0';
-
-	if (*out != NULL)
-		free(*out);
-
-	*out = strdup(str);
-
-	free(str);
+	free(*out);
+	*out = str;
 	return SC_SUCCESS;
 }
 
@@ -160,8 +156,10 @@ _create_pin(struct sc_pkcs15_card *p15card, char *label,
 	rv = sc_select_file(p15card->card, &path, &file);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select USER PIN");
 
-	if (!file->prop_attr_len)
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "No PIN attributes in FCP");
+	if (file->prop_attr_len == 0) {
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_ERROR_GOTO(ctx, rv, "No PIN attributes in FCP");
+	}
 	sc_log(ctx, "FCP User PIN attributes '%s'", sc_dump_hex(file->prop_attr, file->prop_attr_len));
 
 	props = (struct jacartapki_ko_props *)file->prop_attr;
@@ -225,8 +223,10 @@ _create_certificate(struct sc_pkcs15_card *p15card, unsigned file_id)
 	rv = sc_pkcs15_read_file(p15card, &info.path, &data, &len, 0);
 	LOG_TEST_RET(ctx, rv, "Error while getting file content.");
 
-	if (len < 11) /* header 7 bytes, tail 4 bytes */
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "certificate attributes file is too short");
+	if (len < 11) { /* header 7 bytes, tail 4 bytes */
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_ERROR_GOTO(ctx, rv, "certificate attributes file is too short");
+	}
 
 	rv = jacartapki_attrs_cert_decode(ctx, &obj, &info, data + 7, len - 11);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Decode certificate attributes error.");
@@ -238,8 +238,10 @@ _create_certificate(struct sc_pkcs15_card *p15card, unsigned file_id)
 	memset(data + 12, 0, SHA_DIGEST_LENGTH);
 	SHA1(data, len, sha1);
 
-	if (memcmp(sha1, sha1_attr, SHA_DIGEST_LENGTH))
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "invalid checksum of certificate attributes");
+	if (memcmp(sha1, sha1_attr, SHA_DIGEST_LENGTH) != 0) {
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_ERROR_GOTO(ctx, rv, "invalid checksum of certificate attributes");
+	}
 err:
 	free(data);
 	LOG_FUNC_RETURN(ctx, rv);
@@ -272,8 +274,10 @@ _create_pubkey(struct sc_pkcs15_card *p15card, unsigned file_id)
 	rv = sc_pkcs15_read_file(p15card, &path, &data, &len, 0);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Error while getting file content.");
 
-	if (len < 11) /* header 7 bytes, tail 4 bytes */
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "invalid length of public key attributes data");
+	if (len < 11) { /* header 7 bytes, tail 4 bytes */
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_ERROR_GOTO(ctx, rv, "invalid length of public key attributes data");
+	}
 
 	/* set info path to public key KO */
 	path.value[path.len - 2] = (ko_fid >> 8) & 0xFF;
@@ -293,8 +297,9 @@ _create_pubkey(struct sc_pkcs15_card *p15card, unsigned file_id)
 	rv = jacartapki_attrs_pubkey_decode(ctx, &obj, &info, data + 7, len - 11);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Decode public key attributes error.");
 
-	if (!info.id.len) {
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_NOT_IMPLEMENTED, "Missing public key ID");
+	if (info.id.len == 0) {
+		rv = SC_ERROR_NOT_IMPLEMENTED;
+		LOG_ERROR_GOTO(ctx, rv, "Missing public key ID");
 	}
 
 	rv = sc_pkcs15emu_add_rsa_pubkey(p15card, &obj, &info);
@@ -334,8 +339,10 @@ _create_prvkey(struct sc_pkcs15_card *p15card, unsigned file_id)
 	rv = sc_pkcs15_read_file(p15card, &path, &data, &len, 0);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Error while getting file content.");
 
-	if (len < 11) /* header 7 bytes, tail 4 bytes */
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "private key attributes file is too short");
+	if (len < 11) { /* header 7 bytes, tail 4 bytes */
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_ERROR_GOTO(ctx, rv, "private key attributes file is too short");
+	}
 
 	/* set info path to private key KO */
 	path.value[path.len - 2] = ko_fid / 0x100;
@@ -356,8 +363,10 @@ _create_prvkey(struct sc_pkcs15_card *p15card, unsigned file_id)
 	rv = jacartapki_attrs_prvkey_decode(ctx, &obj, &info, data + 7, len - 11);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Decode private key attributes error.");
 
-	if (!info.id.len)
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_NOT_IMPLEMENTED, "Missing private key ID");
+	if (info.id.len == 0) {
+		rv = SC_ERROR_NOT_IMPLEMENTED;
+		LOG_ERROR_GOTO(ctx, rv, "Missing private key ID");
+	}
 
 	obj.auth_id.len = 1;
 	obj.auth_id.value[0] = JACARTAPKI_USER_PIN_AUTH_ID;
@@ -432,8 +441,10 @@ _create_data_object(struct sc_pkcs15_card *p15card, const char *path, unsigned f
 	if (rv != SC_SUCCESS)
 		return SC_SUCCESS;
 
-	if (len < 11) /* header 7 bytes, tail 4 bytes */
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "data object file is too short");
+	if (len < 11) { /* header 7 bytes, tail 4 bytes */
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_ERROR_GOTO(ctx, rv, "data object file is too short");
+	}
 
 	rv = jacartapki_attrs_data_object_decode(ctx, &obj, &info, data + 7, len - 11, &hash_exists);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Decode data object error.");
@@ -447,19 +458,20 @@ _create_data_object(struct sc_pkcs15_card *p15card, const char *path, unsigned f
 	rv = sc_pkcs15emu_add_data_object(p15card, &obj, &info);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to emu-add data object");
 
-	if (hash_exists) {
+	if (hash_exists != 0) {
 		unsigned char sha1_attr[SHA_DIGEST_LENGTH];
 
 		memcpy(sha1_attr, data + 12, SHA_DIGEST_LENGTH);
 		memset(data + 12, 0, SHA_DIGEST_LENGTH);
 
 		/* TEMP - disable check SHA for 0-filled hash */
-		if (memcmp(sha1_attr, data + 12, SHA_DIGEST_LENGTH)) {
+		if (memcmp(sha1_attr, data + 12, SHA_DIGEST_LENGTH) != 0) {
 			unsigned char sha1[SHA_DIGEST_LENGTH];
 
 			SHA1(data, len, sha1);
-			if (memcmp(sha1, sha1_attr, SHA_DIGEST_LENGTH)) {
-				LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "invalid checksum of DATA attributes");
+			if (memcmp(sha1, sha1_attr, SHA_DIGEST_LENGTH) != 0) {
+				rv = SC_ERROR_INVALID_DATA;
+				LOG_ERROR_GOTO(ctx, rv, "invalid checksum of DATA attributes");
 			}
 		}
 	}
@@ -507,7 +519,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 
 		count = rv / 2;
 		/* TODO:
-		 * Laser's EF may have the 'DF name' attribute.
+		 * JaCarta PKI EF may have the 'DF name' attribute.
 		 * Normally here this attribute has to be used to identify
 		 * the kxc and kxs files.
 		 * But, for a while, for the sake of simplicity,
@@ -516,7 +528,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 		for (ii = 0; ii < count; ii++) {
 			unsigned fid, type;
 
-			fid = (*(buf + ii * 2) << 8) + *(buf + ii * 2 + 1);
+			fid = (buf[ii * 2] << 8) + buf[ii * 2 + 1];
 			type = _jacartapki_type(fid);
 			sc_log(ctx, "parse FID:%04X, type:0x%04X", fid, type);
 			switch (type) {
@@ -565,8 +577,8 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 		struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *)pubkeys[ii]->data;
 		struct sc_pkcs15_object *prkey_obj = NULL;
 
-		if (!sc_pkcs15_find_prkey_by_id(p15card, &info->id, &prkey_obj))
-			if (strlen(prkey_obj->label) && !strlen(pubkeys[ii]->label))
+		if (sc_pkcs15_find_prkey_by_id(p15card, &info->id, &prkey_obj) == 0)
+			if (strlen(prkey_obj->label) > 0 && strlen(pubkeys[ii]->label) == 0)
 				memcpy(pubkeys[ii]->label, prkey_obj->label, sizeof(pubkeys[ii]->label));
 	}
 
@@ -577,7 +589,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 		size_t prkeys_num, offs = 0;
 		int rec_num;
 
-		if (strcmp(dobjs[ii]->label, "cmapfile") || strcmp(dinfo->app_label, CMAP_DO_APPLICATION_NAME))
+		if (strcmp(dobjs[ii]->label, "cmapfile") != 0 || strcmp(dinfo->app_label, CMAP_DO_APPLICATION_NAME) != 0)
 			continue;
 
 		rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, prkeys, 12);
@@ -595,9 +607,9 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 		for (offs = 0, rec_num = 0; offs < data->data_len; rec_num++) {
 			rv = jacartapki_md_cmap_record_decode(ctx, data, &offs, &rec);
 			LOG_TEST_GOTO_ERR(ctx, rv, "Failed to decode CMAP entry");
-			if (!rec)
+			if (rec == NULL)
 				break;
-			if (rec->keysize_sign || rec->keysize_keyexchange) {
+			if (rec->keysize_sign != 0 || rec->keysize_keyexchange != 0) {
 				unsigned char *guid = NULL;
 				size_t guid_len = 0;
 
@@ -669,13 +681,18 @@ _set_md_data(struct sc_pkcs15_card *p15card)
 
 	rv = sc_pkcs15_read_file(p15card, &path, &buf, &buflen, 0);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select&read jacartapki-md-cardcf file");
-	if ((int)sizeof(struct jacartapki_cardcf) > buflen)
-		LOG_ERROR_GOTO(ctx, 0 > rv ? rv : (rv = SC_ERROR_INVALID_DATA), "Incorrect jacartapki-md-cardcf file");
+	if ((int)sizeof(struct jacartapki_cardcf) > buflen) {
+		if (rv >= 0)
+			rv = SC_ERROR_INVALID_DATA;
+		LOG_ERROR_GOTO(ctx, rv, "Incorrect jacartapki-md-cardcf file");
+	}
 
 	p15card->md_data = (struct sc_md_data *)calloc(1, sizeof(struct sc_md_data));
 
-	if (!p15card->md_data)
-		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (p15card->md_data == NULL) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		LOG_ERROR_GOTO(p15card->card->ctx, rv, "Failed to allocate minidriver data");
+	}
 
 	p15card->md_data->cardcf = *((struct jacartapki_cardcf *)buf);
 err:
@@ -705,8 +722,10 @@ sc_pkcs15emu_jacartapki_init(struct sc_pkcs15_card *p15card)
 	rv = sc_pkcs15_read_file(p15card, &path, &buf, &buflen, 0);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select&read TOKEN-INFO file");
 
-	if (buflen < JACARTAPKI_TOKEN_INFO_LENGTH)
-		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "Invalid TOKEN-INFO data");
+	if (buflen < JACARTAPKI_TOKEN_INFO_LENGTH) {
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_ERROR_GOTO(ctx, rv, "Invalid TOKEN-INFO data");
+	}
 
 	rv = _alloc_ck_string(buf + idx, labelSize, &p15card->tokeninfo->label);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot allocate token label");
@@ -725,12 +744,12 @@ sc_pkcs15emu_jacartapki_init(struct sc_pkcs15_card *p15card)
 	p15card->tokeninfo->flags = *((int32_t *)(buf + idx));
 	idx += (flagsSize + countersSize);
 
-	p15card->card->version.hw_major = *(buf + idx++);
-	p15card->card->version.hw_minor = *(buf + idx++);
-	p15card->card->version.fw_major = *(buf + idx++);
-	p15card->card->version.fw_minor = *(buf + idx++);
+	p15card->card->version.hw_major = buf[idx++];
+	p15card->card->version.hw_minor = buf[idx++];
+	p15card->card->version.fw_major = buf[idx++];
+	p15card->card->version.fw_minor = buf[idx++];
 
-	if (p15card->tokeninfo->flags & CKF_USER_PIN_INITIALIZED) {
+	if ((p15card->tokeninfo->flags & CKF_USER_PIN_INITIALIZED) != 0) {
 		rv = _create_pin(p15card, "User PIN", PATH_USERPIN, JACARTAPKI_USER_PIN_AUTH_ID, 0);
 		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot create 'User PIN' object");
 	}
@@ -770,32 +789,31 @@ jacartapki_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *pdf)
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_card *card = p15card->card;
 	struct sc_path path;
+	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
+	size_t ii, count;
+	int rv;
+	unsigned char user_logged_in = 0;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)p15card->card->drv_data;
+
+	LOG_FUNC_CALLED(ctx);
 
 	sc_format_path(PATH_PRIVATEDIR, &path);
 
-	if (pdf->type != SC_PKCS15_DODF || !sc_compare_path(&path, &pdf->path))
+	if (pdf->type != SC_PKCS15_DODF || sc_compare_path(&path, &pdf->path) == 0)
 		return sc_pkcs15_parse_df(p15card, pdf);
-	if (pdf->enumerated)
+	if (pdf->enumerated != 0)
 		return SC_SUCCESS;
 
-	unsigned char user_logged_in = 0;
-	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)p15card->card->drv_data;
-	if (private_data) {
-		for (int i = 0; i != sizeof(private_data->auth_state) / sizeof(private_data->auth_state[0]); i++) {
+	if (private_data != NULL) {
+		for (int i = 0; i != sizeof(private_data->auth_state) / sizeof(private_data->auth_state[0]); ++i) {
 			if (private_data->auth_state[i].pin_reference == JACARTAPKI_USER_PIN_REFERENCE) {
 				user_logged_in = private_data->auth_state[i].logged_in;
 				break;
 			}
 		}
 	}
-	if (!user_logged_in)
+	if (user_logged_in == 0)
 		return SC_SUCCESS;
-
-	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
-	size_t ii, count;
-	int rv;
-
-	LOG_FUNC_CALLED(ctx);
 
 	rv = sc_select_file(card, &path, NULL);
 	LOG_TEST_RET(ctx, rv, "Cannot select object's DF");
@@ -805,7 +823,7 @@ jacartapki_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *pdf)
 
 	count = rv / 2;
 	/* TODO:
-	 * Laser's EF may have the 'DF name' attribute.
+	 * JaCarta PKI EF may have the 'DF name' attribute.
 	 * Normally here this attribute has to be used to identify
 	 * the kxc and kxs files.
 	 * But, for a while, for the sake of simplicity,
@@ -814,7 +832,7 @@ jacartapki_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *pdf)
 	for (ii = 0; ii < count; ii++) {
 		unsigned fid, type;
 
-		fid = *(buf + ii * 2) * 0x100 + *(buf + ii * 2 + 1);
+		fid = (buf[ii * 2] << 8) + buf[ii * 2 + 1];
 		type = _jacartapki_type(fid);
 		sc_log(ctx, "parse FID:%04X, type:0x%04X", fid, type);
 		switch (type) {
