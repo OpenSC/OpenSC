@@ -33,49 +33,46 @@ jobs:
     env:
       OPENPACE_VER: 1.1.3
       VCPKG_INSTALLED: ${{ github.workspace }}\vcpkg_installed
+      BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Git describe
         id: ghd
         uses: proudust/gh-describe@v2
       - name: Package name
         shell: bash
         run: |
-          echo ARTIFACT=OpenSC-${{ steps.ghd.outputs.tag }}_${{ matrix.platform }}${{ matrix.configuration == 'Light' && '-Light' || '' }} >> $GITHUB_ENV
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_name }}" == "master" ]]; then
+            SUFFIX=""
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            SUFFIX="-${{ github.ref_name }}"
+          elif [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" == "master" ]]; then
+            SUFFIX="-pr${{ github.event.number }}"
+          else
+            SUFFIX="-${{ github.base_ref }}-pr${{ github.event.number }}"
+          fi
+          echo ARTIFACT=${{ steps.ghd.outputs.tag }}${SUFFIX}_${{ matrix.platform }}${{ matrix.configuration == 'Light' && '-Light' || '' }} >> $GITHUB_ENV
       - name: Install CPDK
         run: choco install windows-cryptographic-provider-development-kit -y > $null
-      - name: Install autotools
-        uses: msys2/setup-msys2@v2
-        with:
-          install: autotools mingw-w64-x86_64-pkg-config
-      - name: Bootstrap
-        shell: msys2 {0}
-        run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_name }}" == "master" ]]; then
-            ./bootstrap
-          elif [[ "${{ github.event_name }}" == "push" ]]; then
-            ./bootstrap.ci -s "-${{ github.ref_name }}"
-          elif [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" == "master" ]]; then
-            ./bootstrap.ci -s "-pr${{ github.event.number }}"
-          else
-            ./bootstrap.ci -s "-${{ github.base_ref }}-pr${{ github.event.number }}"
-          fi
-      - name: Configure
-        shell: bash
-        run: ./configure --disable-openssl --disable-readline --disable-zlib || cat config.log
       - name: Setup dev env
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: ${{ matrix.setenv }}
+      - name: Cache vcpkg
+        if: matrix.configuration == 'Release'
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/vcpkg_cache
+          key: vcpkg-${{ matrix.configuration }}-${{ matrix.platform }}-${{ hashFiles('.github/workflows/windows.yml', '.github/vcpkg.json') }}
       - name: Prepare vcpkg
         if: matrix.configuration == 'Release'
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 0d5cae153065957df7f382de7c1549ccc88027e5
           vcpkgJsonGlob: .github/vcpkg.json
           runVcpkgInstall: true
         env:
+          VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/vcpkg_cache,readwrite
           VCPKG_DEFAULT_TRIPLET: ${{ matrix.platform }}-windows-static
           VCPKG_INSTALLED_DIR: ${{ env.VCPKG_INSTALLED }}
       - name: Install WIX
@@ -131,7 +128,7 @@ jobs:
       - name: Archive debug artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ARTIFACT }}-Debug
+          name: OpenSC-${{ env.ARTIFACT }}-Debug
           path: |
             ./src/**/*.pdb
             ./win32/*.pdb

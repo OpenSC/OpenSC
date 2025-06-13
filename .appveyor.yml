@@ -92,12 +92,6 @@ build_script:
         $env:OPENPACE_DEF="/DENABLE_OPENPACE"
         $env:OPENPACE_DIR="C:\openpace-${env:OPENSSL_PF}"
       }
-  - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" == \"master\" -a -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap; fi"
-  - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" == \"master\" -a -n \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap.ci -s \"-pr$APPVEYOR_PULL_REQUEST_NUMBER\"; fi"
-  - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" != \"master\" -a -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap.ci -s \"-$APPVEYOR_REPO_BRANCH\"; fi"
-  - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" != \"master\" -a -n \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap.ci -s \"-$APPVEYOR_REPO_BRANCH-prAPPVEYOR_PULL_REQUEST_NUMBER\"; fi"
-  # disable features to speed up the script
-  - bash -c "exec 0</dev/null && ./configure --with-cygwin-native --disable-openssl --disable-readline --disable-zlib || cat config.log"
   - nmake /nologo /f Makefile.mak opensc.msi
   - move win32\OpenSC.msi %ARTIFACT%.msi
   # put all pdb files for dump analysis, but this consumes approx 100 MB per build

@@ -2,21 +2,16 @@ dnl -*- mode: m4; -*-
 
 AC_PREREQ(2.68)
 
-define([PRODUCT_NAME], [OpenSC])
-define([PRODUCT_TARNAME], [opensc])
-define([PRODUCT_BUGREPORT], [https://github.com/OpenSC/OpenSC/issues])
-define([PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
-define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [26])
-define([PACKAGE_VERSION_FIX], [1])
-define([PACKAGE_SUFFIX], [])
-
-define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
-define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
-define([VS_FF_LEGAL_COMPANY_URL], [https://github.com/OpenSC])
-define([VS_FF_COMMENTS], [Provided under the terms of the GNU Lesser General Public License (LGPLv2.1+).])
-define([VS_FF_PRODUCT_NAME], [OpenSC smartcard framework])
-define([VS_FF_PRODUCT_UPDATES], [https://github.com/OpenSC/OpenSC/releases])
+m4_esyscmd([awk -F= '
+  /^[[:space:]]*#/      { next }
+  /^[[:space:]]*$/      { next }
+  {
+    key = $1; val = $2;
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", key);
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", val);
+    printf("m4_define([%s],[%s])\n", key, val);
+  }
+' "VERSION.mk"])
 
 m4_sinclude(m4/version.m4.ci)
 
@@ -418,8 +413,8 @@ if test "${GIT_CHECKOUT}" = "yes"; then
 	OPENSC_SCM_REVISION="OpenSC-${REVISION_DESCRIPTION}, ${HASH_COMMIT_DATE}"
 	OPENSC_VERSION_REVISION="$(${GIT} rev-list ${GIT_TAG_COMMIT}..HEAD --count || echo 0)"
 else
-	OPENSC_SCM_REVISION="No Git revision info available"
-	OPENSC_VERSION_REVISION="0"
+	OPENSC_SCM_REVISION="PACKAGE_SCM_REVISION"
+	OPENSC_VERSION_REVISION="PACKAGE_VERSION_REVISION"
 fi
 
 dnl C Compiler features
@@ -1206,9 +1201,7 @@ AC_CONFIG_FILES([
 	src/minidriver/Makefile
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
-	win32/winconfig.h
 	win32/OpenSC.iss
-	win32/OpenSC.wxs
 	MacOSX/Makefile
 	MacOSX/build-package
 	MacOSX/Distribution.xml

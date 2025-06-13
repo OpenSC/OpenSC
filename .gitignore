@@ -97,8 +97,6 @@ src/tools/org.opensc-project.mac.opensc-notify.plist
 src/tools/org.opensc-project.mac.pkcs11-register.plist
 
 win32/OpenSC.iss
-win32/OpenSC.wxs
-win32/winconfig.h
 win32/OpenSC.msi
 win32/OpenSC.wixobj
 win32/OpenSC.wixpdb

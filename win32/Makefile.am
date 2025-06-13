@@ -1,9 +1,8 @@
 include $(top_srcdir)/win32/ltrc.inc
 
-MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/winconfig.h \
-		$(srcdir)/OpenSC.iss $(srcdir)/OpenSC.wxs
-EXTRA_DIST = ltrc.inc Makefile.mak Make.rules.mak versioninfo.rc winconfig.h.in \
-		OpenSC.iss.in OpenSC.wxs.in versioninfo-customactions.rc \
+MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/OpenSC.iss
+EXTRA_DIST = ltrc.inc Makefile.mak Make.rules.mak versioninfo.rc winconfig.h \
+		OpenSC.iss.in OpenSC.wxs versioninfo-customactions.rc \
 		OpenSC.ico dlgbmp.bmp bannrbmp.bmp DDORes.dll_14_2302.ico
 dist_noinst_HEADERS = versioninfo.rc winconfig.h OpenSC.iss OpenSC.wxs
 
