@@ -9,7 +9,7 @@ LIBS = $(FUZZING_LIBS)\
 
 noinst_PROGRAMS = fuzz_asn1_print fuzz_asn1_sig_value fuzz_pkcs15_decode fuzz_pkcs15_reader \
 					fuzz_scconf_parse_string fuzz_pkcs15_encode fuzz_card \
-					fuzz_pkcs15_tool fuzz_pkcs15_crypt
+					fuzz_pkcs15_tool fuzz_pkcs15_crypt fuzz_pkcs11_uri
 
 if ENABLE_STATIC
 noinst_PROGRAMS += fuzz_pkcs15init
@@ -55,3 +55,4 @@ fuzz_pkcs11_LDADD = \
 	$(top_builddir)/src/common/libpkcs11.la \
 	$(OPTIONAL_OPENSSL_LIBS) \
 	$(top_builddir)/src/pkcs11/libopensc-pkcs11.la
+fuzz_pkcs11_uri_SOURCES = fuzz_pkcs11_uri.c ../../tools/pkcs11_uri.c $(ADDITIONAL_SRC)
