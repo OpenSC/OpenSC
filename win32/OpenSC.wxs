@@ -25,13 +25,13 @@
      xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
-  <Package Name="@OPENSC_VS_FF_PRODUCT_NAME@$(var.ProductFlavor)$(var.ProductArch)"
+  <Package Name="$(var.PRODUCT_NAME)$(var.ProductFlavor)$(var.ProductArch)"
            UpgradeCode="$(var.PlatformUpgradeCode)"
            Language="1033"
            Version="!(bind.FileVersion.opensc.dll)"
-           Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@"
+           Manufacturer="$(var.VS_FF_LEGAL_COMPANY_NAME)"
            Compressed="yes">
-    <SummaryInformation Description="@OPENSC_VS_FF_PRODUCT_NAME@ Installer"
+    <SummaryInformation Description="$(var.PRODUCT_NAME) Installer"
                         Keywords="SmartCard, eID" />
     <MajorUpgrade AllowSameVersionUpgrades="yes" Schedule="afterInstallInitialize" DowngradeErrorMessage=
         "A newer version of [ProductName] is already installed. If you are trying to downgrade, please uninstall the newer version first." />
@@ -39,10 +39,10 @@
     <WixVariable Id="WixUIBannerBmp" Value="bannrbmp.bmp" />
     <WixVariable Id="WixUIDialogBmp" Value="dlgbmp.bmp" />
     <!-- Links in info -->
-    <Property Id="ARPHELPLINK" Value="@PACKAGE_BUGREPORT@" />
-    <Property Id="ARPURLINFOABOUT" Value="@PACKAGE_URL@" />
-    <Property Id="ARPURLUPDATEINFO" Value="@OPENSC_VS_FF_PRODUCT_UPDATES@" />
-    <Property Id="ARPCONTACT" Value="@OPENSC_VS_FF_COMPANY_URL@" />
+    <Property Id="ARPHELPLINK" Value="$(var.PRODUCT_BUGREPORT)" />
+    <Property Id="ARPURLINFOABOUT" Value="$(var.PRODUCT_URL)" />
+    <Property Id="ARPURLUPDATEINFO" Value="$(var.VS_FF_PRODUCT_UPDATES)" />
+    <Property Id="ARPCONTACT" Value="$(var.VS_FF_LEGAL_COMPANY_URL)" />
 
     <Icon Id="OpenSC.ico" SourceFile="OpenSC.ico" />
     <Property Id="ARPPRODUCTICON" Value="OpenSC.ico" />
