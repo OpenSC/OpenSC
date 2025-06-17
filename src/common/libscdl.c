@@ -25,8 +25,9 @@
 #include "libscdl.h"
 
 #ifdef _WIN32
-#include <windows.h>
 #include <shlwapi.h>
+#include <stdio.h>
+#include <windows.h>
 
 void *sc_dlopen(const char *filename)
 {
@@ -41,7 +42,21 @@ void *sc_dlsym(void *handle, const char *symbol)
 
 const char *sc_dlerror()
 {
-	return "LoadLibrary/GetProcAddress failed";
+	static char msg[1024];
+	DWORD err = GetLastError();
+	DWORD rv = 0;
+
+	if (err == ERROR_BAD_EXE_FORMAT) {
+		return "LoadLibrary/GetProcAddress failed: check module architecture matches application architecture";
+	}
+
+	rv = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+			NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+			msg, sizeof(msg), NULL);
+	if (rv == 0) {
+		snprintf(msg, sizeof(msg), "LoadLibrary/GetProcAddress failed: %lx", err);
+	}
+	return msg;
 }
 
 int sc_dlclose(void *handle)
