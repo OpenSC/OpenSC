@@ -947,7 +947,8 @@ app <replaceable>application</replaceable> {
 										<literal>yes</literal>:
 										PIN verified in secure way. PIN SHA1 is used as a key
 										for card challenge encrypt. The result is sent to the applet.
-										Command can be wrapped in SM envelope if SM is in place.
+										Command can be wrapped in SM envelope if SM is in place (Default:
+										<literal>yes</literal>).
 									</para>
 								</listitem>
 								<listitem>
