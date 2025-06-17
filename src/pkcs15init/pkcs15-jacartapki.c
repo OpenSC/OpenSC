@@ -80,19 +80,17 @@ static int jacartapki_cardapps_create(struct sc_profile *profile, struct sc_pkcs
 static int jacartapki_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card *p15card);
 static int jacartapki_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card);
 
-static int
+static void
 jacartapki_strcpy_bp(unsigned char *dst, const char *src, size_t dstsize)
 {
 	size_t len;
 
 	if (dst == NULL || src == NULL || dstsize == 0)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		return; // invalid arguments
 
 	memset((char *)dst, ' ', dstsize);
 	len = MIN(strlen(src), dstsize);
 	memcpy((char *)dst, src, len);
-
-	return SC_SUCCESS;
 }
 
 static int
@@ -444,10 +442,8 @@ jacartapki_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card 
 
 			} else if (!strcmp(to_create[ii], "Aladdin-EEEF")) {
 
-				if (SC_SUCCESS != jacartapki_update_eeef(profile, p15card, file)) {
-					rv = SC_ERROR_INTERNAL;
-					LOG_ERROR_GOTO(ctx, rv, "Cannot update Aladdin-EEEF file");
-				}
+				rv = jacartapki_update_eeef(profile, p15card, file);
+				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot update Aladdin-EEEF file");
 
 			} else if (!strcmp(to_create[ii], "jacartapki-cmap-attributes")) {
 
@@ -649,11 +645,11 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 	pin_file->prop_attr[offs++] = (auth_info->max_tries & 0x0F) | ((auth_info->max_tries << 4) & 0xF0); /* tries/unlocks */
 	pin_file->prop_attr[offs++] = pin_attrs->min_length;
 	pin_file->prop_attr[offs++] = pin_attrs->max_length;
-	pin_file->prop_attr[offs++] = 0; /* upper case */
-	pin_file->prop_attr[offs++] = 0; /* lower case */
-	pin_file->prop_attr[offs++] = 0; /* digit */
-	pin_file->prop_attr[offs++] = 0; /* alpha */
-	pin_file->prop_attr[offs++] = 0; /* special */
+	pin_file->prop_attr[offs++] = 0;		     /* upper case */
+	pin_file->prop_attr[offs++] = 0;		     /* lower case */
+	pin_file->prop_attr[offs++] = 0;		     /* digit */
+	pin_file->prop_attr[offs++] = 0;		     /* alpha */
+	pin_file->prop_attr[offs++] = 0;		     /* special */
 	pin_file->prop_attr[offs++] = pin_attrs->max_length; /* occurrence */
 	pin_file->prop_attr[offs++] = pin_attrs->max_length; /* sequenve */
 	pin_file->prop_attr_len = offs;
@@ -1179,9 +1175,9 @@ jacartapki_cmap_update(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 
 	free(cmap_dobj_info->data.value);
 
-	data_len = cmap_len + sizeof(struct jacartapki_cmap_record);
-	if (data_len < 5 * sizeof(struct jacartapki_cmap_record))
-		data_len = 5 * sizeof(struct jacartapki_cmap_record);
+	data_len = cmap_len + sizeof(jacartapki_cmap_record_t);
+	if (data_len < 5 * sizeof(jacartapki_cmap_record_t))
+		data_len = 5 * sizeof(jacartapki_cmap_record_t);
 
 	cmap_dobj_info->data.value = calloc(1, data_len);
 	if (cmap_dobj_info->data.value == NULL) {
@@ -1203,7 +1199,7 @@ static int
 jacartapki_cardcf_create(struct sc_profile *profile, struct sc_pkcs15_card *p15card, struct sc_file *file)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct jacartapki_cardcf cardcf = {
+	jacartapki_cardcf_t cardcf = {
 			{0x00, 0x06, 0x00, 0x03},
 			0x1,
 			0x1
@@ -1238,9 +1234,9 @@ jacartapki_cardcf_save(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 	}
 
 	if (p15card->md_data != NULL) {
-		struct jacartapki_cardcf *cardcf = &p15card->md_data->cardcf;
-		rv = sc_pkcs15init_update_file(profile, p15card, file, cardcf, sizeof(struct jacartapki_cardcf));
-		if ((int)sizeof(struct jacartapki_cardcf) > rv) {
+		jacartapki_cardcf_t *cardcf = &p15card->md_data->cardcf;
+		rv = sc_pkcs15init_update_file(profile, p15card, file, cardcf, sizeof(jacartapki_cardcf_t));
+		if ((int)sizeof(jacartapki_cardcf_t) > rv) {
 			if (rv >= 0)
 				rv = SC_ERROR_INTERNAL;
 			LOG_ERROR_RET(ctx, rv, "Cannot update jacartapki_md_cardcf");
@@ -1749,7 +1745,7 @@ jacartapki_emu_update_df(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 	LOG_FUNC_CALLED(ctx);
 
 	if (p15card->md_data != NULL) {
-		struct jacartapki_cardcf *cardcf = &p15card->md_data->cardcf;
+		jacartapki_cardcf_t *cardcf = &p15card->md_data->cardcf;
 		cardcf->cont_freshness++;
 		cardcf->files_freshness++;
 	}
@@ -1770,7 +1766,7 @@ jacartapki_emu_update_df(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 		LOG_TEST_RET(ctx, rv, "Failed to update CARDCF");
 	}
 	if (rv < 0 && p15card->md_data != NULL) {
-		struct jacartapki_cardcf *cardcf = &p15card->md_data->cardcf;
+		jacartapki_cardcf_t *cardcf = &p15card->md_data->cardcf;
 		cardcf->cont_freshness--;
 		cardcf->files_freshness--;
 	}
@@ -1784,7 +1780,7 @@ jacartapki_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_car
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *file = NULL;
-	struct jacartapki_token_info lti;
+	jacartapki_token_info_t jti;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1792,25 +1788,25 @@ jacartapki_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_car
 	if (tinfo == NULL)
 		tinfo = p15card->tokeninfo;
 
-	memset(&lti, 0, sizeof(lti));
+	memset(&jti, 0, sizeof(jti));
 
-	jacartapki_strcpy_bp(lti.label, tinfo->label, sizeof(lti.label));
-	jacartapki_strcpy_bp(lti.manufacturer_id, tinfo->manufacturer_id, sizeof(lti.manufacturer_id));
-	jacartapki_strcpy_bp(lti.model, JACARTAPKI_MODEL, sizeof(lti.model));
-	jacartapki_strcpy_bp(lti.serial_number, tinfo->serial_number, sizeof(lti.serial_number));
+	jacartapki_strcpy_bp(jti.label, tinfo->label, sizeof(jti.label));
+	jacartapki_strcpy_bp(jti.manufacturer_id, tinfo->manufacturer_id, sizeof(jti.manufacturer_id));
+	jacartapki_strcpy_bp(jti.model, JACARTAPKI_MODEL, sizeof(jti.model));
+	jacartapki_strcpy_bp(jti.serial_number, tinfo->serial_number, sizeof(jti.serial_number));
 
-	lti.flags = tinfo->flags;
+	jti.flags = tinfo->flags;
 
-	lti.max_pin_len = profile->pin_maxlen;
-	lti.min_pin_len = profile->pin_minlen;
+	jti.max_pin_len = profile->pin_maxlen;
+	jti.min_pin_len = profile->pin_minlen;
 
-	lti.total_public_memory = (uint32_t)(-1);
-	lti.total_private_memory = (uint32_t)(-1);
+	jti.total_public_memory = (uint32_t)(-1);
+	jti.total_private_memory = (uint32_t)(-1);
 
-	lti.hardware_version.major = p15card->card->version.hw_major;
-	lti.hardware_version.minor = p15card->card->version.hw_minor;
-	lti.firmware_version.major = p15card->card->version.fw_major;
-	lti.firmware_version.minor = p15card->card->version.fw_minor;
+	jti.hardware_version.major = p15card->card->version.hw_major;
+	jti.hardware_version.minor = p15card->card->version.hw_minor;
+	jti.firmware_version.major = p15card->card->version.fw_major;
+	jti.firmware_version.minor = p15card->card->version.fw_minor;
 
 	free(tinfo->last_update.gtime);
 	tinfo->last_update.gtime = NULL;
@@ -1818,13 +1814,13 @@ jacartapki_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_car
 	rv = sc_pkcs15_get_generalized_time(ctx, &tinfo->last_update.gtime);
 	LOG_TEST_RET(ctx, rv, "Cannot allocate generalized time");
 
-	jacartapki_strcpy_bp(lti.utc_time, tinfo->last_update.gtime, sizeof(lti.utc_time));
+	jacartapki_strcpy_bp(jti.utc_time, tinfo->last_update.gtime, sizeof(jti.utc_time));
 
 	rv = sc_profile_get_file(profile, "Aladdin-TokenInfo", &file);
 	LOG_TEST_RET(ctx, rv, "'Aladdin-TokenInfo' not defined");
 
-	rv = sc_pkcs15init_update_file(profile, p15card, file, (unsigned char *)(&lti), sizeof(lti));
-	if ((int)sizeof(lti) > rv) {
+	rv = sc_pkcs15init_update_file(profile, p15card, file, (unsigned char *)(&jti), sizeof(jti));
+	if ((int)sizeof(jti) > rv) {
 		if (rv >= 0)
 			rv = SC_ERROR_INTERNAL;
 		LOG_ERROR_RET(ctx, rv, "Cannot update TokenInfo file");
@@ -1884,7 +1880,7 @@ jacartapki_emu_store_pubkey(struct sc_pkcs15_card *p15card,
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate new jacartapki public-key file");
 
 	file->size = info->modulus_length / 8;
-	if (info->path.len)
+	if (info->path.len > 0)
 		file->path = info->path;
 
 	file->prop_attr = calloc(1, 5);
@@ -1951,18 +1947,24 @@ jacartapki_emu_store_certificate(struct sc_pkcs15_card *p15card,
 	sc_log(ctx, "store certificate with ID '%s'", sc_pkcs15_print_id(&info->id));
 	rv = sc_pkcs15_find_prkey_by_id(p15card, &info->id, &key);
 	if (rv == SC_SUCCESS) {
-		struct sc_path key_path = ((struct sc_pkcs15_prkey_info *)key->data)->path;
+		const struct sc_path *key_path = &((struct sc_pkcs15_prkey_info *)key->data)->path;
 
-		idx = (key_path.value[key_path.len - 1] & JACARTAPKI_FS_REF_MASK) - 1;
-		rv = jacartapki_new_file(profile, p15card->card, object, JACARTAPKI_ATTRS_CERT_X509_CMAP, idx, &file);
-		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate jacartapki certificate attributes file");
+		if (key_path->len > 0) {
+			idx = (key_path->value[key_path->len - 1] & JACARTAPKI_FS_REF_MASK) - 1;
+			rv = jacartapki_new_file(profile, p15card->card, object, JACARTAPKI_ATTRS_CERT_X509_CMAP, idx, &file);
+			LOG_TEST_GOTO_ERR(ctx, rv, "Cannot instantiate jacartapki certificate attributes file");
 
-		snprintf((char *)file->name, sizeof(file->name), "kxc%02i", idx);
-		file->namelen = strlen((char *)file->name);
+			snprintf((char *)file->name, sizeof(file->name), "kxc%02i", idx);
+			file->namelen = strlen((char *)file->name);
 
-		/* The same label have the certificate and it's key friend */
-		snprintf(object->label, sizeof(object->label), "%s", (char *)key->label);
-	} else {
+			/* The same label have the certificate and it's key friend */
+			snprintf(object->label, sizeof(object->label), "%s", (char *)key->label);
+		} else {
+			rv = SC_ERROR_FILE_NOT_FOUND;
+		}
+	}
+
+	if(rv < 0) {
 		idx = jacartapki_get_free_index(p15card, SC_PKCS15_TYPE_CERT_X509, JACARTAPKI_FS_BASEFID_CERT);
 		LOG_TEST_GOTO_ERR(ctx, idx, "Cannot get free certificate index");
 

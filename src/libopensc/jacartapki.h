@@ -162,7 +162,14 @@
 #define CMAP_FLAG_CONTAINER_DEFAULT 0x02
 #define CMAP_DO_APPLICATION_NAME    "CSP"
 
-struct jacartapki_cmap_record {
+#ifdef _MSC_VER
+#define PACKED
+#pragma pack(push, 1)
+#elif defined(__GNUC__)
+#define PACKED __attribute__((__packed__))
+#endif
+
+typedef struct jacartapki_cmap_record {
 	/* original MD fields */
 	unsigned char guid[CMAP_GUID_INFO_SIZE]; /* 40 x sizeof unicode chars */
 	unsigned char flags;
@@ -177,16 +184,49 @@ struct jacartapki_cmap_record {
 	/* DF - DS/PKI + MSB in lower byte == 1 (0x80) if we use our
 	 * Conversion to Unicode with MSB on in any byte */
 	unsigned short rfu;
-};
+} PACKED jacartapki_cmap_record_t;
 
-struct jacartapki_cardcf {
+typedef struct jacartapki_cardcf {
 	unsigned char _unused[4];
 	unsigned short cont_freshness;
 	unsigned short files_freshness;
-};
+} PACKED jacartapki_cardcf_t;
+
+typedef struct jacartapki_version {
+	unsigned char major;
+	unsigned char minor;
+} PACKED jacartapki_version_t;
+
+typedef struct jacartapki_token_info {
+	unsigned char label[32];		/* 0   */
+	unsigned char manufacturer_id[32];	/* 32  */
+	unsigned char model[16];		/* 64  */
+	unsigned char serial_number[16];	/* 80  */
+	uint32_t flags;				/* 96  */
+	uint32_t max_session_count;		/* 100 */
+	uint32_t session_count;			/* 104 */
+	uint32_t max_rw_session_count;		/* 108 */
+	uint32_t rw_session_count;		/* 112 */
+	uint32_t max_pin_len;			/* 116 */
+	uint32_t min_pin_len;			/* 120 */
+	uint32_t total_public_memory;		/* 124 */
+	uint32_t free_public_memory;		/* 128 */
+	uint32_t total_private_memory;		/* 132 */
+	uint32_t free_private_memory;		/* 136 */
+	jacartapki_version_t hardware_version;	/* 140 */
+	jacartapki_version_t firmware_version;	/* 142 */
+	unsigned char utc_time[16];		/* 144 */
+} PACKED jacartapki_token_info_t;		/* 160 */
+
+#ifdef _MSC_VER
+#undef PACKED
+#pragma pack(pop)
+#elif defined(__GNUC__)
+#undef PACKED
+#endif
 
 struct sc_md_data {
-	struct jacartapki_cardcf cardcf;
+	jacartapki_cardcf_t cardcf;
 };
 
 struct sc_cardctl_jacartapki_genkey {
@@ -203,70 +243,6 @@ struct sc_cardctl_jacartapki_updatekey {
 	unsigned char *data;
 	size_t len;
 };
-
-struct jacartapki_version {
-	unsigned char major;
-	unsigned char minor;
-};
-
-struct jacartapki_token_info {
-	unsigned char label[32];		    /* 0   */
-	unsigned char manufacturer_id[32];	    /* 32  */
-	unsigned char model[16];		    /* 64  */
-	unsigned char serial_number[16];	    /* 80  */
-	uint32_t flags;				    /* 96  */
-	uint32_t max_session_count;		    /* 100 */
-	uint32_t session_count;			    /* 104 */
-	uint32_t max_rw_session_count;		    /* 108 */
-	uint32_t rw_session_count;		    /* 112 */
-	uint32_t max_pin_len;			    /* 116 */
-	uint32_t min_pin_len;			    /* 120 */
-	uint32_t total_public_memory;		    /* 124 */
-	uint32_t free_public_memory;		    /* 128 */
-	uint32_t total_private_memory;		    /* 132 */
-	uint32_t free_private_memory;		    /* 136 */
-	struct jacartapki_version hardware_version; /* 140 */
-	struct jacartapki_version firmware_version; /* 142 */
-	unsigned char utc_time[16];		    /* 144 */
-}; /* 160 */
-
-int jacartapki_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigned base_file_id);
-
-int jacartapki_encode_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key,
-		unsigned char **buf, size_t *len);
-
-int jacartapki_attrs_cert_decode(struct sc_context *ctx, struct sc_pkcs15_object *object,
-		struct sc_pkcs15_cert_info *info, unsigned char *data, size_t data_len);
-int jacartapki_attrs_prvkey_decode(struct sc_context *ctx, struct sc_pkcs15_object *object,
-		struct sc_pkcs15_prkey_info *info, unsigned char *data, size_t data_len);
-int jacartapki_attrs_pubkey_decode(struct sc_context *ctx, struct sc_pkcs15_object *object,
-		struct sc_pkcs15_pubkey_info *info, unsigned char *data, size_t data_len);
-int jacartapki_attrs_data_object_decode(struct sc_context *ctx, struct sc_pkcs15_object *object,
-		struct sc_pkcs15_data_info *info, unsigned char *data, size_t data_len, unsigned char *hash_exists);
-
-int jacartapki_md_cmap_record_decode(struct sc_context *ctx, const struct sc_pkcs15_data *data, size_t *offs,
-		struct jacartapki_cmap_record **out);
-int jacartapki_md_cmap_record_guid(struct sc_context *ctx, struct jacartapki_cmap_record *rec,
-		unsigned char **out, size_t *out_len);
-
-int jacartapki_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
-		unsigned file_id, unsigned char **out, size_t *out_len);
-int jacartapki_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
-		unsigned file_id, unsigned char **out, size_t *out_len);
-int jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
-		unsigned file_id, unsigned char **out, size_t *out_len);
-int jacartapki_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
-		unsigned file_id, unsigned char **out, size_t *out_len);
-
-int jacartapki_encode_update_key(struct sc_context *ctx, struct sc_pkcs15_prkey *prkey,
-		struct sc_cardctl_jacartapki_updatekey *update_data);
-
-int jacartapki_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info *info, int *is_converted);
-int jacartapki_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ignore,
-		unsigned char **out, size_t *out_len);
-
-int sc_pkcs15emu_jacartapki_create_pin(struct sc_pkcs15_card *p15card, char *label,
-		char *pin_path, unsigned char auth_id, unsigned flags);
 
 struct jacartapki_card_capabilities {
 	unsigned char supported_keys[5];
@@ -313,6 +289,44 @@ struct jacartapki_cka {
 	unsigned char *val;
 	size_t len;
 };
+
+int jacartapki_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigned base_file_id);
+
+int jacartapki_encode_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key,
+		unsigned char **buf, size_t *len);
+
+int jacartapki_attrs_cert_decode(struct sc_context *ctx, struct sc_pkcs15_object *object,
+		struct sc_pkcs15_cert_info *info, unsigned char *data, size_t data_len);
+int jacartapki_attrs_prvkey_decode(struct sc_context *ctx, struct sc_pkcs15_object *object,
+		struct sc_pkcs15_prkey_info *info, unsigned char *data, size_t data_len);
+int jacartapki_attrs_pubkey_decode(struct sc_context *ctx, struct sc_pkcs15_object *object,
+		struct sc_pkcs15_pubkey_info *info, unsigned char *data, size_t data_len);
+int jacartapki_attrs_data_object_decode(struct sc_context *ctx, struct sc_pkcs15_object *object,
+		struct sc_pkcs15_data_info *info, unsigned char *data, size_t data_len, unsigned char *hash_exists);
+
+int jacartapki_md_cmap_record_decode(struct sc_context *ctx, const struct sc_pkcs15_data *data, size_t *offs,
+		jacartapki_cmap_record_t **out);
+int jacartapki_md_cmap_record_guid(struct sc_context *ctx, jacartapki_cmap_record_t *rec,
+		unsigned char **out, size_t *out_len);
+
+int jacartapki_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
+		unsigned file_id, unsigned char **out, size_t *out_len);
+int jacartapki_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
+		unsigned file_id, unsigned char **out, size_t *out_len);
+int jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
+		unsigned file_id, unsigned char **out, size_t *out_len);
+int jacartapki_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object,
+		unsigned file_id, unsigned char **out, size_t *out_len);
+
+int jacartapki_encode_update_key(struct sc_context *ctx, struct sc_pkcs15_prkey *prkey,
+		struct sc_cardctl_jacartapki_updatekey *update_data);
+
+int jacartapki_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info *info, int *is_converted);
+int jacartapki_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ignore,
+		unsigned char **out, size_t *out_len);
+
+int sc_pkcs15emu_jacartapki_create_pin(struct sc_pkcs15_card *p15card, char *label,
+		char *pin_path, unsigned char auth_id, unsigned flags);
 
 #endif /* ENABLE_OPENSSL */
 
