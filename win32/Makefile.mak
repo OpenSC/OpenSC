@@ -7,10 +7,7 @@ all: versioninfo-customactions.res config.h
 config.h: winconfig.h
 	copy /y winconfig.h config.h
 
-customactions.dll: versioninfo-customactions.res customactions.obj
-	echo LIBRARY $* > $*.def
-	echo EXPORTS >> $*.def
-	type customactions.exports >> $*.def
+customactions.dll: versioninfo-customactions.res $*.obj $*.def
 	link /dll $(LINKFLAGS) /out:$@ /def:$*.def versioninfo-customactions.res customactions.obj msi.lib $(WIX_LIBS) Advapi32.lib User32.lib Version.lib Shell32.lib
 
 OpenSC.msi: OpenSC.wxs customactions.dll

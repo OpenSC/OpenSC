@@ -70,7 +70,7 @@ libopensc_la_LIBTOOLFLAGS = --tag CC
 libopensc_static_la_LIBTOOLFLAGS = --tag CC
 
 libopensc_la_SOURCES = $(libopensc_la_SOURCES_BASE) \
-	libopensc.exports
+	opensc.exports
 libopensc_static_la_SOURCES = $(libopensc_la_SOURCES_BASE)
 
 if WIN32
@@ -91,7 +91,7 @@ endif
 libopensc_static_la_LIBADD = $(libopensc_la_LIBADD)
 libopensc_la_LDFLAGS = $(AM_LDFLAGS) \
 	-version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@ \
-	-export-symbols "$(srcdir)/libopensc.exports" \
+	-export-symbols "$(srcdir)/opensc.exports" \
 	-no-undefined
 
 if WIN32

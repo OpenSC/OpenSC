@@ -15,13 +15,13 @@ endif
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPENPACE_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
-opensc_minidriver@LIBRARY_BITNESS@_la_SOURCES = minidriver.c minidriver.exports versioninfo-minidriver.rc
+opensc_minidriver@LIBRARY_BITNESS@_la_SOURCES = minidriver.c opensc-minidriver.exports versioninfo-minidriver.rc
 opensc_minidriver@LIBRARY_BITNESS@_la_LIBADD =  \
 	$(top_builddir)/src/libopensc/libopensc_static.la \
 	$(OPTIONAL_OPENSSL_LIBS) \
 	-lbcrypt -lcrypt32 -lrpcrt4 -lwinmm
 opensc_minidriver@LIBRARY_BITNESS@_la_LDFLAGS = $(AM_LDFLAGS) \
-	-export-symbols "$(srcdir)/minidriver.exports" \
+	-export-symbols "$(srcdir)/opensc-minidriver.exports" \
 	-module -avoid-version -no-undefined
 
 if ENABLE_MINIDRIVER

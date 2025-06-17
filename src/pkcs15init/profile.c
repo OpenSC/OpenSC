@@ -344,7 +344,7 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 	if (!profile_dir) {
 #ifdef _WIN32
 		temp_len = PATH_MAX - 1;
-		res = sc_ctx_win32_get_config_value(NULL, "ProfileDir", "Software\\OpenSC Project\\OpenSC",
+		res = sc_ctx_win32_get_config_value(NULL, "ProfileDir", "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\OpenSC" OPENSC_ARCH_SUFFIX,
 				temp_path, &temp_len);
 		if (res)
 			LOG_FUNC_RETURN(ctx, res);
