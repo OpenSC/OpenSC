@@ -117,9 +117,9 @@ WIXFLAGS = -d OpenPACE="$(OPENPACE_DIR)" $(WIXFLAGS)
 # Used for MiniDriver
 CPDK_INCL_DIR = "/IC:\Program Files (x86)\Windows Kits\10\Cryptographic Provider Development Kit\Include"
 
+DEFS = /DWINVER=0x0601 /D_WIN32_WINNT=0x0601 /DWIN32_LEAN_AND_MEAN /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\""
 COPTS = /nologo /Zi /GS /W3 /WX /D_CRT_SECURE_NO_DEPRECATE /D_CRT_NONSTDC_NO_WARNINGS /DHAVE_CONFIG_H \
-	/DWINVER=0x0601 /D_WIN32_WINNT=0x0601 /DWIN32_LEAN_AND_MEAN /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\"" \
-	$(DEBUG_DEF) $(OPENPACE_DEF) $(OPENSSL_DEF) $(ZLIB_DEF) $(MINIDRIVER_DEF) $(SM_DEF) $(TESTS_DEF) $(OPENSSL_EXTRA_CFLAGS) \
+	$(DEFS) $(DEBUG_DEF) $(OPENPACE_DEF) $(OPENSSL_DEF) $(ZLIB_DEF) $(MINIDRIVER_DEF) $(SM_DEF) $(TESTS_DEF) $(OPENSSL_EXTRA_CFLAGS) \
 	/I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENPACE_INCL_DIR) $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(CPDK_INCL_DIR)
 LINKFLAGS = /nologo /INCREMENTAL:NO /NXCOMPAT /DYNAMICBASE /DEBUG /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD /MANIFEST:embed \
 	"/MANIFESTDEPENDENCY:type='Win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'"
@@ -133,6 +133,8 @@ LINKFLAGS = $(LINKFLAGS) /NODEFAULTLIB:LIBCMTD /OPT:REF /OPT:ICF
 COPTS = /O1 /$(BUILD_TYPE) $(COPTS)
 !ENDIF
 
+.SUFFIXES: .exports .def
+
 .c.obj::
 	cl $(COPTS) /c $<
 
@@ -140,7 +142,12 @@ COPTS = /O1 /$(BUILD_TYPE) $(COPTS)
 	cl $(COPTS) $(WIX_INCL_DIR) /c $<
 
 .rc.res::
-	rc /l 0x0409 /I$(TOPDIR) $<
+	rc $(DEFS) /l 0x0409 /I$(TOPDIR)\win32 $<
+
+.exports.def:
+	echo LIBRARY $* > $*.def
+	echo EXPORTS >> $*.def
+	type $*.exports >> $*.def
 
 clean::
 	del /Q *.obj *.dll *.exe *.pdb *.lib *.def *.res

@@ -9,14 +9,8 @@ endif
 do_subst = $(SED) \
 	   -e 's,[@]bindir[@],$(bindir),g' \
 	   -e 's,[@]CVCDIR[@],$(CVCDIR),g' \
-	   -e 's,[@]PACKAGE[@],$(PACKAGE),g' \
 	   -e 's,[@]PACKAGE_BUGREPORT[@],$(PACKAGE_BUGREPORT),g' \
-	   -e 's,[@]PACKAGE_NAME[@],$(PACKAGE_NAME),g' \
-	   -e 's,[@]PACKAGE_TARNAME[@],$(PACKAGE_TARNAME),g' \
-	   -e 's,[@]PACKAGE_URL[@],$(PACKAGE_URL),g' \
 	   -e 's,[@]PACKAGE_SUMMARY[@],$(PACKAGE_SUMMARY),g' \
-	   -e 's,[@]PACKAGE_VERSION[@],"$(PACKAGE_VERSION)",g' \
-	   -e 's,[@]DEFAULT_PKCS11_PROVIDER[@],"$(DEFAULT_PKCS11_PROVIDER)",g' \
 	   -e 's,[@]PKCS11_REGISTER_SKIP_FIREFOX[@],$(PKCS11_REGISTER_SKIP_FIREFOX),g' \
 	   -e 's,[@]VDFORMAT[@],$(VDFORMAT),g' \
 	   -e 's,[@]X509DIR[@],$(X509DIR),g'
