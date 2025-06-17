@@ -235,9 +235,9 @@ init_spy(void)
 		/* try for the machine version first, as we may be running
 		 * without a user during login
 		 */
-		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy", 0, KEY_QUERY_VALUE, &hKey );
+		rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX, 0, KEY_QUERY_VALUE, &hKey);
 		if (rc != ERROR_SUCCESS )
-			rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy", 0, KEY_QUERY_VALUE, &hKey );
+			rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX, 0, KEY_QUERY_VALUE, &hKey);
 
 		if( rc == ERROR_SUCCESS ) {
 			temp_len = PATH_MAX;
@@ -270,11 +270,11 @@ init_spy(void)
 		/* try for the machine version first, as we may be running
 		 * without a user during login
 		 */
-		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy",
-				0, KEY_QUERY_VALUE, &hKey );
+		rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX,
+				0, KEY_QUERY_VALUE, &hKey);
 		if (rc != ERROR_SUCCESS)
-			rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
-					0, KEY_QUERY_VALUE, &hKey );
+			rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX,
+					0, KEY_QUERY_VALUE, &hKey);
 
 		if (rc == ERROR_SUCCESS) {
 			temp_len = PATH_MAX;

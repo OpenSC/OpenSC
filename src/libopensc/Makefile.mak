@@ -52,10 +52,7 @@ all: $(TOPDIR)\win32\versioninfo.res $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-opensc.dll: $(OBJECTS) $(LIBS)
-	echo LIBRARY $* > $*.def
-	echo EXPORTS >> $*.def
-	type lib$*.exports >> $*.def
+opensc.dll: $(OBJECTS) $(LIBS) $*.def
 	link $(LINKFLAGS) /dll /out:$@ /def:$*.def /implib:$*.lib $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib Comctl32.lib Shell32.lib user32.lib advapi32.lib ws2_32.lib shlwapi.lib
 
 opensc_a.lib: $(OBJECTS)

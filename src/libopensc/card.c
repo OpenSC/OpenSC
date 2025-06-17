@@ -1534,11 +1534,7 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 	int rv = SC_ERROR_INTERNAL;
 	char *module = NULL;
 #ifdef _WIN32
-	char temp_path[PATH_MAX];
-	size_t temp_len;
 	const char path_delim = '\\';
-	char expanded_val[PATH_MAX];
-	DWORD expanded_len;
 #else
 	const char path_delim = '/';
 #endif
@@ -1551,21 +1547,6 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 	if (!in_module)
 		return sc_card_sm_unload(card);
 
-#ifdef _WIN32
-	if (!module_path || strlen(module_path) == 0)   {
-		temp_len = PATH_MAX-1;
-		rv = sc_ctx_win32_get_config_value(NULL, "SmDir", "Software\\OpenSC Project\\OpenSC",
-				temp_path, &temp_len);
-		if (rv == SC_SUCCESS) {
-			temp_path[temp_len] = '\0';
-			module_path = temp_path;
-		}
-	}
-	expanded_len = PATH_MAX;
-	expanded_len = ExpandEnvironmentStringsA(module_path, expanded_val, expanded_len);
-	if (0 < expanded_len && expanded_len < sizeof expanded_val)
-		module_path = expanded_val;
-#endif
 	sc_log(ctx, "SM module '%s' located in '%s'", in_module, module_path);
 	if (module_path && strlen(module_path) > 0)   {
 		size_t sz = strlen(in_module) + strlen(module_path) + 3;
@@ -1643,6 +1624,12 @@ sc_card_sm_check(struct sc_card *card)
 	struct sc_context *ctx = card->ctx;
 	scconf_block *atrblock = NULL, *sm_conf_block = NULL;
 	int rv, ii;
+#ifdef _WIN32
+	char temp_path[PATH_MAX];
+	size_t temp_len = PATH_MAX - 1;
+	char expanded_val[PATH_MAX];
+	DWORD expanded_len = PATH_MAX;
+#endif
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -1672,7 +1659,19 @@ sc_card_sm_check(struct sc_card *card)
 		LOG_TEST_RET(ctx, SC_ERROR_INCONSISTENT_CONFIGURATION, "SM configuration block not preset");
 
 	/* check if an external SM module has to be used */
+#ifdef _WIN32
+	rv = sc_ctx_win32_get_config_value(NULL, "SmDir", "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\OpenSC" OPENSC_ARCH_SUFFIX,
+			temp_path, &temp_len);
+	if (rv == SC_SUCCESS) {
+		temp_path[temp_len] = '\0';
+		module_path = temp_path;
+	}
+	expanded_len = ExpandEnvironmentStringsA(module_path, expanded_val, expanded_len);
+	if (0 < expanded_len && expanded_len < sizeof expanded_val)
+		module_path = expanded_val;
+#else
 	module_path = scconf_get_str(sm_conf_block, "module_path", DEFAULT_SM_MODULE_PATH);
+#endif
 	module_name = scconf_get_str(sm_conf_block, "module_name", DEFAULT_SM_MODULE);
 	sc_log(ctx, "SM module '%s' in  '%s'", module_name, module_path);
 	if (!module_name)
