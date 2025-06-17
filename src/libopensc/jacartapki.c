@@ -764,7 +764,7 @@ jacartapki_attrs_data_object_decode(struct sc_context *ctx,
 
 int
 jacartapki_md_cmap_record_decode(struct sc_context *ctx, const struct sc_pkcs15_data *data, size_t *offs,
-		struct jacartapki_cmap_record **out)
+		jacartapki_cmap_record_t **out)
 {
 	LOG_FUNC_CALLED(ctx);
 
@@ -772,20 +772,20 @@ jacartapki_md_cmap_record_decode(struct sc_context *ctx, const struct sc_pkcs15_
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	*out = NULL;
-	if (data->data_len - *offs < sizeof(struct jacartapki_cmap_record))
+	if (data->data_len - *offs < sizeof(jacartapki_cmap_record_t))
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-	*out = calloc(1, sizeof(struct jacartapki_cmap_record));
+	*out = calloc(1, sizeof(jacartapki_cmap_record_t));
 	if (*out == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	memcpy(*out, data->data + *offs, sizeof(struct jacartapki_cmap_record));
+	memcpy(*out, data->data + *offs, sizeof(jacartapki_cmap_record_t));
 
-	*offs += sizeof(struct jacartapki_cmap_record);
+	*offs += sizeof(jacartapki_cmap_record_t);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 int
-jacartapki_md_cmap_record_guid(struct sc_context *ctx, struct jacartapki_cmap_record *rec,
+jacartapki_md_cmap_record_guid(struct sc_context *ctx, jacartapki_cmap_record_t *rec,
 		unsigned char **out, size_t *out_len)
 {
 	int ii;
@@ -827,7 +827,7 @@ jacartapki_attach_cache_stamp(struct sc_pkcs15_card *p15card, int zero_stamp,
 	if (zero_stamp) {
 		memset(ptr + *buf_sz, 0, 4);
 	} else if (p15card->md_data != NULL) {
-		const struct jacartapki_cardcf *cardcf = &p15card->md_data->cardcf;
+		const jacartapki_cardcf_t *cardcf = &p15card->md_data->cardcf;
 
 		ptr[*buf_sz + 0] = cardcf->cont_freshness & 0xFF;
 		ptr[*buf_sz + 1] = (cardcf->cont_freshness >> 8) & 0xFF;
@@ -866,7 +866,7 @@ jacartapki_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	LOG_FUNC_CALLED(ctx);
 
 	data = malloc(7);
-	if (!data)
+	if (data == NULL)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate prv.key repr.");
 
 	data_len = 0;
@@ -1177,17 +1177,15 @@ jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_ob
 
 	LOG_FUNC_CALLED(ctx);
 
-	cert = malloc(sizeof(struct sc_pkcs15_cert));
+	cert = calloc(1, sizeof(struct sc_pkcs15_cert));
 	if (cert == NULL)
 		LOG_ERROR_GOTO(ctx, rv = SC_ERROR_OUT_OF_MEMORY, "Cannot allocate cert.encode repr.");
-
-	memset(cert, 0, sizeof(struct sc_pkcs15_cert));
 
 	rv = sc_pkcs15_read_certificate(p15card, info, 0, &cert);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot read/parse X509 certificate");
 
 	data = malloc(7);
-	if (data) {
+	if (data == NULL) {
 		rv = SC_ERROR_OUT_OF_MEMORY;
 		LOG_ERROR_GOTO(ctx, rv, "Failed to allocate a small piece");
 	}
@@ -1463,7 +1461,7 @@ jacartapki_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info
 
 static int
 jacartapki_cmap_record_init(struct sc_context *ctx, struct sc_pkcs15_object *key_obj,
-		struct jacartapki_cmap_record *cmap_rec)
+		jacartapki_cmap_record_t *cmap_rec)
 {
 	struct sc_pkcs15_prkey_info *info = NULL;
 	unsigned ii;
@@ -1483,7 +1481,7 @@ jacartapki_cmap_record_init(struct sc_context *ctx, struct sc_pkcs15_object *key
 			sc_dump_hex(info->aux_data->data.cmap_record.guid, info->aux_data->data.cmap_record.guid_len), info->aux_data->data.cmap_record.flags);
 	sc_log(ctx, "key ID %s", sc_pkcs15_print_id(&info->id));
 
-	memset(cmap_rec, 0, sizeof(struct jacartapki_cmap_record));
+	memset(cmap_rec, 0, sizeof(jacartapki_cmap_record_t));
 	for (ii = 0; ii < info->aux_data->data.cmap_record.guid_len; ii++)
 		cmap_rec->guid[2 * ii] = *(info->aux_data->data.cmap_record.guid + ii);
 
@@ -1534,7 +1532,7 @@ jacartapki_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *
 	}
 
 	for (idx = 0; idx < idx_max + 1; idx++) {
-		struct jacartapki_cmap_record cmap_rec;
+		jacartapki_cmap_record_t cmap_rec;
 
 		memset(&cmap_rec, 0, sizeof(cmap_rec));
 

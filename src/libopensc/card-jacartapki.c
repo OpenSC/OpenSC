@@ -55,6 +55,8 @@
 
 #include "jacartapki.h"
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
 #define JACARTAPKI_CARD_DEFAULT_FLAGS (SC_ALGORITHM_ONBOARD_KEY_GEN | SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_ISO9796 | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_HASH_SHA224 | SC_ALGORITHM_RSA_HASH_SHA256 | SC_ALGORITHM_RSA_HASH_SHA384 | SC_ALGORITHM_RSA_HASH_SHA512)
 
 /* generic iso 7816 operations table */
@@ -275,18 +277,18 @@ jacartapki_load_options(struct sc_card *card)
 	struct sc_context *ctx = card->ctx;
 	int i, j;
 	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
-	private_data->secure_verify = 0;
+	private_data->secure_verify = 1;
 
 	for (i = 0; card->ctx->conf_blocks[i] != NULL; i++) {
 		scconf_block **found_blocks, *block;
 
 		found_blocks = scconf_find_blocks(card->ctx->conf, card->ctx->conf_blocks[i],
 				"card_driver", "jacartapki");
-		if (found_blocks != NULL)
+		if (found_blocks == NULL)
 			continue;
 
 		for (j = 0, block = found_blocks[j]; block != NULL; j++, block = found_blocks[j]) {
-			private_data->secure_verify = scconf_get_bool(block, "secure_verify", 0);
+			private_data->secure_verify = scconf_get_bool(block, "secure_verify", 1);
 		}
 		free(found_blocks);
 	}
@@ -357,7 +359,7 @@ jacartapki_init(struct sc_card *card)
 		LOG_ERROR_GOTO(ctx, rv, "No DES-CBC cipher");
 	}
 
-	private_data->desEcbCipher = EVP_CIPHER_fetch(JACARTAPKI_OSSL3CTX(ctx), "DES-ECB",  NULL);
+	private_data->desEcbCipher = EVP_CIPHER_fetch(JACARTAPKI_OSSL3CTX(ctx), "DES-ECB", NULL);
 	if (private_data->desEcbCipher == NULL) {
 		rv = SC_ERROR_INTERNAL;
 		LOG_ERROR_GOTO(ctx, rv, "No DES-ECB cipher");
@@ -571,8 +573,7 @@ jacartapki_select_file(struct sc_card *card, const struct sc_path *in_path,
 		if (file_out != NULL) {
 			rv = SC_ERROR_UNKNOWN_DATA_RECEIVED;
 			LOG_ERROR_GOTO(ctx, rv, "Incorrect apdu resp.");
-		}
-		else
+		} else
 			goto err;
 	}
 
@@ -593,8 +594,6 @@ jacartapki_select_file(struct sc_card *card, const struct sc_path *in_path,
 		}
 
 		if ((size_t)apdu.resp[1] + 2 <= apdu.resplen) {
-			struct jacartapki_private_data *prv = (struct jacartapki_private_data *)card->drv_data;
-
 			rv = jacartapki_process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
 			LOG_TEST_GOTO_ERR(ctx, rv, "Process FCI error");
 
@@ -602,8 +601,10 @@ jacartapki_select_file(struct sc_card *card, const struct sc_path *in_path,
 			LOG_TEST_GOTO_ERR(ctx, rv, "Security attributes parse error");
 
 			if (file->type == SC_FILE_TYPE_INTERNAL_EF) {
-				sc_file_free(prv->last_ko);
-				sc_file_dup(&prv->last_ko, file);
+				struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
+
+				sc_file_free(private_data->last_ko);
+				sc_file_dup(&private_data->last_ko, file);
 			}
 		}
 
@@ -917,7 +918,7 @@ jacartapki_fcp_encode(struct sc_card *card, const struct sc_file *file, unsigned
 	rv = (int)offs;
 err:
 	if (rv < 0)
-	    free(buf);
+		free(buf);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -1020,23 +1021,24 @@ static int
 jacartapki_logout(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
-	struct jacartapki_private_data *prv = (struct jacartapki_private_data *)card->drv_data;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
 	struct sc_apdu apdu;
-	u8 pin_data[(sizeof(prv->auth_state) / sizeof(prv->auth_state[0])) * 4];
+	u8 pin_data[ARRAY_SIZE(private_data->auth_state) * 4];
 	int offs;
 	int rv;
+	size_t i;
 
 	LOG_FUNC_CALLED(ctx);
 
 	offs = 0;
-	for (int i = 0; i != sizeof(prv->auth_state) / sizeof(prv->auth_state[0]); i++) {
-		if (prv->auth_state[i].logged_in != 0) {
+	for (i = 0; i < ARRAY_SIZE(private_data->auth_state); ++i) {
+		if (private_data->auth_state[i].logged_in != 0) {
 			pin_data[offs++] = 0; /* XX = 0 */
 			pin_data[offs++] = 0; /* level */
-			pin_data[offs++] = (prv->auth_state[i].pin_reference >> 8) & 0xFF;
-			pin_data[offs++] = prv->auth_state[i].pin_reference & 0xFF;
+			pin_data[offs++] = (private_data->auth_state[i].pin_reference >> 8) & 0xFF;
+			pin_data[offs++] = private_data->auth_state[i].pin_reference & 0xFF;
 
-			prv->auth_state[i].logged_in = 0;
+			private_data->auth_state[i].logged_in = 0;
 		}
 	}
 	if (offs == 0)
@@ -1176,8 +1178,8 @@ jacartapki_set_security_env(struct sc_card *card,
 		const struct sc_security_env *senv, int se_num)
 {
 	struct sc_context *ctx = card->ctx;
-	struct jacartapki_private_data *prv = (struct jacartapki_private_data *)card->drv_data;
-	struct sc_security_env *env = &prv->security_env;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
+	struct sc_security_env *env = &private_data->security_env;
 
 	LOG_FUNC_CALLED(ctx);
 	if (senv == NULL)
@@ -1355,6 +1357,7 @@ jacartapki_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 	int rv;
 	unsigned int chv_ref = reference;
 	int secure_verify;
+	size_t i;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "Verify PIN(type:%X,ref:%i,data(len:%" SC_FORMAT_LEN_SIZE_T "u,%p)", type, reference, data_len, data);
@@ -1394,7 +1397,7 @@ jacartapki_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 	LOG_TEST_RET(ctx, rv, "PIN CHV verification error");
 
 	/* TEMP P15 DF RELOAD PRIVATE */
-	for (int i = 0; i != sizeof(private_data->auth_state) / sizeof(private_data->auth_state[0]); i++) {
+	for (i = 0; i < ARRAY_SIZE(private_data->auth_state); ++i) {
 		if (private_data->auth_state[i].pin_reference == reference) {
 			private_data->auth_state[i].logged_in = 1;
 			break;
@@ -1571,8 +1574,9 @@ jacartapki_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 static int
 jacartapki_pin_getinfo(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
+	size_t i;
 	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
-	for (int i = 0; i != sizeof(private_data->auth_state) / sizeof(private_data->auth_state[0]); i++) {
+	for (i = 0; i < ARRAY_SIZE(private_data->auth_state); ++i) {
 		if (private_data->auth_state[i].pin_reference == (unsigned int)data->pin_reference) {
 			data->pin1.logged_in = private_data->auth_state[i].logged_in;
 			break;
@@ -1617,7 +1621,7 @@ static int
 jacartapki_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 {
 	struct sc_context *ctx = card->ctx;
-	struct jacartapki_private_data *prv_data = (struct jacartapki_private_data *)card->drv_data;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
 	struct sc_serial_number sn;
 	int rv;
 
@@ -1632,9 +1636,9 @@ jacartapki_get_serialnr(struct sc_card *card, struct sc_serial_number *serial)
 	rv = jacartapki_get_capability(card, 0x0114, sn.value, &sn.len);
 	LOG_TEST_RET(ctx, rv, "cannot get 'serial number' card capability");
 
-	if (sizeof(prv_data->caps.serial) != sn.len)
+	if (sizeof(private_data->caps.serial) != sn.len)
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "invalid 'SERIAL NUMBER' data");
-	memcpy(&prv_data->caps.serial, sn.value, sn.len);
+	memcpy(&private_data->caps.serial, sn.value, sn.len);
 
 	card->serialnr = sn;
 	if (serial)
@@ -1782,8 +1786,8 @@ jacartapki_decipher(struct sc_card *card, const unsigned char *in, size_t in_len
 		unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx = card->ctx;
-	struct jacartapki_private_data *prv = (struct jacartapki_private_data *)card->drv_data;
-	struct sc_security_env *env = &prv->security_env;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
+	struct sc_security_env *env = &private_data->security_env;
 	struct sc_apdu apdu;
 	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], rbuf[SC_MAX_EXT_APDU_RESP_SIZE];
 	struct sc_tlv_data tlv;
@@ -1794,7 +1798,7 @@ jacartapki_decipher(struct sc_card *card, const unsigned char *in, size_t in_len
 	unsigned int tagClass;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "in-length:%" SC_FORMAT_LEN_SIZE_T "u, key-size:%" SC_FORMAT_LEN_SIZE_T "u, out-length:%" SC_FORMAT_LEN_SIZE_T "u", in_len, (prv->last_ko ? prv->last_ko->size : 0), out_len);
+	sc_log(ctx, "in-length:%" SC_FORMAT_LEN_SIZE_T "u, key-size:%" SC_FORMAT_LEN_SIZE_T "u, out-length:%" SC_FORMAT_LEN_SIZE_T "u", in_len, (private_data->last_ko ? private_data->last_ko->size : 0), out_len);
 	if (env->operation != SC_SEC_OPERATION_DECIPHER)
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "has to be SC_SEC_OPERATION_DECIPHER");
 	else if (in_len > (sizeof(sbuf) - 4))
@@ -1845,8 +1849,8 @@ jacartapki_compute_signature_dst(struct sc_card *card,
 		const unsigned char *in, size_t in_len, unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx = card->ctx;
-	struct jacartapki_private_data *prv = (struct jacartapki_private_data *)card->drv_data;
-	struct sc_security_env *env = &prv->security_env;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
+	struct sc_security_env *env = &private_data->security_env;
 	struct sc_apdu apdu;
 	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], rbuf[MAX(SC_MAX_EXT_APDU_DATA_SIZE, SC_MAX_EXT_APDU_RESP_SIZE)];
 	unsigned char dataTag;
@@ -1867,7 +1871,7 @@ jacartapki_compute_signature_dst(struct sc_card *card,
 	if (env->operation != SC_SEC_OPERATION_SIGN)
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "It's not SC_SEC_OPERATION_SIGN");
 
-	keySize = prv->last_ko != NULL ? prv->last_ko->size : 0;
+	keySize = private_data->last_ko != NULL ? private_data->last_ko->size : 0;
 	sc_log(ctx, "SC_SEC_OPERATION: %04X, in-length:%" SC_FORMAT_LEN_SIZE_T "u, key-size:%" SC_FORMAT_LEN_SIZE_T "u", env->operation, in_len, keySize);
 
 	if ((env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) != 0 ||
@@ -1950,8 +1954,8 @@ jacartapki_compute_signature_at(struct sc_card *card,
 		const unsigned char *in, size_t in_len, unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx = card->ctx;
-	struct jacartapki_private_data *prv = (struct jacartapki_private_data *)card->drv_data;
-	const struct sc_security_env *env = &prv->security_env;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
+	const struct sc_security_env *env = &private_data->security_env;
 
 	LOG_FUNC_CALLED(ctx);
 	if (env->operation != SC_SEC_OPERATION_AUTHENTICATE)
@@ -1965,7 +1969,7 @@ jacartapki_compute_signature(struct sc_card *card,
 		const unsigned char *in, size_t in_len, unsigned char *out, size_t out_len)
 {
 	struct sc_context *ctx;
-	struct jacartapki_private_data *prv;
+	struct jacartapki_private_data *private_data;
 	struct sc_security_env *env;
 
 	if (card == NULL)
@@ -1976,9 +1980,9 @@ jacartapki_compute_signature(struct sc_card *card,
 
 	LOG_FUNC_CALLED(ctx);
 
-	prv = (struct jacartapki_private_data *)card->drv_data;
-	assert(prv);
-	env = &prv->security_env;
+	private_data = (struct jacartapki_private_data *)card->drv_data;
+	assert(private_data);
+	env = &private_data->security_env;
 
 	sc_log(ctx, "op:%x, inlen %" SC_FORMAT_LEN_SIZE_T "u, outlen %" SC_FORMAT_LEN_SIZE_T "u", env->operation, in_len, out_len);
 
@@ -2289,7 +2293,7 @@ static EVP_PKEY *
 icc_DH(struct sc_card *card, const BIGNUM *prime /* N */, const BIGNUM *generator /* g */, const u8 *icc_p /* g^y mod N */, size_t icc_p_length)
 {
 	struct sc_context *ctx = card->ctx;
-	OSSL_PARAM_BLD *param_builder = NULL;
+	OSSL_PARAM_BLD *param_builder;
 	OSSL_PARAM *params = NULL;
 	EVP_PKEY_CTX *dh_key_ctx = NULL;
 	EVP_PKEY *publicKey = NULL;
@@ -2433,6 +2437,7 @@ derive_icc_ifd_key(struct sc_card *card, EVP_PKEY *icc_pkey, EVP_PKEY *ifd_pkey,
 
 	rv = EVP_PKEY_derive(shared_key_ctx, shared_key, &shared_key_length);
 	if (rv <= 0) {
+		OPENSSL_free(shared_key);
 		rv = SC_ERROR_INTERNAL;
 		LOG_ERROR_GOTO(ctx, rv, "EVP_PKEY_derive failed");
 	}
@@ -2537,7 +2542,7 @@ jacartapki_sm_open(struct sc_card *card)
 	bn_icc_p = BN_bin2bn(dh_session->icc_p.value, dh_session->icc_p.len, NULL);
 
 	dh_session->ifd_y.value = malloc(SHA_DIGEST_LENGTH);
-	if (dh_session->ifd_y.value = NULL) {
+	if (dh_session->ifd_y.value == NULL) {
 		rv = SC_ERROR_OUT_OF_MEMORY;
 		LOG_ERROR_GOTO(ctx, rv, "Cannot allocate private DH key");
 	}
@@ -2612,9 +2617,6 @@ jacartapki_sm_open(struct sc_card *card)
 		dh_session->session_enc[uu] ^= dh_session->card_challenge[uu];
 		dh_session->session_mac[uu] ^= dh_session->card_challenge[16 + uu];
 	}
-
-	sc_log(ctx, "session key enc: %s", sc_dump_hex(dh_session->session_enc, 16));
-	sc_log(ctx, "session key auth: %s", sc_dump_hex(dh_session->session_mac, 16));
 
 	memset(dh_session->ssc, 0, sizeof(dh_session->ssc));
 
@@ -2837,7 +2839,7 @@ jacartapki_iso_sm_open(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
 	struct iso_sm_ctx *sctx = NULL;
-	struct jacartapki_private_data *prv_data = (struct jacartapki_private_data *)card->drv_data;
+	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -2851,7 +2853,7 @@ jacartapki_iso_sm_open(struct sc_card *card)
 		LOG_ERROR_GOTO(ctx, rv, "Failed to allocate SM context.");
 	}
 
-	sctx->priv_data = prv_data;
+	sctx->priv_data = private_data;
 	sctx->padding_indicator = SM_ISO_PADDING;
 	sctx->block_length = sizeof(DES_cblock);
 	sctx->authenticate = jacartapki_iso_sm_authenticate;

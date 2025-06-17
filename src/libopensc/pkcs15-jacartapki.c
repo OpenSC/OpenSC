@@ -82,6 +82,8 @@ struct jacartapki_ko_props {
 	} pin_policy;
 };
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
 int sc_pkcs15emu_jacartapki_init_ex(struct sc_pkcs15_card *, struct sc_aid *aid);
 
 static int
@@ -493,7 +495,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 	struct sc_pkcs15_object *pubkeys[12], *dobjs[12];
 	size_t pubkeys_num, dobjs_num;
 	struct sc_pkcs15_data *data = NULL;
-	struct jacartapki_cmap_record *rec = NULL;
+	jacartapki_cmap_record_t *rec = NULL;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -571,7 +573,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 		}
 	}
 
-	pubkeys_num = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY, pubkeys, 12);
+	pubkeys_num = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY, pubkeys, ARRAY_SIZE(pubkeys));
 	sc_log(ctx, "Number of public keys %" SC_FORMAT_LEN_SIZE_T "u", pubkeys_num);
 	for (ii = 0; ii < pubkeys_num; ii++) {
 		struct sc_pkcs15_pubkey_info *info = (struct sc_pkcs15_pubkey_info *)pubkeys[ii]->data;
@@ -582,7 +584,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 				memcpy(pubkeys[ii]->label, prkey_obj->label, sizeof(pubkeys[ii]->label));
 	}
 
-	dobjs_num = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, dobjs, 12);
+	dobjs_num = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, dobjs, ARRAY_SIZE(dobjs));
 	for (ii = 0; ii < dobjs_num; ii++) {
 		const struct sc_pkcs15_data_info *dinfo = (const struct sc_pkcs15_data_info *)dobjs[ii]->data;
 		struct sc_pkcs15_object *prkeys[12];
@@ -592,7 +594,7 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 		if (strcmp(dobjs[ii]->label, "cmapfile") != 0 || strcmp(dinfo->app_label, CMAP_DO_APPLICATION_NAME) != 0)
 			continue;
 
-		rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, prkeys, 12);
+		rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, prkeys, ARRAY_SIZE(prkeys));
 		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to get private key objects");
 		if (rv == 0) {
 			LOG_ERROR_GOTO(ctx, rv, "No private key objects");
@@ -681,7 +683,7 @@ _set_md_data(struct sc_pkcs15_card *p15card)
 
 	rv = sc_pkcs15_read_file(p15card, &path, &buf, &buflen, 0);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select&read jacartapki-md-cardcf file");
-	if ((int)sizeof(struct jacartapki_cardcf) > buflen) {
+	if ((int)sizeof(jacartapki_cardcf_t) > buflen) {
 		if (rv >= 0)
 			rv = SC_ERROR_INVALID_DATA;
 		LOG_ERROR_GOTO(ctx, rv, "Incorrect jacartapki-md-cardcf file");
@@ -694,7 +696,7 @@ _set_md_data(struct sc_pkcs15_card *p15card)
 		LOG_ERROR_GOTO(p15card->card->ctx, rv, "Failed to allocate minidriver data");
 	}
 
-	p15card->md_data->cardcf = *((struct jacartapki_cardcf *)buf);
+	p15card->md_data->cardcf = *((jacartapki_cardcf_t *)buf);
 err:
 	free(buf);
 	LOG_FUNC_RETURN(ctx, rv);
@@ -805,9 +807,9 @@ jacartapki_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *pdf)
 		return SC_SUCCESS;
 
 	if (private_data != NULL) {
-		for (int i = 0; i != sizeof(private_data->auth_state) / sizeof(private_data->auth_state[0]); ++i) {
-			if (private_data->auth_state[i].pin_reference == JACARTAPKI_USER_PIN_REFERENCE) {
-				user_logged_in = private_data->auth_state[i].logged_in;
+		for (ii = 0; ii < ARRAY_SIZE(private_data->auth_state); ++ii) {
+			if (private_data->auth_state[ii].pin_reference == JACARTAPKI_USER_PIN_REFERENCE) {
+				user_logged_in = private_data->auth_state[ii].logged_in;
 				break;
 			}
 		}
