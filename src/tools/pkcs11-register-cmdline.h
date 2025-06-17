@@ -31,7 +31,7 @@ extern "C" {
 
 #ifndef CMDLINE_PARSER_VERSION
 /** @brief the program version */
-#define CMDLINE_PARSER_VERSION VERSION
+#define CMDLINE_PARSER_VERSION PACKAGE_VERSION
 #endif
 
 enum enum_skip_chrome { skip_chrome__NULL = -1, skip_chrome_arg_on = 0, skip_chrome_arg_off };
