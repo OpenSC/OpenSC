@@ -1,5 +1,5 @@
 /*
- * pkcs15-jacartapki.h: Support for JaCarta PKI applet
+ * jacartapki.h: Support for JaCarta PKI applet
  *
  * Copyright (C) 2025  Andrey Khodunov <a.khodunov@aladdin.ru>
  *

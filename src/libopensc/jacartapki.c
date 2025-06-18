@@ -78,6 +78,15 @@ static struct sc_asn1_entry c_asn1_create_rsa_prv_coefficients[C_ASN1_RSA_PRV_CO
 		{NULL,		       0,			  0,		     0,		NULL, NULL}
 };
 
+/*
+ * According to JaCarta PKI applet spec when creating KO file data elements provided (among others):
+ *
+ * Tag		Length		Description
+ * 90H		1..8		RSA public exponent
+ * 91H		<keysize>	RSA public modulus
+ *
+ * sc_pkcs15_encode_pubkey_rsa makes ASN.1 structure with different tags and cannot be used
+ */
 static int
 jacartapki_encode_pubkey_rsa(struct sc_context *ctx, struct sc_pkcs15_pubkey_rsa *key,
 		unsigned char **buf, size_t *buflen)
