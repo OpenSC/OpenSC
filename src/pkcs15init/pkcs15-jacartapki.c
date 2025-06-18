@@ -112,12 +112,11 @@ jacartapki_create_pin_object(struct sc_profile *profile, struct sc_pkcs15_card *
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *pin_obj = NULL;
 	char tmp_buf[SC_PKCS15_MAX_LABEL_SIZE];
-	char label[SC_PKCS15_MAX_LABEL_SIZE];
+	char label[SC_PKCS15_MAX_LABEL_SIZE] = {0};
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 
-	memset(label, 0, sizeof(label));
 	snprintf(label, sizeof(label) - 1, "%s", title);
 
 	rv = sc_bin_to_hex(file->path.value, file->path.len, tmp_buf, sizeof(tmp_buf), 0);
