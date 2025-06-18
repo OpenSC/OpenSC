@@ -122,9 +122,10 @@ static int esteid_select_file(struct sc_card *card, const struct sc_path *in_pat
 				r = iso_ops->process_fci(card, file, resp, resplen);
 				if (r != SC_SUCCESS) {
 					sc_file_free(file);
+				} else {
+					*file_out = file;
 				}
 				LOG_TEST_RET(card->ctx, r, "Process fci failed");
-				*file_out = file;
 			}
 			break;
 		}
