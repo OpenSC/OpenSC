@@ -1,28 +1,21 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
+<?ifndef OpenSSL ?>
+  <?define ProductFlavor = " Light" ?>
+<?else?>
+  <?define ProductFlavor = "" ?>
+<?endif?>
 <?if $(sys.BUILDARCH) = x64 ?>
-  <?ifndef OpenSSL ?>
-    <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light (64bit)" ?>
-  <?else?>
-    <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ (64bit)" ?>
-  <?endif?>
+  <?define ProductArch = " (64bit)" ?>
   <?define PlatformUpgradeCode = "{9A449570-69A2-11E0-9CC6-955B4824019B}" ?>
   <?define BUILD_ARCH = "AMD64" ?>
   <?define SUFFIX = "" ?>
 <?elseif $(sys.BUILDARCH) = arm64 ?>
-  <?ifndef OpenSSL ?>
-    <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light (ARM 64bit)" ?>
-  <?else?>
-    <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ (ARM 64bit)" ?>
-  <?endif?>
+  <?define ProductArch = " (ARM 64bit)" ?>
   <?define PlatformUpgradeCode = "{63666c12-c4b5-4e55-87af-3babcd563c28}" ?>
   <?define BUILD_ARCH = "ARM64" ?>
   <?define SUFFIX = "_arm64" ?>
 <?else?>
-  <?ifndef OpenSSL ?>
-    <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light" ?>
-  <?else?>
-    <?define ProductName = "@OPENSC_VS_FF_PRODUCT_NAME@" ?>
-  <?endif?>
+  <?define ProductArch = "" ?>
   <?define PlatformUpgradeCode = "{69428F65-B96D-458D-BB87-DBB5FDB35DCE}" ?>
   <?define BUILD_ARCH = "x86" ?>
   <?define SUFFIX = "" ?>
@@ -32,14 +25,16 @@
      xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
-  <Package Name="$(var.ProductName)"
+  <Package Name="@OPENSC_VS_FF_PRODUCT_NAME@$(var.ProductFlavor)$(var.ProductArch)"
            UpgradeCode="$(var.PlatformUpgradeCode)"
            Language="1033"
            Version="!(bind.FileVersion.opensc.dll)"
            Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@"
            Compressed="yes">
     <SummaryInformation Description="@OPENSC_VS_FF_PRODUCT_NAME@ Installer"
-                        Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@" />
+                        Keywords="SmartCard, eID" />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" Schedule="afterInstallInitialize" DowngradeErrorMessage=
+        "A newer version of [ProductName] is already installed. If you are trying to downgrade, please uninstall the newer version first." />
     <!-- Setup background images -->
     <WixVariable Id="WixUIBannerBmp" Value="bannrbmp.bmp" />
     <WixVariable Id="WixUIDialogBmp" Value="dlgbmp.bmp" />
@@ -96,7 +91,7 @@
         <!-- opensc.conf sample goes to installation directory -->
         <Component Directory="INSTALLDIR">
           <File Source="$(var.SOURCE_DIR)\etc\opensc.conf" KeyPath="yes" />
-          <RegistryKey Root="HKLM" Key="Software\[Manufacturer]\OpenSC">
+          <RegistryKey Root="HKLM" Key="Software\[Manufacturer]\OpenSC$(var.SUFFIX)">
             <RegistryValue Type="string" Name="ConfigFile" Value="[INSTALLDIR]opensc.conf" />
             <RegistryValue Type="string" Name="ProfileDir" Value="[INSTALLDIR_PROFILES]" />
             <RegistryValue Type="string" Name="SmDir" Value="[INSTALLDIR_TOOLS]" />
@@ -126,7 +121,7 @@
           Description="PKCS#11 module for debugging library invocations.">
         <Component Directory="OpenSC_Project_Dir" Subdirectory="PKCS11-Spy$(var.SUFFIX)">
           <File Source="$(var.SOURCE_DIR)\src\pkcs11\pkcs11-spy.dll" />
-          <RegistryKey Root="HKLM" Key="Software\[Manufacturer]\PKCS11-Spy">
+          <RegistryKey Root="HKLM" Key="Software\[Manufacturer]\PKCS11-Spy$(var.SUFFIX)">
             <RegistryValue Type="string" Name="Module" Value="[INSTALLDIR_PKCS11]opensc-pkcs11.dll" />
             <RegistryValue Type="string" Name="Output" Value="%TEMP%\pkcs11-spy.log" />
           </RegistryKey>
