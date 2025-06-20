@@ -273,7 +273,6 @@ typedef struct piv_private_data {
 	unsigned int pin_policy; /* from discovery */
 	unsigned int init_flags;
 	u8  csID; /* 800-73-4 Cipher Suite ID 0x27 or 0x2E */
-	unsigned long sm_flags;				  /* share with sm-nist */
 	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
 	u8 *signer_cert_der;
 	size_t cert_signer_len;
@@ -2791,6 +2790,7 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	size_t bodylen;
 	unsigned int cla, tag;
 	unsigned int real_alg_id, op_tag;
+	int locked = 0;
 
 	u8 sbuf[4096]; /* needs work. for 4096 needs 512+10 or so */
 	size_t sbuflen = sizeof(sbuf);
@@ -2842,6 +2842,12 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	}
 	/* EC and ED alg_id was already set */
 
+	/* prevent interference from other processes or if multiple applets */
+	r = sc_lock(card);
+	if (r < 0)
+		goto err;
+	locked = 1;
+
 	r = piv_general_io(card, 0x87, real_alg_id, priv->key_ref,
 			sbuf, p - sbuf, rbuf, sizeof rbuf);
 	if (r < 0)
@@ -2866,6 +2872,8 @@ static int piv_validate_general_authentication(sc_card_t *card,
 	r = (int)taglen;
 
 err:
+	if (locked)
+		sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -3218,6 +3226,9 @@ static int piv_find_discovery(sc_card_t *card)
 		/* if already in cache,force read */
 		rbuflen = 1;
 		r = piv_get_data(card, PIV_OBJ_DISCOVERY, &rbuf, &rbuflen);
+		if (r < 0)
+			goto end; /* may catch interference from other proccess if using SM */
+
 		/* if same response as last, no need to parse */
 		if ( r == 0 && priv->obj_cache[PIV_OBJ_DISCOVERY].obj_len == 0)
 			goto end;
@@ -4052,7 +4063,7 @@ static int piv_init(sc_card_t *card)
 		 * TODO look closer at reset of card by other process
 		 * Main point in SM and VCI is to allow contactless access
 		 */
-		/* Only piv_init and piv_reader_lock_obtained should call piv_sm_open */
+		/* Only piv_init and piv_reader_lock_obtained should call sm-nist_open */
 
 		/* If user said PIV_SM_FLAGS_NEVER, dont start SM; implies limited contatless access */
 		if (priv->sm_params.flags & PIV_SM_FLAGS_NEVER) {
@@ -4069,7 +4080,7 @@ static int piv_init(sc_card_t *card)
 
 		} else {
 			priv->sm_params.flags |= PIV_SM_FLAGS_DEFER_OPEN; /* tell priv_sm_open, OK to open */
-#ifdef PIV_SM_NIST
+
 			if (priv->init_flags & PIV_INIT_CONTACTLESS)
 				priv->sm_params.flags |= PIV_SM_CONTACTLESS;
 
@@ -4102,7 +4113,6 @@ static int piv_init(sc_card_t *card)
 
 			r = sm_nist_start(card, &priv->sm_params);
 			sc_log(card->ctx, "sm_nist_start returned:%d", r);
-#endif /* PIV_SM_NIST */
 		}
 
 		/* If failed, and user said PIV_SM_FLAGS_ALWAYS quit */
@@ -4111,13 +4121,8 @@ static int piv_init(sc_card_t *card)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 		}
 
-		/* user has wrong or no required pairing code */
-		if (r == SC_ERROR_PIN_CODE_INCORRECT)
-			LOG_FUNC_RETURN(card->ctx, r);
-
-		/* If SM did not start, or is not expected to start, continue on without it */
 	}
-#endif /* defined(USE_PIV_SM) || defined(USE_SM_NIST) */
+#endif /* PIV_SM_NIST */
 
 	/*
 	 * 800-73-3 cards may have a history object
@@ -4435,26 +4440,16 @@ static int piv_logout(sc_card_t *card)
 /*
  * Called when a sc_lock gets a reader lock and PCSC SCardBeginTransaction
  * If SCardBeginTransaction may pass back that a card reset was seen since
- * the last transaction  completed.
+ * the last transaction completed.
  * There may have been one or more resets, by other card drivers in different
  * processes, and they may have taken action already
- * and changed the AID and or may have sent a  VERIFY with PIN
- * So test the state of the card.
- * this is very similar to what the piv_match routine does,
+ * and changed the AID and or may have sent a VERIFY with PIN
+ * so select AID and reauthenticate SM as needed.
  */
 
-/* TODO card.c also calls piv_sm_open before this if a reset was done, but
- * does not say if a reset was done or not. May need to ignore the call
- * the piv_sm_open in this case, but how? may need a open is active flag,
- * in case it is the APDU done from open caused  triggered the case.
- */
- /* TODO may be called recursively to handle reset.
-  * need we are active, and if called again with was_reset save this
-  * and return to let first call handle the reset
-  */
 static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 {
-	int r = 0;
+	int r = SC_ERROR_UNKNOWN;
 	u8 temp[SC_MAX_APDU_BUFFER_SIZE];
 	size_t templen = sizeof(temp);
 	piv_private_data_t * priv = PIV_DATA(card); /* may be null */
@@ -4469,50 +4464,44 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		goto err;
 	}
 
+	if (priv->init_flags & PIV_INIT_IN_READER_LOCK_OBTAINED) {
+		sc_log(card->ctx, "Recursive call, return");
+		r = 0;
+		goto err;
+	}
+
 	priv->init_flags |= PIV_INIT_IN_READER_LOCK_OBTAINED;
 
-	/* make sure our application is active */
+	/* Make sure our applet is active. Card may have multiple applets */
 
-	/* first see if AID is active AID by reading discovery object '7E' */
-	/* If not try selecting AID */
+	r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
 
-	/* but if card does not support DISCOVERY object we can not use it */
-	if (priv->card_issues & CI_DISCOVERY_USELESS) {
-		r =  SC_ERROR_NO_CARD_SUPPORT;
-	} else {
-		r = piv_find_discovery(card);
 #ifdef PIV_SM_NIST
-		/*
-		 * TODO MYeid may not
-		 * All 800-73-4 cards that support SM, also have a discovery object with
-		 * the pin_policy, so can not have CI_DISCOVERY_USELESS
-		 * Discovery object can be read with contact or contactless
-		 * If read with SM and fails with 69 88  SC_ERROR_SM_INVALID_SESSION_KEY
-		 * sm.c will close the SM connectrion, and set defer
-		 * TODO may be with reset?
-		 */
-		if (was_reset == 0 && (r == SC_ERROR_SM_INVALID_SESSION_KEY || priv->sm_params.flags & PIV_SM_FLAGS_DEFER_OPEN)) {
-			sc_log(card->ctx,"SC_ERROR_SM_INVALID_SESSION_KEY || PIV_SM_FLAGS_DEFER_OPEN");
-			/* TODO  20230916 - need to tell sm-nist.c to do piv_sm_open */
-			r = piv_find_discovery(card);
+	sc_log(card->ctx, "(was_reset: %d priv->sm_parms.flags: 0x%08lX", was_reset, priv->sm_params.flags);
+	/* If SM was active, reauthenticate as other process may be using SM too. */
+
+	if (priv->sm_params.flags & PIV_SM_FLAGS_SM_IS_ACTIVE) {
+		priv->sm_params.flags |= PIV_SM_FLAGS_DEFER_OPEN;
+		r = sm_nist_open(card);
+		if (r < 0) {
+			/* TODO is it ok to run with out SM */
+			/* If uses said use SM always, and can not - Error */
+			sc_log(card->ctx, "Attempt to restart or skip sm-nist");
+			if (priv->sm_params.flags & PIV_SM_FLAGS_ALWAYS) {
+				r = SC_ERROR_SM_NOT_INITIALIZED;
+				goto err;
+			}
 		}
+	}
 #endif /* PIV_SM_NIST */
-	}
 
-	if (r < 0) {
-		if (was_reset > 0 || !(priv->card_issues & CI_PIV_AID_LOSE_STATE)) {
-			r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
-			sc_debug(card->ctx, SC_LOG_DEBUG_MATCH, "iso7816_select_aid card->type:%d r:%d\n", card->type, r);
-		} else {
-			r = 0; /* can't do anything with this card, hope there was no interference */
-		}
-	}
 
+	/* TODO add test of retries left */
 	if (r < 0) /* bad error return will show up in sc_lock as error*/
 		goto err;
 
 	if (was_reset > 0)
-		priv->logged_in =  SC_PIN_STATE_UNKNOWN;
+		priv->logged_in = SC_PIN_STATE_UNKNOWN;
 
 	r = 0;
 
