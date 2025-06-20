@@ -1546,7 +1546,7 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 {
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
 	struct sc_pin_cmd_data data;
-	u8 *keyblob;
+	u8 *keyblob = NULL;
 	const u8 *ptr, *prkd, *cert;
 	sc_path_t path;
 	u8 fid[2];
