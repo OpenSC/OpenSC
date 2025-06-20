@@ -146,7 +146,7 @@ typedef struct piv_cvc {
 #define PIV_PP_GLOBAL_PRIMARY 0x00000020u
 
 typedef struct piv_sm_session {
-	/* set by piv_sm_open */
+	/* set by sm_nist_open */
 	int aes_size; /* 128 or 256 */
 
 	u8 SKcfrm[32];
@@ -209,6 +209,15 @@ static const struct sc_asn1_entry c_asn1_piv_cvc[C_ASN1_PIV_CVC_SIZE] = {
 		{NULL,	       0,		  0,				   0, NULL, NULL}
 };
 
+static const struct sc_card_error nist_sm_errors[] = {
+        {0x6882, SC_ERROR_SM, "SM not supported"},
+        {0x6982, SC_ERROR_SM_NO_SESSION_KEYS, "SM Security status not satisfied"}, /* no session established */
+        {0x6987, SC_ERROR_SM, "Expected SM Data Object missing"},
+        {0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"}, /* other process interference */
+	{0x6E00, SC_ERROR_SM_INVALID_SESSION_KEY, "Unexpected 6E00"},
+        {0, 0, NULL}
+};
+
 typedef struct sm_nist_private_data {
 	int magic;
 	sm_nist_params_t *params; /* card driver parameters and flags */
@@ -250,10 +259,10 @@ static void piv_inc(u8 *counter, size_t size);
 // static int piv_get_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu);
 // static int piv_free_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu);
 static int piv_get_asn1_obj(sc_context_t *ctx, void *arg, const u8 *obj, size_t len, int depth);
-static int piv_sm_open(struct sc_card *card);
+int sm_nist_open(struct sc_card *card);
 // static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
 //  TODO is piv_sm_close needed
-//  static int piv_sm_close(sc_card_t *card);
+// static int piv_sm_close(sc_card_t *card);
 static void piv_clear_cvc_content(piv_cvc_t *cvc);
 static void piv_clear_sm_session(piv_sm_session_t *session);
 static int piv_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen, piv_cvc_t *cvc);
@@ -307,7 +316,7 @@ Q2OS(int fsize, u8 *Q, size_t Qlen, u8 *OS, size_t *OSlen)
 /*  TODO Should card driver do thisa?  */
 /*
  * if needed, send VCI pairing code to card just after the
- * SM key establishment. Called from piv_sm_open under same lock
+ * SM key establishment. Called from sm_nist_open under same lock
  */
 static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 {
@@ -560,9 +569,9 @@ piv_sm_general_io(sc_card_t *card, int ins, int p1, int p2,
 	apdu.resp = recvbuf;
 
 	saved_sm_mode = card->sm_ctx.sm_mode;
-	//	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
-	//		card->sm_ctx.sm_mode = SM_MODE_NONE;
-	//	}
+		if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
+			card->sm_ctx.sm_mode = SM_MODE_NONE;
+		}
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
@@ -597,9 +606,8 @@ err:
  * and PIV Card Application (icc)
  * Capital leters used for variable, and lower case for subscript names
  */
-// TODO is sctx or priv needed here?
-static int
-piv_sm_open(struct sc_card *card)
+int
+sm_nist_open(struct sc_card *card)
 {
 	sm_nist_private_data_t *priv = SM_NIST_PRIV_CARD;
 	//	struct iso_sm_ctx *sctx = NULL;
@@ -1431,9 +1439,10 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 	/* We want to control if SM is on or not from driver, so set it off. */
 	card->sm_ctx.sm_mode = SM_MODE_NONE;
 
-	r = piv_sm_open(card);
+	/* do not add to card->sm_ctx.open */
+	r = sm_nist_open(card);
 	if (r < 0) {
-		sc_log(card->ctx, "piv_sm_open failed with r:%d", r);
+		sc_log(card->ctx, "sm_nist_open failed with r:%d", r);
 		goto err;
 	}
 
@@ -1441,7 +1450,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 
 	/*
 	 * sm-iso does not set an operation for sm_open which in our case
-	 * is piv_sm_open. which we will control from calling driver.
+	 * is sm_nist_open. which we will control from calling driver.
 	 * so unset sm_mode
 	 */
 	//	card->sm_ctx.sm_mode = SM_MODE_NONE;
@@ -1771,29 +1780,43 @@ sm_nist_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	priv = (sm_nist_private_data_t *)ctx->priv_data;
 
-	// TODO 230923 to make more general, may need more work
-	switch (apdu->ins) {
-	case 0xCA: /* GET_DATA */
-	case 0xCB: /* GET_DATA */
-		if (priv->params->flags & PIV_SM_GET_DATA_IN_CLEAR) {
-			priv->params->flags &= ~PIV_SM_GET_DATA_IN_CLEAR;
+	/* Force the use of SM this apdu only
+	 * used in reader_lock_obtained and card driver_init
+	 * can be used on any APDU by card driver for fine control
+	 */
+	 /* SC_ERROR_SM_NOT_APPLIED tells sm_nist_encode to not use SM */
+	if (priv->params->flags & PIV_SM_FLAGS_FORCE_SM_ON) {
+		sc_log(card->ctx, "forcing the use of SM ON");
+		priv->params->flags  &= ~PIV_SM_FLAGS_FORCE_SM_ON;
+		r = 0;
+	} else if (priv->params->flags & PIV_SM_FLAGS_FORCE_SM_OFF) {
+		sc_log(card->ctx, "forcing the use of SM OFF");
+		priv->params->flags  &= ~PIV_SM_FLAGS_FORCE_SM_OFF;
+		r = SC_ERROR_SM_NOT_APPLIED;
+	} else {
+		/* May need additional cases */
+		switch (apdu->ins) {
+		case 0xCA: /* GET_DATA */
+		case 0xCB: /* GET_DATA */
+			if (priv->params->flags & PIV_SM_GET_DATA_IN_CLEAR) {
+				priv->params->flags &= ~PIV_SM_GET_DATA_IN_CLEAR;
+				r = SC_ERROR_SM_NOT_APPLIED;
+			}
+			break;
+		case 0x20: /* VERIFY */
+			break;
+		case 0x24: /* CHANGE REFERENCE DATA */
+			break;
+		case 0x86: /* GENERAL AUTHENTICATE */
+		case 0x87: /* GENERAL AUTHENTICATE */
+			break;
+		case 0xC0: /* GET RESPONSE */
+			r = SC_ERROR_SM_NOT_APPLIED;
+			break;
+		default: /* just issue the plain apdu */
 			r = SC_ERROR_SM_NOT_APPLIED;
 		}
-		break;
-	case 0x20: /* VERIFY */
-		break;
-	case 0x24: /* CHANGE REFERENCE DATA */
-		break;
-	case 0x86: /* GENERAL AUTHENTICATE */
-	case 0x87: /* GENERAL AUTHENTICATE */
-		break;
-	case 0xC0: /* GET RESPONSE */
-		r = SC_ERROR_SM_NOT_APPLIED;
-		break;
-	default: /* just issue the plain apdu */
-		r = SC_ERROR_SM_NOT_APPLIED;
 	}
-
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
 
@@ -1802,6 +1825,7 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *sm_apdu)
 {
 	int r = 0;
+	int i;
 	sm_nist_private_data_t *priv;
 
 	if (!card)
@@ -1812,11 +1836,34 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	priv = (sm_nist_private_data_t *)ctx->priv_data;
 
+	/*
+	 * Interference from other processes is indicated by 6988 
+	 * which will need to reauthenticate and reissue the failing command
+	 */
+	priv->params->last_sw1 = sm_apdu->sw1;
+	priv->params->last_sw2 = sm_apdu->sw2;
+
+	sc_log(card->ctx, "nist_post_transmit - sw1:0x%X sw2:0x%X", sm_apdu->sw1,  sm_apdu->sw2);
+	for (i = 0; nist_sm_errors[i].SWs != 0; i++) {
+		if (nist_sm_errors[i].SWs == ((sm_apdu->sw1 << 8) | sm_apdu->sw2)) {
+			sc_log(card->ctx, "%s", nist_sm_errors[i].errorstr);
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, nist_sm_errors[i].errorno);
+		}
+	}
+
 	memcpy(priv->sm_session.enc_counter_last, priv->sm_session.enc_counter, sizeof(priv->sm_session.enc_counter));
 	piv_inc(priv->sm_session.enc_counter, sizeof(priv->sm_session.enc_counter));
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
+
+//static int
+//nist_sm_close(sc_card_t card)
+//{
+//	sm_nist_private_data_t *priv;
+//	 if (card) {
+//	 }
+//}
 
 static int
 sm_nist_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
@@ -1826,6 +1873,8 @@ sm_nist_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	if (!card)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_SM);
 
 	if (!ctx || !ctx->priv_data || !apdu)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
