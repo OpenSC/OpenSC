@@ -58,6 +58,8 @@
 #define PIV_SM_GET_DATA_IN_CLEAR	       0x00004000lu /* OK to do this GET DATA in the clear */
 #define PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED 0x00008000lu /* compressed */
 #define PIV_SM_CONTACTLESS		       0x00010000lu /* contacless */
+#define PIV_SM_FLAGS_FORCE_SM_ON	       0x00020000lu /* override sm_nist_pre and use SM */
+#define PIV_SM_FLAGS_FORCE_SM_OFF	       0x00040000lu /* override sm-nist_pre and not use SM */
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,10 +79,15 @@ typedef struct sm_nist_params {
 	unsigned long pin_policy;
 	u8 pairing_code[PIV_PAIRING_CODE_LEN];
 	u8 csID; /* 0x27 or 0x2E */
+	u8 last_sw1;
+	u8 last_sw2;
 } sm_nist_params_t;
 
 int
 sm_nist_start(sc_card_t *card, sm_nist_params_t *params);
+
+int
+sm_nist_open(sc_card_t *card);
 
 int
 sm_nist_params_cleanup(sm_nist_params_t *params);
