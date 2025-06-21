@@ -303,6 +303,9 @@ app <replaceable>application</replaceable> {
 									<literal>myeid</literal>: See <xref linkend="myeid"/>
 							</para></listitem>
 							<listitem><para>
+									<literal>dtrust</literal>: See <xref linkend="dtrust"/>
+							</para></listitem>
+							<listitem><para>
 									Any other value: Configuration block for an externally loaded card driver
 							</para></listitem>
 						</itemizedlist>
@@ -824,6 +827,46 @@ app <replaceable>application</replaceable> {
 			</variablelist>
 		</refsect2>
 
+		<refsect2 id="dtrust">
+			<title>Configuration Options for D-Trust Signature Cards</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>can = <replaceable>value</replaceable>;</option>
+					</term>
+					<listitem>
+						<para>
+						CAN (Card Access Number – 6 digit number printed on the front side of
+						the card) is required to establish connection with the card. It might
+						be overwritten by <literal>DTRUST_CAN</literal> environment variable.
+						If not specified here, the CAN will be read from a card specific cache,
+						prompted on the card readers PIN pad or prompted interactively in the
+						following order.
+						</para>
+						<orderedlist>
+							 <listitem><para>Environment variable <literal>DTRUST_CAN</literal></para></listitem>
+							 <listitem><para>This configuration file option</para></listitem>
+							 <listitem><para>PKCS#15 card-specific cache</para></listitem>
+							 <listitem><para>Pin pad of a PACE-capable card reader</para></listitem>
+						</orderedlist>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>can_use_cache = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem>
+						<para>
+						Cache the CAN number of a card once it was provided by the user in the
+						directory <literal>file_cache_dir</literal>. The cached CAN is used
+						later to avoid interactively prompting for the CAN. This feature is
+						enabled by default.
+						</para>
+					</listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
 		<refsect2 id="piv">
 			<title>Configuration Options for PIV Card</title>
 			<variablelist>
@@ -1253,7 +1296,8 @@ app <replaceable>application</replaceable> {
 							<literal>mcrd</literal> (deactivated driver),
 							<literal>npa</literal>,
 							<literal>nqapplet</literal>,
-							<literal>tcos</literal> and otherwise <literal>no</literal>).
+							<literal>tcos</literal>,
+							<literal>dtrust</literal> and otherwise <literal>no</literal>).
 						</para>
 						<para>
 							If caching is done by a system process, the
