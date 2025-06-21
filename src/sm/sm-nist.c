@@ -46,16 +46,16 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#define PIV_PAIRING_CODE_LEN 8
+#define NIST_PAIRING_CODE_LEN 8
 
 /* 800-73-4 Cipher Suite Table 14 */
-#define PIV_CS_CS2 0x27
-#define PIV_CS_CS7 0x2E
+#define NIST_CS_CS2 0x27
+#define NIST_CS_CS7 0x2E
 
 #ifdef USE_OPENSSL3_LIBCTX
-#define PIV_LIBCTX card->ctx->ossl3ctx->libctx
+#define NIST_LIBCTX card->ctx->ossl3ctx->libctx
 #else
-#define PIV_LIBCTX NULL
+#define NIST_LIBCTX NULL
 #endif
 
 /* Table 14 and other constants */
@@ -90,10 +90,10 @@ typedef struct cipher_suite {
 } cipher_suite_t;
 
 // clang-fromat off
-#define PIV_CSS_SIZE 2
-static cipher_suite_t css[PIV_CSS_SIZE] = {
-		{PIV_CS_CS2, 256, NID_X9_62_prime256v1, {{1, 2, 840, 10045, 3, 1, 7, -1}},
-			PIV_CS_CS2, 65, 16, 32, 61,
+#define NIST_CSS_SIZE 2
+static cipher_suite_t css[NIST_CSS_SIZE] = {
+		{NIST_CS_CS2, 256, NID_X9_62_prime256v1, {{1, 2, 840, 10045, 3, 1, 7, -1}},
+			NIST_CS_CS2, 65, 16, 32, 61,
 			4, 0x09, 1, 16, 8, 16, 1,
 			4, 128 / 8, SHA256_DIGEST_LENGTH,
 			(EVP_MD * (*)(void)) EVP_sha256,
@@ -102,8 +102,8 @@ static cipher_suite_t css[PIV_CSS_SIZE] = {
 			"aes-128-cbc", "aes-128-ecb",
 			"prime256v1"},
 
-		{PIV_CS_CS7, 384, NID_secp384r1,	 {{1, 3, 132, 0, 34, -1}},
-			PIV_CS_CS7, 97, 16, 48, 69,
+		{NIST_CS_CS7, 384, NID_secp384r1,	 {{1, 3, 132, 0, 34, -1}},
+			NIST_CS_CS7, 97, 16, 48, 69,
 			4, 0x0D, 1, 16, 8, 24, 1,
 			4, 256 / 8, SHA384_DIGEST_LENGTH,
 			(EVP_MD * (*)(void)) EVP_sha384,
@@ -115,7 +115,7 @@ static cipher_suite_t css[PIV_CSS_SIZE] = {
 // clang-format on
 
 /* 800-73-4  4.1.5 Card Verifiable Certificates */
-typedef struct piv_cvc {
+typedef struct nist_cvc {
 	sc_pkcs15_der_t der;	       // Previous read der
 	int cpi;		       // Certificate profile indicator (0x80)
 	char issuerID[8];	       // Issuer Identification Number
@@ -131,10 +131,10 @@ typedef struct piv_cvc {
 	struct sc_object_id signatureAlgOID; // Signature Algroithm Identifier
 	u8 *signature;			     // Certificate signature DER
 	size_t signaturelen;
-} piv_cvc_t;
+} nist_cvc_t;
 
-#define PIV_SM_MAX_FIELD_LENGTH 384
-#define PIV_SM_MAX_MD_LENGTH	SHA384_DIGEST_LENGTH
+#define NIST_SM_MAX_FIELD_LENGTH 384
+#define NIST_SM_MAX_MD_LENGTH	SHA384_DIGEST_LENGTH
 
 /* 800-73-4 3.3.2 Discovery Object - PIN Usage Policy */
 #define PIV_PP_PIN	      0x00004000u
@@ -145,7 +145,7 @@ typedef struct piv_cvc {
 #define PIV_PP_PIV_PRIMARY    0x00000010u
 #define PIV_PP_GLOBAL_PRIMARY 0x00000020u
 
-typedef struct piv_sm_session {
+typedef struct nist_sm_session {
 	/* set by sm_nist_open */
 	int aes_size; /* 128 or 256 */
 
@@ -161,38 +161,38 @@ typedef struct piv_sm_session {
 	u8 C_MCV_last[16];
 	u8 R_MCV[16];
 	u8 R_MCV_last[16];
-} piv_sm_session_t;
+} nist_sm_session_t;
 
-#define C_ASN1_PIV_CVC_PUBKEY_SIZE 3
+#define C_ASN1_NIST_CVC_PUBKEY_SIZE 3
 /* ECC key only */
-static const struct sc_asn1_entry c_asn1_piv_cvc_pubkey[C_ASN1_PIV_CVC_PUBKEY_SIZE] = {
+static const struct sc_asn1_entry c_asn1_nist_cvc_pubkey[C_ASN1_NIST_CVC_PUBKEY_SIZE] = {
 		{"publicKeyOID", SC_ASN1_OBJECT,	 SC_ASN1_UNI | SC_ASN1_OBJECT, 0,				  NULL, NULL},
 		{"publicPoint",	SC_ASN1_OCTET_STRING, SC_ASN1_CTX | 6,	       SC_ASN1_OPTIONAL | SC_ASN1_ALLOC, NULL, NULL},
 		{NULL,	       0,			  0,			     0,				NULL, NULL}
 };
 
-#define C_ASN1_PIV_CVC_DSOBJ_SIZE 2
-static const struct sc_asn1_entry c_asn1_piv_cvc_dsobj[C_ASN1_PIV_CVC_DSOBJ_SIZE] = {
+#define C_ASN1_NIST_CVC_DSOBJ_SIZE 2
+static const struct sc_asn1_entry c_asn1_nist_cvc_dsobj[C_ASN1_NIST_CVC_DSOBJ_SIZE] = {
 		{"DigitalSignature", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, 0, NULL, NULL},
 		{NULL,	       0,		  0,				   0, NULL, NULL}
 };
 
-#define C_ASN1_PIV_CVC_DSSIG_SIZE 3
-static const struct sc_asn1_entry c_asn1_piv_cvc_dssig[C_ASN1_PIV_CVC_DSSIG_SIZE] = {
+#define C_ASN1_NIST_CVC_DSSIG_SIZE 3
+static const struct sc_asn1_entry c_asn1_nist_cvc_dssig[C_ASN1_NIST_CVC_DSSIG_SIZE] = {
 		{"signatureAlgorithmID", SC_ASN1_STRUCT,	 SC_ASN1_CONS | SC_ASN1_TAG_SEQUENCE, 0,		 NULL, NULL},
 		{"signatureValue",	   SC_ASN1_BIT_STRING_NI, SC_ASN1_TAG_BIT_STRING,		  SC_ASN1_ALLOC, NULL, NULL},
 		{NULL,		       0,			  0,				   0,		NULL, NULL}
 };
 
-#define C_ASN1_PIV_CVC_ALG_ID_SIZE 3
-static const struct sc_asn1_entry c_asn1_piv_cvc_alg_id[C_ASN1_PIV_CVC_ALG_ID_SIZE] = {
+#define C_ASN1_NIST_CVC_ALG_ID_SIZE 3
+static const struct sc_asn1_entry c_asn1_nist_cvc_alg_id[C_ASN1_NIST_CVC_ALG_ID_SIZE] = {
 		{"signatureAlgorithmOID", SC_ASN1_OBJECT, SC_ASN1_UNI | SC_ASN1_OBJECT,	0,		   NULL, NULL},
 		{"nullParam",	      SC_ASN1_NULL,   SC_ASN1_UNI | SC_ASN1_TAG_NULL, SC_ASN1_OPTIONAL, NULL, NULL},
 		{NULL,		       0,		  0,			      0,		NULL, NULL}
 };
 
-#define C_ASN1_PIV_CVC_BODY_SIZE 7
-static const struct sc_asn1_entry c_asn1_piv_cvc_body[C_ASN1_PIV_CVC_BODY_SIZE] = {
+#define C_ASN1_NIST_CVC_BODY_SIZE 7
+static const struct sc_asn1_entry c_asn1_nist_cvc_body[C_ASN1_NIST_CVC_BODY_SIZE] = {
 		{"certificateProfileIdentifier", SC_ASN1_INTEGER,	  SC_ASN1_APP | 0x1F29,		0,				   NULL, NULL},
 		{"Issuer ID Number",	     SC_ASN1_OCTET_STRING, SC_ASN1_APP | 2,			    0,				       NULL, NULL},
 		{"Subject Identifier",	       SC_ASN1_OCTET_STRING, SC_ASN1_APP | 0x1F20,		   0,				      NULL, NULL},
@@ -203,8 +203,8 @@ static const struct sc_asn1_entry c_asn1_piv_cvc_body[C_ASN1_PIV_CVC_BODY_SIZE] 
 		{NULL,			   0,			  0,				   0,				   NULL, NULL}
 };
 
-#define C_ASN1_PIV_CVC_SIZE 2
-static const struct sc_asn1_entry c_asn1_piv_cvc[C_ASN1_PIV_CVC_SIZE] = {
+#define C_ASN1_NIST_CVC_SIZE 2
+static const struct sc_asn1_entry c_asn1_nist_cvc[C_ASN1_NIST_CVC_SIZE] = {
 		{"CVC certificate", SC_ASN1_STRUCT, SC_ASN1_CONS | SC_ASN1_APP | 0x1F21, 0, NULL, NULL},
 		{NULL,	       0,		  0,				   0, NULL, NULL}
 };
@@ -224,12 +224,12 @@ typedef struct sm_nist_private_data {
 	cipher_suite_t *cs;	  /* active cypher_suite */
 	u8 csID;
 	X509 *signer_cert;
-	piv_cvc_t sm_cvc;    /* 800-73-4:  SM CVC Table 15 */
-	piv_cvc_t sm_in_cvc; /* Intermediate CVC Table 16 */
+	nist_cvc_t sm_cvc;    /* 800-73-4:  SM CVC Table 15 */
+	nist_cvc_t sm_in_cvc; /* Intermediate CVC Table 16 */
 	// unsigned long *sm_flags; /* flags shared with caller */
 	// unsigned long pin_policy;
 	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
-	piv_sm_session_t sm_session;
+	nist_sm_session_t sm_session;
 } sm_nist_private_data_t;
 
 // TODO fix to look at iso_sm_ctx  priv data
@@ -254,25 +254,25 @@ static int sm_nist_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *apdu);
 static void sm_nist_clear_free(const struct iso_sm_ctx *ctx);
 
-static void piv_inc(u8 *counter, size_t size);
-// static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
-// static int piv_get_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu);
-// static int piv_free_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu);
-static int piv_get_asn1_obj(sc_context_t *ctx, void *arg, const u8 *obj, size_t len, int depth);
+static void nist_inc(u8 *counter, size_t size);
+// static int nist_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
+// static int nist_get_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu);
+// static int nist_free_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu);
+static int nist_get_asn1_obj(sc_context_t *ctx, void *arg, const u8 *obj, size_t len, int depth);
 int sm_nist_open(struct sc_card *card);
-// static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
-//  TODO is piv_sm_close needed
-// static int piv_sm_close(sc_card_t *card);
-static void piv_clear_cvc_content(piv_cvc_t *cvc);
-static void piv_clear_sm_session(piv_sm_session_t *session);
-static int piv_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen, piv_cvc_t *cvc);
+// static int nist_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
+//  TODO is nist_sm_close needed
+// static int nist_sm_close(sc_card_t *card);
+static void nist_clear_cvc_content(nist_cvc_t *cvc);
+static void nist_clear_sm_session(nist_sm_session_t *session);
+static int nist_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen, nist_cvc_t *cvc);
 // TODO   static int piv_parse_pairing_code(sc_card_t *card, const char *option);
 static int Q2OS(int fsize, u8 *Q, size_t Qlen, u8 *OS, size_t *OSlen);
 // TODO comment for now static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code);
-static int piv_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
+static int nist_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
 		EVP_PKEY *pkey, u8 *data, size_t data_size,
 		unsigned char *sig, size_t siglen);
-static int piv_sm_verify_certs(struct sc_card *card);
+static int nist_sm_verify_certs(struct sc_card *card);
 
 int
 sm_nist_params_cleanup(sm_nist_params_t *params)
@@ -318,7 +318,7 @@ Q2OS(int fsize, u8 *Q, size_t Qlen, u8 *OS, size_t *OSlen)
  * if needed, send VCI pairing code to card just after the
  * SM key establishment. Called from sm_nist_open under same lock
  */
-static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
+static int nist_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 {
 	int r;
 	sm_nist_private_data_t * priv = SM_NIST_PRIV_CARD;
@@ -343,10 +343,10 @@ static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 //TODO Needs work to send with or without SM
 	memset(&sm_apdu,0,sizeof(sm_apdu));
 	/* build sm_apdu and set alloc sm_apdu.resp */
-	r = piv_encode_apdu(card, &plain, &sm_apdu);
+	r = nist_encode_apdu(card, &plain, &sm_apdu);
 	if (r < 0) {
 		free(sm_apdu.resp);
-		sc_log(card->ctx, "piv_encode_apdu failed");
+		sc_log(card->ctx, "nist_encode_apdu failed");
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
@@ -358,9 +358,9 @@ static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	r = piv_decode_apdu(card, &plain, &sm_apdu);
+	r = nist_decode_apdu(card, &plain, &sm_apdu);
 	free(sm_apdu.resp);
-	LOG_TEST_RET(card->ctx, r, "piv_decode_apdu failed");
+	LOG_TEST_RET(card->ctx, r, "nist_decode_apdu failed");
 	r = sc_check_sw(card, plain.sw1, plain.sw2);
 	if (r < 0)
 		r = SC_ERROR_PIN_CODE_INCORRECT;
@@ -371,7 +371,7 @@ static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 
 /* Verify one signature using pubkey */
 static int
-piv_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
+nist_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
 		EVP_PKEY *pkey,
 		u8 *data, size_t data_size,
 		unsigned char *sig, size_t siglen)
@@ -401,13 +401,13 @@ err:
 }
 
 /*
- * If sm_in_cvc is present, verify PIV_OBJ_SM_CERT_SIGNER signed sm_in_cvc
+ * If sm_in_cvc is present, verify NIST_OBJ_SM_CERT_SIGNER signed sm_in_cvc
  * and sm_in_cvc signed sm_cvc.
- * If sm_in_cvc is not present verify PIV_OBJ_SM_CERT_SIGNER signed sm_cvc.
+ * If sm_in_cvc is not present verify NIST_OBJ_SM_CERT_SIGNER signed sm_cvc.
  */
 
 static int
-piv_sm_verify_certs(struct sc_card *card)
+nist_sm_verify_certs(struct sc_card *card)
 {
 	sm_nist_private_data_t *priv = SM_NIST_PRIV_CARD;
 	cipher_suite_t *cs = priv->cs;
@@ -441,10 +441,10 @@ piv_sm_verify_certs(struct sc_card *card)
 	}
 
 	/*
-	 * Get the PIV_OBJ_SM_CERT_SIGNER and optional sm_in_cvc
+	 * Get the NIST_OBJ_SM_CERT_SIGNER and optional sm_in_cvc
 	 * which were passed
 	 */
-	priv->params->flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
+	priv->params->flags |= NIST_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
 
 	if (priv->signer_cert == NULL || (cert_pkey = X509_get0_pubkey(priv->signer_cert)) == NULL) {
 		sc_log(card->ctx, "OpenSSL failed to get pubkey from SM_CERT_SIGNER");
@@ -454,8 +454,8 @@ piv_sm_verify_certs(struct sc_card *card)
 	}
 
 	/* if intermediate sm_in_cvc present, cert signed it and sm_cvc is signed by sm_in_cvc */
-	if (priv->params->flags & PIV_SM_FLAGS_SM_IN_CVC_PRESENT) {
-		r = piv_sm_verify_sig(card, cs->kdf_md(), cert_pkey,
+	if (priv->params->flags & NIST_SM_FLAGS_SM_IN_CVC_PRESENT) {
+		r = nist_sm_verify_sig(card, cs->kdf_md(), cert_pkey,
 				priv->sm_in_cvc.body, priv->sm_in_cvc.bodylen,
 				priv->sm_in_cvc.signature, priv->sm_in_cvc.signaturelen);
 		if (r < 0) {
@@ -478,19 +478,19 @@ piv_sm_verify_certs(struct sc_card *card)
 				priv->sm_in_cvc.publicPoint, priv->sm_in_cvc.publicPointlen);
 		params[params_n] = OSSL_PARAM_construct_end();
 
-		if (!(in_cvc_pkey_ctx = EVP_PKEY_CTX_new_from_name(PIV_LIBCTX, "EC", NULL)) || !EVP_PKEY_fromdata_init(in_cvc_pkey_ctx) || !EVP_PKEY_fromdata(in_cvc_pkey_ctx, &in_cvc_pkey, EVP_PKEY_PUBLIC_KEY, params) || !in_cvc_pkey) {
+		if (!(in_cvc_pkey_ctx = EVP_PKEY_CTX_new_from_name(NIST_LIBCTX, "EC", NULL)) || !EVP_PKEY_fromdata_init(in_cvc_pkey_ctx) || !EVP_PKEY_fromdata(in_cvc_pkey_ctx, &in_cvc_pkey, EVP_PKEY_PUBLIC_KEY, params) || !in_cvc_pkey) {
 			sc_log(card->ctx, "OpenSSL failed to set EC pubkey, during verify");
 			sc_log_openssl(card->ctx);
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
 #endif
-		r = piv_sm_verify_sig(card, cs->kdf_md(), in_cvc_pkey,
+		r = nist_sm_verify_sig(card, cs->kdf_md(), in_cvc_pkey,
 				priv->sm_cvc.body, priv->sm_cvc.bodylen,
 				priv->sm_cvc.signature, priv->sm_cvc.signaturelen);
 
 	} else { /* cert signed  sm_cvc */
-		r = piv_sm_verify_sig(card, cs->kdf_md(), cert_pkey,
+		r = nist_sm_verify_sig(card, cs->kdf_md(), cert_pkey,
 				priv->sm_cvc.body, priv->sm_cvc.bodylen,
 				priv->sm_cvc.signature, priv->sm_cvc.signaturelen);
 	}
@@ -531,7 +531,7 @@ err:
 }
 
 static int
-piv_sm_general_io(sc_card_t *card, int ins, int p1, int p2,
+nist_sm_general_io(sc_card_t *card, int ins, int p1, int p2,
 		const u8 *sendbuf, size_t sendbuflen, u8 *recvbuf,
 		size_t recvbuflen)
 {
@@ -632,11 +632,11 @@ sm_nist_open(struct sc_card *card)
 	u8 *Qehx = NULL;
 #endif
 	size_t Qehlen = 0;
-	u8 Qeh[2 * PIV_SM_MAX_FIELD_LENGTH / 8 + 1]; /*  big enough for 384 04||x||y  if x and y have leading zeros, length may be less */
+	u8 Qeh[2 * NIST_SM_MAX_FIELD_LENGTH / 8 + 1]; /*  big enough for 384 04||x||y  if x and y have leading zeros, length may be less */
 	size_t Qeh_OSlen = 0;
-	u8 Qeh_OS[2 * PIV_SM_MAX_FIELD_LENGTH / 8]; /* no leading 04, with leading zeros in X and Y */
+	u8 Qeh_OS[2 * NIST_SM_MAX_FIELD_LENGTH / 8]; /* no leading 04, with leading zeros in X and Y */
 	size_t Qsicc_OSlen = 0;
-	u8 Qsicc_OS[2 * PIV_SM_MAX_FIELD_LENGTH / 8]; /* no leading 04, with leading zeros  in X and Y */
+	u8 Qsicc_OS[2 * NIST_SM_MAX_FIELD_LENGTH / 8]; /* no leading 04, with leading zeros  in X and Y */
 
 	/* pub EC key from card Cicc in sm_cvc */
 	EVP_PKEY_CTX *Cicc_ctx = NULL;
@@ -694,7 +694,7 @@ sm_nist_open(struct sc_card *card)
 	/*
 	 * The SM routines try and call this on their own.
 	 * This routine should only be called by the card driver.
-	 * which has set PIV_SM_FLAGS_DEFER_OPEN and unset in
+	 * which has set NIST_SM_FLAGS_DEFER_OPEN and unset in
 	 * in reader_lock_obtained
 	 * after testing PIC applet is active so SM is setup in same transaction
 	 * as the command we are trying to run with SM.
@@ -703,7 +703,7 @@ sm_nist_open(struct sc_card *card)
 	 * a loop, each trying to reestablish a SM session and run command.
 	 */
 
-	if (!(priv->params->flags & PIV_SM_FLAGS_DEFER_OPEN)) {
+	if (!(priv->params->flags & NIST_SM_FLAGS_DEFER_OPEN)) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 	}
 	if (cs == NULL)
@@ -736,7 +736,7 @@ sm_nist_open(struct sc_card *card)
 	eph_params[eph_params_n++] = OSSL_PARAM_construct_utf8_string("group", cs->curve_group, 0);
 	eph_params[eph_params_n++] = OSSL_PARAM_construct_utf8_string("point-format", "uncompressed", 0);
 	eph_params[eph_params_n] = OSSL_PARAM_construct_end();
-	if (!(eph_ctx = EVP_PKEY_CTX_new_from_name(PIV_LIBCTX, "EC", NULL)) /* TODO should be FIPS */
+	if (!(eph_ctx = EVP_PKEY_CTX_new_from_name(NIST_LIBCTX, "EC", NULL)) /* TODO should be FIPS */
 			|| !EVP_PKEY_keygen_init(eph_ctx) || !EVP_PKEY_CTX_set_params(eph_ctx, eph_params) || !EVP_PKEY_generate(eph_ctx, &eph_pkey) || !(Qehxlen = EVP_PKEY_get1_encoded_public_key(eph_pkey, &Qehx)) || !Qehx || Qehxlen > cs->Qlen) {
 		sc_log(card->ctx, "OpenSSL failed to create ephemeral EC key");
 		sc_log_openssl(card->ctx);
@@ -801,7 +801,7 @@ sm_nist_open(struct sc_card *card)
 	/* Step H3 send CBh||IDsh|| Qeh  Qeh in 04||x||y */
 	/* Or call sc_transmit directly */
 
-	r = piv_sm_general_io(card, 0x87, cs->p1, 0x04, sbuf, (p - sbuf), rbuf, rbuflen);
+	r = nist_sm_general_io(card, 0x87, cs->p1, 0x04, sbuf, (p - sbuf), rbuf, rbuflen);
 	if (r <= 0)
 		goto err;
 
@@ -848,22 +848,22 @@ sm_nist_open(struct sc_card *card)
 	if (len) {
 		cvcder = p; /* in rbuf */
 
-		r = piv_decode_cvc(card, &p, &len, &priv->sm_cvc);
+		r = nist_decode_cvc(card, &p, &len, &priv->sm_cvc);
 		if (r != SC_SUCCESS) {
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
-		priv->params->flags |= PIV_SM_FLAGS_SM_CVC_PRESENT;
+		priv->params->flags |= NIST_SM_FLAGS_SM_CVC_PRESENT;
 	}
 
 	/* Step H5 Verify Cicc CVC and pubkey */
-	/* Verify Cicc (sm_cvc) is signed by sm_in_cvc or PIV_OBJ_SM_CERT_SIGNER  */
-	/* sm_in_cvc is signed by PIV_OBJ_SM_CERT_SIGNER */
+	/* Verify Cicc (sm_cvc) is signed by sm_in_cvc or NIST_OBJ_SM_CERT_SIGNER  */
+	/* sm_in_cvc is signed by NIST_OBJ_SM_CERT_SIGNER */
 
 	/* Verify the cert chain is valid. */
-	r = piv_sm_verify_certs(card);
+	r = nist_sm_verify_certs(card);
 	if (r < 0) {
-		sc_log(card->ctx, "SM  piv_sm_verify_certs r:%d", r);
+		sc_log(card->ctx, "SM  nist_sm_verify_certs r:%d", r);
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
@@ -1011,7 +1011,7 @@ sm_nist_open(struct sc_card *card)
 	}
 
 	/* copy keys used for APDU */
-	memset(&priv->sm_session, 0, sizeof(piv_sm_session_t)); /* clear */
+	memset(&priv->sm_session, 0, sizeof(nist_sm_session_t)); /* clear */
 	priv->sm_session.aes_size = cs->aeskeylen;
 	memcpy(&priv->sm_session.SKcfrm, &aeskeys[cs->aeskeylen * 0], cs->aeskeylen);
 	memcpy(&priv->sm_session.SKmac, &aeskeys[cs->aeskeylen * 1], cs->aeskeylen);
@@ -1069,7 +1069,7 @@ sm_nist_open(struct sc_card *card)
 			goto err;
 		}
 #else
-		mac = EVP_MAC_fetch(PIV_LIBCTX, "cmac", NULL);
+		mac = EVP_MAC_fetch(NIST_LIBCTX, "cmac", NULL);
 		cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
 
 		cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
@@ -1105,13 +1105,13 @@ sm_nist_open(struct sc_card *card)
 #endif /* 0  TODO pairing */
 
 	r = 0;
-	priv->params->flags |= PIV_SM_FLAGS_SM_IS_ACTIVE;
+	priv->params->flags |= NIST_SM_FLAGS_SM_IS_ACTIVE;
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 
 err:
-	priv->params->flags &= ~PIV_SM_FLAGS_DEFER_OPEN;
+	priv->params->flags &= ~NIST_SM_FLAGS_DEFER_OPEN;
 	if (r != 0)
-		memset(&priv->sm_session, 0, sizeof(piv_sm_session_t));
+		memset(&priv->sm_session, 0, sizeof(nist_sm_session_t));
 	sc_log_openssl(card->ctx); /* catch any not logged above */
 
 	sc_unlock(card);
@@ -1145,7 +1145,7 @@ err:
 }
 
 static void
-piv_inc(u8 *counter, size_t size)
+nist_inc(u8 *counter, size_t size)
 {
 	unsigned int c = 1;
 	unsigned int b;
@@ -1159,7 +1159,7 @@ piv_inc(u8 *counter, size_t size)
 
 /* ASN1 callback to save address and len of the object */
 static int
-piv_get_asn1_obj(sc_context_t *ctx, void *arg, const u8 *obj, size_t len, int depth)
+nist_get_asn1_obj(sc_context_t *ctx, void *arg, const u8 *obj, size_t len, int depth)
 {
 	struct sc_lv_data *al = arg;
 
@@ -1172,7 +1172,7 @@ piv_get_asn1_obj(sc_context_t *ctx, void *arg, const u8 *obj, size_t len, int de
 }
 
 static void
-piv_clear_cvc_content(piv_cvc_t *cvc)
+nist_clear_cvc_content(nist_cvc_t *cvc)
 {
 	if (!cvc)
 		return;
@@ -1180,16 +1180,16 @@ piv_clear_cvc_content(piv_cvc_t *cvc)
 	free(cvc->signature);
 	free(cvc->publicPoint);
 	free(cvc->der.value);
-	memset(cvc, 0, sizeof(piv_cvc_t));
+	memset(cvc, 0, sizeof(nist_cvc_t));
 	return;
 }
 
 static void
-piv_clear_sm_session(piv_sm_session_t *session)
+nist_clear_sm_session(nist_sm_session_t *session)
 {
 	if (!session)
 		return;
-	sc_mem_clear(session, sizeof(piv_sm_session_t));
+	sc_mem_clear(session, sizeof(nist_sm_session_t));
 	return;
 }
 
@@ -1197,15 +1197,15 @@ piv_clear_sm_session(piv_sm_session_t *session)
  * Decode a card verifiable certificate as defined in NIST 800-73-4
  */
 static int
-piv_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen,
-		piv_cvc_t *cvc)
+nist_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen,
+		nist_cvc_t *cvc)
 {
-	struct sc_asn1_entry asn1_piv_cvc[C_ASN1_PIV_CVC_SIZE];
-	struct sc_asn1_entry asn1_piv_cvc_body[C_ASN1_PIV_CVC_BODY_SIZE];
-	struct sc_asn1_entry asn1_piv_cvc_pubkey[C_ASN1_PIV_CVC_PUBKEY_SIZE];
-	struct sc_asn1_entry asn1_piv_cvc_dsobj[C_ASN1_PIV_CVC_DSOBJ_SIZE];
-	struct sc_asn1_entry asn1_piv_cvc_dssig[C_ASN1_PIV_CVC_DSSIG_SIZE];
-	struct sc_asn1_entry asn1_piv_cvc_alg_id[C_ASN1_PIV_CVC_ALG_ID_SIZE];
+	struct sc_asn1_entry asn1_nist_cvc[C_ASN1_NIST_CVC_SIZE];
+	struct sc_asn1_entry asn1_nist_cvc_body[C_ASN1_NIST_CVC_BODY_SIZE];
+	struct sc_asn1_entry asn1_nist_cvc_pubkey[C_ASN1_NIST_CVC_PUBKEY_SIZE];
+	struct sc_asn1_entry asn1_nist_cvc_dsobj[C_ASN1_NIST_CVC_DSOBJ_SIZE];
+	struct sc_asn1_entry asn1_nist_cvc_dssig[C_ASN1_NIST_CVC_DSSIG_SIZE];
+	struct sc_asn1_entry asn1_nist_cvc_alg_id[C_ASN1_NIST_CVC_ALG_ID_SIZE];
 	struct sc_lv_data roleIDder = {NULL, 0};
 	int r;
 	const u8 *buf_tmp;
@@ -1223,42 +1223,42 @@ piv_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen,
 	if (cvc->der.value && cvc->der.len == *buflen && (memcmp(cvc->der.value, *buf, *buflen) == 0))
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 
-	piv_clear_cvc_content(cvc);
+	nist_clear_cvc_content(cvc);
 
-	memset(cvc, 0, sizeof(piv_cvc_t));
+	memset(cvc, 0, sizeof(nist_cvc_t));
 	cvc->issuerIDlen = sizeof(cvc->issuerID);
 	cvc->subjectIDlen = sizeof(cvc->subjectID);
 
-	sc_copy_asn1_entry(c_asn1_piv_cvc, asn1_piv_cvc);
-	sc_copy_asn1_entry(c_asn1_piv_cvc_body, asn1_piv_cvc_body);
-	sc_copy_asn1_entry(c_asn1_piv_cvc_pubkey, asn1_piv_cvc_pubkey);
-	sc_copy_asn1_entry(c_asn1_piv_cvc_dsobj, asn1_piv_cvc_dsobj);
-	sc_copy_asn1_entry(c_asn1_piv_cvc_dssig, asn1_piv_cvc_dssig);
-	sc_copy_asn1_entry(c_asn1_piv_cvc_alg_id, asn1_piv_cvc_alg_id);
+	sc_copy_asn1_entry(c_asn1_nist_cvc, asn1_nist_cvc);
+	sc_copy_asn1_entry(c_asn1_nist_cvc_body, asn1_nist_cvc_body);
+	sc_copy_asn1_entry(c_asn1_nist_cvc_pubkey, asn1_nist_cvc_pubkey);
+	sc_copy_asn1_entry(c_asn1_nist_cvc_dsobj, asn1_nist_cvc_dsobj);
+	sc_copy_asn1_entry(c_asn1_nist_cvc_dssig, asn1_nist_cvc_dssig);
+	sc_copy_asn1_entry(c_asn1_nist_cvc_alg_id, asn1_nist_cvc_alg_id);
 
-	sc_format_asn1_entry(asn1_piv_cvc_alg_id, &cvc->signatureAlgOID, NULL, 1);
-	sc_format_asn1_entry(asn1_piv_cvc_alg_id + 1, NULL, NULL, 1); /* NULL */
+	sc_format_asn1_entry(asn1_nist_cvc_alg_id, &cvc->signatureAlgOID, NULL, 1);
+	sc_format_asn1_entry(asn1_nist_cvc_alg_id + 1, NULL, NULL, 1); /* NULL */
 
-	sc_format_asn1_entry(asn1_piv_cvc_dssig, &asn1_piv_cvc_alg_id, NULL, 1);
-	sc_format_asn1_entry(asn1_piv_cvc_dssig + 1, &cvc->signature, &signaturebits, 1);
+	sc_format_asn1_entry(asn1_nist_cvc_dssig, &asn1_nist_cvc_alg_id, NULL, 1);
+	sc_format_asn1_entry(asn1_nist_cvc_dssig + 1, &cvc->signature, &signaturebits, 1);
 
-	sc_format_asn1_entry(asn1_piv_cvc_dsobj, &asn1_piv_cvc_dssig, NULL, 1);
+	sc_format_asn1_entry(asn1_nist_cvc_dsobj, &asn1_nist_cvc_dssig, NULL, 1);
 
-	sc_format_asn1_entry(asn1_piv_cvc_pubkey, &cvc->pubKeyOID, NULL, 1);
-	sc_format_asn1_entry(asn1_piv_cvc_pubkey + 1, &cvc->publicPoint, &cvc->publicPointlen, 1);
+	sc_format_asn1_entry(asn1_nist_cvc_pubkey, &cvc->pubKeyOID, NULL, 1);
+	sc_format_asn1_entry(asn1_nist_cvc_pubkey + 1, &cvc->publicPoint, &cvc->publicPointlen, 1);
 
-	sc_format_asn1_entry(asn1_piv_cvc_body, &cvc->cpi, NULL, 1);
-	sc_format_asn1_entry(asn1_piv_cvc_body + 1, &cvc->issuerID, &cvc->issuerIDlen, 1);
-	sc_format_asn1_entry(asn1_piv_cvc_body + 2, &cvc->subjectID, &cvc->subjectIDlen, 1);
-	sc_format_asn1_entry(asn1_piv_cvc_body + 3, &asn1_piv_cvc_pubkey, NULL, 1);
-	sc_format_asn1_entry(asn1_piv_cvc_body + 4, piv_get_asn1_obj, &roleIDder, 1);
-	sc_format_asn1_entry(asn1_piv_cvc_body + 5, &asn1_piv_cvc_dsobj, NULL, 1);
+	sc_format_asn1_entry(asn1_nist_cvc_body, &cvc->cpi, NULL, 1);
+	sc_format_asn1_entry(asn1_nist_cvc_body + 1, &cvc->issuerID, &cvc->issuerIDlen, 1);
+	sc_format_asn1_entry(asn1_nist_cvc_body + 2, &cvc->subjectID, &cvc->subjectIDlen, 1);
+	sc_format_asn1_entry(asn1_nist_cvc_body + 3, &asn1_nist_cvc_pubkey, NULL, 1);
+	sc_format_asn1_entry(asn1_nist_cvc_body + 4, nist_get_asn1_obj, &roleIDder, 1);
+	sc_format_asn1_entry(asn1_nist_cvc_body + 5, &asn1_nist_cvc_dsobj, NULL, 1);
 
-	sc_format_asn1_entry(asn1_piv_cvc, &asn1_piv_cvc_body, NULL, 1);
+	sc_format_asn1_entry(asn1_nist_cvc, &asn1_nist_cvc_body, NULL, 1);
 
-	r = sc_asn1_decode(card->ctx, asn1_piv_cvc, *buf, *buflen, NULL, NULL); /*(const u8 **) &buf_tmp, &len);*/
+	r = sc_asn1_decode(card->ctx, asn1_nist_cvc, *buf, *buflen, NULL, NULL); /*(const u8 **) &buf_tmp, &len);*/
 	if (r < 0) {
-		piv_clear_cvc_content(cvc);
+		nist_clear_cvc_content(cvc);
 		sc_log(card->ctx, "Could not decode card verifiable certificate");
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
@@ -1361,7 +1361,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 
 	priv = (sm_nist_private_data_t *)sctx->priv_data;
 
-	for (i = 0; i < PIV_CSS_SIZE; i++) {
+	for (i = 0; i < NIST_CSS_SIZE; i++) {
 		if (params->csID == css[i].id) {
 			priv->cs = &css[i];
 			break;
@@ -1380,7 +1380,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 		const u8 *p = params->signer_cert_der;
 		int len;
 
-		if (params->flags & PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED) {
+		if (params->flags & NIST_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED) {
 #ifdef ENABLE_ZLIB
 			cert_blob = NULL;
 			cert_blob_len = 0;
@@ -1409,13 +1409,13 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 
 	if (params->sm_in_cvc_der && params->sm_in_cvc_der_len) {
 		u8 *pp = params->sm_in_cvc_der;
-		r = piv_decode_cvc(card, &pp, &params->sm_in_cvc_der_len, &priv->sm_in_cvc);
+		r = nist_decode_cvc(card, &pp, &params->sm_in_cvc_der_len, &priv->sm_in_cvc);
 
 		if (r != SC_SUCCESS) {
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
-		params->flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
+		params->flags |= NIST_SM_FLAGS_SM_IN_CVC_PRESENT;
 	}
 
 	priv->csID = params->csID;
@@ -1632,7 +1632,7 @@ sm_nist_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		goto err;
 	}
 #else
-	mac = EVP_MAC_fetch(PIV_LIBCTX, "cmac", NULL);
+	mac = EVP_MAC_fetch(NIST_LIBCTX, "cmac", NULL);
 	cmac_params_n = 0;
 	cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
 	cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
@@ -1720,7 +1720,7 @@ sm_nist_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		goto err;
 	}
 #else
-	mac = EVP_MAC_fetch(PIV_LIBCTX, "cmac", NULL);
+	mac = EVP_MAC_fetch(NIST_LIBCTX, "cmac", NULL);
 	cmac_params_n = 0;
 	cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
 	cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
@@ -1785,21 +1785,21 @@ sm_nist_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	 * can be used on any APDU by card driver for fine control
 	 */
 	 /* SC_ERROR_SM_NOT_APPLIED tells sm_nist_encode to not use SM */
-	if (priv->params->flags & PIV_SM_FLAGS_FORCE_SM_ON) {
+	if (priv->params->flags & NIST_SM_FLAGS_FORCE_SM_ON) {
 		sc_log(card->ctx, "forcing the use of SM ON");
-		priv->params->flags  &= ~PIV_SM_FLAGS_FORCE_SM_ON;
+		priv->params->flags  &= ~NIST_SM_FLAGS_FORCE_SM_ON;
 		r = 0;
-	} else if (priv->params->flags & PIV_SM_FLAGS_FORCE_SM_OFF) {
+	} else if (priv->params->flags & NIST_SM_FLAGS_FORCE_SM_OFF) {
 		sc_log(card->ctx, "forcing the use of SM OFF");
-		priv->params->flags  &= ~PIV_SM_FLAGS_FORCE_SM_OFF;
+		priv->params->flags  &= ~NIST_SM_FLAGS_FORCE_SM_OFF;
 		r = SC_ERROR_SM_NOT_APPLIED;
 	} else {
 		/* May need additional cases */
 		switch (apdu->ins) {
 		case 0xCA: /* GET_DATA */
 		case 0xCB: /* GET_DATA */
-			if (priv->params->flags & PIV_SM_GET_DATA_IN_CLEAR) {
-				priv->params->flags &= ~PIV_SM_GET_DATA_IN_CLEAR;
+			if (priv->params->flags & NIST_SM_GET_DATA_IN_CLEAR) {
+				priv->params->flags &= ~NIST_SM_GET_DATA_IN_CLEAR;
 				r = SC_ERROR_SM_NOT_APPLIED;
 			}
 			break;
@@ -1852,7 +1852,7 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 
 	memcpy(priv->sm_session.enc_counter_last, priv->sm_session.enc_counter, sizeof(priv->sm_session.enc_counter));
-	piv_inc(priv->sm_session.enc_counter, sizeof(priv->sm_session.enc_counter));
+	nist_inc(priv->sm_session.enc_counter, sizeof(priv->sm_session.enc_counter));
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
@@ -1880,7 +1880,7 @@ sm_nist_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
 	priv = (sm_nist_private_data_t *)ctx->priv_data;
 
-	piv_inc(priv->sm_session.resp_enc_counter, sizeof(priv->sm_session.resp_enc_counter));
+	nist_inc(priv->sm_session.resp_enc_counter, sizeof(priv->sm_session.resp_enc_counter));
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
 }
@@ -1892,10 +1892,10 @@ sm_nist_clear_free(const struct iso_sm_ctx *ctx)
 		struct sm_nist_private_data *priv = SM_NIST_PRIV(ctx);
 
 		if (priv) {
-			piv_clear_sm_session(&priv->sm_session);
+			nist_clear_sm_session(&priv->sm_session);
 			X509_free(priv->signer_cert);
-			piv_clear_cvc_content(&priv->sm_in_cvc);
-			piv_clear_cvc_content(&priv->sm_cvc);
+			nist_clear_cvc_content(&priv->sm_in_cvc);
+			nist_clear_cvc_content(&priv->sm_cvc);
 			free(priv);
 			/* TODO IS this needed? ctx->priv_data = NULL; */
 		}

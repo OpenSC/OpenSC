@@ -750,10 +750,10 @@ piv_load_options(sc_card_t *card)
 	if ((option = getenv("PIV_USE_SM")) != NULL) {
 		sc_log(card->ctx, "getenv(\"PIV_USE_SM\")=\"%s\"", option);
 		if (!strcmp(option, "never")) {
-			priv->sm_params.flags |= PIV_SM_FLAGS_NEVER;
+			priv->sm_params.flags |= NIST_SM_FLAGS_NEVER;
 			piv_use_sm_found = 1;
 		} else if (!strcmp(option, "always")) {
-			priv->sm_params.flags |= PIV_SM_FLAGS_ALWAYS;
+			priv->sm_params.flags |= NIST_SM_FLAGS_ALWAYS;
 			piv_use_sm_found = 1;
 		} else {
 			sc_log(card->ctx, "Invalid piv_use_sm: \"%s\"", option);
@@ -791,9 +791,9 @@ piv_load_options(sc_card_t *card)
 				if (!strcmp(option, "default")) {
 					/* no new flags */
 				} else if (!strcmp(option, "never")) {
-					priv->sm_params.flags |= PIV_SM_FLAGS_NEVER;
+					priv->sm_params.flags |= NIST_SM_FLAGS_NEVER;
 				} else if (!strcmp(option, "always")) {
-					priv->sm_params.flags |= PIV_SM_FLAGS_ALWAYS;
+					priv->sm_params.flags |= NIST_SM_FLAGS_ALWAYS;
 				} else {
 					sc_log(card->ctx, "Invalid piv_use_sm: \"%s\"", option);
 				}
@@ -1259,15 +1259,15 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	 */
 	sc_log(card->ctx, "enumtag:%d sm_ctx.sm_mode:%d piv_objects[enumtag].flags:0x%8.8x sm_flags:0x%8.8lx it_flags:0x%8.8x",
 			enumtag, card->sm_ctx.sm_mode, piv_objects[enumtag].flags, priv->sm_params.flags, priv->init_flags);
-	if (priv->sm_params.flags & PIV_SM_FLAGS_SM_IS_ACTIVE && enumtag != PIV_OBJ_DISCOVERY && card->sm_ctx.sm_mode == SM_MODE_TRANSMIT && !(piv_objects[enumtag].flags & PIV_OBJECT_NEEDS_PIN) && !(priv->sm_params.flags & (PIV_SM_FLAGS_NEVER | PIV_SM_FLAGS_ALWAYS)) && !(priv->init_flags & (PIV_INIT_CONTACTLESS | PIV_INIT_IN_READER_LOCK_OBTAINED))) {
-		sc_log(card->ctx, "Set PIV_SM_GET_DATA_IN_CLEAR");
-		priv->sm_params.flags |= PIV_SM_GET_DATA_IN_CLEAR;
+	if (priv->sm_params.flags & NIST_SM_FLAGS_SM_IS_ACTIVE && enumtag != PIV_OBJ_DISCOVERY && card->sm_ctx.sm_mode == SM_MODE_TRANSMIT && !(piv_objects[enumtag].flags & PIV_OBJECT_NEEDS_PIN) && !(priv->sm_params.flags & (NIST_SM_FLAGS_NEVER | NIST_SM_FLAGS_ALWAYS)) && !(priv->init_flags & (PIV_INIT_CONTACTLESS | PIV_INIT_IN_READER_LOCK_OBTAINED))) {
+		sc_log(card->ctx, "Set NIST_SM_GET_DATA_IN_CLEAR");
+		priv->sm_params.flags |= NIST_SM_GET_DATA_IN_CLEAR;
 	}
 
 #endif /* PIV_SM_NIST */
 	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, *buf, *buf_len);
 #ifdef PIV_SM_NIST
-	priv->sm_params.flags &= ~PIV_SM_GET_DATA_IN_CLEAR; /* reset */
+	priv->sm_params.flags &= ~NIST_SM_GET_DATA_IN_CLEAR; /* reset */
 #endif							    /* PIV_SM_NIST */
 	if (r > 0) {
 		int r_tag;
@@ -1475,7 +1475,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 			if (priv->sm_params.signer_cert_der) { /* free if already set */
 				free(priv->sm_params.signer_cert_der);
 				priv->sm_params.signer_cert_der_len = 0;
-				priv->sm_params.flags &= ~PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
+				priv->sm_params.flags &= ~NIST_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
 			}
 
 			priv->sm_params.signer_cert_der = malloc(taglen);
@@ -1484,10 +1484,10 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 
 			memcpy(priv->sm_params.signer_cert_der, tag, taglen);
 			priv->sm_params.signer_cert_der_len = taglen;
-			priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
+			priv->sm_params.flags |= NIST_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
 
 			if (compressed)
-				priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
+				priv->sm_params.flags |= NIST_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
 		}
 #endif /* PIV_SM_NIST */
 
@@ -1503,7 +1503,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 					&& cvc_start && cvc_start < tag
 					&& cvc_start[0] == 0x7f && cvc_start[1] == 0x21) {
 				cvc_len = tag - cvc_start + taglen;
-				priv->sm_params.flags |= PIV_SM_FLAGS_SM_IN_CVC_PRESENT;
+				priv->sm_params.flags |= NIST_SM_FLAGS_SM_IN_CVC_PRESENT;
 				/* save for sm-nist */
 				if (priv->sm_params.sm_in_cvc_der) {
 					free(priv->sm_params.sm_in_cvc_der);
@@ -3227,7 +3227,7 @@ static int piv_find_discovery(sc_card_t *card)
 		rbuflen = 1;
 		r = piv_get_data(card, PIV_OBJ_DISCOVERY, &rbuf, &rbuflen);
 		if (r < 0)
-			goto end; /* may catch interference from other proccess if using SM */
+			goto end; /* may catch interference from other processes using SM */
 
 		/* if same response as last, no need to parse */
 		if ( r == 0 && priv->obj_cache[PIV_OBJ_DISCOVERY].obj_len == 0)
@@ -4066,7 +4066,7 @@ static int piv_init(sc_card_t *card)
 		/* Only piv_init and piv_reader_lock_obtained should call sm-nist_open */
 
 		/* If user said PIV_SM_FLAGS_NEVER, dont start SM; implies limited contatless access */
-		if (priv->sm_params.flags & PIV_SM_FLAGS_NEVER) {
+		if (priv->sm_params.flags & NIST_SM_FLAGS_NEVER) {
 			sc_log(card->ctx,"User has requested PIV_SM_FLAGS_NEVER");
 			r = SC_SUCCESS; /* Users choice */
 
@@ -4079,10 +4079,10 @@ static int piv_init(sc_card_t *card)
 			r = SC_ERROR_PIN_CODE_INCORRECT; /* User should know they need to set pairing code */
 
 		} else {
-			priv->sm_params.flags |= PIV_SM_FLAGS_DEFER_OPEN; /* tell priv_sm_open, OK to open */
+			priv->sm_params.flags |= NIST_SM_FLAGS_DEFER_OPEN; /* tell priv_sm_open, OK to open */
 
 			if (priv->init_flags & PIV_INIT_CONTACTLESS)
-				priv->sm_params.flags |= PIV_SM_CONTACTLESS;
+				priv->sm_params.flags |= NIST_SM_CONTACTLESS;
 
 			/*
 			 * Get the PIV_OBJ_SM_CERT_SIGNER and optional sm_in_cvc in cache
@@ -4101,9 +4101,9 @@ static int piv_init(sc_card_t *card)
 							priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data,
 							priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len);
 					priv->sm_params.signer_cert_der_len = priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len;
-					priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
+					priv->sm_params.flags |= NIST_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
 					if (priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].flags & PIV_OBJ_CACHE_COMPRESSED) {
-						priv->sm_params.flags |= PIV_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
+						priv->sm_params.flags |= NIST_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
 					}
 				}
 			}
@@ -4115,8 +4115,8 @@ static int piv_init(sc_card_t *card)
 			sc_log(card->ctx, "sm_nist_start returned:%d", r);
 		}
 
-		/* If failed, and user said PIV_SM_FLAGS_ALWAYS quit */
-		if (priv->sm_params.flags & PIV_SM_FLAGS_ALWAYS && r < 0) {
+		/* If failed, and user said NIST_SM_FLAGS_ALWAYS quit */
+		if (priv->sm_params.flags & NIST_SM_FLAGS_ALWAYS && r < 0) {
 			sc_log(card->ctx,"User has requested PIV_SM_FLAGS_ALWAYS, SM has failed to start, don't use the card");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 		}
@@ -4480,14 +4480,14 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	sc_log(card->ctx, "(was_reset: %d priv->sm_parms.flags: 0x%08lX", was_reset, priv->sm_params.flags);
 	/* If SM was active, reauthenticate as other process may be using SM too. */
 
-	if (priv->sm_params.flags & PIV_SM_FLAGS_SM_IS_ACTIVE) {
-		priv->sm_params.flags |= PIV_SM_FLAGS_DEFER_OPEN;
+	if (priv->sm_params.flags & NIST_SM_FLAGS_SM_IS_ACTIVE) {
+		priv->sm_params.flags |= NIST_SM_FLAGS_DEFER_OPEN;
 		r = sm_nist_open(card);
 		if (r < 0) {
 			/* TODO is it ok to run with out SM */
 			/* If uses said use SM always, and can not - Error */
 			sc_log(card->ctx, "Attempt to restart or skip sm-nist");
-			if (priv->sm_params.flags & PIV_SM_FLAGS_ALWAYS) {
+			if (priv->sm_params.flags & NIST_SM_FLAGS_ALWAYS) {
 				r = SC_ERROR_SM_NOT_INITIALIZED;
 				goto err;
 			}
