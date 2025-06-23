@@ -272,7 +272,7 @@ typedef struct piv_private_data {
 	unsigned int ccc_flags;	    /* From  CCC indicate if CAC card */
 	unsigned int pin_policy; /* from discovery */
 	unsigned int init_flags;
-	u8  csID; /* 800-73-4 Cipher Suite ID 0x27 or 0x2E */
+	u8 csID; /* 800-73-4 Cipher Suite ID 0x27 or 0x2E */
 	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
 	u8 *signer_cert_der;
 	size_t cert_signer_len;
@@ -1268,7 +1268,7 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, *buf, *buf_len);
 #ifdef PIV_SM_NIST
 	priv->sm_params.flags &= ~NIST_SM_GET_DATA_IN_CLEAR; /* reset */
-#endif							    /* PIV_SM_NIST */
+#endif /* PIV_SM_NIST */
 	if (r > 0) {
 		int r_tag;
 		unsigned int cla_out, tag_out;
@@ -4120,7 +4120,6 @@ static int piv_init(sc_card_t *card)
 			sc_log(card->ctx,"User has requested PIV_SM_FLAGS_ALWAYS, SM has failed to start, don't use the card");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 		}
-
 	}
 #endif /* PIV_SM_NIST */
 
@@ -4472,15 +4471,39 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 
 	priv->init_flags |= PIV_INIT_IN_READER_LOCK_OBTAINED;
 
-	/* Make sure our applet is active. Card may have multiple applets */
-
-	r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
-
 #ifdef PIV_SM_NIST
-	sc_log(card->ctx, "(was_reset: %d priv->sm_parms.flags: 0x%08lX", was_reset, priv->sm_params.flags);
-	/* If SM was active, reauthenticate as other process may be using SM too. */
 
-	if (priv->sm_params.flags & NIST_SM_FLAGS_SM_IS_ACTIVE) {
+	sc_log(card->ctx, "(was_reset: %d priv->sm_parms.flags: 0x%08lX", was_reset, priv->sm_params.flags);
+	if (was_reset == 0 && priv->sm_params.flags & NIST_SM_FLAGS_SM_IS_ACTIVE) {
+		/* If SM was active, test if SM connection is still valid to card using VERIFY 00 20 00 XX
+		 * If reply is 90 00  or 63 Cx Our SM connection must still be valid to PIV applet.
+		 * and we get tries left too.
+		 * if not select aid reauthenticate as other process may be using SM too
+		 */
+		sc_apdu_t apdu;
+		unsigned long saved_flags = priv->sm_params.flags;
+
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, priv->pin_preference);
+		priv->sm_params.flags |= NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS;
+		priv->sm_params.flags |= NIST_SM_FLAGS_FORCE_SM_ON;
+		r = sc_transmit_apdu(card, &apdu);
+		priv->sm_params.flags |= saved_flags & NIST_SM_FLAGS_FORCE_SM_ON; /* restore state just in case */
+		if (r >= 0) {
+			if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
+				priv->logged_in = SC_PIN_STATE_LOGGED_IN;
+			else if (apdu.sw1 == 0x63) {
+				priv->logged_in = SC_PIN_STATE_LOGGED_OUT;
+				priv->tries_left = apdu.sw1 & 0x0F;
+			} else {
+				priv->logged_in = SC_PIN_STATE_UNKNOWN;
+			}
+		}
+	}
+	if ((r < 0 || was_reset > 0) && priv->sm_params.flags & NIST_SM_FLAGS_SM_IS_ACTIVE) {
+		r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+		if (r < 0)
+			goto err;
+
 		priv->sm_params.flags |= NIST_SM_FLAGS_DEFER_OPEN;
 		r = sm_nist_open(card);
 		if (r < 0) {
@@ -4493,15 +4516,15 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 			}
 		}
 	}
+#else
+	r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
 #endif /* PIV_SM_NIST */
-
-
-	/* TODO add test of retries left */
-	if (r < 0) /* bad error return will show up in sc_lock as error*/
-		goto err;
 
 	if (was_reset > 0)
 		priv->logged_in = SC_PIN_STATE_UNKNOWN;
+
+	if (r < 0)
+		goto err;
 
 	r = 0;
 
@@ -4510,8 +4533,6 @@ err:
 		priv->init_flags &= ~PIV_INIT_IN_READER_LOCK_OBTAINED;
 	LOG_FUNC_RETURN(card->ctx, r);
 }
-
-
 
 static struct sc_card_driver * sc_get_driver(void)
 {
