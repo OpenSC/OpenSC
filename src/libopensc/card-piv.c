@@ -4482,7 +4482,7 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		 * if not select aid reauthenticate as other process may be using SM too
 		 */
 		sc_apdu_t apdu;
-		unsigned saved_flags = priv->sm_params.flags;
+		unsigned long saved_flags = priv->sm_params.flags;
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, priv->pin_preference);
 		priv->sm_params.flags |= NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS;
