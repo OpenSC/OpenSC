@@ -59,6 +59,7 @@
 #define NIST_SM_CONTACTLESS			0x00010000lu /* contacless */
 #define NIST_SM_FLAGS_FORCE_SM_ON		0x00020000lu /* override sm_nist_pre and use SM */
 #define NIST_SM_FLAGS_FORCE_SM_OFF		0x00040000lu /* override sm-nist_pre and not use SM */
+#define NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS	0x00080000lu /* Don't close on errors */
 
 #ifdef __cplusplus
 extern "C" {
@@ -87,6 +88,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params);
 
 int
 sm_nist_open(sc_card_t *card);
+
 
 int
 sm_nist_params_cleanup(sm_nist_params_t *params);
