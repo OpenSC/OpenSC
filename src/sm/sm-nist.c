@@ -253,6 +253,7 @@ static int sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 static int sm_nist_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *apdu);
 static void sm_nist_clear_free(const struct iso_sm_ctx *ctx);
+static int sm_nist_close(sc_card_t *card);
 
 static void nist_inc(u8 *counter, size_t size);
 // static int nist_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
@@ -261,8 +262,6 @@ static void nist_inc(u8 *counter, size_t size);
 static int nist_get_asn1_obj(sc_context_t *ctx, void *arg, const u8 *obj, size_t len, int depth);
 int sm_nist_open(struct sc_card *card);
 // static int nist_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
-//  TODO is nist_sm_close needed
-// static int nist_sm_close(sc_card_t *card);
 static void nist_clear_cvc_content(nist_cvc_t *cvc);
 static void nist_clear_sm_session(nist_sm_session_t *session);
 static int nist_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen, nist_cvc_t *cvc);
@@ -609,9 +608,9 @@ err:
 int
 sm_nist_open(struct sc_card *card)
 {
-	sm_nist_private_data_t *priv = SM_NIST_PRIV_CARD;
-	//	struct iso_sm_ctx *sctx = NULL;
-	cipher_suite_t *cs = priv->cs;
+	sm_nist_private_data_t *priv = NULL;
+	struct iso_sm_ctx *sctx = NULL;
+	cipher_suite_t *cs = NULL;
 	int r = 0;
 	int i;
 	int reps;
@@ -691,6 +690,14 @@ sm_nist_open(struct sc_card *card)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	sctx = ISO_CTX_FROM_CARD;
+	if (sctx== NULL)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+
+	priv = SM_NIST_PRIV(sctx);
+	if (priv == NULL)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+
 	/*
 	 * The SM routines try and call this on their own.
 	 * This routine should only be called by the card driver.
@@ -706,6 +713,8 @@ sm_nist_open(struct sc_card *card)
 	if (!(priv->params->flags & NIST_SM_FLAGS_DEFER_OPEN)) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 	}
+
+	cs = priv->cs;
 	if (cs == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
@@ -1351,6 +1360,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
+	card->sm_ctx.ops.close = sm_nist_close;
 
 	/* *params is saved in priv_data */
 	sctx->priv_data = sm_nist_private_data_create(params);
@@ -1438,6 +1448,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 
 	/* We want to control if SM is on or not from driver, so set it off. */
 	card->sm_ctx.sm_mode = SM_MODE_NONE;
+	card->sm_ctx.ops.close = sm_nist_close;
 
 	/* do not add to card->sm_ctx.open */
 	r = sm_nist_open(card);
@@ -1857,13 +1868,36 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
 
-//static int
-//nist_sm_close(sc_card_t card)
-//{
-//	sm_nist_private_data_t *priv;
-//	 if (card) {
-//	 }
-//}
+
+static int
+sm_nist_close(sc_card_t *card)
+{
+	struct iso_sm_ctx *sm_ctx;
+	sm_nist_private_data_t *priv;
+
+	if (!card)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_SM);
+
+	if (((sm_ctx = ISO_CTX_FROM_CARD)) && ((priv = SM_NIST_PRIV(sm_ctx)))) {
+		/*
+		 * a SM failure while using SM 00 20 00 xx lc=0
+		 * from reader_lock_obtained maybe caused
+		 * by interference of other process that started its own 
+		 * SM session. In this case do not close and let reader_lock_obtained
+		 * continue.
+		 */
+		if (priv->params->flags & NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS) {
+			sc_log(card->ctx, "called with NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS");
+			priv->params->flags &= ~NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS;
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
+		}
+	}
+	sc_log(card->ctx,"calling iso_sm_close");
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, iso_sm_close(card));
+}
+
 
 static int
 sm_nist_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
