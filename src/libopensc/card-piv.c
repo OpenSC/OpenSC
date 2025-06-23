@@ -552,6 +552,7 @@ static struct piv_supported_ec_curves {
 } ec_curves[] = {
 		{{{1, 2, 840, 10045, 3, 1, 7, -1}}, 256, SC_ALGORITHM_EC	}, /* secp256r1, nistp256, prime256v1, ansiX9p256r1 */
 		{{{1, 3, 132, 0, 34, -1}},	   384, SC_ALGORITHM_EC    }, /* secp384r1, nistp384, prime384v1, ansiX9p384r1 */
+		{{{1, 3, 132, 0, 35, -1}},	   521, SC_ALGORITHM_EC    }, /* secp521r1, nistp521, prime521v1, ansiX9p521r1 */
 		{{{1, 3, 101, 112, -1}},		 255, SC_ALGORITHM_EDDSA }, /* RFC8410 OID equivalent to ed25519 */
 		{{{1, 3, 101, 110, -1}},		 255, SC_ALGORITHM_XEDDSA}, /* RFC8410 OID equivalent to curve25519 */
 		{{{-1}},			    0,   0		     }  /* This entry must not be touched. */
@@ -582,6 +583,7 @@ static struct piv_aid piv_aids[] = {
 #define CI_NO_EC			    0x00040000U /* No EC at all */
 #define CI_RSA_4096			    0x00080000U /* Card supports rsa 4096 */
 #define CI_25519			    0x00100000U /* Card supports ED25519 and X25519 */
+#define CI_EC521			    0x00200000U /* Card supports EC 521 */
 
 /*
  * Flags in the piv_object:
@@ -2746,6 +2748,11 @@ static int piv_generate_key(sc_card_t *card,
 			keydata->ecparam = 0;
 			keydata->ecparam_len = 0;
 			break;
+		case 0x32: /* Swissbit iShield Key 2 support for EC 521 */
+			keydata->key_bits = 0;
+			keydata->ecparam = 0;
+			keydata->ecparam_len = 0;
+			break;
 		default:
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
@@ -4527,6 +4534,10 @@ piv_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)
 					priv->alg_id = 0x14;
 					priv->key_size = 384;
 					break;
+				case 521:
+					priv->alg_id = 0x32;
+					priv->key_size = 521;
+					break;
 				default:
 					r = SC_ERROR_NO_CARD_SUPPORT;
 			}
@@ -4652,7 +4663,7 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 	piv_private_data_t * priv = PIV_DATA(card);
 	int r;
 	size_t nLen;
-	u8 rbuf[128]; /* For EC conversions  384 will fit */
+	u8 rbuf[165]; /* For EC conversions  512 will fit */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	/* The PIV returns a DER SEQUENCE{INTEGER, INTEGER}
@@ -4662,7 +4673,7 @@ piv_compute_signature(sc_card_t *card, const u8 * data, size_t datalen,
 	 * and pad on left if too short.
 	 */
 
-	if (priv->alg_id == 0x11 || priv->alg_id == 0x14 ) {
+	if (priv->alg_id == 0x11 || priv->alg_id == 0x14 || priv->alg_id == 0x32) {
 		nLen = BYTES4BITS(priv->key_size);
 		if (outlen < 2*nLen) {
 			sc_log(card->ctx,
@@ -5692,7 +5703,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_SWISSBIT2:
 			priv->card_issues |= 0; /* could add others here */
                         if (priv->swissbit_version >= 0x01020000)
-				priv->card_issues |= CI_RSA_4096;
+				priv->card_issues |= CI_RSA_4096 | CI_EC521;
 			break;
 
 		case SC_CARD_TYPE_PIV_II_BASE:
@@ -5829,10 +5840,17 @@ static int piv_init(sc_card_t *card)
 		flags_eddsa = SC_ALGORITHM_EDDSA_RAW;
 		flags_xeddsa = SC_ALGORITHM_XEDDSA_RAW;
 
+		if (card->type == SC_CARD_TYPE_PIV_II_SWISSBIT || card->type == SC_CARD_TYPE_PIV_II_SWISSBIT2) {
+			flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
+		}
+
 		for (i = 0; ec_curves[i].oid.value[0] >= 0; i++) {
 			if (ec_curves[i].key_type == SC_ALGORITHM_EC) {
-				if (!(priv->card_issues & CI_NO_EC384 && ec_curves[i].size == 384))
-					_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].oid);
+				if (priv->card_issues & CI_NO_EC384 && ec_curves[i].size == 384)
+					continue;
+				if (!(priv->card_issues & CI_EC521) && ec_curves[i].size == 521)
+					continue;
+				_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].oid);
 
 			} else if (priv->card_issues & CI_25519) {
 				if (ec_curves[i].key_type == SC_ALGORITHM_EDDSA) {
