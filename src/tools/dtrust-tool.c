@@ -848,29 +848,6 @@ main(int argc, char *argv[])
 		}
 	}
 
-	memset(&ctx_param, 0, sizeof(ctx_param));
-	ctx_param.ver = 0;
-	ctx_param.app_name = argv[0];
-	ctx_param.debug = verbose;
-	if (verbose)
-		ctx_param.debug_file = stderr;
-
-	r = sc_context_create(&ctx, &ctx_param);
-	if (r) {
-		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
-		return 1;
-	}
-
-	r = sc_set_card_driver(ctx, "dtrust");
-	if (r) {
-		fprintf(stderr, "Driver 'dtrust' not found!\n");
-		goto out;
-	}
-
-	r = util_connect_card(ctx, &card, opt_reader, opt_wait);
-	if (r)
-		goto out;
-
 	if (opt_status || opt_check)
 		opt_can_verify = 1;
 
@@ -900,6 +877,34 @@ main(int argc, char *argv[])
 			goto out;
 	}
 
+	/* All interactive inputs have to be queried up to this point. OpenSC
+	 * internally locks the cards, but Windows drivers release this lock
+	 * after 5 seconds of inactivity and reset the card. Thus we have to
+	 * prevent to reset the card while waiting for user input. */
+
+	memset(&ctx_param, 0, sizeof(ctx_param));
+	ctx_param.ver = 0;
+	ctx_param.app_name = argv[0];
+	ctx_param.debug = verbose;
+	if (verbose)
+		ctx_param.debug_file = stderr;
+
+	r = sc_context_create(&ctx, &ctx_param);
+	if (r) {
+		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
+		return 1;
+	}
+
+	r = sc_set_card_driver(ctx, "dtrust");
+	if (r) {
+		fprintf(stderr, "Driver 'dtrust' not found!\n");
+		goto out;
+	}
+
+	r = util_connect_card(ctx, &card, opt_reader, opt_wait);
+	if (r)
+		goto out;
+
 	/* D-Trust Card 5 requires PACE authentication with CAN */
 	if (opt_can_verify &&
 			card->type >= SC_CARD_TYPE_DTRUST_V5_1_STD &&
@@ -912,9 +917,24 @@ main(int argc, char *argv[])
 		data.pin_reference = PACE_PIN_ID_CAN;
 
 		if (opt_can_enter) {
+			/* To determine whether we need to query for the CAN,
+			 * we first need to check the card type and thus
+			 * connect to the card. The Windows driver releases
+			 * the card lock after 5 seconds of inactivity. Thus
+			 * we release the card on our own, wait for the user
+			 * input, and finally lock the card again to circumvent
+			 * this timeout. */
+			sc_unlock(card);
+
 			r = get_pin(&can, "CAN", 0);
 			if (r < 0)
 				goto out;
+
+			r = sc_lock(card);
+			if (r < 0) {
+				fprintf(stderr, "Failed to lock card.\n");
+				goto out;
+			}
 
 			data.pin1.data = (const unsigned char *)can;
 			data.pin1.len = strlen(can);
