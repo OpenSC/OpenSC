@@ -330,6 +330,11 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 			prkey_obj.auth_id.len      = 1;
 			prkey_obj.auth_id.value[0] = key_cfg[i].prkey_pin;
 
+			/* forcesig in GNUPG, index 0 refers to signature key */
+			if (i == 0) {
+				prkey_obj.user_consent = !c4data[0];
+			}
+
 			/* need to get size from algorithms using oid */
 			if (cxdata[0] == SC_OPENPGP_KEYALGO_ECDH ||
 				cxdata[0] == SC_OPENPGP_KEYALGO_ECDSA ||

@@ -188,6 +188,14 @@ struct pgp_priv_data {
 
 	pgp_sm_algo_t		sm_algo;	/* Secure Messaging algorithm */
 
+	/* Used to determine login state of PW1 (no. 82) if the card do not implement
+	getting PIN status through VERIFY command and EXT_CAP_PRIVATE_DO not supported
+	or unable to determine the state by accessing PRIVATE DO 0x0103 */
+	int pw1_logged_in;
+	/* Used to determine login state of PW1 (no. 81) if the card do not implement
+	getting PIN status through VERIFY command */
+	int pw1_sig_logged_in;
+
 	size_t			max_challenge_size;
 	size_t			max_cert_size;
 	size_t			max_specialDO_size;
