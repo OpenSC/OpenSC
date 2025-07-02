@@ -1931,7 +1931,6 @@ sm_nist_clear_free(const struct iso_sm_ctx *ctx)
 			nist_clear_cvc_content(&priv->sm_in_cvc);
 			nist_clear_cvc_content(&priv->sm_cvc);
 			free(priv);
-			/* TODO IS this needed? ctx->priv_data = NULL; */
 		}
 	}
 }
