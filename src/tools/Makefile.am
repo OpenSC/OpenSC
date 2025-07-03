@@ -22,7 +22,7 @@ do_subst = $(SED) \
 	   -e 's,[@]X509DIR[@],$(X509DIR),g'
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc versioninfo-opensc-notify.rc goid-tool.ggo.in npa-tool.ggo.in opensc-notify.ggo.in egk-tool.ggo.in opensc-asn1.ggo.in org.opensc.notify.desktop.in exe.manifest pkcs11-register.desktop.in org.opensc-project.mac.pkcs11-register.plist.in org.opensc-project.mac.opensc-notify.plist.in
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc versioninfo-opensc-notify.rc goid-tool.ggo.in npa-tool.ggo.in opensc-notify.ggo.in egk-tool.ggo.in opensc-asn1.ggo.in org.opensc.notify.desktop.in pkcs11-register.desktop.in org.opensc-project.mac.pkcs11-register.plist.in org.opensc-project.mac.opensc-notify.plist.in
 
 noinst_HEADERS = util.h fread_to_eof.h \
 	egk-tool-cmdline.h goid-tool-cmdline.h npa-tool-cmdline.h \

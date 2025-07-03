@@ -14,10 +14,8 @@ $(TARGETS): $(OBJECTS) $(LIBS)
 
 opensc-minidriver-test.exe:
 	cl $(COPTS) /c $*.c
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj bcrypt.lib ncrypt.lib crypt32.lib winscard.lib
-	if EXIST $@.manifest mt -manifest $@.manifest -outputresource:$@;1
+	link $(LINKFLAGS) /out:$@ $*.obj bcrypt.lib ncrypt.lib crypt32.lib winscard.lib
 
 .c.exe:
 	cl $(COPTS) /c $<
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS)
-	if EXIST $@.manifest mt -manifest $@.manifest -outputresource:$@;1
+	link $(LINKFLAGS) /out:$@ $*.obj $(OBJECTS) $(LIBS)
