@@ -18,5 +18,4 @@ $(TARGETS): $(OBJECTS) $(LIBS)
 
 .c.exe:
 	cl $(COPTS) /c $<
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS)
-	if EXIST $@.manifest mt -manifest $@.manifest -outputresource:$@;1
+	link $(LINKFLAGS) /out:$@ $*.obj $(OBJECTS) $(LIBS)

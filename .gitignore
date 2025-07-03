@@ -41,6 +41,7 @@ test-driver
 *.la
 *.lib
 *.lo
+*.manifest
 *.orig
 *.pdb
 *.rej
