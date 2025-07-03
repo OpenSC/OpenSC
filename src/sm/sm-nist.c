@@ -134,7 +134,7 @@ typedef struct nist_cvc {
 } nist_cvc_t;
 
 #define NIST_SM_MAX_FIELD_LENGTH 384
-#define NIST_SM_MAX_MD_LENGTH	SHA384_DIGEST_LENGTH
+#define NIST_SM_MAX_MD_LENGTH SHA384_DIGEST_LENGTH
 
 /* 800-73-4 3.3.2 Discovery Object - PIN Usage Policy */
 #define PIV_PP_PIN	      0x00004000u
@@ -210,12 +210,12 @@ static const struct sc_asn1_entry c_asn1_nist_cvc[C_ASN1_NIST_CVC_SIZE] = {
 };
 
 static const struct sc_card_error nist_sm_errors[] = {
-        {0x6882, SC_ERROR_SM, "SM not supported"},
-        {0x6982, SC_ERROR_SM_NO_SESSION_KEYS, "SM Security status not satisfied"}, /* no session established */
-        {0x6987, SC_ERROR_SM, "Expected SM Data Object missing"},
-        {0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"}, /* other process interference */
-	{0x6E00, SC_ERROR_SM_INVALID_SESSION_KEY, "Unexpected 6E00"},
-        {0, 0, NULL}
+		{0x6882, SC_ERROR_SM,			"SM not supported"},
+		{0x6982, SC_ERROR_SM_NO_SESSION_KEYS,	"SM Security status not satisfied"}, /* no session established */
+		{0x6987, SC_ERROR_SM,			"Expected SM Data Object missing"},
+		{0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"}, /* other process interference */
+		{0x6E00, SC_ERROR_SM_INVALID_SESSION_KEY, "Unexpected 6E00"},
+		{0,	0,				 NULL}
 };
 
 typedef struct sm_nist_private_data {
@@ -568,9 +568,9 @@ nist_sm_general_io(sc_card_t *card, int ins, int p1, int p2,
 	apdu.resp = recvbuf;
 
 	saved_sm_mode = card->sm_ctx.sm_mode;
-		if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
-			card->sm_ctx.sm_mode = SM_MODE_NONE;
-		}
+	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
+		card->sm_ctx.sm_mode = SM_MODE_NONE;
+	}
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
@@ -691,7 +691,7 @@ sm_nist_open(struct sc_card *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	sctx = ISO_CTX_FROM_CARD;
-	if (sctx== NULL)
+	if (sctx == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
 	priv = SM_NIST_PRIV(sctx);
@@ -1795,14 +1795,14 @@ sm_nist_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	 * used in reader_lock_obtained and card driver_init
 	 * can be used on any APDU by card driver for fine control
 	 */
-	 /* SC_ERROR_SM_NOT_APPLIED tells sm_nist_encode to not use SM */
+	/* SC_ERROR_SM_NOT_APPLIED tells sm_nist_encode to not use SM */
 	if (priv->params->flags & NIST_SM_FLAGS_FORCE_SM_ON) {
 		sc_log(card->ctx, "forcing the use of SM ON");
-		priv->params->flags  &= ~NIST_SM_FLAGS_FORCE_SM_ON;
+		priv->params->flags &= ~NIST_SM_FLAGS_FORCE_SM_ON;
 		r = 0;
 	} else if (priv->params->flags & NIST_SM_FLAGS_FORCE_SM_OFF) {
 		sc_log(card->ctx, "forcing the use of SM OFF");
-		priv->params->flags  &= ~NIST_SM_FLAGS_FORCE_SM_OFF;
+		priv->params->flags &= ~NIST_SM_FLAGS_FORCE_SM_OFF;
 		r = SC_ERROR_SM_NOT_APPLIED;
 	} else {
 		/* May need additional cases */
@@ -1848,13 +1848,13 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	priv = (sm_nist_private_data_t *)ctx->priv_data;
 
 	/*
-	 * Interference from other processes is indicated by 6988 
+	 * Interference from other processes is indicated by 6988
 	 * which will need to reauthenticate and reissue the failing command
 	 */
 	priv->params->last_sw1 = sm_apdu->sw1;
 	priv->params->last_sw2 = sm_apdu->sw2;
 
-	sc_log(card->ctx, "nist_post_transmit - sw1:0x%X sw2:0x%X", sm_apdu->sw1,  sm_apdu->sw2);
+	sc_log(card->ctx, "nist_post_transmit - sw1:0x%X sw2:0x%X", sm_apdu->sw1, sm_apdu->sw2);
 	for (i = 0; nist_sm_errors[i].SWs != 0; i++) {
 		if (nist_sm_errors[i].SWs == ((sm_apdu->sw1 << 8) | sm_apdu->sw2)) {
 			sc_log(card->ctx, "%s", nist_sm_errors[i].errorstr);
@@ -1867,7 +1867,6 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
-
 
 static int
 sm_nist_close(sc_card_t *card)
@@ -1894,10 +1893,9 @@ sm_nist_close(sc_card_t *card)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
 		}
 	}
-	sc_log(card->ctx,"calling iso_sm_close");
+	sc_log(card->ctx, "calling iso_sm_close");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, iso_sm_close(card));
 }
-
 
 static int
 sm_nist_finish(sc_card_t *card, const struct iso_sm_ctx *ctx,
