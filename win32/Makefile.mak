@@ -11,7 +11,7 @@ customactions.dll: versioninfo-customactions.res customactions.obj
 	echo LIBRARY $* > $*.def
 	echo EXPORTS >> $*.def
 	type customactions.exports >> $*.def
-	link /dll $(LINKFLAGS) /def:$*.def /out:customactions.dll versioninfo-customactions.res customactions.obj msi.lib $(WIX_LIBS) Advapi32.lib User32.lib Version.lib Shell32.lib
+	link /dll $(LINKFLAGS) /out:$@ /def:$*.def versioninfo-customactions.res customactions.obj msi.lib $(WIX_LIBS) Advapi32.lib User32.lib Version.lib Shell32.lib
 
 OpenSC.msi: OpenSC.wxs customactions.dll
 	wix build -arch $(PLATFORM) -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -d SOURCE_DIR=$(TOPDIR) $(WIXFLAGS) OpenSC.wxs
