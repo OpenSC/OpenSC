@@ -2853,6 +2853,7 @@ static int piv_find_aid(sc_card_t * card)
 	const u8 *tag;
 	size_t taglen;
 	const u8 *nextac;
+	const u8 *nextcsai;
 	const u8 *pix;
 	size_t pixlen;
 	const u8 *actag;  /* Cipher Suite */
@@ -2888,8 +2889,8 @@ static int piv_find_aid(sc_card_t * card)
 					0xAC, &actaglen)) != NULL) {
 				nextac = actag + actaglen;
 
-				csai = sc_asn1_find_tag(card->ctx, actag, actaglen, 0x80, &csailen);
-				if (csai != NULL) {
+				nextcsai = actag;
+				while((csai = sc_asn1_find_tag(card->ctx, nextcsai, actaglen - (nextcsai - actag), 0x80, &csailen)) != NULL) {
 					if (csailen == 1) {
 						sc_log(card->ctx,"found csID=0x%2.2x",*csai);
 #ifdef ENABLE_PIV_SM
@@ -2907,6 +2908,7 @@ static int piv_find_aid(sc_card_t * card)
 						}
 #endif /* ENABLE_PIV_SM */
 					}
+					nextcsai = csai + csailen;
 				}
 			}
 
@@ -4254,8 +4256,11 @@ static int piv_general_external_authenticate(sc_card_t *card,
 		goto err;
 	}
 
-	r = piv_general_io(card, 0x87, alg_id, key_ref, output_buf, output_len, NULL, 0);
+	r = piv_general_io(card, 0x87, alg_id, key_ref, output_buf, output_len, rbuf, sizeof rbuf);
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Got response  challenge\n");
+	if (r > 0) {
+		r = SC_SUCCESS;
+	}
 
 err:
 	sc_evp_cipher_free(cipher);
@@ -5620,12 +5625,13 @@ static int piv_match_card_continued(sc_card_t *card)
 		switch(card->type) {
 			case SC_CARD_TYPE_PIV_II_BASE:
 			case SC_CARD_TYPE_PIV_II_800_73_4:
+			case SC_CARD_TYPE_PIV_II_SWISSBIT2:
 				r2 = piv_find_aid(card);
 		}
 	}
 
 	/* If SM is supported, set SC_CARD_TYPE_PIV_II_800_73_4 */
-	if (priv->init_flags & PIV_INIT_AID_AC) {
+	if (priv->init_flags & PIV_INIT_AID_AC && card->type != SC_CARD_TYPE_PIV_II_SWISSBIT2) {
 		card->type = SC_CARD_TYPE_PIV_II_800_73_4;
 	}
 
@@ -5633,7 +5639,7 @@ static int piv_match_card_continued(sc_card_t *card)
 
 #ifdef ENABLE_PIV_SM
 	/* Discovery object has pin policy. 800-74-4 bits, its at least SC_CARD_TYPE_PIV_II_800_73_4 */
-	if ((priv->pin_policy & (PIV_PP_OCC | PIV_PP_VCI_IMPL | PIV_PP_VCI_WITHOUT_PC)) != 0) {
+	if ((priv->pin_policy & (PIV_PP_OCC | PIV_PP_VCI_IMPL | PIV_PP_VCI_WITHOUT_PC)) != 0 && card->type != SC_CARD_TYPE_PIV_II_SWISSBIT2) {
 		card->type = SC_CARD_TYPE_PIV_II_800_73_4;
 	}
 #endif

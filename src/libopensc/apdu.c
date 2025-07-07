@@ -212,7 +212,7 @@ int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
 	apdu->sw2 = (unsigned int)buf[len - 1];
 	len -= 2;
 	/* set output length and copy the returned data if necessary */
-	if (len <= apdu->resplen)
+	if (len != apdu->resplen)
 		apdu->resplen = len;
 
 	if (apdu->resplen != 0)

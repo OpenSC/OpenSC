@@ -140,7 +140,69 @@ sc_sm_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	if (rv == SC_ERROR_SM_NOT_APPLIED)   {
 		/* SM wrap of this APDU is ignored by card driver.
 		 * Send plain APDU to the reader driver */
-		rv = card->reader->ops->transmit(card->reader, apdu);
+		if ((apdu->flags & SC_APDU_FLAGS_CHAINING) != 0) {
+			/* divide et impera: transmit APDU in chunks with Lc <= max_send_size
+			 * bytes using command chaining */
+			size_t    len  = apdu->datalen;
+			const u8  *buf = apdu->data;
+			size_t    max_send_size = sc_get_max_send_size(card);
+
+			while (len != 0) {
+				size_t    plen;
+				sc_apdu_t tapdu;
+				int       last = 0;
+
+				tapdu = *apdu;
+				/* clear chaining flag */
+				tapdu.flags &= ~SC_APDU_FLAGS_CHAINING;
+				if (len > max_send_size) {
+					/* adjust APDU case: in case of CASE 4 APDU
+					 * the intermediate APDU are of CASE 3 */
+					if ((tapdu.cse & SC_APDU_SHORT_MASK) == SC_APDU_CASE_4_SHORT)
+						tapdu.cse--;
+					/* XXX: the chunk size must be adjusted when
+					 *      secure messaging is used */
+					plen          = max_send_size;
+					tapdu.cla    |= 0x10;
+					/* the intermediate APDU don't expect response data */
+					tapdu.le      = 0;
+					tapdu.resplen = 0;
+					tapdu.resp    = NULL;
+				} else {
+					plen = len;
+					last = 1;
+				}
+				tapdu.data    = buf;
+				tapdu.datalen = tapdu.lc = plen;
+
+				rv = sc_check_apdu(card, &tapdu);
+				if (rv != SC_SUCCESS) {
+					sc_log(card->ctx, "inconsistent APDU while chaining");
+					break;
+				}
+
+				rv = card->reader->ops->transmit(card->reader, &tapdu);
+				if (rv != SC_SUCCESS)
+					break;
+				if (last != 0) {
+					/* in case of the last APDU set the SW1
+					 * and SW2 bytes in the original APDU */
+					apdu->sw1 = tapdu.sw1;
+					apdu->sw2 = tapdu.sw2;
+					apdu->resplen = tapdu.resplen;
+				} else {
+					/* otherwise check the status bytes */
+					rv = sc_check_sw(card, tapdu.sw1, tapdu.sw2);
+					if (rv != SC_SUCCESS)
+						break;
+				}
+				len -= plen;
+				buf += plen;
+			}
+		} else {
+			/* transmit single APDU */
+			rv = card->reader->ops->transmit(card->reader, apdu);
+		}
 		LOG_FUNC_RETURN(ctx, rv);
 	} else {
 		if (rv < 0)
