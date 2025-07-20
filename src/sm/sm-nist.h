@@ -35,6 +35,7 @@
 #endif
 #include "libopensc/internal.h"
 #include "libopensc/opensc.h"
+#include "libopensc/pkcs15.h"
 #include "sm/sm-iso.h"
 
 #define PIV_PAIRING_CODE_LEN 8
@@ -67,6 +68,25 @@
 extern "C" {
 #endif
 
+/* 800-73-4  4.1.5 Card Verifiable Certificates */
+typedef struct nist_cvc {
+	sc_pkcs15_der_t der;	       // Previous read der
+	int cpi;		       // Certificate profile indicator (0x80)
+	char issuerID[8];	       // Issuer Identification Number
+	size_t issuerIDlen;	       //  8 bytes of sha-1 or 16 byte for GUID
+	u8 subjectID[16];	       //  Subject Identifier (8) or GUID (16)  == CHUI
+	size_t subjectIDlen;	       //  8 bytes of sha-1 or 16 byte for GUID
+	struct sc_object_id pubKeyOID; // Public key algorithm object identifier
+	u8 *publicPoint;	       // Public point for ECC
+	size_t publicPointlen;
+	int roleID; // Role Identifier 0x00 or 0x12
+	u8 *body;   // signed part of CVC in DER
+	size_t bodylen;
+	struct sc_object_id signatureAlgOID; // Signature Algroithm Identifier
+	u8 *signature;			     // Certificate signature DER
+	size_t signaturelen;
+} nist_cvc_t;
+
 /*
  * Parameters shared between card driver and sm_nist
  * Owned by card driver and cleared by sc_nist_parms_cleanup
@@ -93,6 +113,18 @@ sm_nist_open(sc_card_t *card);
 
 int
 sm_nist_params_cleanup(sm_nist_params_t *params);
+
+int
+sm_nist_decode_cvc(sc_context_t *ctx, u8 **buf, size_t *buflen,
+		nist_cvc_t *cvc);
+
+void
+sm_nist_clear_cvc_content(nist_cvc_t *cvc);
+
+/* TODO will add when needed */
+//int
+//sm_nist_encode_cvc(sc_card_t *card, nist_cvc_t *cvc,
+//	**buf, size_t *buflen);
 
 #ifdef __cplusplus
 }

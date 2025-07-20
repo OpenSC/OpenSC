@@ -114,25 +114,6 @@ static cipher_suite_t css[NIST_CSS_SIZE] = {
 };
 // clang-format on
 
-/* 800-73-4  4.1.5 Card Verifiable Certificates */
-typedef struct nist_cvc {
-	sc_pkcs15_der_t der;	       // Previous read der
-	int cpi;		       // Certificate profile indicator (0x80)
-	char issuerID[8];	       // Issuer Identification Number
-	size_t issuerIDlen;	       //  8 bytes of sha-1 or 16 byte for GUID
-	u8 subjectID[16];	       //  Subject Identifier (8) or GUID (16)  == CHUI
-	size_t subjectIDlen;	       //  8 bytes of sha-1 or 16 byte for GUID
-	struct sc_object_id pubKeyOID; // Public key algorithm object identifier
-	u8 *publicPoint;	       // Public point for ECC
-	size_t publicPointlen;
-	int roleID; // Role Identifier 0x00 or 0x12
-	u8 *body;   // signed part of CVC in DER
-	size_t bodylen;
-	struct sc_object_id signatureAlgOID; // Signature Algroithm Identifier
-	u8 *signature;			     // Certificate signature DER
-	size_t signaturelen;
-} nist_cvc_t;
-
 #define NIST_SM_MAX_FIELD_LENGTH 384
 #define NIST_SM_MAX_MD_LENGTH SHA384_DIGEST_LENGTH
 
@@ -262,9 +243,9 @@ static void nist_inc(u8 *counter, size_t size);
 static int nist_get_asn1_obj(sc_context_t *ctx, void *arg, const u8 *obj, size_t len, int depth);
 int sm_nist_open(struct sc_card *card);
 // static int nist_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
-static void nist_clear_cvc_content(nist_cvc_t *cvc);
+void nist_clear_cvc_content(nist_cvc_t *cvc);
 static void nist_clear_sm_session(nist_sm_session_t *session);
-static int nist_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen, nist_cvc_t *cvc);
+int sm_nist_decode_cvc(sc_context_t *ctx, u8 **buf, size_t *buflen, nist_cvc_t *cvc);
 // TODO   static int piv_parse_pairing_code(sc_card_t *card, const char *option);
 static int Q2OS(int fsize, u8 *Q, size_t Qlen, u8 *OS, size_t *OSlen);
 // TODO comment for now static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code);
@@ -857,7 +838,7 @@ sm_nist_open(struct sc_card *card)
 	if (len) {
 		cvcder = p; /* in rbuf */
 
-		r = nist_decode_cvc(card, &p, &len, &priv->sm_cvc);
+		r = sm_nist_decode_cvc(card->ctx, &p, &len, &priv->sm_cvc);
 		if (r != SC_SUCCESS) {
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
@@ -1180,8 +1161,8 @@ nist_get_asn1_obj(sc_context_t *ctx, void *arg, const u8 *obj, size_t len, int d
 	return SC_SUCCESS;
 }
 
-static void
-nist_clear_cvc_content(nist_cvc_t *cvc)
+void
+sm_nist_clear_cvc_content(nist_cvc_t *cvc)
 {
 	if (!cvc)
 		return;
@@ -1205,8 +1186,8 @@ nist_clear_sm_session(nist_sm_session_t *session)
 /*
  * Decode a card verifiable certificate as defined in NIST 800-73-4
  */
-static int
-nist_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen,
+int
+sm_nist_decode_cvc(sc_context_t *ctx, u8 **buf, size_t *buflen,
 		nist_cvc_t *cvc)
 {
 	struct sc_asn1_entry asn1_nist_cvc[C_ASN1_NIST_CVC_SIZE];
@@ -1223,16 +1204,16 @@ nist_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen,
 	size_t signaturebits;
 
 	if (buf == NULL || *buf == NULL || buflen == NULL || cvc == NULL) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* If already read and matches previous version return SC_SUCCESS */
 	if (cvc->der.value && cvc->der.len == *buflen && (memcmp(cvc->der.value, *buf, *buflen) == 0))
-		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-	nist_clear_cvc_content(cvc);
+	sm_nist_clear_cvc_content(cvc);
 
 	memset(cvc, 0, sizeof(nist_cvc_t));
 	cvc->issuerIDlen = sizeof(cvc->issuerID);
@@ -1265,24 +1246,24 @@ nist_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen,
 
 	sc_format_asn1_entry(asn1_nist_cvc, &asn1_nist_cvc_body, NULL, 1);
 
-	r = sc_asn1_decode(card->ctx, asn1_nist_cvc, *buf, *buflen, NULL, NULL); /*(const u8 **) &buf_tmp, &len);*/
+	r = sc_asn1_decode(ctx, asn1_nist_cvc, *buf, *buflen, NULL, NULL); /*(const u8 **) &buf_tmp, &len);*/
 	if (r < 0) {
-		nist_clear_cvc_content(cvc);
-		sc_log(card->ctx, "Could not decode card verifiable certificate");
-		LOG_FUNC_RETURN(card->ctx, r);
+		sm_nist_clear_cvc_content(cvc);
+		sc_log(ctx, "Could not decode card verifiable certificate");
+		LOG_FUNC_RETURN(ctx, r);
 	}
 
 	cvc->signaturelen = signaturebits / 8;
 
 	if (roleIDder.len != 1)
-		LOG_TEST_RET(card->ctx, SC_ERROR_SM_AUTHENTICATION_FAILED, "roleID wrong length");
+		LOG_TEST_RET(ctx, SC_ERROR_SM_AUTHENTICATION_FAILED, "roleID wrong length");
 
 	cvc->roleID = *roleIDder.value;
 
 	/* save body der for verification */
 	buf_tmp = *buf;
 	r = sc_asn1_read_tag(&buf_tmp, *buflen, &cla_out, &tag_out, &taglen);
-	LOG_TEST_RET(card->ctx, r, " failed to read tag");
+	LOG_TEST_RET(ctx, r, " failed to read tag");
 
 	cvc->bodylen = (roleIDder.value + roleIDder.len) - buf_tmp;
 
@@ -1300,7 +1281,7 @@ nist_decode_cvc(sc_card_t *card, u8 **buf, size_t *buflen,
 	cvc->der.len = *buflen;
 	memcpy(cvc->der.value, *buf, cvc->der.len);
 
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 #if 0
@@ -1419,7 +1400,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 
 	if (params->sm_in_cvc_der && params->sm_in_cvc_der_len) {
 		u8 *pp = params->sm_in_cvc_der;
-		r = nist_decode_cvc(card, &pp, &params->sm_in_cvc_der_len, &priv->sm_in_cvc);
+		r = sm_nist_decode_cvc(card->ctx, &pp, &params->sm_in_cvc_der_len, &priv->sm_in_cvc);
 
 		if (r != SC_SUCCESS) {
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -1926,8 +1907,8 @@ sm_nist_clear_free(const struct iso_sm_ctx *ctx)
 		if (priv) {
 			nist_clear_sm_session(&priv->sm_session);
 			X509_free(priv->signer_cert);
-			nist_clear_cvc_content(&priv->sm_in_cvc);
-			nist_clear_cvc_content(&priv->sm_cvc);
+			sm_nist_clear_cvc_content(&priv->sm_in_cvc);
+			sm_nist_clear_cvc_content(&priv->sm_cvc);
 			free(priv);
 		}
 	}
