@@ -164,11 +164,13 @@ static int add_nqapplet_objects(sc_pkcs15_card_t *p15card)
 
 	// 3.1) C.CH.Encr
 	rv = add_nqapplet_certificate(p15card, "2", "C.CH.Encr", 0x01);
-	LOG_TEST_RET(card->ctx, rv, "Failed to add Encr. certificate");
-
-	// 3.2) PrK.CH.Encr
-	rv = add_nqapplet_private_key(p15card, "2", 0x02, "PrK.CH.Encr", "1", SC_PKCS15_PRKEY_USAGE_DECRYPT);
-	LOG_TEST_RET(card->ctx, rv, "Failed to add Encr. private key");
+	if ( rv == SC_SUCCESS ) {
+		// 3.2) PrK.CH.Encr
+		rv = add_nqapplet_private_key(p15card, "2", 0x02, "PrK.CH.Encr", "1", SC_PKCS15_PRKEY_USAGE_DECRYPT);
+		LOG_TEST_RET(card->ctx, rv, "Failed to add Encr. private key");
+	} else {
+		sc_log(p15card->card->ctx, "The card has no C.CH.Encr, ignoring CH.Encr container");
+	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
