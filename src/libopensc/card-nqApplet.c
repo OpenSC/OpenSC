@@ -449,6 +449,22 @@ static int nqapplet_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
+static int nqapplet_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+{
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+	r = iso_operations->pin_cmd(card, data, tries_left);
+	if ( r == SC_ERROR_OBJECT_NOT_FOUND ) {
+		/* it is possible that the NQ-Applet is not active, try to activate it */
+		r = select_nqapplet(card, NULL, NULL, NULL, 0, NULL);
+		if ( r == SC_SUCCESS ) {
+			r = iso_operations->pin_cmd(card, data, tries_left);
+		}
+	}
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+}
+
 struct sc_card_driver *sc_get_nqApplet_driver(void)
 {
 	sc_card_driver_t *iso_driver = sc_get_iso7816_driver();
@@ -473,6 +489,7 @@ struct sc_card_driver *sc_get_nqApplet_driver(void)
 	nqapplet_operations.get_data = nqapplet_get_data;
 	nqapplet_operations.select_file = nqapplet_select_file;
 	nqapplet_operations.card_ctl = nqapplet_card_ctl;
+	nqapplet_operations.pin_cmd = nqapplet_pin_cmd;
 
 	/* unsupported operations */
 	nqapplet_operations.read_binary = NULL;
@@ -498,7 +515,6 @@ struct sc_card_driver *sc_get_nqApplet_driver(void)
 	nqapplet_operations.read_public_key = NULL;
 
 	/* let iso driver handle these operations
-	nqapplet_operations.pin_cmd;
 	nqapplet_operations.card_reader_lock_obtained;
 	nqapplet_operations.wrap;
 	nqapplet_operations.unwrap;
