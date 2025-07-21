@@ -33,7 +33,9 @@
 
 /* card constants */
 static const struct sc_atr_table nqapplet_atrs[] = {
-	{"3b:d5:18:ff:81:91:fe:1f:c3:80:73:c8:21:10:0a", NULL, NULL, SC_CARD_TYPE_NQ_APPLET, 0, NULL},
+	{"3b:d5:18:ff:81:91:fe:1f:c3:80:73:c8:21:10:0a", NULL, NULL, SC_CARD_TYPE_NQ_APPLET, 0, NULL}, // JCOP4
+	{"3b:d8:18:ff:81:b1:fe:45:1f:c3:80:73:c8:21:10:52:b7:7f:f8", NULL, NULL, SC_CARD_TYPE_NQ_APPLET, 0, NULL}, //JCOP4.52
+	{"3b:85:80:01:80:73:C8:21:10:0e", NULL, NULL, SC_CARD_TYPE_NQ_APPLET_RFID, 0, NULL},
 	{NULL, NULL, NULL, 0, 0, NULL}};
 
 static const u8 nqapplet_aid[] = {0xd2, 0x76, 0x00, 0x01, 0x80, 0xBA, 0x01, 0x44, 0x02, 0x01, 0x00};
