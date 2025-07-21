@@ -52,7 +52,8 @@ dd if=/dev/urandom bs=200 count=1 >aes_plain.data 2>/dev/null
 $PKCS11_TOOL "${PRIV_ARGS[@]}" --encrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
 	--input-file aes_plain.data --output-file aes_ciphertext_pkcs11.data 2>/dev/null
 assert $? "Fail/pkcs11-tool encrypt"
-openssl enc -aes-128-cbc -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
+    PROVIDER_ARGS=$(get_openssl_provider_args)
+    openssl enc -aes-128-cbc $PROVIDER_ARGS -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
 cmp aes_ciphertext_pkcs11.data aes_ciphertext_openssl.data >/dev/null 2>/dev/null
 assert $? "Fail, AES-CBC-PAD (C_Encrypt) - wrong encrypt"
 
@@ -65,7 +66,7 @@ assert $? "Fail, AES-CBC-PAD (C_Decrypt) - wrong decrypt"
 
 echo "C_DecryptUpdate"
 dd if=/dev/urandom bs=8131 count=3 >aes_plain.data 2>/dev/null
-openssl enc -aes-128-cbc -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
+    openssl enc -aes-128-cbc $PROVIDER_ARGS -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
 assert $? "Fail, OpenSSL"
 $PKCS11_TOOL "${PRIV_ARGS[@]}" --decrypt --id "$ID2" -m AES-CBC-PAD --iv "${VECTOR}" \
 	--input-file aes_ciphertext_openssl.data --output-file aes_plain_test.data 2>/dev/null
@@ -99,7 +100,7 @@ echo " OpenSSL encrypt, pkcs11-tool decrypt"
 echo " pkcs11-tool encrypt, compare to openssl encrypt"
 echo "======================================================="
 
-openssl enc -aes-128-ecb -nopad -in aes_plain.data -out aes_ciphertext_openssl.data  -K "70707070707070707070707070707070"
+    openssl enc -aes-128-ecb -nopad $PROVIDER_ARGS -in aes_plain.data -out aes_ciphertext_openssl.data  -K "70707070707070707070707070707070"
 assert $? "Fail/OpenSSL"
 $PKCS11_TOOL "${PRIV_ARGS[@]}" --decrypt --id "$ID2" -m AES-ECB --input-file aes_ciphertext_openssl.data --output-file aes_plain_test.data 2>/dev/null
 assert $? "Fail/pkcs11-tool decrypt"
@@ -117,7 +118,7 @@ echo " OpenSSL encrypt, pkcs11-tool decrypt"
 echo " pkcs11-tool encrypt, compare to openssl encrypt"
 echo "======================================================="
 
-openssl enc -aes-128-cbc -nopad -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
+openssl enc -aes-128-cbc -nopad $PROVIDER_ARGS -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
 assert $? "Fail/OpenSSL"
 $PKCS11_TOOL "${PRIV_ARGS[@]}" --decrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
 	--input-file aes_ciphertext_openssl.data --output-file aes_plain_test.data 2>/dev/null
@@ -138,7 +139,7 @@ echo " OpenSSL encrypt, pkcs11-tool decrypt"
 echo " pkcs11-tool encrypt, compare to openssl encrypt"
 echo "======================================================="
 
-openssl enc -aes-128-cbc -nopad -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
+openssl enc -aes-128-cbc -nopad $PROVIDER_ARGS -in aes_plain.data -out aes_ciphertext_openssl.data -iv "${VECTOR}" -K "70707070707070707070707070707070"
 assert $? "Fail/Openssl"
 $PKCS11_TOOL "${PRIV_ARGS[@]}" --decrypt --id "$ID2" -m AES-CBC --iv "${VECTOR}" \
 	--input-file aes_ciphertext_openssl.data --output-file aes_plain_test.data 2>/dev/null

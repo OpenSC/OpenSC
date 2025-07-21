@@ -24,7 +24,8 @@ function test_unwrapped_aes_encryption() {
     echo "Testing unwrapped key with encryption"
 
     # Encrypt with openssl
-    openssl enc -aes-256-cbc -in aes_plain.data -out aes_ciphertext_openssl.data -iv $IV -K $AES_256_KEY
+    PROVIDER_ARGS=$(get_openssl_provider_args)
+    openssl enc -aes-256-cbc $PROVIDER_ARGS -in aes_plain.data -out aes_ciphertext_openssl.data -iv $IV -K $AES_256_KEY
     assert $? "AES CBC OpenSSL encryption failed"
 
     # Encrypt with pkcs11-tool
@@ -82,7 +83,8 @@ echo " RSA-PKCS Unwrap generic key test"
 echo "-------------------------------------------------------"
 
 # Wrap with OpenSSL
-openssl rsautl -encrypt -pubin -keyform der -inkey rsa_pub.key -in aes.key -out openssl_wrapped.data
+PROVIDER_ARGS=$(get_openssl_provider_args)
+openssl rsautl $PROVIDER_ARGS -encrypt -pubin -keyform der -inkey rsa_pub.key -in aes.key -out openssl_wrapped.data
 assert $? "OpenSSL failed wrap AES key"
 
 # Unwrap with pkcs11-tool as generic key
@@ -219,7 +221,8 @@ if [[ "$TOKENTYPE" != "softhsm" || -n "$is_softhsm2_2_6_1" ]]; then
     echo " AES 256 CBC Unwrap AES key test"
     echo "-------------------------------------------------------"
     # Wrap with OpenSSL
-    openssl enc -aes-256-cbc -e -K $AES_WRAP -iv $IV -in aes.key -out openssl_wrapped.data -nopad
+    PROVIDER_ARGS=$(get_openssl_provider_args)
+    openssl enc -aes-256-cbc -e $PROVIDER_ARGS -K $AES_WRAP -iv $IV -in aes.key -out openssl_wrapped.data -nopad
     assert $? "OpenSSL / Failed to AES CBC encrypt AES key"
 
     if [ "${TOKENTYPE}" == "softhsm" ]; then
@@ -263,7 +266,8 @@ if [[ "$TOKENTYPE" != "softhsm" ]]; then
     echo "-------------------------------------------------------"
     IV="000102030405060708090A0B0C0D0E0F"
     # Wrap with OpenSSL
-    openssl enc -aes-256-cbc -e -K $AES_WRAP -iv $IV -in aes.key -out openssl_wrapped.data
+    PROVIDER_ARGS=$(get_openssl_provider_args)
+    openssl enc -aes-256-cbc -e $PROVIDER_ARGS -K $AES_WRAP -iv $IV -in aes.key -out openssl_wrapped.data
     assert $? "OpenSSL / Failed to AES CBC encrypt AES key"
 
     # Wrap with pkcs11-tool
@@ -275,7 +279,8 @@ if [[ "$TOKENTYPE" != "softhsm" ]]; then
     assert $?  "AES 256 CBC PAD wrapped keys do not match"
 fi
 
-if [[ -n $is_openssl_3 ]]; then
+# Skip AES-KEY-WRAP tests in FIPS mode as id-aes256-wrap cipher is not FIPS-approved
+if [[ -n $is_openssl_3 ]] && [ "${WOLFSSL_ISFIPS}" != "1" ] && [ "${ENABLE_WOLFPROV}" != "1" ]; then
     echo "-------------------------------------------------------"
     echo "AES-KEY-WRAP Wrap AES test"
     echo "-------------------------------------------------------"
@@ -284,7 +289,8 @@ if [[ -n $is_openssl_3 ]]; then
     IV="a6a6a6a6a6a6a6a6"
 
     # Wrap with OpenSSL
-    openssl enc -id-aes256-wrap -e -K $AES_WRAP -iv $IV -in aes.key -out openssl_wrapped.data
+    PROVIDER_ARGS=$(get_openssl_provider_args)
+    openssl enc -id-aes256-wrap -e $PROVIDER_ARGS -K $AES_WRAP -iv $IV -in aes.key -out openssl_wrapped.data
     assert $? "OpenSSL / Failed to AES KEY WRAP wrap AES key"
     
     # Wrap with pkcs11-tool
@@ -312,46 +318,54 @@ if [[ -n $is_openssl_3 ]]; then
 
     # Check if AES key was correctly unwrapped with encryption
     test_unwrapped_aes_encryption $AES_256_KEY $ID_AES_UNWRAPPED_4
+elif [ "${WOLFSSL_ISFIPS}" = "1" ] || [ "${ENABLE_WOLFPROV}" = "1" ]; then
+    echo "Skipping AES-KEY-WRAP tests - not supported with wolfProvider"
 
     if [[ "$TOKENTYPE" != "kryoptic" ]]; then
-        echo "-------------------------------------------------------"
-        echo "AES-KEY-WRAP-PAD Wrap AES key test"
-        echo "-------------------------------------------------------"
-        IV="a65959a6"
+        # Skip AES-KEY-WRAP-PAD tests for wolfProvider as it doesn't support aes256-wrap-pad cipher
+        if [ "${ENABLE_WOLFPROV}" != "1" ]; then
+            echo "-------------------------------------------------------"
+            echo "AES-KEY-WRAP-PAD Wrap AES key test"
+            echo "-------------------------------------------------------"
+            IV="a65959a6"
 
-        # Wrap with OpenSSL
-        openssl enc -aes256-wrap-pad -e -K $AES_WRAP -iv $IV -in aes.key -out openssl_wrapped.data
-        assert $? "OpenSSL failed wrap AES key"
+            # Wrap with OpenSSL
+            PROVIDER_ARGS=$(get_openssl_provider_args)
+            openssl enc -aes256-wrap-pad -e $PROVIDER_ARGS -K $AES_WRAP -iv $IV -in aes.key -out openssl_wrapped.data
+            assert $? "OpenSSL failed wrap AES key"
 
-        # Wrap with pkcs11-tool
-        $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
-                --application-id $ID_AES_UNWRAPPED_4 --output-file pkcs11_wrapped.data
-        assert $? "PKCS11 / Failed to AES KEY WRAP PAD wrap AES key"
+            # Wrap with pkcs11-tool
+            $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
+                    --application-id $ID_AES_UNWRAPPED_4 --output-file pkcs11_wrapped.data
+            assert $? "PKCS11 / Failed to AES KEY WRAP PAD wrap AES key"
 
-        # Compare OpenSSL and pkcs11-tool wrapped keys
-        if [[ "$TOKENTYPE" != "softokn" ]]; then
-            cmp pkcs11_wrapped.data openssl_wrapped.data 2>&1 >/dev/null
-            assert $? "AES-KEY-WRAP-PAD wrapped keys do not match"
+            # Compare OpenSSL and pkcs11-tool wrapped keys
+            if [[ "$TOKENTYPE" != "softokn" ]]; then
+                cmp pkcs11_wrapped.data openssl_wrapped.data 2>&1 >/dev/null
+                assert $? "AES-KEY-WRAP-PAD wrapped keys do not match"
+            else
+                echo "Comparing OpenSSL and pkcs11-tool wrapped keys for softokn fails"
+            fi
+
+            echo "-------------------------------------------------------"
+            echo "AES-KEY-WRAP-PAD Unwrap AES key test"
+            echo "-------------------------------------------------------"
+            # Unwrap with pkcs11-tool
+            $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV --application-id $ID_AES_UNWRAPPED_6 \
+                    --key-type AES: --input-file pkcs11_wrapped.data --extractable --application-label "unwrap-aes-with-aes-key-wrap-pad"
+            assert $? "PKCS11 / Failed to AES KEY WRAP PAD wrap unwrap AES key"
+
+            # Read value of unwrapped key
+            $PKCS11_TOOL "${PRIV_ARGS[@]}" --read-object --type secrkey --id $ID_AES_UNWRAPPED_6 --output-file unwrapped.key
+
+            # Compare original and unwrapped key
+            compare_keys $? aes.key unwrapped.key
+
+            # Check if AES key was correctly unwrapped with encryption
+            test_unwrapped_aes_encryption $AES_256_KEY $ID_AES_UNWRAPPED_4
         else
-            echo "Comparing OpenSSL and pkcs11-tool wrapped keys for softokn fails"
+            echo "Skipping AES-KEY-WRAP-PAD tests - not supported by wolfProvider"
         fi
-
-        echo "-------------------------------------------------------"
-        echo "AES-KEY-WRAP-PAD Unwrap AES key test"
-        echo "-------------------------------------------------------"
-        # Unwrap with pkcs11-tool
-        $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV --application-id $ID_AES_UNWRAPPED_6 \
-                --key-type AES: --input-file pkcs11_wrapped.data --extractable --application-label "unwrap-aes-with-aes-key-wrap-pad"
-        assert $? "PKCS11 / Failed to AES KEY WRAP PAD wrap unwrap AES key"
-
-        # Read value of unwrapped key
-        $PKCS11_TOOL "${PRIV_ARGS[@]}" --read-object --type secrkey --id $ID_AES_UNWRAPPED_6 --output-file unwrapped.key
-
-        # Compare original and unwrapped key
-        compare_keys $? aes.key unwrapped.key
-        
-        # Check if AES key was correctly unwrapped with encryption
-        test_unwrapped_aes_encryption $AES_256_KEY $ID_AES_UNWRAPPED_4
     fi
 fi
 
@@ -398,7 +412,8 @@ $PKCS11_TOOL "${PRIV_ARGS[@]}" --keypairgen --key-type rsa:2048 --id $ID_RSA_WRA
 assert $? "Failed to Generate RSA key"
 
 # AES-KEY-WRAP, AES-KEY-WRAP-PAD, AES-CBC, AES-CBC-PAD
-if [[ -n $is_openssl_3 ]]; then
+# Skip AES-KEY-WRAP operations in FIPS mode or wolfProvider
+if [[ -n $is_openssl_3 ]] && [ "${WOLFSSL_ISFIPS}" != "1" ] && [ "${ENABLE_WOLFPROV}" != "1" ]; then
     if [[ "$TOKENTYPE" == "softhsm" ]]; then
         echo "-------------------------------------------------------"
         echo "AES-KEY-WRAP Wrap/Unwrap RSA key test"
@@ -419,27 +434,31 @@ if [[ -n $is_openssl_3 ]]; then
         # Remove unwrapped RSA keys
         $PKCS11_TOOL "${PRIV_ARGS[@]}" --delete-object --type privkey --id $ID_RSA_UNWRAPPED
     fi
+elif [ "${WOLFSSL_ISFIPS}" = "1" ] || [ "${ENABLE_WOLFPROV}" = "1" ]; then
+    echo "Skipping AES-KEY-WRAP RSA key tests - not supported in FIPS mode or wolfProvider"
+fi
 
-    if [[ "$TOKENTYPE" != "kryoptic" ]]; then
-        echo "-------------------------------------------------------"
-        echo "AES-KEY-WRAP-PAD Wrap/Unwrap RSA key test"
-        echo "-------------------------------------------------------"
-        # Wrap
-        $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
-            --application-id $ID_RSA_WRAPPED --output-file rsa_wrapped_key.data
-        assert $? "Failed to wrap RSA key"
-        # Unwrap
-        $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
-            --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --input-file rsa_wrapped_key.data
-        assert $? "Failed to unwrap RSA key with $MECH"
-        rm rsa_wrapped_key.data
+if [[ "$TOKENTYPE" != "kryoptic" && "${ENABLE_WOLFPROV}" != "1" && "${WOLFSSL_ISFIPS}" != "1" ]]; then
+    echo "-------------------------------------------------------"
+    echo "AES-KEY-WRAP-PAD Wrap/Unwrap RSA key test"
+    echo "-------------------------------------------------------"
+    # Wrap
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
+        --application-id $ID_RSA_WRAPPED --output-file rsa_wrapped_key.data
+    assert $? "Failed to wrap RSA key"
+    # Unwrap
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
+        --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --input-file rsa_wrapped_key.data
+    assert $? "Failed to unwrap RSA key with $MECH"
+    rm rsa_wrapped_key.data
 
-        # Test with decryption
-        test_unwrapped_rsa_pkcs_decryption $ID_RSA_WRAPPED $ID_RSA_UNWRAPPED
+    # Test with decryption
+    test_unwrapped_rsa_pkcs_decryption $ID_RSA_WRAPPED $ID_RSA_UNWRAPPED
 
-        # Remove unwrapped RSA key
-        $PKCS11_TOOL "${PRIV_ARGS[@]}" --delete-object --type privkey --id $ID_RSA_UNWRAPPED
-    fi
+    # Remove unwrapped RSA key
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --delete-object --type privkey --id $ID_RSA_UNWRAPPED
+elif [[ "${ENABLE_WOLFPROV}" = "1" ]] || [[ "${WOLFSSL_ISFIPS}" = "1" ]]; then
+    echo "Skipping AES-KEY-WRAP-PAD RSA key tests - not supported by wolfProvider or FIPS mode"
 fi
 
 if [[ "$TOKENTYPE" != "softhsm" ]]; then

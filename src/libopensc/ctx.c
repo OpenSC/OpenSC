@@ -838,6 +838,16 @@ static int sc_openssl3_init(sc_context_t *ctx)
 	if (ctx->ossl3ctx->libctx == NULL) {
 		return SC_ERROR_INTERNAL;
 	}
+#ifdef ENABLE_WOLFPROV
+	ctx->ossl3ctx->defprov = OSSL_PROVIDER_load(ctx->ossl3ctx->libctx,
+						    "libwolfprov");
+	if (ctx->ossl3ctx->defprov == NULL) {
+		OSSL_LIB_CTX_free(ctx->ossl3ctx->libctx);
+		free(ctx->ossl3ctx);
+		ctx->ossl3ctx = NULL;
+		return SC_ERROR_INTERNAL;
+	}
+#else
 	ctx->ossl3ctx->defprov = OSSL_PROVIDER_load(ctx->ossl3ctx->libctx,
 						    "default");
 	if (ctx->ossl3ctx->defprov == NULL) {
@@ -851,6 +861,7 @@ static int sc_openssl3_init(sc_context_t *ctx)
 	if (ctx->ossl3ctx->legacyprov == NULL) {
 		sc_log(ctx, "Failed to load OpenSSL Legacy provider");
 	}
+#endif
 	return SC_SUCCESS;
 }
 
@@ -858,8 +869,10 @@ static void sc_openssl3_deinit(sc_context_t *ctx)
 {
 	if (ctx->ossl3ctx == NULL)
 		return;
+#ifndef ENABLE_WOLFPROV
 	if (ctx->ossl3ctx->legacyprov)
 		OSSL_PROVIDER_unload(ctx->ossl3ctx->legacyprov);
+#endif
 	if (ctx->ossl3ctx->defprov)
 		OSSL_PROVIDER_unload(ctx->ossl3ctx->defprov);
 	if (ctx->ossl3ctx->libctx)

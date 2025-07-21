@@ -206,6 +206,13 @@ AS_IF([test $enable_openssl_secure_malloc != no],
 	[AC_DEFINE_UNQUOTED([OPENSSL_SECURE_MALLOC_SIZE],[$enable_openssl_secure_malloc],[Size of OpenSSL secure memory in bytes, must be a power of 2])])
 
 AC_ARG_ENABLE(
+	[wolfprov],
+	[AS_HELP_STRING([--enable-wolfprov],[enable wolfProvider support for FIPS and non-FIPS modes @<:@disabled@:>@])],
+	,
+	[enable_wolfprov="no"]
+)
+
+AC_ARG_ENABLE(
 	[openpace],
 	[AS_HELP_STRING([--enable-openpace],[enable OpenPACE linkage @<:@detect@:>@])],
 	,
@@ -749,6 +756,13 @@ else
 	OPENSSL_LIBS=""
 fi
 
+if test "${enable_wolfprov}" = "yes"; then
+	if test "${enable_openssl}" != "yes"; then
+		AC_MSG_ERROR([wolfProvider support requires OpenSSL to be enabled])
+	fi
+	AC_DEFINE([ENABLE_WOLFPROV], [1], [Enable wolfProvider support for OpenSSL 3.0+])
+fi
+
 if test "${enable_cmocka}" = "detect"; then
 	if test "${have_cmocka}" = "yes" -a "${have_openssl}" = "yes"; then
 		enable_cmocka="yes"
@@ -1058,6 +1072,9 @@ if test "${enable_openssl}" = "yes"; then
 	OPTIONAL_OPENSSL_CFLAGS="${OPENSSL_CFLAGS}"
 	OPTIONAL_OPENSSL_LIBS="${OPENSSL_LIBS}"
 fi
+if test "${enable_wolfprov}" = "yes"; then
+	OPENSC_FEATURES="${OPENSC_FEATURES} wolfprov"
+fi
 if test "${enable_openct}" = "yes"; then
 	OPENSC_FEATURES="${OPENSC_FEATURES} openct"
 	OPTIONAL_OPENCT_CFLAGS="${OPENCT_CFLAGS}"
@@ -1148,6 +1165,7 @@ AM_CONDITIONAL([ENABLE_THREAD_LOCKING], [test "${enable_thread_locking}" = "yes"
 AM_CONDITIONAL([ENABLE_ZLIB], [test "${enable_zlib}" = "yes"])
 AM_CONDITIONAL([ENABLE_READLINE], [test "${enable_readline}" = "yes"])
 AM_CONDITIONAL([ENABLE_OPENSSL], [test "${enable_openssl}" = "yes"])
+AM_CONDITIONAL([ENABLE_WOLFPROV], [test "${enable_wolfprov}" = "yes"])
 AM_CONDITIONAL([ENABLE_OPENPACE], [test "${enable_openpace}" = "yes"])
 AM_CONDITIONAL([ENABLE_NOTIFY], [test "${enable_notify}" = "yes"])
 AM_CONDITIONAL([ENABLE_CRYPTOTOKENKIT], [test "${enable_cryptotokenkit}" = "yes"])
@@ -1249,6 +1267,7 @@ zlib support:            ${enable_zlib}
 readline support:        ${enable_readline}
 OpenSSL support:         ${enable_openssl}
 OpenSSL secure memory:   ${enable_openssl_secure_malloc}
+wolfProvider support:    ${enable_wolfprov}
 PC/SC support:           ${enable_pcsc}
 CryptoTokenKit support:  ${enable_cryptotokenkit}
 OpenCT support:          ${enable_openct}

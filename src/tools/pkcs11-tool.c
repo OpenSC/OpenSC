@@ -820,10 +820,16 @@ int main(int argc, char * argv[])
 	if (!(osslctx = OSSL_LIB_CTX_new())) {
 		util_fatal("Failed to create OpenSSL OSSL_LIB_CTX\n");
 	}
+#ifdef ENABLE_WOLFPROV
+	if (!(default_provider = OSSL_PROVIDER_load(osslctx, "libwolfprov"))) {
+		util_fatal("Failed to load wolfProvider \"libwolfprov\" provider\n");
+	}
+#else
 	if (!(default_provider = OSSL_PROVIDER_load(osslctx, "default"))) {
 		util_fatal("Failed to load OpenSSL \"default\" provider\n");
 	}
 	legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1);
+#endif
 #endif
 
 	while (1) {
@@ -6963,7 +6969,7 @@ static int test_digest(CK_SESSION_HANDLE session)
 #else
 	i = 0;
 #endif
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(ENABLE_WOLFPROV)
 		if (!legacy_provider) {
 			printf("Failed to load legacy provider\n");
 			return errors;
@@ -7436,7 +7442,7 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 		EVP_sha256(),
 	};
 #endif
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(OPENSSL_NO_RIPEMD)
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(OPENSSL_NO_RIPEMD) && !defined(ENABLE_WOLFPROV)
 	if (!legacy_provider) {
 		printf("Failed to load legacy provider");
 		return errors;
