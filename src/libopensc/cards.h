@@ -255,6 +255,7 @@ enum {
 
 	/* JCOP4 cards with NQ-Applet */
 	SC_CARD_TYPE_NQ_APPLET = 39000,
+	SC_CARD_TYPE_NQ_APPLET_RFID = 39001,
 
 	/* Slovak eID cards */
 	SC_CARD_TYPE_SKEID_BASE = 40000,

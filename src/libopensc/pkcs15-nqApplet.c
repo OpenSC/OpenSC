@@ -188,7 +188,7 @@ int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_NORMAL);
 
-	if (card->type != SC_CARD_TYPE_NQ_APPLET) {
+	if (card->type < SC_CARD_TYPE_NQ_APPLET || card->type > SC_CARD_TYPE_NQ_APPLET_RFID) {
 		sc_log(p15card->card->ctx, "Unsupported card type: %d", card->type);
 		return SC_ERROR_WRONG_CARD;
 	}

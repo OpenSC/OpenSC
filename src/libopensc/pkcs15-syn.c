@@ -110,6 +110,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_CARDOS_V5_0:
 		case SC_CARD_TYPE_CARDOS_V5_3:
 		case SC_CARD_TYPE_NQ_APPLET:
+		case SC_CARD_TYPE_NQ_APPLET_RFID:
 		case SC_CARD_TYPE_STARCOS_V3_4_ESIGN:
 		case SC_CARD_TYPE_STARCOS_V3_5_ESIGN:
 		case SC_CARD_TYPE_SKEID_V3:
