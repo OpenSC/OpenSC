@@ -32,6 +32,19 @@ function assert() {
 	fi
 }
 
+# Helper function to get OpenSSL provider arguments
+function get_openssl_provider_args() {
+	if [ "${ENABLE_WOLFPROV}" = "1" ]; then
+		if [ -n "${WOLFPROV_PATH}" ]; then
+			echo "-provider-path ${WOLFPROV_PATH} -provider libwolfprov"
+		else
+			echo "-provider libwolfprov"
+		fi
+	else
+		echo "-provider default"
+	fi
+}
+
 function generate_key() {
 	TYPE="$1"
 	ID="$2"
@@ -53,12 +66,13 @@ function generate_key() {
 	fi
 
 	# convert it to more digestible PEM format
+	PROVIDER_ARGS=$(get_openssl_provider_args)
 	if [[ ${TYPE:0:3} == "RSA" ]]; then
-		openssl rsa -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+		openssl rsa -inform DER -outform PEM $PROVIDER_ARGS -in $ID.der -pubin > $ID.pub
 	elif [[ $TYPE == "EC:edwards25519" ]]; then
-		openssl pkey -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+		openssl pkey -inform DER -outform PEM $PROVIDER_ARGS -in $ID.der -pubin > $ID.pub
 	else
-		openssl ec -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+		openssl ec -inform DER -outform PEM $PROVIDER_ARGS -in $ID.der -pubin > $ID.pub
 	fi
 	rm $ID.der
 }

@@ -33,7 +33,8 @@ for KEYTYPE in "RSA" "EC"; do
         ID="0200"
         OPTS="-pkeyopt ec_paramgen_curve:P-256"
     fi
-    openssl genpkey -out "${KEYTYPE}_private.der" -outform DER -algorithm $KEYTYPE $OPTS
+    PROVIDER_ARGS=$(get_openssl_provider_args)
+    openssl genpkey -algorithm $KEYTYPE $OPTS $PROVIDER_ARGS -out "${KEYTYPE}_private.der" -outform DER
 
     assert $? "Failed to generate private $KEYTYPE key"
     $PKCS11_TOOL "${PRIV_ARGS[@]}" --write-object "${KEYTYPE}_private.der" --id "$ID" \
@@ -41,7 +42,7 @@ for KEYTYPE in "RSA" "EC"; do
     assert $? "Failed to write private $KEYTYPE key"
     echo "Private key written"
 
-    openssl pkey -in "${KEYTYPE}_private.der" -out "${KEYTYPE}_public.der" -pubout -inform DER -outform DER
+    openssl pkey $PROVIDER_ARGS -in "${KEYTYPE}_private.der" -out "${KEYTYPE}_public.der" -pubout -inform DER -outform DER
     assert $? "Failed to convert private $KEYTYPE key to public"
     $PKCS11_TOOL "${PRIV_ARGS[@]}" --write-object "${KEYTYPE}_public.der" --id "$ID" --type pubkey --label "$KEYTYPE"
     assert $? "Failed to write public $KEYTYPE key"

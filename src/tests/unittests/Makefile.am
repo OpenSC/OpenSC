@@ -54,11 +54,14 @@ compression_LDADD = $(LDADD) $(OPTIONAL_ZLIB_LIBS)
 endif
 
 if ENABLE_OPENSSL
+# SM tests rely on DES which is not available in wolfProvider FIPS mode
+if !ENABLE_WOLFPROV
 noinst_PROGRAMS += sm
 TESTS += sm
 
 sm_SOURCES = sm.c
 sm_LDADD = $(top_builddir)/src/sm/libsm.la $(LDADD)
+endif
 endif
 
 

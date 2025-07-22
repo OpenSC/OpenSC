@@ -10,6 +10,8 @@ fi
 
 source $SOURCE_PATH/tests/common.sh $TOKENTYPE
 
+PROVIDER_ARGS=$(get_openssl_provider_args)
+
 echo "======================================================="
 echo "Setup $TOKENTYPE"
 echo "======================================================="
@@ -52,11 +54,11 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         # OpenSSL verification
         echo -n "Verification by OpenSSL: "
         if [[ -z $HASH ]]; then
-            openssl rsautl -verify -inkey $SIGN_KEY.pub -in data.sig -pubin
+            openssl rsautl $PROVIDER_ARGS -verify -inkey $SIGN_KEY.pub -in data.sig -pubin
             # pkeyutl does not work with libressl
-            #openssl pkeyutl -verify -inkey $SIGN_KEY.pub -in data -sigfile data.sig -pubin
+            #openssl pkeyutl $PROVIDER_ARGS -verify -inkey $SIGN_KEY.pub -in data -sigfile data.sig -pubin
         else
-            openssl dgst -keyform PEM -verify $SIGN_KEY.pub -${HASH,,*} \
+            openssl dgst -keyform PEM $PROVIDER_ARGS -verify $SIGN_KEY.pub -${HASH,,*} \
                    -signature data.sig data
         fi
         if [[ "$RETOSSL" == "0" ]]; then
@@ -90,7 +92,7 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
             echo "======================================================="
             if [[ -z $HASH ]]; then
                 # hashing is done outside of the module. We choose here SHA256
-                openssl dgst -binary -sha256 data > data.hash
+                openssl dgst $PROVIDER_ARGS -binary -sha256 data > data.hash
                 HASH_ALGORITM="--hash-algorithm=SHA256"
                 VERIFY_DGEST="-sha256"
                 VERIFY_OPTS="-sigopt rsa_mgf1_md:sha256"
@@ -108,7 +110,7 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
 
             # OpenSSL verification
             echo -n "Verification by OpenSSL: "
-            openssl dgst -keyform PEM -verify $SIGN_KEY.pub $VERIFY_DGEST \
+            openssl dgst -keyform PEM $PROVIDER_ARGS -verify $SIGN_KEY.pub $VERIFY_DGEST \
                     -sigopt rsa_padding_mode:pss  $VERIFY_OPTS -sigopt rsa_pss_saltlen:-1 \
                     -signature data.sig data
             if [[ "$RETOSSL" == "0" ]]; then
@@ -145,7 +147,7 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
             echo "======================================================="
             # OpenSSL Encryption
             # pkeyutl does not work with libressl
-            openssl rsautl -encrypt -oaep -inkey $ENC_KEY.pub -in data -pubin -out data.crypt
+            openssl rsautl $PROVIDER_ARGS -encrypt -oaep -inkey $ENC_KEY.pub -in data -pubin -out data.crypt
             assert $? "Failed to encrypt data using OpenSSL"
             $PKCS11_TOOL --id $ENC_KEY --decrypt -p $PIN --module $P11LIB \
                 -m $METHOD --hash-algorithm "SHA-1" --mgf "MGF1-SHA1" \
@@ -184,10 +186,10 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
         echo "$METHOD: Encrypt & Decrypt (KEY $ENC_KEY)"
         echo "======================================================="
         # OpenSSL Encryption
-        openssl rsautl -encrypt -inkey $ENC_KEY.pub -in data \
+        openssl rsautl $PROVIDER_ARGS -encrypt -inkey $ENC_KEY.pub -in data \
                -pubin -out data.crypt
         # pkeyutl does not work with libressl
-        #openssl pkeyutl -encrypt -inkey $ENC_KEY.pub -in data \
+        #openssl pkeyutl $PROVIDER_ARGS -encrypt -inkey $ENC_KEY.pub -in data \
         #       -pubin -out data.crypt
         assert $? "Failed to encrypt data using OpenSSL"
         # pkcs11-tool Decryption
@@ -205,34 +207,44 @@ echo "Test ECDSA keys"
 echo "======================================================="
 # operations with ECDSA keys should work on data > 512 bytes; generate data:
 head -c 1024 </dev/urandom > data
-for SIGN_KEY in "03" "04"; do
-    METHOD="ECDSA"
+for HASH in "SHA1" "SHA256"; do
+    for SIGN_KEY in "03" "04"; do
+        METHOD="ECDSA"
 
-    echo
-    echo "======================================================="
-    echo "$METHOD: Sign & Verify (KEY $SIGN_KEY)"
-    echo "======================================================="
-    openssl dgst -binary -sha256 data > data.hash
-    $PKCS11_TOOL "${PRIV_ARGS[@]}" --id $SIGN_KEY -s -m $METHOD \
-        --input-file data.hash --output-file data.sig
-    assert $? "Failed to Sign data"
-    $PKCS11_TOOL "${PRIV_ARGS[@]}" --id $SIGN_KEY -s -m $METHOD \
-        --input-file data.hash --output-file data.sig.openssl \
-        --signature-format openssl
-    assert $? "Failed to Sign data into OpenSSL format"
+        echo
+        echo "======================================================="
+        echo "$METHOD+$HASH: Sign & Verify (KEY $SIGN_KEY)"
+        echo "======================================================="
+        
+        # Skip SHA-1 operations only in wolfProvider FIPS mode
+        if [[ "${ENABLE_WOLFPROV}" = "1" && "${WOLFSSL_ISFIPS}" = "1" && "$HASH" = "SHA1" ]]; then
+            echo "Skipping ECDSA+SHA1 operations in wolfProvider FIPS mode"
+            echo "NOTE: SHA-1 signing not allowed in FIPS"
+            continue
+        fi
+        
+        openssl dgst $PROVIDER_ARGS -binary -${HASH,,} data > data.hash
+        $PKCS11_TOOL "${PRIV_ARGS[@]}" --id $SIGN_KEY -s -m $METHOD \
+            --input-file data.hash --output-file data.sig
+        assert $? "Failed to Sign data"
+        $PKCS11_TOOL "${PRIV_ARGS[@]}" --id $SIGN_KEY -s -m $METHOD \
+            --input-file data.hash --output-file data.sig.openssl \
+            --signature-format openssl
+        assert $? "Failed to Sign data into OpenSSL format"
 
-    # OpenSSL verification
-    echo -n "Verification by OpenSSL: "
-    openssl dgst -keyform PEM -verify $SIGN_KEY.pub -sha256 \
-               -signature data.sig.openssl data
-    assert $? "Failed to Verify signature using OpenSSL"
+        # OpenSSL verification
+        echo -n "Verification by OpenSSL: "
+        openssl dgst -keyform PEM $PROVIDER_ARGS -verify $SIGN_KEY.pub -${HASH,,} \
+                   -signature data.sig.openssl data
+        assert $? "Failed to Verify signature using OpenSSL"
 
-    # pkcs11-tool verification
-    echo "Verification by pkcs11-tool:"
-    $PKCS11_TOOL "${PUB_ARGS[@]}" --id $SIGN_KEY --verify -m $METHOD \
-           --input-file data.hash --signature-file data.sig
-    assert $? "Failed to Verify signature using pkcs11-tool"
-    rm data.sig{,.openssl} data.hash
+        # pkcs11-tool verification
+        echo "Verification by pkcs11-tool:"
+        $PKCS11_TOOL "${PUB_ARGS[@]}" --id $SIGN_KEY --verify -m $METHOD \
+               --input-file data.hash --signature-file data.sig
+        assert $? "Failed to Verify signature using pkcs11-tool"
+        rm data.sig{,.openssl} data.hash
+    done
 done
 
 echo "======================================================="
