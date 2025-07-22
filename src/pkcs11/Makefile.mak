@@ -25,9 +25,7 @@ all: $(TARGET1) $(TARGET3)
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
 $(TARGET1): $(OBJECTS) $(LIBS)
-	link $(LINKFLAGS) /dll /implib:$*.lib /out:$(TARGET1) $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib Comctl32.lib Shell32.lib user32.lib advapi32.lib ws2_32.lib Shell32.lib Comctl32.lib shlwapi.lib
-	if EXIST $(TARGET1).manifest mt -manifest $(TARGET1).manifest -outputresource:$(TARGET1);2
+	link /dll $(LINKFLAGS) /out:$@ /implib:$*.lib $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib Comctl32.lib Shell32.lib user32.lib advapi32.lib ws2_32.lib Shell32.lib Comctl32.lib shlwapi.lib
 
 $(TARGET3): $(OBJECTS3) $(LIBS3)
-	link $(LINKFLAGS) /dll /implib:$*.lib /out:$(TARGET3) $(OBJECTS3) $(LIBS3) $(OPENSSL_LIB) gdi32.lib advapi32.lib shlwapi.lib
-	if EXIST $(TARGET3).manifest mt -manifest $(TARGET3).manifest -outputresource:$(TARGET3);2
+	link /dll $(LINKFLAGS) /out:$@ /implib:$*.lib $(OBJECTS3) $(LIBS3) $(OPENSSL_LIB) gdi32.lib advapi32.lib shlwapi.lib
