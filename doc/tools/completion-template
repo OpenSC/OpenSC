@@ -5,7 +5,11 @@ _FUNCTION_NAME()
     local cur prev split=false
     _get_comp_words_by_ref -n : cur prev
 
-    _split_longopt && split=true
+    if type _init_completion &>/dev/null; then
+        _init_completion -s && split=true
+    else
+        _split_longopt && split=true
+    fi
 
     opts="ALLOPTS"
 
