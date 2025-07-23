@@ -773,8 +773,10 @@ static int dnie_sm_free_wrapped_apdu(struct sc_card *card,
 			plain->sw1 = (*sm_apdu)->sw1;
 			plain->sw2 = (*sm_apdu)->sw2;
 		}
-		free((unsigned char *) (*sm_apdu)->data);
-		free((*sm_apdu)->resp);
+		if ((*sm_apdu)->data != plain->data)
+			free((unsigned char *) (*sm_apdu)->data);
+		if ((*sm_apdu)->resp != plain->resp)
+			free((*sm_apdu)->resp);
 		free(*sm_apdu);
 	}
 	*sm_apdu = NULL;
@@ -786,7 +788,6 @@ static int dnie_sm_get_wrapped_apdu(struct sc_card *card,
 		struct sc_apdu *plain, struct sc_apdu **sm_apdu)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sc_apdu *apdu = NULL;
 	cwa_provider_t *provider = NULL;
 	int rv = SC_SUCCESS;
 
@@ -797,28 +798,18 @@ static int dnie_sm_get_wrapped_apdu(struct sc_card *card,
 	provider = GET_DNIE_PRIV_DATA(card)->cwa_provider;
 
 	if (((plain->cla & 0x0C) == 0) && (plain->ins != 0xC0)) {
-		*sm_apdu = NULL;
-		//construct new SM apdu from original apdu
-		apdu = calloc(1, sizeof(struct sc_apdu));
-		if (!apdu)
+		*sm_apdu = calloc(1, sizeof(struct sc_apdu));
+		if (!(*sm_apdu))
 			return SC_ERROR_OUT_OF_MEMORY;
 
-		memcpy(apdu, plain, sizeof(sc_apdu_t));
-
-		rv = cwa_encode_apdu(card, provider, plain, apdu);
+		rv = cwa_encode_apdu(card, provider, plain, *sm_apdu);
 
 		if (rv != SC_SUCCESS) {
-			dnie_sm_free_wrapped_apdu(card, NULL, &apdu);
-			goto err;
+			dnie_sm_free_wrapped_apdu(card, plain, sm_apdu);
 		}
-
-		*sm_apdu = apdu;
 	} else
 		*sm_apdu = plain;
 
-	apdu = NULL;
-err:
-	free(apdu);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
