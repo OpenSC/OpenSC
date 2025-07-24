@@ -36,6 +36,104 @@
 			<variablelist>
 				<varlistentry>
 					<term>
+						<option>--reader</option> <replaceable>arg</replaceable>,
+						<option>-r</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem><para>
+						Number of the reader to use. By default, the first reader with a
+						present card is used. If <replaceable>arg</replaceable> is an ATR, the
+						reader with a matching card will be chosen.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>
+						Causes <command>dtrust-tool</command> to wait for the token to be
+						inserted into reader.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--verify-can</option>,
+					</term>
+					<listitem>
+						<para>
+							D-Trust Card 5 comes with a Card Access Number (CAN) printed
+							onto the card. The purpose of this number is to establish a
+							secure communication channel between the card and the card
+							reader. In normal operation <command>dtrust-tool</command>
+							automatically prompts for the CAN when necessary. Under certain
+							circumstances <literal>dtrust-tool</literal> cannot decide
+							whether the CAN is necessary.
+						</para>
+						<itemizedlist>
+							<listitem><para>
+								You may call <literal>dtrust-tool</literal> with just
+								this option to force a CAN verification, which saves
+								the CAN into the cache if it proved right. Once the CAN
+								was saved into the cache, You do not need to enter the
+								CAN of this card again.
+							</para></listitem>
+							<listitem><para>
+								In case you entered a transport PIN wrong two times,
+								the transport PIN is suspended. You need this parameter
+								together with <option>--unlock-transport-protection</option>
+								to resume the suspended transport PIN for a last
+								attempt. Failing to enter the transport PIN
+								successfully blocks the transport PIN. You then need to
+								unblock the transport PIN with <option>--unblock-pin</option>.
+							</para></listitem>
+						</itemizedlist>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--enter-can</option>,
+					</term>
+					<listitem>
+						<para>
+							There are several ways to provide a CAN. See the
+							<literal>dtrust</literal> section in the
+							<filename>opensc.conf</filename> manpage for details. With this
+							parameter <command>dtrust-tool</command> will prompt
+							interactively for a CAN, bypassing all other sources. This is
+							useful if you:
+						</para>
+						<itemizedlist>
+							<listitem><para>
+								enter the CAN for the first time and want it to be
+								saved in the CAN cache
+							</para></listitem>
+							<listitem><para>
+								want to bypass the pin pad of card reader. Bypassing
+								the pin pad will save the CAN into the cache as well.
+							</para></listitem>
+						</itemizedlist>
+						<para>
+							Once the CAN is cached, you do not need this parameter anymore.
+						</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--pin-status</option>,
+						<option>-s</option>
+					</term>
+					<listitem><para>
+						Show the status of the various PINs. The Card Holder PIN is used for
+						advanced signatures and decryption. It is only defined for signature
+						cards, but not for sealing cards. The signature PIN is used for
+						qualified signatures. It can only be used if it is unlocked by
+						presenting the Transport PIN. Once the Transport PIN is used, it cannot
+						be used anymore. The PUK is used to unlock PIN which had beend entered
+						incorrectly several times.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
 						<option>--check-transport-protection</option>,
 						<option>-c</option>
 					</term>
@@ -64,46 +162,105 @@
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--help</option>,
-						<option>-h</option>
-					</term>
-					<listitem><para>Print help message on screen.</para></listitem>
-				</varlistentry>
-				<varlistentry>
-					<term>
-						<option>--reader</option> <replaceable>arg</replaceable>,
-						<option>-r</option> <replaceable>arg</replaceable>
-					</term>
-					<listitem><para>
-						Number of the reader to use. By default, the first reader with a
-						present card is used. If <replaceable>arg</replaceable> is an ATR, the
-						reader with a matching card will be chosen.
-					</para></listitem>
-				</varlistentry>
-				<varlistentry>
-					<term>
-						<option>--pin-status</option>,
-						<option>-s</option>
-					</term>
-					<listitem><para>
-						Show the status of the various PINs. The Card Holder PIN is used for
-						advanced signatures and decryption. It is only defined for signature
-						cards, but not for sealing cards. The signature PIN is used for
-						qualified signatures. It can only be used if it is unlocked by
-						presenting the Transport PIN. Once the Transport PIN is used, it cannot
-						be used anymore. The PUK is used to unlock PIN which had beend entered
-						incorrectly several times.
-					</para></listitem>
-				</varlistentry>
-				<varlistentry>
-					<term>
 						<option>--unlock-transport-protection</option>,
 						<option>-u</option>
 					</term>
 					<listitem><para>
-						This command removes the transport protection. If first queries for the
-						Transport PIN and then for the new value of the Signature PIN twice.
+						This command removes the transport protection. It first queries the
+						Transport PIN and then the new value of the Signature PIN twice.
 					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--change-pin</option>,
+					</term>
+					<listitem>
+						<para>
+							Change the specified PIN. The following PINs can be changed:
+						</para>
+						<itemizedlist>
+							<listitem>
+								<para>For D-Trust Card 4: PIN.CH, PIN.QES, PUK.CH</para>
+							</listitem>
+							<listitem>
+								<para>For D-Trust Card 5: PIN.QES, PIN.AUT, PUK.CH</para>
+							</listitem>
+						</itemizedlist>
+						<para>
+							It is not recommended to change the PUK.
+						</para>
+						<para>
+							To change a PIN, you first have to enter the old PIN and then
+							the new PIN value two times.
+						</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--change-verify</option>,
+					</term>
+					<listitem><para>
+						This option specifies the PIN to verify for changing the PIN
+						specified with the <option>--change-pin</option> command. The only
+						useful application of this option is to reset the cardholder PIN
+						(PIN.CH) of D-Trust 4.1 cards by providing the cardholder PUK (PUK.CH).
+						In all other cases, a PIN may only changed by providing its current
+						value.
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--resume-pin</option>,
+					</term>
+					<listitem>
+						<para>
+							Resume a suspended PIN. This matters only for the PUK (PUK.CH)
+							of D-Trust 5 cards. After two unsuccessful attempts to verify
+							the PUK, the PUK is suspended. To resume the suspended PUK you
+							first have to input the CAN and then the value of the suspended
+							PUK. If you enter the wrong PUK again, the PUK is finally
+							blocked and cannot be recovered.
+						</para>
+						<para>
+							To resume a suspended transport PIN use
+							<option>--unlock-transport-protection</option> together with
+							<option>--can</option>.
+						</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--unblock-pin</option>,
+					</term>
+					<listitem>
+						<para>
+							Reset the retry counter of a PIN to its default value. To
+							unblock a PIN, you first have to provide the PUK. The following
+							PINs can be unblocked:
+						</para>
+						<itemizedlist>
+							<listitem>
+								<para>For D-Trust Card 4: PIN.T, PIN.CH, PIN.QES</para>
+							</listitem>
+							<listitem>
+								<para>For D-Trust Card 5: PIN.T, PIN.T.AUT, PIN.QES, PIN.AUT</para>
+							</listitem>
+						</itemizedlist>
+						<para>
+							It is impossible to unblock a blocked PUK.
+						</para>
+						<para>
+							Please keep in mind that the PUK may only be used a limited
+							number of times (48 times for D-Trust Card 4 and 5).
+						</para>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option>
+					</term>
+					<listitem><para>Print help message on screen.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
@@ -115,17 +272,17 @@
 						flag several times to enable debug output in the opensc library.
 					</para></listitem>
 				</varlistentry>
-				<varlistentry>
-					<term>
-						<option>--wait</option>,
-						<option>-w</option>
-					</term>
-					<listitem><para>
-						Causes <command>dtrust-tool</command> to wait for the token to be
-						inserted into reader.
-					</para></listitem>
-				</varlistentry>
 			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>opensc.conf</refentrytitle>
+				<manvolnum>5</manvolnum>
+			</citerefentry>
 		</para>
 	</refsect1>
 
