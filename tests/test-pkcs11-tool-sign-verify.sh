@@ -1,5 +1,4 @@
 #!/bin/bash
-SOURCE_PATH=${SOURCE_PATH:-..}
 
 TOKENTYPE=$1
 
@@ -8,7 +7,15 @@ if [ "${TOKENTYPE}" == "" ]; then
     echo "No tokentype provided, running with SoftHSM"
 fi
 
-source $SOURCE_PATH/tests/common.sh $TOKENTYPE
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	SOURCE_PATH=${SOURCE_PATH:-..}
+	BUILD_PATH=${BUILD_PATH:-..}
+else
+	SOURCE_PATH="$MESON_SOURCE_ROOT"
+	BUILD_PATH="$MESON_BUILD_ROOT"
+fi
+
+source "$SOURCE_PATH/tests/common.sh" $TOKENTYPE
 
 echo "======================================================="
 echo "Setup $TOKENTYPE"
@@ -147,7 +154,7 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
             # pkeyutl does not work with libressl
             openssl rsautl -encrypt -oaep -inkey $ENC_KEY.pub -in data -pubin -out data.crypt
             assert $? "Failed to encrypt data using OpenSSL"
-            $PKCS11_TOOL --id $ENC_KEY --decrypt -p $PIN --module $P11LIB \
+            $PKCS11_TOOL --id $ENC_KEY --decrypt -p $PIN --module "$P11LIB" \
                 -m $METHOD --hash-algorithm "SHA-1" --mgf "MGF1-SHA1" \
                 --input-file data.crypt --output-file data.decrypted
             assert $? "Failed to decrypt data using pkcs11-tool"
@@ -155,13 +162,13 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
             assert $? "The decrypted data do not match the original"
             rm data.{crypt,decrypted}
 
-            $PKCS11_TOOL --id $ENC_KEY --encrypt -p $PIN --module $P11LIB \
+            $PKCS11_TOOL --id $ENC_KEY --encrypt -p $PIN --module "$P11LIB" \
                 -m $METHOD --hash-algorithm "SHA-1" --mgf "MGF1-SHA1" \
                 --input-file data --output-file data.crypt
             assert $? "Failed to encrypt data using pkcs11-tool"
             # It would be better to decrypt with OpenSSL but we can't read the
             # private key with the pkcs11-tool (yet)
-            $PKCS11_TOOL --id $ENC_KEY --decrypt -p $PIN --module $P11LIB \
+            $PKCS11_TOOL --id $ENC_KEY --decrypt -p $PIN --module "$P11LIB" \
                 -m $METHOD --hash-algorithm "SHA-1" --mgf "MGF1-SHA1" \
                 --input-file data.crypt --output-file data.decrypted
             assert $? "Failed to decrypt data using pkcs11-tool"
