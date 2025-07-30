@@ -75,11 +75,11 @@ void interface_test(void **state)
 	/* run the rest only if we have 2 interfaces (assume OpenSC) */
 	if (count == 2) {
 		CK_VERSION version2;
-		assert_string_equal(interfaces[0].pInterfaceName, "PKCS 11");
+		assert_string_equal((char *)interfaces[0].pInterfaceName, "PKCS 11");
 		assert_int_equal(((CK_VERSION *)interfaces[0].pFunctionList)->major, 3);
 		assert_int_equal(((CK_VERSION *)interfaces[0].pFunctionList)->minor, 0);
 		assert_int_equal(interfaces[0].flags, 0);
-		assert_string_equal(interfaces[1].pInterfaceName, "PKCS 11");
+		assert_string_equal((char *)interfaces[1].pInterfaceName, "PKCS 11");
 		assert_int_equal(((CK_VERSION *)interfaces[1].pFunctionList)->major, 2);
 		// assert_int_equal(((CK_VERSION *)interfaces[1].pFunctionList)->minor, 20);
 		assert_int_equal(interfaces[1].flags, 0);
@@ -88,7 +88,7 @@ void interface_test(void **state)
 		/* GetInterface with NULL name should give us default PKCS 11 one */
 		rv = C_GetInterface(NULL, NULL, &interface, 0);
 		assert_int_equal(rv, CKR_OK);
-		assert_string_equal(interface->pInterfaceName, "PKCS 11");
+		assert_string_equal((char *)interface->pInterfaceName, "PKCS 11");
 		assert_int_equal(((CK_VERSION *)interface->pFunctionList)->major, 3);
 		assert_int_equal(((CK_VERSION *)interface->pFunctionList)->minor, 0);
 		assert_int_equal(interface->flags, 0);
@@ -98,9 +98,9 @@ void interface_test(void **state)
 		/* GetInterface with explicit 3.0 version */
 		version.major = 3;
 		version.minor = 0;
-		rv = C_GetInterface((unsigned char *)"PKCS 11", &version, &interface, 0);
+		rv = C_GetInterface((CK_UTF8CHAR_PTR)"PKCS 11", &version, &interface, 0);
 		assert_int_equal(rv, CKR_OK);
-		assert_string_equal(interface->pInterfaceName, "PKCS 11");
+		assert_string_equal((char *)interface->pInterfaceName, "PKCS 11");
 		assert_int_equal(((CK_VERSION *)interface->pFunctionList)->major, 3);
 		assert_int_equal(((CK_VERSION *)interface->pFunctionList)->minor, 0);
 		assert_int_equal(interface->flags, 0);
@@ -110,9 +110,9 @@ void interface_test(void **state)
 		/* GetInterface the other interface (with explicit 2.x version) */
 		version.major = 2; /* assumed 2 */
 		version.minor = version2.minor;
-		rv = C_GetInterface((unsigned char *)"PKCS 11", &version, &interface, 0);
+		rv = C_GetInterface((CK_UTF8CHAR_PTR)"PKCS 11", &version, &interface, 0);
 		assert_int_equal(rv, CKR_OK);
-		assert_string_equal(interface->pInterfaceName, "PKCS 11");
+		assert_string_equal((char *)interface->pInterfaceName, "PKCS 11");
 		assert_int_equal(((CK_VERSION *)interface->pFunctionList)->major, 2);
 		// assert_int_equal(((CK_VERSION *)interface->pFunctionList)->minor, 20);
 		assert_int_equal(interface->flags, 0);
@@ -121,17 +121,17 @@ void interface_test(void **state)
 	}
 
 	/* GetInterface with unknown interface  */
-	rv = C_GetInterface((unsigned char *)"PKCS 11 other", NULL, &interface, 0);
+	rv = C_GetInterface((CK_UTF8CHAR_PTR)"PKCS 11 other", NULL, &interface, 0);
 	assert_int_equal(rv, CKR_ARGUMENTS_BAD);
 
 	/* GetInterface with wrong version  */
 	version.major = 4;
 	version.minor = 50;
-	rv = C_GetInterface((unsigned char *)"PKCS 11", &version, &interface, 0);
+	rv = C_GetInterface((CK_UTF8CHAR_PTR)"PKCS 11", &version, &interface, 0);
 	assert_int_equal(rv, CKR_ARGUMENTS_BAD);
 
 	/* GetInterface with unknown flags  */
-	rv = C_GetInterface((unsigned char *)"PKCS 11", NULL, &interface, 2);
+	rv = C_GetInterface((CK_UTF8CHAR_PTR)"PKCS 11", NULL, &interface, 2);
 	assert_int_equal(rv, CKR_ARGUMENTS_BAD);
 	free(interfaces);
 

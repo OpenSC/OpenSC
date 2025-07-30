@@ -72,7 +72,7 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 		CK_INTERFACE *interface = NULL;
 
 		/* Get default PKCS #11 interface */
-		rv = c_get_interface((CK_UTF8CHAR_PTR) "PKCS 11", NULL, &interface, 0);
+		rv = c_get_interface((CK_UTF8CHAR_PTR)"PKCS 11", NULL, &interface, 0);
 		if (rv == CKR_OK) {
 			/* this is actually 3.0 function list, but it starts
 			 * with the same fields. Only for new functions, it

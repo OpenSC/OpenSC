@@ -865,8 +865,8 @@ out:
 #define DEFAULT_INTERFACE 0
 // clang-format off
 CK_INTERFACE interfaces[NUM_INTERFACES] = {
-	{"PKCS 11", (void *)&pkcs11_function_list_3_0, 0},
-	{"PKCS 11", (void *)&pkcs11_function_list, 0}
+	{(CK_UTF8CHAR_PTR)"PKCS 11", (void *)&pkcs11_function_list_3_0, 0},
+	{(CK_UTF8CHAR_PTR)"PKCS 11", (void *)&pkcs11_function_list, 0}
 };
 // clang-format on
 
@@ -923,7 +923,7 @@ CK_RV C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, /* name of the interface */
 		CK_VERSION_PTR interface_version = (CK_VERSION_PTR)interfaces[i].pFunctionList;
 
 		/* The interface name is not null here */
-		if (strcmp((char *)pInterfaceName, interfaces[i].pInterfaceName) != 0) {
+		if (strcmp((char *)pInterfaceName, (char *)interfaces[i].pInterfaceName) != 0) {
 			continue;
 		}
 		/* If version is not null, it must match */
