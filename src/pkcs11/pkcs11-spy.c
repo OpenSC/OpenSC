@@ -185,10 +185,10 @@ allocate_function_list(int v3)
  * if the V3 API is used, but the proxied module does not support V3 API */
 #define NUM_INTERFACES 1
 CK_INTERFACE compat_interfaces[NUM_INTERFACES] = {
-	{"PKCS 11", NULL, 0}
+	{(CK_UTF8CHAR_PTR)"PKCS 11", NULL, 0}
 };
 
-CK_INTERFACE spy_interface = {"PKCS 11", NULL, 0};
+CK_INTERFACE spy_interface = {(CK_UTF8CHAR_PTR)"PKCS 11", NULL, 0};
 
 /* Inits the spy. If successful, po != NULL */
 static CK_RV
@@ -1638,7 +1638,7 @@ spy_interface_function_list(CK_INTERFACE_PTR pInterface, CK_INTERFACE_PTR_PTR re
 	CK_VERSION *version;
 
 	/* Do not touch unknown interfaces. We can not do anything with these */
-	if (strcmp(pInterface->pInterfaceName, "PKCS 11") != 0) {
+	if (strcmp((char *)pInterface->pInterfaceName, "PKCS 11") != 0) {
 		*retInterface = pInterface;
 		return;
 	}
