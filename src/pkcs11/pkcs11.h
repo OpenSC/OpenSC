@@ -39,10 +39,12 @@ extern "C" {
 
 typedef long int CK_LONG;
 
-/* This file is in the Public Domain */
+/*
+ * The following part comes from https://github.com/latchset/pkcs11-headers
+ */
 
 #define CRYPTOKI_VERSION_MAJOR 3
-#define CRYPTOKI_VERSION_MINOR 1
+#define CRYPTOKI_VERSION_MINOR 2
 #define CRYPTOKI_VERSION_AMENDMENT 0
 
 /* Basic types */
@@ -81,6 +83,7 @@ ULONGDEF(CK_EC_KDF_TYPE);
 ULONGDEF(CK_EXTRACT_PARAMS);
 ULONGDEF(CK_FLAGS);
 ULONGDEF(CK_GENERATOR_FUNCTION);
+ULONGDEF(CK_HEDGE_TYPE);
 ULONGDEF(CK_HSS_LEVELS);
 ULONGDEF(CK_HW_FEATURE_TYPE);
 ULONGDEF(CK_JAVA_MIDP_SECURITY_DOMAIN);
@@ -89,6 +92,8 @@ ULONGDEF(CK_LMS_TYPE);
 ULONGDEF(CK_LMOTS_TYPE);
 ULONGDEF(CK_MAC_GENERAL_PARAMS);
 ULONGDEF(CK_MECHANISM_TYPE);
+ULONGDEF(CK_ML_DSA_PARAMETER_SET_TYPE);
+ULONGDEF(CK_ML_KEM_PARAMETER_SET_TYPE);
 ULONGDEF(CK_NOTIFICATION);
 ULONGDEF(CK_OBJECT_CLASS);
 ULONGDEF(CK_OBJECT_HANDLE);
@@ -102,14 +107,21 @@ ULONGDEF(CK_RSA_PKCS_MGF_TYPE);
 ULONGDEF(CK_RSA_PKCS_OAEP_SOURCE_TYPE);
 ULONGDEF(CK_RV);
 ULONGDEF(CK_SESSION_HANDLE);
+ULONGDEF(CK_SESSION_VALIDATION_FLAGS_TYPE);
+ULONGDEF(CK_SLH_DSA_PARAMETER_SET_TYPE);
 ULONGDEF(CK_SLOT_ID);
 ULONGDEF(CK_SP800_108_DKM_LENGTH_METHOD);
 ULONGDEF(CK_STATE);
+ULONGDEF(CK_TRUST);
 ULONGDEF(CK_USER_TYPE);
+ULONGDEF(CK_VALIDATION_AUTHORITY_TYPE);
+ULONGDEF(CK_VALIDATION_TYPE);
 ULONGDEF(CK_X2RATCHET_KDF_TYPE);
 ULONGDEF(CK_X3DH_KDF_TYPE);
 ULONGDEF(CK_X9_42_DH_KDF_TYPE);
 ULONGDEF(CK_XEDDSA_HASH_TYPE);
+ULONGDEF(CK_XMSSMT_PARAMETER_SET_TYPE);
+ULONGDEF(CK_XMSS_PARAMETER_SET_TYPE);
 
 /* domain specific values and constants */
 
@@ -152,6 +164,7 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CK_SP800_108_COUNTER 0x00000002UL
 #define CK_SP800_108_DKM_LENGTH 0x00000003UL
 #define CK_SP800_108_BYTE_ARRAY 0x00000004UL
+#define CK_SP800_108_KEY_HANDLE 0x00000005UL
 
 /* CK (SP800 DKM) */
 #define CK_SP800_108_DKM_LENGTH_SUM_OF_KEYS 0x00000001UL
@@ -283,6 +296,33 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKA_HSS_LMS_TYPES 0x0000061AUL
 #define CKA_HSS_LMOTS_TYPES 0x0000061BUL
 #define CKA_HSS_KEYS_REMAINING 0x0000061CUL
+#define CKA_PARAMETER_SET 0x0000061DUL
+#define CKA_OBJECT_VALIDATION_FLAGS 0x0000061EUL
+#define CKA_VALIDATION_TYPE 0x0000061FUL
+#define CKA_VALIDATION_VERSION 0x00000620UL
+#define CKA_VALIDATION_LEVEL 0x00000621UL
+#define CKA_VALIDATION_MODULE_ID 0x00000622UL
+#define CKA_VALIDATION_FLAG 0x00000623UL
+#define CKA_VALIDATION_AUTHORITY_TYPE 0x00000624UL
+#define CKA_VALIDATION_COUNTRY 0x00000625UL
+#define CKA_VALIDATION_CERTIFICATE_IDENTIFIER 0x00000626UL
+#define CKA_VALIDATION_CERTIFICATE_URI 0x00000627UL
+#define CKA_VALIDATION_VENDOR_URI 0x00000628UL
+#define CKA_VALIDATION_PROFILE 0x00000629UL
+#define CKA_ENCAPSULATE_TEMPLATE 0x0000062AUL
+#define CKA_DECAPSULATE_TEMPLATE 0x0000062BUL
+#define CKA_TRUST_SERVER_AUTH 0x0000062CUL
+#define CKA_TRUST_CLIENT_AUTH 0x0000062DUL
+#define CKA_TRUST_CODE_SIGNING 0x0000062EUL
+#define CKA_TRUST_EMAIL_PROTECTION 0x0000062FUL
+#define CKA_TRUST_IPSEC_IKE 0x00000630UL
+#define CKA_TRUST_TIME_STAMPING 0x00000631UL
+#define CKA_TRUST_OCSP_SIGNING 0x00000632UL
+#define CKA_ENCAPSULATE 0x00000633UL
+#define CKA_DECAPSULATE 0x00000634UL
+#define CKA_HASH_OF_CERTIFICATE 0x00000635UL
+#define CKA_PUBLIC_CRC64_VALUE 0x00000636UL
+#define CKA_SEED 0x00000637UL
 #define CKA_VENDOR_DEFINED 0x80000000UL
 /* Array attributes */
 #define CKA_WRAP_TEMPLATE 0x40000211UL
@@ -373,6 +413,8 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKF_EC_UNCOMPRESS 0x01000000UL
 #define CKF_EC_COMPRESS 0x02000000UL
 #define CKF_EC_CURVENAME 0x04000000UL
+#define CKF_ENCAPSULATE 0x10000000UL
+#define CKF_DECAPSULATE 0x20000000UL
 #define CKF_EXTENSION 0x80000000UL
 /* Deprecated */
 #ifdef PKCS11_DEPRECATED
@@ -396,6 +438,7 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 /* CKF (session) */
 #define CKF_RW_SESSION 0x00000002UL
 #define CKF_SERIAL_SESSION 0x00000004UL
+#define CKF_ASYNC_SESSION 0x00000008UL
 
 /* CFK (slot) */
 #define CKF_TOKEN_PRESENT 0x00000001UL
@@ -422,6 +465,8 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKF_SO_PIN_LOCKED 0x00400000UL
 #define CKF_SO_PIN_TO_BE_CHANGED 0x00800000UL
 #define CKF_ERROR_STATE 0x01000000UL
+#define CKF_SEED_RANDOM_REQUIRED 0x02000000UL
+#define CKF_ASYNC_SESSION_SUPPORTED 0x04000000UL
 
 /* CKG (GCM) */
 #define CKG_NO_GENERATE 0x00000000UL
@@ -441,11 +486,16 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKG_MGF1_SHA3_384 0x00000008UL
 #define CKG_MGF1_SHA3_512 0x00000009UL
 
-/* CKH */
+/* CKH (clock) */
 #define CKH_MONOTONIC_COUNTER 0x00000001UL
 #define CKH_CLOCK 0x00000002UL
 #define CKH_USER_INTERFACE 0x00000003UL
 #define CKH_VENDOR_DEFINED 0x80000000UL
+
+/* CKH (hedge type) */
+#define CKH_HEDGE_PREFERRED 0x00000000UL
+#define CKH_HEDGE_REQUIRED 0x00000001UL
+#define CKH_DETERMINISTIC_REQUIRED 0x00000002UL
 
 /* CKK */
 #define CKK_RSA 0x00000000UL
@@ -509,6 +559,11 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKK_SHA512_256_HMAC 0x00000044UL
 #define CKK_SHA512_T_HMAC 0x00000045UL
 #define CKK_HSS 0x00000046UL
+#define CKK_XMSS 0x00000047UL
+#define CKK_XMSSMT 0x00000048UL
+#define CKK_ML_KEM 0x00000049UL
+#define CKK_ML_DSA 0x0000004AUL
+#define CKK_SLH_DSA 0x0000004BUL
 #define CKK_VENDOR_DEFINED 0x80000000UL
 /* Deprecated */
 #ifdef PKCS11_DEPRECATED
@@ -532,6 +587,7 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKM_SHA1_RSA_X9_31 0x0000000CUL
 #define CKM_RSA_PKCS_PSS 0x0000000DUL
 #define CKM_SHA1_RSA_PKCS_PSS 0x0000000EUL
+#define CKM_ML_KEM_KEY_PAIR_GEN 0x0000000FUL
 #define CKM_DSA_KEY_PAIR_GEN 0x00000010UL
 #define CKM_DSA 0x00000011UL
 #define CKM_DSA_SHA1 0x00000012UL
@@ -539,16 +595,43 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKM_DSA_SHA256 0x00000014UL
 #define CKM_DSA_SHA384 0x00000015UL
 #define CKM_DSA_SHA512 0x00000016UL
+#define CKM_ML_KEM 0x00000017UL
 #define CKM_DSA_SHA3_224 0x00000018UL
 #define CKM_DSA_SHA3_256 0x00000019UL
 #define CKM_DSA_SHA3_384 0x0000001AUL
 #define CKM_DSA_SHA3_512 0x0000001BUL
+#define CKM_ML_DSA_KEY_PAIR_GEN 0x0000001CUL
+#define CKM_ML_DSA 0x0000001DUL
+#define CKM_HASH_ML_DSA 0x0000001FUL
 #define CKM_DH_PKCS_KEY_PAIR_GEN 0x00000020UL
 #define CKM_DH_PKCS_DERIVE 0x00000021UL
+#define CKM_HASH_ML_DSA_SHA224 0x00000023UL
+#define CKM_HASH_ML_DSA_SHA256 0x00000024UL
+#define CKM_HASH_ML_DSA_SHA384 0x00000025UL
+#define CKM_HASH_ML_DSA_SHA512 0x00000026UL
+#define CKM_HASH_ML_DSA_SHA3_224 0x00000027UL
+#define CKM_HASH_ML_DSA_SHA3_256 0x00000028UL
+#define CKM_HASH_ML_DSA_SHA3_384 0x00000029UL
+#define CKM_HASH_ML_DSA_SHA3_512 0x0000002AUL
+#define CKM_HASH_ML_DSA_SHAKE128 0x0000002BUL
+#define CKM_HASH_ML_DSA_SHAKE256 0x0000002CUL
+#define CKM_SLH_DSA_KEY_PAIR_GEN 0x0000002DUL
+#define CKM_SLH_DSA 0x0000002EUL
 #define CKM_X9_42_DH_KEY_PAIR_GEN 0x00000030UL
 #define CKM_X9_42_DH_DERIVE 0x00000031UL
 #define CKM_X9_42_DH_HYBRID_DERIVE 0x00000032UL
 #define CKM_X9_42_MQV_DERIVE 0x00000033UL
+#define CKM_HASH_SLH_DSA 0x00000034UL
+#define CKM_HASH_SLH_DSA_SHA224 0x00000036UL
+#define CKM_HASH_SLH_DSA_SHA256 0x00000037UL
+#define CKM_HASH_SLH_DSA_SHA384 0x00000038UL
+#define CKM_HASH_SLH_DSA_SHA512 0x00000039UL
+#define CKM_HASH_SLH_DSA_SHA3_224 0x0000003AUL
+#define CKM_HASH_SLH_DSA_SHA3_256 0x0000003BUL
+#define CKM_HASH_SLH_DSA_SHA3_384 0x0000003CUL
+#define CKM_HASH_SLH_DSA_SHA3_512 0x0000003DUL
+#define CKM_HASH_SLH_DSA_SHAKE128 0x0000003EUL
+#define CKM_HASH_SLH_DSA_SHAKE256 0x0000003FUL
 #define CKM_SHA256_RSA_PKCS 0x00000040UL
 #define CKM_SHA384_RSA_PKCS 0x00000041UL
 #define CKM_SHA512_RSA_PKCS 0x00000042UL
@@ -569,6 +652,8 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKM_SHA512_T_HMAC 0x00000051UL
 #define CKM_SHA512_T_HMAC_GENERAL 0x00000052UL
 #define CKM_SHA512_T_KEY_DERIVATION 0x00000053UL
+#define CKM_TLS12_EXTENDED_MASTER_KEY_DERIVE 0x00000056UL
+#define CKM_TLS12_EXTENDED_MASTER_KEY_DERIVE_DH 0x00000057UL
 #define CKM_SHA3_256_RSA_PKCS 0x00000060UL
 #define CKM_SHA3_384_RSA_PKCS 0x00000061UL
 #define CKM_SHA3_512_RSA_PKCS 0x00000062UL
@@ -672,7 +757,6 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKM_CAST3_MAC_GENERAL 0x00000314UL
 #define CKM_CAST3_CBC_PAD 0x00000315UL
 #define CKM_CAST128_KEY_GEN 0x00000320UL
-#define CKM_CAST5_ECB 0x00000321UL
 #define CKM_CAST128_ECB 0x00000321UL
 #define CKM_CAST128_MAC 0x00000323UL
 #define CKM_CAST128_CBC 0x00000322UL
@@ -878,7 +962,6 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKM_DH_PKCS_PARAMETER_GEN 0x00002001UL
 #define CKM_X9_42_DH_PARAMETER_GEN 0x00002002UL
 #define CKM_DSA_PROBABILISTIC_PARAMETER_GEN 0x00002003UL
-#define CKM_DSA_PROBABLISTIC_PARAMETER_GEN 0x00002003UL
 #define CKM_DSA_SHAWE_TAYLOR_PARAMETER_GEN 0x00002004UL
 #define CKM_DSA_FIPS_G_GEN 0x00002005UL
 #define CKM_AES_OFB 0x00002104UL
@@ -951,10 +1034,18 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKM_IKE1_EXTENDED_DERIVE 0x00004031UL
 #define CKM_HSS_KEY_PAIR_GEN 0x00004032UL
 #define CKM_HSS 0x00004033UL
-#define CKM_VENDOR_DEFINED             0x80000000UL
+#define CKM_XMSS_KEY_PAIR_GEN 0x00004034UL
+#define CKM_XMSSMT_KEY_PAIR_GEN 0x00004035UL
+#define CKM_XMSS 0x00004036UL
+#define CKM_XMSSMT 0x00004037UL
+#define CKM_ECDH_X_AES_KEY_WRAP 0x00004038UL
+#define CKM_ECDH_COF_AES_KEY_WRAP 0x00004039UL
+#define CKM_PUB_KEY_FROM_PRIV_KEY 0x0000403AUL
+#define CKM_VENDOR_DEFINED 0x80000000UL
 /* Deprecated */
 #ifdef PKCS11_DEPRECATED
 #define CKM_CAST5_KEY_GEN 0x00000320UL
+#define CKM_CAST5_ECB 0x00000321UL
 #define CKM_CAST5_CBC 0x00000322UL
 #define CKM_CAST5_MAC 0x00000323UL
 #define CKM_CAST5_MAC_GENERAL 0x00000324UL
@@ -962,6 +1053,7 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKM_PBE_MD5_CAST5_CBC 0x000003A4UL
 #define CKM_PBE_SHA1_CAST5_CBC 0x000003A5UL
 #define CKM_ECDSA_KEY_PAIR_GEN 0x00001040UL
+#define CKM_DSA_PROBABLISTIC_PARAMETER_GEN 0x00002003UL
 #endif
 
 /* CKN */
@@ -979,6 +1071,8 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKO_MECHANISM 0x00000007UL
 #define CKO_OTP_KEY 0x00000008UL
 #define CKO_PROFILE 0x00000009UL
+#define CKO_VALIDATION 0x0000000AUL
+#define CKO_TRUST 0x0000000BUL
 #define CKO_VENDOR_DEFINED 0x80000000UL
 
 /* CKP (profile) */
@@ -1000,6 +1094,30 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKP_PKCS5_PBKD2_HMAC_SHA512 0x00000006UL
 #define CKP_PKCS5_PBKD2_HMAC_SHA512_224 0x00000007UL
 #define CKP_PKCS5_PBKD2_HMAC_SHA512_256 0x00000008UL
+
+/* CKP (ML-DSA) */
+#define CKP_ML_DSA_44 0x00000001UL
+#define CKP_ML_DSA_65 0x00000002UL
+#define CKP_ML_DSA_87 0x00000003UL
+
+/* CKP (ML_KEM) */
+#define CKP_ML_KEM_512 0x00000001UL
+#define CKP_ML_KEM_768 0x00000002UL
+#define CKP_ML_KEM_1024 0x00000003UL
+
+/* CKP (SLH-DSA) */
+#define CKP_SLH_DSA_SHA2_128S 0x00000001UL
+#define CKP_SLH_DSA_SHAKE_128S 0x00000002UL
+#define CKP_SLH_DSA_SHA2_128F 0x00000003UL
+#define CKP_SLH_DSA_SHAKE_128F 0x00000004UL
+#define CKP_SLH_DSA_SHA2_192S 0x00000005UL
+#define CKP_SLH_DSA_SHAKE_192S 0x00000006UL
+#define CKP_SLH_DSA_SHA2_192F 0x00000007UL
+#define CKP_SLH_DSA_SHAKE_192F 0x00000008UL
+#define CKP_SLH_DSA_SHA2_256S 0x00000009UL
+#define CKP_SLH_DSA_SHAKE_256S 0x0000000AUL
+#define CKP_SLH_DSA_SHA2_256F 0x0000000BUL
+#define CKP_SLH_DSA_SHAKE_256F 0x0000000CUL
 
 /* CKR */
 #define CKR_OK 0x00000000UL
@@ -1100,8 +1218,13 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKR_TOKEN_RESOURCE_EXCEEDED 0x00000201UL
 #define CKR_OPERATION_CANCEL_FAILED 0x00000202UL
 #define CKR_KEY_EXHAUSTED 0x00000203UL
+#define CKR_PENDING 0x00000204UL
+#define CKR_SESSION_ASYNC_NOT_SUPPORTED 0x00000205UL
+#define CKR_SEED_RANDOM_REQUIRED 0x00000206UL
+#define CKR_OPERATION_NOT_VALIDATED 0x00000207UL
+#define CKR_TOKEN_NOT_INITIALIZED 0x00000208UL
+#define CKR_PARAMETER_SET_NOT_SUPPORTED 0x00000209UL
 #define CKR_VENDOR_DEFINED 0x80000000UL
-
 
 /* CKS */
 #define CKS_RO_PUBLIC_SESSION 0UL
@@ -1110,10 +1233,32 @@ ULONGDEF(CK_XEDDSA_HASH_TYPE);
 #define CKS_RW_USER_FUNCTIONS 3UL
 #define CKS_RW_SO_FUNCTIONS 4UL
 
+/* CKS (validation) */
+#define CKS_LAST_VALIDATION_OK 0x00000001UL
+
+/* CKT (trust) */
+#define CKT_TRUST_UNKNOWN 0x00000000UL
+#define CKT_TRUSTED 0x00000001UL
+#define CKT_TRUST_ANCHOR 0x00000002UL
+#define CKT_NOT_TRUSTED 0x00000003UL
+#define CKT_TRUST_MUST_VERIFY_TRUST 0x00000004UL
+
 /* CKU */
 #define CKU_SO 0UL
 #define CKU_USER 1UL
 #define CKU_CONTEXT_SPECIFIC 2UL
+
+/* CKV (validation authority) */
+#define CKV_AUTHORITY_TYPE_UNSPECIFIED 0x00000000UL
+#define CKV_AUTHORITY_TYPE_NIST_CMVP 0x00000001UL
+#define CKV_AUTHORITY_TYPE_COMMON_CRITERIA 0x00000002UL
+
+/* CKV (validation type) */
+#define CKV_TYPE_UNSPECIFIED 0x00000000UL
+#define CKV_TYPE_SOFTWARE 0x00000001UL
+#define CKV_TYPE_HARDWARE 0x00000002UL
+#define CKV_TYPE_FIRMWARE 0x00000003UL
+#define CKV_TYPE_HYBRID 0x00000004UL
 
 /* CKZ (data) */
 #define CKZ_DATA_SPECIFIED 0x00000001UL
@@ -1134,6 +1279,7 @@ STRUCTDEF(CK_DATE);
 STRUCTDEF(CK_DERIVED_KEY);
 STRUCTDEF(CK_FUNCTION_LIST);
 STRUCTDEF(CK_FUNCTION_LIST_3_0);
+STRUCTDEF(CK_FUNCTION_LIST_3_2);
 STRUCTDEF(CK_INFO);
 STRUCTDEF(CK_INTERFACE);
 STRUCTDEF(CK_MECHANISM);
@@ -1193,7 +1339,7 @@ struct CK_INFO {
 };
 
 struct CK_INTERFACE {
-    CK_CHAR * pInterfaceName;
+    CK_UTF8CHAR * pInterfaceName;
     void * pFunctionList;
     CK_FLAGS flags;
 };
@@ -1252,10 +1398,12 @@ STRUCTDEF(CK_AES_CCM_PARAMS);
 STRUCTDEF(CK_AES_CTR_PARAMS);
 STRUCTDEF(CK_AES_GCM_PARAMS);
 STRUCTDEF(CK_ARIA_CBC_ENCRYPT_DATA_PARAMS);
+STRUCTDEF(CK_ASYNC_DATA);
 STRUCTDEF(CK_CAMELLIA_CBC_ENCRYPT_DATA_PARAMS);
 STRUCTDEF(CK_CAMELLIA_CTR_PARAMS);
 STRUCTDEF(CK_CCM_MESSAGE_PARAMS);
 STRUCTDEF(CK_CCM_PARAMS);
+STRUCTDEF(CK_CCM_WRAP_PARAMS);
 STRUCTDEF(CK_CHACHA20_PARAMS);
 STRUCTDEF(CK_CMS_SIG_PARAMS);
 STRUCTDEF(CK_DES_CBC_ENCRYPT_DATA_PARAMS);
@@ -1267,8 +1415,10 @@ STRUCTDEF(CK_ECMQV_DERIVE_PARAMS);
 STRUCTDEF(CK_EDDSA_PARAMS);
 STRUCTDEF(CK_GCM_MESSAGE_PARAMS);
 STRUCTDEF(CK_GCM_PARAMS);
+STRUCTDEF(CK_GCM_WRAP_PARAMS);
 STRUCTDEF(CK_GOSTR3410_DERIVE_PARAMS);
 STRUCTDEF(CK_GOSTR3410_KEY_WRAP_PARAMS);
+STRUCTDEF(CK_HASH_SIGN_ADDITIONAL_CONTEXT);
 STRUCTDEF(CK_HKDF_PARAMS);
 STRUCTDEF(CK_IKE_PRF_DERIVE_PARAMS);
 STRUCTDEF(CK_IKE1_EXTENDED_DERIVE_PARAMS);
@@ -1297,12 +1447,14 @@ STRUCTDEF(CK_SALSA20_CHACHA20_POLY1305_MSG_PARAMS);
 STRUCTDEF(CK_SALSA20_CHACHA20_POLY1305_PARAMS);
 STRUCTDEF(CK_SALSA20_PARAMS);
 STRUCTDEF(CK_SEED_CBC_ENCRYPT_DATA_PARAMS);
+STRUCTDEF(CK_SIGN_ADDITIONAL_CONTEXT);
 STRUCTDEF(CK_SKIPJACK_PRIVATE_WRAP_PARAMS);
 STRUCTDEF(CK_SKIPJACK_RELAYX_PARAMS);
 STRUCTDEF(CK_SP800_108_COUNTER_FORMAT);
 STRUCTDEF(CK_SP800_108_DKM_LENGTH_FORMAT);
 STRUCTDEF(CK_SP800_108_FEEDBACK_KDF_PARAMS);
 STRUCTDEF(CK_SP800_108_KDF_PARAMS);
+STRUCTDEF(CK_TLS12_EXTENDED_MASTER_KEY_DERIVE_PARAMS);
 STRUCTDEF(CK_X2RATCHET_INITIALIZE_PARAMS);
 STRUCTDEF(CK_X2RATCHET_RESPOND_PARAMS);
 STRUCTDEF(CK_X3DH_INITIATE_PARAMS);
@@ -1348,6 +1500,14 @@ struct CK_ARIA_CBC_ENCRYPT_DATA_PARAMS {
     CK_ULONG length;
 };
 
+struct CK_ASYNC_DATA {
+    CK_ULONG ulVersion;
+    CK_BYTE * pValue;
+    CK_ULONG ulValue;
+    CK_OBJECT_HANDLE hObject;
+    CK_OBJECT_HANDLE hAdditionalObject;
+};
+
 struct CK_CAMELLIA_CBC_ENCRYPT_DATA_PARAMS {
     CK_BYTE iv[16];
     CK_BYTE * pData;
@@ -1373,6 +1533,16 @@ struct CK_CCM_PARAMS {
     CK_ULONG ulDataLen;
     CK_BYTE * pNonce;
     CK_ULONG ulNonceLen;
+    CK_BYTE * pAAD;
+    CK_ULONG ulAADLen;
+    CK_ULONG ulMACLen;
+};
+struct CK_CCM_WRAP_PARAMS {
+    CK_ULONG ulDataLen;
+    CK_BYTE * pNonce;
+    CK_ULONG ulNonceLen;
+    CK_ULONG ulNonceFixedBits;
+    CK_GENERATOR_FUNCTION nonceGenerator;
     CK_BYTE * pAAD;
     CK_ULONG ulAADLen;
     CK_ULONG ulMACLen;
@@ -1473,6 +1643,16 @@ struct CK_GCM_PARAMS {
     CK_ULONG ulTagBits;
 };
 
+struct CK_GCM_WRAP_PARAMS {
+    CK_BYTE * pIv;
+    CK_ULONG ulIvLen;
+    CK_ULONG ulIvFixedBits;
+    CK_GENERATOR_FUNCTION ivGenerator;
+    CK_BYTE * pAAD;
+    CK_ULONG ulAADLen;
+    CK_ULONG ulTagBits;
+};
+
 struct CK_GOSTR3410_DERIVE_PARAMS {
     CK_EC_KDF_TYPE kdf;
     CK_BYTE * pPublicData;
@@ -1487,6 +1667,13 @@ struct CK_GOSTR3410_KEY_WRAP_PARAMS {
     CK_BYTE * pUKM;
     CK_ULONG ulUKMLen;
     CK_OBJECT_HANDLE hKey;
+};
+
+struct CK_HASH_SIGN_ADDITIONAL_CONTEXT {
+    CK_HEDGE_TYPE hedgeVariant;
+    CK_BYTE * pContext;
+    CK_ULONG ulContextLen;
+    CK_MECHANISM_TYPE hash;
 };
 
 struct CK_HKDF_PARAMS {
@@ -1694,6 +1881,12 @@ struct CK_SEED_CBC_ENCRYPT_DATA_PARAMS {
     CK_ULONG length;
 };
 
+struct CK_SIGN_ADDITIONAL_CONTEXT {
+    CK_HEDGE_TYPE hedgeVariant;
+    CK_BYTE * pContext;
+    CK_ULONG ulContextLen;
+};
+
 struct CK_SKIPJACK_PRIVATE_WRAP_PARAMS {
     CK_ULONG ulPasswordLen;
     CK_BYTE * pPassword;
@@ -1747,6 +1940,13 @@ struct CK_SP800_108_FEEDBACK_KDF_PARAMS
     CK_BYTE * pIV;
     CK_ULONG ulAdditionalDerivedKeys;
     CK_DERIVED_KEY * pAdditionalDerivedKeys;
+};
+
+struct CK_TLS12_EXTENDED_MASTER_KEY_DERIVE_PARAMS {
+    CK_MECHANISM_TYPE prfHashMechanism;
+    CK_BYTE * pSessionHash;
+    CK_ULONG ulSessionHashLen;
+    CK_VERSION * pVersion;
 };
 
 struct CK_SP800_108_KDF_PARAMS
@@ -1834,12 +2034,6 @@ struct CK_X9_42_MQV_DERIVE_PARAMS {
 
 struct CK_XEDDSA_PARAMS {
     CK_XEDDSA_HASH_TYPE hash;
-};
-
-struct specifiedParams {
-    CK_HSS_LEVELS levels;
-    CK_LMS_TYPE lm_type[8];
-    CK_LMOTS_TYPE lm_ots_type[8];
 };
 
 /* TLS related structure definitions */
@@ -2116,6 +2310,34 @@ extern CK_RV C_VerifyMessageBegin(CK_SESSION_HANDLE, void *, CK_ULONG);
 extern CK_RV C_VerifyMessageNext(CK_SESSION_HANDLE, void *, CK_ULONG,
                                  CK_BYTE *, CK_ULONG, CK_BYTE *, CK_ULONG);
 extern CK_RV C_MessageVerifyFinal(CK_SESSION_HANDLE);
+extern CK_RV C_EncapsulateKey(CK_SESSION_HANDLE, CK_MECHANISM *,
+                              CK_OBJECT_HANDLE, CK_ATTRIBUTE *, CK_ULONG,
+                              CK_BYTE *, CK_ULONG *, CK_OBJECT_HANDLE *);
+extern CK_RV C_DecapsulateKey(CK_SESSION_HANDLE, CK_MECHANISM *,
+                              CK_OBJECT_HANDLE, CK_ATTRIBUTE *, CK_ULONG,
+                              CK_BYTE *, CK_ULONG, CK_OBJECT_HANDLE *);
+extern CK_RV C_VerifySignatureInit(CK_SESSION_HANDLE, CK_MECHANISM *,
+                                   CK_OBJECT_HANDLE, CK_BYTE *, CK_ULONG);
+extern CK_RV C_VerifySignature(CK_SESSION_HANDLE, CK_BYTE *, CK_ULONG);
+extern CK_RV C_VerifySignatureUpdate(CK_SESSION_HANDLE, CK_BYTE *, CK_ULONG);
+extern CK_RV C_VerifySignatureFinal(CK_SESSION_HANDLE);
+extern CK_RV C_GetSessionValidationFlags(CK_SESSION_HANDLE,
+                                         CK_SESSION_VALIDATION_FLAGS_TYPE,
+                                         CK_FLAGS *);
+extern CK_RV C_AsyncComplete(CK_SESSION_HANDLE, CK_UTF8CHAR *,
+                             CK_ASYNC_DATA *);
+extern CK_RV C_AsyncGetID(CK_SESSION_HANDLE, CK_UTF8CHAR *, CK_ULONG *);
+extern CK_RV C_AsyncJoin(CK_SESSION_HANDLE, CK_UTF8CHAR *, CK_ULONG, CK_BYTE *,
+                         CK_ULONG);
+extern CK_RV C_WrapKeyAuthenticated(CK_SESSION_HANDLE, CK_MECHANISM *,
+                                    CK_OBJECT_HANDLE, CK_OBJECT_HANDLE,
+                                    CK_BYTE *, CK_ULONG *, CK_BYTE *,
+                                    CK_ULONG *);
+extern CK_RV C_UnwrapKeyAuthenticated(CK_SESSION_HANDLE, CK_MECHANISM *,
+                                      CK_OBJECT_HANDLE, CK_BYTE *,
+                                      CK_ULONG, CK_ATTRIBUTE *,
+                                      CK_ULONG, CK_BYTE *, CK_ULONG,
+                                      CK_OBJECT_HANDLE *);
 
 typedef CK_RV (* CK_C_Initialize)(void *);
 typedef CK_RV (* CK_C_Finalize)(void *);
@@ -2276,6 +2498,146 @@ typedef CK_RV (* CK_C_VerifyMessageNext)(CK_SESSION_HANDLE, void *, CK_ULONG,
                                          CK_BYTE *, CK_ULONG, CK_BYTE *,
                                          CK_ULONG);
 typedef CK_RV (* CK_C_MessageVerifyFinal)(CK_SESSION_HANDLE);
+typedef CK_RV (* CK_C_EncapsulateKey)(CK_SESSION_HANDLE, CK_MECHANISM *,
+                                      CK_OBJECT_HANDLE, CK_ATTRIBUTE *,
+                                      CK_ULONG, CK_BYTE *, CK_ULONG *,
+                                      CK_OBJECT_HANDLE *);
+typedef CK_RV (* CK_C_DecapsulateKey)(CK_SESSION_HANDLE, CK_MECHANISM *,
+                                      CK_OBJECT_HANDLE, CK_ATTRIBUTE *,
+                                      CK_ULONG, CK_BYTE *, CK_ULONG,
+                                      CK_OBJECT_HANDLE *);
+typedef CK_RV (* CK_C_VerifySignatureInit)(CK_SESSION_HANDLE, CK_MECHANISM *,
+                                           CK_OBJECT_HANDLE, CK_BYTE *,
+                                           CK_ULONG);
+typedef CK_RV (* CK_C_VerifySignature)(CK_SESSION_HANDLE, CK_BYTE *, CK_ULONG);
+typedef CK_RV (* CK_C_VerifySignatureUpdate)(CK_SESSION_HANDLE, CK_BYTE *,
+                                             CK_ULONG);
+typedef CK_RV (* CK_C_VerifySignatureFinal)(CK_SESSION_HANDLE);
+typedef CK_RV (* CK_C_GetSessionValidationFlags)(CK_SESSION_HANDLE,
+                                                 CK_SESSION_VALIDATION_FLAGS_TYPE,
+                                                 CK_FLAGS *);
+typedef CK_RV (* CK_C_AsyncComplete)(CK_SESSION_HANDLE, CK_UTF8CHAR *,
+                                     CK_ASYNC_DATA *);
+typedef CK_RV (* CK_C_AsyncGetID)(CK_SESSION_HANDLE, CK_UTF8CHAR *, CK_ULONG *);
+typedef CK_RV (* CK_C_AsyncJoin)(CK_SESSION_HANDLE, CK_UTF8CHAR *, CK_ULONG,
+                                 CK_BYTE *, CK_ULONG);
+typedef CK_RV (* CK_C_WrapKeyAuthenticated)(CK_SESSION_HANDLE, CK_MECHANISM *,
+                                            CK_OBJECT_HANDLE, CK_OBJECT_HANDLE,
+                                            CK_BYTE *, CK_ULONG *, CK_BYTE *,
+                                            CK_ULONG *);
+typedef CK_RV (* CK_C_UnwrapKeyAuthenticated)(CK_SESSION_HANDLE, CK_MECHANISM *,
+                                              CK_OBJECT_HANDLE, CK_BYTE *,
+                                              CK_ULONG, CK_ATTRIBUTE *,
+                                              CK_ULONG, CK_BYTE *, CK_ULONG,
+                                              CK_OBJECT_HANDLE *);
+
+struct CK_FUNCTION_LIST_3_2 {
+    CK_VERSION version;
+    CK_C_Initialize C_Initialize;
+    CK_C_Finalize C_Finalize;
+    CK_C_GetInfo C_GetInfo;
+    CK_C_GetFunctionList C_GetFunctionList;
+    CK_C_GetSlotList C_GetSlotList;
+    CK_C_GetSlotInfo C_GetSlotInfo;
+    CK_C_GetTokenInfo C_GetTokenInfo;
+    CK_C_GetMechanismList C_GetMechanismList;
+    CK_C_GetMechanismInfo C_GetMechanismInfo;
+    CK_C_InitToken C_InitToken;
+    CK_C_InitPIN C_InitPIN;
+    CK_C_SetPIN C_SetPIN;
+    CK_C_OpenSession C_OpenSession;
+    CK_C_CloseSession C_CloseSession;
+    CK_C_CloseAllSessions C_CloseAllSessions;
+    CK_C_GetSessionInfo C_GetSessionInfo;
+    CK_C_GetOperationState C_GetOperationState;
+    CK_C_SetOperationState C_SetOperationState;
+    CK_C_Login C_Login;
+    CK_C_Logout C_Logout;
+    CK_C_CreateObject C_CreateObject;
+    CK_C_CopyObject C_CopyObject;
+    CK_C_DestroyObject C_DestroyObject;
+    CK_C_GetObjectSize C_GetObjectSize;
+    CK_C_GetAttributeValue C_GetAttributeValue;
+    CK_C_SetAttributeValue C_SetAttributeValue;
+    CK_C_FindObjectsInit C_FindObjectsInit;
+    CK_C_FindObjects C_FindObjects;
+    CK_C_FindObjectsFinal C_FindObjectsFinal;
+    CK_C_EncryptInit C_EncryptInit;
+    CK_C_Encrypt C_Encrypt;
+    CK_C_EncryptUpdate C_EncryptUpdate;
+    CK_C_EncryptFinal C_EncryptFinal;
+    CK_C_DecryptInit C_DecryptInit;
+    CK_C_Decrypt C_Decrypt;
+    CK_C_DecryptUpdate C_DecryptUpdate;
+    CK_C_DecryptFinal C_DecryptFinal;
+    CK_C_DigestInit C_DigestInit;
+    CK_C_Digest C_Digest;
+    CK_C_DigestUpdate C_DigestUpdate;
+    CK_C_DigestKey C_DigestKey;
+    CK_C_DigestFinal C_DigestFinal;
+    CK_C_SignInit C_SignInit;
+    CK_C_Sign C_Sign;
+    CK_C_SignUpdate C_SignUpdate;
+    CK_C_SignFinal C_SignFinal;
+    CK_C_SignRecoverInit C_SignRecoverInit;
+    CK_C_SignRecover C_SignRecover;
+    CK_C_VerifyInit C_VerifyInit;
+    CK_C_Verify C_Verify;
+    CK_C_VerifyUpdate C_VerifyUpdate;
+    CK_C_VerifyFinal C_VerifyFinal;
+    CK_C_VerifyRecoverInit C_VerifyRecoverInit;
+    CK_C_VerifyRecover C_VerifyRecover;
+    CK_C_DigestEncryptUpdate C_DigestEncryptUpdate;
+    CK_C_DecryptDigestUpdate C_DecryptDigestUpdate;
+    CK_C_SignEncryptUpdate C_SignEncryptUpdate;
+    CK_C_DecryptVerifyUpdate C_DecryptVerifyUpdate;
+    CK_C_GenerateKey C_GenerateKey;
+    CK_C_GenerateKeyPair C_GenerateKeyPair;
+    CK_C_WrapKey C_WrapKey;
+    CK_C_UnwrapKey C_UnwrapKey;
+    CK_C_DeriveKey C_DeriveKey;
+    CK_C_SeedRandom C_SeedRandom;
+    CK_C_GenerateRandom C_GenerateRandom;
+    CK_C_GetFunctionStatus C_GetFunctionStatus;
+    CK_C_CancelFunction C_CancelFunction;
+    CK_C_WaitForSlotEvent C_WaitForSlotEvent;
+    CK_C_GetInterfaceList C_GetInterfaceList;
+    CK_C_GetInterface C_GetInterface;
+    CK_C_LoginUser C_LoginUser;
+    CK_C_SessionCancel C_SessionCancel;
+    CK_C_MessageEncryptInit C_MessageEncryptInit;
+    CK_C_EncryptMessage C_EncryptMessage;
+    CK_C_EncryptMessageBegin C_EncryptMessageBegin;
+    CK_C_EncryptMessageNext C_EncryptMessageNext;
+    CK_C_MessageEncryptFinal C_MessageEncryptFinal;
+    CK_C_MessageDecryptInit C_MessageDecryptInit;
+    CK_C_DecryptMessage C_DecryptMessage;
+    CK_C_DecryptMessageBegin C_DecryptMessageBegin;
+    CK_C_DecryptMessageNext C_DecryptMessageNext;
+    CK_C_MessageDecryptFinal C_MessageDecryptFinal;
+    CK_C_MessageSignInit C_MessageSignInit;
+    CK_C_SignMessage C_SignMessage;
+    CK_C_SignMessageBegin C_SignMessageBegin;
+    CK_C_SignMessageNext C_SignMessageNext;
+    CK_C_MessageSignFinal C_MessageSignFinal;
+    CK_C_MessageVerifyInit C_MessageVerifyInit;
+    CK_C_VerifyMessage C_VerifyMessage;
+    CK_C_VerifyMessageBegin C_VerifyMessageBegin;
+    CK_C_VerifyMessageNext C_VerifyMessageNext;
+    CK_C_MessageVerifyFinal C_MessageVerifyFinal;
+    CK_C_EncapsulateKey C_EncapsulateKey;
+    CK_C_DecapsulateKey C_DecapsulateKey;
+    CK_C_VerifySignatureInit C_VerifySignatureInit;
+    CK_C_VerifySignature C_VerifySignature;
+    CK_C_VerifySignatureUpdate C_VerifySignatureUpdate;
+    CK_C_VerifySignatureFinal C_VerifySignatureFinal;
+    CK_C_GetSessionValidationFlags C_GetSessionValidationFlags;
+    CK_C_AsyncComplete C_AsyncComplete;
+    CK_C_AsyncGetID C_AsyncGetID;
+    CK_C_AsyncJoin C_AsyncJoin;
+    CK_C_WrapKeyAuthenticated  C_WrapKeyAuthenticated ;
+    CK_C_UnwrapKeyAuthenticated  C_UnwrapKeyAuthenticated ;
+};
 
 struct CK_FUNCTION_LIST_3_0 {
     CK_VERSION version;
@@ -2444,6 +2806,8 @@ struct CK_FUNCTION_LIST {
     CK_C_CancelFunction C_CancelFunction;
     CK_C_WaitForSlotEvent C_WaitForSlotEvent;
 };
+
+/* End of header from https://github.com/latchset/pkcs11-headers */
 
 /*
  * A mask for new GOST algorithms.
