@@ -9,7 +9,7 @@ define([PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
 define([PACKAGE_VERSION_MAJOR], [0])
 define([PACKAGE_VERSION_MINOR], [26])
 define([PACKAGE_VERSION_FIX], [1])
-define([PACKAGE_SUFFIX], [-swissbit-piv-beta])
+define([PACKAGE_SUFFIX], [-swissbit-piv])
 
 define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
 define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
@@ -998,6 +998,12 @@ if test "${enable_sm}" = "yes"; then
 	esac
 fi
 
+if test "${PLATFORM}" = "x86"; then
+	DEFAULT_INSTALL_DIR="C:\\Program Files (x86)\\OpenSC Project\\OpenSC\\"
+else
+	DEFAULT_INSTALL_DIR="C:\\Program Files\\OpenSC Project\\OpenSC\\"
+fi
+
 if test "${with_pkcs11_provider}" = "detect"; then
 	if test "${WIN32}" != "yes"; then
 		DEFAULT_PKCS11_PROVIDER="${libdir}/opensc-pkcs11${DYN_LIB_EXT}"
@@ -1136,6 +1142,7 @@ AC_SUBST([OPTIONAL_PCSC_CFLAGS])
 AC_SUBST([LIBRARY_BITNESS])
 AC_SUBST([DEFAULT_SM_MODULE])
 AC_SUBST([DEFAULT_SM_MODULE_PATH])
+AC_SUBST([DEFAULT_INSTALL_DIR])
 AC_SUBST([DEBUG_FILE])
 AC_SUBST([PROFILE_DIR])
 AC_SUBST([PROFILE_DIR_DEFAULT])
@@ -1184,6 +1191,7 @@ AC_CONFIG_FILES([
 	doc/tools/Makefile
 	doc/files/Makefile
 	etc/Makefile
+	etc/opensc.conf
 	tests/Makefile
 	src/Makefile
 	src/common/Makefile

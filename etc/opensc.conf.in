@@ -3,7 +3,7 @@ app default {
 	# debug_file = opensc-debug.txt;
 	framework pkcs15 {
 		pkcs15init PIV-II {
-			module = "C:\Program Files\OpenSC Project\OpenSC\ishield_piv_module.dll";
+			module = "@DEFAULT_INSTALL_DIR@ishield_piv_module@DYN_LIB_EXT@";
 		}
 	};
 	card_atr 3b:97:11:81:21:75:69:53:68:69:65:6c:64:05 {

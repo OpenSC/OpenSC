@@ -75,6 +75,7 @@ doc/tools/opensc-notify
 doc/files/opensc.conf.5.xml
 doc/files/pkcs15-profile.5.xml
 
+etc/opensc.conf
 etc/opensc.conf.example
 src/common/compat_getopt_main
 src/minidriver/opensc-minidriver.inf

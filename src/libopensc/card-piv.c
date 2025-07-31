@@ -5372,7 +5372,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	int saved_type = card->type;
 	sc_apdu_t apdu;
 	u8 yubico_version_buf[3] = {0};
-	u8 swissbit_version_buf[4] = {0};
+	u8 swissbit_version_buf[255] = {0};
 
 	/* piv_match_card may be called with card->type, set by opensc.conf */
 	/* User provided card type must be one we know */
@@ -5570,9 +5570,9 @@ static int piv_match_card_continued(sc_card_t *card)
                         apdu.resplen = sizeof(swissbit_version_buf);
                         apdu.le = apdu.resplen;
                         r2 = sc_transmit_apdu(card, &apdu); /* on error swissbit_version == 0 */
-                        if (apdu.resplen == 4) {
-                                priv->swissbit_version = (swissbit_version_buf[0] << 24) | (swissbit_version_buf[1] << 16) |
-                                    (swissbit_version_buf[2] << 8) | swissbit_version_buf[3];
+                        if (apdu.resplen >= 3) {
+                                priv->swissbit_version = (swissbit_version_buf[0] << 16) | (swissbit_version_buf[1] << 8) |
+                                                         swissbit_version_buf[2];
                                 sc_log(card->ctx, "Swissbit card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->swissbit_version);
                         }
         }
@@ -5702,7 +5702,7 @@ static int piv_match_card_continued(sc_card_t *card)
 
 		case SC_CARD_TYPE_PIV_II_SWISSBIT2:
 			priv->card_issues |= 0; /* could add others here */
-                        if (priv->swissbit_version >= 0x01020000)
+			if (priv->swissbit_version >= 0x00010200)
 				priv->card_issues |= CI_RSA_4096 | CI_EC521;
 			break;
 

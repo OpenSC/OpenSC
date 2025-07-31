@@ -1,20 +1,21 @@
 CV_CERTS = DESRCACC100001 DESCHSMCVCA00001
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
-DISTCLEANFILES = opensc.conf.example
+DISTCLEANFILES = opensc.conf opensc.conf.example
 
 EXTRA_DIST = $(CV_CERTS) Makefile.mak
 
 SUFFIXES = .in
 
-dist_noinst_DATA = opensc.conf opensc.conf.example.in
-nodist_noinst_DATA = opensc.conf.example
+dist_noinst_DATA = opensc.conf.in opensc.conf.example.in
+nodist_noinst_DATA = opensc.conf opensc.conf.example
 
 # Make sure we build this every time
 # as there is no dependency for this.
 # Can be removed if MSVC is not required.
 force:
 opensc.conf.example: opensc.conf.example.in force
+opensc.conf: opensc.conf.in force
 
 .in:
 	$(AM_V_GEN)sed \
@@ -23,6 +24,7 @@ opensc.conf.example: opensc.conf.example.in force
 		-e 's|@DEFAULT_PCSC_PROVIDER[@]|$(DEFAULT_PCSC_PROVIDER)|g' \
 		-e 's|@DEFAULT_SM_MODULE[@]|$(DEFAULT_SM_MODULE)|g' \
 		-e 's|@DEFAULT_SM_MODULE_PATH[@]|$(DEFAULT_SM_MODULE_PATH)|g' \
+		-e 's|@DEFAULT_INSTALL_DIR[@]|$(DEFAULT_INSTALL_DIR)|g' \
 		-e 's|@DYN_LIB_EXT[@]|$(DYN_LIB_EXT)|g' \
 		-e 's|@LIBDIR[@]|$(LIBDIR)|g' \
 		-e 's|@LIB_PRE[@]|$(LIB_PRE)|g' \
