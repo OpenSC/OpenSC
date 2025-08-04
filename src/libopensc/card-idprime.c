@@ -44,6 +44,7 @@ static struct sc_card_driver idprime_drv = {
 
 /* This ATR says, there is no EF.DIR nor EF.ATR so ISO discovery mechanisms
  * are not useful here */
+// clang-format off
 static const struct sc_atr_table idprime_atrs[] = {
 	/* known ATRs for IDPrime 3810:
 	 * 3b:7f:96:00:00:80:31:80:65:b0:84:41:3d:f6:12:0f:fe:82:90:00    Jakuje/xhanulik
@@ -72,7 +73,7 @@ static const struct sc_atr_table idprime_atrs[] = {
 	{ "3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:84:65:66:fb:12:01:78:82:90:00:85",
 	  "ff:ff:00:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff:00",
 	  "based Gemalto IDPrime 930 (eToken 5110+ FIPS)",
-	  SC_CARD_TYPE_IDPRIME_930, 0, NULL },
+	  SC_CARD_TYPE_IDPRIME_930_PLUS, 0, NULL },
 	/* known ATR for IDPrime 940: Placing in front of the 940 as its mask overlaps this one!
 	 * 3b:7f:96:00:00:80:31:80:65:b0:85:03:00:ef:12:0f:fe:82:90:00   msetina
 	 */
@@ -114,6 +115,7 @@ static const struct sc_atr_table idprime_atrs[] = {
 	  SC_CARD_TYPE_IDPRIME_GENERIC, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
+// clang-format on
 
 static const sc_path_t idprime_path = {
 	"", 0,
@@ -494,6 +496,9 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 			case SC_CARD_TYPE_IDPRIME_930:
 				new_object.key_reference = 0x11 + cert_id * 2;
 				break;
+			case SC_CARD_TYPE_IDPRIME_930_PLUS:
+				new_object.key_reference = 0x10 + cert_id * 2;
+				break;
 			case SC_CARD_TYPE_IDPRIME_940: {
 					idprime_keyref_t *keyref = (idprime_keyref_t *) list_seek(&priv->keyrefmap, &cert_id);
 					if (!keyref) {
@@ -668,6 +673,7 @@ static int idprime_init(sc_card_t *card)
 		card->name = "Gemalto IDPrime MD 830";
 		break;
 	case SC_CARD_TYPE_IDPRIME_930:
+	case SC_CARD_TYPE_IDPRIME_930_PLUS:
 		card->name = "Gemalto IDPrime 930/3930";
 		break;
 	case SC_CARD_TYPE_IDPRIME_940:
@@ -694,16 +700,15 @@ static int idprime_init(sc_card_t *card)
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
-	if (card->type == SC_CARD_TYPE_IDPRIME_940) {
+	switch (card->type) {
+	case SC_CARD_TYPE_IDPRIME_930_PLUS:
+	case SC_CARD_TYPE_IDPRIME_940:
 		_sc_card_add_rsa_alg(card, 3072, flags, 0);
-	}
-	if (card->type == SC_CARD_TYPE_IDPRIME_930
-	    || card->type == SC_CARD_TYPE_IDPRIME_940) {
+		/* fallthrough */
+	case SC_CARD_TYPE_IDPRIME_930:
 		_sc_card_add_rsa_alg(card, 4096, flags, 0);
-	}
-	if (card->type == SC_CARD_TYPE_IDPRIME_930 ||
-			card->type == SC_CARD_TYPE_IDPRIME_940 ||
-			card->type == SC_CARD_TYPE_IDPRIME_840) {
+		/* fallthrough */
+	case SC_CARD_TYPE_IDPRIME_840:
 		/* Set up algorithm info for EC */
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
 		ext_flags = SC_ALGORITHM_EXT_EC_F_P
@@ -714,6 +719,9 @@ static int idprime_init(sc_card_t *card)
 		_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
 		_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 		_sc_card_add_ec_alg(card, 521, flags, ext_flags, NULL);
+		break;
+	default:
+		break;
 	}
 
 	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
