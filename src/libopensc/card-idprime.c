@@ -711,6 +711,9 @@ static int idprime_init(sc_card_t *card)
 	case SC_CARD_TYPE_IDPRIME_840:
 		/* Set up algorithm info for EC */
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
+		if (card->type == SC_CARD_TYPE_IDPRIME_930_PLUS || card->type == SC_CARD_TYPE_IDPRIME_940) {
+			flags |= SC_ALGORITHM_ECDH_CDH_RAW;
+		}
 		ext_flags = SC_ALGORITHM_EXT_EC_F_P
 			| SC_ALGORITHM_EXT_EC_ECPARAMETERS
 			| SC_ALGORITHM_EXT_EC_NAMEDCURVE
@@ -1034,6 +1037,10 @@ idprime_set_security_env(struct sc_card *card,
 	new_env.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
 	/* SHA-1 mechanisms are not allowed in the card I have available */
 	switch (env->operation) {
+	case SC_SEC_OPERATION_DERIVE:
+		priv->current_op = SC_ALGORITHM_EC;
+		new_env.flags &= ~SC_SEC_ENV_ALG_REF_PRESENT;
+		break;
 	case SC_SEC_OPERATION_DECIPHER:
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_OAEP) {
 			if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA1) {
@@ -1144,11 +1151,7 @@ idprime_compute_signature(struct sc_card *card,
 	apdu.resp = out;
 	apdu.resplen = outlen;
 	apdu.le = outlen;
-	if (apdu.le > sc_get_max_recv_size(card)) {
-		/* The lower layers will automatically do a GET RESPONSE, if possible.
-		 * All other workarounds must be carried out by the upper layers. */
-		apdu.le = sc_get_max_recv_size(card);
-	}
+	iso7816_fixup_transceive_length(card, &apdu);
 
 	apdu.data = NULL;
 	apdu.datalen = 0;
@@ -1174,11 +1177,13 @@ idprime_decipher(struct sc_card *card,
 	int r;
 	struct sc_apdu apdu;
 	u8 *sbuf = NULL;
+	idprime_private_data_t *priv;
 
 	if (card == NULL || crgram == NULL || out == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
+	priv = card->drv_data;
 	sc_log(card->ctx,
 		"IDPrime decipher: in-len %"SC_FORMAT_LEN_SIZE_T"u, out-len %"SC_FORMAT_LEN_SIZE_T"u",
 		crgram_len, outlen);
@@ -1195,19 +1200,11 @@ idprime_decipher(struct sc_card *card,
 	apdu.resplen = outlen;
 	apdu.le      = outlen;
 
-	sbuf[0] = 0x81; /* padding indicator byte, 0x81 = Proprietary */
+	sbuf[0] = priv->current_op == SC_ALGORITHM_EC ? 0x00 : 0x81; /* padding indicator byte, 0x81 = Proprietary, 0x00 = No further indication  */
 	memcpy(sbuf + 1, crgram, crgram_len);
 	apdu.data = sbuf;
 	apdu.lc = crgram_len + 1;
-	if (apdu.lc > sc_get_max_send_size(card)) {
-		/* The lower layers will automatically do chaining */
-		apdu.flags |= SC_APDU_FLAGS_CHAINING;
-	}
-	if (apdu.le > sc_get_max_recv_size(card)) {
-		/* The lower layers will automatically do a GET RESPONSE, if possible.
-		 * All other workarounds must be carried out by the upper layers. */
-		apdu.le = sc_get_max_recv_size(card);
-	}
+	iso7816_fixup_transceive_length(card, &apdu);
 	apdu.datalen = crgram_len + 1;
 
 	r = sc_transmit_apdu(card, &apdu);
