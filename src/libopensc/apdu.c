@@ -563,7 +563,7 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 		return r;
 	}
 
-#if ENABLE_SM
+#ifdef ENABLE_SM
 	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
 			&& (apdu->flags & SC_APDU_FLAGS_CHAINING) != 0
 			&& (apdu->flags & SC_APDU_FLAGS_SM_CHAINING) != 0) {
