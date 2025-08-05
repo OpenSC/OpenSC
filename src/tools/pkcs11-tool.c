@@ -1261,7 +1261,14 @@ int main(int argc, char * argv[])
 		/* Check that no interfering options were set */
 		if (opt_module || opt_slot_set || opt_slot_index_set || opt_slot_description ||
 				opt_pin || opt_object_label || opt_object_class_str || opt_object_id_len) {
-			fprintf(stderr, "Invalid combination of arguments when --uri used\n");
+			if (opt_module)
+				fprintf(stderr, "The --module cannot be specified with --uri option\n");
+			if (opt_slot_set || opt_slot_index_set || opt_slot_description)
+				fprintf(stderr, "Options specifying slot cannot be specified with --uri option\n");
+			if (opt_pin)
+				fprintf(stderr, "The PIN option cannot be specified with --uri option\n");
+			if (opt_object_label || opt_object_class_str || opt_object_id_len)
+				fprintf(stderr, "Options specifying object cannot be specified with --uri option\n");
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
 		if (opt_uri->slot_id) {
