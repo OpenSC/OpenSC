@@ -31,35 +31,35 @@
 #include "pkcs11_uri.h"
 
 static struct pkcs11_uri_attr path_attr[] = {
-		{"id", PKCS11_ID},
-		{"library-description", PKCS11_LIB_DESCRIPTION},
-		{"library-manufacturer", PKCS11_LIB_MANUFACTURER},
-		{"library-version", PKCS11_LIB_VERSION},
-		{"manufacturer", PKCS11_MANUFACTURER},
-		{"model", PKCS11_MODEL},
-		{"object", PKCS11_OBJECT},
-		{"serial", PKCS11_SERIAL},
-		{"slot-description", PKCS11_SLOT_DESCRIPTION},
-		{"slot-id", PKCS11_SLOT_ID},
-		{"slot-manufacturer", PKCS11_SLOT_MANUFACTURER},
-		{"token", PKCS11_TOKEN},
-		{"type", PKCS11_TYPE},
-		{NULL, 0}
+		{"id",		       PKCS11_ID		},
+		{"library-description",	PKCS11_LIB_DESCRIPTION  },
+		{"library-manufacturer", PKCS11_LIB_MANUFACTURER },
+		{"library-version",	    PKCS11_LIB_VERSION      },
+		{"manufacturer",	 PKCS11_MANUFACTURER	    },
+		{"model",		  PKCS11_MODEL	      },
+		{"object",		   PKCS11_OBJECT		},
+		{"serial",		   PKCS11_SERIAL		},
+		{"slot-description",     PKCS11_SLOT_DESCRIPTION },
+		{"slot-id",		    PKCS11_SLOT_ID	  },
+		{"slot-manufacturer",    PKCS11_SLOT_MANUFACTURER},
+		{"token",		  PKCS11_TOKEN	      },
+		{"type",		 PKCS11_TYPE		    },
+		{NULL,		       0			}
 };
 
 static struct pkcs11_uri_attr query_attr[] = {
-		{"pin-source", PKCS11_PIN_SOURCE},
-		{"pin-value", PKCS11_PIN_VALUE},
+		{"pin-source",  PKCS11_PIN_SOURCE },
+		{"pin-value",   PKCS11_PIN_VALUE  },
 		{"module-name", PKCS11_MODULE_NAME},
 		{"module-path", PKCS11_MODULE_PATH},
-		{NULL, 0}
+		{NULL,	       0			}
 };
 
 static int
 get_attr(struct pkcs11_uri_attr attr[], char *token)
 {
 	for (int i = 0; attr[i].name; i++) {
-		if (strncasecmp(token, attr[i].name, strlen(attr[i].name)) == 0	&&
+		if (strncasecmp(token, attr[i].name, strlen(attr[i].name)) == 0 &&
 				*(token + strlen(attr[i].name)) == '=')
 			return attr[i].id;
 	}
@@ -108,7 +108,7 @@ decode_percent_string(char *data, char **out)
 	/* zero terminate */
 	decoded[decoded_len] = '\0';
 	*out = decoded;
-	return (int) decoded_len;
+	return (int)decoded_len;
 fail:
 	free(decoded);
 	return -1;

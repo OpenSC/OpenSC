@@ -271,7 +271,6 @@ main(void)
 			cmocka_unit_test(torture_module_path),
 			cmocka_unit_test(torture_pin_value),
 			cmocka_unit_test(torture_encoded_semicolon),
-			cmocka_unit_test(torture_pin_pin_source)
-	};
+			cmocka_unit_test(torture_pin_pin_source)};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
