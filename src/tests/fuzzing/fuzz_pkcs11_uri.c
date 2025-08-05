@@ -24,15 +24,16 @@
 #endif
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <tools/pkcs11_uri.h>
 
 #undef stderr
 #define stderr stdout
- 
-int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
+
+int
+LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 {
 	char *input_string = NULL;
 	struct pkcs11_uri *uri = NULL;
@@ -51,4 +52,3 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 	free(input_string);
 	return 0;
 }
- 

@@ -72,8 +72,8 @@
 #include "libopensc/sc-ossl-compat.h"
 #include "pkcs11/pkcs11-opensc.h"
 #include "pkcs11/pkcs11.h"
-#include "util.h"
 #include "pkcs11_uri.h"
+#include "util.h"
 
 /* pkcs11-tool uses libopensc routines that do not use an sc_context
  * but does use some OpenSSL routines
@@ -428,8 +428,7 @@ static const char *option_help[] = {
 		"Specify the file containing the salt for HKDF (optional)",
 		"Specify the file containing the info for HKDF (optional)",
 		"When reading a public key, try to read PUBLIC_KEY_INFO (DER encoding of SPKI)",
-		"Specify the PKCS#11 URI for module, slot, token or object"
-};
+		"Specify the PKCS#11 URI for module, slot, token or object"};
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
 
@@ -437,7 +436,7 @@ static int		verbose = 0;
 static const char *	opt_input = NULL;
 static const char *	opt_output = NULL;
 static const char *	opt_signature_file = NULL;
-static const char *	opt_module = NULL;
+static const char *opt_module = NULL;
 static int		opt_slot_set = 0;
 static CK_SLOT_ID	opt_slot = 0;
 static const char *	opt_slot_description = NULL;
@@ -617,21 +616,21 @@ static CK_RV		write_object(CK_SESSION_HANDLE session);
 static int		read_object(CK_SESSION_HANDLE session);
 static int		delete_object(CK_SESSION_HANDLE session);
 static void		set_id_attr(CK_SESSION_HANDLE session);
-static int		find_object_type_or_id_or_label(CK_SESSION_HANDLE sess,
-				CK_OBJECT_CLASS cls, int cls_set,
-				CK_OBJECT_HANDLE_PTR ret,
-				const unsigned char *, size_t id_len,
-				const char *, int obj_index);
+static int find_object_type_or_id_or_label(CK_SESSION_HANDLE sess,
+		CK_OBJECT_CLASS cls, int cls_set,
+		CK_OBJECT_HANDLE_PTR ret,
+		const unsigned char *, size_t id_len,
+		const char *, int obj_index);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
 static int		find_object_flags(CK_SESSION_HANDLE, uint16_t flags,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, int obj_index);
-static int		find_object_flags_and_type_or_id_or_label(CK_SESSION_HANDLE sess,
-				uint16_t mf_flags, CK_OBJECT_HANDLE_PTR ret,
-				CK_OBJECT_CLASS cls, int cls_set,
-				const unsigned char *id, size_t id_len, const char *label, int obj_index);
+static int find_object_flags_and_type_or_id_or_label(CK_SESSION_HANDLE sess,
+		uint16_t mf_flags, CK_OBJECT_HANDLE_PTR ret,
+		CK_OBJECT_CLASS cls, int cls_set,
+		const unsigned char *id, size_t id_len, const char *label, int obj_index);
 static CK_ULONG		find_mechanism(CK_SLOT_ID, CK_FLAGS, CK_MECHANISM_TYPE_PTR, size_t, CK_MECHANISM_TYPE_PTR);
 static int get_default_slot(CK_SLOT_ID_PTR result);
 static int find_slot_by_uri(struct pkcs11_uri *uri, CK_SLOT_ID_PTR result);
@@ -645,7 +644,7 @@ static void		p11_warn(const char *, CK_RV);
 static const char *	p11_slot_info_flags(CK_FLAGS);
 static const char *	p11_token_info_flags(CK_FLAGS);
 static const char *	p11_utf8_to_local(CK_UTF8CHAR *, size_t);
-static char *	p11_utf8_to_string(CK_UTF8CHAR *, size_t);
+static char *p11_utf8_to_string(CK_UTF8CHAR *, size_t);
 static const char *	p11_flag_names(struct flag_info *, CK_FLAGS);
 static const char *	p11_mechanism_to_name(CK_MECHANISM_TYPE);
 static CK_MECHANISM_TYPE p11_name_to_mechanism(const char *);
@@ -1504,7 +1503,7 @@ int main(int argc, char * argv[])
 				util_fatal("Incorrect type of key");
 			}
 			if (!find_object_type_or_id_or_label(session, opt_object_class, opt_uri->type == NULL ? 0 : 1,
-						&object, opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
+					    &object, opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
 				util_fatal("Private/secret key not found");
 			}
 		} else if (!find_object(session, CKO_PRIVATE_KEY, &object,
@@ -1538,11 +1537,11 @@ int main(int argc, char * argv[])
 				util_fatal("Incorrect type of key");
 			}
 			if (!find_object_type_or_id_or_label(session, opt_object_class, opt_uri->type == NULL ? 0 : 1,
-						&object, opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
+					    &object, opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
 				util_fatal("Private/secret key not found");
 			}
-		}  else if (!find_object(session, CKO_PRIVATE_KEY, &object,
-				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+		} else if (!find_object(session, CKO_PRIVATE_KEY, &object,
+					   opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
 			if (!find_object(session, CKO_SECRET_KEY, &object,
 					 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
 				util_fatal("Private/secret key not found");
@@ -1572,7 +1571,7 @@ int main(int argc, char * argv[])
 				util_fatal("Incorrect type of key");
 			}
 			if (!find_object_type_or_id_or_label(session, opt_object_class, opt_uri->type == NULL ? 0 : 1,
-						&object, opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
+					    &object, opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
 				util_fatal("Public/Secret key not found");
 			}
 		} else if (!find_object(session, CKO_PUBLIC_KEY, &object,
@@ -1606,15 +1605,15 @@ int main(int argc, char * argv[])
 				util_fatal("Incorrect type of key");
 			}
 			if (!find_object_type_or_id_or_label(session, opt_object_class, opt_uri->type == NULL ? 0 : 1,
-					&object, opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
+					    &object, opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
 				util_fatal("Public key nor certificate not found");
 			}
 		} else if (!find_object(session, CKO_PUBLIC_KEY, &object,
-		        opt_object_id_len ? opt_object_id : NULL,
-		        opt_object_id_len, 0) &&
-		    !find_object(session, CKO_CERTIFICATE, &object,
-		        opt_object_id_len ? opt_object_id : NULL,
-		        opt_object_id_len, 0))
+					   opt_object_id_len ? opt_object_id : NULL,
+					   opt_object_id_len, 0) &&
+				!find_object(session, CKO_CERTIFICATE, &object,
+						opt_object_id_len ? opt_object_id : NULL,
+						opt_object_id_len, 0))
 			util_fatal("Public key nor certificate not found");
 	}
 
@@ -5227,7 +5226,8 @@ static void set_id_attr(CK_SESSION_HANDLE session)
 	show_object(session, obj);
 }
 
-static int get_default_slot(CK_SLOT_ID_PTR result)
+static int
+get_default_slot(CK_SLOT_ID_PTR result)
 {
 	/* use first slot with token present (or default slot on error) */
 	CK_RV rv;
@@ -5246,7 +5246,8 @@ static int get_default_slot(CK_SLOT_ID_PTR result)
 	return 0;
 }
 
-static int find_slot_by_uri(struct pkcs11_uri *uri, CK_SLOT_ID_PTR result)
+static int
+find_slot_by_uri(struct pkcs11_uri *uri, CK_SLOT_ID_PTR result)
 {
 	CK_SLOT_INFO slot_info;
 	CK_TOKEN_INFO token_info;
@@ -5341,7 +5342,8 @@ static int find_slot_by_token_label(const char *label, CK_SLOT_ID_PTR result)
 	return 0;
 }
 
-static int find_object_type_or_id_or_label(CK_SESSION_HANDLE sess,
+static int
+find_object_type_or_id_or_label(CK_SESSION_HANDLE sess,
 		CK_OBJECT_CLASS cls, int cls_set,
 		CK_OBJECT_HANDLE_PTR ret,
 		const unsigned char *id, size_t id_len,
@@ -5421,7 +5423,8 @@ static int find_object_flags(CK_SESSION_HANDLE sess, uint16_t mf_flags,
 	util_fatal("Could not find key of type: %s", err_key_types);
 }
 
-static int find_object_flags_and_type_or_id_or_label(CK_SESSION_HANDLE sess,
+static int
+find_object_flags_and_type_or_id_or_label(CK_SESSION_HANDLE sess,
 		uint16_t mf_flags, CK_OBJECT_HANDLE_PTR ret,
 		CK_OBJECT_CLASS cls, int cls_set,
 		const unsigned char *id, size_t id_len, const char *label, int obj_index)
@@ -9278,7 +9281,8 @@ static const char *p11_utf8_to_local(CK_UTF8CHAR *string, size_t len)
 	return buffer;
 }
 
-static char *p11_utf8_to_string(CK_UTF8CHAR *string, size_t len)
+static char *
+p11_utf8_to_string(CK_UTF8CHAR *string, size_t len)
 {
 	char *buffer = NULL;
 	size_t n, m;
