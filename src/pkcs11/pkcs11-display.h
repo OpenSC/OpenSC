@@ -62,7 +62,16 @@ enum ck_type {
 	USR_T,
 	STA_T,
 	CKD_T,
-	RV_T
+	RV_T,
+	HW_T,
+	HG_T,
+	NOT_T,
+	TRU_T,
+	AUTH_T,
+	VAL_T,
+	ML_DSA_T,
+	ML_KEM_T,
+	SLH_DSA_T,
 };
 
 const char *lookup_enum_spec(enum_spec *spec, CK_ULONG value);
