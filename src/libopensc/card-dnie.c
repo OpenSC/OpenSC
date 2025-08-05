@@ -773,9 +773,9 @@ static int dnie_sm_free_wrapped_apdu(struct sc_card *card,
 			plain->sw1 = (*sm_apdu)->sw1;
 			plain->sw2 = (*sm_apdu)->sw2;
 		}
-		if ((*sm_apdu)->data != plain->data)
+		if (plain == NULL || (*sm_apdu)->data != plain->data)
 			free((unsigned char *) (*sm_apdu)->data);
-		if ((*sm_apdu)->resp != plain->resp)
+		if (plain == NULL || (*sm_apdu)->resp != plain->resp)
 			free((*sm_apdu)->resp);
 		free(*sm_apdu);
 	}
