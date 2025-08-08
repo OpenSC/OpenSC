@@ -16,8 +16,5 @@ all: $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-$(TARGET): $(OBJECTS) $(LIBS)
-	echo LIBRARY $* > $*.def
-	echo EXPORTS >> $*.def
-	type minidriver.exports >> $*.def
+$(TARGET): $(OBJECTS) $(LIBS) $*.def
 	link /dll $(LINKFLAGS) /out:$@ /def:$*.def $(OBJECTS) $(LIBS) $(ZLIB_LIB) $(OPENPACE_LIB) $(OPENSSL_LIB) ws2_32.lib gdi32.lib Comctl32.lib advapi32.lib Crypt32.lib User32.lib bcrypt.lib DelayImp.lib Rpcrt4.lib Shell32.lib Comctl32.lib Winmm.lib shlwapi.lib /DELAYLOAD:bcrypt.dll
