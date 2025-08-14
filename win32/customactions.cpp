@@ -340,11 +340,11 @@ VOID RegisterSmartCard(PMD_REGISTRATION registration)
 	TCHAR expanded_val[PATH_MAX];
 	BYTE  pbAtrReduced[256];
 	DWORD i;
-	PTSTR szPath = TEXT("C:\\Program Files\\OpenSC Project\\OpenSC\\minidriver\\opensc-minidriver.dll");
+	PTSTR szPath = TEXT("C:\\Program Files\\OpenSC Project\\OpenSC" OPENSC_ARCH_SUFFIX "\\minidriver\\opensc-minidriver.dll");
 
 	/* cope with x86 installation on x64 */
 	expanded_len = ExpandEnvironmentStrings(
-			TEXT("%ProgramFiles%\\OpenSC Project\\OpenSC\\minidriver\\opensc-minidriver.dll"),
+			TEXT("%ProgramFiles%\\OpenSC Project\\OpenSC" OPENSC_ARCH_SUFFIX "\\minidriver\\opensc-minidriver.dll"),
 			expanded_val, expanded_len);
 	if (0 < expanded_len && expanded_len < sizeof expanded_val)
 		szPath = expanded_val;
