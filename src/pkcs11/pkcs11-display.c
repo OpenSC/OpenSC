@@ -611,6 +611,7 @@ static enum_specs ck_err_s[] = {
   { CKR_ATTRIBUTE_SENSITIVE,              "CKR_ATTRIBUTE_SENSITIVE" },
   { CKR_ATTRIBUTE_TYPE_INVALID,           "CKR_ATTRIBUTE_TYPE_INVALID" },
   { CKR_ATTRIBUTE_VALUE_INVALID,          "CKR_ATTRIBUTE_VALUE_INVALID" },
+  { CKR_ACTION_PROHIBITED,                "CKR_ACTION_PROHIBITED" },
   { CKR_DATA_INVALID,                     "CKR_DATA_INVALID" },
   { CKR_DATA_LEN_RANGE,                   "CKR_DATA_LEN_RANGE" },
   { CKR_DEVICE_ERROR,                     "CKR_DEVICE_ERROR" },
@@ -673,6 +674,7 @@ static enum_specs ck_err_s[] = {
   { CKR_RANDOM_SEED_NOT_SUPPORTED,        "CKR_RANDOM_SEED_NOT_SUPPORTED" },
   { CKR_RANDOM_NO_RNG,                    "CKR_RANDOM_NO_RNG" },
   { CKR_DOMAIN_PARAMS_INVALID,            "CKR_DOMAIN_PARAMS_INVALID" },
+  { CKR_CURVE_NOT_SUPPORTED,              "CKR_CURVE_NOT_SUPPORTED" },
   { CKR_BUFFER_TOO_SMALL,                 "CKR_BUFFER_TOO_SMALL" },
   { CKR_SAVED_STATE_INVALID,              "CKR_SAVED_STATE_INVALID" },
   { CKR_INFORMATION_SENSITIVE,            "CKR_INFORMATION_SENSITIVE" },
@@ -681,6 +683,7 @@ static enum_specs ck_err_s[] = {
   { CKR_CRYPTOKI_ALREADY_INITIALIZED,     "CKR_CRYPTOKI_ALREADY_INITIALIZED" },
   { CKR_MUTEX_BAD,                        "CKR_MUTEX_BAD" },
   { CKR_MUTEX_NOT_LOCKED,                 "CKR_MUTEX_NOT_LOCKED" },
+  { CKR_FUNCTION_REJECTED,                "CKR_FUNCTION_REJECTED" },
   { CKR_VENDOR_DEFINED,                   "CKR_VENDOR_DEFINED" }
 };
 
