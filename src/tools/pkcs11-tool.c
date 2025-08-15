@@ -9297,7 +9297,7 @@ p11_utf8_to_string(CK_UTF8CHAR *string, size_t len)
 	while (len && string[len - 1] == ' ')
 		len--;
 
-	if (len < 1 || !(buffer = calloc(len, sizeof(char)))) {
+	if (len < 1 || !(buffer = calloc(len + 1, sizeof(char)))) {
 		return NULL;
 	}
 
