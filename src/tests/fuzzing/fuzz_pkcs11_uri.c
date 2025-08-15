@@ -44,8 +44,10 @@ LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 	memcpy(input_string, Data, Size);
 	input_string[Size] = 0;
 
-	if ((uri = pkcs11_uri_new()) == NULL)
+	if ((uri = pkcs11_uri_new()) == NULL) {
+		free(input_string);
 		return 0;
+	}
 	parse_pkcs11_uri(input_string, uri);
 
 	pkcs11_uri_free(uri);

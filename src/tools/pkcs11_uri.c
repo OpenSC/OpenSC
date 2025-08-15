@@ -119,6 +119,10 @@ parse_string(char *argument, char **out, int *out_len, int max_len)
 {
 	int rv = 0, len = 0;
 	char *tmp = NULL;
+	if (out == NULL) {
+		fprintf(stderr, "Wrong parameters provided\n");
+		return 1;
+	}
 	if (*out != NULL) {
 		rv = 1;
 		fprintf(stderr, "Attribute already set\n");
