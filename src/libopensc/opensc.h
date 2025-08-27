@@ -377,6 +377,7 @@ struct sc_reader_driver {
 #define SC_READER_HAS_WAITING_AREA	0x00000010
 #define SC_READER_REMOVED			0x00000020
 #define SC_READER_ENABLE_ESCAPE		0x00000040
+#define SC_READER_CARD_INVALID			0x00000080
 
 /* reader capabilities */
 #define SC_READER_CAP_DISPLAY	0x00000001
