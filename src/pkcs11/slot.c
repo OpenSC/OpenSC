@@ -233,6 +233,7 @@ again:
 
 	/* If the card was changed, disconnect the current one */
 	if (rc & SC_READER_CARD_CHANGED) {
+		reader->flags &= ~SC_READER_CARD_INVALID; /* try connect to new card */
 		sc_log(context, "%s: Card changed", reader->name);
 		/* The following should never happen - but if it
 		 * does we'll be stuck in an endless loop.
@@ -265,8 +266,21 @@ again:
 	}
 
 	if (p11card->card == NULL) {
-		sc_log(context, "%s: Connecting ... ", reader->name);
-		rc = sc_connect_card(reader, &p11card->card);
+		if (reader->flags & SC_READER_CARD_INVALID) {
+			sc_log(context, "%s: Connecting to reader with invalid card", reader->name);
+			rc = SC_ERROR_INVALID_CARD;
+			free_p11card = 1;
+		} else {
+			sc_log(context, "%s: Connecting ... ", reader->name);
+			rc = sc_connect_card(reader, &p11card->card);
+			if (rc == SC_ERROR_INVALID_CARD) {
+				/* Reader has invalid card not try to connect to it again */
+				/* do not try to cconnect to the same card again */
+				reader->flags |= SC_READER_CARD_INVALID;
+				free_p11card = 1;
+			}
+		}
+
 		if (rc != SC_SUCCESS) {
 			sc_log(context, "%s: SC connect card error %i", reader->name, rc);
 			rv = sc_to_cryptoki_error(rc, NULL);
