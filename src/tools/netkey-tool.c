@@ -580,6 +580,7 @@ int main(
 
 	if((r = sc_connect_card(sc_ctx_get_reader(ctx, 0), &card))<0){
 		fprintf(stderr,"Connect-Card failed: %s\n", sc_strerror(r));
+		sc_disconnect_card(card);
 		sc_release_context(ctx);
 		exit(1);
 	}
