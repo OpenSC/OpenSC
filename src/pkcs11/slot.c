@@ -210,7 +210,6 @@ CK_RV card_removed(sc_reader_t * reader)
 CK_RV card_detect(sc_reader_t *reader)
 {
 	struct sc_pkcs11_card *p11card = NULL;
-	int free_p11card = 0;
 	int rc;
 	CK_RV rv;
 	unsigned int i;
@@ -245,23 +244,32 @@ again:
 		goto again;
 	}
 
-	/* Locate a slot related to the reader */
+	/* Locate a slot related to the reader and init newly discovered card.*/
 	for (i=0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		if (slot->reader == reader) {
+			if (slot->p11card == NULL) {
+				sc_log(context, "%s: First seen the card ", reader->name);
+				slot->p11card = (struct sc_pkcs11_card *)calloc(1, sizeof(struct sc_pkcs11_card));
+				if (!slot->p11card)
+					return CKR_HOST_MEMORY;
+				slot->p11card->reader = reader;
+			}
 			p11card = slot->p11card;
 			break;
 		}
 	}
 
-	/* Detect the card if it's not known already */
 	if (p11card == NULL) {
-		sc_log(context, "%s: First seen the card ", reader->name);
-		p11card = (struct sc_pkcs11_card *)calloc(1, sizeof(struct sc_pkcs11_card));
-		if (!p11card)
-			return CKR_HOST_MEMORY;
-		free_p11card = 1;
-		p11card->reader = reader;
+		sc_log(context, "%s: Unable to match card with reader ", reader->name);
+		return CKR_TOKEN_NOT_RECOGNIZED;
+	}
+
+	/* Abort detection if card is invalid. */
+	if (p11card->flags & SC_PKCS11_CARD_INVALID) {
+		sc_log(context, "%s: Reader with invalid card", reader->name);
+		rv = sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, NULL);
+		goto fail;
 	}
 
 	if (p11card->card == NULL) {
@@ -269,6 +277,11 @@ again:
 		rc = sc_connect_card(reader, &p11card->card);
 		if (rc != SC_SUCCESS) {
 			sc_log(context, "%s: SC connect card error %i", reader->name, rc);
+
+			/* Flag card as invalid to prevent subsequent handling of unrecognized cards.*/
+			if (rc == SC_ERROR_INVALID_CARD)
+				p11card->flags |= SC_PKCS11_CARD_INVALID;
+
 			rv = sc_to_cryptoki_error(rc, NULL);
 			goto fail;
 		}
@@ -343,8 +356,6 @@ again:
 				       reader->name, rv);
 				goto fail;
 			}
-			/* p11card is now bound to some slot */
-			free_p11card = 0;
 		}
 
 		/* Now bind the rest of applications that are not 'generic' */
@@ -371,8 +382,6 @@ again:
 				       reader->name, app_name, rv);
 				goto fail;
 			}
-			/* p11card is now bound to some slot */
-			free_p11card = 0;
 		}
 	}
 
@@ -380,10 +389,6 @@ again:
 	rv = CKR_OK;
 
 fail:
-	if (free_p11card) {
-		sc_pkcs11_card_free(p11card);
-	}
-
 	return rv;
 }
 
@@ -490,6 +495,12 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 		sc_log(context, "card detected, but slot not presenting token");
 		return CKR_TOKEN_NOT_PRESENT;
 	}
+
+	if (!(*slot)->p11card || (*slot)->p11card->flags & SC_PKCS11_CARD_INVALID) {
+		sc_log(context, "invald card detected");
+		return CKR_TOKEN_NOT_RECOGNIZED;
+	}
+
 	sc_log(context, "Slot-get-token returns OK");
 	return CKR_OK;
 }

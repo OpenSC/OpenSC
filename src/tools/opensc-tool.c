@@ -294,8 +294,8 @@ static int list_readers(void)
 					fprintf(stderr, "     failed: %s\n", sc_strerror(r));
 				} else {
 					printf("     %s %s %s\n", tmp, c->name ? c->name : "", state & SC_READER_CARD_INUSE ? "[IN USE]" : "");
-					sc_disconnect_card(c);
 				}
+				sc_disconnect_card(c);
 			}
 		}
 	}

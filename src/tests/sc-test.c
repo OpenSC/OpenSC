@@ -111,6 +111,7 @@ int sc_test_init(int *argc, char *argv[])
 	i = sc_connect_card(sc_ctx_get_reader(ctx, opt_reader), &card);
 	if (i != SC_SUCCESS) {
 		printf("Connecting to card failed: %s\n", sc_strerror(i));
+		sc_disconnect_card(card);
 		return i;
 	}
 	printf("connected.\n");

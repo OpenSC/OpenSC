@@ -7173,6 +7173,7 @@ static DWORD associate_card(PCARD_DATA pCardData)
 	r = sc_connect_card(vs->reader, &(vs->card));
 	if (r != SC_SUCCESS) {
 		logprintf(pCardData, 0, "Cannot connect card in reader '%s'\n", NULLSTR(vs->reader->name));
+		sc_disconnect_card(vs->card);
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_UNKNOWN_CARD);
 	}
 	logprintf(pCardData, 3, "Connected card in '%s'\n", NULLSTR(vs->reader->name));
