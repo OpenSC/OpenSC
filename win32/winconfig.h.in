@@ -56,8 +56,6 @@
 #define ENABLE_SHARED 1
 #define ENABLE_NOTIFY 1
 
-#define SC_PKCS15_PROFILE_DIRECTORY "C:\\Program Files\\OpenSC Project\\OpenSC\\profiles"
-
 #define PATH_MAX FILENAME_MAX
 
 #ifndef PACKAGE_VERSION
@@ -108,24 +106,31 @@
 #define OPENSC_VS_FF_COMMENTS  "@OPENSC_VS_FF_COMMENTS@"
 #endif
 
+#if defined(_M_ARM64) || defined(_M_ARM64EC)
+#define OPENSC_ARCH_SUFFIX "_arm64"
+#else
+#define OPENSC_ARCH_SUFFIX ""
+#endif
+
+#ifndef OPENSC_PATH
+#define OPENSC_PATH "%PROGRAMFILES%\\OpenSC Project\\OpenSC" OPENSC_ARCH_SUFFIX "\\"
+#endif
+
 #ifndef CVCDIR
-#define CVCDIR "%PROGRAMFILES%\\OpenSC Project\\OpenSC\\cvc"
+#define CVCDIR OPENSC_PATH "cvc"
 #endif
 
 #ifndef DEFAULT_PKCS11_PROVIDER
-#define DEFAULT_PKCS11_PROVIDER "@DEFAULT_PKCS11_PROVIDER@"
+#define DEFAULT_PKCS11_PROVIDER OPENSC_PATH "pkcs11\\opensc-pkcs11.dll"
 #endif
 #ifndef DEFAULT_ONEPIN_PKCS11_PROVIDER
-#define DEFAULT_ONEPIN_PKCS11_PROVIDER "@DEFAULT_ONEPIN_PKCS11_PROVIDER@"
+#define DEFAULT_ONEPIN_PKCS11_PROVIDER OPENSC_PATH "pkcs11\\onepin-opensc-pkcs11.dll"
 #endif
 
 #define PKCS11_THREAD_LOCKING
 
 #ifndef DEFAULT_SM_MODULE
 #define DEFAULT_SM_MODULE "@DEFAULT_SM_MODULE@"
-#endif
-#ifndef DEFAULT_SM_MODULE_PATH
-#define DEFAULT_SM_MODULE_PATH "@DEFAULT_SM_MODULE_PATH@"
 #endif
 
 #ifndef OPENSC_SCM_REVISION
