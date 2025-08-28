@@ -282,7 +282,10 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 		r = SC_ERROR_NOT_IMPLEMENTED;
 		break;
 	}
-	LOG_TEST_RET(p15card->card->ctx, r, "Could not encode GAKP cdata");
+	if (r != SC_SUCCESS) {
+		sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
+		LOG_TEST_RET(p15card->card->ctx, r, "Could not encode GAKP cdata");
+	}
 
 	r = sc_pkcs15emu_sc_hsm_encode_cvc(p15card, &cvc, &cvcbin, &cvclen);
 	sc_pkcs15emu_sc_hsm_free_cvc(&cvc);

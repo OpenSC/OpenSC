@@ -305,7 +305,7 @@ static int cwa_parse_tlv(sc_card_t * card,
 			}
 		}
 		tlv->data = buffer + n + j;
-		tlv->buflen = j + tlv->len;;
+		tlv->buflen = j + tlv->len;
 		sc_log(ctx, "Found Tag: '0x%02X': Length: '%"SC_FORMAT_LEN_SIZE_T"u' Value:\n%s",
 		       tlv->tag, tlv->len, sc_dump_hex(tlv->data, tlv->len));
 		/* set index to next Tag to jump to */
@@ -1690,7 +1690,7 @@ int cwa_encode_apdu(sc_card_t * card,
 		goto encode_end;
 	}
 
-	/* rewrite resulting header */
+	/* rewrite resulting APDU */
 	to->lc = apdulen;
 	to->data = apdubuf;
 	to->datalen = apdulen;
@@ -1702,8 +1702,10 @@ int cwa_encode_apdu(sc_card_t * card,
 err:
 encode_end:
 	free(apdubuf);
-	if (from->resp != to->resp)
+	if (from->resp != to->resp) {
 		free(to->resp);
+		to->resp = NULL;
+	}
 encode_end_apdu_valid:
 	sc_evp_cipher_free(alg);
 	EVP_CIPHER_CTX_free(cctx);

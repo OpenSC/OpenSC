@@ -41,11 +41,11 @@ test-driver
 *.la
 *.lib
 *.lo
+*.manifest
 *.orig
 *.pdb
 *.rej
 *.u
-*.rc
 *.pc
 *~
 *.o
@@ -109,7 +109,6 @@ MacOSX/resources/Welcome.html
 
 *.dmg
 *.pkg
-OpenSC.tokend/
 build/
 engine_pkcs11/
 libp11/
@@ -155,3 +154,4 @@ src/tests/fuzzing/fuzz_scconf_parse_string
 version.m4.ci
 openssl_arm64
 openssl_bin
+openpace_bin

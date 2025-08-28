@@ -33,8 +33,11 @@
 
 /* card constants */
 static const struct sc_atr_table nqapplet_atrs[] = {
-	{"3b:d5:18:ff:81:91:fe:1f:c3:80:73:c8:21:10:0a", NULL, NULL, SC_CARD_TYPE_NQ_APPLET, 0, NULL},
-	{NULL, NULL, NULL, 0, 0, NULL}};
+		{"3b:d5:18:ff:81:91:fe:1f:c3:80:73:c8:21:10:0a",		 NULL, NULL, SC_CARD_TYPE_NQ_APPLET,	     0, NULL}, // JCOP4
+		{"3b:d8:18:ff:81:b1:fe:45:1f:c3:80:73:c8:21:10:52:b7:7f:f8", NULL, NULL, SC_CARD_TYPE_NQ_APPLET,	 0, NULL}, //  JCOP4.52
+		{"3b:85:80:01:80:73:C8:21:10:0e",				  NULL, NULL, SC_CARD_TYPE_NQ_APPLET_RFID, 0, NULL},
+		{NULL,						       NULL, NULL, 0,			      0, NULL}
+};
 
 static const u8 nqapplet_aid[] = {0xd2, 0x76, 0x00, 0x01, 0x80, 0xBA, 0x01, 0x44, 0x02, 0x01, 0x00};
 
@@ -107,22 +110,16 @@ static int select_nqapplet(sc_card_t *card, u8 *version_major, u8 *version_minor
 {
 	int rv;
 	sc_context_t *ctx = card->ctx;
-	sc_apdu_t apdu;
 	u8 buffer[APPLET_VERSION_LEN + APPLET_MEMTYPE_LEN + APPLET_SERIALNR_LEN + 2];
 	size_t cb_buffer = sizeof(buffer);
 	size_t cb_aid = sizeof(nqapplet_aid);
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	sc_format_apdu_ex(&apdu, 0x00, 0xA4, 0x04, 0x00, nqapplet_aid, cb_aid, buffer, cb_buffer);
+	rv = iso7816_select_aid(card, nqapplet_aid, cb_aid, buffer, &cb_buffer);
+	LOG_TEST_RET(card->ctx, rv, "Failed to select NQ-Applet.");
 
-	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failure.");
-
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, rv, "Card returned error");
-
-	if (apdu.resplen < APPLET_VERSION_LEN + APPLET_MEMTYPE_LEN + APPLET_SERIALNR_LEN) {
+	if (cb_buffer < APPLET_VERSION_LEN + APPLET_MEMTYPE_LEN + APPLET_SERIALNR_LEN) {
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_NORMAL, SC_ERROR_WRONG_LENGTH);
 	}
 
@@ -138,7 +135,7 @@ static int select_nqapplet(sc_card_t *card, u8 *version_major, u8 *version_minor
 		*serial_nr_len = cb;
 	}
 
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
 /* driver operations API */
@@ -190,9 +187,10 @@ static int nqapplet_finish(struct sc_card *card)
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-static int nqapplet_get_response(struct sc_card *card, size_t *cb_resp, u8 *resp)
+static int
+nqapplet_get_response(struct sc_card *card, size_t *cb_resp, u8 *resp)
 {
-	struct sc_apdu apdu;
+	struct sc_apdu apdu = {0};
 	int rv;
 	size_t resplen;
 
@@ -204,12 +202,12 @@ static int nqapplet_get_response(struct sc_card *card, size_t *cb_resp, u8 *resp
 
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
-	if (apdu.resplen == 0) {
-		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
-	}
 
 	*cb_resp = apdu.resplen;
 
+	if (apdu.resplen == 0) {
+		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	}
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 		rv = SC_SUCCESS;
 	} else if (apdu.sw1 == 0x61) {
@@ -452,6 +450,23 @@ static int nqapplet_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
+static int
+nqapplet_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+{
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+	r = iso_operations->pin_cmd(card, data, tries_left);
+	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
+		/* it is possible that the NQ-Applet is not active, try to activate it */
+		r = select_nqapplet(card, NULL, NULL, NULL, 0, NULL);
+		if (r == SC_SUCCESS) {
+			r = iso_operations->pin_cmd(card, data, tries_left);
+		}
+	}
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+}
+
 struct sc_card_driver *sc_get_nqApplet_driver(void)
 {
 	sc_card_driver_t *iso_driver = sc_get_iso7816_driver();
@@ -476,6 +491,7 @@ struct sc_card_driver *sc_get_nqApplet_driver(void)
 	nqapplet_operations.get_data = nqapplet_get_data;
 	nqapplet_operations.select_file = nqapplet_select_file;
 	nqapplet_operations.card_ctl = nqapplet_card_ctl;
+	nqapplet_operations.pin_cmd = nqapplet_pin_cmd;
 
 	/* unsupported operations */
 	nqapplet_operations.read_binary = NULL;
@@ -501,7 +517,6 @@ struct sc_card_driver *sc_get_nqApplet_driver(void)
 	nqapplet_operations.read_public_key = NULL;
 
 	/* let iso driver handle these operations
-	nqapplet_operations.pin_cmd;
 	nqapplet_operations.card_reader_lock_obtained;
 	nqapplet_operations.wrap;
 	nqapplet_operations.unwrap;

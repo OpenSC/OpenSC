@@ -3,7 +3,7 @@
 set -ex -o xtrace
 
 # Generic dependencies
-DEPS="make /usr/bin/xsltproc docbook-style-xsl autoconf automake libtool bash-completion vim-common softhsm openssl diffutils openpace openpace-devel"
+DEPS="make /usr/bin/xsltproc docbook-style-xsl autoconf automake libtool bash-completion vim-common softhsm openssl diffutils openpace openpace-devel gawk nss-softokn nss-tools"
 
 if [ "$1" == "clang" ]; then
 	DEPS="$DEPS clang"
@@ -16,6 +16,10 @@ if [ "$1" == "ix86" ]; then
 	DEPS="$DEPS pcsc-lite-devel*.i686 readline-devel*.i686 openssl-devel*.i686 zlib-ng-devel*.i686 libcmocka-devel*.i686 glibc-devel*i686"
 else
 	DEPS="$DEPS pcsc-lite-devel readline-devel openssl-devel zlib-ng-devel libcmocka-devel"
+fi
+
+if [ "$1" == "kryoptic" ]; then
+	DEPS="$DEPS clang meson cargo expect pkgconf-pkg-config openssl-devel p11-kit-devel gnutls-utils g++ sqlite-devel python3-six git"
 fi
 
 sudo dnf install -y $DEPS

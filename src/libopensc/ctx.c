@@ -134,7 +134,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "dnie",       (void *(*)(void)) sc_get_dnie_driver },
 #endif
 	{ "masktech",	(void *(*)(void)) sc_get_masktech_driver },
-	{ "esteid2018",	(void *(*)(void)) sc_get_esteid2018_driver },
 	{ "idprime",	(void *(*)(void)) sc_get_idprime_driver },
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 	{ "edo",        (void *(*)(void)) sc_get_edo_driver },
@@ -142,6 +141,8 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 
 /* Here should be placed drivers that need some APDU transactions in the
  * driver's `match_card()` function. */
+	{ "esteid2018",	(void *(*)(void)) sc_get_esteid2018_driver },
+	{ "esteid2025",	(void *(*)(void)) sc_get_esteid2025_driver },
 	{ "coolkey",	(void *(*)(void)) sc_get_coolkey_driver },
 	/* MUSCLE card applet returns 9000 on whatever AID is selected, see
 	 * https://github.com/JavaCardOS/MuscleCard-Applet/blob/master/musclecard/src/com/musclecard/CardEdge/CardEdge.java#L326
@@ -319,13 +320,6 @@ static void set_defaults(sc_context_t *ctx, struct _sc_ctx_options *opts)
 		fclose(ctx->debug_file);
 	ctx->debug_file = stderr;
 	ctx->flags = 0;
-
-#ifdef __APPLE__
-	/* Override the default debug log for OpenSC.tokend to be different from PKCS#11.
-	 * TODO: Could be moved to OpenSC.tokend */
-	if (!strcmp(ctx->app_name, "tokend"))
-		ctx->debug_file = fopen("/tmp/opensc-tokend.log", "a");
-#endif
 	ctx->forced_driver = NULL;
 	add_internal_drvs(opts);
 }

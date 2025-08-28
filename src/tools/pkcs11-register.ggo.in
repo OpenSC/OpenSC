@@ -8,19 +8,23 @@ option "module" m
 
 option "skip-chrome" -
     "Don't install module to Chrome"
-    flag @PKCS11_REGISTER_SKIP_FIREFOX@
+    enum values="on","off" optional
+    default="@PKCS11_REGISTER_SKIP_FIREFOX@"
 
 option "skip-firefox" -
     "Don't install module to Firefox"
-    flag @PKCS11_REGISTER_SKIP_FIREFOX@
+    enum values="on","off" optional
+    default="@PKCS11_REGISTER_SKIP_FIREFOX@"
 
 option "skip-thunderbird" -
     "Don't install module to Thunderbird"
-    flag off
+    enum values="on","off" optional
+    default="off"
 
 option "skip-seamonkey" -
     "Don't install module to SeaMonkey"
-    flag off
+    enum values="on","off" optional
+    default="off"
 
 text "
 Report bugs to @PACKAGE_BUGREPORT@

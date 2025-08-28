@@ -2,15 +2,17 @@ OPENSC_FEATURES = pcsc
 
 #Include support for minidriver
 MINIDRIVER_DEF = /DENABLE_MINIDRIVER
+WIXFLAGS = -d ENABLE_MINIDRIVER
 
 #Build MSI with the Windows Installer XML (WIX) toolkit
 !IF "$(WIX_PACKAGES)" == ""
 WIX_PACKAGES = $(TOPDIR)\win32\packages
+WIX_VERSION = 6.0.0
 !ENDIF
-WIX_INCL_DIR = "/I$(WIX_PACKAGES)/wixtoolset.dutil/5.0.2/build/native/include" \
-	"/I$(WIX_PACKAGES)/wixtoolset.wcautil/5.0.2/build/native/include"
-WIX_LIBS = "$(WIX_PACKAGES)/wixtoolset.dutil/5.0.2/build/native/v14/$(PLATFORM)/dutil.lib" \
-	"$(WIX_PACKAGES)/wixtoolset.wcautil/5.0.2/build/native/v14/$(PLATFORM)/wcautil.lib"
+WIX_INCL_DIR = "/I$(WIX_PACKAGES)/wixtoolset.dutil/$(WIX_VERSION)/build/native/include" \
+	"/I$(WIX_PACKAGES)/wixtoolset.wcautil/$(WIX_VERSION)/build/native/include"
+WIX_LIBS = "$(WIX_PACKAGES)/wixtoolset.dutil/$(WIX_VERSION)/build/native/v14/$(PLATFORM)/dutil.lib" \
+	"$(WIX_PACKAGES)/wixtoolset.wcautil/$(WIX_VERSION)/build/native/v14/$(PLATFORM)/wcautil.lib"
 
 # We do not build tests on windows
 #TESTS_DEF = /DENABLE_TESTS
@@ -119,9 +121,9 @@ COPTS = /nologo /Zi /GS /W3 /WX /D_CRT_SECURE_NO_DEPRECATE /D_CRT_NONSTDC_NO_WAR
 	/DWINVER=0x0601 /D_WIN32_WINNT=0x0601 /DWIN32_LEAN_AND_MEAN /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\"" \
 	$(DEBUG_DEF) $(OPENPACE_DEF) $(OPENSSL_DEF) $(ZLIB_DEF) $(MINIDRIVER_DEF) $(SM_DEF) $(TESTS_DEF) $(OPENSSL_EXTRA_CFLAGS) \
 	/I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENPACE_INCL_DIR) $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(CPDK_INCL_DIR)
-LINKFLAGS = /nologo /INCREMENTAL:NO /NXCOMPAT /DYNAMICBASE /DEBUG /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD
+LINKFLAGS = /nologo /INCREMENTAL:NO /NXCOMPAT /DYNAMICBASE /DEBUG /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD /MANIFEST:embed \
+	"/MANIFESTDEPENDENCY:type='Win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'"
 LIBFLAGS =  /nologo
-WIXFLAGS = -arch $(PLATFORM) $(WIXFLAGS)
 
 !IF "$(DEBUG_DEF)" == "/DDEBUG"
 LINKFLAGS = $(LINKFLAGS) /NODEFAULTLIB:LIBCMT
@@ -138,7 +140,7 @@ COPTS = /O1 /$(BUILD_TYPE) $(COPTS)
 	cl $(COPTS) $(WIX_INCL_DIR) /c $<
 
 .rc.res::
-	rc /l 0x0409 $<
+	rc /l 0x0409 /I$(TOPDIR) $<
 
 clean::
 	del /Q *.obj *.dll *.exe *.pdb *.lib *.def *.res

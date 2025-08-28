@@ -15,7 +15,11 @@ EXTRA_DIST = Makefile.mak
 
 DISTCHECK_CONFIGURE_FLAGS = --with-completiondir=/tmp
 
-SUBDIRS = etc src win32 doc MacOSX tests
+SUBDIRS = etc src win32 doc MacOSX
+
+if ENABLE_INTEGRATION_TESTS
+SUBDIRS += tests
+endif
 
 dist_noinst_SCRIPTS = bootstrap bootstrap.ci
 dist_noinst_DATA = README \

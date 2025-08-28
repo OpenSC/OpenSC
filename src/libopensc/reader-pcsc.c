@@ -43,6 +43,10 @@
 
 #include "pace.h"
 
+#ifndef MAXDWORD
+#define MAXDWORD UINT32_MAX
+#endif
+
 #ifdef HAVE_PCSCLITE_H
 #if !defined (__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED < 101000
 #define HAVE_PCSCLITE 1
@@ -245,6 +249,11 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 	LOG_FUNC_CALLED(reader->ctx);
 	card = priv->pcsc_card;
 
+	// Ensure send buffer fits into a DWORD
+	if (sendsize > MAXDWORD)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (*recvsize > MAXDWORD)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
@@ -253,8 +262,8 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 	sRecvPci.dwProtocol = opensc_proto_to_pcsc(reader->active_protocol);
 	sRecvPci.cbPciLength = sizeof(sRecvPci);
 
-	dwSendLength = sendsize;
-	dwRecvLength = *recvsize;
+	dwSendLength = (DWORD)sendsize;
+	dwRecvLength = (DWORD)*recvsize;
 
 	if (!control) {
 		rv = priv->gpriv->SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
@@ -644,14 +653,6 @@ static int pcsc_connect(sc_reader_t *reader)
 		rv = priv->gpriv->SCardConnect(priv->gpriv->pcsc_ctx, reader->name,
 				priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
 				protocol, &card_handle, &active_proto);
-#ifdef __APPLE__
-		if (rv == (LONG)SCARD_E_SHARING_VIOLATION) {
-			sleep(1); /* Try again to compete with Tokend probes */
-			rv = priv->gpriv->SCardConnect(priv->gpriv->pcsc_ctx, reader->name,
-					priv->gpriv->connect_exclusive ? SCARD_SHARE_EXCLUSIVE : SCARD_SHARE_SHARED,
-					protocol, &card_handle, &active_proto);
-		}
-#endif
 		if (rv != SCARD_S_SUCCESS) {
 			PCSC_TRACE(reader, "SCardConnect failed", rv);
 			return pcsc_to_opensc_error(rv);

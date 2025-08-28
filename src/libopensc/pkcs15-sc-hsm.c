@@ -1028,11 +1028,20 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, u8 *efbin, 
 	memset(&pubkey_obj, 0, sizeof(pubkey_obj));
 
 	r = sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_obj.content.value, &pubkey_obj.content.len);
-	LOG_TEST_RET(ctx, r, "Could not encode public key");
+	if (r != SC_SUCCESS) {
+		sc_pkcs15_erase_pubkey(&pubkey);
+		LOG_TEST_RET(ctx, r, "Could not encode public key");
+	}
 	r = sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_info.direct.raw.value, &pubkey_info.direct.raw.len);
-	LOG_TEST_RET(ctx, r, "Could not encode public key");
+	if (r != SC_SUCCESS) {
+		sc_pkcs15_erase_pubkey(&pubkey);
+		LOG_TEST_RET(ctx, r, "Could not encode public key");
+	}
 	r = sc_pkcs15_encode_pubkey_as_spki(ctx, &pubkey, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
-	LOG_TEST_RET(ctx, r, "Could not encode public key");
+	if (r != SC_SUCCESS) {
+		sc_pkcs15_erase_pubkey(&pubkey);
+		LOG_TEST_RET(ctx, r, "Could not encode public key");
+	}
 
 	pubkey_info.id = key_info->id;
 	strlcpy(pubkey_obj.label, label, sizeof(pubkey_obj.label));

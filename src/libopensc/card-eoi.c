@@ -392,7 +392,7 @@ static int eoi_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *
 
 	if (data->cmd == SC_PIN_CMD_UNBLOCK) {
 		int pin_reference = data->pin_reference;
-		int pin2_len = data->pin2.len;
+		size_t pin2_len = data->pin2.len;
 		/* Verify PUK, establish SM if necessary */
 		data->cmd = SC_PIN_CMD_VERIFY;
 		data->pin_reference = data->puk_reference;

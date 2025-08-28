@@ -56,6 +56,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "coolkey",    sc_pkcs15emu_coolkey_init_ex	},
 	{ "din66291",   sc_pkcs15emu_din_66291_init_ex	},
 	{ "esteid2018", sc_pkcs15emu_esteid2018_init_ex	},
+	{ "esteid2025", sc_pkcs15emu_esteid2025_init_ex	},
 	{ "skeid",      sc_pkcs15emu_skeid_init_ex      },
 	{ "cardos",     sc_pkcs15emu_cardos_init_ex	},
 	{ "nqapplet",   sc_pkcs15emu_nqapplet_init_ex },
@@ -109,6 +110,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_CARDOS_V5_0:
 		case SC_CARD_TYPE_CARDOS_V5_3:
 		case SC_CARD_TYPE_NQ_APPLET:
+		case SC_CARD_TYPE_NQ_APPLET_RFID:
 		case SC_CARD_TYPE_STARCOS_V3_4_ESIGN:
 		case SC_CARD_TYPE_STARCOS_V3_5_ESIGN:
 		case SC_CARD_TYPE_SKEID_V3:
@@ -119,6 +121,11 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
 		case SC_CARD_TYPE_DTRUST_V4_1_M100:
 		case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+		case SC_CARD_TYPE_DTRUST_V5_1_STD:
+		case SC_CARD_TYPE_DTRUST_V5_4_STD:
+		case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V5_1_M100:
+		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
 			return 1;
 		default:
 			return 0;

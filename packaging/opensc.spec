@@ -6,7 +6,6 @@ Summary:        Smart card library and applications
 License:        LGPL-2.1-or-later AND BSD-3-Clause
 URL:            https://github.com/OpenSC/OpenSC/wiki
 Source0:        opensc-0.1.0.tar.gz
-Source1:        opensc.module
 
 BuildRequires:  make
 BuildRequires:  pcsc-lite-devel
@@ -21,6 +20,7 @@ BuildRequires:  bash-completion-devel
 BuildRequires:  bash-completion
 %endif
 BuildRequires:  zlib-ng-devel
+BuildRequires:  p11-kit-devel
 # For tests
 BuildRequires:  libcmocka-devel
 BuildRequires:  vim-common
@@ -102,7 +102,6 @@ make check || (cat tests/*.log src/tests/unittests/*.log && exit 1)
 
 %install
 %make_install
-install -Dpm 644 %{SOURCE1} $RPM_BUILD_ROOT%{_datadir}/p11-kit/modules/opensc.module
 
 %ifarch %{ix86}
 # To avoid multilib issues, move these files on 32b intel architectures

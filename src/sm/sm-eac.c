@@ -250,7 +250,7 @@ static int encode_mse_cdata(struct sc_context *ctx, int protocol,
 	memcpy(p, data, data_len);
 	memcpy(p+data_len, encoded_chat, encoded_chat_len);
 	*cdata = p;
-	r = data_len + encoded_chat_len;
+	r = (int)(data_len + encoded_chat_len);
 
 	sc_debug_hex(ctx, SC_LOG_DEBUG_SM, "MSE command data", p, r);
 
@@ -405,7 +405,7 @@ static int encode_gen_auth_cdata(struct sc_context *ctx,
 
 	r = sc_asn1_encode(ctx, capdu_eac_gen_auth, cdata, &data_len);
 	SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE, r, "Error encoding General Authenticate APDU data");
-	r = data_len;
+	r = (int)data_len;
 
 err:
 	return r;
@@ -633,6 +633,9 @@ get_psec(sc_card_t *card, const char *pin, size_t length_pin, enum s_type pin_id
 		}
 		pin = p;
 	}
+
+	if (pin_id != PACE_PIN && pin_id != PACE_CAN && pin_id != PACE_MRZ && pin_id != PACE_PUK)
+		pin_id = PACE_RAW;
 
 	r = PACE_SEC_new(pin, length_pin, pin_id);
 
@@ -1553,7 +1556,7 @@ eac_sm_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 	*enc = p;
 	memcpy(*enc, encbuf->data, encbuf->length);
-	r = encbuf->length;
+	r = (int)encbuf->length;
 
 err:
 	BUF_MEM_clear_free(databuf);
@@ -1594,7 +1597,7 @@ eac_sm_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 	*data = p;
 	memcpy(*data, databuf->data, databuf->length);
-	r = databuf->length;
+	r = (int)databuf->length;
 
 err:
 	BUF_MEM_clear_free(databuf);
@@ -1641,7 +1644,7 @@ eac_sm_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 	*macdata = p;
 	memcpy(*macdata, macbuf->data, macbuf->length);
-	r = macbuf->length;
+	r = (int)macbuf->length;
 
 err:
 	if (inbuf)

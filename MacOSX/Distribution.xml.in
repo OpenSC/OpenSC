@@ -5,38 +5,21 @@ https://developer.apple.com/library/mac/documentation/DeveloperTools/Reference/I
 -->
 <installer-gui-script minSpecVersion="2">
     <allowed-os-versions>
-      <os-version min="10.10"/>
+      <os-version min="10.13"/>
     </allowed-os-versions>
     <background file="background.jpg" mime-type="image/jpeg" scaling="tofit"/>
     <welcome file="Welcome.html" mime-type="text/html"/>
     <title>@PACKAGE_STRING@</title>
-    <options customize="allow" require-scripts="false" rootVolumeOnly="true"/>
-    <script>
-      <![CDATA[
-    function osx_before_catalina() {
-      return system.compareVersions(system.version.ProductVersion, '10.15') < 0;
-    }
-    function osx_after_catalina() {
-      return system.compareVersions(system.version.ProductVersion, '10.15') >= 0;
-    }
-    function osx_after_yosemite() {
-      return system.compareVersions(system.version.ProductVersion, '10.12') >= 0;
-    }
-      ]]>
-    </script>
+    <options customize="allow" hostArchitectures="arm64,x86_64" require-scripts="false" rootVolumeOnly="true"/>
     <choices-outline>
         <line choice="default" />
         <line choice="startup" />
-        <line choice="tokend" />
         <line choice="token" />
     </choices-outline>
     <choice id="default" title="PKCS#11 module and smart card tools" enabled="false">
         <pkg-ref id="org.opensc-project.mac">OpenSC.pkg</pkg-ref>
     </choice>
-    <choice id="tokend" title="TokenD-based smart card driver" start_selected="osx_before_catalina()">
-        <pkg-ref id="org.opensc-project.tokend">OpenSC-tokend.pkg</pkg-ref>
-    </choice>
-    <choice id="token" title="CryptoTokenKit-based smart card driver" visible="osx_after_yosemite()" start_selected="osx_after_catalina()">
+    <choice id="token" title="CryptoTokenKit-based smart card driver">
         <pkg-ref id="org.opensc-project.mac.opensctoken">OpenSCToken.pkg</pkg-ref>
     </choice>
     <choice id="startup" title="Automatic startup items">

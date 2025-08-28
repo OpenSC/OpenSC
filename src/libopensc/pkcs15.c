@@ -1227,26 +1227,27 @@ const char *pkcs15_get_default_use_file_cache(struct sc_card *card)
 	 * The following list was initialized with the cards that can't be modified
 	 * with OpenSC i.e. which don't have a profile/driver for pkcs15-init. */
 	const char *card_drivers_with_file_cache[] = {
-		"atrust-acos",
-		"belpic",
-		"cac1",
-		"cac",
-		"coolkey",
-		"dnie",
-		"edo",
-		"esteid2018",
-		"flex",
-		"cyberflex",
-		"gemsafeV1",
-		"idprime",
-		"itacns",
-		"jpki",
-		"MaskTech",
-		"mcrd",
-		"myeid",
-		"npa",
-		"nqapplet",
-		"tcos",
+			"atrust-acos",
+			"belpic",
+			"cac1",
+			"cac",
+			"coolkey",
+			"edo",
+			"esteid2018",
+			"esteid2025",
+			"flex",
+			"cyberflex",
+			"gemsafeV1",
+			"idprime",
+			"itacns",
+			"jpki",
+			"MaskTech",
+			"mcrd",
+			"myeid",
+			"npa",
+			"nqapplet",
+			"tcos",
+			"dtrust",
 	};
 
 	if (NULL == card || NULL == card->driver || NULL == card->driver->short_name)
@@ -1288,11 +1289,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 	p15card->opts.use_pin_cache = 1;
 	p15card->opts.pin_cache_counter = 10;
 	p15card->opts.pin_cache_ignore_user_consent = 0;
-	if (0 == strcmp(ctx->app_name, "tokend")) {
-		pin_protected_certificate = "ignore";
-	} else {
-		pin_protected_certificate = "protect";
-	}
+	pin_protected_certificate = "protect";
 	private_certificate = "";
 
 	conf_block = sc_get_conf_block(ctx, "framework", "pkcs15", 1);

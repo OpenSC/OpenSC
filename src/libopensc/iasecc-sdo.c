@@ -1137,7 +1137,7 @@ iasecc_sdo_encode_rsa_update(struct sc_context *ctx, struct iasecc_sdo *sdo, str
 	sc_log(ctx, "iasecc_sdo_encode_rsa_update() SDO class %X", sdo->sdo_class);
 	memset(sdo_update, 0, sizeof(*sdo_update));
 	if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PRIVATE)   {
-		int indx = 0;
+		int index = 0;
 
 		sc_log(ctx, "iasecc_sdo_encode_rsa_update(IASECC_SDO_CLASS_RSA_PRIVATE)");
 		if (!rsa->p.len || !rsa->q.len || !rsa->iqmp.len || !rsa->dmp1.len || !rsa->dmq1.len)
@@ -1148,35 +1148,35 @@ iasecc_sdo_encode_rsa_update(struct sc_context *ctx, struct iasecc_sdo *sdo, str
 
 		sdo_update->sdo_class = IASECC_SDO_CLASS_RSA_PRIVATE;
 
-		sdo_update->fields[indx].parent_tag = IASECC_SDO_PRVKEY_TAG;
-		sdo_update->fields[indx].tag = IASECC_SDO_PRVKEY_TAG_P;
-		sdo_update->fields[indx].value = rsa->p.data;
-		sdo_update->fields[indx].size = rsa->p.len;
-		indx++;
+		sdo_update->fields[index].parent_tag = IASECC_SDO_PRVKEY_TAG;
+		sdo_update->fields[index].tag = IASECC_SDO_PRVKEY_TAG_P;
+		sdo_update->fields[index].value = rsa->p.data;
+		sdo_update->fields[index].size = rsa->p.len;
+		index++;
 
-		sdo_update->fields[indx].parent_tag = IASECC_SDO_PRVKEY_TAG;
-		sdo_update->fields[indx].tag = IASECC_SDO_PRVKEY_TAG_Q;
-		sdo_update->fields[indx].value = rsa->q.data;
-		sdo_update->fields[indx].size = rsa->q.len;
-		indx++;
+		sdo_update->fields[index].parent_tag = IASECC_SDO_PRVKEY_TAG;
+		sdo_update->fields[index].tag = IASECC_SDO_PRVKEY_TAG_Q;
+		sdo_update->fields[index].value = rsa->q.data;
+		sdo_update->fields[index].size = rsa->q.len;
+		index++;
 
-		sdo_update->fields[indx].parent_tag = IASECC_SDO_PRVKEY_TAG;
-		sdo_update->fields[indx].tag = IASECC_SDO_PRVKEY_TAG_IQMP;
-		sdo_update->fields[indx].value = rsa->iqmp.data;
-		sdo_update->fields[indx].size = rsa->iqmp.len;
-		indx++;
+		sdo_update->fields[index].parent_tag = IASECC_SDO_PRVKEY_TAG;
+		sdo_update->fields[index].tag = IASECC_SDO_PRVKEY_TAG_IQMP;
+		sdo_update->fields[index].value = rsa->iqmp.data;
+		sdo_update->fields[index].size = rsa->iqmp.len;
+		index++;
 
-		sdo_update->fields[indx].parent_tag = IASECC_SDO_PRVKEY_TAG;
-		sdo_update->fields[indx].tag = IASECC_SDO_PRVKEY_TAG_DMP1;
-		sdo_update->fields[indx].value = rsa->dmp1.data;
-		sdo_update->fields[indx].size = rsa->dmp1.len;
-		indx++;
+		sdo_update->fields[index].parent_tag = IASECC_SDO_PRVKEY_TAG;
+		sdo_update->fields[index].tag = IASECC_SDO_PRVKEY_TAG_DMP1;
+		sdo_update->fields[index].value = rsa->dmp1.data;
+		sdo_update->fields[index].size = rsa->dmp1.len;
+		index++;
 
-		sdo_update->fields[indx].parent_tag = IASECC_SDO_PRVKEY_TAG;
-		sdo_update->fields[indx].tag = IASECC_SDO_PRVKEY_TAG_DMQ1;
-		sdo_update->fields[indx].value = rsa->dmq1.data;
-		sdo_update->fields[indx].size = rsa->dmq1.len;
-		indx++;
+		sdo_update->fields[index].parent_tag = IASECC_SDO_PRVKEY_TAG;
+		sdo_update->fields[index].tag = IASECC_SDO_PRVKEY_TAG_DMQ1;
+		sdo_update->fields[index].value = rsa->dmq1.data;
+		sdo_update->fields[index].size = rsa->dmq1.len;
+		index++;
 
 		sc_log(ctx, "prv_key.compulsory.on_card %i", sdo->data.prv_key.compulsory.on_card);
 		if (!sdo->data.prv_key.compulsory.on_card)   {
@@ -1184,16 +1184,16 @@ iasecc_sdo_encode_rsa_update(struct sc_context *ctx, struct iasecc_sdo *sdo, str
 				sc_log(ctx,
 				       "sdo_prvkey->data.prv_key.compulsory.size %"SC_FORMAT_LEN_SIZE_T"u",
 				       sdo->data.prv_key.compulsory.size);
-				sdo_update->fields[indx].parent_tag = IASECC_SDO_PRVKEY_TAG;
-				sdo_update->fields[indx].tag = IASECC_SDO_PRVKEY_TAG_COMPULSORY;
-				sdo_update->fields[indx].value = sdo->data.prv_key.compulsory.value;
-				sdo_update->fields[indx].size = sdo->data.prv_key.compulsory.size;
-				indx++;
+				sdo_update->fields[index].parent_tag = IASECC_SDO_PRVKEY_TAG;
+				sdo_update->fields[index].tag = IASECC_SDO_PRVKEY_TAG_COMPULSORY;
+				sdo_update->fields[index].value = sdo->data.prv_key.compulsory.value;
+				sdo_update->fields[index].size = sdo->data.prv_key.compulsory.size;
+				index++;
 			}
 		}
 	}
 	else if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PUBLIC)   {
-		int indx = 0;
+		int index = 0;
 		sc_log(ctx, "iasecc_sdo_encode_rsa_update(IASECC_SDO_CLASS_RSA_PUBLIC)");
 
 		sdo_update->magic = SC_CARDCTL_IASECC_SDO_MAGIC_PUT_DATA;
@@ -1201,45 +1201,45 @@ iasecc_sdo_encode_rsa_update(struct sc_context *ctx, struct iasecc_sdo *sdo, str
 		sdo_update->sdo_class = sdo->sdo_class;
 
 		if (rsa->exponent.len)   {
-			sdo_update->fields[indx].parent_tag = IASECC_SDO_PUBKEY_TAG;
-			sdo_update->fields[indx].tag = IASECC_SDO_PUBKEY_TAG_E;
-			sdo_update->fields[indx].value = rsa->exponent.data;
-			sdo_update->fields[indx].size = rsa->exponent.len;
-			indx++;
+			sdo_update->fields[index].parent_tag = IASECC_SDO_PUBKEY_TAG;
+			sdo_update->fields[index].tag = IASECC_SDO_PUBKEY_TAG_E;
+			sdo_update->fields[index].value = rsa->exponent.data;
+			sdo_update->fields[index].size = rsa->exponent.len;
+			index++;
 		}
 
 		if (rsa->modulus.len)   {
-			sdo_update->fields[indx].parent_tag = IASECC_SDO_PUBKEY_TAG;
-			sdo_update->fields[indx].tag = IASECC_SDO_PUBKEY_TAG_N;
-			sdo_update->fields[indx].value = rsa->modulus.data;
-			sdo_update->fields[indx].size = rsa->modulus.len;
-			indx++;
+			sdo_update->fields[index].parent_tag = IASECC_SDO_PUBKEY_TAG;
+			sdo_update->fields[index].tag = IASECC_SDO_PUBKEY_TAG_N;
+			sdo_update->fields[index].value = rsa->modulus.data;
+			sdo_update->fields[index].size = rsa->modulus.len;
+			index++;
 		}
 
 		if (sdo->data.pub_key.cha.value)   {
-			sdo_update->fields[indx].parent_tag = IASECC_SDO_PUBKEY_TAG;
-			sdo_update->fields[indx].tag = IASECC_SDO_PUBKEY_TAG_CHA;
-			sdo_update->fields[indx].value = sdo->data.pub_key.cha.value;
-			sdo_update->fields[indx].size = sdo->data.pub_key.cha.size;
-			indx++;
+			sdo_update->fields[index].parent_tag = IASECC_SDO_PUBKEY_TAG;
+			sdo_update->fields[index].tag = IASECC_SDO_PUBKEY_TAG_CHA;
+			sdo_update->fields[index].value = sdo->data.pub_key.cha.value;
+			sdo_update->fields[index].size = sdo->data.pub_key.cha.size;
+			index++;
 		}
 
 		if (sdo->data.pub_key.chr.value)   {
-			sdo_update->fields[indx].parent_tag = IASECC_SDO_PUBKEY_TAG;
-			sdo_update->fields[indx].tag = IASECC_SDO_PUBKEY_TAG_CHR;
-			sdo_update->fields[indx].value = sdo->data.pub_key.chr.value;
-			sdo_update->fields[indx].size = sdo->data.pub_key.chr.size;
-			indx++;
+			sdo_update->fields[index].parent_tag = IASECC_SDO_PUBKEY_TAG;
+			sdo_update->fields[index].tag = IASECC_SDO_PUBKEY_TAG_CHR;
+			sdo_update->fields[index].value = sdo->data.pub_key.chr.value;
+			sdo_update->fields[index].size = sdo->data.pub_key.chr.size;
+			index++;
 		}
 
 		/* For ECC card 'compulsory' flag should be already here */
 		if (!sdo->data.pub_key.compulsory.on_card)   {
 			if (sdo->data.pub_key.compulsory.value)   {
-				sdo_update->fields[indx].parent_tag = IASECC_SDO_PUBKEY_TAG;
-				sdo_update->fields[indx].tag = IASECC_SDO_PUBKEY_TAG_COMPULSORY;
-				sdo_update->fields[indx].value = sdo->data.pub_key.compulsory.value;
-				sdo_update->fields[indx].size = sdo->data.pub_key.compulsory.size;
-				indx++;
+				sdo_update->fields[index].parent_tag = IASECC_SDO_PUBKEY_TAG;
+				sdo_update->fields[index].tag = IASECC_SDO_PUBKEY_TAG_COMPULSORY;
+				sdo_update->fields[index].value = sdo->data.pub_key.compulsory.value;
+				sdo_update->fields[index].size = sdo->data.pub_key.compulsory.size;
+				index++;
 			}
 		}
 	}

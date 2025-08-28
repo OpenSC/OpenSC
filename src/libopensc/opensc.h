@@ -228,6 +228,8 @@ extern "C" {
 
 #define MAX_FILE_SIZE 65535
 
+#define ED448_KEY_SIZE_BYTES 57U
+
 struct sc_supported_algo_info {
 	unsigned int reference;
 	unsigned int mechanism;
@@ -352,15 +354,6 @@ struct sc_ef_atr {
 	struct sc_object_id allocation_oid;
 
 	unsigned status;
-};
-
-struct sc_card_cache {
-	struct sc_path current_path;
-
-        struct sc_file *current_ef;
-        struct sc_file *current_df;
-
-	int valid;
 };
 
 #define SC_PROTO_T0		0x00000001
@@ -614,8 +607,6 @@ typedef struct sc_card {
 	const char *name;
 	void *drv_data;
 	int max_pin_len;
-
-	struct sc_card_cache cache;
 
 	struct sc_serial_number serialnr;
 	struct sc_version version;
@@ -1611,9 +1602,6 @@ int sc_parse_ef_gdo(struct sc_card *card,
 		unsigned char *chn, size_t *chn_len);
 int sc_update_dir(struct sc_card *card, sc_app_info_t *app);
 
-void sc_invalidate_cache(struct sc_card *card);
-void sc_print_cache(struct sc_card *card);
-
 struct sc_algorithm_info * sc_card_find_rsa_alg(struct sc_card *card,
 		size_t key_length);
 struct sc_algorithm_info * sc_card_find_ec_alg(struct sc_card *card,
@@ -1760,6 +1748,24 @@ int iso7816_logout(sc_card_t *card, unsigned char pin_reference);
 int
 iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 		struct sc_pin_cmd_data *data, u8 *buf, size_t buf_len);
+
+/*
+ * @brief Send a SELECT AID APDU to the smart card.
+ *
+ * This function constructs and transmits a SELECT command using the provided
+ * AID (Application Identifier) to select an application on the card.
+ *
+ * @param[in]     card      Pointer to the smart card context.
+ * @param[in]     req       Pointer to the AID to be selected.
+ * @param[in]     reqlen    Length of the AID.
+ * @param[out]    resp      Optional. Buffer to receive the response from the card.
+ *                          May be NULL if the response is not needed.
+ * @param[in,out] resplen   Optional. On input, the maximum length of the response buffer.
+ *                          On output, the actual length of the response. May be NULL
+ *                          if resp is NULL or response length is not needed.
+ */
+int iso7816_select_aid(struct sc_card *card, const u8 *req,
+		size_t reqlen, u8 *resp, size_t *resplen);
 
 /**
  * Free a buffer returned by OpenSC.

@@ -1734,15 +1734,15 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	struct sc_card *card = p15card->card;
 	struct sc_pkcs15_object *p15objects[MAX_DATA_OBJS];
 	struct sc_file *cfile = NULL, *file = NULL, *parent = NULL;
-	int rv, nn_objs, indx, ii;
+	int rv, nn_objs, index, ii;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "iasecc_store_data_object() authID '%s'", sc_pkcs15_print_id(&object->auth_id));
 	nn_objs = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, p15objects, MAX_DATA_OBJS);
 	LOG_TEST_RET(ctx, nn_objs, "IasEcc get pkcs15 DATA objects error");
 
-	for(indx = 1; indx < MAX_DATA_OBJS; indx++)   {
-		rv = iasecc_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_DATA_OBJECT, indx, &file);
+	for(index = 1; index < MAX_DATA_OBJS; index++)   {
+		rv = iasecc_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_DATA_OBJECT, index, &file);
 		LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() pkcs15 new DATA file error");
 
 		for (ii=0; ii<nn_objs; ii++)   {
@@ -1760,7 +1760,7 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		file = NULL;
 	}
 
-	if (indx == MAX_DATA_OBJS)
+	if (index == MAX_DATA_OBJS)
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_TOO_MANY_OBJECTS, "iasecc_store_data_object() too many DATA objects.");
 
 	do  {

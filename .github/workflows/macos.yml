@@ -43,6 +43,31 @@ jobs:
         env:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
+      - name: Upload test logs
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ${{ matrix.os }}-logs
+          path: |
+            config.log
+
+  build-libressl:
+    strategy:
+      matrix:
+        os: [macos-15, macos-14, macos-13]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: .github/setup-macos.sh libressl
+      - run: .github/build.sh libressl
+      - run: .github/cleanup-macos.sh
+      - name: Upload test logs
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ${{ matrix.os }}-libressl-logs
+          path: |
+            config.log
 
   push-artifacts:
     runs-on: macos-latest

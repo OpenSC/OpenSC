@@ -89,9 +89,6 @@ app <replaceable>application</replaceable> {
 						<literal>cardmod</literal>: Configuration block for Windows' minidriver (<filename>opensc-minidriver.dll</filename>)
 				</para></listitem>
 				<listitem><para>
-						<literal>tokend</literal>: Configuration block for macOS' tokend (<application>OpenSC.tokend</application>)
-				</para></listitem>
-				<listitem><para>
 						<literal>cardos-tool</literal>,
 						<literal>cryptoflex-tool</literal>,
 						<literal>dnie-tool</literal>,
@@ -306,6 +303,9 @@ app <replaceable>application</replaceable> {
 									<literal>myeid</literal>: See <xref linkend="myeid"/>
 							</para></listitem>
 							<listitem><para>
+									<literal>dtrust</literal>: See <xref linkend="dtrust"/>
+							</para></listitem>
+							<listitem><para>
 									Any other value: Configuration block for an externally loaded card driver
 							</para></listitem>
 						</itemizedlist>
@@ -480,9 +480,6 @@ app <replaceable>application</replaceable> {
 						<itemizedlist>
 							<listitem><para>
 									<literal>pkcs15</literal>: See <xref linkend="framework pkcs15"/>
-							</para></listitem>
-							<listitem><para>
-									<literal>tokend</literal>: See <xref linkend="framework tokend"/>
 							</para></listitem>
 						</itemizedlist>
 					</para>
@@ -826,6 +823,46 @@ app <replaceable>application</replaceable> {
 							secure connection, but only if the card is accessed over the
 							contact interface.
 					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2 id="dtrust">
+			<title>Configuration Options for D-Trust Signature Cards</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>can = <replaceable>value</replaceable>;</option>
+					</term>
+					<listitem>
+						<para>
+						CAN (Card Access Number – 6 digit number printed on the front side of
+						the card) is required to establish connection with the card. It might
+						be overwritten by <literal>DTRUST_CAN</literal> environment variable.
+						If not specified here, the CAN will be read from a card specific cache,
+						prompted on the card readers PIN pad or prompted interactively in the
+						following order.
+						</para>
+						<orderedlist>
+							 <listitem><para>Environment variable <literal>DTRUST_CAN</literal></para></listitem>
+							 <listitem><para>This configuration file option</para></listitem>
+							 <listitem><para>PKCS#15 card-specific cache</para></listitem>
+							 <listitem><para>Pin pad of a PACE-capable card reader</para></listitem>
+						</orderedlist>
+					</listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>can_use_cache = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem>
+						<para>
+						Cache the CAN number of a card once it was provided by the user in the
+						directory <literal>file_cache_dir</literal>. The cached CAN is used
+						later to avoid interactively prompting for the CAN. This feature is
+						enabled by default.
+						</para>
+					</listitem>
 				</varlistentry>
 			</variablelist>
 		</refsect2>
@@ -1248,6 +1285,7 @@ app <replaceable>application</replaceable> {
 							<literal>dnie</literal>,
 							<literal>edo</literal>,
 							<literal>esteid2018</literal>,
+							<literal>esteid2025</literal>,
 							<literal>flex</literal> (deactivated driver),
 							<literal>cyberflex</literal> (deactivated driver),
 							<literal>gemsafeV1</literal>,
@@ -1258,7 +1296,8 @@ app <replaceable>application</replaceable> {
 							<literal>mcrd</literal> (deactivated driver),
 							<literal>npa</literal>,
 							<literal>nqapplet</literal>,
-							<literal>tcos</literal> and otherwise <literal>no</literal>).
+							<literal>tcos</literal>,
+							<literal>dtrust</literal> and otherwise <literal>no</literal>).
 						</para>
 						<para>
 							If caching is done by a system process, the
@@ -1368,8 +1407,7 @@ app <replaceable>application</replaceable> {
 										<literal>ignore</literal>: Ignore PIN-protected certificates.
 								</para></listitem>
 							</itemizedlist>
-							(Default: <literal>ignore</literal> in Tokend,
-							<literal>protect</literal> otherwise).
+							(Default: <literal>protect</literal>.
 					</para></listitem>
 				</varlistentry>
 				<varlistentry>
@@ -1541,22 +1579,6 @@ app <replaceable>application</replaceable> {
 							</varlistentry>
 						</variablelist>
 					</listitem>
-				</varlistentry>
-			</variablelist>
-		</refsect2>
-
-		<refsect2 id="framework tokend">
-			<title>Configuration of Tokend</title>
-			<variablelist>
-				<varlistentry>
-					<term>
-						<option>score = <replaceable>num</replaceable>;</option>
-					</term>
-					<listitem><para>
-							Score for <application>OpenSC.tokend</application>
-							(Default: <literal>300</literal>).  The tokend with
-							the highest score shall be used.
-					</para></listitem>
 				</varlistentry>
 			</variablelist>
 		</refsect2>

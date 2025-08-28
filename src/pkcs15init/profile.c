@@ -492,6 +492,10 @@ sc_profile_free(struct sc_profile *profile)
 
 	if (profile->p15_spec)
 		sc_pkcs15_card_free(profile->p15_spec);
+
+	if (profile->dll)
+		sc_dlclose(profile->dll);
+
 	free(profile);
 }
 

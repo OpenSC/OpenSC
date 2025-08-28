@@ -332,13 +332,13 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-	if (!cmdline.skip_chrome_flag)
+	if (cmdline.skip_chrome_arg != skip_chrome_arg_on)
 		add_module_chrome(module_path, module_name, exclude_module_path);
-	if (!cmdline.skip_firefox_flag)
+	if (cmdline.skip_firefox_arg != skip_firefox_arg_on)
 		add_module_firefox(module_path, module_name, exclude_module_path);
-	if (!cmdline.skip_thunderbird_flag)
+	if (cmdline.skip_thunderbird_arg != skip_thunderbird_arg_on)
 		add_module_thunderbird(module_path, module_name, exclude_module_path);
-	if (!cmdline.skip_seamonkey_flag)
+	if (cmdline.skip_seamonkey_arg != skip_seamonkey_arg_on)
 		add_module_seamonkey(module_path, module_name, exclude_module_path);
 
 	cmdline_parser_free (&cmdline);

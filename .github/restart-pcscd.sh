@@ -16,6 +16,13 @@ function pcscd_cleanup {
 trap pcscd_cleanup EXIT
 
 
+
+# set up polkit rule to let user "runner" access PC/SC remotely for testing
+if [ ! -f "/usr/share/polkit-1/rules.d/03-polkit-pcscd.rules" ]; then
+	echo 'polkit.addRule(function(action, subject) { if ((action.id == "org.debian.pcsc-lite.access_pcsc" || action.id == "org.debian.pcsc-lite.access_card") && subject.user == "runner") { return polkit.Result.YES; } });' > /usr/share/polkit-1/rules.d/03-polkit-pcscd.rules;
+fi
+
+
 # stop the pcscd service and run it from console to see possible errors
 if which systemctl && systemctl is-system-running; then
 	sudo systemctl stop pcscd.service pcscd.socket
