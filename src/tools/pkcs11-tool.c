@@ -579,13 +579,20 @@ struct rsakey_info {
 	unsigned char	*coefficient;
 	int		coefficient_len;
 };
-struct gostkey_info {
+struct generalkey_info {
 	struct sc_lv_data param_oid;
 	struct sc_lv_data public;
 	struct sc_lv_data private;
 #ifdef EC_POINT_NO_ASN1_OCTET_STRING
 	size_t header_len;
 #endif
+};
+
+struct pqckey_info {
+	struct sc_lv_data public;
+	struct sc_lv_data private;
+	struct sc_lv_data seed;
+	long int type;
 };
 
 static void		show_cryptoki_info(void);
@@ -3567,6 +3574,30 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				n_privkey_attr++;
 			}
 		}
+		else if (strncmp(type, "ML-DSA-", strlen("ML-DSA-")) == 0 || strncmp(type, "ml-dsa-", strlen("ml-dsa-")) == 0) {
+			CK_MECHANISM_TYPE mtypes[] = {CKM_ML_DSA_KEY_PAIR_GEN};
+			size_t mtypes_num = sizeof(mtypes)/sizeof(mtypes[0]);
+			int ii;
+			CK_ML_DSA_PARAMETER_SET_TYPE parameter_set = 0;
+
+			key_type = CKK_ML_DSA;
+
+			if (strlen(type) != strlen("ML-DSA-") + 2) {
+				util_fatal("Invalid ML-DSA key type '%s'", type);
+			} else if (strcmp(type, "ML-DSA-44")) {
+				parameter_set = CKP_ML_DSA_44;
+			} else if (strcmp(type, "ML-DSA-44")) {
+				parameter_set = CKP_ML_DSA_44;
+			} else if (strcmp(type, "ML-DSA-44")) {
+				parameter_set = CKP_ML_DSA_44;
+			} else {
+				util_fatal("Invalid ML-DSA key type '%s'", type);
+			}
+
+			if (!opt_mechanism_used)
+				if (!find_mechanism(slot, CKF_GENERATE_KEY_PAIR, mtypes, mtypes_num, &opt_mechanism))
+					util_fatal("Generate RSA mechanism not supported");
+		}
 		else {
 			util_fatal("Unknown key pair type %s", type);
 		}
@@ -3946,6 +3977,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 	} else {
 		util_fatal("Unsupported key type %s", opt_key_type);
 	}
+	/* TODO: Add PQC algorithms*/
 
 	FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 	n_attr++;
@@ -4289,7 +4321,7 @@ parse_rsa_pkey(EVP_PKEY *pkey, int private, struct rsakey_info *rsa)
 
 #if !defined(OPENSSL_NO_EC)
 static int
-parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
+parse_gost_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *gost)
 {
 	unsigned char *pder;
 	BIGNUM *X, *Y;
@@ -4392,19 +4424,19 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 }
 
 static int
-parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
+parse_ec_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *ec)
 {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	const EC_KEY *src = EVP_PKEY_get0_EC_KEY(pkey);
 	const BIGNUM *bignum;
 	if (!src)
 		return -1;
-	gost->param_oid.len = i2d_ECParameters((EC_KEY *)src, &gost->param_oid.value);
+	gost->param_oid.len = i2d_ECParameters((EC_KEY *)src, &gosect->param_oid.value);
 #else
 	BIGNUM *bignum = NULL;
-	gost->param_oid.len = i2d_KeyParams(pkey, &gost->param_oid.value);
+	ec->param_oid.len = i2d_KeyParams(pkey, &ec->param_oid.value);
 #endif
-	if (gost->param_oid.len <= 0) {
+	if (ec->param_oid.len <= 0) {
 		return -1;
 	}
 
@@ -4416,15 +4448,15 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 			return -1;
 		}
 #endif
-		gost->private.len = BN_num_bytes(bignum);
-		gost->private.value = OPENSSL_malloc(gost->private.len);
-		if (!gost->private.value) {
+		ec->private.len = BN_num_bytes(bignum);
+		ec->private.value = OPENSSL_malloc(ec->private.len);
+		if (!ec->private.value) {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 			BN_free(bignum);
 #endif
 			return -1;
 		}
-		BN_bn2bin(bignum, gost->private.value);
+		BN_bn2bin(bignum, ec->private.value);
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 		BN_free(bignum);
 #endif
@@ -4442,16 +4474,16 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 #else
 		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, sizeof(buf), &point_len);
 #endif
-		gost->public.value = OPENSSL_malloc(MAX_HEADER_LEN + point_len);
-		if (!gost->public.value)
+		ec->public.value = OPENSSL_malloc(MAX_HEADER_LEN + point_len);
+		if (!ec->public.value)
 			return -1;
-		point = gost->public.value;
+		point = ec->public.value;
 		ASN1_put_object(&point, 0, (int)point_len, V_ASN1_OCTET_STRING, V_ASN1_UNIVERSAL);
-		header_len = point-gost->public.value;
+		header_len = point-ec->public.value;
 		memcpy(point, buf, point_len);
-		gost->public.len = header_len+point_len;
+		ec->public.len = header_len+point_len;
 #ifdef EC_POINT_NO_ASN1_OCTET_STRING // workaround for non-compliant cards not expecting DER encoding
-		gost->public.len   -= header_len;
+		ec->public.len   -= header_len;
 		gost->public.value += header_len;
 		// store header_len to restore public.value before free it
 		gost->header_len = header_len;
@@ -4459,6 +4491,58 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct gostkey_info *gost)
 	}
 
 	return 0;
+}
+
+static int
+parse_ml_dsa_pkey(EVP_PKEY *pkey, int private, struct pqckey_info *ml_dsa)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x30500000L
+	if ((ml_dsa->type = EVP_PKEY_get_id(pkey)) == -1) {
+		return -1;
+	}
+	if (private) {
+		size_t priv_len;
+
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY, NULL, 0, &priv_len) != 1) {
+			return -1;
+		}
+		ml_dsa->private.len = priv_len;
+		if (!(ml_dsa->private.value = OPENSSL_malloc(priv_len))) {
+			return -1;
+		}
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY, ml_dsa->private.value, priv_len, NULL) != 1) {
+			OPENSSL_free(ml_dsa->private.value);
+			return -1;
+		}
+		ml_dsa->seed.len = 32;
+		if (!(ml_dsa->seed.value = OPENSSL_malloc(ml_dsa->seed.len))) {
+			OPENSSL_free(ml_dsa->private.value);
+			return -1;
+		}
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ML_DSA_SEED, ml_dsa->private.value, priv_len, NULL) != 1) {
+			OPENSSL_free(ml_dsa->private.value);
+			OPENSSL_free(ml_dsa->seed.value);
+			return -1;
+		}
+	} else {
+		size_t pub_len;
+
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pub_len) != 1) {
+			return -1;
+		}
+		ml_dsa->public.len = pub_len;
+		if (!(ml_dsa->public.value = OPENSSL_malloc(pub_len))) {
+			return -1;
+		}
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, ml_dsa->public.value, pub_len, NULL) != 1) {
+			OPENSSL_free(ml_dsa->public);
+			return -1;
+		}
+	}
+	return 0;
+#else
+	return -1;
+#endif
 }
 
 #ifdef ENABLE_OPENSSL
@@ -4553,6 +4637,13 @@ evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type, struct ec_
 		return CKR_OK;
 	}
 #endif
+
+#if defined(EVP_PKEY_ML_DSA_44) && defined(EVP_PKEY_ML_DSA_65) && defined(EVP_PKEY_ML_DSA_87)
+	if (*pk_type == EVP_PKEY_ML_DSA_44 || *pk_type == EVP_PKEY_ML_DSA_65 || *pk_type == EVP_PKEY_ML_DSA_87) {
+		*type = CKK_ML_DSA;
+		return CKR_OK;
+	}
+#endif
 err:
 	/* unsupported by OpenSSL, PKCS11 or this program */
 	*type = CKK_OPENSC_UNDEFINED;
@@ -4563,7 +4654,7 @@ err:
 
 /*  Edwards and Montogmery keys have the same format */
 static int
-parse_ed_mont_pkey(EVP_PKEY *pkey, CK_KEY_TYPE type, int pk_type, struct ec_curve_info *ec_curve_info, int private, struct gostkey_info *gost)
+parse_ed_mont_pkey(EVP_PKEY *pkey, CK_KEY_TYPE type, int pk_type, struct ec_curve_info *ec_curve_info, int private, struct generalkey_info *gost)
 {
 	unsigned char *key;
 	size_t key_size;
@@ -4615,7 +4706,7 @@ parse_ed_mont_pkey(EVP_PKEY *pkey, CK_KEY_TYPE type, int pk_type, struct ec_curv
 }
 #endif
 static void
-gost_info_free(struct gostkey_info gost)
+general_key_info_free(struct generalkey_info gost)
 {
 #ifdef EC_POINT_NO_ASN1_OCTET_STRING // restore public.value before free it
 	if (gost.public.value)
@@ -4665,14 +4756,15 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 #ifdef ENABLE_OPENSSL
 	struct x509cert_info cert;
 	struct rsakey_info rsa;
-	struct gostkey_info gost;
+	struct generalkey_info general_key;
+	struct pqckey_info pqc_key;
 	EVP_PKEY *evp_key = NULL;
 	int pk_type = -1;
 	struct ec_curve_info *ec_curve_info = NULL;
 
 	memset(&cert, 0, sizeof(cert));
 	memset(&rsa,  0, sizeof(rsa));
-	memset(&gost,  0, sizeof(gost));
+	memset(&general_key,  0, sizeof(general_key));
 #endif
 
 	f = fopen(opt_file_to_write, "rb");
@@ -4768,11 +4860,13 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		}
 #if !defined(OPENSSL_NO_EC)
 		else if (type == CKK_GOSTR3410) {
-			rv = parse_gost_pkey(evp_key, is_private, &gost);
+			rv = parse_gost_pkey(evp_key, is_private, &general_key);
 		} else if (type == CKK_EC) {
-			rv = parse_ec_pkey(evp_key, is_private, &gost);
+			rv = parse_ec_pkey(evp_key, is_private, &general_key);
 		} else if (type == CKK_EC_EDWARDS || type == CKK_EC_MONTGOMERY) {
-			rv = parse_ed_mont_pkey(evp_key, type, pk_type, ec_curve_info, is_private, &gost);
+			rv = parse_ed_mont_pkey(evp_key, type, pk_type, ec_curve_info, is_private, &general_key);
+		} else if (type == CKK_ML_DSA) {
+			rv = parse_ml_dsa_pkey(evp_key, is_private, &pqc_key);
 		}
 #endif
 		else
@@ -4902,26 +4996,30 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_COEFFICIENT, rsa.coefficient, rsa.coefficient_len);
 			n_privkey_attr++;
-		}
-
-		else if ((type == CKK_EC) || (type == CKK_EC_EDWARDS) || (type == CKK_EC_MONTGOMERY)) {
+		} else if ((type == CKK_EC) || (type == CKK_EC_EDWARDS) || (type == CKK_EC_MONTGOMERY)) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
-			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EC_PARAMS, gost.param_oid.value, gost.param_oid.len);
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_EC_PARAMS, general_key.param_oid.value, general_key.param_oid.len);
 			n_privkey_attr++;
-			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, gost.private.value, gost.private.len);
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, general_key.private.value, general_key.private.len);
 			n_privkey_attr++;
-
 		} else if (type == CKK_GOSTR3410) {
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_privkey_attr++;
-			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_GOSTR3410_PARAMS, gost.param_oid.value, gost.param_oid.len);
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_GOSTR3410_PARAMS, general_key.param_oid.value, general_key.param_oid.len);
 			n_privkey_attr++;
-			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, gost.private.value, gost.private.len);
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, general_key.private.value, general_key.private.len);
 			/* CKA_VALUE of the GOST key has to be in the little endian order */
 			rv = sc_mem_reverse(privkey_templ[n_privkey_attr].pValue, privkey_templ[n_privkey_attr].ulValueLen);
 			if (rv)
 				return rv;
+			n_privkey_attr++;
+		} else if (type == CKK_ML_DSA) {
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PARAMETER_SET, &pqc_key.type, sizeof(pqc_key.type));
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE, &pqc_key.private.value, pqc_key.private.len);
+			n_privkey_attr++;
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SEED, &pqc_key.seed.value, pqc_key.seed.len);
 			n_privkey_attr++;
 		} else {
 			util_fatal("Unsupported CK_KEY_TYPE, cannot write private key");
@@ -4989,6 +5087,11 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PUBLIC_EXPONENT, rsa.public_exponent, rsa.public_exponent_len);
 			n_pubkey_attr++;
+		} else if (type == CKK_ML_DSA) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PARAMETER_SET, &pqc_key.type, sizeof(pqc_key.type));
+			n_pubkey_attr++;
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_VALUE, &pqc_key.public.value, pqc_key.public.len);
+			n_pubkey_attr++;
 		}
 #if !defined(OPENSSL_NO_EC)
 
@@ -4996,18 +5099,18 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_pubkey_attr++;
-			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_EC_PARAMS, gost.param_oid.value, gost.param_oid.len);
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_EC_PARAMS, general_key.param_oid.value, general_key.param_oid.len);
 			n_pubkey_attr++;
-			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_EC_POINT, gost.public.value, gost.public.len);
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_EC_POINT, general_key.public.value, general_key.public.len);
 			n_pubkey_attr++;
 		} else if (pk_type == NID_id_GostR3410_2001) {
 			type = CKK_GOSTR3410;
 
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
 			n_pubkey_attr++;
-			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_GOSTR3410_PARAMS, gost.param_oid.value, gost.param_oid.len);
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_GOSTR3410_PARAMS, general_key.param_oid.value, general_key.param_oid.len);
 			n_pubkey_attr++;
-			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_VALUE, gost.public.value, gost.public.len);
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_VALUE, general_key.public.value, general_key.public.len);
 			/* CKA_VALUE of the GOST key has to be in the little endian order */
 			rv = sc_mem_reverse(pubkey_templ[n_pubkey_attr].pValue, pubkey_templ[n_pubkey_attr].ulValueLen);
 			if (rv)
@@ -5215,7 +5318,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	}
 
 #ifdef ENABLE_OPENSSL
-	gost_info_free(gost);
+	general_key_info_free(general_key);
 	rsa_info_free(rsa);
 	EVP_PKEY_free(evp_key);
 #endif /* ENABLE_OPENSSL */
