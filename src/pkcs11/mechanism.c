@@ -160,7 +160,7 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 				return CKR_OK;
 			}
 		}
-		sc_log(p11card->card->ctx, "Too many key types in mechanism 0x%lx, more than %d", mt->mech, MAX_KEY_TYPES);
+		sc_log(context, "Too many key types in mechanism 0x%lx, more than %d", mt->mech, MAX_KEY_TYPES);
 		return CKR_BUFFER_TOO_SMALL;
 	}
 
@@ -1785,22 +1785,22 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	CK_MECHANISM_INFO mech_info;
 	CK_RV rv;
 
-	LOG_FUNC_CALLED(p11card->card->ctx);
-	sc_log(p11card->card->ctx, "mech = %lx, hash_mech = %lx", mech, hash_mech);
+	LOG_FUNC_CALLED(context);
+	sc_log(context, "mech = %lx, hash_mech = %lx", mech, hash_mech);
 
 	if (!sign_type)
-		LOG_FUNC_RETURN(p11card->card->ctx, CKR_MECHANISM_INVALID);
+		LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
 	mech_info = sign_type->mech_info;
 
 	if (!(hash_type = sc_pkcs11_find_mechanism(p11card, hash_mech, CKF_DIGEST)))
-		LOG_FUNC_RETURN(p11card->card->ctx, CKR_MECHANISM_INVALID);
+		LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
 
 	/* These hash-based mechs can only be used for sign/verify */
 	mech_info.flags &= (CKF_SIGN | CKF_SIGN_RECOVER | CKF_VERIFY | CKF_VERIFY_RECOVER);
 
 	info = calloc(1, sizeof(*info));
 	if (!info)
-		LOG_FUNC_RETURN(p11card->card->ctx, CKR_HOST_MEMORY);
+		LOG_FUNC_RETURN(context, CKR_HOST_MEMORY);
 
 	info->mech = mech;
 	info->hash_type = hash_type;
@@ -1811,11 +1811,11 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 			info, free_info, copy_hash_signature_info);
 	if (!new_type) {
 		free_info(info);
-		LOG_FUNC_RETURN(p11card->card->ctx, CKR_HOST_MEMORY);
+		LOG_FUNC_RETURN(context, CKR_HOST_MEMORY);
 	}
 
 	rv = sc_pkcs11_register_mechanism(p11card, new_type, NULL);
 	sc_pkcs11_free_mechanism(&new_type);
 
-	LOG_FUNC_RETURN(p11card->card->ctx, (int)rv);
+	LOG_FUNC_RETURN(context, (int)rv);
 }
