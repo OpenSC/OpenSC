@@ -3739,7 +3739,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 			}
 
 			if (actual_key_len + offset != pubkey_der.len) {
-				logprintf(pCardData, 3, "DER length mismatch: encoded=%llu, actual=%llu", actual_key_len, pubkey_der.len - offset);
+				logprintf(pCardData, 3, "DER length mismatch: encoded=%" SC_FORMAT_LEN_SIZE_T "u, actual=%" SC_FORMAT_LEN_SIZE_T "u", actual_key_len, pubkey_der.len - offset);
 				ret = SCARD_F_INTERNAL_ERROR;
 				goto err;
 			}

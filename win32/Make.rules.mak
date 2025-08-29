@@ -18,9 +18,6 @@ WIX_LIBS = "$(WIX_PACKAGES)/wixtoolset.dutil/5.0.2/build/native/v14/$(PLATFORM)/
 #Include support for Secure Messaging
 SM_DEF = /DENABLE_SM
 
-#Include support for PIV Secure Messaging
-PIV_SM_DEF = /DENABLE_PIV_SM
-
 #Build with debugging support
 #DEBUG_DEF = /DDEBUG
 

@@ -3657,7 +3657,7 @@ static int get_keylen(unsigned int alg_id, size_t *size)
 static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *len)
 {
 
-	int r;
+	int r, r2;
 	size_t fsize;
 	FILE *f = NULL;
 	char * keyfilename = NULL;
@@ -3665,17 +3665,13 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 	size_t keylen, readlen;
 	u8 * keybuf = NULL;
 	u8 * tkey = NULL;
+	u8 rbuf[255];
+	u8 sbuf[5];
+	u8 *p;
+	const u8 *body = NULL;
+	size_t body_len;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	keyfilename = (char *)getenv("PIV_EXT_AUTH_KEY");
-
-	if (keyfilename == NULL) {
-		sc_log(card->ctx,
-			"Unable to get PIV_EXT_AUTH_KEY=(null) for general_external_authenticate");
-		r = SC_ERROR_FILE_NOT_FOUND;
-		goto err;
-	}
 
 	r = get_keylen(alg_id, &expected_keylen);
 	if(r) {
@@ -3684,40 +3680,6 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 		goto err;
 	}
 
-	f = fopen(keyfilename, "rb");
-	if (!f) {
-		sc_log(card->ctx, " Unable to load key from file\n");
-		r = SC_ERROR_FILE_NOT_FOUND;
-		goto err;
-	}
-
-	if (0 > fseek(f, 0L, SEEK_END))
-		r = SC_ERROR_INTERNAL;
-	fsize = ftell(f);
-	if (0 > (long) fsize)
-		r = SC_ERROR_INTERNAL;
-	if (0 > fseek(f, 0L, SEEK_SET))
-		r = SC_ERROR_INTERNAL;
-	if(r) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read %s\n", keyfilename);
-		goto err;
-	}
-
-	keybuf = malloc(fsize+1); /* if not binary, need null to make it a string */
-	if (!keybuf) {
-		sc_log(card->ctx, " Unable to allocate key memory");
-		r = SC_ERROR_OUT_OF_MEMORY;
-		goto err;
-	}
-	keybuf[fsize] = 0x00;    /* in case it is text need null */
-
-	if ((readlen = fread(keybuf, 1, fsize, f)) != fsize) {
-		sc_log(card->ctx, " Unable to read key\n");
-		r = SC_ERROR_WRONG_LENGTH;
-		goto err;
-	}
-	keybuf[readlen] = '\0';
-
 	tkey = malloc(expected_keylen);
 	if (!tkey) {
 		sc_log(card->ctx, " Unable to allocate key memory");
@@ -3725,19 +3687,110 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 		goto err;
 	}
 
-	if (fsize == expected_keylen) { /* it must be binary */
-		memcpy(tkey, keybuf, expected_keylen);
-	} else {
-		/* if the key-length is larger then binary length, we assume hex encoded */
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Treating key as hex-encoded!\n");
-		sc_right_trim(keybuf, fsize);
-		keylen = expected_keylen;
-		r = sc_hex_to_bin((char *)keybuf, tkey, &keylen);
-		if (keylen !=expected_keylen || r != 0 ) {
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error formatting key\n");
-			if (r == 0)
-				r = SC_ERROR_INCOMPATIBLE_KEY;
+	p = sbuf;
+	*p++ = 0x5C;
+	*p++ = 0x03;
+	*p++ = 0x2F;
+	*p++ = 0x41;
+	*p++ = 0x4B;
+
+	/* Fetch Status Object: 53 <len> <key ref> <alg id> <key len> <key data> */
+	r2 = piv_general_io(card, 0xCB, 0x3F, 0x00, sbuf, p - sbuf, rbuf, sizeof rbuf);
+	if (r2 >= 0) {
+
+		/* Remove the encompassing outer TLV of 0x53 and get the data */
+		body = sc_asn1_find_tag(card->ctx, rbuf, r2, 0x53, &body_len);
+		if (!body || rbuf[0] != 0x53) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status Data response of NULL\n");
+			r = SC_ERROR_INVALID_DATA;
 			goto err;
+		}
+
+		if (body_len < 4) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status Data must be at least 4 bytes\n");
+			r = SC_ERROR_INVALID_DATA;
+			goto err;
+		}
+
+		if (body[0] != 0x9B) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status Data unexpected slot\n");
+			r = SC_ERROR_INVALID_DATA;
+			goto err;
+		}
+
+		if (body[1] != alg_id) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status Data unexpected algorithm\n");
+			r = SC_ERROR_INVALID_DATA;
+			goto err;
+		}
+
+		if ((size_t)((body[2] << 8) | body[3]) != expected_keylen || body_len != expected_keylen + 4) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Invalid Status unexpected key length\n");
+			r = SC_ERROR_INVALID_DATA;
+			goto err;
+		}
+
+		memcpy(tkey, body + 4, expected_keylen);
+	} else {
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Failed to get key data: %d. Falling back to reading PIV_EXT_AUTH_KEY.\n", r2);
+
+		keyfilename = (char *)getenv("PIV_EXT_AUTH_KEY");
+
+		if (keyfilename == NULL) {
+			sc_log(card->ctx,
+					"Unable to get PIV_EXT_AUTH_KEY=(null) for general_external_authenticate");
+			r = SC_ERROR_FILE_NOT_FOUND;
+			goto err;
+		}
+
+		f = fopen(keyfilename, "rb");
+		if (!f) {
+			sc_log(card->ctx, " Unable to load key from file\n");
+			r = SC_ERROR_FILE_NOT_FOUND;
+			goto err;
+		}
+
+		if (0 > fseek(f, 0L, SEEK_END))
+			r = SC_ERROR_INTERNAL;
+		fsize = ftell(f);
+		if (0 > (long)fsize)
+			r = SC_ERROR_INTERNAL;
+		if (0 > fseek(f, 0L, SEEK_SET))
+			r = SC_ERROR_INTERNAL;
+		if (r) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not read %s\n", keyfilename);
+			goto err;
+		}
+
+		keybuf = malloc(fsize + 1); /* if not binary, need null to make it a string */
+		if (!keybuf) {
+			sc_log(card->ctx, " Unable to allocate key memory");
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+		keybuf[fsize] = 0x00; /* in case it is text need null */
+
+		if ((readlen = fread(keybuf, 1, fsize, f)) != fsize) {
+			sc_log(card->ctx, " Unable to read key\n");
+			r = SC_ERROR_WRONG_LENGTH;
+			goto err;
+		}
+		keybuf[readlen] = '\0';
+
+		if (fsize == expected_keylen) { /* it must be binary */
+			memcpy(tkey, keybuf, expected_keylen);
+		} else {
+			/* if the key-length is larger then binary length, we assume hex encoded */
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Treating key as hex-encoded!\n");
+			sc_right_trim(keybuf, fsize);
+			keylen = expected_keylen;
+			r = sc_hex_to_bin((char *)keybuf, tkey, &keylen);
+			if (keylen != expected_keylen || r != 0) {
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Error formatting key\n");
+				if (r == 0)
+					r = SC_ERROR_INCOMPATIBLE_KEY;
+				goto err;
+			}
 		}
 	}
 	*key = tkey;
