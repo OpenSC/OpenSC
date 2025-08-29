@@ -313,7 +313,7 @@ again:
 			scconf_block *conf_block = NULL;
 			int enable_InitToken = 0;
 
-			conf_block = sc_match_atr_block(p11card->card->ctx, NULL,
+			conf_block = sc_match_atr_block(context, NULL,
 				&p11card->reader->atr);
 			if (!conf_block) /* check default block */
 				conf_block = sc_get_conf_block(context,
