@@ -108,7 +108,6 @@ static int fuzz_card_connect(const uint8_t *data, size_t size, sc_pkcs11_slot_t 
 		scconf_block *conf_block = NULL;
 
 		conf_block = sc_match_atr_block(context, NULL, &p11card->reader->atr);
-s
 		if (!conf_block) /* check default block */
 			conf_block = sc_get_conf_block(context, "framework", "pkcs15", 1);
 
