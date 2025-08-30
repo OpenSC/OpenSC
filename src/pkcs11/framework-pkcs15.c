@@ -1651,7 +1651,8 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 	}
 
 	/* Find out framework data corresponding to the given application */
-	fw_data = get_fw_data(p11card, app_info, &idx);
+	if (p11card)
+		fw_data = get_fw_data(p11card, app_info, &idx);
 	if (!fw_data)   {
 		if (p11card) {
 			sc_log(context, "Create slot for the non-binded card");
@@ -1661,14 +1662,14 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 	}
 	sc_log(context, "Use FW data with index %i; fw_data->p15_card %p", idx, fw_data->p15_card);
 
-	conf_block = sc_get_conf_block(p11card->card->ctx, "framework", "pkcs15", 1);
+	conf_block = sc_get_conf_block(context, "framework", "pkcs15", 1);
 	if (conf_block && app_info)   {
 		scconf_block **blocks = NULL;
 		char str_path[SC_MAX_AID_STRING_SIZE];
 
 		memset(str_path, 0, sizeof(str_path));
 		sc_bin_to_hex(app_info->path.value, app_info->path.len, str_path, sizeof(str_path), 0);
-		blocks = scconf_find_blocks(p11card->card->ctx->conf, conf_block, "application", str_path);
+		blocks = scconf_find_blocks(context->conf, conf_block, "application", str_path);
 		if (blocks)   {
 			if (blocks[0]) {
 				user_pin = (char *)scconf_get_str(blocks[0], "user_pin", NULL);
@@ -2110,7 +2111,7 @@ pkcs15_initialize(struct sc_pkcs11_slot *slot, void *ptr,
 	sc_log(context, "Get 'enable-InitToken' card configuration option");
 	if (!p11card)
 		return CKR_TOKEN_NOT_RECOGNIZED;
-	conf_block = sc_get_conf_block(p11card->card->ctx, "framework", "pkcs15", 1);
+	conf_block = sc_get_conf_block(context, "framework", "pkcs15", 1);
 	enable_InitToken = scconf_get_bool(conf_block, "pkcs11_enable_InitToken", 0);
 
 	memset(&args, 0, sizeof(args));
@@ -2438,7 +2439,7 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 				ec->params.der.value = NULL;
 				goto out;
 			}
-			if (sc_pkcs15_fix_ec_parameters(p11card->card->ctx, &ec->params) != SC_SUCCESS)
+			if (sc_pkcs15_fix_ec_parameters(context, &ec->params) != SC_SUCCESS)
 				return CKR_ATTRIBUTE_VALUE_INVALID;
 			break;
 		case CKA_SIGN:
@@ -2814,7 +2815,7 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		case CKA_EC_POINT:
 			switch (key_type) {
 			case CKK_EC:
-				if (sc_pkcs15_decode_pubkey_ec(p11card->card->ctx, ec, attr->pValue, attr->ulValueLen) < 0) {
+				if (sc_pkcs15_decode_pubkey_ec(context, ec, attr->pValue, attr->ulValueLen) < 0) {
 					free(ec->ecpointQ.value);
 					ec->ecpointQ.value = NULL;
 					ec->ecpointQ.len = 0;
@@ -2888,7 +2889,7 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	} else if (key_type == CKK_EC ||
 			key_type == CKK_EC_EDWARDS ||
 			key_type == CKK_EC_MONTGOMERY) {
-		rc = sc_pkcs15_fix_ec_parameters(p11card->card->ctx, &ec->params);
+		rc = sc_pkcs15_fix_ec_parameters(context, &ec->params);
 
 		if (rc || !ec->ecpointQ.len || !ec->params.der.value) {
 			sc_log(context, "Template to store the EC public key is incomplete");
