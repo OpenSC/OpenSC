@@ -846,8 +846,8 @@ static int dnie_init(struct sc_card *card)
 	card->sm_ctx.ops.free_sm_apdu = dnie_sm_free_wrapped_apdu;
 	card->sm_ctx.sm_mode = SM_MODE_NONE;
 
-	res=cwa_create_secure_channel(card,provider,CWA_SM_OFF);
-	LOG_TEST_RET(card->ctx, res, "Failure creating CWA secure channel.");
+	res = cwa_create_secure_channel(card, provider, CWA_SM_OFF);
+	LOG_TEST_RET(card->ctx, res, "Failure resetting CWA secure channel.");
 
 	/* initialize private data */
 	card->drv_data = calloc(1, sizeof(dnie_private_data_t));
@@ -1355,7 +1355,6 @@ static int dnie_get_challenge(struct sc_card *card, u8 * rnd, size_t len)
 static int dnie_logout(struct sc_card *card)
 {
 	int result = SC_SUCCESS;
-	sc_file_t *file = NULL;
 
 	if ((card == NULL) || (card->ctx == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1366,15 +1365,8 @@ static int dnie_logout(struct sc_card *card)
 		result = cwa_create_secure_channel(card,
 			GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_OFF);
 		LOG_TEST_RET(card->ctx, result, "Cannot close the secure channel");
-		/* request the Master File to provoke an SM error and close the channel */
-		result = dnie_compose_and_send_apdu(card, (const u8 *) DNIE_MF_NAME,
-			sizeof(DNIE_MF_NAME) - 1, 4, &file);
-		if (result == SC_ERROR_SM)
-			result = SC_SUCCESS;
 	}
 
-	if (file != NULL)
-		sc_file_free(file);
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 

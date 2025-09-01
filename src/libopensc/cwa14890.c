@@ -1136,7 +1136,11 @@ int cwa_create_secure_channel(sc_card_t * card,
 	case CWA_SM_OFF:	/* disable SM */
 		card->sm_ctx.sm_mode = SM_MODE_NONE;
 		sc_log(ctx, "Setting CWA SM status to none");
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+		/* request the Master File to provoke an SM error and close the channel */
+		res = sc_select_file(card, sc_get_mf_path(), NULL);
+		if (res == SC_ERROR_SM)
+			res = SC_SUCCESS;
+		LOG_FUNC_RETURN(ctx, res);
 	case CWA_SM_ON:	/* force sm initialization process */
 		sc_log(ctx, "CWA SM initialization requested");
 		break;
