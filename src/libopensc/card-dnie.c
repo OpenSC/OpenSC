@@ -847,18 +847,23 @@ static int dnie_init(struct sc_card *card)
 	card->sm_ctx.sm_mode = SM_MODE_NONE;
 
 	res = cwa_create_secure_channel(card, provider, CWA_SM_OFF);
+	if (res < 0)
+		free(provider);
 	LOG_TEST_RET(card->ctx, res, "Failure resetting CWA secure channel.");
 
 	/* initialize private data */
 	card->drv_data = calloc(1, sizeof(dnie_private_data_t));
-	if (card->drv_data == NULL)
+	if (card->drv_data == NULL) {
+		free(provider);
 	    LOG_TEST_RET(card->ctx, SC_ERROR_OUT_OF_MEMORY, "Could not allocate DNIe private data.");
+	}
 
 #ifdef ENABLE_DNIE_UI
 	/* read environment from configuration file */
 	res = dnie_get_environment(card, &(GET_DNIE_UI_CTX(card)));
 	if (res != SC_SUCCESS) {
 		free(card->drv_data);
+		free(provider);
 		LOG_TEST_RET(card->ctx, res, "Failure reading DNIe environment.");
 	}
 #endif
