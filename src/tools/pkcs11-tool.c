@@ -1899,6 +1899,24 @@ get_uri(CK_TOKEN_INFO_PTR info)
 	return copy_key_value_to_uri("token=", token, CK_TRUE);
 }
 
+static const char *
+get_uri_with_slot(CK_TOKEN_INFO_PTR info, CK_SLOT_ID slot)
+{
+	copy_key_value_to_uri("pkcs11:", NULL, CK_FALSE);
+	const char *model = percent_encode(info->model, sizeof(info->model));
+	copy_key_value_to_uri("model=", model, CK_FALSE);
+	const char *manufacturer = percent_encode(info->manufacturerID, sizeof(info->manufacturerID));
+	copy_key_value_to_uri("manufacturer=", manufacturer, CK_FALSE);
+	const char *serial = percent_encode(info->serialNumber, sizeof(info->serialNumber));
+	copy_key_value_to_uri("serial=", serial, CK_FALSE);
+	const char *token = percent_encode(info->label, sizeof(info->label));
+	copy_key_value_to_uri("token=", token, CK_FALSE);
+
+	static char slot_id_str[32];
+	snprintf(slot_id_str, sizeof(slot_id_str), "%lu", slot);
+	return copy_key_value_to_uri("slot-id=", slot_id_str, CK_TRUE);
+}
+
 static void show_token(CK_SLOT_ID slot)
 {
 	CK_TOKEN_INFO	info;
@@ -1933,7 +1951,7 @@ static void show_token(CK_SLOT_ID slot)
 	printf("  serial num         : %s\n", p11_utf8_to_local(info.serialNumber,
 			sizeof(info.serialNumber)));
 	printf("  pin min/max        : %lu/%lu\n", info.ulMinPinLen, info.ulMaxPinLen);
-	printf("  uri                : %s", get_uri(&info));
+	printf("  uri                : %s", get_uri_with_slot(&info, slot));
 	printf("\n");
 }
 
@@ -6419,9 +6437,11 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
 	unsigned char *oid_buf;
+	unsigned char *id;
 	char *label;
 	char *application;
 	CK_ULONG    size = 0;
+	CK_ULONG idsize = 0;
 	CK_TOKEN_INFO info;
 	CK_BBOOL modifiable = 0;
 	CK_BBOOL private = 0;
@@ -6476,6 +6496,12 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 
 	get_token_info(opt_slot, &info);
 	printf("  uri:            %s", get_uri(&info));
+	if ((id = getID(sess, obj, &idsize)) != NULL && idsize) {
+		printf(";id=");
+		for (unsigned int n = 0; n < idsize; n++)
+			printf("%%%02x", id[n]);
+		free(id);
+	}
 	if (label != NULL) {
 		const char *pelabel = percent_encode((unsigned char *)label, strlen(label));
 		printf(";object=%s", pelabel);
