@@ -75,6 +75,7 @@ main (int argc, char **argv)
 	ctx->flags |= SC_CTX_FLAG_ENABLE_DEFAULT_DRIVER;
 	if (sc_connect_card(reader, &card) < 0) {
 		fprintf(stderr, "Could not connect to card\n");
+		sc_disconnect_card(card);
 		sc_release_context(ctx);
 		exit(1);
 	}

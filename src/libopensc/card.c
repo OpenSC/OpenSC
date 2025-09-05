@@ -242,7 +242,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	sc_card_t *card;
 	sc_context_t *ctx;
 	struct sc_card_driver *driver;
-	int i, r = 0, idx, connected = 0;
+	int i, r = 0, idx;
 
 	if (card_out == NULL || reader == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -258,7 +258,6 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 	if (r)
 		goto err;
 
-	connected = 1;
 	card->reader = reader;
 	card->ctx = ctx;
 
@@ -392,10 +391,7 @@ int sc_connect_card(sc_reader_t *reader, sc_card_t **card_out)
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 err:
-	if (connected)
-		reader->ops->disconnect(reader);
-	if (card != NULL)
-		sc_card_free(card);
+	*card_out = card;
 	LOG_FUNC_RETURN(ctx, r);
 }
 

@@ -47,6 +47,8 @@ extern "C" {
 
 #define SC_PKCS11_SLOT_FOR_PINS		(SC_PKCS11_SLOT_FOR_PIN_USER | SC_PKCS11_SLOT_FOR_PIN_SIGN)
 
+#define SC_PKCS11_CARD_INVALID 1
+
 #ifdef __cplusplus
 }
 #endif
@@ -204,6 +206,8 @@ struct sc_pkcs11_card {
 
 	/* Number of virtual slots the card occupies */
 	unsigned int num_slots;
+
+	int flags;
 };
 
 /* If the slot did already show with `C_GetSlotList`, then we need to keep this
