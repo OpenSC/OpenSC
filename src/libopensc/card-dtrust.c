@@ -314,7 +314,7 @@ dtrust_init(sc_card_t *card)
 	if (can_value != NULL) {
 		size_t can_len;
 
-		can_len = strlen(can_env);
+		can_len = strlen(can_value);
 		drv_data->can_value = sc_mem_secure_alloc(can_len + 1);
 		if (drv_data->can_value == NULL) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
