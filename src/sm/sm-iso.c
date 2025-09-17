@@ -304,6 +304,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	}
 	sm_apdu->control = apdu->control;
 	sm_apdu->flags = apdu->flags;
+	sm_apdu->flags &= ~SC_APDU_FLAGS_SM_CHAINING;
 	sm_apdu->cla = apdu->cla|0x0C;
 	sm_apdu->ins = apdu->ins;
 	sm_apdu->p1 = apdu->p1;
@@ -349,12 +350,12 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 			break;
 		case SC_APDU_CASE_3_SHORT:
 		case SC_APDU_CASE_3_EXT:
-			if (apdu->ins & 1) {
-				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
-						sm_capdu + 0, &fdata, &fdata_len);
-			} else {
+			if ((apdu->ins & 1) == 0 || ctx->always_add_padding_indicator == 1) {
 				r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
 						sm_capdu + 1, &fdata, &fdata_len);
+			} else {
+				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
+						sm_capdu + 0, &fdata, &fdata_len);
 			}
 			if (r < 0) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format data of SM apdu");
@@ -375,11 +376,11 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 				sc_log_hex(card->ctx, "Protected Le (plain)", le, le_len);
 			}
 
-			if (apdu->ins & 1) {
-				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
-						sm_capdu + 0, &fdata, &fdata_len);
-			} else {
+			if ((apdu->ins & 1) == 0 || ctx->always_add_padding_indicator == 1) {
 				r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
+						sm_capdu + 1, &fdata, &fdata_len);
+			} else {
+				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
 						sm_capdu + 1, &fdata, &fdata_len);
 			}
 			if (r < 0) {
@@ -406,12 +407,12 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 				sc_log_hex(card->ctx, "Protected Le (plain)", le, le_len);
 			}
 
-			if (apdu->ins & 1) {
-				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
-						sm_capdu + 0, &fdata, &fdata_len);
-			} else {
+			if ((apdu->ins & 1) == 0 || ctx->always_add_padding_indicator == 1) {
 				r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
 						sm_capdu + 1, &fdata, &fdata_len);
+			} else {
+				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
+						sm_capdu + 0, &fdata, &fdata_len);
 			}
 			if (r < 0) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format data of SM apdu");
@@ -440,11 +441,13 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		mac_data = p;
 		memcpy(mac_data + mac_data_len, asn1, asn1_len);
 		mac_data_len += asn1_len;
-		r = add_padding(ctx, mac_data, mac_data_len, &mac_data);
-		if (r < 0) {
-			goto err;
+		if (ctx->skip_mac_padding == 0) {
+			r = add_padding(ctx, mac_data, mac_data_len, &mac_data);
+			if (r < 0) {
+				goto err;
+			}
+			mac_data_len = r;
 		}
-		mac_data_len = r;
 	}
 	sc_log_hex(card->ctx, "Data to authenticate", mac_data, mac_data_len);
 
@@ -479,8 +482,19 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	} else {
 		sm_apdu->cse = SC_APDU_CASE_4_SHORT;
 		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 2 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
-		if (sm_apdu->resplen > SC_MAX_APDU_RESP_SIZE)
-			sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
+		if (ctx->sm_encrypt_once_then_chaining == 0) {
+			if (sm_apdu->resplen > SC_MAX_APDU_RESP_SIZE)
+				sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
+		} else {
+			if (sm_apdu->lc > 255) {
+				sm_apdu->flags |= SC_APDU_FLAGS_NO_SM;
+			}
+			if (sm_apdu->resplen > 256) {
+				sm_apdu->le = 256;
+			} else {
+				sm_apdu->le = sm_apdu->resplen;
+			}
+		}
 	}
 	resp_data = calloc(1, sm_apdu->resplen);
 	if (!resp_data) {
@@ -543,13 +557,18 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		r = sc_asn1_encode(card->ctx, my_sm_rapdu, &asn1, &asn1_len);
 		if (r < 0)
 			goto err;
-		r = add_padding(ctx, asn1, asn1_len, &mac_data);
-		if (r < 0) {
-			goto err;
+		if (ctx->skip_mac_padding == 0) {
+			r = add_padding(ctx, asn1, asn1_len, &mac_data);
+			if (r < 0) {
+				goto err;
+			}
+			r = ctx->verify_authentication(card, ctx, mac, mac_len,
+					mac_data, r);
+		} else {
+			r = ctx->verify_authentication(card, ctx, mac, mac_len,
+					asn1, asn1_len);
 		}
 
-		r = ctx->verify_authentication(card, ctx, mac, mac_len,
-				mac_data, r);
 		if (r < 0)
 			goto err;
 	} else {
