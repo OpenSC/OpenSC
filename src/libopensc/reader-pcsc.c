@@ -101,10 +101,20 @@ void APDU_LOG(u8 *rbuf, uint16_t rsize)
 #define APDU_LOG(rbuf, rsize)
 #endif
 
+#define MAX_PCSC_EVENT_LISTENERS
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+
 struct pcsc_global_private_data {
 	int cardmod;
 	SCARDCONTEXT pcsc_ctx;
-	SCARDCONTEXT pcsc_wait_ctx;
+	/** `SCARDCONTEXT`s dedicated for detecting reader events. Each calling
+	 * thread will get one free slot assigned. We use global tracking of all
+	 * slots to allow pcsc_cancel to abort each blocking operation. PC/SC
+	 * events are tied to the SCARDCONTEXT, which is why we cannot reuse
+	 * pcsc_ctx for watching events as that may interfere with its usage of
+	 * in `refresh_attributes()`, that may swollow events from a different
+	 * waiting thread. */
+	SCARDCONTEXT pcsc_wait_ctx[4];
 	int enable_pinpad;
 	int fixed_pinlength;
 	int enable_pace;
@@ -800,9 +810,9 @@ static int pcsc_reset(sc_reader_t *reader, int do_cold_reset)
 	return r;
 }
 
-
 static int pcsc_cancel(sc_context_t *ctx)
 {
+	size_t i;
 	LONG rv = SCARD_S_SUCCESS;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)ctx->reader_drv_data;
 
@@ -811,18 +821,16 @@ static int pcsc_cancel(sc_context_t *ctx)
 	if (ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
-#ifndef _WIN32
-	if (gpriv->pcsc_wait_ctx != (SCARDCONTEXT)-1) {
-		rv = gpriv->SCardCancel(gpriv->pcsc_wait_ctx);
-		if (rv == SCARD_S_SUCCESS) {
-			 /* Also close and clear the waiting context */
-			 rv = gpriv->SCardReleaseContext(gpriv->pcsc_wait_ctx);
-			 gpriv->pcsc_wait_ctx = -1;
+	for (i = 0; i < ARRAY_SIZE(gpriv->pcsc_wait_ctx); i++) {
+		if (gpriv->pcsc_wait_ctx[i] != (SCARDCONTEXT)-1) {
+			rv = gpriv->SCardCancel(gpriv->pcsc_wait_ctx[i]);
+			if (rv == SCARD_S_SUCCESS) {
+				/* Also close and clear the waiting context */
+				rv = gpriv->SCardReleaseContext(gpriv->pcsc_wait_ctx[i]);
+				gpriv->pcsc_wait_ctx[i] = -1;
+			}
 		}
 	}
-#else
-	rv = gpriv->SCardCancel(gpriv->pcsc_ctx);
-#endif
 	if (rv != SCARD_S_SUCCESS) {
 		PCSC_LOG(ctx, "SCardCancel/SCardReleaseContext failed", rv);
 		return pcsc_to_opensc_error(rv);
@@ -844,6 +852,7 @@ static int pcsc_init(sc_context_t *ctx)
 	struct pcsc_global_private_data *gpriv;
 	scconf_block *conf_block = NULL;
 	int ret = SC_ERROR_INTERNAL;
+	size_t i;
 
 
 	gpriv = calloc(1, sizeof(struct pcsc_global_private_data));
@@ -866,7 +875,9 @@ static int pcsc_init(sc_context_t *ctx)
 	gpriv->fixed_pinlength = 0;
 	gpriv->enable_pace = 1;
 	gpriv->pcsc_ctx = -1;
-	gpriv->pcsc_wait_ctx = -1;
+	for (i = 0; i < ARRAY_SIZE(gpriv->pcsc_wait_ctx); i++) {
+		gpriv->pcsc_wait_ctx[i] = -1;
+	}
 	/* max send/receive sizes: if exist in configuration these options overwrite
 	 *			   the values by default and values declared by reader */
 	gpriv->force_max_send_size = 0;
@@ -1466,7 +1477,9 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 			if ((rv == (LONG)SCARD_E_NO_SERVICE) || (rv == (LONG)SCARD_E_SERVICE_STOPPED)) {
 				gpriv->SCardReleaseContext(gpriv->pcsc_ctx);
 				gpriv->pcsc_ctx = -1;
-				gpriv->pcsc_wait_ctx = -1;
+				for (i = 0; i < ARRAY_SIZE(gpriv->pcsc_wait_ctx); i++) {
+					gpriv->pcsc_wait_ctx[i] = -1;
+				}
 				/* reconnecting below may may restart PC/SC service */
 				rv = SCARD_E_INVALID_HANDLE;
 			}
@@ -1598,6 +1611,27 @@ out:
 }
 
 
+struct pcsc_reader_states {
+	size_t pcsc_wait_ctx_index;
+	SCARD_READERSTATE *reader_states;
+};
+
+static void pcsc_reader_states_free(sc_context_t *ctx, struct pcsc_reader_states *states)
+{
+	if (states) {
+		if (ctx) {
+			struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)ctx->reader_drv_data;
+			if (states->pcsc_wait_ctx_index < ARRAY_SIZE(gpriv->pcsc_wait_ctx)) {
+				gpriv->SCardReleaseContext(gpriv->pcsc_wait_ctx[states->pcsc_wait_ctx_index]);
+				gpriv->pcsc_wait_ctx[states->pcsc_wait_ctx_index] = -1;
+			}
+		}
+		free(states->reader_states);
+		free(states);
+	}
+}
+
+
 /* Wait for an event to occur.
  */
 static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **event_reader, unsigned int *event,
@@ -1605,40 +1639,63 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 {
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)ctx->reader_drv_data;
 	LONG rv;
-	SCARD_READERSTATE *rgReaderStates;
 	unsigned int num_watch, count, i;
 	int r = SC_ERROR_INTERNAL, detect_readers = 0, detected_hotplug = 0;
 	DWORD dwtimeout;
+	struct pcsc_reader_states *states;
 
 	LOG_FUNC_CALLED(ctx);
 
 	if (!event_reader && !event && reader_states) {
+		/* delete reader states and release all associated ressources */
 		sc_log(ctx, "free allocated reader states");
-		free(*reader_states);
+		pcsc_reader_states_free(ctx, *reader_states);
 		*reader_states = NULL;
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 
 	if (reader_states == NULL || *reader_states == NULL) {
-		rgReaderStates = calloc(sc_ctx_get_reader_count(ctx) + 2, sizeof(SCARD_READERSTATE));
-		if (!rgReaderStates)
+		/* initialize new reader states */
+		states = calloc(1, sizeof *states);
+		if (!states)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+		/* find an empty slot for the new listener */
+		for (states->pcsc_wait_ctx_index = 0; states->pcsc_wait_ctx_index < ARRAY_SIZE(gpriv->pcsc_wait_ctx); states->pcsc_wait_ctx_index++) {
+			if (gpriv->pcsc_wait_ctx[states->pcsc_wait_ctx_index] == (SCARDCONTEXT)-1)
+				/* empty slot found */
+				break;
+		}
+		if (states->pcsc_wait_ctx_index == ARRAY_SIZE(gpriv->pcsc_wait_ctx)) {
+			sc_log(ctx, "too many listeners active already");
+			r = SC_ERROR_INTERNAL;
+			goto out;
+		} else {
+			sc_log(ctx, "PC/SC event listener %"SC_FORMAT_LEN_SIZE_T"d", states->pcsc_wait_ctx_index);
+		}
+
+		count = sc_ctx_get_reader_count(ctx);
+
+		states->reader_states = calloc(count + 2, sizeof(SCARD_READERSTATE));
+		if (!states->reader_states) {
+			r = SC_ERROR_NOT_ENOUGH_MEMORY;
+			goto out;
+		}
 
 		/* Find out the current status */
 		num_watch = 0;
-		count = sc_ctx_get_reader_count(ctx);
 		for (i = 0; i < count; i++) {
 			sc_reader_t *reader = sc_ctx_get_reader(ctx, i);
 			if (reader->flags & SC_READER_REMOVED)
 				continue;
 			struct pcsc_private_data *priv = reader->drv_data;
-			rgReaderStates[num_watch].szReader = reader->name;
+			states->reader_states[num_watch].szReader = reader->name;
 			if (priv->reader_state.szReader == NULL) {
-				rgReaderStates[num_watch].dwCurrentState = SCARD_STATE_UNAWARE;
+				states->reader_states[num_watch].dwCurrentState = SCARD_STATE_UNAWARE;
 			} else {
-				rgReaderStates[num_watch].dwCurrentState = priv->reader_state.dwEventState;
+				states->reader_states[num_watch].dwCurrentState = priv->reader_state.dwEventState;
 			}
-			rgReaderStates[num_watch].dwEventState = SCARD_STATE_UNAWARE;
+			states->reader_states[num_watch].dwEventState = SCARD_STATE_UNAWARE;
 			num_watch++;
 		}
 		sc_log(ctx, "Trying to watch %d reader%s", num_watch, num_watch == 1 ? "" : "s");
@@ -1653,40 +1710,43 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 			detect_readers = 1;
 			detected_hotplug = 1;
 #else
-			rgReaderStates[num_watch].szReader = "\\\\?PnP?\\Notification";
-			rgReaderStates[num_watch].dwCurrentState = SCARD_STATE_UNAWARE;
+			states->reader_states[num_watch].szReader = "\\\\?PnP?\\Notification";
+			states->reader_states[num_watch].dwCurrentState = SCARD_STATE_UNAWARE;
 #ifdef _WIN32
 			/* Windows expects number of readers in HiWord of dwCurrentState.
 			 * See https://stackoverflow.com/questions/16370909. */
-			rgReaderStates[num_watch].dwCurrentState |= (num_watch << 16);
+			states->reader_states[num_watch].dwCurrentState |= (num_watch << 16);
 #endif
-			rgReaderStates[num_watch].dwEventState = SCARD_STATE_UNAWARE;
+			states->reader_states[num_watch].dwEventState = SCARD_STATE_UNAWARE;
 			num_watch++;
 			sc_log(ctx, "Trying to detect new readers");
 #endif
 		}
+	} else {
+		/* reader states already initialized */
+		states = *reader_states;
+
+		if (states->pcsc_wait_ctx_index >= ARRAY_SIZE(gpriv->pcsc_wait_ctx)) {
+			sc_log(ctx, "PC/SC event listener %"SC_FORMAT_LEN_SIZE_T"d not available", states->pcsc_wait_ctx_index);
+			r = SC_ERROR_INTERNAL;
+			goto out;
+		}
+
+		for (num_watch = 0; states->reader_states[num_watch].szReader; num_watch++)
+			sc_log(ctx, "reuse reader '%s'", states->reader_states[num_watch].szReader);
 	}
-	else {
-		rgReaderStates = (SCARD_READERSTATE *)(*reader_states);
-		for (num_watch = 0; rgReaderStates[num_watch].szReader; num_watch++)
-			sc_log(ctx, "reuse reader '%s'", rgReaderStates[num_watch].szReader);
-	}
-#ifndef _WIN32
-	/* Establish a new context, assuming that it is called from a different thread with pcsc-lite */
-	if (gpriv->pcsc_wait_ctx == (SCARDCONTEXT)-1) {
-		rv = gpriv->SCardEstablishContext(SCARD_SCOPE_USER, NULL, NULL, &gpriv->pcsc_wait_ctx);
+
+	if (gpriv->pcsc_wait_ctx[states->pcsc_wait_ctx_index] == (SCARDCONTEXT)-1) {
+		rv = gpriv->SCardEstablishContext(SCARD_SCOPE_USER, NULL, NULL, &gpriv->pcsc_wait_ctx[states->pcsc_wait_ctx_index]);
 		if (rv != SCARD_S_SUCCESS) {
-			gpriv->pcsc_wait_ctx = -1;
+			gpriv->pcsc_wait_ctx[states->pcsc_wait_ctx_index] = -1;
 			PCSC_LOG(ctx, "SCardEstablishContext(wait) failed", rv);
 			r = pcsc_to_opensc_error(rv);
 			goto out;
 		}
 	}
-#else
-	gpriv->pcsc_wait_ctx = gpriv->pcsc_ctx;
-#endif
-	if (!event_reader || !event)
-	{
+
+	if (!event_reader || !event) {
 		r = SC_ERROR_INTERNAL;
 		goto out;
 	}
@@ -1700,7 +1760,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 		goto out;
 	}
 
-	rv = gpriv->SCardGetStatusChange(gpriv->pcsc_wait_ctx, 0, rgReaderStates, num_watch);
+	rv = gpriv->SCardGetStatusChange(gpriv->pcsc_wait_ctx[states->pcsc_wait_ctx_index], 0, states->reader_states, num_watch);
 	if (rv != SCARD_S_SUCCESS) {
 		if (rv != (LONG)SCARD_E_TIMEOUT) {
 			PCSC_LOG(ctx, "SCardGetStatusChange(1) failed", rv);
@@ -1717,7 +1777,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 
 		/* Scan the current state of all readers to see if they
 		 * match any of the events we're polling for */
-		for (i = 0, rsp = rgReaderStates; i < num_watch; i++, rsp++) {
+		for (i = 0, rsp = states->reader_states; i < num_watch; i++, rsp++) {
 			DWORD state, prev_state;
 			sc_log(ctx, "'%s' before=0x%08X now=0x%08X",
 					rsp->szReader,
@@ -1746,13 +1806,6 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 
 					/* Windows wants us to manually reset the changed state */
 					rsp->dwEventState &= ~SCARD_STATE_CHANGED;
-
-					/* By default, ignore a hotplug event as if a timeout
-					 * occurred, since it may be an unrequested removal or
-					 * false alarm. Just continue to loop and check at the end
-					 * of this function whether we need to return the attached
-					 * reader or not. */
-					r = SC_ERROR_EVENT_TIMEOUT;
 				} else {
 					sc_reader_t *reader = sc_ctx_get_reader_by_name(ctx, rsp->szReader);
 
@@ -1797,8 +1850,15 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 		}
 
 		/* if a reader was detected, we need to create a new list of readers */
-		if (detected_hotplug)
+		if (detected_hotplug) {
+			/* By default, ignore a hotplug event as if a timeout
+			 * occurred, since it may be an unrequested removal or
+			 * false alarm. Just continue to loop and check at the end
+			 * of this function whether we need to return the attached
+			 * reader or not. */
+			r = SC_ERROR_EVENT_TIMEOUT;
 			goto out;
+		}
 
 		/* Set the timeout if caller wants to time out */
 		if (timeout == -1) {
@@ -1807,10 +1867,10 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 		else
 			dwtimeout = timeout;
 
-		rv = gpriv->SCardGetStatusChange(gpriv->pcsc_wait_ctx, dwtimeout, rgReaderStates, num_watch);
+		rv = gpriv->SCardGetStatusChange(gpriv->pcsc_wait_ctx[states->pcsc_wait_ctx_index], dwtimeout, states->reader_states, num_watch);
 
 		if (rv == (LONG)SCARD_E_CANCELLED) {
-			/* C_Finalize was called, events don't matter */
+			/* pcsc_cancel was called, events don't matter */
 			r = SC_ERROR_EVENT_TIMEOUT;
 			goto out;
 		}
@@ -1826,6 +1886,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 			goto out;
 		}
 	}
+
 out:
 	/* in case of an error re-detect all readers */
 	if (r < 0 && r != SC_ERROR_EVENT_TIMEOUT)
@@ -1868,16 +1929,17 @@ out:
 	}
 
 	if (detect_readers) {
-		free(rgReaderStates);
-		if (reader_states && *reader_states)
+		pcsc_cancel(ctx);
+		pcsc_reader_states_free(ctx, states);
+		if (reader_states) {
 			*reader_states = NULL;
+		}
 	} else {
 		if (!reader_states) {
-			free(rgReaderStates);
-		}
-		else if (*reader_states == NULL) {
+			pcsc_reader_states_free(ctx, states);
+		} else if (*reader_states == NULL) {
 			sc_log(ctx, "return allocated reader states");
-			*reader_states = rgReaderStates;
+			*reader_states = states;
 		}
 	}
 
