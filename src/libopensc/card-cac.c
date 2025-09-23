@@ -229,7 +229,7 @@ static const cac_object_t *cac_find_obj_by_id(unsigned short object_id)
  */
 static int cac_is_cert(cac_private_data_t * priv, const sc_path_t *in_path)
 {
-	cac_object_t test_obj;
+	cac_object_t test_obj = {0};
 	test_obj.path = *in_path;
 	test_obj.path.index = 0;
 	test_obj.path.count = 0;
@@ -1275,7 +1275,7 @@ static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_
 static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, const u8 *aid, int aid_len)
 {
 	cac_object_t new_object;
-	cac_properties_t prop;
+	cac_properties_t prop = {0};
 	size_t i;
 	int r;
 
