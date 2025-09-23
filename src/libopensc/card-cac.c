@@ -1181,7 +1181,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 		 * Do this only if we select applets for reading
 		 * (not during driver initialization)
 		 */
-		cac_properties_t prop;
+		cac_properties_t prop = {0};
 		size_t i = -1;
 
 		r = cac_get_properties(card, &prop);
