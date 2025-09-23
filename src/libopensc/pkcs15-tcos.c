@@ -78,7 +78,7 @@ static int insert_cert(
 	}
 
 	/* some certificates are prefixed by an OID */
-	if (cert_len >= 5 && (size_t)(7 + cert[5]) <= cert_len &&
+	if (cert_len > 9 && (size_t)(7 + cert[5]) <= cert_len &&
 			cert[4] == 0x06 && cert[5] < 10 && cert[6 + cert[5]] == 0x30 &&
 			cert[7 + cert[5]] == 0x82) {
 		if ((size_t)(9 + cert[5]) > cert_len) {
