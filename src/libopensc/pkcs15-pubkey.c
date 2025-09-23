@@ -1339,7 +1339,7 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	}
 	memcpy(tmp_buf, buf, buflen);
 
-	if ((*tmp_buf & SC_ASN1_TAG_CONTEXT))
+	if (buflen > 0 && (*tmp_buf & SC_ASN1_TAG_CONTEXT))
 		*tmp_buf = SC_ASN1_TAG_CONSTRUCTED | SC_ASN1_TAG_SEQUENCE;
 
 	memset(&pk_alg, 0, sizeof(pk_alg));
