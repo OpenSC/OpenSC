@@ -123,7 +123,7 @@ static int esteid_select_file(struct sc_card *card, const struct sc_path *in_pat
 				file = sc_file_new();
 				if (file == NULL)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-				r = iso_ops->process_fci(card, file, resp, resplen);
+				r = iso_ops->process_fci(card, file, resp, apdu.resplen);
 				if (r != SC_SUCCESS) {
 					sc_file_free(file);
 				} else {
