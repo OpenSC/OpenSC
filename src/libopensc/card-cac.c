@@ -398,6 +398,8 @@ static int cac_read_file(sc_card_t *card, int file_type, u8 **out_buf, size_t *o
 	size_t len = 0;
 	int r;
 
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
 	params[0] = file_type;
 	params[1] = 2;
 
@@ -435,12 +437,12 @@ static int cac_read_file(sc_card_t *card, int file_type, u8 **out_buf, size_t *o
 	}
 	*out_len = size;
 	*out_buf = out;
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 fail:
 	if (out)
 		free(out);
 	*out_len = 0;
-	return r;
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
