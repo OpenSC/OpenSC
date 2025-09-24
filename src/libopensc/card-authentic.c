@@ -297,9 +297,9 @@ authentic_parse_credential_data(struct sc_context *ctx, struct sc_pin_cmd_data *
 
 	rv = authentic_get_tagged_data(ctx, blob, blob_len, AUTHENTIC_TAG_DOCP_MECH, &data, &data_len);
 	LOG_TEST_RET(ctx, rv, "cannot get PIN type");
-	if (*data == 0)
+	if (data_len > 0 && *data == 0)
 		pin_cmd->pin_type = SC_AC_CHV;
-	else if (*data >= 2 && *data <= 7)
+	else if (data_len > 0 && *data >= 2 && *data <= 7)
 		pin_cmd->pin_type = SC_AC_AUT;
 	else
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "unsupported Credential type");
