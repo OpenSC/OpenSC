@@ -511,7 +511,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		}
 		priv->cache_buf_len = tlv_len;
 
-		for (tl_ptr = tl, val_ptr=val, tlv_ptr = priv->cache_buf;
+		for (tl_ptr = tl, val_ptr = val, tlv_ptr = priv->cache_buf;
 				tl_len >= 2 && tlv_len > 0;
 				val_len -= len, tlv_len -= len, val_ptr += len, tlv_ptr += len) {
 			/* get the tag and the length */
@@ -536,6 +536,8 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			}
 			memcpy(tlv_ptr, val_ptr, len);
 		}
+		/* fixup the cache_buf_le to reflect for the bad data ignored above */
+		priv->cache_buf_len = (tlv_ptr - priv->cache_buf);
 		break;
 
 	case CAC_OBJECT_TYPE_CERT:
