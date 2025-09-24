@@ -209,7 +209,7 @@ coolkey_get_attribute_bytes_alloc(sc_card_t *card, sc_cardctl_coolkey_object_t *
 	int r;
 
 	r = coolkey_get_attribute(card, obj, type, &val, &val_len, NULL);
-	if (r < 0) {
+	if (r < 0 || val_len < 1) {
 		return r;
 	}
 	*data = malloc(val_len);
