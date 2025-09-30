@@ -70,7 +70,11 @@ int sc_dlclose(void *handle)
 
 void *sc_dlopen(const char *filename)
 {
-	return dlopen(filename, RTLD_LAZY | RTLD_LOCAL);
+	return dlopen(filename, RTLD_LAZY | RTLD_LOCAL
+#ifdef RTLD_DEEPBIND
+			| RTLD_DEEPBIND
+#endif
+			);
 }
 
 void *sc_dlsym(void *handle, const char *symbol)
