@@ -433,10 +433,11 @@ typedef struct sc_reader {
 #define SC_PIN_ENCODING_BCD	1
 #define SC_PIN_ENCODING_GLP	2 /* Global Platform - Card Specification v2.0.1 */
 
-/** Values for sc_pin_cmd_pin.logged_in */
+/** Values for sc_pin_cmd_pin.logged_in, can be bitmapped together */
 #define SC_PIN_STATE_UNKNOWN	-1
 #define SC_PIN_STATE_LOGGED_OUT 0
 #define SC_PIN_STATE_LOGGED_IN  1
+#define SC_PIN_STATE_NEEDS_CHANGE 2
 
 /* A card driver receives the sc_pin_cmd_data and sc_pin_cmd_pin structures filled in by the
  * caller, with the exception of the fields returned by the driver for SC_PIN_CMD_GET_INFO.
