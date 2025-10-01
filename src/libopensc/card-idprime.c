@@ -71,7 +71,7 @@ static const struct sc_atr_table idprime_atrs[] = {
 	 * 3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:84:65:66:fb:12:01:78:82:90:00:85    metsma
 	 */
 	{ "3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:84:65:66:fb:12:01:78:82:90:00:85",
-	  "ff:ff:00:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff:00",
+	  "ff:ff:00:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:00:00:00:ff:ff:ff:ff:ff:ff:00",
 	  "based Gemalto IDPrime 930 (eToken 5110+ FIPS)",
 	  SC_CARD_TYPE_IDPRIME_930_PLUS, 0, NULL },
 	/* known ATR for IDPrime 940: Placing in front of the 940 as its mask overlaps this one!
@@ -97,9 +97,10 @@ static const struct sc_atr_table idprime_atrs[] = {
 	  SC_CARD_TYPE_IDPRIME_940, 0, NULL },
 	/* Known ATRs for IDPrime 940 (eToken 5110)
 	 * 3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00:00    metsma, jurajsarinay
+	 * 3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:85:59:56:fb:12:01:78:82:90:00:88    hardening
 	 */
 	{ "3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00:00",
-	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff:00",
+	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:f0:00:ff:ff:ff:00",
 	  "Gemalto IDPrime MD 940 (eToken 5110)",
 	  SC_CARD_TYPE_IDPRIME_940, 0, NULL },
 	{ "3b:7f:96:00:00:80:31:80:65:b0:84:41:3d:f6:12:0f:fe:82:90:00",
