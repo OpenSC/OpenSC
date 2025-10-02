@@ -652,6 +652,10 @@ static int cflex_get_keyfiles(sc_profile_t *profile, sc_card_t *card,
 	sc_path_t	path = *df_path;
 	int		r;
 
+	if (path.len <= 2) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
 	/* Get the private key file */
 	r = sc_profile_get_file_by_path(profile, &path, prkf);
 	if (r < 0) {
