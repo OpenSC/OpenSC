@@ -26,6 +26,7 @@
 
 #include "libopensc/errors.h"
 #include "libopensc/types.h"
+#include "libopensc/pkcs15.h"
 
 #define SC_PKCS15_TYPE_VENDOR_DEFINED 0x4000
 

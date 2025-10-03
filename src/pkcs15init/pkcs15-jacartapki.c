@@ -367,7 +367,8 @@ jacartapki_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card 
 			"jacartapki-md-cardcf",
 			"jacartapki-md-cardapps",
 			"MiniDriver-mscp",
-			NULL};
+			NULL,
+	};
 	struct sc_file *file = NULL;
 	char errorMessage[128] = {0};
 
@@ -514,7 +515,8 @@ jacartapki_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 			"Aladdin-UserPIN",
 			"Aladdin-SoPIN",
 			"PKCS15-AppDF",
-			NULL};
+			NULL,
+	};
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -1069,8 +1071,7 @@ jacartapki_cardid_create(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 	rv = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &sn);
 	LOG_TEST_RET(ctx, rv, "Cannot get serial number");
 
-	if (sn.len > 0x10)
-		sn.len = 0x10;
+	sn.len = MIN(sn.len, 0x10);
 
 	data[0] = 0x00;
 	data[1] = 0x10;
