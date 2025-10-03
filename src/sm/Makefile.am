@@ -30,5 +30,8 @@ libsmeac_la_LIBADD = $(OPENPACE_LIBS) $(OPENSSL_LIBS) libsmiso.la
 libsmeac_la_CFLAGS = $(OPENPACE_CFLAGS) $(OPENSSL_CFLAGS) -I$(top_srcdir)/src
 
 libsmjacartapki_la_SOURCES = sm-jacartapki.c
-libsmjacartapki_la_LIBADD = $(OPENSSL_LIBS) libsm.la
+libsmjacartapki_la_LIBADD = $(OPENSSL_LIBS)
+if ENABLE_OPENSSL
+libsmjacartapki_la_LIBADD += libsm.la
+endif
 libsmjacartapki_la_CFLAGS = $(OPENSSL_CFLAGS) -I$(top_srcdir)/src

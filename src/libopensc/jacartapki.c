@@ -381,9 +381,7 @@ jacartapki_attrs_cert_decode(struct sc_context *ctx,
 				LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Other then CKC_X_509 cert type is not supported");
 			break;
 		case CKA_ISSUER:
-			break;
 		case CKA_SUBJECT:
-			break;
 		case CKA_SERIAL_NUMBER:
 			break;
 		case CKA_TRUSTED:
@@ -475,7 +473,6 @@ jacartapki_attrs_pubkey_decode(struct sc_context *ctx,
 				LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported public key type");
 			break;
 		case CKA_SUBJECT:
-			break;
 		case CKA_TRUSTED:
 			break;
 		case CKA_ID:
@@ -1593,7 +1590,8 @@ jacartapki_get_free_index(struct sc_pkcs15_card *p15card, unsigned type, unsigne
 
 	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_PRKEY:
-		min = JACARTAPKI_FS_KEY_REF_MIN, max = JACARTAPKI_FS_KEY_REF_MAX;
+		min = JACARTAPKI_FS_KEY_REF_MIN;
+		max = JACARTAPKI_FS_KEY_REF_MAX;
 		break;
 	case SC_PKCS15_TYPE_CERT:
 		min = 0, max = 0xFF;
