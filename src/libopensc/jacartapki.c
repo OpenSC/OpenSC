@@ -1213,7 +1213,10 @@ jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_ob
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN certificate attribute");
 	attrs_num++;
 	sha1_offs = data_len - SHA_DIGEST_LENGTH;
-	assert(sha1_offs == JACARTAPKI_ATTRS_DIGEST_OFFSET);
+	if (sha1_offs != JACARTAPKI_ATTRS_DIGEST_OFFSET) {
+		rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "Incorrect Jacartapki digest offset");
+	}
 
 	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_CLASS certificate attribute");
@@ -1329,7 +1332,10 @@ jacartapki_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pk
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN DATA object attribute");
 	attrs_num++;
 	sha1_offs = data_len - SHA_DIGEST_LENGTH;
-	assert(sha1_offs == JACARTAPKI_ATTRS_DIGEST_OFFSET);
+	if (sha1_offs != JACARTAPKI_ATTRS_DIGEST_OFFSET) {
+		rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "Incorrect Jacartapki digest offset");
+	}
 
 	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_CLASS, sizeof(uint32_t), &clazz);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_CLASS DATA object attribute");

@@ -40,13 +40,14 @@
 
 #include "jacartapki.h"
 
-#define PATH_APPLICATION   "3F003000"
-#define PATH_TOKENINFO	   "3F003000C000"
-#define PATH_PUBLICDIR	   "3F0030003001"
-#define PATH_PRIVATEDIR	   "3F0030003002"
-#define PATH_MINIDRIVERDIR "3F0030003003"
-#define PATH_USERPIN	   "3F000020"
-#define PATH_SOPIN	   "3F000010"
+#define PATH_MF		   "3F00"
+#define PATH_APPLICATION   PATH_MF "3000"
+#define PATH_TOKENINFO	   PATH_APPLICATION "C000"
+#define PATH_PUBLICDIR	   PATH_APPLICATION "3001"
+#define PATH_PRIVATEDIR	   PATH_APPLICATION "3002"
+#define PATH_MINIDRIVERDIR PATH_APPLICATION "3003"
+#define PATH_USERPIN	   PATH_MF "0020"
+#define PATH_SOPIN	   PATH_MF "0010"
 
 #define JACARTAPKI_BASEKX_MASK	  0x7F00
 #define JACARTAPKI_TYPE_KX_CERT	  0x11
@@ -846,14 +847,11 @@ jacartapki_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *pdf)
 		fid = (buf[ii * 2] << 8) + buf[ii * 2 + 1];
 		type = _jacartapki_type(fid);
 		sc_log(ctx, "parse FID:%04X, type:0x%04X", fid, type);
-		switch (type) {
-		case JACARTAPKI_TYPE_KX_DATA:
+
+		if (type == JACARTAPKI_TYPE_KX_DATA) {
 			sc_log(ctx, "parse data object attributes FID:%04X", fid);
 			rv = _create_data_object(p15card, PATH_PRIVATEDIR, fid);
 			LOG_TEST_RET(ctx, rv, "Cannot create data PKCS#15 object");
-			break;
-		default:
-			break;
 		}
 	}
 
