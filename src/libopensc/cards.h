@@ -279,7 +279,7 @@ enum {
 	SC_CARD_TYPE_DTRUST_V5_4_STD,
 	SC_CARD_TYPE_DTRUST_V5_4_MULTI,
 
-	/* Aladdin */
+	/* JaCarta PKI */
 	SC_CARD_TYPE_JACARTA_PKI = 43000,
 };
 

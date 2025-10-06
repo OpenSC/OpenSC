@@ -346,22 +346,22 @@ jacartapki_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card 
 	struct sc_path path = {0};
 	int rv, ii;
 	static const char *to_create[] = {
-			"Aladdin-SoPIN",
-			"Aladdin-UserPIN",
-			"Aladdin-TransportPIN2",
-			"Aladdin-UserPinType",
-			"Aladdin-LogcalExpr-AdminOrUserPIN",
-			"Aladdin-LogcalExpr-AdminOrUser",
-			"Aladdin-LogcalExpr-AdminOrUserOrTransport",
-			"Aladdin-AppDF",
+			"JaCartaPKI-SoPIN",
+			"JaCartaPKI-UserPIN",
+			"JaCartaPKI-TransportPIN2",
+			"JaCartaPKI-UserPinType",
+			"JaCartaPKI-LogcalExpr-AdminOrUserPIN",
+			"JaCartaPKI-LogcalExpr-AdminOrUser",
+			"JaCartaPKI-LogcalExpr-AdminOrUserOrTransport",
+			"JaCartaPKI-AppDF",
 			"public-DF",
 			"private-DF",
 			"MiniDriver-DF",
-			"Aladdin-UserHist",
-			"Aladdin-TokenInfo",
-			"Aladdin-EEED",
-			"Aladdin-EEEE",
-			"Aladdin-EEEF",
+			"JaCartaPKI-UserHist",
+			"JaCartaPKI-TokenInfo",
+			"JaCartaPKI-EEED",
+			"JaCartaPKI-EEEE",
+			"JaCartaPKI-EEEF",
 			"jacartapki-cmap-attributes",
 			"jacartapki-md-cardid",
 			"jacartapki-md-cardcf",
@@ -396,54 +396,54 @@ jacartapki_init_card_internal(struct sc_profile *profile, struct sc_pkcs15_card 
 		} else {
 
 			rv = SC_SUCCESS;
-			if (!strcmp(to_create[ii], "Aladdin-SoPIN")) {
+			if (!strcmp(to_create[ii], "JaCartaPKI-SoPIN")) {
 
 				rv = jacartapki_create_pin_object(profile, p15card, file, "Default Admin PIN");
-				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select Aladdin-SoPIN object.");
+				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select JaCartaPKI-SoPIN object.");
 
-			} else if (!strcmp(to_create[ii], "Aladdin-UserPIN")) {
+			} else if (!strcmp(to_create[ii], "JaCartaPKI-UserPIN")) {
 
 				rv = jacartapki_create_pin_object(profile, p15card, file, "Default User PIN");
-				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select Aladdin-UserPIN object.");
+				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select JaCartaPKI-UserPIN object.");
 
-			} else if (!strcmp(to_create[ii], "Aladdin-TransportPIN2")) {
+			} else if (!strcmp(to_create[ii], "JaCartaPKI-TransportPIN2")) {
 
 				rv = jacartapki_create_pin_object(profile, p15card, file, "TransportPIN2");
-				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select Aladdin-TransportPIN2 object.");
+				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select JaCartaPKI-TransportPIN2 object.");
 
-			} else if (!strcmp(to_create[ii], "Aladdin-UserPinType")) {
+			} else if (!strcmp(to_create[ii], "JaCartaPKI-UserPinType")) {
 
 				if (file->size < sizeof(user_pin_type))
-					LOG_ERROR_GOTO(ctx, (rv = SC_ERROR_INVALID_DATA), "Aladdin-UserPinType file size is insufficient");
+					LOG_ERROR_GOTO(ctx, (rv = SC_ERROR_INVALID_DATA), "JaCartaPKI-UserPinType file size is insufficient");
 
 				rv = sc_pkcs15init_update_file(profile, p15card, file, &user_pin_type, sizeof(user_pin_type));
 				if ((int)sizeof(user_pin_type) > rv) {
 					if (rv >= 0)
 						rv = SC_ERROR_INTERNAL;
-					LOG_ERROR_GOTO(ctx, rv, "Cannot update Aladdin-UserPinType file.");
+					LOG_ERROR_GOTO(ctx, rv, "Cannot update JaCartaPKI-UserPinType file.");
 				}
-			} else if (!strcmp(to_create[ii], "Aladdin-EEED")) {
+			} else if (!strcmp(to_create[ii], "JaCartaPKI-EEED")) {
 				unsigned char data[4] = {0x02, 0xD0, 0x01, 0x64};
 
 				if (file->size < sizeof(data))
-					LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "Aladdin-EEED file size is insufficient");
+					LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "JaCartaPKI-EEED file size is insufficient");
 
 				rv = sc_pkcs15init_update_file(profile, p15card, file, data, sizeof(data));
 				if ((int)sizeof(data) > rv) {
 					if (rv >= 0)
 						rv = SC_ERROR_INTERNAL;
-					LOG_ERROR_GOTO(ctx, rv, "Cannot update Aladdin-EEED file");
+					LOG_ERROR_GOTO(ctx, rv, "Cannot update JaCartaPKI-EEED file");
 				}
 
-			} else if (!strcmp(to_create[ii], "Aladdin-EEEE")) {
+			} else if (!strcmp(to_create[ii], "JaCartaPKI-EEEE")) {
 
 				rv = jacartapki_update_eeee(profile, p15card, file);
-				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot update Aladdin-EEEE file");
+				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot update JaCartaPKI-EEEE file");
 
-			} else if (!strcmp(to_create[ii], "Aladdin-EEEF")) {
+			} else if (!strcmp(to_create[ii], "JaCartaPKI-EEEF")) {
 
 				rv = jacartapki_update_eeef(profile, p15card, file);
-				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot update Aladdin-EEEF file");
+				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot update JaCartaPKI-EEEF file");
 
 			} else if (!strcmp(to_create[ii], "jacartapki-cmap-attributes")) {
 
@@ -506,14 +506,14 @@ jacartapki_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 	struct sc_file *file_in_profile = NULL;
 	int ii;
 	static const char *path_to_delete[] = {
-			"Aladdin-AppDF",
-			"Aladdin-UserPinType",
-			"Aladdin-LogcalExpr-AdminOrUser",
-			"Aladdin-LogcalExpr-AdminOrUserOrTransport",
-			"Aladdin-LogcalExpr-AdminOrUserPIN",
-			"Aladdin-TransportPIN2",
-			"Aladdin-UserPIN",
-			"Aladdin-SoPIN",
+			"JaCartaPKI-AppDF",
+			"JaCartaPKI-UserPinType",
+			"JaCartaPKI-LogcalExpr-AdminOrUser",
+			"JaCartaPKI-LogcalExpr-AdminOrUserOrTransport",
+			"JaCartaPKI-LogcalExpr-AdminOrUserPIN",
+			"JaCartaPKI-TransportPIN2",
+			"JaCartaPKI-UserPIN",
+			"JaCartaPKI-SoPIN",
 			"PKCS15-AppDF",
 			NULL,
 	};
@@ -613,13 +613,13 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 		if (pin_attrs->reference != 0x10)
 			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid SO PIN reference");
 
-		rv = sc_profile_get_file(profile, "Aladdin-SoPIN", &pin_file);
+		rv = sc_profile_get_file(profile, "JaCartaPKI-SoPIN", &pin_file);
 		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get SOPIN file");
 	} else {
 		if (pin_attrs->reference != 0x20)
 			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid User PIN reference");
 
-		rv = sc_profile_get_file(profile, "Aladdin-UserPIN", &pin_file);
+		rv = sc_profile_get_file(profile, "JaCartaPKI-UserPIN", &pin_file);
 		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get UserPIN file");
 
 		update_tokeninfo = 1;
@@ -910,8 +910,8 @@ jacartapki_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15ca
 	args.exponent_len = sizeof(default_exponent);
 	memcpy(args.exponent, default_exponent, sizeof(default_exponent));
 
-	rv = sc_card_ctl(card, SC_CARDCTL_ALADDIN_GENERATE_KEY, &args);
-	LOG_TEST_GOTO_ERR(ctx, rv, "jacartapki_generate_key() SC_CARDCTL_ALADDIN_GENERATE_KEY failed");
+	rv = sc_card_ctl(card, SC_CARDCTL_JACARTAPKI_GENERATE_KEY, &args);
+	LOG_TEST_GOTO_ERR(ctx, rv, "jacartapki_generate_key() SC_CARDCTL_JACARTAPKI_GENERATE_KEY failed");
 
 	sc_log(ctx, "modulus %s", sc_dump_hex(args.modulus, args.modulus_len));
 	sc_log(ctx, "exponent %s", sc_dump_hex(args.exponent, args.exponent_len));
@@ -966,8 +966,8 @@ jacartapki_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	sc_log(ctx, "Update data %s", sc_dump_hex(args.data, args.len));
 
-	rv = sc_card_ctl(p15card->card, SC_CARDCTL_ALADDIN_UPDATE_KEY, &args);
-	LOG_TEST_GOTO_ERR(ctx, rv, "jacartapki_generate_key() SC_CARDCTL_ALADDIN_UPDATE_KEY failed");
+	rv = sc_card_ctl(p15card->card, SC_CARDCTL_JACARTAPKI_UPDATE_KEY, &args);
+	LOG_TEST_GOTO_ERR(ctx, rv, "jacartapki_generate_key() SC_CARDCTL_JACARTAPKI_UPDATE_KEY failed");
 err:
 	free(args.data);
 	LOG_FUNC_RETURN(ctx, rv);
@@ -1566,13 +1566,13 @@ jacartapki_update_df_check_pin(struct sc_profile *profile, struct sc_pkcs15_card
 		if (pin_attrs->reference != 0x10)
 			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid SO PIN reference");
 
-		rv = sc_profile_get_file(profile, "Aladdin-SoPIN", &pin_file);
+		rv = sc_profile_get_file(profile, "JaCartaPKI-SoPIN", &pin_file);
 		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get SOPIN file");
 	} else {
 		if (pin_attrs->reference != 0x20)
 			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid User PIN reference");
 
-		rv = sc_profile_get_file(profile, "Aladdin-UserPIN", &pin_file);
+		rv = sc_profile_get_file(profile, "JaCartaPKI-UserPIN", &pin_file);
 		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get UserPIN file");
 	}
 
@@ -1816,8 +1816,8 @@ jacartapki_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_car
 
 	jacartapki_strcpy_bp(jti.utc_time, tinfo->last_update.gtime, sizeof(jti.utc_time));
 
-	rv = sc_profile_get_file(profile, "Aladdin-TokenInfo", &file);
-	LOG_TEST_RET(ctx, rv, "'Aladdin-TokenInfo' not defined");
+	rv = sc_profile_get_file(profile, "JaCartaPKI-TokenInfo", &file);
+	LOG_TEST_RET(ctx, rv, "'JaCartaPKI-TokenInfo' not defined");
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, (unsigned char *)(&jti), sizeof(jti));
 	if ((int)sizeof(jti) > rv) {
@@ -1964,7 +1964,7 @@ jacartapki_emu_store_certificate(struct sc_pkcs15_card *p15card,
 		}
 	}
 
-	if(rv < 0) {
+	if (rv < 0) {
 		idx = jacartapki_get_free_index(p15card, SC_PKCS15_TYPE_CERT_X509, JACARTAPKI_FS_BASEFID_CERT);
 		LOG_TEST_GOTO_ERR(ctx, idx, "Cannot get free certificate index");
 

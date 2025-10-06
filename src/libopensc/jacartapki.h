@@ -25,8 +25,8 @@
 #include <openssl/evp.h>
 
 #include "libopensc/errors.h"
-#include "libopensc/types.h"
 #include "libopensc/pkcs15.h"
+#include "libopensc/types.h"
 
 #define SC_PKCS15_TYPE_VENDOR_DEFINED 0x4000
 
@@ -68,9 +68,9 @@
 #define JACARTAPKI_KO_DATA_TAG_PIN 0x81
 #define JACARTAPKI_KO_DATA_TAG_RSA 0x71
 
-#define JACARTAPKI_PIV_ALGO_RSA_1024  0x06
-#define JACARTAPKI_PIV_ALGO_RSA_2048  0x07
-#define JACARTAPKI_PIV_ALGO_RSA_4096  0x08
+#define JACARTAPKI_PIV_ALGO_RSA_1024 0x06
+#define JACARTAPKI_PIV_ALGO_RSA_2048 0x07
+#define JACARTAPKI_PIV_ALGO_RSA_4096 0x08
 
 #define JACARTAPKI_SM_RSA_TAG_G	    0x80
 #define JACARTAPKI_SM_RSA_TAG_N	    0x81
@@ -99,8 +99,8 @@
 #define JACARTAPKI_FS_ATTR_REF_MIN 0x00
 #define JACARTAPKI_FS_ATTR_REF_MAX 0x1D
 
-#define CKA_ALADDIN   0x80000010l
-#define CKA_CERT_HASH 0x80000013l
+#define CKA_JACARTAPKI		 0x80000010l
+#define CKA_JACARTAPKI_CERT_HASH 0x80000013l
 
 #define CKFP_CANNOT_REVEAL	 0x01l
 #define CKFP_ONLY_SO_CAN_SET	 0x02l
@@ -197,25 +197,25 @@ typedef struct jacartapki_version {
 } PACKED jacartapki_version_t;
 
 typedef struct jacartapki_token_info {
-	unsigned char label[32];		/* 0   */
-	unsigned char manufacturer_id[32];	/* 32  */
-	unsigned char model[16];		/* 64  */
-	unsigned char serial_number[16];	/* 80  */
-	uint32_t flags;				/* 96  */
-	uint32_t max_session_count;		/* 100 */
-	uint32_t session_count;			/* 104 */
-	uint32_t max_rw_session_count;		/* 108 */
-	uint32_t rw_session_count;		/* 112 */
-	uint32_t max_pin_len;			/* 116 */
-	uint32_t min_pin_len;			/* 120 */
-	uint32_t total_public_memory;		/* 124 */
-	uint32_t free_public_memory;		/* 128 */
-	uint32_t total_private_memory;		/* 132 */
-	uint32_t free_private_memory;		/* 136 */
-	jacartapki_version_t hardware_version;	/* 140 */
-	jacartapki_version_t firmware_version;	/* 142 */
-	unsigned char utc_time[16];		/* 144 */
-} PACKED jacartapki_token_info_t;		/* 160 */
+	unsigned char label[32];	       /* 0   */
+	unsigned char manufacturer_id[32];     /* 32  */
+	unsigned char model[16];	       /* 64  */
+	unsigned char serial_number[16];       /* 80  */
+	uint32_t flags;			       /* 96  */
+	uint32_t max_session_count;	       /* 100 */
+	uint32_t session_count;		       /* 104 */
+	uint32_t max_rw_session_count;	       /* 108 */
+	uint32_t rw_session_count;	       /* 112 */
+	uint32_t max_pin_len;		       /* 116 */
+	uint32_t min_pin_len;		       /* 120 */
+	uint32_t total_public_memory;	       /* 124 */
+	uint32_t free_public_memory;	       /* 128 */
+	uint32_t total_private_memory;	       /* 132 */
+	uint32_t free_private_memory;	       /* 136 */
+	jacartapki_version_t hardware_version; /* 140 */
+	jacartapki_version_t firmware_version; /* 142 */
+	unsigned char utc_time[16];	       /* 144 */
+} PACKED jacartapki_token_info_t;	       /* 160 */
 
 #ifdef _MSC_VER
 #undef PACKED

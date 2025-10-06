@@ -339,7 +339,7 @@ jacartapki_update_binary(struct sc_card *card,
 #ifdef ENABLE_SM
 	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
 		const size_t smOverhead = 20;
-		const size_t wireMax = sc_get_max_send_size(card); 
+		const size_t wireMax = sc_get_max_send_size(card);
 		if (smOverhead >= wireMax) {
 			sc_log(card->ctx, "SC max send too low: %" SC_FORMAT_LEN_SIZE_T "u", wireMax);
 			return SC_ERROR_INTERNAL;
@@ -741,11 +741,11 @@ jacartapki_fcp_encode(struct sc_card *card, const struct sc_file *file, unsigned
 		LOG_ERROR_GOTO(ctx, rv, "Unsupported type of the file to be created");
 	}
 
-	buf_size = 13 + (file->namelen > 0 ? file->namelen + 2 : 0)
-			+ (file->prop_attr != NULL && file->prop_attr_len > 0 ?
-					file->prop_attr_len + 2 : 0)
-			+ ops_len * 2
-			+ (file->encoded_content != NULL ? file->encoded_content_len : 0);
+	buf_size = 13;
+	buf_size += (file->namelen > 0 ? file->namelen + 2 : 0);
+	buf_size += (file->prop_attr != NULL && file->prop_attr_len > 0 ? file->prop_attr_len + 2 : 0);
+	buf_size += ops_len * 2;
+	buf_size += (file->encoded_content != NULL ? file->encoded_content_len : 0);
 
 	buf = calloc(1, buf_size);
 	if (buf == NULL) {
@@ -1599,11 +1599,11 @@ jacartapki_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		return jacartapki_get_serialnr(card, (struct sc_serial_number *)ptr);
 	case SC_CARDCTL_GET_DEFAULT_KEY:
 		return jacartapki_get_default_key(card, (struct sc_cardctl_default_key *)ptr);
-	case SC_CARDCTL_ALADDIN_GENERATE_KEY:
-		sc_log(ctx, "CMD SC_CARDCTL_ALADDIN_GENERATE_KEY");
+	case SC_CARDCTL_JACARTAPKI_GENERATE_KEY:
+		sc_log(ctx, "CMD SC_CARDCTL_JACARTAPKI_GENERATE_KEY");
 		return jacartapki_generate_key(card, (struct sc_cardctl_jacartapki_genkey *)ptr);
-	case SC_CARDCTL_ALADDIN_UPDATE_KEY:
-		sc_log(ctx, "CMD SC_CARDCTL_ALADDIN_UPDATE_KEY");
+	case SC_CARDCTL_JACARTAPKI_UPDATE_KEY:
+		sc_log(ctx, "CMD SC_CARDCTL_JACARTAPKI_UPDATE_KEY");
 		return jacartapki_update_key(card, (struct sc_cardctl_jacartapki_updatekey *)ptr);
 	case SC_CARDCTL_PKCS11_INIT_TOKEN:
 		sc_log(ctx, "CMD SC_CARDCTL_PKCS11_INIT_TOKEN");

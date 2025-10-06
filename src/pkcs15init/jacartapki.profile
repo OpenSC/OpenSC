@@ -1,5 +1,5 @@
 #
-# PKCS15 r/w profile for Aladdin JaCarta PKI applet
+# PKCS15 r/w profile for JaCarta PKI applet
 #
 cardinfo {
 	label		= "JaCarta PKI";
@@ -42,7 +42,7 @@ PIN so-pin {
 filesystem {
 	DF MF {
 		ACL = *=NONE;
-		EF Aladdin-SoPIN {
+		EF JaCartaPKI-SoPIN {
 			ACL = *=NONE;
 			ACL = UPDATE=CHV16, CRYPTO=NONE, DELETE-SELF=CHV16, GENERATE=NEVER, PIN-RESET=NEVER, ADMIN=NEVER, READ=NEVER;
 			file-id	= 0010;
@@ -53,7 +53,7 @@ filesystem {
             prop-attr = "C001000033000000000000000000"; # "C0010000 33 000000000000000000" Class Usage Algorithm Padding MaxRetryConter|MaxUnblockCounter MinSize MaxSize UpperCases LowerCases Digits Alphabetics Specials Occurrence Sequence
 		}
 
-		EF Aladdin-UserPIN {
+		EF JaCartaPKI-UserPIN {
 			ACL = *=NONE;
 			ACL = UPDATE=SCBx0030, CRYPTO=NONE, DELETE-SELF=CHV16, GENERATE=NEVER, PIN-RESET=CHV16, ADMIN=NEVER, READ=NEVER;
 			file-id = 0020;
@@ -64,7 +64,7 @@ filesystem {
 			prop-attr = "C0010000A0000000000000000000"; 
 		}
 
-		EF Aladdin-TransportPIN2 {
+		EF JaCartaPKI-TransportPIN2 {
 			ACL = *=NONE;
 			ACL = UPDATE=NEVER, CRYPTO=NONE, DELETE-SELF=CHV16, GENERATE=NONE, PIN-RESET=NONE, ADMIN=NEVER, READ=NONE;
 			file-id = 0002;
@@ -75,7 +75,7 @@ filesystem {
 			prop-attr = "800100003004100000000000FFFF";
 		}
 
-		EF Aladdin-LogcalExpr-AdminOrUser {
+		EF JaCartaPKI-LogcalExpr-AdminOrUser {
 			ACL = *=NONE;
 			ACL = UPDATE=NEVER, CRYPTO=NONE, DELETE-SELF=CHV16, GENERATE=NONE, PIN-RESET=NONE, ADMIN=NEVER, READ=NONE;
 			file-id = 0030;
@@ -86,7 +86,7 @@ filesystem {
 			prop-attr = "00010F0000";
 		}
 
-		EF Aladdin-LogcalExpr-AdminOrUserOrTransport {
+		EF JaCartaPKI-LogcalExpr-AdminOrUserOrTransport {
 			ACL = *=NONE;
 			ACL = UPDATE=NEVER, CRYPTO=NONE, DELETE-SELF=CHV16, GENERATE=NONE, PIN-RESET=NONE, ADMIN=NEVER, READ=NONE;
 			file-id = 0032;
@@ -97,7 +97,7 @@ filesystem {
 			prop-attr = "00010F0000";
 		}
 
-		EF Aladdin-LogcalExpr-AdminOrUserPIN {
+		EF JaCartaPKI-LogcalExpr-AdminOrUserPIN {
 			ACL = *=NONE;
 			ACL = UPDATE=NEVER, CRYPTO=NONE, DELETE-SELF=CHV16, GENERATE=NONE, PIN-RESET=NONE, ADMIN=NEVER, READ=NONE;
 			file-id = 0035;
@@ -108,14 +108,14 @@ filesystem {
 			prop-attr = "00010F0000";
 		}
 
-		EF Aladdin-UserPinType   {
+		EF JaCartaPKI-UserPinType   {
 			ACL = *=NONE;
 			file-id	= 1000;
 			aid = 56:65:72:69:66:69:63:61:74:69:6f:6e;
 			size = 1;
 		}
 
-		DF Aladdin-AppDF {
+		DF JaCartaPKI-AppDF {
 			ACL = CREATE=CHV16, CREATE-DF=CHV16, ADMIN=NEVER, DELETE-SELF=CHV16, ACTIVATE=NONE, DEACTIVATE=CHV16;
 			file-id		= 3000;
 			aid = 41:53:45:50:4b:43:53;
@@ -227,35 +227,35 @@ filesystem {
 				}
 			}
 
-			EF Aladdin-UserHist   {
+			EF JaCartaPKI-UserHist   {
 				ACL	= READ=CHV48, WRITE=CHV48, ADMIN=CHV48, DELETE-SELF=CHV48;
 				file-id	= B000;
 				aid	= 55:73:65:72:48:69:73:74;
 				size	= 26;
 			}
 
-			EF Aladdin-TokenInfo {
+			EF JaCartaPKI-TokenInfo {
 				ACL	= READ=NONE, WRITE=CHV48, ADMIN=CHV48, DELETE-SELF=CHV48;
 				file-id	= C000;
 				aid	= 54:6f:6b:65:6e:49:6e:66:6f;
 				size	= 161;
 			}
 
-			EF Aladdin-EEED   {
+			EF JaCartaPKI-EEED   {
 				ACL	= READ=NONE, WRITE=CHV48, ADMIN=NEVER, DELETE-SELF=CHV48;
 				file-id	= EEED;
 				aid	= 45:45:45:44;
 				size	= 4;
 			}
 
-			EF Aladdin-EEEE   {
+			EF JaCartaPKI-EEEE   {
 				ACL	= READ=NONE, WRITE=CHV16, ADMIN=NEVER, DELETE-SELF=CHV16;
 				file-id	= EEEE;
 				aid	= 45:45:45:45;
 				size	= 173;
 			}
 
-			EF Aladdin-EEEF   {
+			EF JaCartaPKI-EEEF   {
 				ACL	= READ=NONE, WRITE=CHV48, ADMIN=NEVER, DELETE-SELF=CHV48;
 				file-id	= EEEF;
 				aid	= 45:45:45:46;

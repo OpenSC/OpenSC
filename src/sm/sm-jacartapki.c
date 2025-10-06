@@ -77,7 +77,7 @@ static int _compute_key_padded(struct sc_card *card, unsigned char *key /* share
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
-static EVP_PKEY* icc_DH(struct sc_card *card, const BIGNUM *prime /* N */, const BIGNUM *generator /* g */,
+static EVP_PKEY *icc_DH(struct sc_card *card, const BIGNUM *prime /* N */, const BIGNUM *generator /* g */,
 		const u8 *icc_p /* g^y mod N */, size_t icc_p_length);
 static EVP_PKEY *ifd_DH(struct sc_card *card, const BIGNUM *prime /* N */, const BIGNUM *generator /* G */,
 		u8 **publicKey, size_t *publicKeyLength);
@@ -340,7 +340,7 @@ jacartapki_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, uns
 	int rv;
 	int oneTimeSm = 0;
 
-	if(card == NULL)
+	if (card == NULL)
 		return SC_ERROR_INTERNAL;
 	ctx = card->ctx;
 
@@ -390,8 +390,8 @@ jacartapki_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, uns
 
 int
 jacartapki_sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
-    unsigned char* in, size_t in_len,
-    unsigned char** out, size_t* out_len, int not_force_pad)
+		unsigned char *in, size_t in_len,
+		unsigned char **out, size_t *out_len, int not_force_pad)
 {
 	return sm_encrypt_des_cbc3(ctx, key, in, in_len, out, out_len, not_force_pad);
 }
@@ -471,7 +471,7 @@ jacartapki_sm_open(struct sc_card *card)
 	rv = derive_icc_ifd_key(card, icc_pkey, ifd_pkey, &shared_key, &shared_key_length);
 	if (rv < 0 || shared_key == NULL || shared_key_length == 0) {
 		if (rv >= 0)
-		    rv = SC_ERROR_INTERNAL;
+			rv = SC_ERROR_INTERNAL;
 		LOG_ERROR_GOTO(ctx, rv, "Failed to derive ICC IFD shared key");
 	}
 
@@ -686,7 +686,7 @@ jacartapki_sm_cbc_cksum(struct sc_card *card, unsigned char *key, size_t key_siz
 
 	sc_log(ctx, "data for checksum (%" SC_FORMAT_LEN_SIZE_T "u) %s", in_len, sc_dump_hex(in, in_len));
 	for (len = (int)in_len; len > (int)sizeof(DES_cblock); len -= (int)sizeof(DES_cblock),
-		in += sizeof(DES_cblock))
+	    in += sizeof(DES_cblock))
 		DES_ncbc_encrypt(in, out, sizeof(DES_cblock), &ks, icv, DES_ENCRYPT);
 
 	for (ii = 0; ii < sizeof(DES_cblock); ii++)
