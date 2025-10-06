@@ -226,15 +226,15 @@ _create_certificate(struct sc_pkcs15_card *p15card, unsigned file_id)
 	rv = sc_pkcs15_read_file(p15card, &info.path, &data, &len, 0);
 	LOG_TEST_RET(ctx, rv, "Error while getting file content.");
 
-/*
- *                      /      certificate attributes    \
- *       |    7b       | 2b     1b    2b     Length       |        4
- *       ┌─────────────┬─────┬─────┬──────┬───────────────┬────┬─────────┐
- *       │Packed Header│Type │Flags│Length│Attribute value│... │Freshness│
- *       └─────────────┴─────┴─────┴──────┴───────────────┴────┴─────────┘
- *                     first attribute certificate SHA1 hash:
- *                      8013   XX     14   XXX..XX  
- */
+	/*
+	 *                      /      certificate attributes    \
+	 *       |    7b       | 2b     1b    2b     Length       |        4
+	 *       ┌─────────────┬─────┬─────┬──────┬───────────────┬────┬─────────┐
+	 *       │Packed Header│Type │Flags│Length│Attribute value│... │Freshness│
+	 *       └─────────────┴─────┴─────┴──────┴───────────────┴────┴─────────┘
+	 *                     first attribute certificate SHA1 hash:
+	 *                      8013   XX     14   XXX..XX
+	 */
 	if (len < 36) { /* 7 packed header + 5 TFL + 20 SHA1 value + 4 freshness */
 		rv = SC_ERROR_INVALID_DATA;
 		LOG_ERROR_GOTO(ctx, rv, "certificate attributes file is too short");

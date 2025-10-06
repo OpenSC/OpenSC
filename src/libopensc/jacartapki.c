@@ -712,7 +712,7 @@ jacartapki_attrs_data_object_decode(struct sc_context *ctx,
 		sc_log(ctx, "Attribute(%lX) to parse '%s'", attr.cka, sc_dump_hex(attr.val, attr.len));
 
 		switch (attr.cka) {
-		case CKA_CERT_HASH:
+		case CKA_JACARTAPKI_CERT_HASH:
 			if (hash_exists)
 				*hash_exists = 1;
 			break;
@@ -979,8 +979,8 @@ jacartapki_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_MODIFIABLE private key attribute");
 	attrs_num++;
 
-	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_ALADDIN, sizeof(CK_BBOOL), &_false);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN private key attribute");
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_JACARTAPKI, sizeof(CK_BBOOL), &_false);
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_JACARTAPKI private key attribute");
 	attrs_num++;
 
 	data[4] = (data_len >> 8) & 0xFF;
@@ -1124,8 +1124,8 @@ jacartapki_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_MODIFIABLE public key attribute");
 	attrs_num++;
 
-	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_ALADDIN, sizeof(CK_BBOOL), &_true);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN public key attribute");
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_JACARTAPKI, sizeof(CK_BBOOL), &_true);
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_JACARTAPKI public key attribute");
 	attrs_num++;
 
 	data[4] = (data_len >> 8) & 0xFF;
@@ -1206,8 +1206,8 @@ jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_ob
 	data[data_len++] = 0xFF;
 
 	memset(sha1, 0, sizeof(sha1));
-	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_CERT_HASH, SHA_DIGEST_LENGTH, sha1);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN certificate attribute");
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_JACARTAPKI_CERT_HASH, SHA_DIGEST_LENGTH, sha1);
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_JACARTAPKI_CERT_HASH certificate attribute");
 	attrs_num++;
 	sha1_offs = data_len - SHA_DIGEST_LENGTH;
 	if (sha1_offs != JACARTAPKI_ATTRS_DIGEST_OFFSET) {
@@ -1265,8 +1265,8 @@ jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_ob
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_MODIFIABLE certificate attribute");
 	attrs_num++;
 
-	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_ALADDIN, sizeof(CK_BBOOL), &_true);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN certificate attribute");
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_JACARTAPKI, sizeof(CK_BBOOL), &_true);
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_JACARTAPKI certificate attribute");
 	attrs_num++;
 
 	data[4] = (data_len >> 8) & 0xFF;
@@ -1325,8 +1325,8 @@ jacartapki_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pk
 	data[data_len++] = 0xFF;
 
 	memset(sha1, 0, sizeof(sha1));
-	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_CERT_HASH, SHA_DIGEST_LENGTH, sha1);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN DATA object attribute");
+	rv = jacartapki_add_attribute(&data, &data_len, CKFP_MODIFIABLE, CKA_JACARTAPKI_CERT_HASH, SHA_DIGEST_LENGTH, sha1);
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_JACARTAPKI DATA object attribute");
 	attrs_num++;
 	sha1_offs = data_len - SHA_DIGEST_LENGTH;
 	if (sha1_offs != JACARTAPKI_ATTRS_DIGEST_OFFSET) {
@@ -1373,8 +1373,8 @@ jacartapki_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pk
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_MODIFIABLE DATA object attribute");
 	attrs_num++;
 
-	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_ALADDIN, sizeof(CK_BBOOL), &_false);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_ALADDIN DATA object attribute");
+	rv = jacartapki_add_attribute(&data, &data_len, 0x00, CKA_JACARTAPKI, sizeof(CK_BBOOL), &_false);
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to add CKA_JACARTAPKI DATA object attribute");
 	attrs_num++;
 
 	data[4] = (data_len >> 8) & 0xFF;

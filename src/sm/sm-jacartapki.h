@@ -38,7 +38,6 @@ int jacartapki_iso_sm_close(struct sc_card *card);
 
 #endif
 
-
 #ifdef __cplusplus
 }
 #endif
