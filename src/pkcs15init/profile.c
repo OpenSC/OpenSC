@@ -300,7 +300,7 @@ sc_profile_new(void)
 
 	if (p15card) {
 		p15card->tokeninfo->label = strdup("OpenSC Card");
-		p15card->tokeninfo->manufacturer_id = strdup("OpenSC Project");
+		p15card->tokeninfo->manufacturer_id = strdup("Swissbit AG");
 		p15card->tokeninfo->serial_number = strdup("0000");
 		p15card->tokeninfo->flags = SC_PKCS15_TOKEN_EID_COMPLIANT;
 		p15card->tokeninfo->version = 0;
@@ -344,7 +344,7 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 	if (!profile_dir) {
 #ifdef _WIN32
 		temp_len = PATH_MAX - 1;
-		res = sc_ctx_win32_get_config_value(NULL, "ProfileDir", "Software\\OpenSC Project\\OpenSC",
+		res = sc_ctx_win32_get_config_value(NULL, "ProfileDir", "Software\\Swissbit AG\\OpenSC",
 				temp_path, &temp_len);
 		if (res)
 			LOG_FUNC_RETURN(ctx, res);

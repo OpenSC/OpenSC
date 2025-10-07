@@ -140,7 +140,7 @@ wow64_CopyFiles=10,syswow64
 ; =================== Generic ==================================
 
 [Strings]
-ProviderName ="OpenSC"
+ProviderName ="Swissbit AG"
 MediaDescription="OpenSC Smart Card Minidriver Installation Disk"
 CardDeviceName="OpenSC Minidriver"
 SmartCardName="SOFTWARE\Microsoft\Cryptography\Calais\SmartCards\Cev Westcos"

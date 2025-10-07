@@ -234,9 +234,9 @@ init_spy(void)
 		/* try for the machine version first, as we may be running
 		 * without a user during login
 		 */
-		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy", 0, KEY_QUERY_VALUE, &hKey );
+		rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\Swissbit AG\\PKCS11-Spy", 0, KEY_QUERY_VALUE, &hKey);
 		if (rc != ERROR_SUCCESS )
-			rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy", 0, KEY_QUERY_VALUE, &hKey );
+			rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\Swissbit AG\\PKCS11-Spy", 0, KEY_QUERY_VALUE, &hKey);
 
 		if( rc == ERROR_SUCCESS ) {
 			temp_len = PATH_MAX;
@@ -269,11 +269,11 @@ init_spy(void)
 		/* try for the machine version first, as we may be running
 		 * without a user during login
 		 */
-		rc = RegOpenKeyEx( HKEY_LOCAL_MACHINE, "Software\\OpenSC Project\\PKCS11-Spy",
-				0, KEY_QUERY_VALUE, &hKey );
+		rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\Swissbit AG\\PKCS11-Spy",
+				0, KEY_QUERY_VALUE, &hKey);
 		if (rc != ERROR_SUCCESS)
-			rc = RegOpenKeyEx( HKEY_CURRENT_USER, "Software\\OpenSC Project\\PKCS11-Spy",
-					0, KEY_QUERY_VALUE, &hKey );
+			rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\Swissbit AG\\PKCS11-Spy",
+					0, KEY_QUERY_VALUE, &hKey);
 
 		if (rc == ERROR_SUCCESS) {
 			temp_len = PATH_MAX;

@@ -47,8 +47,8 @@
     <Property Id="ARPURLUPDATEINFO" Value="@OPENSC_VS_FF_PRODUCT_UPDATES@" />
     <Property Id="ARPCONTACT" Value="@OPENSC_VS_FF_COMPANY_URL@" />
 
-    <Icon Id="OpenSC.ico" SourceFile="OpenSC.ico" />
-    <Property Id="ARPPRODUCTICON" Value="OpenSC.ico" />
+    <Icon Id="swissbit.ico" SourceFile="swissbit.ico" />
+    <Property Id="ARPPRODUCTICON" Value="swissbit.ico" />
 
     <!--Custom actions-->
     <Binary Id="customactions" SourceFile="$(var.SOURCE_DIR)\win32\customactions.dll" />
@@ -71,7 +71,7 @@
     </Component>
 
     <StandardDirectory Id="ProgramFiles6432Folder">
-      <Directory Id="OpenSC_Project_Dir" Name="OpenSC Project">
+      <Directory Id="OpenSC_Project_Dir" Name="Swissbit AG">
         <!-- Most of the stuff goes to the Program Files folder -->
         <Directory Id="INSTALLDIR" Name="OpenSC$(var.SUFFIX)">
           <!-- opensc.conf sample goes to installation directory -->
@@ -106,25 +106,30 @@
               />
             </Component>
 
-            <Component Id="IshieldPivModule" Guid="*">
-              <?if $(sys.BUILDARCH) = x64 ?>
-                <!-- 64-bit version -->
-                <File Source="$(var.SOURCE_DIR)\etc\win64\ishield_piv_module.dll"
-                      KeyPath="yes"
-                      Vital="yes"
-                      ProcessorArchitecture="x64"/>
-              <?else ?>
-                <!-- 32-bit version -->
-                <File Source="$(var.SOURCE_DIR)\etc\win32\ishield_piv_module.dll"
-                      KeyPath="yes"
-                      Vital="yes"
-                      ProcessorArchitecture="x86"/>
-              <?endif ?>
-            </Component>
-
-
           <Directory Id="INSTALLDIR_MINIDRIVER" Name="minidriver">
-            <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" />
+            <?ifdef SignedDLLs ?>
+              <?if $(sys.BUILDARCH) = x64 ?>
+                <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\signed_dlls\windows64\opensc-minidriver.dll" />
+                <File Id="ishield_piv_module.dll" Source="$(var.SOURCE_DIR)\signed_dlls\windows64\ishield_piv_module.dll"/>
+              <?else ?>
+                <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\signed_dlls\windows32\opensc-minidriver.dll" />
+                <File Id="ishield_piv_module.dll" Source="$(var.SOURCE_DIR)\signed_dlls\windows32\ishield_piv_module.dll"/>
+              <?endif ?>
+            <?else ?>
+              <File Id="opensc_minidriver.dll" Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" />
+              <?if $(sys.BUILDARCH) = x64 ?>
+                <File Id="ishield_piv_module.dll" Source="$(var.SOURCE_DIR)\etc\win64\ishield_piv_module.dll"/>
+              <?else ?>
+                <File Id="ishield_piv_module.dll" Source="$(var.SOURCE_DIR)\etc\win32\ishield_piv_module.dll"/>
+              <?endif ?>
+            <?endif ?>
+            <!-- The ishield_piv_module.dll depends on opensc.dll which is usually installed into the tools directory.
+                 The tools directory is added to the PATH environment. However, installing the tools is optional.
+                 Therefore the DLL is put next to the minidriver DLLs. That way it is found when the minidriver is loaded
+                 and does not pollute the PATH.
+            -->
+            <File Id="opensc.dll_for_ishield_piv_module" Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" />
+            <!-- U -->
             <!-- install an alias for the Base smart card CSP. Using a different CSP in minidriver installation deactivate the plug and play feature
                 but not all other components like the pin change screen available after ctrl+alt+del.
                 It is because the "80000001" entry is still returning the minidriver dll.-->
@@ -201,9 +206,8 @@
       </Directory>
     </StandardDirectory>
     <StandardDirectory Id="ProgramMenuFolder">
-      <Directory Id="ProgramMenuDir" Name="OpenSC Project">
+      <Directory Id="ProgramMenuDir" Name="Swissbit AG">
         <Component Id="ProgramMenuDir">
-          <util:InternetShortcut Id="OnlineDocumentationShortcut" Name="OpenSC wiki" Target="https://github.com/OpenSC/OpenSC/wiki" />
           <RemoveFolder Id="ProgramMenuDir" On="uninstall" />
           <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]" Name="installed" Type="integer" Value="1" KeyPath="yes" />
         </Component>
@@ -218,13 +222,21 @@
       <?ifdef OpenSSL ?>
         <File Id="smm_local.dll" Source="$(var.SOURCE_DIR)\src\smm\smm-local.dll" />
       <?endif?>
-      <File Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" />
-      <Files Include="$(var.SOURCE_DIR)\src\tools\*.exe" />
+      <File Id="opensc.dll" Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" />
+      <File Id="opensc_notify.exe" Source="$(var.SOURCE_DIR)\src\tools\opensc-notify.exe" />
+      <File Id="piv_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\piv-tool.exe" />
+      <File Id="pkcs11_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs11-tool.exe" />
+      <File Id="pkcs11_register.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs11-register.exe" />
+      <File Id="pkcs15_crypt.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-crypt.exe" />
+      <File Id="pkcs15_init.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-init.exe" />
+      <File Id="pkcs15_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\pkcs15-tool.exe" />
+      <File Id="opensc_tool.exe" Source="$(var.SOURCE_DIR)\src\tools\opensc-tool.exe" />
     </ComponentGroup>
 
 <?ifdef OpenSSL ?>
     <ComponentGroup Id="profiles" Directory="INSTALLDIR" Subdirectory="profiles">
-      <Files Include="$(var.SOURCE_DIR)\src\pkcs15init\*.profile" />
+      <File Id="PIV_II.profile" Source="$(var.SOURCE_DIR)\src\pkcs15init\PIV-II.profile" />
+      <File Id="pkcs15.profile" Source="$(var.SOURCE_DIR)\src\pkcs15init\pkcs15.profile" />
     </ComponentGroup>
 <?endif?>
     <!-- Set up the features  -->
@@ -236,7 +248,6 @@
         <?endif?>
         <ComponentRef Id="opensc.conf" />
         <ComponentRef Id="ManagementKey"/>
-        <ComponentRef Id="IshieldPivModule"/>
         <ComponentRef Id="AddPIVAuthKey"/>
         <?ifdef OpenSSL ?>
           <ComponentRef Id="smm_local.dll" />
@@ -255,6 +266,11 @@
       </Feature>
       <Feature Id="OpenSC_minidriver" Level="1" Title="Smart card minidriver" Description="Security module that can be used by native Windows applications, for example Edge, Chrome, Microsoft Office, Acrobat Reader, etc.">
         <ComponentRef Id="opensc_minidriver.dll" />
+        <ComponentRef Id="ishield_piv_module.dll" />
+        <ComponentRef Id="opensc.dll_for_ishield_piv_module" />
+        <?ifdef OpenSSL ?>
+          <ComponentGroupRef Id="profiles" />
+        <?endif?>
         <ComponentRef Id="openscBaseCSP" />
         <ComponentRef Id="CertPropSvc" />
       </Feature>

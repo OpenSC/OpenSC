@@ -4,19 +4,20 @@ AC_PREREQ(2.68)
 
 define([PRODUCT_NAME], [OpenSC])
 define([PRODUCT_TARNAME], [opensc])
-define([PRODUCT_BUGREPORT], [https://github.com/OpenSC/OpenSC/issues])
-define([PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
+define([PRODUCT_BUGREPORT], [https://github.com/swissbit-eis/OpenSC/releases/issues])
+define([PRODUCT_URL], [https://github.com/swissbit-eis/OpenSC/releases])
 define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [26])
-define([PACKAGE_VERSION_FIX], [1])
+define([PACKAGE_VERSION_MINOR], [0])
+define([PACKAGE_VERSION_FIX], [0])
+define([PACKAGE_VERSION_REVISION], [dev])
 define([PACKAGE_SUFFIX], [-swissbit-piv])
 
 define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
-define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
-define([VS_FF_LEGAL_COMPANY_URL], [https://github.com/OpenSC])
+define([VS_FF_LEGAL_COMPANY_NAME], [Swissbit AG])
+define([VS_FF_LEGAL_COMPANY_URL], [https://swissbit.com])
 define([VS_FF_COMMENTS], [Provided under the terms of the GNU Lesser General Public License (LGPLv2.1+).])
-define([VS_FF_PRODUCT_NAME], [OpenSC smartcard framework])
-define([VS_FF_PRODUCT_UPDATES], [https://github.com/OpenSC/OpenSC/releases])
+define([VS_FF_PRODUCT_NAME], [OpenSC for Swissbit iShield Key])
+define([VS_FF_PRODUCT_UPDATES], [https://github.com/swissbit-eis/OpenSC/releases])
 
 m4_sinclude(m4/version.m4.ci)
 
@@ -32,6 +33,8 @@ AM_INIT_AUTOMAKE(foreign 1.10 [subdir-objects])
 OPENSC_VERSION_MAJOR="PACKAGE_VERSION_MAJOR"
 OPENSC_VERSION_MINOR="PACKAGE_VERSION_MINOR"
 OPENSC_VERSION_FIX="PACKAGE_VERSION_FIX"
+OPENSC_VERSION_REVISION=0
+OPENSC_SCM_REVISION="PACKAGE_VERSION_REVISION"
 
 OPENSC_VS_FF_LEGAL_COPYRIGHT="VS_FF_LEGAL_COPYRIGHT"
 OPENSC_VS_FF_COMPANY_NAME="VS_FF_LEGAL_COMPANY_NAME"
@@ -398,29 +401,6 @@ elif test "${xslstylesheetsdir}" != "no"; then
 	test -e "${xslstylesheetsdir}/html/docbook.xsl" || AC_MSG_ERROR([invalid])
 fi
 AC_MSG_RESULT([${xslstylesheetsdir}])
-
-AC_MSG_CHECKING([git checkout])
-GIT_CHECKOUT="no"
-if test -n "${GIT}" -a -d "${srcdir}/.git"; then
-	GIT_CHECKOUT="yes"
-fi
-AC_MSG_RESULT([${GIT_CHECKOUT}])
-
-if test "${GIT_CHECKOUT}" = "yes"; then
-	REVISION_DESCRIPTION="$(${GIT} describe || echo '<version not available>' )"
-	if test "${REVISION_DESCRIPTION}" = "<version not available>"; then
-		REVISION_DESCRIPTION="$(${GIT} describe --tags || echo '<version not available>')"
-	fi
-
-	HASH_COMMIT_DATE="$(${GIT} log -1 --pretty=format:'rev: %h, commit-time: %ci')"
-	GIT_TAG_COMMIT="$(${GIT} rev-list --tags --no-walk --max-count=1)"
-
-	OPENSC_SCM_REVISION="OpenSC-${REVISION_DESCRIPTION}, ${HASH_COMMIT_DATE}"
-	OPENSC_VERSION_REVISION="$(${GIT} rev-list ${GIT_TAG_COMMIT}..HEAD --count || echo 0)"
-else
-	OPENSC_SCM_REVISION="No Git revision info available"
-	OPENSC_VERSION_REVISION="0"
-fi
 
 dnl C Compiler features
 AC_C_INLINE
@@ -801,7 +781,7 @@ fi
 if test "${cvcdir}" = "" ; then
 	case "${host}" in
 		*-mingw*|*-winnt*|*-cygwin*)
-			cvcdir="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\cvc"
+			cvcdir="%PROGRAMFILES%\\\Swissbit AG\\\OpenSC\\\cvc"
 			;;
 		*)
 			AC_MSG_WARN([use --enable-cvcdir=DIR])
@@ -828,7 +808,7 @@ if test -z "${x509dir}"
 then
 	case "${host}" in
 		*-mingw*|*-winnt*|*-cygwin*)
-			x509dir="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\x509"
+			x509dir="%PROGRAMFILES%\\\Swissbit AG\\\OpenSC\\\x509"
 			;;
 		*)
 			AC_MSG_WARN([use --enable-x509dir=DIR])
@@ -990,7 +970,7 @@ if test "${enable_sm}" = "yes"; then
 	DEFAULT_SM_MODULE="${LIB_PRE}smm-local${DYN_LIB_EXT}"
 	case "${host}" in
 		*-mingw*|*-winnt*|*-cygwin*)
-			DEFAULT_SM_MODULE_PATH="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\tools"
+			DEFAULT_SM_MODULE_PATH="%PROGRAMFILES%\\\Swissbit AG\\\OpenSC\\\tools"
 		;;
 		*)
 			DEFAULT_SM_MODULE_PATH="${libdir}"
@@ -999,9 +979,9 @@ if test "${enable_sm}" = "yes"; then
 fi
 
 if test "${PLATFORM}" = "x86"; then
-	DEFAULT_INSTALL_DIR="C:\\Program Files (x86)\\OpenSC Project\\OpenSC\\"
+	DEFAULT_INSTALL_DIR="C:\\Program Files (x86)\\Swissbit AG\\OpenSC\\"
 else
-	DEFAULT_INSTALL_DIR="C:\\Program Files\\OpenSC Project\\OpenSC\\"
+	DEFAULT_INSTALL_DIR="C:\\Program Files\\Swissbit AG\\OpenSC\\"
 fi
 
 if test "${with_pkcs11_provider}" = "detect"; then
@@ -1009,8 +989,8 @@ if test "${with_pkcs11_provider}" = "detect"; then
 		DEFAULT_PKCS11_PROVIDER="${libdir}/opensc-pkcs11${DYN_LIB_EXT}"
 		DEFAULT_ONEPIN_PKCS11_PROVIDER="${libdir}/onepin-opensc-pkcs11${DYN_LIB_EXT}"
 	else
-		DEFAULT_PKCS11_PROVIDER="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\pkcs11\\\opensc-pkcs11.dll"
-		DEFAULT_ONEPIN_PKCS11_PROVIDER="%PROGRAMFILES%\\\OpenSC Project\\\OpenSC\\\pkcs11\\\onepin-opensc-pkcs11.dll"
+		DEFAULT_PKCS11_PROVIDER="%PROGRAMFILES%\\\Swissbit AG\\\OpenSC\\\pkcs11\\\opensc-pkcs11.dll"
+		DEFAULT_ONEPIN_PKCS11_PROVIDER="%PROGRAMFILES%\\\Swissbit AG\\\OpenSC\\\pkcs11\\\onepin-opensc-pkcs11.dll"
 	fi
 else
 	DEFAULT_PKCS11_PROVIDER="${with_pkcs11_provider}"
@@ -1170,7 +1150,6 @@ AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
 AM_CONDITIONAL([ENABLE_NPATOOL], [test "${ENABLE_NPATOOL}" = "yes"])
 AM_CONDITIONAL([ENABLE_AUTOSTART], [test "${enable_autostart}" = "yes"])
 AM_CONDITIONAL([ENABLE_CMOCKA], [test "${enable_cmocka}" = "yes"])
-AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 AM_CONDITIONAL([ENABLE_FUZZING], [test "${enable_fuzzing}" = "yes"])
 AM_CONDITIONAL([ENABLE_SHARED], [test "${enable_shared}" = "yes"])
 AS_IF([test "${enable_shared}" = "yes"], [AC_DEFINE([ENABLE_SHARED], [1], [Enable shared libraries])])
@@ -1214,7 +1193,6 @@ AC_CONFIG_FILES([
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
 	win32/winconfig.h
-	win32/OpenSC.iss
 	win32/OpenSC.wxs
 	MacOSX/Makefile
 	MacOSX/build-package

@@ -101,16 +101,3 @@ deb http://ddebs.ubuntu.com $(lsb_release -cs 2> /dev/null)-proposed main restri
 	$SUDO apt-get install -y openssl-dbgsym "$DEP" softhsm2-dbgsym libsofthsm2-dbgsym
 fi
 
-if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
-	$SUDO apt-get install --allow-downgrades  -y $WINE_DEPS
-	if [ ! -f "$(winepath 'C:/Program Files/Inno Setup 5/ISCC.exe')" ]; then
-		/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -ac -screen 0 1280x1024x16
-		export DISPLAY=:99.0
-		[ -d isetup ] || mkdir isetup
-		pushd isetup
-		[ -f isetup-5.5.6.exe ] || wget http://files.jrsoftware.org/is/5/isetup-5.5.6.exe
-		sleep 5 # make sure the X server is ready ?
-		wine isetup-5.5.6.exe /SILENT /VERYSILENT /SP- /SUPPRESSMSGBOXES /NORESTART
-		popd
-	fi
-fi

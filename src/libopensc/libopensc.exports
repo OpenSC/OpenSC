@@ -65,6 +65,7 @@ sc_card_ctl
 sc_change_reference_data
 sc_check_sw
 sc_clear_ec_params
+sc_copy_ec_params
 sc_compare_oid
 sc_compare_path
 sc_compare_path_prefix

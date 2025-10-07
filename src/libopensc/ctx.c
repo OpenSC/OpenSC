@@ -214,7 +214,7 @@ sc_ctx_win32_get_config_value(const char *name_env,
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (!name_key)
-		name_key = "Software\\OpenSC Project\\OpenSC";
+		name_key = "Software\\Swissbit AG\\OpenSC";
 
 	rc = RegOpenKeyExA(HKEY_CURRENT_USER, name_key, 0, KEY_QUERY_VALUE, &hKey);
 	if (rc == ERROR_SUCCESS) {
@@ -709,8 +709,8 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 #ifdef _WIN32
 	temp_len = PATH_MAX-1;
-	r = sc_ctx_win32_get_config_value("OPENSC_CONF", "ConfigFile", "Software\\OpenSC Project\\OpenSC",
-		temp_path, &temp_len);
+	r = sc_ctx_win32_get_config_value("OPENSC_CONF", "ConfigFile", "Software\\Swissbit AG\\OpenSC",
+			temp_path, &temp_len);
 	if (r)   {
 		sc_log(ctx, "process_config_file doesn't find opensc config file. Please set the registry key.");
 		return;

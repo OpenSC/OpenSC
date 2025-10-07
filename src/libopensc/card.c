@@ -1554,7 +1554,7 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 #ifdef _WIN32
 	if (!module_path || strlen(module_path) == 0)   {
 		temp_len = PATH_MAX-1;
-		rv = sc_ctx_win32_get_config_value(NULL, "SmDir", "Software\\OpenSC Project\\OpenSC",
+		rv = sc_ctx_win32_get_config_value(NULL, "SmDir", "Software\\Swissbit AG\\OpenSC",
 				temp_path, &temp_len);
 		if (rv == SC_SUCCESS) {
 			temp_path[temp_len] = '\0';

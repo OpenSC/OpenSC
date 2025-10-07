@@ -111,6 +111,10 @@ PROGRAMS_OPENPACE = npa-tool.exe
 WIXFLAGS = -d OpenPACE="$(OPENPACE_DIR)" $(WIXFLAGS)
 !ENDIF
 
+# If you want to build the installer with signed DLLs set SIGNED_DLLS= /YES
+!IF "$(SIGNED_DLLS)" == "/YES"
+WIXFLAGS = -d SignedDLLs=1 $(WIXFLAGS)
+!ENDIF
 
 # Used for MiniDriver
 CPDK_INCL_DIR = "/IC:\Program Files (x86)\Windows Kits\10\Cryptographic Provider Development Kit\Include"
