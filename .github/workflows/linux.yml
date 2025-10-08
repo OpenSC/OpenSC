@@ -424,7 +424,7 @@ jobs:
           distribution: 'semeru'
           java-version: '8'
           cache: 'maven'
-      - run: .github/setup-linux.sh piv
+      - run: .github/setup-linux.sh piv debug
       - run: .github/test-piv.sh
       - run: .github/test-piv.sh valgrind
 
@@ -443,7 +443,7 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-22.04-amd64-${{ github.sha }}
-      - run: .github/setup-linux.sh cac
+      - run: .github/setup-linux.sh cac debug
       - run: .github/test-cac.sh
       - run: .github/test-cac.sh valgrind
 
@@ -462,7 +462,7 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-22.04-amd64-${{ github.sha }}
-      - run: .github/setup-linux.sh oseid
+      - run: .github/setup-linux.sh oseid debug
       - run: .github/test-oseid.sh
       - run: .github/test-oseid.sh valgrind
 
