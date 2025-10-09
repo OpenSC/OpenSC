@@ -774,14 +774,9 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 		return CKR_ARGUMENTS_BAD;
 
 	sc_log(context, "C_WaitForSlotEvent(block=%d)", !(flags & CKF_DONT_BLOCK));
-#ifndef PCSCLITE_GOOD
-	/* Not all pcsc-lite versions implement consistently used functions as they are */
-	if (!(flags & CKF_DONT_BLOCK))
-		return CKR_FUNCTION_NOT_SUPPORTED;
-#endif /* PCSCLITE_GOOD */
 
-	mask = SC_EVENT_CARD_EVENTS | SC_EVENT_READER_EVENTS;
 	/* Detect and add new slots for added readers v2.20 */
+	mask = SC_EVENT_CARD_EVENTS | SC_EVENT_READER_EVENTS;
 
 	if ((rv = sc_pkcs11_lock()) != CKR_OK)
 		return rv;
@@ -802,30 +797,39 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 			return CKR_CRYPTOKI_NOT_INITIALIZED;
 		}
 
-		if (r == SC_ERROR_EVENT_TIMEOUT) {
-			if (flags & CKF_DONT_BLOCK) {
+		switch (r) {
+			case SC_SUCCESS:
+				break;
+			case SC_ERROR_EVENT_TIMEOUT:
+				if (flags & CKF_DONT_BLOCK) {
+					/* no change, no need to check further */
+					sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
+					return CKR_NO_EVENT;
+				}
+				break;
+			case SC_ERROR_NO_READERS_FOUND:
+				/* if hotplugging is not supported, this error is returned
+				 * immediately by `sc_wait_for_event()`. Wait a second to maybe
+				 * find a new reader via `slot_find_changed()` */
+				sleep(1);
+				/* fall through */
+			case SC_ERROR_READER_DETACHED:
+				/* free the reader_states so that they get reinitialized in the next run */
 				sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
-				return CKR_NO_EVENT;
-			}
-			r = SC_SUCCESS;
-		}
-
-		if (r == SC_ERROR_READER_DETACHED) {
-			/* free the reader_states so that they get reinitialized in the next run */
-			sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
-			r = SC_SUCCESS;
-		}
-
-		if (r != SC_SUCCESS) {
-			sc_log(context, "sc_wait_for_event() returned %d\n",  r);
-			rv = sc_to_cryptoki_error(r, "C_WaitForSlotEvent");
-			goto out;
+				break;
+			default:
+				sc_log(context, "sc_wait_for_event() returned %d\n",  r);
+				rv = sc_to_cryptoki_error(r, "C_WaitForSlotEvent");
+				goto out;
 		}
 
 		if ((rv = sc_pkcs11_lock()) != CKR_OK)
 			return rv;
 		rv = slot_find_changed(&slot_id);
 		sc_pkcs11_unlock();
+
+		if (flags & CKF_DONT_BLOCK)
+			break;
 	} while (rv != CKR_OK);
 
 out:
