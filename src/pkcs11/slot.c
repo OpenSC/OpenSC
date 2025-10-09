@@ -537,11 +537,12 @@ CK_RV slot_find_changed(CK_SLOT_ID_PTR idp)
 		sc_log(context, "slot 0x%lx token: %lu present: 0x%02lX",
 		       slot->id, (slot->slot_info.flags & CKF_TOKEN_PRESENT),
 		       slot->events & CKF_TOKEN_PRESENT);
-		if ((slot->events & CKF_TOKEN_PRESENT) != (slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
+		if ((slot->events & ((unsigned int) CKF_TOKEN_PRESENT)) != (unsigned int) (slot->slot_info.flags & CKF_TOKEN_PRESENT)) {
 			*idp = slot->id;
 			rv = CKR_OK;
 		}
-		slot->events = slot->slot_info.flags;
+		slot->events = (unsigned int) slot->slot_info.flags;
 	}
-	LOG_FUNC_RETURN(context, rv);
+
+	return rv;
 }
