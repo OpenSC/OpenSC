@@ -509,11 +509,15 @@ jobs:
             libressl-${{ env.LIBRESSL_VERSION }}/
           key: libressl-${{ env.LIBRESSL_VERSION }}
 
-  test-cac-libressl:
+  test-libressl:
+    name: test-${{ matrix.target }}-libressl
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [cac, oseid]
     needs: [build-libressl]
     steps:
-      - uses: actions/checkout@v4
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }}
@@ -524,28 +528,9 @@ jobs:
         with:
           path: ./*
           key: ${{ runner.os }}-libressl-${{ github.sha }}
-      - run: .github/setup-linux.sh cac libressl
-      - run: .github/test-cac.sh
-      - run: .github/test-cac.sh valgrind
-
-  test-oseid-libressl:
-    runs-on: ubuntu-latest
-    needs: [build-libressl]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-latest-base
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-libressl-${{ github.sha }}
-      - run: .github/setup-linux.sh oseid libressl
-      - run: .github/test-oseid.sh
-      - run: .github/test-oseid.sh valgrind
+      - run: .github/setup-linux.sh ${{ matrix.target }} libressl
+      - run: .github/test-${{ matrix.target }}.sh
+      - run: .github/test-${{ matrix.target }}.sh valgrind
 
   ####################
   ## Push artifacts ##
