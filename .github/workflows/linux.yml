@@ -169,31 +169,6 @@ jobs:
           path: ./*
           key: ${{ runner.os }}-piv-sm-${{ github.sha }}
 
-  test-piv:
-    runs-on: ubuntu-24.04
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-20-java
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
-      - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'semeru'
-          java-version: '8'
-          cache: 'maven'
-      - run: .github/setup-linux.sh piv
-      - run: .github/test-piv.sh
-      - run: .github/test-piv.sh valgrind
-
   test-piv-sm:
     runs-on: ubuntu-24.04
     needs: [build-piv-sm]
@@ -248,15 +223,19 @@ jobs:
       - run: .github/test-isoapplet.sh ${{ matrix.target }}
       - run: .github/test-isoapplet.sh ${{ matrix.target }} valgrind
 
-  test-gidsapplet:
+  test-java:
+    name: test-${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [piv, gidsapplet, openpgp]
     runs-on: ubuntu-24.04
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-20-java
+          version: apt-24.04-amd64-java
           execute_install_scripts: true
       - uses: actions/cache@v4
         id: cache-build
@@ -269,34 +248,9 @@ jobs:
           distribution: 'semeru'
           java-version: '8'
           cache: 'maven'
-      - run: .github/setup-linux.sh gidsapplet
-      - run: .github/test-gidsapplet.sh
-      - run: .github/test-gidsapplet.sh valgrind
-
-  test-openpgp:
-    runs-on: ubuntu-24.04
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} %{{ env.JAVA_DEPS }}
-          version: apt-24.04-amd64-base
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
-      - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'semeru'
-          java-version: '8'
-          cache: 'maven'
-      - run: .github/setup-linux.sh openpgp
-      - run: .github/test-openpgp.sh
-      - run: .github/test-openpgp.sh valgrind
+      - run: .github/setup-linux.sh ${{ matrix.target }}
+      - run: .github/test-${{ matrix.target }}.sh
+      - run: .github/test-${{ matrix.target }}.sh valgrind
 
   build-clang-tidy:
     runs-on: ubuntu-24.04
