@@ -37,38 +37,36 @@ jobs:
       fail-fast: false
       matrix:
         dist: ['22.04', '24.04']
-        arch: ['amd64', 'arm64']
-        build: ['dist', 'valgrind']
+        arch: [amd64, arm64]
+        build: [dist, valgrind, piv-sm] # piv-sm will also include valgrind tests
         exclude:
           - build: dist
             arch: arm64
-          - dist: 22.04
-            build: valgrind
-            arch: arm64
     runs-on: ubuntu-${{ matrix.dist }}${{ matrix.arch == 'arm64' && '-arm' || '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      # Create with piv-sm build with java deps
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-${{ matrix.dist }}-${{ matrix.arch }}-base
+          packages: ${{ env.BASE_DEPS }} ${{ matrix.build == 'piv-sm' && env.JAVA_DEPS || '' }}
+          version: apt-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build == 'piv-sm' && 'java' || 'base' }}
           execute_install_scripts: true
-      - run: .github/setup-linux.sh ${{ matrix.build == 'valgrind' && 'debug' || '' }}
-      - run: .github/build.sh ${{ matrix.build }}
+      - run: .github/setup-linux.sh ${{ matrix.build != 'dist' && 'debug' || '' }} # install debug with valgrind builds
+      - run: .github/build.sh ${{ matrix.build }} ${{ matrix.build == 'piv-sm' && 'valgrind' || '' }} # configure piv-sm with valgrind tests
       - name: Upload test logs
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: ubuntu-${{ matrix.dist }}-${{ matrix.arch }}-test-logs
+          name: ubuntu-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build }}-test-logs
           path: |
             tests/*.log
             src/tests/unittests/*.log
-      - uses: actions/cache@v4
+      - &use_cache
+        uses: actions/cache@v4
         id: cache-build
-        if: matrix.build == 'dist'
         with:
           path: ./*
-          key: ${{ runner.os }}-${{ matrix.dist }}-${{ matrix.arch }}-${{ github.sha }}
+          key: ${{ runner.os }}-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build }}-${{ github.sha }}
       - name: Upload build artifacts
         if: matrix.build == 'dist'
         uses: actions/upload-artifact@v4
@@ -144,69 +142,22 @@ jobs:
           path:
             win32/Output/OpenSC*.exe
 
-  build-piv-sm:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-20-java
-          execute_install_scripts: true
-      - run: .github/setup-linux.sh
-      - run: .github/build.sh piv-sm dist
-      - name: Upload test logs
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: ubuntu-piv-sm-test-logs
-          path: |
-            tests/*.log
-            src/tests/unittests/*.log
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-piv-sm-${{ github.sha }}
-
-  test-piv-sm:
-    runs-on: ubuntu-24.04
-    needs: [build-piv-sm]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-20-java
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-piv-sm-${{ github.sha }}
-      - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'semeru'
-          java-version: '8'
-          cache: 'maven'
-      - run: .github/setup-linux.sh piv
-      - run: .github/test-piv.sh
-      - run: .github/test-piv.sh valgrind
-
   test-isoapplet:
     name: test-isoapplet-${{ matrix.target }}
     strategy:
       fail-fast: false
       matrix:
+        dist: ['24.04']
+        arch: [amd64]
+        build: [valgrind]
         target: [v0, v1]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
     steps:
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-24.04-amd64-base
+          version: apt-${{ matrix.dist }}-${{ matrix.arch }}-java
           execute_install_scripts: true
       - run: git clone $JCARDSIM
       - uses: actions/setup-java@v4
@@ -214,41 +165,40 @@ jobs:
           distribution: 'semeru'
           java-version: '8'
           cache: 'maven'
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
+      - *use_cache
       - run: .github/setup-linux.sh isoapplet debug
       - run: .github/test-isoapplet.sh ${{ matrix.target }}
       - run: .github/test-isoapplet.sh ${{ matrix.target }} valgrind
 
   test-java:
-    name: test-${{ matrix.target }}
+    name: test-${{ matrix.target }}-${{ matrix.dist }}-${{ matrix.build }}
     strategy:
       fail-fast: false
       matrix:
+        dist: ['24.04']
+        arch: [amd64]
+        build: [valgrind]
         target: [piv, gidsapplet, openpgp]
-    runs-on: ubuntu-24.04
+        include: [
+          { dist: '22.04', arch: amd64, build: 'piv-sm', target: 'piv' },
+          { dist: '24.04', arch: amd64, build: 'piv-sm', target: 'piv' }
+        ]
+    runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
     steps:
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-24.04-amd64-java
+          version: apt-${{ matrix.dist }}-${{ matrix.arch }}-java
           execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
+      - *use_cache
       - run: git clone $JCARDSIM
       - uses: actions/setup-java@v4
         with:
           distribution: 'semeru'
           java-version: '8'
           cache: 'maven'
-      - run: .github/setup-linux.sh ${{ matrix.target }}
+      - run: .github/setup-linux.sh ${{ matrix.target }} debug
       - run: .github/test-${{ matrix.target }}.sh
       - run: .github/test-${{ matrix.target }}.sh valgrind
 
@@ -256,7 +206,6 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }}
@@ -266,7 +215,7 @@ jobs:
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-valgrind-${{ github.sha }}
       - run: .github/setup-linux.sh clang-tidy
       - run: .github/build.sh clang-tidy
 
@@ -276,6 +225,8 @@ jobs:
       fail-fast: false
       matrix:
         dist: ['22.04', '24.04']
+        arch: [amd64]
+        build: [valgrind]
         target: [cac, oseid]
     runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
@@ -283,69 +234,12 @@ jobs:
       - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: ${{ env.BASE_DEPS }}
-          version: apt-${{ matrix.dist }}-amd64-base
+          version: apt-${{ matrix.dist }}-${{ matrix.arch }}-base
           execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-${{ matrix.dist }}-amd64-${{ github.sha }}
+      - *use_cache
       - run: .github/setup-linux.sh ${{ matrix.target }} debug
       - run: .github/test-${{ matrix.target }}.sh
       - run: .github/test-${{ matrix.target }}.sh valgrind
-
-  ############################################
-  ## Ubuntu 22.04 with OpenSSL 3.0 pipeline ##
-  ############################################
-  build-ubuntu-22-piv-sm:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-22-java
-          execute_install_scripts: true
-      - run: .github/setup-linux.sh
-      - run: .github/build.sh piv-sm dist valgrind
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: ubuntu-22-piv-sm-test-logs
-          path: |
-            tests/*.log
-            src/tests/unittests/*.log
-      - uses: actions/cache@v4
-        id: cache-build
-        if: ${{ success() }}
-        with:
-          path: ./*
-          key: ${{ runner.os }}-22-piv-sm-${{ github.sha }}
-
-  test-piv-sm-ubuntu-22:
-    runs-on: ubuntu-22.04
-    needs: [build-ubuntu-22-piv-sm]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-22-java
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-22-piv-sm-${{ github.sha }}
-      - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'semeru'
-          java-version: '8'
-          cache: 'maven'
-      - run: .github/setup-linux.sh piv debug
-      - run: .github/test-piv.sh
-      - run: .github/test-piv.sh valgrind
 
   #######################
   ## LibreSSL pipeline ##
@@ -420,12 +314,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, build-mingw]
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/cache@v4
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-dist-${{ github.sha }}
       - name: Pull mingw build artifacts
         uses: actions/download-artifact@v4
         with:
