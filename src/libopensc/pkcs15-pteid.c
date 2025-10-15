@@ -256,6 +256,13 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 			struct sc_pin_cmd_data pin_cmd_data;
 			struct sc_pkcs15_auth_info *pin_info = (sc_pkcs15_auth_info_t *) p15_obj->data;
 
+			if (pin_info->auth_id.value[0] < 1 || pin_info->auth_id.value[0] > 3) {
+				sc_log(ctx, "Invalid auth_id for PIN: Value %d out of range. Skipping.",
+						pin_info->auth_id.value[0]);
+				p15_obj = p15_obj->next;
+				continue;
+			}
+
 			strlcpy(p15_obj->label, pteid_pin_names[pin_info->auth_id.value[0]-1], sizeof(p15_obj->label));
 
 			pin_info->attrs.pin.flags |= SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
