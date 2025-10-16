@@ -514,6 +514,18 @@ if test "${WIN32}" = "no"; then
 			)
 		)
 	fi
+		saved_LIBS="$LIBS"
+
+
+	LIBS="$LIBS  ${LDL_LIBS}"
+	AC_MSG_CHECKING([for dlmopen])
+	AC_TRY_LINK_FUNC(dlmopen, [AC_MSG_RESULT([yes])
+	AC_DEFINE([HAVE_DLMOPEN],
+			  [1],
+			  [Define if you have glibc dlmopen.]
+			  )
+	])
+	LIBS="$saved_LIBS"
 
 	dnl Special check for pthread support.
 	AX_PTHREAD(

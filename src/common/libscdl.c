@@ -66,6 +66,9 @@ int sc_dlclose(void *handle)
 
 #else
 
+#ifdef HAVE_DLMOPEN
+#define _GNU_SOURCE
+#endif
 #include <dlfcn.h>
 
 void *sc_dlopen(const char *filename)
@@ -75,6 +78,15 @@ void *sc_dlopen(const char *filename)
 			| RTLD_DEEPBIND
 #endif
 			);
+}
+
+void *sc_dlmopen(const char *filename)
+{
+#ifdef HAVE_DLMOPEN
+	return dlmopen(LM_ID_NEWLM, filename, RTLD_LAZY | RTLD_LOCAL);
+#else
+	return sc_dlopen(filename);
+#endif
 }
 
 void *sc_dlsym(void *handle, const char *symbol)
