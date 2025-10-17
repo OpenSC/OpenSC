@@ -111,6 +111,7 @@ build/
 engine_pkcs11/
 libp11/
 target/
+target_startup/
 
 src/scconf/test-conf
 
@@ -141,6 +142,7 @@ src/tests/fuzzing/fuzz_asn1_sig_value
 src/tests/fuzzing/fuzz_card
 src/tests/fuzzing/fuzz_piv_tool
 src/tests/fuzzing/fuzz_pkcs11
+src/tests/fuzzing/fuzz_pkcs11_uri
 src/tests/fuzzing/fuzz_pkcs15_crypt
 src/tests/fuzzing/fuzz_pkcs15_decode
 src/tests/fuzzing/fuzz_pkcs15_encode

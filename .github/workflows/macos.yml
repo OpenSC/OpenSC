@@ -20,14 +20,30 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-15, macos-14, macos-13]
+        os: [macos-26, macos-15, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: .github/setup-macos.sh
         env:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
+      - name: Checkout OpenSSL sources
+        uses: actions/checkout@v5
+        with:
+          repository: openssl/openssl
+          ref: openssl-3.5
+          path: openssl
+      - name: Get OpenSSL commit hash
+        id: openssl_hash
+        run: echo "hash=$(cd openssl && git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: openssl_bin
+          key: ${{ matrix.os }}-OpenSSL-${{ steps.openssl_hash.outputs.hash }}
+      - run: sh MacOSX/build-openssl-macos.sh
+        if: steps.cache.outputs.cache-hit != 'true'
       - run: .github/build.sh
         env:
           CODE_SIGN_IDENTITY: ${{ secrets.CODE_SIGN_IDENTITY }}
@@ -54,10 +70,10 @@ jobs:
   build-libressl:
     strategy:
       matrix:
-        os: [macos-15, macos-14, macos-13]
+        os: [macos-26, macos-15, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: .github/setup-macos.sh libressl
       - run: .github/build.sh libressl
       - run: .github/cleanup-macos.sh
@@ -73,7 +89,7 @@ jobs:
     runs-on: macos-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Pull build artifacts
         uses: actions/download-artifact@v4
         with:

@@ -22,24 +22,7 @@ if test "$FORCE_OPENSSL_BUILD" == "1" || ! pkg-config libcrypto --atleast-versio
 	# OpenSSL is not installed
 	if ! test -e $BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig; then
 		# Build OpenSSL manually, because Apple's binaries are deprecated
-		if ! test -e openssl; then
-			git clone --depth=1 https://github.com/openssl/openssl.git -b openssl-3.0
-		fi
-		cd openssl
-		sed -ie 's!my @disablables = (!my @disablables = (\n    "apps",!' Configure
-		./Configure darwin64-x86_64 no-shared no-apps --prefix=$PREFIX enable-ec_nistp_64_gcc_128
-		make clean
-		make -j 4
-		make DESTDIR=$BUILDPATH/openssl_bin install_sw
-		make clean
-		./Configure darwin64-arm64 no-shared no-apps --prefix=$PREFIX enable-ec_nistp_64_gcc_128
-		make -j 4
-		make DESTDIR=$BUILDPATH/openssl_arm64 install_sw
-		lipo -create $BUILDPATH/openssl_arm64/$PREFIX/lib/libcrypto.a $BUILDPATH/openssl_bin/$PREFIX/lib/libcrypto.a -output libcrypto.a
-		lipo -create $BUILDPATH/openssl_arm64/$PREFIX/lib/libssl.a $BUILDPATH/openssl_bin/$PREFIX/lib/libssl.a -output libssl.a
-		mv libcrypto.a $BUILDPATH/openssl_bin/$PREFIX/lib/libcrypto.a
-		mv libssl.a $BUILDPATH/openssl_bin/$PREFIX/lib/libssl.a
-		cd ..
+		sh build-openssl-macos.sh -b $BUILDPATH -p $PREFIX
 	fi
 	export OPENSSL_CFLAGS="`env PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openssl_bin pkg-config --static --cflags libcrypto`"
 	export OPENSSL_LIBS="`  env PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openssl_bin pkg-config --static --libs   libcrypto`"
@@ -199,6 +182,3 @@ do
 	fi
 done
 rm -rf ${imagedir}
-
-#if [ "$TRAVIS_EVENT_TYPE" != "pull_request" ]; then xcrun altool --notarize-app --file $(pwd)/vorteil_darwin-x86.dmg --username $OSX_NOTARIZE_USERNAME --primary-bundle-id com.vorteil.cli -p $OSX_NOTARIZE_PW -- >> /dev/null; fi;
-#if [ "$TRAVIS_EVENT_TYPE" != "pull_request" ]; then for ((i=1;i<=30;i+=1)); do xcrun stapler staple $(pwd)/vorteil_darwin-x86.dmg >> /dev/null; if [ $? = 65 ]; then echo "Waiting for notarization to complete..." && sleep 10; fi; done; fi;
