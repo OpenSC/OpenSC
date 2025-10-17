@@ -63,11 +63,18 @@ int sc_dlclose(void *handle)
 {
 	return FreeLibrary((HMODULE)handle);
 }
+
 #else
+
 #include <dlfcn.h>
+
 void *sc_dlopen(const char *filename)
 {
-	return dlopen(filename, RTLD_LAZY);
+	return dlopen(filename, RTLD_LAZY | RTLD_LOCAL
+#ifdef RTLD_DEEPBIND
+			| RTLD_DEEPBIND
+#endif
+			);
 }
 
 void *sc_dlsym(void *handle, const char *symbol)
