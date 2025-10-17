@@ -107,7 +107,7 @@ fi
 if [ "$1" == "dist" -o "$2" == "dist" ]; then
 	set +e
 	DISTCHECK_CONFIGURE_FLAGS="$CONFIGURE_FLAGS"
-	make distcheck
+	env VALGRIND=valgrind make distcheck
 	RV=$?
 	if [ $RV -ne 0 ]; then
 		./.github/dump-logs.sh $SUFFIX
