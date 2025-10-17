@@ -11,7 +11,7 @@ fi
 
 export SOPIN="12345678"
 export PIN="123456"
-PKCS11_TOOL="valgrind $BUILD_PATH/src/tools/pkcs11-tool"
+PKCS11_TOOL="gdb -ex run --args $BUILD_PATH/src/tools/pkcs11-tool"
 
 if [ "${TOKENTYPE}" == "softhsm" ]; then
     source "${BUILD_PATH}/tests/init-softhsm.sh"

@@ -18,7 +18,7 @@ fi
 
 WINE_DEPS=""
 # Generic dependencies
-DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd openssl valgrind"
+DEPS="docbook-xsl xsltproc gengetopt help2man pcscd check pcsc-tools libtool make autoconf autoconf-archive automake pkg-config git xxd openssl valgrind gdb"
 
 if [ "$1" == "clang" ]; then
 	DEPS="$DEPS clang"
