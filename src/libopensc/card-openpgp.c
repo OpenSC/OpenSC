@@ -2468,6 +2468,14 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 			LOG_TEST_RET(card->ctx, SC_ERROR_OBJECT_NOT_VALID,
 				"CHV status bytes have unexpected length");
 
+		/* The definition of fields of DO C4 changed between OpenPGP
+		 * card specification v1.1 and v2.0. There is no longer a separate
+		 * CHV2 retry counter but only one retry counter for both PW1 mode 1
+		 * and mode 2 at byte 5 (count from 1) of the DO.
+		 */
+		if (priv->bcd_version >= OPENPGP_CARD_2_0 && data->pin_reference == 0x82)
+			data->pin_reference = 0x81;
+
 		data->pin1.tries_left = c4data[3 + (data->pin_reference & 0x0F)];
 		data->pin1.max_tries = 3;
 		data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
