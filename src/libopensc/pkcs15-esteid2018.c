@@ -43,8 +43,8 @@ is_latvian_eid(sc_pkcs15_card_t *p15card)
 static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 	sc_card_t *card = p15card->card;
 	u8 buff[11];
-	int r, i;
-	size_t field_length = 0, taglen;
+	int r, i, cert_slot = 0;
+	size_t field_length = 0, taglen, buflen;
 	sc_path_t tmppath;
 
 	/* Read documber number to be used as serial */
@@ -70,10 +70,45 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 	p15card->tokeninfo->serial_number[taglen] = '\0';
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_READONLY;
 
+	if (is_latvian_eid(p15card)) {
+		u8 *buf;
+		const u8 *ptr;
+		sc_pkcs15_object_t obj = {0};
+		sc_pkcs15_cert_info_t *cert_info = NULL;
+
+		if (!p15card->file_app) {
+			p15card->file_app = sc_file_new();
+		}
+		if (!p15card->file_app) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+
+		sc_format_path("3F00adf1", &p15card->file_app->path);
+		sc_format_path("3F00adf17005", &tmppath);
+		r = sc_pkcs15_read_file(p15card, &tmppath, &buf, &buflen, 0);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Reading EF.CDF file failed");
+		ptr = buf;
+		r = sc_pkcs15_decode_cdf_entry(p15card, &obj, &ptr, &buflen);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Decoding EF.CDF file failed");
+
+		cert_info = (struct sc_pkcs15_cert_info *)obj.data;
+		if (cert_info && cert_info->path.len > 0) {
+			cert_slot = cert_info->path.value[cert_info->path.len - 1] - 1;
+		}
+
+		sc_pkcs15_free_cert_info(cert_info);
+		sc_file_free(p15card->file_app);
+		p15card->file_app = NULL;
+		free(buf);
+	}
+
 	/* add certificates */
 	for (i = 0; i < 2; i++) {
 		static const char *esteid_cert_names[2] = {"Isikutuvastus", "Allkirjastamine"};
-		static const char *esteid_cert_paths[2] = {"3f00:adf1:3401", "3f00:adf2:341f"};
+		static const char *cert_paths[2][2] = {
+				{"3f00:adf1:3401", "3f00:adf2:341f"},
+				{"3f00:adf1:3402", "3f00:adf2:341e"}
+		    };
 		static const u8 esteid_cert_ids[2] = {1, 2};
 
 		struct sc_pkcs15_cert_info cert_info = {
@@ -82,7 +117,7 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 		struct sc_pkcs15_object cert_obj = {0};
 
 		strlcpy(cert_obj.label, esteid_cert_names[i], sizeof(cert_obj.label));
-		sc_format_path(esteid_cert_paths[i], &cert_info.path);
+		sc_format_path(cert_paths[cert_slot][i], &cert_info.path);
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not add cert oebjct");
 
