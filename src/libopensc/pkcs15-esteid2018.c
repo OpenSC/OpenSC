@@ -36,7 +36,8 @@
 static int
 is_latvian_eid(sc_pkcs15_card_t *p15card)
 {
-	return p15card->card->type == SC_CARD_TYPE_LATEID_2018_V2_2025;
+	return p15card->card->type == SC_CARD_TYPE_LATEID_2018 ||
+	       p15card->card->type == SC_CARD_TYPE_LATEID_2018_V2_2025;
 }
 
 static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
