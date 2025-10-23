@@ -187,6 +187,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--usage-encapsulate</option>
+					</term>
+					<listitem><para>Specify 'encapsulate' key usage flag (sets DECAPSULATE in privkey, sets ENCAPSULATE in pubkey).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--label</option> <replaceable>name</replaceable>,
 						<option>-a</option> <replaceable>name</replaceable>
 					</term>
