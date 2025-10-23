@@ -4750,7 +4750,7 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 		goto err;
 	}
 
-	good = constant_time_ge(r, 1);
+	good = constant_time_ge_i(r, 1);
 	/* if no error or padding error, do not return here to prevent Marvin attack */
 	if (!(good | wrong_padding) && r < 0)   {
 		logprintf(pCardData, 2, "sc_pkcs15_decipher error(%i): %s\n", r, sc_strerror(r));
