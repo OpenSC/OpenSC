@@ -5171,6 +5171,7 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 	out = pCardData->pfnCspAlloc(outlen);
 
 	if (!out) {
+		pCardData->pfnCspFree(pbPublicKey);
 		dwret = ERROR_OUTOFMEMORY;
 		goto err;
 	}
@@ -7244,6 +7245,21 @@ static void disassociate_card(PCARD_DATA pCardData)
 		logprintf(pCardData, 1,
 			  "disassociate_card called without vendor specific data\n");
 		return;
+	}
+
+	if (vs->dh_agreements) {
+		for (BYTE i = 0; i < vs->allocatedAgreements; i++) {
+			struct md_dh_agreement *dh_agreement = vs->dh_agreements + i;
+			if (dh_agreement->pbAgreement) {
+				SecureZeroMemory(dh_agreement->pbAgreement, dh_agreement->dwSize);
+				pCardData->pfnCspFree(dh_agreement->pbAgreement);
+				dh_agreement->pbAgreement = NULL;
+			}
+			dh_agreement->dwSize = 0;
+		}
+		pCardData->pfnCspFree(vs->dh_agreements);
+		vs->dh_agreements = NULL;
+		vs->allocatedAgreements = 0;
 	}
 
 	memset(vs->pin_objs, 0, sizeof(vs->pin_objs));
