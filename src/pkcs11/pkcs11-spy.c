@@ -50,8 +50,9 @@
 /* Spy Module Function List */
 static CK_FUNCTION_LIST_PTR pkcs11_spy = NULL;
 static CK_FUNCTION_LIST_3_0_PTR pkcs11_spy_3_0 = NULL;
+static CK_FUNCTION_LIST_3_2_PTR pkcs11_spy_3_2 = NULL;
 /* Real Module Function List */
-static CK_FUNCTION_LIST_3_0_PTR po = NULL;
+static CK_FUNCTION_LIST_3_2_PTR po = NULL;
 /* Real module interface list */
 static CK_INTERFACE_PTR orig_interfaces = NULL;
 static unsigned long num_orig_interfaces = 0;
@@ -61,13 +62,16 @@ static void *modhandle = NULL;
 static FILE *spy_output = NULL;
 
 static void *
-allocate_function_list(int v3)
+allocate_function_list(int v)
 {
 	CK_FUNCTION_LIST_PTR list = NULL;
 	CK_FUNCTION_LIST_3_0_PTR list_3_0 = NULL;
+	CK_FUNCTION_LIST_3_2_PTR list_3_2 = NULL;
 
-	if (v3) {
+	if (v == 30) {
 		list = malloc(sizeof(CK_FUNCTION_LIST_3_0));
+	} else if (v == 32) {
+		list = malloc(sizeof(CK_FUNCTION_LIST_3_2));
 	} else {
 		list = malloc(sizeof(CK_FUNCTION_LIST));
 	}
@@ -145,7 +149,7 @@ allocate_function_list(int v3)
 	list->C_GetFunctionStatus = C_GetFunctionStatus;
 	list->C_CancelFunction = C_CancelFunction;
 	list->C_WaitForSlotEvent = C_WaitForSlotEvent;
-	if (!v3) {
+	if (v < 30) {
 		return list;
 	}
 
@@ -178,14 +182,34 @@ allocate_function_list(int v3)
 	list_3_0->C_VerifyMessageNext = C_VerifyMessageNext;
 	list_3_0->C_MessageVerifyFinal = C_MessageVerifyFinal;
 
-	return list_3_0;
+	if (v < 32) {
+		return list_3_0;
+	}
+
+	/* Add also PKCS #11 3.2 functions if requested and fixup version */
+	list_3_2 = (CK_FUNCTION_LIST_3_2_PTR)list;
+	list_3_2->version.major = 3;
+	list_3_2->version.minor = 2;
+	list_3_2->C_EncapsulateKey = C_EncapsulateKey;
+	list_3_2->C_DecapsulateKey = C_DecapsulateKey;
+	list_3_2->C_VerifySignatureInit = C_VerifySignatureInit;
+	list_3_2->C_VerifySignature = C_VerifySignature;
+	list_3_2->C_VerifySignatureUpdate = C_VerifySignatureUpdate;
+	list_3_2->C_VerifySignatureFinal = C_VerifySignatureFinal;
+	list_3_2->C_GetSessionValidationFlags = C_GetSessionValidationFlags;
+	list_3_2->C_AsyncComplete = C_AsyncComplete;
+	list_3_2->C_AsyncGetID = C_AsyncGetID;
+	list_3_2->C_AsyncJoin = C_AsyncJoin;
+	list_3_2->C_WrapKeyAuthenticated = C_WrapKeyAuthenticated;
+	list_3_2->C_UnwrapKeyAuthenticated = C_UnwrapKeyAuthenticated;
+	return list_3_2;
 }
 
 /* The compatibility interfaces that can be returned from Interface functions
  * if the V3 API is used, but the proxied module does not support V3 API */
 #define NUM_INTERFACES 1
 CK_INTERFACE compat_interfaces[NUM_INTERFACES] = {
-	{(CK_UTF8CHAR_PTR)"PKCS 11", NULL, 0}
+		{(CK_UTF8CHAR_PTR) "PKCS 11", NULL, 0}
 };
 
 CK_INTERFACE spy_interface = {(CK_UTF8CHAR_PTR)"PKCS 11", NULL, 0};
@@ -205,14 +229,22 @@ init_spy(void)
 #endif
 
 	/* Allocates and initializes the pkcs11_spy structure */
-	pkcs11_spy = allocate_function_list(0);
+	pkcs11_spy = allocate_function_list(2);
 	if (pkcs11_spy == NULL) {
 		return CKR_HOST_MEMORY;
 	}
-	pkcs11_spy_3_0 = allocate_function_list(1);
+	pkcs11_spy_3_0 = allocate_function_list(30);
 	if (pkcs11_spy_3_0 == NULL) {
 		free(pkcs11_spy);
 		pkcs11_spy = NULL;
+		return CKR_HOST_MEMORY;
+	}
+	pkcs11_spy_3_2 = allocate_function_list(32);
+	if (pkcs11_spy_3_2 == NULL) {
+		free(pkcs11_spy);
+		pkcs11_spy = NULL;
+		free(pkcs11_spy_3_0);
+		pkcs11_spy_3_0 = NULL;
 		return CKR_HOST_MEMORY;
 	}
 
@@ -300,10 +332,12 @@ init_spy(void)
 		pkcs11_spy = NULL;
 		free(pkcs11_spy_3_0);
 		pkcs11_spy_3_0 = NULL;
+		free(pkcs11_spy_3_2);
+		pkcs11_spy_3_2 = NULL;
 		return CKR_DEVICE_ERROR;
 	}
 	modhandle = C_LoadModule(module, &po_v2);
-	po = (CK_FUNCTION_LIST_3_0_PTR) po_v2;
+	po = (CK_FUNCTION_LIST_3_2_PTR) po_v2;
 	if (modhandle && po) {
 		fprintf(spy_output, "Loaded: \"%s\"\n", module);
 	}
@@ -311,6 +345,7 @@ init_spy(void)
 		po = NULL;
 		free(pkcs11_spy);
 		free(pkcs11_spy_3_0);
+		free(pkcs11_spy_3_2);
 		rv = CKR_GENERAL_ERROR;
 	}
 
@@ -360,14 +395,14 @@ static void
 spy_dump_string_in(const char *name, CK_VOID_PTR data, CK_ULONG size)
 {
 	fprintf(spy_output, "[in] %s ", name);
-	print_generic(spy_output, 0, data, size, NULL);
+	print_generic(spy_output, 0, data, size, NULL, -1);
 }
 
 static void
 spy_dump_string_out(const char *name, CK_VOID_PTR data, CK_ULONG size)
 {
 	fprintf(spy_output, "[out] %s ", name);
-	print_generic(spy_output, 0, data, size, NULL);
+	print_generic(spy_output, 0, data, size, NULL, -1);
 }
 
 static void
@@ -506,9 +541,9 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism, bool is_c_m
 		CK_ECDH1_DERIVE_PARAMS *param = (CK_ECDH1_DERIVE_PARAMS *)pMechanism->pParameter;
 		fprintf(spy_output, "[in] %s->pParameter->kdf = %s\n", name, lookup_enum(CKD_T, param->kdf));
 		fprintf(spy_output, "[in] %s->pParameter->pSharedData[ulSharedDataLen] = ", name);
-		print_generic(spy_output, 0, param->pSharedData, param->ulSharedDataLen, NULL);
+		print_generic(spy_output, 0, param->pSharedData, param->ulSharedDataLen, NULL, -1);
 		fprintf(spy_output, "[in] %s->pParameter->pPublicData[ulPublicDataLen] = ", name);
-		print_generic(spy_output, 0, param->pPublicData, param->ulPublicDataLen, NULL);
+		print_generic(spy_output, 0, param->pPublicData, param->ulPublicDataLen, NULL, -1);
 		break;
 	}
 	case CKM_ECMQV_DERIVE: {
@@ -522,13 +557,13 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism, bool is_c_m
 		CK_ECMQV_DERIVE_PARAMS *param = (CK_ECMQV_DERIVE_PARAMS *)pMechanism->pParameter;
 		fprintf(spy_output, "[in] %s->pParameter->kdf = %s\n", name, lookup_enum(CKD_T, param->kdf));
 		fprintf(spy_output, "%s->pParameter->pSharedData[ulSharedDataLen] = ", name);
-		print_generic(spy_output, 0, param->pSharedData, param->ulSharedDataLen, NULL);
+		print_generic(spy_output, 0, param->pSharedData, param->ulSharedDataLen, NULL, -1);
 		fprintf(spy_output, "%s->pParameter->pPublicData[ulPublicDataLen] = ", name);
-		print_generic(spy_output, 0, param->pPublicData, param->ulPublicDataLen, NULL);
+		print_generic(spy_output, 0, param->pPublicData, param->ulPublicDataLen, NULL, -1);
 		fprintf(spy_output, "%s->pParameter->ulPrivateDataLen = %lu", name, param->ulPrivateDataLen);
 		fprintf(spy_output, "%s->pParameter->hPrivateData = %lu", name, param->hPrivateData);
 		fprintf(spy_output, "%s->pParameter->pPublicData2[ulPublicDataLen2] = ", name);
-		print_generic(spy_output, 0, param->pPublicData2, param->ulPublicDataLen2, NULL);
+		print_generic(spy_output, 0, param->pPublicData2, param->ulPublicDataLen2, NULL, -1);
 		fprintf(spy_output, "%s->pParameter->publicKey = %lu", name, param->publicKey);
 		break;
 	}
@@ -564,6 +599,58 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism, bool is_c_m
 				lookup_enum(MEC_T, param->hashAlg));
 		fprintf(spy_output, "[in] %s->pParameter->mgf = %s\n", name, lookup_enum(MGF_T, param->mgf));
 		fprintf(spy_output, "[in] %s->pParameter->sLen = %lu\n", name, param->sLen);
+		break;
+	}
+	case CKM_ML_DSA:
+	case CKM_HASH_ML_DSA_SHA224:
+	case CKM_HASH_ML_DSA_SHA256:
+	case CKM_HASH_ML_DSA_SHA384:
+	case CKM_HASH_ML_DSA_SHA512:
+	case CKM_HASH_ML_DSA_SHA3_224:
+	case CKM_HASH_ML_DSA_SHA3_256:
+	case CKM_HASH_ML_DSA_SHA3_384:
+	case CKM_HASH_ML_DSA_SHA3_512:
+	case CKM_HASH_ML_DSA_SHAKE128:
+	case CKM_HASH_ML_DSA_SHAKE256:
+	case CKM_SLH_DSA:
+	case CKM_HASH_SLH_DSA_SHA224:
+	case CKM_HASH_SLH_DSA_SHA256:
+	case CKM_HASH_SLH_DSA_SHA384:
+	case CKM_HASH_SLH_DSA_SHA512:
+	case CKM_HASH_SLH_DSA_SHA3_224:
+	case CKM_HASH_SLH_DSA_SHA3_256:
+	case CKM_HASH_SLH_DSA_SHA3_384:
+	case CKM_HASH_SLH_DSA_SHA3_512:
+	case CKM_HASH_SLH_DSA_SHAKE128:
+	case CKM_HASH_SLH_DSA_SHAKE256: {
+		if (pMechanism->ulParameterLen != sizeof(CK_SIGN_ADDITIONAL_CONTEXT)) {
+			snprintf(param_name, sizeof(param_name), "%s->pParameter[ulParameterLen]", name);
+			spy_dump_string_in(param_name, pMechanism->pParameter, pMechanism->ulParameterLen);
+			fprintf(spy_output, "(unknown type -- the length does not match any known type\n");
+			break;
+		}
+		CK_SIGN_ADDITIONAL_CONTEXT *param = (CK_SIGN_ADDITIONAL_CONTEXT *)pMechanism->pParameter;
+		fprintf(spy_output, "[in] %s->pParameter->hedgeVariant = %s\n", name,
+				lookup_enum(HG_T, param->hedgeVariant));
+		fprintf(spy_output, "%s->pParameter->pContent[ulContextLen] = ", name);
+		print_generic(spy_output, 0, param->pContext, param->ulContextLen, NULL, 1);
+		break;
+	}
+	case CKM_HASH_ML_DSA:
+	case CKM_HASH_SLH_DSA: {
+		if (pMechanism->ulParameterLen != sizeof(CK_HASH_SIGN_ADDITIONAL_CONTEXT)) {
+			snprintf(param_name, sizeof(param_name), "%s->pParameter[ulParameterLen]", name);
+			spy_dump_string_in(param_name, pMechanism->pParameter, pMechanism->ulParameterLen);
+			fprintf(spy_output, "(unknown type -- the length does not match any known type\n");
+			break;
+		}
+		CK_HASH_SIGN_ADDITIONAL_CONTEXT *param = (CK_HASH_SIGN_ADDITIONAL_CONTEXT *)pMechanism->pParameter;
+		fprintf(spy_output, "[in] %s->pParameter->hedgeVariant = %s\n", name,
+				lookup_enum(HG_T, param->hedgeVariant));
+		fprintf(spy_output, "%s->pParameter->pContent[ulContextLen] = ", name);
+		print_generic(spy_output, 0, param->pContext, param->ulContextLen, NULL, -1);
+		fprintf(spy_output, "[in] %s->pParameter->hash = %s\n", name,
+				lookup_enum(MEC_T, param->hash));
 		break;
 	}
 	default:
@@ -2074,7 +2161,7 @@ C_MessageSignFinal(CK_SESSION_HANDLE hSession)
 }
 
 CK_RV
-C_MessageVerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE  hKey)
+C_MessageVerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey)
 {
 	CK_RV rv;
 
@@ -2136,5 +2223,255 @@ CK_RV C_MessageVerifyFinal(CK_SESSION_HANDLE hSession)
 	enter("C_MessageVerifyFinal");
 	spy_dump_ulong_in("hSession", hSession);
 	rv = po->C_MessageVerifyFinal(hSession);
+	return retne(rv);
+}
+
+CK_RV
+C_EncapsulateKey(CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hPublicKey,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulAttributeCount,
+		CK_BYTE_PTR pCiphertext,
+		CK_ULONG_PTR pulCiphertextLen,
+		CK_OBJECT_HANDLE_PTR phKey)
+{
+	CK_RV rv;
+
+	enter("C_EncapsulateKey");
+	spy_dump_ulong_in("hSession", hSession);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
+	spy_dump_ulong_in("hPublicKey", hPublicKey);
+	spy_attribute_list_in("pTemplate", pTemplate, ulAttributeCount);
+	rv = po->C_EncapsulateKey(hSession, pMechanism, hPublicKey, pTemplate, ulAttributeCount,
+			pCiphertext, pulCiphertextLen, phKey);
+	if (rv == CKR_OK) {
+		spy_dump_string_out("pCiphertext[*pulCiphertextLen]",
+				pCiphertext, *pulCiphertextLen);
+		spy_dump_ulong_out("phKey", *phKey);
+	}
+	return retne(rv);
+}
+
+
+
+CK_RV
+C_DecapsulateKey(CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hPrivateKey,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulAttributeCount,
+		CK_BYTE_PTR pCiphertext,
+		CK_ULONG ulCiphertextLen,
+		CK_OBJECT_HANDLE_PTR phKey)
+{
+	CK_RV rv;
+
+	enter("C_DecapsulateKey");
+	spy_dump_ulong_in("hSession", hSession);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
+	spy_dump_ulong_in("hPrivateKey", hPrivateKey);
+	spy_attribute_list_in("pTemplate", pTemplate, ulAttributeCount);
+	spy_dump_string_in("pCiphertext[ulCiphertextLen]",
+			pCiphertext, ulCiphertextLen);
+	rv = po->C_DecapsulateKey(hSession, pMechanism, hPrivateKey, pTemplate, ulAttributeCount,
+			pCiphertext, ulCiphertextLen, phKey);
+	if (rv == CKR_OK) {
+		spy_dump_ulong_out("phKey", *phKey);
+	}
+	return retne(rv);
+}
+
+CK_RV
+C_VerifySignatureInit(CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hKey,
+		CK_BYTE_PTR pSignature,
+		CK_ULONG ulSignatureLen)
+{
+	CK_RV rv;
+
+	enter("C_VerifySignatureInit");
+	spy_dump_ulong_in("hSession", hSession);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
+	spy_dump_ulong_in("hKey", hKey);
+	spy_dump_string_in("pSignature[ulSignatureLen]",
+			pSignature, ulSignatureLen);
+	rv = po->C_VerifySignatureInit(hSession, pMechanism, hKey,
+			pSignature, ulSignatureLen);
+	return retne(rv);
+}
+
+CK_RV
+C_VerifySignature(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen)
+{
+	CK_RV rv;
+
+	enter("C_VerifySignature");
+	spy_dump_ulong_in("hSession", hSession);
+	spy_dump_string_in("pData[ulDataLen]", pData, ulDataLen);
+	rv = po->C_VerifySignature(hSession, pData, ulDataLen);
+	return retne(rv);
+}
+
+CK_RV
+C_VerifySignatureUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen)
+{
+	CK_RV rv;
+
+	enter("C_VerifySignatureUpdate");
+	spy_dump_ulong_in("hSession", hSession);
+	spy_dump_string_in("pPart[ulPartLen]", pPart, ulPartLen);
+	rv = po->C_VerifySignatureUpdate(hSession, pPart, ulPartLen);
+	return retne(rv);
+}
+
+CK_RV
+C_VerifySignatureFinal(CK_SESSION_HANDLE hSession)
+{
+	CK_RV rv;
+
+	enter("C_VerifySignatureFinal");
+	spy_dump_ulong_in("hSession", hSession);
+	rv = po->C_VerifySignatureFinal(hSession);
+	return retne(rv);
+}
+
+CK_RV
+C_GetSessionValidationFlags(CK_SESSION_HANDLE hSession,
+		CK_SESSION_VALIDATION_FLAGS_TYPE type,
+		CK_FLAGS_PTR pFlags)
+{
+	CK_RV rv;
+
+	enter("C_GetSessionValidationFlags");
+	spy_dump_ulong_in("hSession", hSession);
+	spy_dump_ulong_in("type", type);
+	rv = po->C_GetSessionValidationFlags(hSession, type, pFlags);
+	if (rv == CKR_OK) {
+		spy_dump_ulong_out("pFlags", *pFlags);
+	}
+	return retne(rv);
+}
+
+CK_RV
+C_AsyncComplete(CK_SESSION_HANDLE hSession,
+		CK_UTF8CHAR_PTR pFunctionName,
+		CK_ASYNC_DATA_PTR pResult)
+{
+	CK_RV rv;
+
+	enter("C_AsyncComplete");
+	spy_dump_ulong_in("hSession", hSession);
+	spy_dump_string_in("pFunctionName", pFunctionName, strlen((char *)pFunctionName));
+	rv = po->C_AsyncComplete(hSession, pFunctionName, pResult);
+	if (rv == CKR_OK) {
+		if (pResult == NULL) {
+			fprintf(spy_output, "[out] pResult = NULL\n");
+		} else {
+			spy_dump_ulong_out("pResult->ulVersion", pResult->ulVersion);
+			spy_dump_string_out("pResult->pValue[pResult->ulValue]",
+					pResult->pValue, pResult->ulValue);
+			spy_dump_ulong_out("pResult->hObject", pResult->hObject);
+			spy_dump_ulong_out("pResult->hAdditionalObject", pResult->hAdditionalObject);
+		}
+	}
+	return retne(rv);
+}
+
+CK_RV
+C_AsyncGetID(CK_SESSION_HANDLE hSession,
+		CK_UTF8CHAR_PTR pFunctionName,
+		CK_ULONG_PTR pulID)
+{
+	CK_RV rv;
+
+	enter("C_AsyncGetID");
+	spy_dump_ulong_in("hSession", hSession);
+	spy_dump_string_in("pFunctionName", pFunctionName, strlen((char *)pFunctionName));
+	rv = po->C_AsyncGetID(hSession, pFunctionName, pulID);
+	if (rv == CKR_OK) {
+		spy_dump_ulong_out("pulID", *pulID);
+	}
+	return retne(rv);
+}
+
+CK_RV
+C_AsyncJoin(CK_SESSION_HANDLE hSession,
+		CK_UTF8CHAR_PTR pFunctionName,
+		CK_ULONG ulID,
+		CK_BYTE_PTR pData,
+		CK_ULONG ulData)
+{
+	CK_RV rv;
+
+	enter("C_AsyncJoin");
+	spy_dump_ulong_in("hSession", hSession);
+	spy_dump_string_in("pFunctionName", pFunctionName, strlen((char *)pFunctionName));
+	spy_dump_ulong_in("ulID", ulID);
+	rv = po->C_AsyncJoin(hSession, pFunctionName, ulID, pData, ulData);
+	if (rv == CKR_OK) {
+		spy_dump_string_out("pData[ulData]", pData, ulData);
+	}
+	return retne(rv);
+}
+
+CK_RV
+C_WrapKeyAuthenticated(CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hWrappingKey,
+		CK_OBJECT_HANDLE hKey,
+		CK_BYTE_PTR pAssociatedData,
+		CK_ULONG ulAssociatedDataLen,
+		CK_BYTE_PTR pWrappedKey,
+		CK_ULONG_PTR pulWrappedKeyLen)
+{
+	CK_RV rv;
+
+	enter("C_WrapKeyAuthenticated");
+	spy_dump_ulong_in("hSession", hSession);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
+	spy_dump_ulong_in("hWrappingKey", hWrappingKey);
+	spy_dump_ulong_in("hKey", hKey);
+	spy_dump_string_in("pAssociatedData[ulAssociatedDataLen]",
+			pAssociatedData, ulAssociatedDataLen);
+	rv = po->C_WrapKeyAuthenticated(hSession, pMechanism, hWrappingKey, hKey,
+			pAssociatedData, ulAssociatedDataLen, pWrappedKey, pulWrappedKeyLen);
+	if (rv == CKR_OK) {
+		spy_dump_string_out("pWrappedKey[*pulWrappedKeyLen]", pWrappedKey, *pulWrappedKeyLen);
+	} else if (rv == CKR_BUFFER_TOO_SMALL) {
+		spy_dump_ulong_out("pulWrappedKeyLen", *pulWrappedKeyLen);
+	}
+
+	return retne(rv);
+}
+
+CK_RV
+C_UnwrapKeyAuthenticated(CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hUnwrappingKey,
+		CK_BYTE_PTR pWrappedKey,
+		CK_ULONG ulWrappedKeyLen,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulAttributeCount,
+		CK_BYTE_PTR pAssociatedData,
+		CK_ULONG ulAssociatedDataLen,
+		CK_OBJECT_HANDLE_PTR phKey)
+{
+	CK_RV rv;
+
+	enter("C_UnwrapKeyAuthenticated");
+	spy_dump_ulong_in("hSession", hSession);
+	spy_dump_mechanism_in("pMechanism", pMechanism, false);
+	spy_dump_ulong_in("hUnwrappingKey", hUnwrappingKey);
+	spy_dump_string_in("pWrappedKey[ulWrappedKeyLen]", pWrappedKey, ulWrappedKeyLen);
+	spy_attribute_list_in("pTemplate", pTemplate, ulAttributeCount);
+	spy_dump_string_in("pAssociatedData[ulAssociatedDataLen]",
+			pAssociatedData, ulAssociatedDataLen);
+	rv = po->C_UnwrapKeyAuthenticated(hSession, pMechanism, hUnwrappingKey,
+			pWrappedKey, ulWrappedKeyLen, pTemplate, ulAttributeCount,
+			pAssociatedData, ulAssociatedDataLen, phKey);
+	if (rv == CKR_OK)
+		spy_dump_ulong_out("hKey", *phKey);
 	return retne(rv);
 }
