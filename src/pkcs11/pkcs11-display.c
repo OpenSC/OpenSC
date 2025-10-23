@@ -110,7 +110,7 @@ buf_spec(CK_VOID_PTR buf_addr, CK_ULONG buf_len)
 
 
 void
-print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
 	enum_spec *spec = (enum_spec*)arg;
 	CK_ULONG i;
@@ -127,7 +127,7 @@ print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR 
 
 
 void
-print_boolean(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+print_boolean(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
 	CK_BYTE i = *((CK_BYTE *)value);
 	fprintf(f, i ? "True\n" : "False\n");
@@ -135,7 +135,7 @@ print_boolean(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_P
 
 
 void
-print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
 	CK_ULONG i;
 
@@ -188,9 +188,9 @@ print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_P
 
 #ifdef ENABLE_OPENSSL
 static void
-print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
-	print_generic(f, type, value, size, arg);
+	print_generic(f, type, value, size, arg, key_type);
 	if(size && value) {
 		X509_NAME *name;
 		const unsigned char *tmp = value;
@@ -208,8 +208,67 @@ print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR ar
 }
 #endif
 
+static enum_specs ck_mldsa_s[] = {
+		{ CKP_ML_DSA_44, "CKP_ML_DSA_44" },
+		{ CKP_ML_DSA_65, "CKP_ML_DSA_65" },
+		{ CKP_ML_DSA_87, "CKP_ML_DSA_87" },
+};
+
+static enum_specs ck_mlkem_s[] = {
+		{ CKP_ML_KEM_512,  "CKP_ML_KEM_512" },
+		{ CKP_ML_KEM_768,  "CKP_ML_KEM_768" },
+		{ CKP_ML_KEM_1024, "CKP_ML_KEM_1024" },
+};
+
+static enum_specs ck_slh_dsa_s[] = {
+		{ CKP_SLH_DSA_SHA2_128S,  "CKP_SLH_DSA_SHA2_128S"  },
+		{ CKP_SLH_DSA_SHAKE_128S, "CKP_SLH_DSA_SHAKE_128S" },
+		{ CKP_SLH_DSA_SHA2_128F,  "CKP_SLH_DSA_SHA2_128F"  },
+		{ CKP_SLH_DSA_SHAKE_128F, "CKP_SLH_DSA_SHAKE_128F" },
+		{ CKP_SLH_DSA_SHA2_192S,  "CKP_SLH_DSA_SHA2_192S"  },
+		{ CKP_SLH_DSA_SHAKE_192S, "CKP_SLH_DSA_SHAKE_192S" },
+		{ CKP_SLH_DSA_SHA2_192F,  "CKP_SLH_DSA_SHA2_192F"  },
+		{ CKP_SLH_DSA_SHAKE_192F, "CKP_SLH_DSA_SHAKE_192F" },
+		{ CKP_SLH_DSA_SHA2_256S,  "CKP_SLH_DSA_SHA2_256S"  },
+		{ CKP_SLH_DSA_SHAKE_256S, "CKP_SLH_DSA_SHAKE_256S" },
+		{ CKP_SLH_DSA_SHA2_256F,  "CKP_SLH_DSA_SHA2_256F"  },
+		{ CKP_SLH_DSA_SHAKE_256F, "CKP_SLH_DSA_SHAKE_256F" },
+};
+
+#define SZ_SPECS sizeof(enum_specs)
+
+static enum_spec ck_ml_dsa_t[] = {
+		{ML_DSA_T, ck_mldsa_s, sizeof(ck_mldsa_s) / SZ_SPECS, "CK_ML_DSA_PARAMETER_SET_TYPE"},
+};
+static enum_spec ck_ml_kem_t[] = {
+		{ML_KEM_T, ck_mlkem_s, sizeof(ck_mlkem_s) / SZ_SPECS, "CK_ML_KEM_PARAMETER_SET_TYPE"},
+};
+static enum_spec ck_slh_dsa_t[] = {
+		{SLH_DSA_T, ck_slh_dsa_s, sizeof(ck_slh_dsa_s) / SZ_SPECS, "CK_SLH_DSA_PARAMETER_SET_TYPE"},
+};
+
 void
-print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg)
+print_parameter_set(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg,
+		CK_KEY_TYPE key_type)
+{
+	switch (key_type) {
+	case CKK_ML_DSA:
+		print_enum(f, type, value, size, ck_ml_dsa_t, key_type);
+		break;
+	case CKK_ML_KEM:
+		print_enum(f, type, value, size, ck_ml_kem_t, key_type);
+		break;
+	case CKK_SLH_DSA:
+		print_enum(f, type, value, size, ck_slh_dsa_t, key_type);
+		break;
+	default:
+		print_generic(f, type, value, size, arg, key_type);
+		break;
+	}
+}
+
+void
+print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
 	CK_ULONG i, j=0;
 	CK_BYTE  c;
@@ -243,32 +302,6 @@ print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR
 	}
 	fprintf(f, "\n");
 }
-static enum_specs ck_mldsa_s[] = {
-		{CKP_ML_DSA_44, "CKP_ML_DSA_44"},
-		{CKP_ML_DSA_65, "CKP_ML_DSA_65"},
-		{CKP_ML_DSA_87, "CKP_ML_DSA_87"},
-};
-
-static enum_specs ck_mlkem_s[] = {
-		{CKP_ML_KEM_512,        "CKP_ML_KEM_512"},
-		{CKP_ML_KEM_768,        "CKP_ML_KEM_768"},
-		{CKP_ML_KEM_1024,       "CKP_ML_KEM_1024"},
-};
-
-static enum_specs ck_slh_dsa_s[] = {
-		{CKP_SLH_DSA_SHA2_128S, "CKP_SLH_DSA_SHA2_128S"},
-		{CKP_SLH_DSA_SHAKE_128S,        "CKP_SLH_DSA_SHAKE_128S"},
-		{CKP_SLH_DSA_SHA2_128F, "CKP_SLH_DSA_SHA2_128F"},
-		{CKP_SLH_DSA_SHAKE_128F,        "CKP_SLH_DSA_SHAKE_128F"},
-		{CKP_SLH_DSA_SHA2_192S, "CKP_SLH_DSA_SHA2_192S"},
-		{CKP_SLH_DSA_SHAKE_192S,        "CKP_SLH_DSA_SHAKE_192S"},
-		{CKP_SLH_DSA_SHA2_192F, "CKP_SLH_DSA_SHA2_192F"},
-		{CKP_SLH_DSA_SHAKE_192F,        "CKP_SLH_DSA_SHAKE_192F"},
-		{CKP_SLH_DSA_SHA2_256S, "CKP_SLH_DSA_SHA2_256S"},
-		{CKP_SLH_DSA_SHAKE_256S,        "CKP_SLH_DSA_SHAKE_256S"},
-		{CKP_SLH_DSA_SHA2_256F, "CKP_SLH_DSA_SHA2_256F"},
-		{CKP_SLH_DSA_SHAKE_256F,        "CKP_SLH_DSA_SHAKE_256F"},
-};
 
 // clang-format off
 static enum_specs ck_cls_s[] = {
@@ -1064,8 +1097,6 @@ static enum_specs ck_ckd_s[] = {
   {CKD_BLAKE2B_512_KDF,      "CKD_BLAKE2B_512_KDF"}
 };
 
-#define SZ_SPECS sizeof(enum_specs)
-
 enum_spec ck_types[] = {
   {OBJ_T,      ck_cls_s,      sizeof(ck_cls_s) / SZ_SPECS,      "CK_OBJECT_CLASS"              },
   {PROFILE_T,  ck_profile_s,  sizeof(ck_profile_s)/SZ_SPECS,    "CK_PROFILE"                   },
@@ -1237,7 +1268,7 @@ type_spec ck_attribute_specs[] = {
   { CKA_HSS_LMS_TYPES     , "CKA_HSS_LMS_TYPES ", print_generic, NULL },
   { CKA_HSS_LMOTS_TYPES   , "CKA_HSS_LMOTS_TYPES ", print_generic, NULL },
   { CKA_HSS_KEYS_REMAINING, "CKA_HSS_KEYS_REMAINING ", print_generic, NULL },
-  { CKA_PARAMETER_SET     , "CKA_PARAMETER_SET ", print_generic, NULL },
+  { CKA_PARAMETER_SET     , "CKA_PARAMETER_SET ", print_parameter_set, NULL },
   { CKA_OBJECT_VALIDATION_FLAGS     , "CKA_OBJECT_VALIDATION_FLAGS ", print_generic, NULL },
   { CKA_VALIDATION_TYPE     , "CKA_VALIDATION_TYPE ", print_generic, NULL },
   { CKA_VALIDATION_VERSION     , "CKA_VALIDATION_VERSION ", print_generic, NULL },
@@ -1260,8 +1291,8 @@ type_spec ck_attribute_specs[] = {
   { CKA_TRUST_IPSEC_IKE     , "CKA_TRUST_IPSEC_IKE ", print_generic, NULL },
   { CKA_TRUST_TIME_STAMPING     , "CKA_TRUST_TIME_STAMPING ", print_generic, NULL },
   { CKA_TRUST_OCSP_SIGNING     , "CKA_TRUST_OCSP_SIGNING ", print_generic, NULL },
-  { CKA_ENCAPSULATE     , "CKA_ENCAPSULATE ", print_generic, NULL },
-  { CKA_DECAPSULATE     , "CKA_DECAPSULATE ", print_generic, NULL },
+  { CKA_ENCAPSULATE     , "CKA_ENCAPSULATE ", print_boolean, NULL },
+  { CKA_DECAPSULATE     , "CKA_DECAPSULATE ", print_boolean, NULL },
   { CKA_HASH_OF_CERTIFICATE     , "CKA_HASH_OF_CERTIFICATE ", print_generic, NULL },
   { CKA_PUBLIC_CRC64_VALUE     , "CKA_PUBLIC_CRC64_VALUE ", print_generic, NULL },
   { CKA_SEED     , "CKA_SEED ", print_generic, NULL },
@@ -1410,7 +1441,7 @@ print_token_info(FILE *f, CK_TOKEN_INFO *info)
 		{ CKF_SO_PIN_TO_BE_CHANGED         , "CKF_SO_PIN_TO_BE_CHANGED         " },
 		{ CKF_ERROR_STATE                  , "CKF_ERROR_STATE                  " },
 		{ CKF_SEED_RANDOM_REQUIRED         , "CKF_SEED_RANDOM_REQUIRED         " },
-		{ CKF_ASYNC_SESSION_SUPPORTED      , "CKF_ASYNC_SESSION_SUPPORTED      " }
+		{ CKF_ASYNC_SESSION_SUPPORTED      , "CKF_ASYNC_SESSION_SUPPORTED      " },
 	};
 
 	fprintf(f, "      label:                  '%32.32s'\n",  info->label );
@@ -1516,10 +1547,20 @@ void
 print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 {
 	CK_ULONG j, k;
+	CK_KEY_TYPE key_type = -1;
 	int found;
 
 	if (!pTemplate)
 		return;
+
+	/* Some attributes are key type specific -- first check if we have a key type
+	 * in the template and if so, store it */
+	for (j = 0; j < ulCount ; j++) {
+		if (pTemplate[j].type == CKA_KEY_TYPE && pTemplate[j].pValue) {
+			key_type = *(CK_KEY_TYPE *)pTemplate[j].pValue;
+			break;
+		}
+	}
 
 	for(j = 0; j < ulCount ; j++) {
 		found = 0;
@@ -1528,10 +1569,11 @@ print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 				found = 1;
 				fprintf(f, "    %s ", ck_attribute_specs[k].name);
 				if(pTemplate[j].pValue && ((CK_LONG) pTemplate[j].ulValueLen) > 0) {
-					ck_attribute_specs[k].display
-					(f, pTemplate[j].type, pTemplate[j].pValue,
-						pTemplate[j].ulValueLen,
-					ck_attribute_specs[k].arg);
+					ck_attribute_specs[k].display(
+							f, pTemplate[j].type, pTemplate[j].pValue,
+							pTemplate[j].ulValueLen,
+							ck_attribute_specs[k].arg,
+							key_type);
 				} else {
 					fprintf(f, "%s\n", buf_spec(pTemplate[j].pValue, pTemplate[j].ulValueLen));
 				}

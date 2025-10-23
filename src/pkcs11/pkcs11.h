@@ -1,5 +1,6 @@
 #ifndef PKCS11_H
 #define PKCS11_H 1
+// clang-fromat off
 
 #if defined(__cplusplus)
 extern "C" {
@@ -2331,7 +2332,7 @@ extern CK_RV C_AsyncJoin(CK_SESSION_HANDLE, CK_UTF8CHAR *, CK_ULONG, CK_BYTE *,
                          CK_ULONG);
 extern CK_RV C_WrapKeyAuthenticated(CK_SESSION_HANDLE, CK_MECHANISM *,
                                     CK_OBJECT_HANDLE, CK_OBJECT_HANDLE,
-                                    CK_BYTE *, CK_ULONG *, CK_BYTE *,
+                                    CK_BYTE *, CK_ULONG, CK_BYTE *,
                                     CK_ULONG *);
 extern CK_RV C_UnwrapKeyAuthenticated(CK_SESSION_HANDLE, CK_MECHANISM *,
                                       CK_OBJECT_HANDLE, CK_BYTE *,
@@ -2523,7 +2524,7 @@ typedef CK_RV (* CK_C_AsyncJoin)(CK_SESSION_HANDLE, CK_UTF8CHAR *, CK_ULONG,
                                  CK_BYTE *, CK_ULONG);
 typedef CK_RV (* CK_C_WrapKeyAuthenticated)(CK_SESSION_HANDLE, CK_MECHANISM *,
                                             CK_OBJECT_HANDLE, CK_OBJECT_HANDLE,
-                                            CK_BYTE *, CK_ULONG *, CK_BYTE *,
+                                            CK_BYTE *, CK_ULONG, CK_BYTE *,
                                             CK_ULONG *);
 typedef CK_RV (* CK_C_UnwrapKeyAuthenticated)(CK_SESSION_HANDLE, CK_MECHANISM *,
                                               CK_OBJECT_HANDLE, CK_BYTE *,
@@ -2836,4 +2837,5 @@ struct CK_FUNCTION_LIST {
 }
 #endif
 
+// clang-fromat on
 #endif	/* PKCS11_H */
