@@ -30,8 +30,17 @@
 
 #define SIGNATURE_PAYLOAD_SIZE 0x30
 
+/*
+ * EstEID: https://www.id.ee/wp-content/uploads/2025/11/ged24035_015_tdc_est_eid_developer_guide.pdf
+ * FinEID:
+ * * App 4.0: https://dvv.fi/documents/16079645/17324992/S1v40+(1).pdf/56a167fe-9f26-1fda-7d76-cfbbb29d184e/S1v40+(1).pdf
+ * * Imp 4.0: https://dvv.fi/documents/16079645/17324992/S4-1v40.pdf/55bddc08-6893-b4b4-73fa-24dced600198/S4-1v40.pdf
+ * * Imp 4.1: https://dvv.fi/documents/16079645/17324992/S4-1v41.pdf/63afc997-ed16-a00b-bdca-e9971b164137/S4-1v41.pdf
+ */
 static const struct sc_atr_table esteid_atrs[] = {
 		{"3b:ff:96:00:00:80:31:fe:43:80:31:b8:53:65:49:44:64:b0:85:05:10:12:23:3f:1d", NULL, "EstEID 2025", SC_CARD_TYPE_ESTEID_2025, 0, NULL},
+		{"3b:7f:96:00:00:80:31:b8:65:b0:85:05:00:11:12:24:60:82:90:00",		NULL, "FinEID 2022", SC_CARD_TYPE_FINEID_2022, 0, NULL},
+		{"3b:7f:96:00:00:80:31:b8:65:b0:85:05:10:24:12:24:60:82:90:00",		NULL, "FinEID 2025", SC_CARD_TYPE_FINEID_2025, 0, NULL},
 		{NULL,									 NULL, NULL,	   0,			      0, NULL}
 };
 
