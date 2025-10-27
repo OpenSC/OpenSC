@@ -32,6 +32,8 @@
 
 static const struct sc_atr_table esteid_atrs[] = {
 		{"3b:ff:96:00:00:80:31:fe:43:80:31:b8:53:65:49:44:64:b0:85:05:10:12:23:3f:1d", NULL, "EstEID 2025", SC_CARD_TYPE_ESTEID_2025, 0, NULL},
+		{"3b:7f:96:00:00:80:31:b8:65:b0:85:05:00:11:12:24:60:82:90:00",		NULL, "FinEID 2022", SC_CARD_TYPE_FINEID_2022, 0, NULL},
+		{"3b:7f:96:00:00:80:31:b8:65:b0:85:05:10:24:12:24:60:82:90:00",		NULL, "FinEID 2025", SC_CARD_TYPE_FINEID_2025, 0, NULL},
 		{NULL,									 NULL, NULL,	   0,			      0, NULL}
 };
 
