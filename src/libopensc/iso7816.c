@@ -1424,7 +1424,7 @@ iso7816_select_aid(struct sc_card *card, const u8 *req,
 static int
 iso7816_init(struct sc_card *card)
 {
-#if ENABLE_SM
+#ifdef ENABLE_SM
 	memset(&card->sm_ctx, 0, sizeof card->sm_ctx);
 #endif
 	return SC_SUCCESS;

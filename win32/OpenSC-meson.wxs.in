@@ -1,0 +1,225 @@
+<?if $(sys.BUILDARCH) = x64 ?>
+
+<?ifndef ENABLE_OPENSSL ?>
+<?define PackageName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light (64bit)" ?>
+<?else ?>
+<?define PackageName = "@OPENSC_VS_FF_PRODUCT_NAME@ (64bit)" ?>
+<?endif ?>
+<?define PlatformUpgradeCode = "{9A449570-69A2-11E0-9CC6-955B4824019B}" ?>
+
+<?elseif $(sys.BUILDARCH) = x86 ?>
+
+<?ifndef ENABLE_OPENSSL ?>
+<?define PackageName = "@OPENSC_VS_FF_PRODUCT_NAME@ Light" ?>
+<?else ?>
+<?define PackageName = "@OPENSC_VS_FF_PRODUCT_NAME@" ?>
+<?endif ?>
+<?define PlatformUpgradeCode = "{69428F65-B96D-458D-BB87-DBB5FDB35DCE}" ?>
+
+<?else ?>
+<?error Unsupported architecture: must be x86 or x86_64 only ?>
+<?endif ?>
+
+<Wix RequiredVersion="5.0" xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="$(PackageName)"
+           Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@"
+           Version="@OPENSC_VERSION_MAJOR@.@OPENSC_VERSION_MINOR@.@OPENSC_VERSION_FIX@.@OPENSC_VERSION_REVISION@"
+           UpgradeCode="$(PlatformUpgradeCode)"
+           Language="1033"
+           Compressed="yes">
+
+    <SummaryInformation Description="@OPENSC_VS_FF_PRODUCT_NAME@ Installer"
+                        Manufacturer="@OPENSC_VS_FF_COMPANY_NAME@"
+                        Comments="@OPENSC_VS_FF_COMMENTS@"/>
+
+    <Media Id="1" Cabinet="OpenSC.cab" EmbedCab="yes" CompressionLevel="high"/>
+
+    <!-- Most of the stuff goes to the Program Files folder -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Name="OpenSC Project">
+        <Directory Id="PREFIX" Name="OpenSC"/>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="PREFIX_MENU" Name="OpenSC Project"/>
+    </StandardDirectory>
+
+
+    <Feature Id="Feature.Complete" Title="OpenSC software suite" Display="expand" AllowAbsent="no" ConfigurableDirectory="PREFIX">
+      <Feature Id="Feature.Core" Title="Core components" Description="Core Libraries and configuration files used by all other components." AllowAbsent="no">
+        <Component Directory="PREFIX" Guid="92d33ffa-a8ae-4c2a-b6e6-e2f2cb8e45a5">
+          <File Source="@PROJECT_SOURCE_ROOT@\etc\opensc.conf" KeyPath="yes"/>
+          <RegistryValue Root="HKLM" Key="Software\[Manufacturer]\OpenSC" Type="string" Name="ConfigFile" Value="[PREFIX]opensc.conf"/>
+        </Component>
+        <Component Permanent="yes">
+          <!-- Start SCardSvr Service during startup -->
+          <RegistryValue Root="HKLM" Key="System\CurrentControlSet\Services\SCardSvr" Type="integer" Name="Start" Value="2" KeyPath="yes"/>
+          <!-- Start SCardSvr Service now -->
+          <!-- <ServiceControl Id="StartSCardSvrService" Name="SCardSvr" Start="install" /> -->
+        </Component>
+<?ifdef ENABLE_OPENPACE ?>
+        <Component Directory="PREFIX" Subdirectory="cvc" Guid="e3de7c53-b431-40d0-8c0e-242f28a6e17e">
+          <File Source="@PROJECT_SOURCE_ROOT@\etc\DESRCACC100001"/>
+          <File Source="@PROJECT_SOURCE_ROOT@\etc\DESCHSMCVCA00001"/>
+        </Component>
+<?endif ?>
+<?ifdef ENABLE_OPENSSL ?>
+        <Files Directory="PREFIX" Subdirectory="profiles" Include="@PROJECT_SOURCE_ROOT@\src\pkcs15init\*.profile"/>
+        <Component>
+          <RegistryValue Root="HKLM" Key="Software\[Manufacturer]\OpenSC" Type="string" Name="ProfileDir" Value="[PREFIX]profiles"/>
+        </Component>
+<?endif ?>
+      </Feature>
+
+
+<?ifdef ENABLE_PKCS11 ?>
+      <Feature Id="Feature.PKCS11" Title="PKCS#11 module" Description="Security module that can be used by most cross-platform software, for example Firefox, Thunderbird, OpenVPN, etc.">
+        <Component Directory="PREFIX" Subdirectory="pkcs11" Guid="e93d591c-9fb2-46ee-ab6c-58909b82c07f">
+          <File Source="@PROJECT_BUILD_ROOT@\src\pkcs11\opensc-pkcs11.dll" KeyPath="yes"/>
+          <File Name="onepin-opensc-pkcs11.dll" Source="@PROJECT_BUILD_ROOT@\src\pkcs11\opensc-pkcs11.dll"/>
+<?ifndef STATIC_PKCS11 ?>
+          <File Source="@PROJECT_BUILD_ROOT@\src\libopensc\opensc-11.dll"/>
+<?endif ?>
+        </Component>
+      </Feature>
+
+      <Feature Id="Feature.PKCS11Spy" Title="PKCS#11 Spy module" Description="PKCS#11 module for debugging library invocations.">
+        <Component Directory="PREFIX" Subdirectory="PKCS11-Spy" Guid="b2ff175d-60fa-401b-8414-b714a0ce8cb4">
+          <File Source="@PROJECT_BUILD_ROOT@\src\pkcs11\pkcs11-spy.dll"/>
+          <RegistryKey Root="HKLM" Key="Software\[Manufacturer]\PKCS11-Spy">
+            <RegistryValue Type="string" Name="Module" Value="[PREFIX]pkcs11\opensc-pkcs11.dll"/>
+            <RegistryValue Type="string" Name="Output" Value="%TEMP%\pkcs11-spy.log"/>
+          </RegistryKey>
+        </Component>
+      </Feature>
+<?endif ?>
+
+
+<?ifdef ENABLE_TOOLS ?>
+      <Feature Id="Feature.tools" Title="Command line tools" Description="OpenSC tools for debugging and smart card personalization.">
+        <Files Directory="PREFIX" Subdirectory="tools" Include="@PROJECT_BUILD_ROOT@\src\tools\*.exe"/>
+<?ifndef STATIC_TOOLS ?>
+        <File Directory="PREFIX" Subdirectory="tools" Source="@PROJECT_BUILD_ROOT@\src\libopensc\opensc-11.dll"/>
+<?endif ?>
+
+<?ifdef ENABLE_NOTIFY ?>
+        <Feature Id="Feature.autostart" Title="Autostart entries" Description="After login, start smart card notifications.">
+          <Component Guid="06cd8534-394b-4839-9002-e9d74c1e0a5f">
+            <RegistryKey Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\Run">
+              <RegistryValue Type="string" Name="opensc-notify.exe" Value="[PREFIX]tools\opensc-notify.exe"/>
+            </RegistryKey>
+          </Component>
+        </Feature>
+<?endif ?>
+      </Feature>
+<?endif ?>
+
+
+<?ifdef ENABLE_MINIDRIVER ?>
+      <Feature Id="Feature.minidriver" Title="Smart card minidriver" Description="Security module that can be used by native Windows applications, for example Edge, Chrome, Microsoft Office, Acrobat Reader, etc.">
+        <Component Directory="PREFIX" Subdirectory="minidriver" Guid="d742b9d5-1c58-4a5b-8bb6-4fa51d6600f9">
+          <File Source="@PROJECT_BUILD_ROOT@\src\minidriver\opensc-minidriver.dll" KeyPath="yes"/>
+          <RegistryValue Root="HKLM" Key="Software\[Manufacturer]\OpenSC" Type="integer" Name="MiniDriverDebug" Value="0"/>
+<?ifndef STATIC_MINIDRIVER ?>
+          <File Source="@PROJECT_BUILD_ROOT@\src\libopensc\opensc-11.dll"/>
+<?endif ?>
+
+          <!-- install an alias for the Base smart card CSP. Using a different CSP in minidriver installation
+               deactivate the plug and play feature but not all other components like the pin change screen 
+               available after ctrl+alt+del. It is because the "80000001" entry is still returning the minidriver dll.-->
+          <!-- PR #2523 no longer uses "Provider = OpenSC CSP", but existing certificates in cert store 
+	       may have "Provider = OpenSC CSP" so we continue to add it for backward compatibility.
+	       Run: "certutil -Silent -store -user My" and look for "Provider = OpenSC CSP". -->
+
+          <RegistryKey Root="HKLM" Key="SOFTWARE\Microsoft\Cryptography\Defaults\Provider\OpenSC CSP">
+            <RegistryValue Type="string" Name="Image Path" Value="basecsp.dll"/>
+            <RegistryValue Type="integer" Name="Type" Value="1"/>
+          </RegistryKey>
+
+          <!-- when the x64 installer will install x86 components on x64 platform too
+<?if $(sys.BUILDARCH) = x64 ?>
+          <RegistryKey Root="HKLM" Key="SOFTWARE\Wow6432Node\Microsoft\Cryptography\Defaults\Provider\OpenSC CSP">
+            <RegistryValue Type="string" Name="Image Path" Value="basecsp.dll"/>
+            <RegistryValue Type="integer" Name="Type" Value="1"/>
+          </RegistryKey>
+<?endif?>
+          -->
+        </Component>
+        <Component Permanent="yes">
+          <!-- CertPropSvc loads the minidriver and propagates the smart card's certificates to the user's certificate store,
+               see https://technet.microsoft.com/en-us/itpro/windows/keep-secure/smart-card-certificate-propagation-service -->
+          <ServiceControl Id="ControlCertPropSvcStart" Name="CertPropSvc" Start="install" Wait="no"/>
+          <ServiceControl Id="ControlCertPropSvcStop" Name="CertPropSvc" Stop="uninstall" Wait="yes"/>
+          <RegistryValue Root="HKLM" Key="SYSTEM\CurrentControlSet\Services\CertPropSvc" Type="integer" Name="Start" Value="2"/>
+        </Component>
+      </Feature>
+<?endif ?>
+
+
+<?ifdef ENABLE_SM ?>
+<?ifdef ENABLE_OPENSSL ?>
+      <Feature Id="Feature.sm" Title="Secure messaging module" Description="Module for secure communication with smartcards.">
+        <Component Directory="PREFIX" Subdirectory="sm" Guid="421752e3-8399-4cb5-a8d8-6cc94d01a50a">
+          <File Source="@PROJECT_BUILD_ROOT@\src\smm\smm-local-11.dll" KeyPath="yes"/>
+          <RegistryValue Root="HKLM" Key="Software\[Manufacturer]\OpenSC" Type="string" Name="SmDir" Value="[PREFIX]sm"/>
+<?ifndef STATIC_SM ?>
+          <File Source="@PROJECT_BUILD_ROOT@\src\libopensc\opensc-11.dll"/>
+<?endif ?>
+        </Component>
+      </Feature>
+<?endif ?>
+<?endif ?>
+
+      <Feature Id="Feature.menu" Title="Start menu entries" Description="Add documentation links to the start menu.">
+        <Component Directory="PREFIX_MENU" Guid="82a52bec-229b-453b-b875-2d6ea4c76a50">
+          <util:InternetShortcut Name="OpenSC wiki" Target="https://github.com/OpenSC/OpenSC/wiki"/>
+          <RegistryValue Root="HKCU" Key="Software\[Manufacturer]\OpenSC" Name="installed" Type="integer" Value="1"/>
+          <RemoveFolder On="uninstall"/>
+        </Component>
+      </Feature>
+    </Feature>
+
+
+    <!-- Setup background images -->
+    <WixVariable Id="WixUIBannerBmp" Value="@PROJECT_SOURCE_ROOT@\win32\bannrbmp.bmp"/>
+    <WixVariable Id="WixUIDialogBmp" Value="@PROJECT_SOURCE_ROOT@\win32\dlgbmp.bmp"/>
+
+    <!-- Links in info -->
+    <Property Id="ARPHELPLINK" Value="@PACKAGE_BUGREPORT@"/>
+    <Property Id="ARPURLINFOABOUT" Value="@OPENSC_VS_FF_PRODUCT_URL@"/>
+    <Property Id="ARPURLUPDATEINFO" Value="@OPENSC_VS_FF_PRODUCT_UPDATES@"/>
+    <Property Id="ARPCONTACT" Value="@OPENSC_VS_FF_COMPANY_URL@"/>
+
+    <Icon Id="OpenSC.ico" SourceFile="@PROJECT_SOURCE_ROOT@\win32\OpenSC.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="OpenSC.ico"/>
+
+    <UI>
+      <ui:WixUI Id="WixUI_Mondo" InstallDirectory="PREFIX"/>
+      <UIRef Id="WixUI_ErrorProgressText" />
+
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="SetupTypeDlg" Order="3"/>
+      <Publish Dialog="SetupTypeDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg" Order="3"/>
+    </UI>
+
+
+    <!--Custom actions-->
+<?ifdef ENABLE_MINIDRIVER ?>
+    <Binary Id="customactions" SourceFile="@PROJECT_BUILD_ROOT@\win32\customactions.dll"/>
+    <CustomAction Id="RemoveSmartCardConfiguration" BinaryRef="customactions" DllEntry="RemoveSmartCardConfiguration" Execute="deferred" Impersonate="no"/>
+    <CustomAction Id="AddSmartCardConfiguration" BinaryRef="customactions" DllEntry="AddSmartCardConfiguration" Execute="commit" Impersonate="no"/>
+<?endif ?>
+
+    <InstallExecuteSequence>
+<?ifdef ENABLE_MINIDRIVER ?>
+      <!-- UnInstall sequence -->
+      <!-- clean the smart card registration (only at uninstall of the feature OpenSC_minidriver) -->
+      <Custom Action="RemoveSmartCardConfiguration" Before="RemoveFiles" Condition="(NOT UPGRADINGPRODUCTCODE) AND (&amp;Feature.minidriver=2) AND (!Feature.minidriver=3)"/>
+
+      <!-- Install sequence -->
+      <!-- add the smart card registration (only at install of the feature OpenSC_minidriver) -->
+      <Custom Action="AddSmartCardConfiguration" Before="RemoveSmartCardConfiguration" Condition="(NOT (REMOVE=&quot;ALL&quot;)) AND (NOT UPGRADINGPRODUCTCODE) AND (&amp;Feature.minidriver=3) AND (!Feature.minidriver=2)"/>
+<?endif ?>
+    </InstallExecuteSequence>
+  </Package>
+</Wix>
