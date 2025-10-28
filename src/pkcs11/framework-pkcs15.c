@@ -575,7 +575,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 		goto out;
 	}
 	/* User PIN flags are cleared before re-calculation */
-	slot->token_info.flags &= ~(CKF_USER_PIN_COUNT_LOW|CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_LOCKED);
+	slot->token_info.flags &= ~(CKF_USER_PIN_COUNT_LOW | CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED | CKF_USER_PIN_TO_BE_CHANGED);
 	auth = slot_data_auth(slot->fw_data);
 	sc_log(context,
 		"C_GetTokenInfo() auth. object %p, token-info flags 0x%lX", auth,
@@ -601,6 +601,9 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 				slot->token_info.flags |= CKF_USER_PIN_LOCKED;
 			else if (pin_info->max_tries > 1 && pin_info->tries_left < pin_info->max_tries)
 				slot->token_info.flags |= CKF_USER_PIN_COUNT_LOW;
+		}
+		if (pin_info->logged_in & SC_PIN_STATE_NEEDS_CHANGE) {
+			slot->token_info.flags |= CKF_USER_PIN_TO_BE_CHANGED;
 		}
 	}
 	memcpy(pInfo, &slot->token_info, sizeof(CK_TOKEN_INFO));
@@ -1401,7 +1404,7 @@ int slot_get_logged_in_state(struct sc_pkcs11_slot *slot)
 	if (!pin_info)
 		goto out;
 	sc_pkcs15_get_pin_info(p15card, pin_obj);
-	logged_in = pin_info->logged_in;
+	logged_in = pin_info->logged_in & ~SC_PIN_STATE_NEEDS_CHANGE;
 out:
 	return logged_in;
 }

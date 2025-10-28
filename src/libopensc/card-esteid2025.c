@@ -148,9 +148,9 @@ esteid_compute_signature(sc_card_t *card, const u8 *data, size_t datalen, u8 *ou
 }
 
 static int
-esteid_get_pin_remaining_tries(sc_card_t *card, int pin_reference)
+esteid_get_pin_info(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
-	const u8 get_pin_info[] = {0xA0, 0x03, 0x83, 0x01, pin_reference};
+	const u8 get_pin_info[] = {0xA0, 0x03, 0x83, 0x01, data->pin_reference};
 	struct sc_apdu apdu;
 	u8 apdu_resp[SC_MAX_APDU_RESP_SIZE];
 	size_t taglen;
@@ -164,26 +164,26 @@ esteid_get_pin_remaining_tries(sc_card_t *card, int pin_reference)
 	const u8 *tag = sc_asn1_find_tag(card->ctx, apdu_resp + 2, apdu.resplen - 2, 0xDF21, &taglen);
 	if (tag == NULL || taglen == 0)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
-	return tag[0];
+	data->pin1.tries_left = tag[0];
+	data->pin1.max_tries = -1; // "no support, which means the one set in PKCS#15 emulation sticks
+	data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
+	tag += taglen;
+	tag = sc_asn1_find_tag(card->ctx, tag, apdu.resplen - (tag - apdu_resp), 0xDF2F, &taglen);
+	if (tag != NULL && taglen == 1 && tag[0] == 0x00) {
+		data->pin1.logged_in |= SC_PIN_STATE_NEEDS_CHANGE;
+	}
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static int
 esteid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 {
-	int r;
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx, "PIN CMD is %d", data->cmd);
 	if (data->cmd == SC_PIN_CMD_GET_INFO) {
 		sc_log(card->ctx, "SC_PIN_CMD_GET_INFO for %d", data->pin_reference);
-		r = esteid_get_pin_remaining_tries(card, data->pin_reference);
-		LOG_TEST_RET(card->ctx, r, "GET DATA(pin info) failed");
-
-		data->pin1.tries_left = r;
-		data->pin1.max_tries = -1; // "no support, which means the one set in PKCS#15 emulation sticks
-		data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
-		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+		LOG_FUNC_RETURN(card->ctx, esteid_get_pin_info(card, data));
 	}
-
 	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
 }
 
