@@ -6927,14 +6927,14 @@ static int read_object(CK_SESSION_HANDLE session)
 					}
 				}
 
-				if (type == CKK_EC_EDWARDS && os->length == BYTES4BITS(255))
+				if (type == CKK_EC_EDWARDS && os->length == BYTES4BITS(256)) /* note extra bit */
 					raw_pk = EVP_PKEY_ED25519;
 #if defined(EVP_PKEY_ED448)
 				else if (type == CKK_EC_EDWARDS && os->length == ED448_KEY_SIZE_BYTES)
 					raw_pk = EVP_PKEY_ED448;
 #endif /* EVP_PKEY_ED448 */
 #if defined(EVP_PKEY_X25519)
-				else if (type == CKK_EC_MONTGOMERY && os->length == BYTES4BITS(255))
+				else if (type == CKK_EC_MONTGOMERY && os->length == BYTES4BITS(256)) /* note extra bit */
 					raw_pk = EVP_PKEY_X25519;
 #endif /*EVP_PKEY_X25519 */
 #if defined(EVP_PKEY_X448)
