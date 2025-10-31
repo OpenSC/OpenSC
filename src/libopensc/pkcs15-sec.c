@@ -320,8 +320,7 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 		/* for keeping PKCS#1 v1.5 depadding constant-time, do not log error here */
 	}
 #ifdef ENABLE_OPENSSL
-	else if (pad_flags & SC_ALGORITHM_RSA_PAD_OAEP)
-	{
+	else if (pad_flags & SC_ALGORITHM_RSA_PAD_OAEP) {
 		size_t s = r;
 		uint8_t *param = NULL;
 		size_t paramlen = 0;
