@@ -989,6 +989,7 @@ iso7816_set_security_env(struct sc_card *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
 	switch (env->operation) {
 	case SC_SEC_OPERATION_DECIPHER:
+	case SC_SEC_OPERATION_DERIVE:
 		apdu.p2 = 0xB8;
 		break;
 	case SC_SEC_OPERATION_SIGN:
