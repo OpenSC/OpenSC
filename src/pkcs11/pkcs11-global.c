@@ -49,10 +49,18 @@
 #define MODULE_APP_NAME "opensc-pkcs11"
 #endif
 
+#ifndef _WIN32
+#define msleep(t) usleep((t)*1000)
+#else
+#define msleep(t) Sleep(t)
+#define sleep(t)  Sleep((t)*1000)
+#endif
+
 sc_context_t *context = NULL;
 struct sc_pkcs11_config sc_pkcs11_conf;
 list_t sessions;
 list_t virtual_slots;
+void *reader_states = NULL;
 #if !defined(_WIN32)
 pid_t initialized_pid = (pid_t)-1;
 #endif
@@ -432,6 +440,9 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	}
 	list_destroy(&virtual_slots);
 
+	sc_wait_for_event(context, 0, NULL, NULL, 0, &reader_states);
+	reader_states = NULL;
+
 	sc_release_context(context);
 	context = NULL;
 
@@ -585,37 +596,9 @@ out:
 	return rv;
 }
 
-static sc_timestamp_t get_current_time(void)
-{
-#if HAVE_GETTIMEOFDAY
-	struct timeval tv;
-	struct timezone tz;
-	sc_timestamp_t curr;
-
-	if (gettimeofday(&tv, &tz) != 0)
-		return 0;
-
-	curr = tv.tv_sec;
-	curr *= 1000;
-	curr += tv.tv_usec / 1000;
-#else
-	struct _timeb time_buf;
-	sc_timestamp_t curr;
-
-	_ftime(&time_buf);
-
-	curr = time_buf.time;
-	curr *= 1000;
-	curr += time_buf.millitm;
-#endif
-
-	return curr;
-}
-
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 {
 	struct sc_pkcs11_slot *slot = NULL;
-	sc_timestamp_t now;
 	const char *name;
 	CK_RV rv;
 
@@ -644,18 +627,11 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 		if (slot->reader == NULL) {
 			rv = CKR_TOKEN_NOT_PRESENT;
 		} else {
-			now = get_current_time();
-			if (now >= slot->slot_state_expires || now == 0) {
-				/* Update slot status */
-				rv = card_detect(slot->reader);
-				sc_log(context, "C_GetSlotInfo() card detect rv 0x%lX", rv);
+			/* Update slot status */
+			card_detect_all();
 
-				if (rv == CKR_TOKEN_NOT_RECOGNIZED || rv == CKR_OK)
-					slot->slot_info.flags |= CKF_TOKEN_PRESENT;
-
-				/* Don't ask again within the next second */
-				slot->slot_state_expires = now + 1000;
-			}
+			if (slot->p11card && slot->p11card->card)
+				slot->slot_info.flags |= CKF_TOKEN_PRESENT;
 		}
 	}
 
@@ -799,49 +775,69 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	CK_SLOT_ID slot_id;
 	CK_RV rv;
 	int r;
+	int timeout;
 
 	if (pReserved != NULL_PTR)
-		return  CKR_ARGUMENTS_BAD;
+		return CKR_ARGUMENTS_BAD;
 
 	sc_log(context, "C_WaitForSlotEvent(block=%d)", !(flags & CKF_DONT_BLOCK));
-#ifndef PCSCLITE_GOOD
-	/* Not all pcsc-lite versions implement consistently used functions as they are */
-	if (!(flags & CKF_DONT_BLOCK))
-		return CKR_FUNCTION_NOT_SUPPORTED;
-#endif /* PCSCLITE_GOOD */
-	rv = sc_pkcs11_lock();
-	if (rv != CKR_OK)
-		return rv;
 
-	mask = SC_EVENT_CARD_EVENTS | SC_EVENT_READER_EVENTS;
 	/* Detect and add new slots for added readers v2.20 */
-
-	rv = slot_find_changed(&slot_id, mask);
-	if ((rv == CKR_OK) || (flags & CKF_DONT_BLOCK))
-		goto out;
-
-again:
-	sc_log(context, "C_WaitForSlotEvent() reader_states:%p", reader_states);
-	sc_pkcs11_unlock();
-	r = sc_wait_for_event(context, mask, &found, &events, -1, &reader_states);
-	/* Was C_Finalize called ? */
-	if (in_finalize == 1)
-		return CKR_CRYPTOKI_NOT_INITIALIZED;
+	mask = SC_EVENT_CARD_EVENTS | SC_EVENT_READER_EVENTS;
 
 	if ((rv = sc_pkcs11_lock()) != CKR_OK)
 		return rv;
+	rv = slot_find_changed(&slot_id);
+	sc_pkcs11_unlock();
 
-	if (r != SC_SUCCESS) {
-		sc_log(context, "sc_wait_for_event() returned %d\n",  r);
-		rv = sc_to_cryptoki_error(r, "C_WaitForSlotEvent");
-		goto out;
-	}
+	if (flags & CKF_DONT_BLOCK)
+		timeout = 0;
+	else
+		timeout = -1;
 
-	/* If no changed slot was found (maybe an unsupported card
-	 * was inserted/removed) then go waiting again */
-	rv = slot_find_changed(&slot_id, mask);
-	if (rv != CKR_OK)
-		goto again;
+	do {
+		sc_log(context, "C_WaitForSlotEvent() reader_states:%p", reader_states);
+		r = sc_wait_for_event(context, mask, &found, &events, timeout, &reader_states);
+		/* Was C_Finalize called ? */
+		if (in_finalize == 1) {
+			sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
+			return CKR_CRYPTOKI_NOT_INITIALIZED;
+		}
+
+		switch (r) {
+			case SC_SUCCESS:
+				break;
+			case SC_ERROR_EVENT_TIMEOUT:
+				if (flags & CKF_DONT_BLOCK) {
+					/* no change, no need to check further */
+					sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
+					return CKR_NO_EVENT;
+				}
+				break;
+			case SC_ERROR_NO_READERS_FOUND:
+				/* if hotplugging is not supported, this error is returned
+				 * immediately by `sc_wait_for_event()`. Wait a second to maybe
+				 * find a new reader via `slot_find_changed()` */
+				sleep(1);
+				/* fall through */
+			case SC_ERROR_READER_DETACHED:
+				/* free the reader_states so that they get reinitialized in the next run */
+				sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
+				break;
+			default:
+				sc_log(context, "sc_wait_for_event() returned %d\n",  r);
+				rv = sc_to_cryptoki_error(r, "C_WaitForSlotEvent");
+				goto out;
+		}
+
+		if ((rv = sc_pkcs11_lock()) != CKR_OK)
+			return rv;
+		rv = slot_find_changed(&slot_id);
+		sc_pkcs11_unlock();
+
+		if (flags & CKF_DONT_BLOCK)
+			break;
+	} while (rv != CKR_OK);
 
 out:
 	if (pSlot)
@@ -854,7 +850,6 @@ out:
 	}
 
 	SC_LOG_RV("C_WaitForSlotEvent() = %s", rv);
-	sc_pkcs11_unlock();
 	return rv;
 }
 
