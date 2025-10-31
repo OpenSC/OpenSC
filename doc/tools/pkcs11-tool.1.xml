@@ -758,6 +758,13 @@
 					<listitem><para>Specify the PKCS#11 URI for module, slot, token or object</para></listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--uri-with-slot-id</option>
+					</term>
+					<listitem><para>Include SlotId in PKCS#11 URI</para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>
