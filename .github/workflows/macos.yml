@@ -8,6 +8,7 @@ on:
       - '**.m'
       - '**.sh'
       - .github/workflows/macos.yml
+      - MacOSX/build-openssl.sh
       - '**.am'
       - MacOSX/**
       - configure.ac
@@ -20,14 +21,21 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-15, macos-14, macos-13]
+        os: [macos-26, macos-15, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: .github/setup-macos.sh
         env:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: openssl_bin
+          key: ${{ matrix.os }}-deps-${{ hashFiles('.github/build.sh') }}
+      - run: sh MacOSX/build-openssl.sh
+        if: steps.cache.outputs.cache-hit != 'true'
       - run: .github/build.sh
         env:
           CODE_SIGN_IDENTITY: ${{ secrets.CODE_SIGN_IDENTITY }}
@@ -54,10 +62,10 @@ jobs:
   build-libressl:
     strategy:
       matrix:
-        os: [macos-15, macos-14, macos-13]
+        os: [macos-26, macos-15, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: .github/setup-macos.sh libressl
       - run: .github/build.sh libressl
       - run: .github/cleanup-macos.sh
@@ -73,7 +81,7 @@ jobs:
     runs-on: macos-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Pull build artifacts
         uses: actions/download-artifact@v4
         with:

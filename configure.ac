@@ -15,7 +15,7 @@ m4_esyscmd([awk -F= '
 
 m4_sinclude(m4/version.m4.ci)
 
-# Hint: MacOSX/build-package.in contains minimum OpenSSL reference
+# Hint: MacOSX/build contains minimum OpenSSL reference
 m4_define([openssl_minimum_version], [1.1.1])
 
 AC_INIT([PRODUCT_NAME],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX],[PRODUCT_BUGREPORT],[PRODUCT_TARNAME],[PRODUCT_URL])
@@ -1203,7 +1203,6 @@ AC_CONFIG_FILES([
 	win32/Makefile
 	win32/OpenSC.iss
 	MacOSX/Makefile
-	MacOSX/build-package
 	MacOSX/Distribution.xml
 	MacOSX/resources/Welcome.html
 ])
