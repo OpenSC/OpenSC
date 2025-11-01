@@ -1893,7 +1893,7 @@ copy_key_value_to_uri(const char *key, const char *value, CK_BBOOL last)
 }
 
 static const char *
-get_uri(CK_TOKEN_INFO_PTR info)
+get_uri(CK_TOKEN_INFO_PTR info, CK_SLOT_ID slot)
 {
 	copy_key_value_to_uri("pkcs11:", NULL, CK_FALSE);
 	const char *model = percent_encode(info->model, sizeof(info->model));
@@ -1903,25 +1903,15 @@ get_uri(CK_TOKEN_INFO_PTR info)
 	const char *serial = percent_encode(info->serialNumber, sizeof(info->serialNumber));
 	copy_key_value_to_uri("serial=", serial, CK_FALSE);
 	const char *token = percent_encode(info->label, sizeof(info->label));
+
+	if (opt_uri_with_slot_id) {
+		copy_key_value_to_uri("token=", token, CK_FALSE);
+		static char slot_id_str[32];
+		snprintf(slot_id_str, sizeof(slot_id_str), "%lu", slot);
+		return copy_key_value_to_uri("slot-id=", slot_id_str, CK_TRUE);
+	}
+
 	return copy_key_value_to_uri("token=", token, CK_TRUE);
-}
-
-static const char *
-get_uri_with_slot(CK_TOKEN_INFO_PTR info, CK_SLOT_ID slot)
-{
-	copy_key_value_to_uri("pkcs11:", NULL, CK_FALSE);
-	const char *model = percent_encode(info->model, sizeof(info->model));
-	copy_key_value_to_uri("model=", model, CK_FALSE);
-	const char *manufacturer = percent_encode(info->manufacturerID, sizeof(info->manufacturerID));
-	copy_key_value_to_uri("manufacturer=", manufacturer, CK_FALSE);
-	const char *serial = percent_encode(info->serialNumber, sizeof(info->serialNumber));
-	copy_key_value_to_uri("serial=", serial, CK_FALSE);
-	const char *token = percent_encode(info->label, sizeof(info->label));
-	copy_key_value_to_uri("token=", token, CK_FALSE);
-
-	static char slot_id_str[32];
-	snprintf(slot_id_str, sizeof(slot_id_str), "%lu", slot);
-	return copy_key_value_to_uri("slot-id=", slot_id_str, CK_TRUE);
 }
 
 static void show_token(CK_SLOT_ID slot)
@@ -1958,12 +1948,7 @@ static void show_token(CK_SLOT_ID slot)
 	printf("  serial num         : %s\n", p11_utf8_to_local(info.serialNumber,
 			sizeof(info.serialNumber)));
 	printf("  pin min/max        : %lu/%lu\n", info.ulMinPinLen, info.ulMaxPinLen);
-	if (opt_uri_with_slot_id) {
-		printf("  uri                : %s", get_uri_with_slot(&info, slot));
-	} else {
-		printf("  uri                : %s", get_uri(&info));
-	}
-	printf("\n");
+	printf("  uri                : %s\n", get_uri(&info, slot));
 }
 
 static void list_mechs(CK_SLOT_ID slot)
@@ -6328,11 +6313,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		free(unique_id);
 	}
 	get_token_info(opt_slot, &info);
-	if (opt_uri_with_slot_id) {
-		printf("  uri:        %s", get_uri_with_slot(&info, opt_slot));
-	} else {
-		printf("  uri:        %s", get_uri(&info));
-	}
+	printf("  uri:        %s", get_uri(&info, opt_slot));
 	if (id != NULL && idsize) {
 		printf(";id=");
 		for (unsigned int n = 0; n < idsize; n++)
@@ -6434,11 +6415,7 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		free(unique_id);
 	}
 	get_token_info(opt_slot, &info);
-	if (opt_uri_with_slot_id) {
-		printf("  uri:        %s", get_uri_with_slot(&info, opt_slot));
-	} else {
-		printf("  uri:        %s", get_uri(&info));
-	}
+	printf("  uri:        %s", get_uri(&info, opt_slot));
 	if (id != NULL && size) {
 		printf(";id=");
 		for (unsigned int n = 0; n < size; n++)
@@ -6514,11 +6491,7 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	printf("\n");
 
 	get_token_info(opt_slot, &info);
-	if (opt_uri_with_slot_id) {
-		printf("  uri:            %s", get_uri_with_slot(&info, opt_slot));
-	} else {
-		printf("  uri:            %s", get_uri(&info));
-	}
+	printf("  uri:            %s", get_uri(&info, opt_slot));
 	if ((id = getID(sess, obj, &idsize)) != NULL && idsize) {
 		printf(";id=");
 		for (unsigned int n = 0; n < idsize; n++)
