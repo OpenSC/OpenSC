@@ -34,7 +34,8 @@ dist_noinst_SCRIPTS = common.sh \
                       test-pkcs11-tool-allowed-mechanisms.sh \
                       test-pkcs11-tool-sym-crypt-test.sh \
                       test-pkcs11-tool-unwrap-wrap-test.sh \
-                      test-pkcs11-tool-import.sh
+                      test-pkcs11-tool-import.sh \
+                      test-pkcs11-tool-uri-with-slot-id.sh
 
 .NOTPARALLEL:
 TESTS = \
@@ -48,7 +49,8 @@ TESTS += \
         test-pkcs11-tool-test.sh \
         test-pkcs11-tool-sign-verify.sh \
         test-pkcs11-tool-unwrap-wrap-test.sh \
-        test-pkcs11-tool-import.sh
+        test-pkcs11-tool-import.sh \
+        test-pkcs11-tool-uri-with-slot-id.sh
 if ENABLE_TESTS
 if ENABLE_SHARED
 TESTS += test-p11test.sh

@@ -239,7 +239,8 @@ enum {
 	OPT_SALT_FILE,
 	OPT_INFO_FILE,
 	OPT_PUBLIC_KEY_INFO,
-	OPT_URI
+	OPT_URI,
+	OPT_URI_WITH_SLOT_ID
 };
 
 // clang-format off
@@ -334,6 +335,7 @@ static const struct option options[] = {
 	{ "info-file",		1, NULL,		OPT_INFO_FILE},
 	{ "public-key-info",	0, NULL,		OPT_PUBLIC_KEY_INFO},
 	{ "uri",		1, NULL,		OPT_URI},
+	{ "uri-with-slot-id",	0, NULL,		OPT_URI_WITH_SLOT_ID},
 	{ NULL, 0, NULL, 0 }
 };
 // clang-format on
@@ -428,7 +430,8 @@ static const char *option_help[] = {
 		"Specify the file containing the salt for HKDF (optional)",
 		"Specify the file containing the info for HKDF (optional)",
 		"When reading a public key, try to read PUBLIC_KEY_INFO (DER encoding of SPKI)",
-		"Specify the PKCS#11 URI for module, slot, token or object"};
+		"Specify the PKCS#11 URI for module, slot, token or object",
+		"Include SlotId in PKCS#11 URI"};
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
 
@@ -494,6 +497,7 @@ static const char *opt_salt_file = NULL;
 static const char *opt_info_file = NULL;
 static int opt_public_key_info = 0; /* return pubkey as SPKI DER */
 static struct pkcs11_uri *opt_uri = NULL;
+static int opt_uri_with_slot_id = 0; /* include slot-id in PKCS#11 URI */
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
@@ -1246,6 +1250,9 @@ int main(int argc, char * argv[])
 		case OPT_PUBLIC_KEY_INFO:
 			opt_public_key_info = 1;
 			break;
+		case OPT_URI_WITH_SLOT_ID:
+			opt_uri_with_slot_id = 1;
+			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
@@ -1886,7 +1893,7 @@ copy_key_value_to_uri(const char *key, const char *value, CK_BBOOL last)
 }
 
 static const char *
-get_uri(CK_TOKEN_INFO_PTR info)
+get_uri(CK_TOKEN_INFO_PTR info, CK_SLOT_ID slot)
 {
 	copy_key_value_to_uri("pkcs11:", NULL, CK_FALSE);
 	const char *model = percent_encode(info->model, sizeof(info->model));
@@ -1896,6 +1903,14 @@ get_uri(CK_TOKEN_INFO_PTR info)
 	const char *serial = percent_encode(info->serialNumber, sizeof(info->serialNumber));
 	copy_key_value_to_uri("serial=", serial, CK_FALSE);
 	const char *token = percent_encode(info->label, sizeof(info->label));
+
+	if (opt_uri_with_slot_id) {
+		copy_key_value_to_uri("token=", token, CK_FALSE);
+		static char slot_id_str[32];
+		snprintf(slot_id_str, sizeof(slot_id_str), "%lu", slot);
+		return copy_key_value_to_uri("slot-id=", slot_id_str, CK_TRUE);
+	}
+
 	return copy_key_value_to_uri("token=", token, CK_TRUE);
 }
 
@@ -1933,8 +1948,7 @@ static void show_token(CK_SLOT_ID slot)
 	printf("  serial num         : %s\n", p11_utf8_to_local(info.serialNumber,
 			sizeof(info.serialNumber)));
 	printf("  pin min/max        : %lu/%lu\n", info.ulMinPinLen, info.ulMaxPinLen);
-	printf("  uri                : %s", get_uri(&info));
-	printf("\n");
+	printf("  uri                : %s\n", get_uri(&info, slot));
 }
 
 static void list_mechs(CK_SLOT_ID slot)
@@ -6299,7 +6313,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		free(unique_id);
 	}
 	get_token_info(opt_slot, &info);
-	printf("  uri:        %s", get_uri(&info));
+	printf("  uri:        %s", get_uri(&info, opt_slot));
 	if (id != NULL && idsize) {
 		printf(";id=");
 		for (unsigned int n = 0; n < idsize; n++)
@@ -6401,7 +6415,7 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		free(unique_id);
 	}
 	get_token_info(opt_slot, &info);
-	printf("  uri:        %s", get_uri(&info));
+	printf("  uri:        %s", get_uri(&info, opt_slot));
 	if (id != NULL && size) {
 		printf(";id=");
 		for (unsigned int n = 0; n < size; n++)
@@ -6419,9 +6433,11 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
 	unsigned char *oid_buf;
+	unsigned char *id;
 	char *label;
 	char *application;
 	CK_ULONG    size = 0;
+	CK_ULONG idsize = 0;
 	CK_TOKEN_INFO info;
 	CK_BBOOL modifiable = 0;
 	CK_BBOOL private = 0;
@@ -6475,7 +6491,13 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	printf("\n");
 
 	get_token_info(opt_slot, &info);
-	printf("  uri:            %s", get_uri(&info));
+	printf("  uri:            %s", get_uri(&info, opt_slot));
+	if ((id = getID(sess, obj, &idsize)) != NULL && idsize) {
+		printf(";id=");
+		for (unsigned int n = 0; n < idsize; n++)
+			printf("%%%02x", id[n]);
+		free(id);
+	}
 	if (label != NULL) {
 		const char *pelabel = percent_encode((unsigned char *)label, strlen(label));
 		printf(";object=%s", pelabel);
