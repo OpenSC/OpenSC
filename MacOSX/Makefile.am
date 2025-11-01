@@ -1,7 +1,6 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = build \
 	build-openssl.sh \
-	build-package.in \
 	Distribution.xml.in \
 	libtool-bundle \
 	OpenSC_applescripts.entitlements \
