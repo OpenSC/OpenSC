@@ -1902,15 +1902,14 @@ get_uri(CK_TOKEN_INFO_PTR info, CK_SLOT_ID slot)
 	copy_key_value_to_uri("manufacturer=", manufacturer, CK_FALSE);
 	const char *serial = percent_encode(info->serialNumber, sizeof(info->serialNumber));
 	copy_key_value_to_uri("serial=", serial, CK_FALSE);
-	const char *token = percent_encode(info->label, sizeof(info->label));
 
 	if (opt_uri_with_slot_id) {
-		copy_key_value_to_uri("token=", token, CK_FALSE);
 		static char slot_id_str[32];
 		snprintf(slot_id_str, sizeof(slot_id_str), "%lu", slot);
-		return copy_key_value_to_uri("slot-id=", slot_id_str, CK_TRUE);
+		copy_key_value_to_uri("slot-id=", slot_id_str, CK_FALSE);
 	}
 
+	const char *token = percent_encode(info->label, sizeof(info->label));
 	return copy_key_value_to_uri("token=", token, CK_TRUE);
 }
 
