@@ -6432,11 +6432,9 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 {
 	unsigned char *oid_buf;
-	unsigned char *id;
 	char *label;
 	char *application;
 	CK_ULONG    size = 0;
-	CK_ULONG idsize = 0;
 	CK_TOKEN_INFO info;
 	CK_BBOOL modifiable = 0;
 	CK_BBOOL private = 0;
@@ -6491,12 +6489,6 @@ static void show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 
 	get_token_info(opt_slot, &info);
 	printf("  uri:            %s", get_uri(&info, opt_slot));
-	if ((id = getID(sess, obj, &idsize)) != NULL && idsize) {
-		printf(";id=");
-		for (unsigned int n = 0; n < idsize; n++)
-			printf("%%%02x", id[n]);
-		free(id);
-	}
 	if (label != NULL) {
 		const char *pelabel = percent_encode((unsigned char *)label, strlen(label));
 		printf(";object=%s", pelabel);
