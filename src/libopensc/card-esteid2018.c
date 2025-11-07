@@ -32,15 +32,18 @@
 
 /* Helping defines */
 #define SIGNATURE_PAYLOAD_SIZE 0x30
-#define AUTH_REF	       0x81
-#define SIGN_REF	       0x9f
+#define SIGN_REF	       0x10
 #define PIN1_REF	       0x01
 #define PIN2_REF	       0x85
 #define PUK_REF		       0x02
 
+/*
+ * EstEID: https://www.id.ee/wp-content/uploads/2025/10/id1developerguide2025.pdf
+ */
 static const struct sc_atr_table esteid_atrs[] = {
 		{"3b:db:96:00:80:b1:fe:45:1f:83:00:12:23:3f:53:65:49:44:0f:90:00:f1",    NULL, "EstEID 2018",	   SC_CARD_TYPE_ESTEID_2018,	     0, NULL},
-		{"3b:dc:96:00:80:b1:fe:45:1f:83:00:12:23:3f:54:65:49:44:32:0f:90:00:c3", NULL, "EstEID 2018 v2", SC_CARD_TYPE_ESTEID_2018_V2_2025, 0, NULL},
+		{"3b:dc:96:00:80:b1:fe:45:1f:83:00:12:23:3f:54:65:49:44:32:0f:90:00:c3", NULL, "EstEID 2018 v2",	 SC_CARD_TYPE_ESTEID_2018_V2_2025, 0, NULL},
+		{"3b:dc:96:00:80:b1:fe:45:1f:83:00:12:42:8f:54:65:49:44:32:0f:90:00:12", NULL, "Latvian eID 2018 v2", SC_CARD_TYPE_LATEID_2018_V2_2025, 0, NULL},
 		{NULL,								   NULL, NULL,		   0,				      0, NULL}
 };
 
@@ -105,7 +108,7 @@ static int esteid_select_file(struct sc_card *card, const struct sc_path *in_pat
 	}
 
 	for (size_t pathlen = in_path->len; pathlen >= 2; pathlen -= 2, path += 2) {
-		if (memcmp(path, "\x3F\x00", 2) == 0) {
+		if (pathlen == 2 && memcmp(path, "\x3F\x00", 2) == 0) {
 			sc_format_apdu_ex(&apdu, card->cla, 0xA4, 0x00, 0x0C, path, 0, NULL, 0);
 			SC_TRANSMIT_TEST_RET(card, apdu, "MF select failed");
 		} else if (pathlen == 2 && path[0] == 0xAD) {
@@ -135,11 +138,7 @@ static int esteid_select_file(struct sc_card *card, const struct sc_path *in_pat
 
 static int esteid_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num) {
 	struct esteid_priv_data *priv;
-	struct sc_apdu apdu;
-
-	static const u8 cse_crt_aut[] = {0x80, 0x04, 0xFF, 0x20, 0x08, 0x00, 0x84, 0x01, AUTH_REF};
-	static const u8 cse_crt_sig[] = {0x80, 0x04, 0xFF, 0x15, 0x08, 0x00, 0x84, 0x01, SIGN_REF};
-	static const u8 cse_crt_dec[] = {0x80, 0x04, 0xFF, 0x30, 0x04, 0x00, 0x84, 0x01, AUTH_REF};
+	sc_security_env_t new_env = {0};
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -148,16 +147,28 @@ static int esteid_set_security_env(sc_card_t *card, const sc_security_env_t *env
 
 	sc_log(card->ctx, "algo: %lu operation: %d keyref: %d", env->algorithm, env->operation, env->key_ref[0]);
 
-	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->key_ref[0] == AUTH_REF) {
-		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xA4, cse_crt_aut, sizeof(cse_crt_aut), NULL, 0);
-	} else if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->key_ref[0] == SIGN_REF) {
-		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, cse_crt_sig, sizeof(cse_crt_sig), NULL, 0);
-	} else if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_DERIVE && env->key_ref[0] == AUTH_REF) {
-		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB8, cse_crt_dec, sizeof(cse_crt_dec), NULL, 0);
-	} else {
+	if (env->algorithm != SC_ALGORITHM_EC) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
-	SC_TRANSMIT_TEST_RET(card, apdu, "SET SECURITY ENV failed");
+	new_env = *env;
+	switch (env->operation) {
+	case SC_SEC_OPERATION_SIGN:
+		if (env->key_ref[0] & SIGN_REF) {
+			new_env.algorithm_ref = 0x54;
+		} else {
+			new_env.operation = SC_SEC_OPERATION_AUTHENTICATE;
+			new_env.algorithm_ref = 0x04;
+		}
+		break;
+	case SC_SEC_OPERATION_DERIVE:
+		new_env.algorithm_ref = 0x0B;
+		break;
+	default:
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	}
+	new_env.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
+	new_env.flags &= ~SC_SEC_ENV_FILE_REF_PRESENT;
+	LOG_TEST_RET(card->ctx, iso_ops->set_security_env(card, &new_env, se_num), "Failed to set security environment");
 
 	priv = DRVDATA(card);
 	priv->sec_env = *env;
@@ -180,12 +191,10 @@ static int esteid_compute_signature(sc_card_t *card, const u8 *data, size_t data
 	memcpy(&sbuf[SIGNATURE_PAYLOAD_SIZE - datalen], data, MIN(datalen, SIGNATURE_PAYLOAD_SIZE));
 	datalen = SIGNATURE_PAYLOAD_SIZE;
 
-	switch (env->key_ref[0]) {
-	case AUTH_REF:
-		sc_format_apdu_ex(&apdu, 0x00, 0x88, 0, 0, sbuf, datalen, out, le);
-		break;
-	default:
+	if ((env->key_ref[0] & SIGN_REF) > 0) {
 		sc_format_apdu_ex(&apdu, 0x00, 0x2A, 0x9E, 0x9A, sbuf, datalen, out, le);
+	} else {
+		sc_format_apdu_ex(&apdu, 0x00, 0x88, 0, 0, sbuf, datalen, out, le);
 	}
 
 	SC_TRANSMIT_TEST_RET(card, apdu, "PSO CDS/INTERNAL AUTHENTICATE failed");

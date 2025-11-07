@@ -33,15 +33,18 @@
 #include "opensc.h"
 #include "pkcs15.h"
 
+static int
+is_latvian_eid(sc_pkcs15_card_t *p15card)
+{
+	return p15card->card->type == SC_CARD_TYPE_LATEID_2018_V2_2025;
+}
+
 static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 	sc_card_t *card = p15card->card;
 	u8 buff[11];
 	int r, i;
-	size_t field_length = 0, taglen, j;
+	size_t field_length = 0, taglen;
 	sc_path_t tmppath;
-
-	set_string(&p15card->tokeninfo->label, "ID-kaart");
-	set_string(&p15card->tokeninfo->manufacturer_id, "IDEMIA");
 
 	/* Read documber number to be used as serial */
 	sc_format_path("3F00D003", &tmppath);
@@ -52,13 +55,16 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 	if (tag == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
-	for (j = 0; j < taglen; j++)
+	for (size_t j = 0; j < taglen; j++)
 		if (!isalnum(tag[j]))
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	free(p15card->tokeninfo->serial_number);
 	p15card->tokeninfo->serial_number = malloc(taglen + 1);
 	if (!p15card->tokeninfo->serial_number)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+
+	set_string(&p15card->tokeninfo->label, "ID-kaart");
+	set_string(&p15card->tokeninfo->manufacturer_id, "IDEMIA");
 	p15card->tokeninfo->serial_number = memcpy(p15card->tokeninfo->serial_number, tag, taglen);
 	p15card->tokeninfo->serial_number[taglen] = '\0';
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_READONLY;
@@ -109,27 +115,30 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 	}
 
 	/* add pins */
+	static const u8 pin_authid[3] = {1, 2, 3};
 	for (i = 0; i < 3; i++) {
 		static const char *esteid_pin_names[3] = {"PIN1", "PIN2", "PUK"};
-		static const size_t esteid_pin_min[3] = {4, 5, 8};
+		static const size_t pin_min[2][3] = {
+				{4, 5, 8}, // Estonian
+				{4, 6, 8}, // Latvian
+		};
 		static const int esteid_pin_ref[3] = {0x01, 0x85, 0x02};
-		static const u8 esteid_pin_authid[3] = {1, 2, 3};
 		static const char *esteid_pin_path[3] = {"3F00", "3F00ADF2", "3F00"};
 
 		static const unsigned int esteid_pin_flags[3] = {
-				SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_INITIALIZED,
-				SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_LOCAL,
-				SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN};
+				SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_TYPE_FLAGS_PIN_GLOBAL,
+				SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_TYPE_FLAGS_PIN_LOCAL,
+				SC_PKCS15_PIN_FLAG_NEEDS_PADDING | SC_PKCS15_PIN_TYPE_FLAGS_PUK_GLOBAL};
 
 		struct sc_pkcs15_auth_info pin_info = {
-				.auth_id = {.len = 1, .value[0] = esteid_pin_authid[i]},
+				.auth_id = {.len = 1, .value[0] = pin_authid[i]},
 				.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN,
 				.attrs = {
 						.pin = {
 								.reference = esteid_pin_ref[i],
 								.flags = esteid_pin_flags[i],
 								.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-								.min_length = esteid_pin_min[i],
+								.min_length = pin_min[is_latvian_eid(p15card)][i],
 								.stored_length = 12,
 								.max_length = 12,
 								.pad_char = 0xFF}},
@@ -166,23 +175,26 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 
 	/* add private keys */
 	for (i = 0; i < 2; i++) {
-		static const u8 prkey_pin[2] = {1, 2};
+		static const u8 prkey_id[2] = {1, 2};
 		static const char *prkey_name[2] = {"Isikutuvastus", "Allkirjastamine"};
 		static const char *prkey_path[2] = {"3F00:ADF1", "3F00:ADF2"};
 		static const unsigned int prkey_usage[2] = {SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DERIVE,
 				SC_PKCS15_PRKEY_USAGE_NONREPUDIATION};
 		static const int prkey_consent[2] = {0, 1};
-		static const u8 esteid_prkey_id[2] = {0x81, 0x9F};
+		static const u8 prkey_ref[2][2] = {
+				{0x81, 0x9F}, // Slot 1
+				{0x82, 0x9E}, // Slot 2
+		};
 
 		struct sc_pkcs15_prkey_info prkey_info = {
-				.id = {.len = 1, .value[0] = prkey_pin[i]},
+				.id = {.len = 1, .value[0] = prkey_id[i]},
 				.native = 1,
-				.key_reference = esteid_prkey_id[i],
+				.key_reference = prkey_ref[is_latvian_eid(p15card)][i],
 				.field_length = field_length,
 				.usage = prkey_usage[i]
 		       };
 		struct sc_pkcs15_object prkey_obj = {
-				.auth_id = {.len = 1, .value[0] = prkey_pin[i]},
+				.auth_id = {.len = 1, .value[0] = pin_authid[i]},
 				.user_consent = prkey_consent[i],
 				.flags = SC_PKCS15_CO_FLAG_PRIVATE
 		  };
@@ -202,7 +214,8 @@ err:
 
 int sc_pkcs15emu_esteid2018_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid) {
 	if (p15card->card->type == SC_CARD_TYPE_ESTEID_2018 ||
-			p15card->card->type == SC_CARD_TYPE_ESTEID_2018_V2_2025)
+			p15card->card->type == SC_CARD_TYPE_ESTEID_2018_V2_2025 ||
+			is_latvian_eid(p15card))
 		return sc_pkcs15emu_esteid2018_init(p15card);
 	return SC_ERROR_WRONG_CARD;
 }
