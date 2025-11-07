@@ -4026,7 +4026,7 @@ found:
 			/* update local copy of auth info */
 			memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
 
-			if (r == SC_SUCCESS && auth_info.logged_in == SC_PIN_STATE_LOGGED_IN)
+			if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN)
 				LOG_FUNC_RETURN(ctx, r);
 		}
 
