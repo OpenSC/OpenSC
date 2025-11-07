@@ -125,6 +125,9 @@ jacartapki_get_capability(struct sc_card *card, unsigned tag,
 
 	LOG_FUNC_CALLED(ctx);
 
+	if (out == NULL || out_len == NULL)
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
 	/* INS translation CB -> CC for 'even mode' capsulation, tag 0x87 */
 	ins = (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT ? 0xCC : 0xCB);
 
@@ -138,9 +141,6 @@ jacartapki_get_capability(struct sc_card *card, unsigned tag,
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, rv, "get SE data  error");
-
-	if (out == NULL && out_len == NULL)
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	if (apdu.resplen > *out_len)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
@@ -197,9 +197,11 @@ jacartapki_load_options(struct sc_card *card)
 	struct sc_context *ctx = card->ctx;
 	int i, j;
 	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
-	private_data->secure_verify = 1;
+	const int undefinedSecureVerify = -1;
+	const int defaultSecureVerify = 1;
+	int secure_verify;
 
-	for (i = 0; card->ctx->conf_blocks[i] != NULL; i++) {
+	for (i = 0, secure_verify = undefinedSecureVerify; card->ctx->conf_blocks[i] != NULL && secure_verify == undefinedSecureVerify; i++) {
 		scconf_block **found_blocks, *block;
 
 		found_blocks = scconf_find_blocks(card->ctx->conf, card->ctx->conf_blocks[i],
@@ -207,11 +209,12 @@ jacartapki_load_options(struct sc_card *card)
 		if (found_blocks == NULL)
 			continue;
 
-		for (j = 0, block = found_blocks[j]; block != NULL; j++, block = found_blocks[j]) {
-			private_data->secure_verify = scconf_get_bool(block, "secure_verify", 1);
-		}
+		for (j = 0, block = found_blocks[j]; block != NULL && secure_verify == undefinedSecureVerify; j++, block = found_blocks[j])
+			secure_verify = scconf_get_bool(block, "secure_verify", undefinedSecureVerify);
+
 		free(found_blocks);
 	}
+	private_data->secure_verify = (secure_verify != undefinedSecureVerify ? secure_verify : defaultSecureVerify);
 
 	sc_log(ctx, "Secure-verify %i", private_data->secure_verify);
 
@@ -285,7 +288,6 @@ jacartapki_read_binary(struct sc_card *card, unsigned int offs,
 	struct sc_apdu apdu;
 	int rv;
 	const size_t leMax = 0x100U;
-	size_t binaryDataRead;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "jacartapki_read_binary(card:%p) offs %i; count %" SC_FORMAT_LEN_SIZE_T "u", card, offs, count);
@@ -298,67 +300,14 @@ jacartapki_read_binary(struct sc_card *card, unsigned int offs,
 	apdu.le = MIN(count, leMax);
 	apdu.resplen = count;
 	apdu.resp = buf;
-#ifdef ENABLE_SM
-	if (card->sm_ctx.sm_mode != SM_MODE_NONE)
-		apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
-#endif
 
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
-	binaryDataRead = apdu.resplen;
-	if (apdu.sw1 == 0x61) {
-		/* usually we get here when SM is on */
-		unsigned char getRespBuf[0x100];
-		while (binaryDataRead < count) {
-			size_t getRespLen = leMax;
-			memset(getRespBuf, 0, sizeof(getRespBuf));
-			rv = card->ops->get_response(card, &getRespLen, getRespBuf);
-			LOG_TEST_RET(ctx, rv, "GET RESPONSE error");
-			if (getRespLen > 0) {
-				if (getRespLen > count - binaryDataRead)
-					getRespLen = count - binaryDataRead;
-				memcpy(buf + binaryDataRead, getRespBuf, getRespLen);
-				binaryDataRead += getRespLen;
-			}
-			if (rv == 0)
-				break;
-		}
-	} else
-		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, rv, "jacartapki_read_binary() failed");
 	sc_log(ctx, "jacartapki_read_binary() apdu.resplen %" SC_FORMAT_LEN_SIZE_T "u", apdu.resplen);
 
-	LOG_FUNC_RETURN(ctx, (int)binaryDataRead);
-}
-
-static int
-jacartapki_update_binary(struct sc_card *card,
-		unsigned int idx, const u8 *buf, size_t count, unsigned long flags)
-{
-	int rv;
-#ifdef ENABLE_SM
-	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
-		const size_t smOverhead = 20;
-		const size_t wireMax = sc_get_max_send_size(card);
-		if (smOverhead >= wireMax) {
-			sc_log(card->ctx, "SC max send too low: %" SC_FORMAT_LEN_SIZE_T "u", wireMax);
-			return SC_ERROR_INTERNAL;
-		}
-		const size_t chunkMax = wireMax - smOverhead;
-		int idxDone = 0;
-		do {
-			rv = iso_ops->update_binary(card, idx + idxDone, buf + idxDone, MIN(count - idxDone, chunkMax), flags);
-			if (rv <= 0)
-				break;
-			idxDone += rv;
-
-		} while ((size_t)idxDone < count);
-
-		rv = (idxDone > 0 ? idxDone : rv);
-	} else
-#endif
-		rv = iso_ops->update_binary(card, idx, buf, count, flags);
-	return rv;
+	LOG_FUNC_RETURN(ctx, (int)apdu.resplen);
 }
 
 static int
@@ -378,7 +327,7 @@ jacartapki_erase_binary(struct sc_card *card, unsigned int offs, size_t count, u
 		LOG_ERROR_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate temporary buffer");
 	memset(tmp, 0xFF, count);
 
-	rv = jacartapki_update_binary(card, offs, tmp, count, flags);
+	rv = jacartapki_ops.update_binary(card, offs, tmp, count, flags);
 	free(tmp);
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -397,6 +346,9 @@ jacartapki_select_file(struct sc_card *card, const struct sc_path *in_path,
 	int reopen_sm_session = 0;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (in_path->len > SC_MAX_PATH_SIZE)
+		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid path length");
 
 	sc_log(ctx, "jacartapki_select_file(card:%p) path(type:%i):%s, out:%p", card, in_path->type, sc_print_path(in_path), file_out);
 
@@ -479,6 +431,11 @@ jacartapki_select_file(struct sc_card *card, const struct sc_path *in_path,
 	switch (apdu.resp[0]) {
 	case ISO7816_TAG_FCI:
 	case ISO7816_TAG_FCP:
+		if (card->ops->process_fci == NULL) {
+			rv = SC_ERROR_NOT_SUPPORTED;
+			LOG_ERROR_GOTO(ctx, rv, "FCI processing not supported");
+		}
+
 		file = sc_file_new();
 		if (file == NULL) {
 			rv = SC_ERROR_OUT_OF_MEMORY;
@@ -486,12 +443,6 @@ jacartapki_select_file(struct sc_card *card, const struct sc_path *in_path,
 		}
 
 		file->path = *in_path;
-		if (card->ops->process_fci == NULL) {
-			sc_file_free(file);
-			rv = SC_ERROR_NOT_SUPPORTED;
-			LOG_ERROR_GOTO(ctx, rv, "FCI processing not supported");
-		}
-
 		if ((size_t)apdu.resp[1] + 2 <= apdu.resplen) {
 			rv = jacartapki_process_fci(card, file, apdu.resp + 2, apdu.resp[1]);
 			LOG_TEST_GOTO_ERR(ctx, rv, "Process FCI error");
@@ -507,10 +458,10 @@ jacartapki_select_file(struct sc_card *card, const struct sc_path *in_path,
 			}
 		}
 
-		if (file_out)
+		if (file_out) {
 			*file_out = file;
-		else
-			sc_file_free(file);
+			file = NULL;
+		}
 		break;
 	case 0x00: /* proprietary coding */
 		rv = SC_ERROR_UNKNOWN_DATA_RECEIVED;
@@ -521,6 +472,7 @@ jacartapki_select_file(struct sc_card *card, const struct sc_path *in_path,
 		LOG_ERROR_GOTO(ctx, rv, "Unknown 'SELECT' APDU response tag");
 	}
 err:
+	sc_file_free(file);
 	if (reopen_sm_session != 0)
 		jacartapki_iso_sm_open(card);
 
@@ -588,7 +540,7 @@ jacartapki_process_fci(struct sc_card *card, struct sc_file *file, const u8 *buf
 	}
 
 	tag = sc_asn1_find_tag(ctx, p, len, ISO7816_TAG_FCP_DF_NAME, &taglen);
-	if (tag != NULL && taglen > 0 && taglen <= 16) {
+	if (tag != NULL && taglen > 0 && taglen <= sizeof(file->name)) {
 		char tbuf[128];
 
 		memcpy(file->name, tag, taglen);
@@ -844,7 +796,7 @@ jacartapki_create_file(struct sc_card *card, struct sc_file *file)
 
 		parent_path.len -= 2;
 		rv = jacartapki_select_file(card, &parent_path, NULL);
-		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select newly created file");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select parent DF");
 	}
 
 	rv = jacartapki_fcp_encode(card, file, &fcp);
@@ -934,13 +886,13 @@ jacartapki_logout(struct sc_card *card)
 
 	offs = 0;
 	for (i = 0; i < ARRAY_SIZE(private_data->auth_state); ++i) {
-		if (private_data->auth_state[i].logged_in != 0) {
+		if (private_data->auth_state[i].logged_in != SC_PIN_STATE_LOGGED_OUT) {
 			pin_data[offs++] = 0; /* XX = 0 */
 			pin_data[offs++] = 0; /* level */
 			pin_data[offs++] = (private_data->auth_state[i].pin_reference >> 8) & 0xFF;
 			pin_data[offs++] = private_data->auth_state[i].pin_reference & 0xFF;
 
-			private_data->auth_state[i].logged_in = 0;
+			private_data->auth_state[i].logged_in = SC_PIN_STATE_LOGGED_OUT;
 		}
 	}
 	if (offs == 0)
@@ -1222,19 +1174,21 @@ jacartapki_select_global_pin(struct sc_card *card, unsigned reference, struct sc
 		unsigned ref;
 
 		rv = jacartapki_pin_from_ko_le(ctx, reference, &ref);
-		LOG_TEST_RET(ctx, rv, "Unknown LogicalExpression KO");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Unknown LogicalExpression KO");
 		path.value[path.len - 1] = ref;
 
 		sc_file_free(file);
+		file = NULL;
 		rv = jacartapki_select_file(card, &path, &file);
-		LOG_TEST_RET(ctx, rv, "Failed to select PIN file");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to select PIN file");
 	}
 
-	if (out_file != NULL)
+	if (out_file != NULL) {
 		*out_file = file;
-	else
-		sc_file_free(file);
-
+		file = NULL;
+	}
+err:
+	sc_file_free(file);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -1290,7 +1244,7 @@ jacartapki_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 	/* TEMP P15 DF RELOAD PRIVATE */
 	for (i = 0; i < ARRAY_SIZE(private_data->auth_state); ++i) {
 		if (private_data->auth_state[i].pin_reference == reference) {
-			private_data->auth_state[i].logged_in = 1;
+			private_data->auth_state[i].logged_in = SC_PIN_STATE_LOGGED_IN;
 			break;
 		}
 	}
@@ -1361,22 +1315,25 @@ jacartapki_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 		const struct sc_acl_entry *entry;
 
 		rv = jacartapki_select_global_pin(card, data->pin_reference, &pin_file);
-		LOG_TEST_RET(ctx, rv, "Select PIN file error");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Select PIN file error");
 
 		if (data->pin1.len) {
 			entry = sc_file_get_acl_entry(pin_file, SC_AC_OP_PIN_RESET);
 			if (entry != NULL) {
 				sc_log(ctx, "Acl(PIN_RESET): %04X", entry->key_ref);
 				if ((entry->key_ref & 0x00FF) == 0xFF) {
-					LOG_ERROR_RET(ctx, SC_ERROR_NOT_ALLOWED, "Reset PIN not allowed");
+					LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ALLOWED, "Reset PIN not allowed");
 				} else if ((entry->key_ref & 0xC000) != 0) {
-					LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Reset PIN protected by SM: not supported (TODO)");
+					LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "Reset PIN protected by SM: not supported (TODO)");
 				} else if ((entry->key_ref & 0x00FF) != 0) {
 					rv = jacartapki_pin_verify(card, SC_AC_CHV, entry->key_ref & 0x00FF, data->pin1.data, data->pin1.len, tries_left);
-					LOG_TEST_RET(ctx, rv, "Verify PUK failed");
+					LOG_TEST_GOTO_ERR(ctx, rv, "Verify PUK failed");
+
+					sc_file_free(pin_file);
+					pin_file = NULL;
 
 					rv = jacartapki_select_global_pin(card, data->pin_reference, &pin_file);
-					LOG_TEST_RET(ctx, rv, "Select PIN file error");
+					LOG_TEST_GOTO_ERR(ctx, rv, "Select PIN file error");
 				}
 			}
 		}
@@ -1386,9 +1343,9 @@ jacartapki_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 	apdu.cla = 0x80;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "PIN change failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "PIN change failed");
 
 	if (data->pin2.len > 0) {
 		size_t save_len = data->pin1.len;
@@ -1396,10 +1353,12 @@ jacartapki_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 		data->pin1.len = 0;
 		rv = jacartapki_pin_change(card, data, tries_left);
 		data->pin1.len = save_len;
-		LOG_TEST_RET(ctx, rv, "Cannot set new PIN value");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot set new PIN value");
 	}
-
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	rv = SC_SUCCESS;
+err:
+	sc_file_free(pin_file);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
@@ -1444,8 +1403,6 @@ jacartapki_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *trie
 		sc_log(ctx, "PIN command 0x%X do not yet supported.", data->cmd);
 		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Non-supported PIN command");
 	}
-
-	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 }
 
 static int
@@ -1635,7 +1592,7 @@ jacartapki_decipher(struct sc_card *card, const unsigned char *in, size_t in_len
 	else if (in_len > (sizeof(sbuf) - 4))
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "invalid data length");
 
-	rv = sc_asn1_put_tag(0X82, in, in_len, sbuf, sizeof(sbuf), &tagPtr);
+	rv = sc_asn1_put_tag(0x82, in, in_len, sbuf, sizeof(sbuf), &tagPtr);
 	LOG_TEST_RET(ctx, rv, "ASN.1 tagging failed"); // should never fail
 
 	offs = tagPtr - sbuf;
@@ -1862,7 +1819,7 @@ sc_get_driver(void)
 	jacartapki_ops.finish = jacartapki_finish;
 	jacartapki_ops.read_binary = jacartapki_read_binary;
 	/*	write_binary: ISO7816 implementation works	*/
-	jacartapki_ops.update_binary = jacartapki_update_binary;
+	/*	update_binary: ISO7816 implementation works	*/
 	jacartapki_ops.erase_binary = jacartapki_erase_binary;
 	/*	resize_binary	*/
 	/*	read_record: Untested	*/

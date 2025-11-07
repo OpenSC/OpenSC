@@ -532,6 +532,7 @@ jacartapki_erase_card(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 
 		sc_log(ctx, "delete file %s", sc_print_path(&file_in_profile->path));
 		rv = sc_select_file(p15card->card, &file_in_profile->path, &file);
+		sc_file_free(file_in_profile);
 		if (rv == SC_ERROR_FILE_NOT_FOUND) {
 			continue;
 		} else if (rv < 0) {
@@ -607,20 +608,20 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 	sc_log(ctx, "create '%s'; ref 0x%X; flags %X; max_tries %i", pin_obj->label, pin_attrs->reference, pin_attrs->flags, auth_info->max_tries);
 
 	if ((pin_attrs->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) != 0)
-		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unblocking PIN is not supported");
+		LOG_ERROR_GOTO(ctx, SC_ERROR_NOT_SUPPORTED, "Unblocking PIN is not supported");
 
 	if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN) {
 		if (pin_attrs->reference != 0x10)
-			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid SO PIN reference");
+			LOG_ERROR_GOTO(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid SO PIN reference");
 
 		rv = sc_profile_get_file(profile, "JaCartaPKI-SoPIN", &pin_file);
-		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get SOPIN file");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Inconsistent profile: cannot get SOPIN file");
 	} else {
 		if (pin_attrs->reference != 0x20)
-			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid User PIN reference");
+			LOG_ERROR_GOTO(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Paranoia test failed: invalid User PIN reference");
 
 		rv = sc_profile_get_file(profile, "JaCartaPKI-UserPIN", &pin_file);
-		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get UserPIN file");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Inconsistent profile: cannot get UserPIN file");
 
 		update_tokeninfo = 1;
 	}
@@ -628,7 +629,7 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 	rv = sc_select_file(p15card->card, &pin_file->path, NULL);
 	if (rv == 0) {
 		rv = sc_pkcs15init_delete_by_path(profile, p15card, &pin_file->path);
-		LOG_TEST_RET(ctx, rv, "Failed to delete PIN file");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to delete PIN file");
 	}
 
 	pin_file->size = pin_attrs->max_length;
@@ -638,7 +639,7 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 	offs = 0;
 	pin_file->prop_attr = calloc(1, 14);
 	if (pin_file->prop_attr == NULL)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		LOG_ERROR_GOTO(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate prop attributes");
 	pin_file->prop_attr[offs++] = JACARTAPKI_KO_NON_CRYPTO | JACARTAPKI_KO_ALLOW_TICKET | JACARTAPKI_KO_ALLOW_SECURE_VERIFY;
 	pin_file->prop_attr[offs++] = JACARTAPKI_KO_USAGE_AUTH_EXT;
 	pin_file->prop_attr[offs++] = JACARTAPKI_KO_ALGORITHM_PIN;
@@ -664,17 +665,19 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 	}
 
 	rv = sc_pkcs15init_create_file(profile, p15card, pin_file);
-	LOG_TEST_RET(ctx, rv, "Create PIN file failed");
-
-	sc_file_free(pin_file);
+	LOG_TEST_GOTO_ERR(ctx, rv, "Create PIN file failed");
 
 	if (update_tokeninfo != 0) {
 		p15card->tokeninfo->flags |= CKF_USER_PIN_INITIALIZED;
 		rv = jacartapki_emu_update_tokeninfo(profile, p15card, p15card->tokeninfo);
-		LOG_TEST_RET(ctx, rv, "Failed to update TokenInfo");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Failed to update TokenInfo");
 	}
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	rv = SC_SUCCESS;
+err:
+	sc_file_free(pin_file);
+
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 /*
@@ -1560,26 +1563,29 @@ jacartapki_update_df_check_pin(struct sc_profile *profile, struct sc_pkcs15_card
 	sc_log(ctx, "checking '%s'; ref 0x%X; flags %X; max_tries %i", pin_obj->label, pin_attrs->reference, pin_attrs->flags, auth_info->max_tries);
 
 	if ((pin_attrs->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) != 0)
-		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unblocking PIN is not supported");
+		LOG_ERROR_GOTO(ctx, SC_ERROR_NOT_SUPPORTED, "Unblocking PIN is not supported");
 
 	if ((pin_attrs->flags & SC_PKCS15_PIN_FLAG_SO_PIN) != 0) {
 		if (pin_attrs->reference != 0x10)
-			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid SO PIN reference");
+			LOG_ERROR_GOTO(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid SO PIN reference");
 
 		rv = sc_profile_get_file(profile, "JaCartaPKI-SoPIN", &pin_file);
-		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get SOPIN file");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Inconsistent profile: cannot get SOPIN file");
 	} else {
 		if (pin_attrs->reference != 0x20)
-			LOG_ERROR_RET(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid User PIN reference");
+			LOG_ERROR_GOTO(ctx, SC_ERROR_INVALID_PIN_REFERENCE, "Check failed: invalid User PIN reference");
 
 		rv = sc_profile_get_file(profile, "JaCartaPKI-UserPIN", &pin_file);
-		LOG_TEST_RET(ctx, rv, "Inconsistent profile: cannot get UserPIN file");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Inconsistent profile: cannot get UserPIN file");
 	}
 
 	rv = sc_select_file(p15card->card, &pin_file->path, NULL);
-	LOG_TEST_RET(ctx, rv, "Failed to select PIN file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to select PIN file");
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	rv = SC_SUCCESS;
+err:
+	sc_file_free(pin_file);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
@@ -1812,21 +1818,24 @@ jacartapki_emu_update_tokeninfo(struct sc_profile *profile, struct sc_pkcs15_car
 	tinfo->last_update.gtime = NULL;
 
 	rv = sc_pkcs15_get_generalized_time(ctx, &tinfo->last_update.gtime);
-	LOG_TEST_RET(ctx, rv, "Cannot allocate generalized time");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot allocate generalized time");
 
 	jacartapki_strcpy_bp(jti.utc_time, tinfo->last_update.gtime, sizeof(jti.utc_time));
 
 	rv = sc_profile_get_file(profile, "JaCartaPKI-TokenInfo", &file);
-	LOG_TEST_RET(ctx, rv, "'JaCartaPKI-TokenInfo' not defined");
+	LOG_TEST_GOTO_ERR(ctx, rv, "'JaCartaPKI-TokenInfo' not defined");
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, (unsigned char *)(&jti), sizeof(jti));
 	if ((int)sizeof(jti) > rv) {
 		if (rv >= 0)
 			rv = SC_ERROR_INTERNAL;
-		LOG_ERROR_RET(ctx, rv, "Cannot update TokenInfo file");
+		LOG_ERROR_GOTO(ctx, rv, "Cannot update TokenInfo file");
 	}
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	rv = SC_SUCCESS;
+err:
+	sc_file_free(file);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int

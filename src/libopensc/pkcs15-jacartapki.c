@@ -367,7 +367,6 @@ _create_prvkey(struct sc_pkcs15_card *p15card, unsigned file_id)
 
 	info.modulus_length = key_file->size * 8;
 	sc_file_free(key_file);
-	key_file = NULL;
 
 	info.native = 1;
 
@@ -422,7 +421,6 @@ _create_prvkey(struct sc_pkcs15_card *p15card, unsigned file_id)
 	if (rv == SC_SUCCESS)
 		sc_log(ctx, "Key GUID 0x'%s'", sc_dump_hex(guid, guid_len));
 err:
-	sc_file_free(key_file);
 	free(data);
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -804,7 +802,7 @@ jacartapki_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *pdf)
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
 	size_t ii, count;
 	int rv;
-	unsigned char user_logged_in = 0;
+	unsigned char user_logged_in = SC_PIN_STATE_LOGGED_OUT;
 	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)p15card->card->drv_data;
 
 	LOG_FUNC_CALLED(ctx);
@@ -824,7 +822,7 @@ jacartapki_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *pdf)
 			}
 		}
 	}
-	if (user_logged_in == 0)
+	if (user_logged_in == SC_PIN_STATE_LOGGED_OUT)
 		return SC_SUCCESS;
 
 	rv = sc_select_file(card, &path, NULL);
