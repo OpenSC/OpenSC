@@ -766,6 +766,7 @@ ATTR_METHOD(CERTIFICATE_TYPE, CK_CERTIFICATE_TYPE);	/* getCERTIFICATE_TYPE */
 ATTR_METHOD(MODULUS_BITS, CK_ULONG);			/* getMODULUS_BITS */
 ATTR_METHOD(VALUE_LEN, CK_ULONG);			/* getVALUE_LEN */
 ATTR_METHOD(PROFILE_ID, CK_ULONG);			/* getPROFILE_ID */
+ATTR_METHOD(PARAMETER_SET, CK_ULONG);			/* getPARAMETER_SET */
 VARATTR_METHOD(LABEL, char);				/* getLABEL */
 VARATTR_METHOD(UNIQUE_ID, char);			/* getUNIQUE_ID */
 VARATTR_METHOD(APPLICATION, char);			/* getAPPLICATION */
@@ -3728,7 +3729,7 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			if (strcmp(type, "ML-KEM-512") == 0) {
 				ml_kem_parameter_set = CKP_ML_KEM_512;
 			} else if (strcmp(type, "ML-KEM-768")) {
-				ml_kem_parameter_set = CKP_ML_KEM_512;
+				ml_kem_parameter_set = CKP_ML_KEM_768;
 			} else if (strcmp(type, "ML-KEM-1024")) {
 				ml_kem_parameter_set = CKP_ML_KEM_1024;
 			} else {
@@ -6372,6 +6373,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	int		pub = 1;
 	int		sec = 0;
 	CK_TOKEN_INFO info;
+	CK_ULONG parameter_set;
 
 	switch(getCLASS(sess, obj)) {
 		case CKO_PRIVATE_KEY:
@@ -6557,6 +6559,103 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			}
 			printf("\n");
 			free(value);
+		}
+		break;
+	case CKK_ML_DSA:
+	case CKK_ML_KEM:
+	case CKK_SLH_DSA:
+		parameter_set = getPARAMETER_SET(sess, obj);
+		switch (key_type) {
+		case CKK_ML_DSA:
+			switch (parameter_set) {
+			case CKP_ML_DSA_44:
+				printf("; ML-DSA-44\n");
+				break;
+			case CKP_ML_DSA_65:
+				printf("; ML-DSA-65\n");
+				break;
+			case CKP_ML_DSA_87:
+				printf("; ML-DSA-87\n");
+				break;
+			default:
+				printf("; ML-DSA: Unknown PARAMETER_SET\n");
+				break;
+			}
+			break;
+		case CKK_ML_KEM:
+			switch (parameter_set) {
+			case CKP_ML_KEM_512:
+				printf("; ML-KEM-512\n");
+				break;
+			case CKP_ML_KEM_768:
+				printf("; ML-KEM-768\n");
+				break;
+			case CKP_ML_KEM_1024:
+				printf("; ML-KEM-1024\n");
+				break;
+			default:
+				printf("; ML-KEM: Unknown PARAMETER_SET\n");
+				break;
+			}
+			break;
+		case CKK_SLH_DSA:
+			switch (parameter_set) {
+			case CKP_SLH_DSA_SHA2_128S:
+				printf("; SLH-DSA-SHA2-128S\n");
+				break;
+			case CKP_SLH_DSA_SHAKE_128S:
+				printf("; SLH-DSA-SHAKE-128S\n");
+				break;
+			case CKP_SLH_DSA_SHA2_128F:
+				printf("; SLH-DSA-SHA2-128F\n");
+				break;
+			case CKP_SLH_DSA_SHAKE_128F:
+				printf("; SLH-DSA-SHAKE-128F\n");
+				break;
+			case CKP_SLH_DSA_SHA2_192S:
+				printf("; SLH-DSA-SHA2-192S\n");
+				break;
+			case CKP_SLH_DSA_SHAKE_192S:
+				printf("; SLH-DSA-SHAKE-192S\n");
+				break;
+			case CKP_SLH_DSA_SHA2_192F:
+				printf("; SLH-DSA-SHA2-192F\n");
+				break;
+			case CKP_SLH_DSA_SHAKE_192F:
+				printf("; SLH-DSA-SHAKE-192F\n");
+				break;
+			case CKP_SLH_DSA_SHA2_256S:
+				printf("; SLH-DSA-SHA2-256S\n");
+				break;
+			case CKP_SLH_DSA_SHAKE_256S:
+				printf("; SLH-DSA-SHAKE-256S\n");
+				break;
+			case CKP_SLH_DSA_SHA2_256F:
+				printf("; SLH-DSA-SHA2-256F\n");
+				break;
+			case CKP_SLH_DSA_SHAKE_256F:
+				printf("; SLH-DSA-SHAKE-256F\n");
+				break;
+			default:
+				printf("; SLH-DSA: Unknown PARAMETER_SET\n");
+				break;
+			}
+			break;
+		}
+		if (pub) {
+			value = getVALUE(sess, obj, &size);
+			if (value) {
+				unsigned int n;
+
+				printf("  VALUE:      ");
+				for (n = 0; n < size; n++)   {
+					if (n && (n%32)==0)
+						printf("\n              ");
+					printf("%02x", value[n]);
+				}
+				printf("\n");
+				free(value);
+			}
 		}
 		break;
 	default:
@@ -7202,26 +7301,26 @@ static int read_object(CK_SESSION_HANDLE session)
 					free(value);
 					util_fatal("cannot set OSSL_PARAM");
 				}
-			OSSL_PARAM_BLD_free(bld);
-			if (success)
-				ASN1_STRING_free(os);
-			free(value);
+				OSSL_PARAM_BLD_free(bld);
+				if (success)
+					ASN1_STRING_free(os);
+				free(value);
 
-			if (!(ctx = EVP_PKEY_CTX_new_from_name(osslctx, "EC", NULL)) ||
-					EVP_PKEY_fromdata_init(ctx) != 1) {
-				OSSL_PARAM_free(p);
-				EVP_PKEY_CTX_free(ctx);
-				util_fatal("cannot set CTX");
-			}
-			EVP_PKEY_free(pkey);
-			pkey = NULL;
-			if (EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, p) != 1) {
-				OSSL_PARAM_free(p);
-				EVP_PKEY_CTX_free(ctx);
-				util_fatal("cannot create EVP_PKEY");
-			}
-			OSSL_PARAM_free(old);
-			OSSL_PARAM_free(new);
+				if (!(ctx = EVP_PKEY_CTX_new_from_name(osslctx, "EC", NULL)) ||
+						EVP_PKEY_fromdata_init(ctx) != 1) {
+					OSSL_PARAM_free(p);
+					EVP_PKEY_CTX_free(ctx);
+					util_fatal("cannot set CTX");
+				}
+				EVP_PKEY_free(pkey);
+				pkey = NULL;
+				if (EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, p) != 1) {
+					OSSL_PARAM_free(p);
+					EVP_PKEY_CTX_free(ctx);
+					util_fatal("cannot create EVP_PKEY");
+				}
+				OSSL_PARAM_free(old);
+				OSSL_PARAM_free(new);
 
 #endif
 				if (!i2d_PUBKEY_bio(pout, pkey))
@@ -7334,6 +7433,8 @@ static int read_object(CK_SESSION_HANDLE session)
 				}
 
 				EVP_PKEY_free(key);
+			} else if (type == CKK_ML_DSA || type == CKK_ML_KEM || type == CKK_SLH_DSA) {
+				// TODO
 #endif
 			} else
 				util_fatal("Reading public keys of type 0x%lX not (yet) supported", type);

@@ -138,7 +138,8 @@ add_supported_mechs(test_cert_t *o)
 {
 	size_t i;
 
-	if (o->type == EVP_PKEY_RSA) {
+	switch (o->type) {
+	case EVP_PKEY_RSA:
 		if (token.num_rsa_mechs > 0 ) {
 			/* Get supported mechanisms by token */
 			o->num_mechs = 0;
@@ -167,7 +168,8 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY
 				| CKF_ENCRYPT | CKF_DECRYPT;
 		}
-	} else if (o->type == EVP_PKEY_EC) {
+		break;
+	case EVP_PKEY_EC:
 		if (token.num_ec_mechs > 0 ) {
 			o->num_mechs = token.num_ec_mechs;
 			for (i = 0; i < token.num_ec_mechs; i++) {
@@ -187,8 +189,9 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY;
 		}
+		break;
 #ifdef EVP_PKEY_ED25519
-	} else if (o->type == EVP_PKEY_ED25519) {
+	case EVP_PKEY_ED25519:
 		if (token.num_ed_mechs > 0 ) {
 			o->num_mechs = token.num_ed_mechs;
 			for (i = 0; i < token.num_ed_mechs; i++) {
@@ -208,9 +211,10 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY;
 		}
+		break;
 #endif
 #ifdef EVP_PKEY_X25519
-	} else if (o->type == EVP_PKEY_X25519) {
+	case EVP_PKEY_X25519:
 		if (token.num_montgomery_mechs > 0 ) {
 			o->num_mechs = token.num_montgomery_mechs;
 			for (i = 0; i < token.num_montgomery_mechs; i++) {
@@ -230,9 +234,94 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_DERIVE;
 		}
+		break;
 #endif
+#ifdef EVP_PKEY_ML_DSA_44
+	case EVP_PKEY_ML_DSA_44:
+	case EVP_PKEY_ML_DSA_65:
+	case EVP_PKEY_ML_DSA_87:
+		if (token.num_ml_dsa_mechs > 0 ) {
+			o->num_mechs = token.num_ml_dsa_mechs;
+			for (i = 0; i < token.num_ml_dsa_mechs; i++) {
+				o->mechs[i].mech = token.ml_dsa_mechs[i].mech;
+				o->mechs[i].params = token.ml_dsa_mechs[i].params;
+				o->mechs[i].params_len = token.ml_dsa_mechs[i].params_len;
+				o->mechs[i].result_flags = 0;
+				o->mechs[i].usage_flags =
+					token.ml_dsa_mechs[i].usage_flags;
+			}
+		} else {
+			/* Use the default list */
+			o->num_mechs = 1;
+			o->mechs[0].mech = CKM_ML_DSA;
+			o->mechs[0].params = NULL;
+			o->mechs[0].params_len = 0;
+			o->mechs[0].result_flags = 0;
+			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY;
+		}
+		break;
+#endif /* EVP_PKEY_ML_DSA_44 */
+#ifdef EVP_PKEY_ML_KEM_512
+	case EVP_PKEY_ML_KEM_512:
+	case EVP_PKEY_ML_KEM_768:
+	case EVP_PKEY_ML_KEM_1024:
+		if (token.num_ml_kem_mechs > 0 ) {
+			o->num_mechs = token.num_ml_kem_mechs;
+			for (i = 0; i < token.num_ml_kem_mechs; i++) {
+				o->mechs[i].mech = token.ml_kem_mechs[i].mech;
+				o->mechs[i].params = token.ml_kem_mechs[i].params;
+				o->mechs[i].params_len = token.ml_kem_mechs[i].params_len;
+				o->mechs[i].result_flags = 0;
+				o->mechs[i].usage_flags =
+					token.ml_kem_mechs[i].usage_flags;
+			}
+		} else {
+			/* Use the default list */
+			o->num_mechs = 1;
+			o->mechs[0].mech = CKM_ML_KEM;
+			o->mechs[0].params = NULL;
+			o->mechs[0].params_len = 0;
+			o->mechs[0].result_flags = 0;
+			o->mechs[0].usage_flags = CKF_ENCAPSULATE | CKF_DECAPSULATE;
+		}
+		break;
+#endif /* EVP_PKEY_ML_KEM_512 */
+#ifdef EVP_PKEY_SLH_DSA_SHA2_128S
+	case EVP_PKEY_SLH_DSA_SHA2_128S:
+	case EVP_PKEY_SLH_DSA_SHAKE_128S:
+	case EVP_PKEY_SLH_DSA_SHA2_128F:
+	case EVP_PKEY_SLH_DSA_SHAKE_128F:
+	case EVP_PKEY_SLH_DSA_SHA2_192S:
+	case EVP_PKEY_SLH_DSA_SHAKE_192S:
+	case EVP_PKEY_SLH_DSA_SHA2_192F:
+	case EVP_PKEY_SLH_DSA_SHAKE_192F:
+	case EVP_PKEY_SLH_DSA_SHA2_256S:
+	case EVP_PKEY_SLH_DSA_SHAKE_256S:
+	case EVP_PKEY_SLH_DSA_SHA2_256F:
+	case EVP_PKEY_SLH_DSA_SHAKE_256F:
+		if (token.num_slh_dsa_mechs > 0 ) {
+			o->num_mechs = token.num_slh_dsa_mechs;
+			for (i = 0; i < token.num_slh_dsa_mechs; i++) {
+				o->mechs[i].mech = token.slh_dsa_mechs[i].mech;
+				o->mechs[i].params = token.slh_dsa_mechs[i].params;
+				o->mechs[i].params_len = token.slh_dsa_mechs[i].params_len;
+				o->mechs[i].result_flags = 0;
+				o->mechs[i].usage_flags =
+					token.slh_dsa_mechs[i].usage_flags;
+			}
+		} else {
+			/* Use the default list */
+			o->num_mechs = 1;
+			o->mechs[0].mech = CKM_SLH_DSA;
+			o->mechs[0].params = NULL;
+			o->mechs[0].params_len = 0;
+			o->mechs[0].result_flags = 0;
+			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY;
+		}
+		break;
+#endif /* EVP_PKEY_SLH_DSA_SHA2_128S */
 	/* Nothing in the above enum can be used for secret keys */
-	} else if (o->key_type == CKK_AES) {
+	case CKK_AES:
 		if (token.num_aes_mechs > 0 ) {
 			o->num_mechs = token.num_aes_mechs;
 			for (i = 0; i < token.num_aes_mechs; i++) {
@@ -251,6 +340,7 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].result_flags = 0;
 			o->mechs[0].usage_flags = CKF_ENCRYPT|CKF_DECRYPT|CKF_WRAP|CKF_UNWRAP;
 		}
+		break;
 	}
 }
 
@@ -356,6 +446,10 @@ int callback_private_keys(test_certs_t *objects,
 		? *((CK_BBOOL *) template[6].pValue) : CK_FALSE;
 	o->extractable = (template[8].ulValueLen == sizeof(CK_BBOOL))
 		? *((CK_BBOOL *) template[8].pValue) : CK_FALSE;
+	o->decapsulate = (template[9].ulValueLen == sizeof(CK_BBOOL))
+		? *((CK_BBOOL *) template[9].pValue) : CK_FALSE;
+	o->parameter_set = (template[10].ulValueLen == sizeof(CK_ULONG))
+		? *((CK_ULONG *) template[10].pValue) : CK_UNAVAILABLE_INFORMATION;
 
 	debug_print(" [  OK %s ] Private key loaded successfully S:%d D:%d T:%02lX",
 		o->id_str, o->sign, o->decrypt, o->key_type);
@@ -403,6 +497,8 @@ int callback_public_keys(test_certs_t *objects,
 		? *((CK_BBOOL *) template[8].pValue) : CK_FALSE;
 	o->derive_pub = (template[9].ulValueLen == sizeof(CK_BBOOL))
 		? *((CK_BBOOL *) template[9].pValue) : CK_FALSE;
+	o->encapsulate = (template[10].ulValueLen == sizeof(CK_BBOOL))
+		? *((CK_BBOOL *) template[10].pValue) : CK_FALSE;
 
 	/* check if we get the same public key as from the certificate */
 	if (o->key_type == CKK_RSA) {
@@ -757,6 +853,90 @@ int callback_public_keys(test_certs_t *objects,
 			o->bits = 255;
 		}
 		ASN1_STRING_free(os);
+#ifdef EVP_PKEY_ML_DSA_44
+	} else if (o->key_type == CKK_ML_DSA) {
+		o->parameter_set = (template[10].ulValueLen == sizeof(CK_ULONG))
+			? *((CK_ULONG *)template[10].pValue) : CK_UNAVAILABLE_INFORMATION;
+		switch (o->parameter_set) {
+		case CKP_ML_DSA_44:
+			o->type = EVP_PKEY_ML_DSA_44;
+			break;
+		case CKP_ML_DSA_65:
+			o->type = EVP_PKEY_ML_DSA_65;
+			break;
+		case CKP_ML_DSA_87:
+			o->type = EVP_PKEY_ML_DSA_87;
+			break;
+		default:
+			return -1;
+		}
+		// TODO more processing
+#endif /* EVP_PKEY_ML_DSA_44 */
+#ifdef EVP_PKEY_ML_KEM_512
+	} else if (o->key_type == CKK_ML_KEM) {
+		o->parameter_set = (template[10].ulValueLen == sizeof(CK_ULONG))
+			? *((CK_ULONG *)template[10].pValue) : CK_UNAVAILABLE_INFORMATION;
+		switch (o->parameter_set) {
+		case CKP_ML_KEM_512:
+			o->key_type = EVP_PKEY_ML_KEM_512;
+			break;
+		case CKP_ML_KEM_768:
+			o->key_type = EVP_PKEY_ML_KEM_768;
+			break;
+		case CKP_ML_KEM_1024:
+			o->key_type = EVP_PKEY_ML_KEM_1024;
+			break;
+		default:
+			return -1;
+		}
+		// TODO more processing
+#endif /* EVP_PKEY_ML_KEM_512 */
+#ifdef EVP_PKEY_SLH_DSA_SHA2_128S
+	} else if (o->key_type == CKK_SLH_DSA) {
+		o->parameter_set = (template[10].ulValueLen == sizeof(CK_ULONG))
+			? *((CK_ULONG *)template[10].pValue) : CK_UNAVAILABLE_INFORMATION;
+		switch (o->parameter_set) {
+		case CKP_SLH_DSA_SHA2_128S:
+			o->key_type = EVP_PKEY_SLH_DSA_SHA2_128S;
+			break;
+		case CKP_SLH_DSA_SHAKE_128S:
+			o->key_type = EVP_PKEY_SLH_DSA_SHAKE_128S;
+			break;
+		case CKP_SLH_DSA_SHA2_128F:
+			o->key_type = EVP_PKEY_SLH_DSA_SHA2_128F;
+			break;
+		case CKP_SLH_DSA_SHAKE_128F:
+			o->key_type = EVP_PKEY_SLH_DSA_SHAKE_128F;
+			break;
+		case CKP_SLH_DSA_SHA2_192S:
+			o->key_type = EVP_PKEY_SLH_DSA_SHA2_192S;
+			break;
+		case CKP_SLH_DSA_SHAKE_192S:
+			o->key_type = EVP_PKEY_SLH_DSA_SHAKE_192S;
+			break;
+		case CKP_SLH_DSA_SHA2_192F:
+			o->key_type = EVP_PKEY_SLH_DSA_SHA2_192F;
+			break;
+		case CKP_SLH_DSA_SHAKE_192F:
+			o->key_type = EVP_PKEY_SLH_DSA_SHAKE_192F;
+			break;
+		case CKP_SLH_DSA_SHA2_256S:
+			o->key_type = EVP_PKEY_SLH_DSA_SHA2_256S;
+			break;
+		case CKP_SLH_DSA_SHAKE_256S:
+			o->key_type = EVP_PKEY_SLH_DSA_SHAKE_256S;
+			break;
+		case CKP_SLH_DSA_SHA2_256F:
+			o->key_type = EVP_PKEY_SLH_DSA_SHA2_256F;
+			break;
+		case CKP_SLH_DSA_SHAKE_256F:
+			o->key_type = EVP_PKEY_SLH_DSA_SHAKE_256F;
+			break;
+		default:
+			return -1;
+		}
+		// TODO more processing
+#endif /* EVP_PKEY_SLH_DSA_SHA2_128S */
 	} else {
 		debug_print(" [WARN %s ] unknown key. Key type: %02lX",
 			o->id_str, o->key_type);
@@ -960,6 +1140,8 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
 			{ CKA_LABEL, NULL_PTR, 0},
 			{ CKA_EXTRACTABLE, NULL, 0}, // CK_BBOOL
+			{ CKA_DECAPSULATE, NULL, 0}, // CK_BBOOL
+			{ CKA_PARAMETER_SET, NULL, 0}, // CK_ULONG
 	};
 	CK_ULONG private_attrs_size = sizeof (private_attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE public_attrs[] = {
@@ -973,6 +1155,8 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{ CKA_EC_POINT, NULL, 0},
 			{ CKA_WRAP, NULL, 0}, // CK_BBOOL
 			{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
+			{ CKA_ENCAPSULATE, NULL, 0}, // CK_BBOOL
+			{ CKA_PARAMETER_SET, NULL, 0}, // CK_ULONG
 	};
 	CK_ULONG public_attrs_size = sizeof (public_attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE secret_attrs[] = {
@@ -1218,6 +1402,62 @@ const char *get_mechanism_name(unsigned long mech_id)
 			return "AES_KEY_WRAP";
 		case CKM_AES_KEY_WRAP_PAD:
 			return "AES_KEY_WRAP_PAD";
+		case CKM_ML_DSA_KEY_PAIR_GEN:
+			return "ML_DSA_KEY_PAIR_GEN";
+		case CKM_ML_DSA:
+			return "ML_DSA";
+		case CKM_HASH_ML_DSA:
+			return "HASH_ML_DSA";
+		case CKM_HASH_ML_DSA_SHA224:
+			return "HASH_ML_DSA_SHA224";
+		case CKM_HASH_ML_DSA_SHA256:
+			return "HASH_ML_DSA_SHA256";
+		case CKM_HASH_ML_DSA_SHA384:
+			return "HASH_ML_DSA_SHA384";
+		case CKM_HASH_ML_DSA_SHA512:
+			return "HASH_ML_DSA_SHA3_512";
+		case CKM_HASH_ML_DSA_SHA3_224:
+			return "HASH_ML_DSA_SHA3_224";
+		case CKM_HASH_ML_DSA_SHA3_256:
+			return "HASH_ML_DSA_SHA3_256";
+		case CKM_HASH_ML_DSA_SHA3_384:
+			return "HASH_ML_DSA_SHA3_384";
+		case CKM_HASH_ML_DSA_SHA3_512:
+			return "HASH_ML_DSA_SHA3_512";
+		case CKM_HASH_ML_DSA_SHAKE128:
+			return "HASH_ML_DSA_SHAKE128";
+		case CKM_HASH_ML_DSA_SHAKE256:
+			return "HASH_ML_DSA_SHAKE256";
+		case CKM_ML_KEM_KEY_PAIR_GEN:
+			return "ML_KEM_KEY_PAIR_GEN";
+		case CKM_ML_KEM:
+			return "ML_KEM";
+		case CKM_SLH_DSA_KEY_PAIR_GEN:
+			return "SLH_DSA_KEY_PAIR_GEN";
+		case CKM_SLH_DSA:
+			return "SLH_DSA";
+		case CKM_HASH_SLH_DSA:
+			return "HASH_SLH_DSA";
+		case CKM_HASH_SLH_DSA_SHA224:
+			return "HASH_SLH_DSA_SHA224";
+		case CKM_HASH_SLH_DSA_SHA256:
+			return "HASH_SLH_DSA_SHA256";
+		case CKM_HASH_SLH_DSA_SHA384:
+			return "HASH_SLH_DSA_SHA384";
+		case CKM_HASH_SLH_DSA_SHA512:
+			return "HASH_SLH_DSA_SHA3_512";
+		case CKM_HASH_SLH_DSA_SHA3_224:
+			return "HASH_SLH_DSA_SHA3_224";
+		case CKM_HASH_SLH_DSA_SHA3_256:
+			return "HASH_SLH_DSA_SHA3_256";
+		case CKM_HASH_SLH_DSA_SHA3_384:
+			return "HASH_SLH_DSA_SHA3_384";
+		case CKM_HASH_SLH_DSA_SHA3_512:
+			return "HASH_SLH_DSA_SHA3_512";
+		case CKM_HASH_SLH_DSA_SHAKE128:
+			return "HASH_SLH_DSA_SHAKE128";
+		case CKM_HASH_SLH_DSA_SHAKE256:
+			return "HASH_SLH_DSA_SHAKE256";
 		default:
 			sprintf(name_buffer, "0x%.8lX", mech_id);
 			return name_buffer;
@@ -1265,6 +1505,12 @@ get_key_type(test_cert_t * key)
 		return "EC_MONTGOMERY";
 	case CKK_AES:
 		return "AES";
+	case CKK_ML_DSA:
+		return "ML-DSA";
+	case CKK_ML_KEM:
+		return "ML-KEM";
+	case CKK_SLH_DSA:
+		return "SLH-DSA";
 	default:
 		sprintf(name_buffer, "0x%.8lX", key->key_type);
 		return name_buffer;
@@ -1322,6 +1568,10 @@ const char *get_mechanism_flag_name(unsigned long mech_id)
 			return "CKF_EC_COMPRESS";
 		case CKF_EC_ECPARAMETERS:
 			return "CKF_EC_ECPARAMETERS";
+		case CKF_ENCAPSULATE:
+			return "CKF_ENCAPSULATE";
+		case CKF_DECAPSULATE:
+			return "CKF_DECAPSULATE";
 		default:
 			sprintf(flag_buffer, "0x%.8lX", mech_id);
 			return flag_buffer;
