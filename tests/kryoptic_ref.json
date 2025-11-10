@@ -16,91 +16,247 @@
 	],
 	[
 		"RSA_PKCS_KEY_PAIR_GEN",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_GENERATE_KEY_PAIR"
 	],
 	[
 		"RSA_PKCS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_ENCRYPT,CKF_DECRYPT,CKF_SIGN,CKF_VERIFY,CKF_WRAP,CKF_UNWRAP"
 	],
 	[
 		"RSA_X_509",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_ENCRYPT,CKF_DECRYPT,CKF_SIGN,CKF_VERIFY,CKF_WRAP,CKF_UNWRAP"
 	],
 	[
 		"SHA1_RSA_PKCS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"RSA_PKCS_OAEP",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_ENCRYPT,CKF_DECRYPT,CKF_WRAP,CKF_UNWRAP"
 	],
 	[
 		"RSA_PKCS_PSS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA1_RSA_PKCS_PSS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
+		"0x0000000F",
+		"800",
+		"1568",
+		"CKF_GENERATE_KEY_PAIR"
+	],
+	[
+		"0x00000017",
+		"800",
+		"1568",
+		""
+	],
+	[
+		"0x0000001C",
+		"1312",
+		"2592",
+		"CKF_GENERATE_KEY_PAIR"
+	],
+	[
+		"0x0000001D",
+		"1312",
+		"2592",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x0000001F",
+		"1312",
+		"2592",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x00000020",
+		"2048",
+		"8192",
+		"CKF_GENERATE_KEY_PAIR"
+	],
+	[
+		"0x00000021",
+		"2048",
+		"8192",
+		"CKF_DERIVE"
+	],
+	[
+		"0x00000023",
+		"1312",
+		"2592",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x00000024",
+		"1312",
+		"2592",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x00000025",
+		"1312",
+		"2592",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x00000026",
+		"1312",
+		"2592",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x00000027",
+		"1312",
+		"2592",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x00000028",
+		"1312",
+		"2592",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x00000029",
+		"1312",
+		"2592",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x0000002A",
+		"1312",
+		"2592",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x0000002D",
+		"32",
+		"64",
+		"CKF_GENERATE_KEY_PAIR"
+	],
+	[
+		"0x0000002E",
+		"32",
+		"64",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x00000034",
+		"32",
+		"64",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x00000036",
+		"32",
+		"64",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x00000037",
+		"32",
+		"64",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x00000038",
+		"32",
+		"64",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x00000039",
+		"32",
+		"64",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x0000003A",
+		"32",
+		"64",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x0000003B",
+		"32",
+		"64",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x0000003C",
+		"32",
+		"64",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
+		"0x0000003D",
+		"32",
+		"64",
+		"CKF_SIGN,CKF_VERIFY"
+	],
+	[
 		"SHA256_RSA_PKCS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA384_RSA_PKCS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA512_RSA_PKCS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA256_RSA_PKCS_PSS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA384_RSA_PKCS_PSS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA512_RSA_PKCS_PSS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA224_RSA_PKCS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA224_RSA_PKCS_PSS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
@@ -153,50 +309,62 @@
 		"CKF_DERIVE"
 	],
 	[
+		"0x00000056",
+		"48",
+		"48",
+		"CKF_DERIVE"
+	],
+	[
+		"0x00000057",
+		"48",
+		"48",
+		"CKF_DERIVE"
+	],
+	[
 		"SHA3_256_RSA_PKCS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA3_384_RSA_PKCS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA3_512_RSA_PKCS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA3_256_RSA_PKCS_PSS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA3_384_RSA_PKCS_PSS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA3_512_RSA_PKCS_PSS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA3_224_RSA_PKCS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA3_224_RSA_PKCS_PSS",
-		"1024",
+		"2048",
 		"16384",
 		"CKF_SIGN,CKF_VERIFY"
 	],
@@ -391,6 +559,36 @@
 		"0",
 		"0",
 		"CKF_GENERATE"
+	],
+	[
+		"0x00000360",
+		"0",
+		"-1",
+		"CKF_DERIVE"
+	],
+	[
+		"0x00000362",
+		"0",
+		"-1",
+		"CKF_DERIVE"
+	],
+	[
+		"0x00000363",
+		"0",
+		"-1",
+		"CKF_DERIVE"
+	],
+	[
+		"0x00000364",
+		"0",
+		"-1",
+		"CKF_DERIVE"
+	],
+	[
+		"0x00000365",
+		"0",
+		"-1",
+		"CKF_DERIVE"
 	],
 	[
 		"0x00000392",
@@ -621,18 +819,6 @@
 		"CKF_ENCRYPT,CKF_DECRYPT,CKF_WRAP,CKF_UNWRAP"
 	],
 	[
-		"AES_MAC",
-		"16",
-		"32",
-		"CKF_SIGN,CKF_VERIFY"
-	],
-	[
-		"AES_MAC_GENERAL",
-		"16",
-		"32",
-		"CKF_SIGN,CKF_VERIFY"
-	],
-	[
 		"AES_CBC_PAD",
 		"16",
 		"32",
@@ -685,30 +871,6 @@
 		"16",
 		"32",
 		"CKF_DERIVE"
-	],
-	[
-		"AES_OFB",
-		"16",
-		"32",
-		"CKF_ENCRYPT,CKF_DECRYPT"
-	],
-	[
-		"AES_CFB8",
-		"16",
-		"32",
-		"CKF_ENCRYPT,CKF_DECRYPT"
-	],
-	[
-		"AES_CFB128",
-		"16",
-		"32",
-		"CKF_ENCRYPT,CKF_DECRYPT"
-	],
-	[
-		"0x00002108",
-		"16",
-		"32",
-		"CKF_ENCRYPT,CKF_DECRYPT"
 	],
 	[
 		"AES_KEY_WRAP",
@@ -783,6 +945,12 @@
 		"CKF_GENERATE"
 	],
 	[
+		"0x0000403A",
+		"0",
+		"0",
+		"CKF_DERIVE"
+	],
+	[
 		"0x8007678C",
 		"0",
 		"-1",
@@ -807,17 +975,11 @@
 		"01",
 		"RSA_PKCS",
 		"YES",
-		"YES"
+		""
 	],
 	[
 		"01",
 		"RSA_X_509",
-		"YES",
-		"YES"
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS",
 		"YES",
 		""
 	],
@@ -873,17 +1035,11 @@
 		"02",
 		"RSA_PKCS",
 		"YES",
-		"YES"
+		""
 	],
 	[
 		"02",
 		"RSA_X_509",
-		"YES",
-		"YES"
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS",
 		"YES",
 		""
 	],
@@ -938,12 +1094,6 @@
 	[
 		"03",
 		"ECDSA",
-		"YES",
-		""
-	],
-	[
-		"03",
-		"ECDSA_SHA1",
 		"YES",
 		""
 	],
@@ -992,12 +1142,6 @@
 	[
 		"04",
 		"ECDSA",
-		"YES",
-		""
-	],
-	[
-		"04",
-		"ECDSA_SHA1",
 		"YES",
 		""
 	],
@@ -1055,11 +1199,6 @@
 	],
 	[
 		"01",
-		"SHA1_RSA_PKCS",
-		"YES"
-	],
-	[
-		"01",
 		"SHA256_RSA_PKCS",
 		"YES"
 	],
@@ -1096,11 +1235,6 @@
 	[
 		"01",
 		"SHA3_224_RSA_PKCS",
-		"YES"
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS",
 		"YES"
 	],
 	[
@@ -1994,276 +2128,6 @@
 	[
 		"01",
 		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA224",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA224",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA224",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA256",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA256",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA256",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA384",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA384",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA384",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA512",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA512",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_224",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_224",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_224",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_256",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_256",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_256",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_384",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_384",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_384",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_512",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_512",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA224",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA224",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA224",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
 		"SHA224",
 		"MGF1_SHA224",
 		"-2",
@@ -2473,33 +2337,6 @@
 		"RSA_PKCS_PSS",
 		"SHA224",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA256",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA256",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA256",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -2724,33 +2561,6 @@
 		"01",
 		"RSA_PKCS_PSS",
 		"SHA384",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA384",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA384",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA384",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -2959,33 +2769,6 @@
 		"RSA_PKCS_PSS",
 		"SHA384",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA512",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA512",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA512",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -3210,33 +2993,6 @@
 		"01",
 		"RSA_PKCS_PSS",
 		"SHA3_224",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA3_224",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA3_224",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA3_224",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -3445,33 +3201,6 @@
 		"RSA_PKCS_PSS",
 		"SHA3_224",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA3_256",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA3_256",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA3_256",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -3696,33 +3425,6 @@
 		"01",
 		"RSA_PKCS_PSS",
 		"SHA3_384",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA3_384",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA3_384",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA3_384",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -3939,33 +3641,6 @@
 		"01",
 		"RSA_PKCS_PSS",
 		"SHA3_512",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA3_512",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA3_512",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"RSA_PKCS_PSS",
-		"SHA3_512",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -4174,276 +3849,6 @@
 		"RSA_PKCS_PSS",
 		"SHA3_512",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA224",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA224",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA224",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA256",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA256",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA256",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA384",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA384",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA384",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA512",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA512",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_224",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_224",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_224",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_256",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_256",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_256",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_384",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_384",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_384",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_512",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_512",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA256_RSA_PKCS_PSS",
-		"SHA256",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA256_RSA_PKCS_PSS",
-		"SHA256",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA256_RSA_PKCS_PSS",
-		"SHA256",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -4668,33 +4073,6 @@
 		"01",
 		"SHA384_RSA_PKCS_PSS",
 		"SHA384",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA384_RSA_PKCS_PSS",
-		"SHA384",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA384_RSA_PKCS_PSS",
-		"SHA384",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA384_RSA_PKCS_PSS",
-		"SHA384",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -4903,33 +4281,6 @@
 		"SHA384_RSA_PKCS_PSS",
 		"SHA384",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA512_RSA_PKCS_PSS",
-		"SHA512",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA512_RSA_PKCS_PSS",
-		"SHA512",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA512_RSA_PKCS_PSS",
-		"SHA512",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -5154,33 +4505,6 @@
 		"01",
 		"SHA224_RSA_PKCS_PSS",
 		"SHA224",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA224_RSA_PKCS_PSS",
-		"SHA224",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA224_RSA_PKCS_PSS",
-		"SHA224",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA224_RSA_PKCS_PSS",
-		"SHA224",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -5389,33 +4713,6 @@
 		"SHA224_RSA_PKCS_PSS",
 		"SHA224",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA3_256_RSA_PKCS_PSS",
-		"SHA3_256",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA3_256_RSA_PKCS_PSS",
-		"SHA3_256",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA3_256_RSA_PKCS_PSS",
-		"SHA3_256",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -5640,33 +4937,6 @@
 		"01",
 		"SHA3_384_RSA_PKCS_PSS",
 		"SHA3_384",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA3_384_RSA_PKCS_PSS",
-		"SHA3_384",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA3_384_RSA_PKCS_PSS",
-		"SHA3_384",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA3_384_RSA_PKCS_PSS",
-		"SHA3_384",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -5883,33 +5153,6 @@
 		"01",
 		"SHA3_512_RSA_PKCS_PSS",
 		"SHA3_512",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA3_512_RSA_PKCS_PSS",
-		"SHA3_512",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA3_512_RSA_PKCS_PSS",
-		"SHA3_512",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA3_512_RSA_PKCS_PSS",
-		"SHA3_512",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -6118,33 +5361,6 @@
 		"SHA3_512_RSA_PKCS_PSS",
 		"SHA3_512",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA3_224_RSA_PKCS_PSS",
-		"SHA3_224",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA3_224_RSA_PKCS_PSS",
-		"SHA3_224",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"01",
-		"SHA3_224_RSA_PKCS_PSS",
-		"SHA3_224",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -7097,276 +6313,6 @@
 	[
 		"02",
 		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA224",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA224",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA224",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA256",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA256",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA256",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA384",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA384",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA384",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA512",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA512",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_224",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_224",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_224",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_256",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_256",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_256",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_384",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_384",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_384",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_512",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_512",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA224",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA224",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA224",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
 		"SHA224",
 		"MGF1_SHA224",
 		"-2",
@@ -7576,33 +6522,6 @@
 		"RSA_PKCS_PSS",
 		"SHA224",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA256",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA256",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA256",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -7827,33 +6746,6 @@
 		"02",
 		"RSA_PKCS_PSS",
 		"SHA384",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA384",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA384",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA384",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -8062,33 +6954,6 @@
 		"RSA_PKCS_PSS",
 		"SHA384",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA512",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA512",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA512",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -8313,33 +7178,6 @@
 		"02",
 		"RSA_PKCS_PSS",
 		"SHA3_224",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA3_224",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA3_224",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA3_224",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -8548,33 +7386,6 @@
 		"RSA_PKCS_PSS",
 		"SHA3_224",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA3_256",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA3_256",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA3_256",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -8799,33 +7610,6 @@
 		"02",
 		"RSA_PKCS_PSS",
 		"SHA3_384",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA3_384",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA3_384",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA3_384",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -9042,33 +7826,6 @@
 		"02",
 		"RSA_PKCS_PSS",
 		"SHA3_512",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA3_512",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA3_512",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"RSA_PKCS_PSS",
-		"SHA3_512",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -9277,276 +8034,6 @@
 		"RSA_PKCS_PSS",
 		"SHA3_512",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA224",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA224",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA224",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA256",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA256",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA256",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA384",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA384",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA384",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA512",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA512",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_224",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_224",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_224",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_256",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_256",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_256",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_384",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_384",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_384",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_512",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_512",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA1_RSA_PKCS_PSS",
-		"SHA_1",
-		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA256_RSA_PKCS_PSS",
-		"SHA256",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA256_RSA_PKCS_PSS",
-		"SHA256",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA256_RSA_PKCS_PSS",
-		"SHA256",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -9771,33 +8258,6 @@
 		"02",
 		"SHA384_RSA_PKCS_PSS",
 		"SHA384",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA384_RSA_PKCS_PSS",
-		"SHA384",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA384_RSA_PKCS_PSS",
-		"SHA384",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA384_RSA_PKCS_PSS",
-		"SHA384",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -10006,33 +8466,6 @@
 		"SHA384_RSA_PKCS_PSS",
 		"SHA384",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA512_RSA_PKCS_PSS",
-		"SHA512",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA512_RSA_PKCS_PSS",
-		"SHA512",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA512_RSA_PKCS_PSS",
-		"SHA512",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -10257,33 +8690,6 @@
 		"02",
 		"SHA224_RSA_PKCS_PSS",
 		"SHA224",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA224_RSA_PKCS_PSS",
-		"SHA224",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA224_RSA_PKCS_PSS",
-		"SHA224",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA224_RSA_PKCS_PSS",
-		"SHA224",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -10492,33 +8898,6 @@
 		"SHA224_RSA_PKCS_PSS",
 		"SHA224",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA3_256_RSA_PKCS_PSS",
-		"SHA3_256",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA3_256_RSA_PKCS_PSS",
-		"SHA3_256",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA3_256_RSA_PKCS_PSS",
-		"SHA3_256",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
@@ -10743,33 +9122,6 @@
 		"02",
 		"SHA3_384_RSA_PKCS_PSS",
 		"SHA3_384",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA3_384_RSA_PKCS_PSS",
-		"SHA3_384",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA3_384_RSA_PKCS_PSS",
-		"SHA3_384",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA3_384_RSA_PKCS_PSS",
-		"SHA3_384",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -10986,33 +9338,6 @@
 		"02",
 		"SHA3_512_RSA_PKCS_PSS",
 		"SHA3_512",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA3_512_RSA_PKCS_PSS",
-		"SHA3_512",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA3_512_RSA_PKCS_PSS",
-		"SHA3_512",
-		"MGF1_SHA_1",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA3_512_RSA_PKCS_PSS",
-		"SHA3_512",
 		"MGF1_SHA224",
 		"-2",
 		"YES",
@@ -11221,33 +9546,6 @@
 		"SHA3_512_RSA_PKCS_PSS",
 		"SHA3_512",
 		"MGF1_SHA3_512",
-		"0",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA3_224_RSA_PKCS_PSS",
-		"SHA3_224",
-		"MGF1_SHA_1",
-		"-2",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA3_224_RSA_PKCS_PSS",
-		"SHA3_224",
-		"MGF1_SHA_1",
-		"-1",
-		"YES",
-		""
-	],
-	[
-		"02",
-		"SHA3_224_RSA_PKCS_PSS",
-		"SHA3_224",
-		"MGF1_SHA_1",
 		"0",
 		"YES",
 		""
