@@ -808,24 +808,31 @@ void readonly_tests(void **state) {
 		if (o->key_type != CKK_RSA &&
 		    o->key_type != CKK_EC &&
 		    o->key_type != CKK_EC_EDWARDS &&
-		    o->key_type != CKK_EC_MONTGOMERY)
+		    o->key_type != CKK_EC_MONTGOMERY &&
+		    o->key_type != CKK_ML_DSA &&
+		    o->key_type != CKK_SLH_DSA)
 			continue;
 
 		printf("\n[%-6s] [%s]\n",
 			o->id_str,
 			o->label);
-		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s]\n",
-			(o->key_type == CKK_RSA ? "RSA " :
-				o->key_type == CKK_EC ? " EC " :
-				o->key_type == CKK_EC_EDWARDS ? "EC_E" :
-				o->key_type == CKK_EC_MONTGOMERY ? "EC_M" : " ?? "),
+		printf("[%s] [%6lu] [ %s ] [%s%s] [%s%s] [%s%s]\n",
+			(o->key_type == CKK_RSA ? " RSA  " :
+				o->key_type == CKK_EC ? "  EC  " :
+				o->key_type == CKK_EC_EDWARDS ? "EDDSA" :
+				o->key_type == CKK_EC_MONTGOMERY ? "XEDDS" :
+				o->key_type == CKK_ML_DSA ? "ML-DSA" :
+				o->key_type == CKK_SLH_DSA ? "SLHDSA" : "  ??  "),
 			o->bits,
 			o->verify_public == 1 ? " ./ " : "    ",
 			o->sign ? "[./] " : "[  ] ",
 			o->verify ? " [./] " : " [  ] ",
 			o->encrypt ? "[./] " : "[  ] ",
-			o->decrypt ? " [./] " : " [  ] ");
-		if (!o->sign && !o->verify && !o->encrypt && !o->decrypt) {
+			o->decrypt ? " [./] " : " [  ] ",
+			o->encapsulate ? " [./] " : " [  ] ",
+			o->decapsulate ? " [./] " : " [  ] ");
+		if (!o->sign && !o->verify && !o->encrypt && !o->decrypt &&
+				!o->encapsulate && !o->decapsulate) {
 			printf("  no usable attributes found ... ignored\n");
 			continue;
 		}

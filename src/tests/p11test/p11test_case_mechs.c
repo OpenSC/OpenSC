@@ -155,6 +155,55 @@ supported_mechanisms_test(void **state)
 					P11TEST_FAIL(info, "Too many montgomery EC mechanisms (%d)", MAX_MECHS);
 			}
 
+			/* We list all known ML-DSA mechanisms */
+			if (mechanism_list[i] == CKM_ML_DSA ||
+					mechanism_list[i] == CKM_HASH_ML_DSA ||
+					mechanism_list[i] == CKM_HASH_ML_DSA_SHA224 ||
+					mechanism_list[i] == CKM_HASH_ML_DSA_SHA256 ||
+					mechanism_list[i] == CKM_HASH_ML_DSA_SHA384 ||
+					mechanism_list[i] == CKM_HASH_ML_DSA_SHA512 ||
+					mechanism_list[i] == CKM_HASH_ML_DSA_SHA3_224 ||
+					mechanism_list[i] == CKM_HASH_ML_DSA_SHA3_256 ||
+					mechanism_list[i] == CKM_HASH_ML_DSA_SHA3_384 ||
+					mechanism_list[i] == CKM_HASH_ML_DSA_SHA3_512 ||
+					mechanism_list[i] == CKM_HASH_ML_DSA_SHAKE128 ||
+					mechanism_list[i] == CKM_HASH_ML_DSA_SHAKE256) {
+				if (token.num_ml_dsa_mechs < MAX_MECHS) {
+					insert_mechanism(token.ml_dsa_mechs, &token.num_ml_dsa_mechs,
+							mechanism_list[i], mechanism_info[i]);
+				} else
+					P11TEST_FAIL(info, "Too many ML-DSA mechanisms (%d)", MAX_MECHS);
+			}
+
+			/* We list all known ML-KEM mechanisms */
+			if (mechanism_list[i] == CKM_ML_KEM) {
+				if (token.num_ml_kem_mechs < MAX_MECHS) {
+					insert_mechanism(token.ml_kem_mechs, &token.num_ml_kem_mechs,
+							mechanism_list[i], mechanism_info[i]);
+				} else
+					P11TEST_FAIL(info, "Too many ML-KEM mechanisms (%d)", MAX_MECHS);
+			}
+
+			/* We list all known SLH-DSA mechanisms */
+			if (mechanism_list[i] == CKM_SLH_DSA ||
+					mechanism_list[i] == CKM_HASH_SLH_DSA ||
+					mechanism_list[i] == CKM_HASH_SLH_DSA_SHA224 ||
+					mechanism_list[i] == CKM_HASH_SLH_DSA_SHA256 ||
+					mechanism_list[i] == CKM_HASH_SLH_DSA_SHA384 ||
+					mechanism_list[i] == CKM_HASH_SLH_DSA_SHA512 ||
+					mechanism_list[i] == CKM_HASH_SLH_DSA_SHA3_224 ||
+					mechanism_list[i] == CKM_HASH_SLH_DSA_SHA3_256 ||
+					mechanism_list[i] == CKM_HASH_SLH_DSA_SHA3_384 ||
+					mechanism_list[i] == CKM_HASH_SLH_DSA_SHA3_512 ||
+					mechanism_list[i] == CKM_HASH_SLH_DSA_SHAKE128 ||
+					mechanism_list[i] == CKM_HASH_SLH_DSA_SHAKE256) {
+				if (token.num_slh_dsa_mechs < MAX_MECHS) {
+					insert_mechanism(token.slh_dsa_mechs, &token.num_slh_dsa_mechs,
+							mechanism_list[i], mechanism_info[i]);
+				} else
+					P11TEST_FAIL(info, "Too many SLH-DSA mechanisms (%d)", MAX_MECHS);
+			}
+
 			/* We list all known secret key mechanisms */
 			if (mechanism_list[i] == CKM_AES_ECB ||
 			    mechanism_list[i] == CKM_AES_ECB_ENCRYPT_DATA ||

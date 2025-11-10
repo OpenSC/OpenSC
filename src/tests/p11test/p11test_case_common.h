@@ -54,9 +54,12 @@ typedef struct {
 	CK_KEY_TYPE	key_type;
 	CK_BBOOL	always_auth;
 	CK_BBOOL	extractable;
+	CK_BBOOL	decapsulate;
+	CK_BBOOL	encapsulate;
 	char		*label;
 	CK_ULONG 	 bits;
 	char 		*value;
+	CK_ULONG 	 parameter_set;
 	int			verify_public;
 	test_mech_t	mechs[MAX_PSS_MECHS];
 	size_t			num_mechs;
