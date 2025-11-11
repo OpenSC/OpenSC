@@ -46,21 +46,21 @@ function generate_key() {
 	fi
 
 	# Extract public key from the card
-	#$PKCS11_TOOL "${PUB_ARGS[@]}" --read-object --id $ID --type pubkey --output-file $ID.der
-	#if [[ "$?" -ne "0" ]]; then
-	#	echo "Couldn't read generated $TYPE public key"
-	#	return 1
-	#fi
+	$PKCS11_TOOL "${PUB_ARGS[@]}" --read-object --id $ID --type pubkey --output-file $ID.der
+	if [[ "$?" -ne "0" ]]; then
+		echo "Couldn't read generated $TYPE public key"
+		return 1
+	fi
 
-	## convert it to more digestible PEM format
-	#if [[ ${TYPE:0:3} == "RSA" ]]; then
-	#	openssl rsa -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
-	#elif [[ $TYPE == "EC:edwards25519" ]]; then
-	#	openssl pkey -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
-	#else
-	#	openssl ec -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
-	#fi
-	#rm $ID.der
+	# convert it to more digestible PEM format
+	if [[ ${TYPE:0:3} == "RSA" ]]; then
+		openssl rsa -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+	elif [[ $TYPE == "EC:edwards25519" ]]; then
+		openssl pkey -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+	else
+		openssl ec -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+	fi
+	rm $ID.der
 }
 
 function card_setup() {
@@ -91,14 +91,18 @@ function card_setup() {
 
 		# Generate Ed25519 Key pair
 		generate_key "EC:ed25519" "09" "ed25519" || return 1
+		# Generate Ed448 Key pair
+		generate_key "EC:ed448" "10" "ed448" || return 1
 		# Generate x25519 Key pair
-		generate_key "EC:cv25519" "10" "x25519" || return 1
+		generate_key "EC:x25519" "11" "x25519" || return 1
+		# Generate x448 Key pair
+		generate_key "EC:x448" "12" "x448" || return 1
 	fi
 
 }
 
 function card_cleanup() {
 	token_cleanup
-	#rm 0{1,2,3,4}.pub
+	rm 0{1,2,3,4}.pub
 	sleep 1
 }

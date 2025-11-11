@@ -95,6 +95,8 @@ add_object(test_certs_t *objects, CK_ATTRIBUTE key_id, CK_ATTRIBUTE label)
 	o->verify = 0;
 	o->decrypt = 0;
 	o->encrypt = 0;
+	o->encapsulate = 0;
+	o->decapsulate = 0;
 	o->wrap = 0;
 	o->unwrap = 0;
 	o->derive_priv = 0;
@@ -192,6 +194,7 @@ add_supported_mechs(test_cert_t *o)
 		break;
 #ifdef EVP_PKEY_ED25519
 	case EVP_PKEY_ED25519:
+	case EVP_PKEY_ED448:
 		if (token.num_ed_mechs > 0 ) {
 			o->num_mechs = token.num_ed_mechs;
 			for (i = 0; i < token.num_ed_mechs; i++) {
@@ -215,6 +218,7 @@ add_supported_mechs(test_cert_t *o)
 #endif
 #ifdef EVP_PKEY_X25519
 	case EVP_PKEY_X25519:
+	case EVP_PKEY_X448:
 		if (token.num_montgomery_mechs > 0 ) {
 			o->num_mechs = token.num_montgomery_mechs;
 			for (i = 0; i < token.num_montgomery_mechs; i++) {
@@ -734,27 +738,37 @@ int callback_public_keys(test_certs_t *objects,
 		ASN1_OBJECT *obj = NULL;
 		const unsigned char *a;
 		ASN1_OCTET_STRING *os;
-		int evp_type;
+		int evp_type = 0, exp_length = 0;
 
 		a = template[6].pValue;
 		if (d2i_ASN1_PRINTABLESTRING(&curve, &a, (long)template[6].ulValueLen) != NULL) {
 			switch (o->key_type) {
 #ifdef EVP_PKEY_ED25519
 			case CKK_EC_EDWARDS:
-				if (strcmp((char *)curve->data, "edwards25519")) {
-					debug_print(" [WARN %s ] Unknown curve name. "
-						" expected edwards25519, got %s", o->id_str, curve->data);
+				if (strcmp((char *)curve->data, "edwards25519") == 0) {
+					evp_type = EVP_PKEY_ED25519;
+					break;
+				} else if (strcmp((char *)curve->data, "edwards448") == 0) {
+					evp_type = EVP_PKEY_ED448;
+					break;
 				}
-				evp_type = EVP_PKEY_ED25519;
+				debug_print(" [WARN %s ] Unknown curve name. "
+						" expected edwards25519 or edwards448, got %s",
+						o->id_str, curve->data);
 				break;
 #endif
 #ifdef EVP_PKEY_X25519
 			case CKK_EC_MONTGOMERY:
-				if (strcmp((char *)curve->data, "curve25519")) {
-					debug_print(" [WARN %s ] Unknown curve name. "
-						" expected curve25519, got %s", o->id_str, curve->data);
+				if (strcmp((char *)curve->data, "curve25519") == 0) {
+					evp_type = EVP_PKEY_X25519;
+					break;
+				} else if (strcmp((char *)curve->data, "curve448") == 0) {
+					evp_type = EVP_PKEY_X448;
+					break;
 				}
-				evp_type = EVP_PKEY_X25519;
+				debug_print(" [WARN %s ] Unknown curve name. "
+						" expected curve25519 or curve448, got %s",
+						o->id_str, curve->data);
 				break;
 #endif
 			default:
@@ -771,20 +785,30 @@ int callback_public_keys(test_certs_t *objects,
 			switch (o->key_type) {
 #ifdef EVP_PKEY_ED25519
 			case CKK_EC_EDWARDS:
-				if (nid != NID_ED25519) {
-					debug_print(" [WARN %s ] Unknown OID. "
-						" expected NID_ED25519 (%d), got %d", o->id_str, NID_ED25519, nid);
+				if (nid == NID_ED25519) {
+					evp_type = EVP_PKEY_ED25519;
+					break;
+				} else if (nid == NID_ED448) {
+					evp_type = EVP_PKEY_ED448;
+					break;
 				}
-				evp_type = EVP_PKEY_ED25519;
+				debug_print(" [WARN %s ] Unknown OID. "
+						" expected NID_ED25519 (%d) or NID_ED448 (%d), got %d",
+						o->id_str, NID_ED25519, NID_ED448, nid);
 				break;
 #endif
 #ifdef EVP_PKEY_X25519
 			case CKK_EC_MONTGOMERY:
-				if (nid != NID_X25519) {
-					debug_print(" [WARN %s ] Unknown OID. "
-						" expected NID_X25519 (%d), got %d", o->id_str, NID_X25519, nid);
+				if (nid == NID_X25519) {
+					evp_type = EVP_PKEY_X25519;
+					break;
+				} else if (nid == NID_X448) {
+					evp_type = EVP_PKEY_X448;
+					break;
 				}
-				evp_type = EVP_PKEY_X25519;
+				debug_print(" [WARN %s ] Unknown OID. "
+						" expected NID_X25519 (%d) or NID_X448 (%d), got %d",
+						o->id_str, NID_X25519, NID_X448, nid);
 				break;
 #endif
 			default:
@@ -797,15 +821,38 @@ int callback_public_keys(test_certs_t *objects,
 			return -1;
 		}
 
-		/* PKCS#11-compliant modules should return ASN1_OCTET_STRING */
+		/* PKCS#11-compliant modules should return ASN1_OCTET_STRING or ASN1_BIT_STRING */
 		a = template[7].pValue;
 		os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)template[7].ulValueLen);
 		if (!os) {
-			debug_print(" [WARN %s ] Cannot decode EC_POINT", o->id_str);
-			return -1;
+			os = d2i_ASN1_BIT_STRING(NULL, &a, (long)template[7].ulValueLen);
 		}
-		if (os->length != 32) {
-			debug_print(" [WARN %s ] Invalid length of EC_POINT value", o->id_str);
+		/* or raw bytes as a last resort? */
+		if (!os) {
+			if ((os = ASN1_OCTET_STRING_new()) == NULL) {
+				debug_print(" [WARN %s ] Out of memory", o->id_str);
+				return -1;
+			}
+			if (ASN1_OCTET_STRING_set(os, template[7].pValue, (int)template[7].ulValueLen) == 0) {
+				debug_print(" [WARN %s ] Cannot decode EC_POINT", o->id_str);
+				return -1;
+			}
+		}
+		switch (evp_type) {
+		case EVP_PKEY_ED25519:
+		case EVP_PKEY_X25519:
+			exp_length = 32;
+			break;
+		case EVP_PKEY_ED448:
+			exp_length = 57;
+			break;
+		case EVP_PKEY_X448:
+			exp_length = 56;
+			break;
+		}
+		if (os->length != exp_length) {
+			debug_print(" [WARN %s ] Invalid length of EC_POINT value. Got %d, expected %d",
+					o->id_str, os->length, exp_length);
 			return -1;
 		}
 		key = EVP_PKEY_new_raw_public_key(evp_type, NULL,
@@ -850,7 +897,7 @@ int callback_public_keys(test_certs_t *objects,
 		} else { /* store the public key for future use */
 			o->type = evp_type;
 			o->key = key;
-			o->bits = 255;
+			o->bits = exp_length * 8;
 		}
 		ASN1_STRING_free(os);
 #ifdef EVP_PKEY_ML_DSA_44
@@ -1585,7 +1632,7 @@ get_mechanism_all_flag_name(unsigned long mech_id)
 	static char f_buffer[80];
 
 	f_buffer[0] = '\0';
-	for (j = 1; j <= CKF_EC_COMPRESS; j = j << 1)
+	for (j = 1; j <= CKF_DECAPSULATE; j = j << 1)
 		/* append the name of the mechanism (only for known mechanisms) */
 		if ((mech_id & j) != 0 && strncmp("0x", get_mechanism_flag_name(j), 2)) {
 			snprintf(f_buffer + strlen(f_buffer),

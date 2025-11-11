@@ -397,7 +397,8 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	CK_BYTE *cmp_message = NULL;
 	unsigned int cmp_message_length = 0;
 
-	if (o->type == EVP_PKEY_RSA) {
+	switch (o->type) {
+	case EVP_PKEY_RSA: {
 		const EVP_MD *md = NULL;
 		EVP_MD_CTX *mdctx = NULL;
 		EVP_PKEY_CTX *ctx = NULL;
@@ -481,7 +482,8 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		debug_print(" [  OK %s ] Signature is valid.", o->id_str);
 		EVP_MD_CTX_free(mdctx);
 		return 1;
-	} else if (o->type == EVP_PKEY_EC) {
+	}
+	case EVP_PKEY_EC: {
 		int nlen;
 		const EVP_MD *md = NULL;
 		ECDSA_SIG *sig = ECDSA_SIG_new();
@@ -576,8 +578,11 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 				rv, ERR_error_string(ERR_peek_last_error(), NULL));
 			return -1;
 		}
+		break;
+	}
 #ifdef EVP_PKEY_ED25519
-	} else if (o->type == EVP_PKEY_ED25519) {
+	case EVP_PKEY_ED25519:
+	case EVP_PKEY_ED448: {
 		/* need to be created even though we do not do any MD */
 		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
 
@@ -602,8 +607,10 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			EVP_MD_CTX_free(ctx);
 			return -1;
 		}
+		break;
+	}
 #endif
-	} else {
+	default:
 		fprintf(stderr, " [ KEY %s ] Unknown type. Not verifying\n", o->id_str);
 	}
 	return 0;
@@ -684,6 +691,11 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_BYTE *message = NULL;
 	CK_BYTE *sign = NULL;
 	CK_ULONG sign_length = 0;
+	CK_EDDSA_PARAMS eddsa_params = {
+			.phFlag = CK_FALSE,
+			.ulContextDataLen = 0,
+			.pContextData = NULL,
+	};
 	int rv = 0;
 
 	if (message_length > strlen(MESSAGE_TO_SIGN)) {
@@ -696,11 +708,39 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	if (o->type != EVP_PKEY_EC && o->type != EVP_PKEY_RSA
+	switch (o->type) {
+	case EVP_PKEY_EC:
+	case EVP_PKEY_RSA:
 #ifdef EVP_PKEY_ED25519
-			&& o->type != EVP_PKEY_ED25519
+	case EVP_PKEY_ED448:
+		/* The Ed448 requires parameter */
+		mech->params = &eddsa_params;
+		mech->params_len = sizeof(CK_EDDSA_PARAMS);
+		break;
+	case EVP_PKEY_ED25519:
 #endif
-			) {
+#ifdef EVP_PKEY_ML_DSA_44
+	case EVP_PKEY_ML_DSA_44:
+	case EVP_PKEY_ML_DSA_65:
+	case EVP_PKEY_ML_DSA_87:
+#endif
+#ifdef EVP_PKEY_SLH_DSA_SHA2_128S
+	case EVP_PKEY_SLH_DSA_SHA2_128S:
+	case EVP_PKEY_SLH_DSA_SHAKE_128S:
+	case EVP_PKEY_SLH_DSA_SHA2_128F:
+	case EVP_PKEY_SLH_DSA_SHAKE_128F:
+	case EVP_PKEY_SLH_DSA_SHA2_192S:
+	case EVP_PKEY_SLH_DSA_SHAKE_192S:
+	case EVP_PKEY_SLH_DSA_SHA2_192F:
+	case EVP_PKEY_SLH_DSA_SHAKE_192F:
+	case EVP_PKEY_SLH_DSA_SHA2_256S:
+	case EVP_PKEY_SLH_DSA_SHAKE_256S:
+	case EVP_PKEY_SLH_DSA_SHA2_256F:
+	case EVP_PKEY_SLH_DSA_SHAKE_256F:
+#endif
+		/* OK */
+		break;
+	default:
 		debug_print(" [SKIP %s ] Skip non-RSA and non-EC key", o->id_str);
 		return 0;
 	}
@@ -808,7 +848,6 @@ void readonly_tests(void **state) {
 		if (o->key_type != CKK_RSA &&
 		    o->key_type != CKK_EC &&
 		    o->key_type != CKK_EC_EDWARDS &&
-		    o->key_type != CKK_EC_MONTGOMERY &&
 		    o->key_type != CKK_ML_DSA &&
 		    o->key_type != CKK_SLH_DSA)
 			continue;
@@ -816,11 +855,10 @@ void readonly_tests(void **state) {
 		printf("\n[%-6s] [%s]\n",
 			o->id_str,
 			o->label);
-		printf("[%s] [%6lu] [ %s ] [%s%s] [%s%s] [%s%s]\n",
+		printf("[%s] [%6lu] [ %s ] [%s%s] [%s%s]\n",
 			(o->key_type == CKK_RSA ? " RSA  " :
 				o->key_type == CKK_EC ? "  EC  " :
-				o->key_type == CKK_EC_EDWARDS ? "EDDSA" :
-				o->key_type == CKK_EC_MONTGOMERY ? "XEDDS" :
+				o->key_type == CKK_EC_EDWARDS ? "EDDSA " :
 				o->key_type == CKK_ML_DSA ? "ML-DSA" :
 				o->key_type == CKK_SLH_DSA ? "SLHDSA" : "  ??  "),
 			o->bits,
@@ -828,9 +866,7 @@ void readonly_tests(void **state) {
 			o->sign ? "[./] " : "[  ] ",
 			o->verify ? " [./] " : " [  ] ",
 			o->encrypt ? "[./] " : "[  ] ",
-			o->decrypt ? " [./] " : " [  ] ",
-			o->encapsulate ? " [./] " : " [  ] ",
-			o->decapsulate ? " [./] " : " [  ] ");
+			o->decrypt ? " [./] " : " [  ] ");
 		if (!o->sign && !o->verify && !o->encrypt && !o->decrypt &&
 				!o->encapsulate && !o->decapsulate) {
 			printf("  no usable attributes found ... ignored\n");
