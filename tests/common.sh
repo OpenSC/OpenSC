@@ -46,21 +46,21 @@ function generate_key() {
 	fi
 
 	# Extract public key from the card
-	#$PKCS11_TOOL "${PUB_ARGS[@]}" --read-object --id $ID --type pubkey --output-file $ID.der
-	#if [[ "$?" -ne "0" ]]; then
-	#	echo "Couldn't read generated $TYPE public key"
-	#	return 1
-	#fi
+	$PKCS11_TOOL "${PUB_ARGS[@]}" --read-object --id $ID --type pubkey --output-file $ID.der
+	if [[ "$?" -ne "0" ]]; then
+		echo "Couldn't read generated $TYPE public key"
+		return 1
+	fi
 
-	## convert it to more digestible PEM format
-	#if [[ ${TYPE:0:3} == "RSA" ]]; then
-	#	openssl rsa -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
-	#elif [[ $TYPE == "EC:edwards25519" ]]; then
-	#	openssl pkey -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
-	#else
-	#	openssl ec -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
-	#fi
-	#rm $ID.der
+	# convert it to more digestible PEM format
+	if [[ ${TYPE:0:3} == "RSA" ]]; then
+		openssl rsa -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+	elif [[ $TYPE == "EC:edwards25519" ]]; then
+		openssl pkey -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+	else
+		openssl ec -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+	fi
+	rm $ID.der
 }
 
 function card_setup() {
@@ -84,23 +84,25 @@ function card_setup() {
 	if [ "${TOKENTYPE}" == "kryoptic" ]; then
 		# Generate Ed25519 Key pair
 		generate_key "EC:ed25519" "06" "ed25519" || return 1
+		# Generate Ed448 Key pair
+		generate_key "EC:ed448" "07" "ed448" || return 1
 		# Generate x25519 Key pair
-		generate_key "EC:x25519" "07" "x25519" || return 1
+		generate_key "EC:x25519" "08" "x25519" || return 1
 		# Generate x448 Key pair
-		generate_key "EC:x448" "08" "x448" || return 1
+		generate_key "EC:x448" "09" "x448" || return 1
 
 		# Generate ML-DSA-65 Key pair
-		generate_key "ML-DSA-65" "09" "ML-DSA-65" || return 1
+		generate_key "ML-DSA-65" "10" "ML-DSA-65" || return 1
 		# Generate ML-KEM-768 Key pair
-		generate_key "ML-KEM-768" "10" "ML-KEM-768" || return 1
+		generate_key "ML-KEM-768" "11" "ML-KEM-768" || return 1
 		# Generate SLH-DSA-SHA2-192S Key pair
-		generate_key "SLH-DSA-SHA2-192S" "11" "SLH-DSA-SHA2-192S" || return 1
+		generate_key "SLH-DSA-SHA2-192S" "12" "SLH-DSA-SHA2-192S" || return 1
 	fi
 
 }
 
 function card_cleanup() {
 	token_cleanup
-	#rm 0{1,2,3,4}.pub
+	rm 0{1,2,3,4}.pub
 	sleep 1
 }

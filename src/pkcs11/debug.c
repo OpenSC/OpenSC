@@ -62,6 +62,9 @@ static struct fmap	map_CKA_CLASS[] = {
 	_(CKO_SECRET_KEY),
 	_(CKO_HW_FEATURE),
 	_(CKO_DOMAIN_PARAMETERS),
+	_(CKO_PROFILE),
+	_(CKO_VALIDATION),
+	_(CKO_TRUST),
 
 	{ 0, NULL, NULL, NULL }
 };
@@ -81,6 +84,7 @@ static struct fmap	map_CKA_KEY_TYPE[] = {
 	_(CKK_EC),
 	_(CKK_EC_EDWARDS),
 	_(CKK_EC_MONTGOMERY),
+	_(CKK_GENERIC_SECRET),
 	_(CKK_RC2),
 	_(CKK_RC4),
 	_(CKK_RC5),
@@ -91,6 +95,9 @@ static struct fmap	map_CKA_KEY_TYPE[] = {
 	_(CKK_CAST128),
 	_(CKK_IDEA),
 	_(CKK_AES),
+	_(CKK_ML_DSA),
+	_(CKK_ML_KEM),
+	_(CKK_SLH_DSA),
 
 	{ 0, NULL, NULL, NULL }
 };
@@ -158,6 +165,10 @@ static struct fmap	p11_attr_names[] = {
 	_(CKA_VENDOR_DEFINED),
 	b(CKA_ALWAYS_AUTHENTICATE),
 	_(CKA_GOSTR3410_PARAMS),
+	ul(CKA_PARAMETER_SET),
+	b(CKA_ENCAPSULATE),
+	b(CKA_DECAPSULATE),
+	_(CKA_SEED),
 
 	{ 0, NULL, NULL, NULL }
 };

@@ -310,7 +310,6 @@ static enum_specs ck_cls_s[] = {
   {CKO_PUBLIC_KEY           , "CKO_PUBLIC_KEY           "},
   {CKO_PRIVATE_KEY          , "CKO_PRIVATE_KEY          "},
   {CKO_SECRET_KEY           , "CKO_SECRET_KEY           "},
-  {CKO_PROFILE              , "CKO_PROFILE              "},
   {CKO_HW_FEATURE           , "CKO_HW_FEATURE           "},
   {CKO_DOMAIN_PARAMETERS    , "CKO_DOMAIN_PARAMETERS    "},
   {CKO_MECHANISM            , "CKO_MECHANISM            "},
