@@ -3696,9 +3696,9 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 			if (strcmp(type, "ML-DSA-44") == 0) {
 				ml_dsa_parameter_set = CKP_ML_DSA_44;
-			} else if (strcmp(type, "ML-DSA-65")) {
+			} else if (strcmp(type, "ML-DSA-65") == 0) {
 				ml_dsa_parameter_set = CKP_ML_DSA_65;
-			} else if (strcmp(type, "ML-DSA-87")) {
+			} else if (strcmp(type, "ML-DSA-87") == 0) {
 				ml_dsa_parameter_set = CKP_ML_DSA_87;
 			} else {
 				util_fatal("Invalid ML-DSA key type '%s'", type);
@@ -3728,9 +3728,9 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 			if (strcmp(type, "ML-KEM-512") == 0) {
 				ml_kem_parameter_set = CKP_ML_KEM_512;
-			} else if (strcmp(type, "ML-KEM-768")) {
+			} else if (strcmp(type, "ML-KEM-768") == 0) {
 				ml_kem_parameter_set = CKP_ML_KEM_768;
-			} else if (strcmp(type, "ML-KEM-1024")) {
+			} else if (strcmp(type, "ML-KEM-1024") == 0) {
 				ml_kem_parameter_set = CKP_ML_KEM_1024;
 			} else {
 				util_fatal("Invalid ML-KEM key type '%s'", type);
@@ -3760,27 +3760,27 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 
 			if (strcmp(type, "SLH-DSA-SHA2-128S") == 0) {
 				slh_dsa_parameter_set = CKP_SLH_DSA_SHA2_128S;
-			} else if (strcmp(type, "SLH-DSA-SHAKE-128S")) {
+			} else if (strcmp(type, "SLH-DSA-SHAKE-128S") == 0) {
 				slh_dsa_parameter_set = CKP_SLH_DSA_SHAKE_128S;
-			} else if (strcmp(type, "SLH-DSA-SHA2-128F")) {
+			} else if (strcmp(type, "SLH-DSA-SHA2-128F") == 0) {
 				slh_dsa_parameter_set = CKP_SLH_DSA_SHA2_128F;
-			} else if (strcmp(type, "SLH-DSA-SHAKE-128F")) {
+			} else if (strcmp(type, "SLH-DSA-SHAKE-128F") == 0) {
 				slh_dsa_parameter_set = CKP_SLH_DSA_SHAKE_128F;
-			} else if (strcmp(type, "SLH-DSA-SHA2-192S")) {
+			} else if (strcmp(type, "SLH-DSA-SHA2-192S") == 0) {
 				slh_dsa_parameter_set = CKP_SLH_DSA_SHA2_192S;
-			} else if (strcmp(type, "SLH-DSA-SHAKE-192S")) {
+			} else if (strcmp(type, "SLH-DSA-SHAKE-192S") == 0) {
 				slh_dsa_parameter_set = CKP_SLH_DSA_SHAKE_192S;
-			} else if (strcmp(type, "SLH-DSA-SHA2-192F")) {
+			} else if (strcmp(type, "SLH-DSA-SHA2-192F") == 0) {
 				slh_dsa_parameter_set = CKP_SLH_DSA_SHA2_192F;
-			} else if (strcmp(type, "SLH-DSA-SHAKE-192F")) {
+			} else if (strcmp(type, "SLH-DSA-SHAKE-192F") == 0) {
 				slh_dsa_parameter_set = CKP_SLH_DSA_SHAKE_192F;
-			} else if (strcmp(type, "SLH-DSA-SHA2-256S")) {
+			} else if (strcmp(type, "SLH-DSA-SHA2-256S") == 0) {
 				slh_dsa_parameter_set = CKP_SLH_DSA_SHA2_256S;
-			} else if (strcmp(type, "SLH-DSA-SHAKE-256S")) {
+			} else if (strcmp(type, "SLH-DSA-SHAKE-256S") == 0) {
 				slh_dsa_parameter_set = CKP_SLH_DSA_SHAKE_256S;
-			} else if (strcmp(type, "SLH-DSA-SHA2-256F")) {
+			} else if (strcmp(type, "SLH-DSA-SHA2-256F") == 0) {
 				slh_dsa_parameter_set = CKP_SLH_DSA_SHA2_256F;
-			} else if (strcmp(type, "SLH-DSA-SHAKE-256F")) {
+			} else if (strcmp(type, "SLH-DSA-SHAKE-256F") == 0) {
 				slh_dsa_parameter_set = CKP_SLH_DSA_SHAKE_256F;
 			} else {
 				util_fatal("Invalid SLH-DSA key type '%s'", type);
