@@ -4519,7 +4519,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	}
 
 	/* NIST 800-73-3 says use 9B, previous versions used 00 */
-	r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
+	r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
 	/*
 	 * piv_get_challenge is called in a loop.
 	 * some cards may allow 1 challenge expecting it to be part of
@@ -4528,7 +4528,7 @@ static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	 * Now that the card returned error, we can try one more time.
 	 */
 	 if (r == SC_ERROR_INCORRECT_PARAMETERS) {
-		r = piv_general_io(card, 0x87, 0x00, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
+		r = piv_general_io(card, 0x87, priv->mgmt_key_alg, 0x9B, sbuf, sizeof sbuf, rbuf, sizeof rbuf);
 		if (r == SC_ERROR_INCORRECT_PARAMETERS) {
 			r = SC_ERROR_NOT_SUPPORTED;
 		}
