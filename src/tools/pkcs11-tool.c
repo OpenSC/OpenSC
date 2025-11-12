@@ -761,6 +761,8 @@ ATTR_METHOD(EXTRACTABLE, CK_BBOOL);			/* getEXTRACTABLE */
 ATTR_METHOD(NEVER_EXTRACTABLE, CK_BBOOL);		/* getNEVER_EXTRACTABLE */
 ATTR_METHOD(LOCAL, CK_BBOOL);				/* getLOCAL */
 ATTR_METHOD(OPENSC_NON_REPUDIATION, CK_BBOOL);		/* getOPENSC_NON_REPUDIATION */
+ATTR_METHOD(ENCAPSULATE, CK_BBOOL);			/* getENCAPSULATE */
+ATTR_METHOD(DECAPSULATE, CK_BBOOL);			/* getDECAPSULATE */
 ATTR_METHOD(KEY_TYPE, CK_KEY_TYPE);			/* getKEY_TYPE */
 ATTR_METHOD(CERTIFICATE_TYPE, CK_CERTIFICATE_TYPE);	/* getCERTIFICATE_TYPE */
 ATTR_METHOD(MODULUS_BITS, CK_ULONG);			/* getMODULUS_BITS */
@@ -3708,9 +3710,11 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				if (!find_mechanism(slot, CKF_GENERATE_KEY_PAIR, mtypes, mtypes_num, &opt_mechanism))
 					util_fatal("Generate ML-DSA mechanism not supported");
 
-			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PARAMETER_SET, &ml_dsa_parameter_set, sizeof(CK_ML_DSA_PARAMETER_SET_TYPE));
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PARAMETER_SET,
+					&ml_dsa_parameter_set, sizeof(CK_ML_DSA_PARAMETER_SET_TYPE));
 			n_pubkey_attr++;
-			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PARAMETER_SET, &ml_dsa_parameter_set, sizeof(CK_ML_DSA_PARAMETER_SET_TYPE));
+			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PARAMETER_SET,
+					&ml_dsa_parameter_set, sizeof(CK_ML_DSA_PARAMETER_SET_TYPE));
 			n_privkey_attr++;
 
 			if (opt_key_usage_default || opt_key_usage_sign) {
@@ -3740,9 +3744,11 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				if (!find_mechanism(slot, CKF_GENERATE_KEY_PAIR, mtypes, mtypes_num, &opt_mechanism))
 					util_fatal("Generate ML-KEM mechanism not supported");
 
-			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PARAMETER_SET, &ml_kem_parameter_set, sizeof(CK_ML_KEM_PARAMETER_SET_TYPE));
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PARAMETER_SET,
+				&ml_kem_parameter_set, sizeof(CK_ML_KEM_PARAMETER_SET_TYPE));
 			n_pubkey_attr++;
-			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PARAMETER_SET, &ml_kem_parameter_set, sizeof(CK_ML_KEM_PARAMETER_SET_TYPE));
+			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PARAMETER_SET,
+				&ml_kem_parameter_set, sizeof(CK_ML_KEM_PARAMETER_SET_TYPE));
 			n_privkey_attr++;
 
 			if (opt_key_usage_default || opt_key_usage_encapsulate) {
@@ -3790,9 +3796,11 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 				if (!find_mechanism(slot, CKF_GENERATE_KEY_PAIR, mtypes, mtypes_num, &opt_mechanism))
 					util_fatal("Generate SLH-DSA mechanism not supported");
 
-			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PARAMETER_SET, &slh_dsa_parameter_set, sizeof(CK_SLH_DSA_PARAMETER_SET_TYPE));
+			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PARAMETER_SET,
+				&slh_dsa_parameter_set, sizeof(CK_SLH_DSA_PARAMETER_SET_TYPE));
 			n_pubkey_attr++;
-			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PARAMETER_SET, &slh_dsa_parameter_set, sizeof(CK_SLH_DSA_PARAMETER_SET_TYPE));
+			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PARAMETER_SET,
+				&slh_dsa_parameter_set, sizeof(CK_SLH_DSA_PARAMETER_SET_TYPE));
 			n_privkey_attr++;
 
 			if (opt_key_usage_default || opt_key_usage_sign) {
@@ -4703,9 +4711,43 @@ parse_pqc_pkey(EVP_PKEY *pkey, CK_KEY_TYPE type, int private, struct pqckey_info
 {
 	int rc;
 
-	/* FIXME convert the type to parameter set? */
-	if ((pqc->type = EVP_PKEY_get_id(pkey)) == -1) {
-		return -1;
+	const char *str_name = EVP_PKEY_get0_type_name(pkey);
+	if (strcmp(str_name, "ML-DSA-44") == 0) {
+		pqc->type = CKP_ML_DSA_44;
+	} else if (strcmp(str_name,  "ML-DSA-65") == 0) {
+		pqc->type = CKP_ML_DSA_65;
+	} else if (strcmp(str_name, "ML-DSA-87") == 0) {
+		pqc->type = CKP_ML_DSA_87;
+	} else if (strcmp(str_name, "ML-KEM-512") == 0) {
+		pqc->type = CKP_ML_KEM_512;
+	} else if (strcmp(str_name, "ML-KEM-768") == 0) {
+		pqc->type = CKP_ML_KEM_768;
+	} else if (strcmp(str_name, "ML-KEM-1024") == 0) {
+		pqc->type = CKP_ML_KEM_1024;
+	} else if (strcmp(str_name, "SLH-DSA-SHA2-128f") == 0) {
+		pqc->type = CKP_SLH_DSA_SHA2_128F;
+        } else if (strcmp(str_name, "SLH-DSA-SHA2-128s") == 0) {
+		pqc->type = CKP_SLH_DSA_SHA2_128S;
+        } else if (strcmp(str_name, "SLH-DSA-SHA2-192f") == 0) {
+		pqc->type = CKP_SLH_DSA_SHA2_192F;
+        } else if (strcmp(str_name, "SLH-DSA-SHA2-192s") == 0) {
+		pqc->type = CKP_SLH_DSA_SHA2_192S;
+        } else if (strcmp(str_name, "SLH-DSA-SHA2-256f") == 0) {
+		pqc->type = CKP_SLH_DSA_SHA2_256F;
+        } else if (strcmp(str_name, "SLH-DSA-SHA2-256s") == 0) {
+		pqc->type = CKP_SLH_DSA_SHA2_256S;
+        } else if (strcmp(str_name, "SLH-DSA-SHAKE-128f") == 0) {
+		pqc->type = CKP_SLH_DSA_SHAKE_128F;
+        } else if (strcmp(str_name, "SLH-DSA-SHAKE-128s") == 0) {
+		pqc->type = CKP_SLH_DSA_SHAKE_128S;
+        } else if (strcmp(str_name, "SLH-DSA-SHAKE-192f") == 0) {
+		pqc->type = CKP_SLH_DSA_SHAKE_192F;
+        } else if (strcmp(str_name, "SLH-DSA-SHAKE-192s") == 0) {
+		pqc->type = CKP_SLH_DSA_SHAKE_192S;
+        } else if (strcmp(str_name, "SLH-DSA-SHAKE-256f") == 0) {
+		pqc->type = CKP_SLH_DSA_SHAKE_256F;
+        } else if (strcmp(str_name, "SLH-DSA-SHAKE-256s") == 0) {
+		pqc->type = CKP_SLH_DSA_SHAKE_256S;
 	}
 	if (private) {
 		size_t priv_len;
@@ -4725,20 +4767,21 @@ parse_pqc_pkey(EVP_PKEY *pkey, CK_KEY_TYPE type, int private, struct pqckey_info
 
 				return -1;
 			}
-		}
-
-		switch (type) {
-		case CKK_ML_DSA:
-			seed_param = OSSL_PKEY_PARAM_ML_DSA_SEED;
-			break;
-		case CKK_SLH_DSA:
-			seed_param = OSSL_PKEY_PARAM_SLH_DSA_SEED;
-			break;
-		}
-		if (seed_param != NULL) {
-			size_t seed_len = 0;
-			rc = EVP_PKEY_get_octet_string_param(pkey, seed_param, NULL, 0, &seed_len);
-			if (rc == 1) {
+		} else {
+			switch (type) {
+			case CKK_ML_DSA:
+				seed_param = OSSL_PKEY_PARAM_ML_DSA_SEED;
+				break;
+			case CKK_SLH_DSA:
+				seed_param = OSSL_PKEY_PARAM_SLH_DSA_SEED;
+				break;
+			}
+			if (seed_param != NULL) {
+				size_t seed_len = 0;
+				rc = EVP_PKEY_get_octet_string_param(pkey, seed_param, NULL, 0, &seed_len);
+				if (rc != 1) {
+					util_fatal("Neither PRIVATE key value nor seed available");
+				}
 				pqc->seed.len = seed_len;
 				if (!(pqc->seed.value = OPENSSL_malloc(pqc->seed.len))) {
 					OPENSSL_free(pqc->private.value);
@@ -4751,11 +4794,9 @@ parse_pqc_pkey(EVP_PKEY *pkey, CK_KEY_TYPE type, int private, struct pqckey_info
 					OPENSSL_free(pqc->seed.value);
 					return -1;
 				}
+			} else  {
+				util_fatal("PRIVATE key value available");
 			}
-		}
-		/* But we need at least one */
-		if (pqc->seed.value == NULL && pqc->private.value == NULL) {
-			return -1;
 		}
 	} else {
 		size_t pub_len;
@@ -4797,89 +4838,141 @@ evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type, struct ec_
 	if (ec_curve_info)
 		*ec_curve_info = NULL;
 
+	switch (*pk_type) {
 #if defined(EVP_PKEY_RSA)
-	if (*pk_type == EVP_PKEY_RSA) {
+	case EVP_PKEY_RSA:
 		*type = CKK_RSA;
 		return CKR_OK;
-	}
 #endif
 
 #if defined(EVP_PKEY_EC)
-	if (*pk_type == EVP_PKEY_EC) {
+	case EVP_PKEY_EC:
 		*type = CKK_EC;
 		return CKR_OK;
-	}
 #endif
 
 #if defined(EVP_PKEY_ED25519)
-	if (*pk_type == EVP_PKEY_ED25519) {
+	case EVP_PKEY_ED25519:
 		*type = CKK_EC_EDWARDS;
 		if (ec_curve_info == NULL)
 			goto err;
 		*ec_curve_info = match_ec_curve_by_name("Ed25519");
 		return CKR_OK;
-	}
 #endif
 
 #if defined(EVP_PKEY_ED448)
-	if (*pk_type == EVP_PKEY_ED448) {
+	case EVP_PKEY_ED448:
 		*type = CKK_EC_EDWARDS;
 		if (ec_curve_info == NULL)
 			goto err;
 		*ec_curve_info = match_ec_curve_by_name("Ed448");
 		return CKR_OK;
-	}
 #endif
 
 #if defined(EVP_PKEY_X25519)
-	if (*pk_type == EVP_PKEY_X25519) {
+	case EVP_PKEY_X25519:
 		*type = CKK_EC_MONTGOMERY;
 		if (ec_curve_info == NULL)
 			goto err;
 		*ec_curve_info = match_ec_curve_by_name("X25519");
 		return CKR_OK;
-	}
 #endif
 
 #if defined(EVP_PKEY_X448)
-	if (*pk_type == EVP_PKEY_X448) {
+	case EVP_PKEY_X448:
 		*type = CKK_EC_MONTGOMERY;
 		if (ec_curve_info == NULL)
 			goto err;
 		*ec_curve_info = match_ec_curve_by_name("X448");
 		return CKR_OK;
-	}
 #endif
 
 #if defined(NID_id_GostR3410_2001)
-	if (*pk_type == NID_id_GostR3410_2001) {
+	case NID_id_GostR3410_2001:
 		*type = CKK_GOSTR3410;
 		return CKR_OK;
-	}
 #endif
 
 #if defined(EVP_PKEY_GOSTR3411)
-	if (*pk_type == EVP_PKEY_GOSTR3411) {
+	case EVP_PKEY_GOSTR3411:
 		*type = CKK_GOSTR3411;
 		return CKR_OK;
-	}
 #endif
 
 #if defined(EVP_PKEY_GOST28147)
-	if (*pk_type == EVP_PKEY_GOST28147) {
+	case EVP_PKEY_GOST28147:
 		*type = CKK_GOST28147;
 		return CKR_OK;
-	}
 #endif
 
 #if defined(EVP_PKEY_ML_DSA_44) && defined(EVP_PKEY_ML_DSA_65) && defined(EVP_PKEY_ML_DSA_87)
-	if (*pk_type == EVP_PKEY_ML_DSA_44 || *pk_type == EVP_PKEY_ML_DSA_65 || *pk_type == EVP_PKEY_ML_DSA_87) {
+	case EVP_PKEY_ML_DSA_44:
+	case EVP_PKEY_ML_DSA_65:
+	case EVP_PKEY_ML_DSA_87:
 		*type = CKK_ML_DSA;
 		return CKR_OK;
-	}
 #endif
+
+#if defined(EVP_PKEY_ML_KEM_512) && defined(EVP_PKEY_ML_KEM_768) && defined(EVP_PKEY_ML_KEM_1024)
+	case EVP_PKEY_ML_KEM_512:
+	case EVP_PKEY_ML_KEM_768:
+	case EVP_PKEY_ML_KEM_1024:
+		*type = CKK_ML_KEM;
+		return CKR_OK;
+#endif
+
+#if defined(EVP_PKEY_SLH_DSA_SHA2_128S)
+	case EVP_PKEY_SLH_DSA_SHA2_128S:
+	case EVP_PKEY_SLH_DSA_SHAKE_128S:
+	case EVP_PKEY_SLH_DSA_SHA2_128F:
+	case EVP_PKEY_SLH_DSA_SHAKE_128F:
+	case EVP_PKEY_SLH_DSA_SHA2_192S:
+	case EVP_PKEY_SLH_DSA_SHAKE_192S:
+	case EVP_PKEY_SLH_DSA_SHA2_192F:
+	case EVP_PKEY_SLH_DSA_SHAKE_192F:
+	case EVP_PKEY_SLH_DSA_SHA2_256S:
+	case EVP_PKEY_SLH_DSA_SHAKE_256S:
+	case EVP_PKEY_SLH_DSA_SHA2_256F:
+	case EVP_PKEY_SLH_DSA_SHAKE_256F:
+		*type = CKK_SLH_DSA;
+		return CKR_OK;
+#endif
+	}
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	/* Still no dice? Try the new OpenSSL 3.0 API */
+	const char *str_name = EVP_PKEY_get0_type_name(pkey);
+	if (strcmp(str_name, "ML-DSA-44") == 0 ||
+			strcmp(str_name, "ML-DSA-65") == 0 ||
+			strcmp(str_name, "ML-DSA-87") == 0) {
+		*type = CKK_ML_DSA;
+		return CKR_OK;
+	} else if (strcmp(str_name, "ML-KEM-512") == 0 ||
+			strcmp(str_name, "ML-KEM-768") == 0 ||
+			strcmp(str_name, "ML-KEM-1024") == 0) {
+		*type = CKK_ML_KEM;
+		return CKR_OK;
+	} else if (strcmp(str_name, "SLH-DSA-SHA2-128f") == 0 ||
+        		strcmp(str_name, "SLH-DSA-SHA2-128s") == 0 ||
+        		strcmp(str_name, "SLH-DSA-SHA2-192f") == 0 ||
+        		strcmp(str_name, "SLH-DSA-SHA2-192s") == 0 ||
+        		strcmp(str_name, "SLH-DSA-SHA2-256f") == 0 ||
+        		strcmp(str_name, "SLH-DSA-SHA2-256s") == 0 ||
+        		strcmp(str_name, "SLH-DSA-SHAKE-128f") == 0 ||
+        		strcmp(str_name, "SLH-DSA-SHAKE-128s") == 0 ||
+        		strcmp(str_name, "SLH-DSA-SHAKE-192f") == 0 ||
+        		strcmp(str_name, "SLH-DSA-SHAKE-192s") == 0 ||
+        		strcmp(str_name, "SLH-DSA-SHAKE-256f") == 0 ||
+        		strcmp(str_name, "SLH-DSA-SHAKE-256s") == 0) {
+		*type = CKK_SLH_DSA;
+		return CKR_OK;
+	}
+
+#endif
+
 err:
 	/* unsupported by OpenSSL, PKCS11 or this program */
+	printf("  ERR: Key type %d not supported\n", *pk_type);
 	*type = CKK_OPENSC_UNDEFINED;
 	*pk_type = -1;
 	return CKR_FUNCTION_NOT_SUPPORTED;
@@ -5265,8 +5358,9 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 				return rv;
 			n_privkey_attr++;
 		} else if (type == CKK_ML_DSA || type == CKK_SLH_DSA || type == CKK_ML_KEM) {
-			/* TODO Set the right parameter set! */
 
+			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_privkey_attr++;
 			FILL_ATTR(privkey_templ[n_privkey_attr], CKA_PARAMETER_SET, &pqc_key.type, sizeof(pqc_key.type));
 			n_privkey_attr++;
 			if (pqc_key.private.value != NULL) {
@@ -5349,7 +5443,9 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PUBLIC_EXPONENT, rsa.public_exponent, rsa.public_exponent_len);
 			n_pubkey_attr++;
-		} else if (type == CKK_ML_DSA) {
+		} else if (type == CKK_ML_DSA || type == CKK_SLH_DSA || type == CKK_ML_KEM) {
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_KEY_TYPE, &type, sizeof(type));
+			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PARAMETER_SET, &pqc_key.type, sizeof(pqc_key.type));
 			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_VALUE, &pqc_key.public.value, pqc_key.public.len);
@@ -6723,6 +6819,14 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("%sderive", sepa);
 		sepa = ", ";
 	}
+	if (getENCAPSULATE(sess, obj)) {
+		printf("%sencapsulate", sepa);
+		sepa = ", ";
+	}
+	if (getDECAPSULATE(sess, obj)) {
+		printf("%sdecapsulate", sepa);
+		sepa = ", ";
+	}
 	if (!*sepa)
 		printf("none");
 	printf("\n");
@@ -7434,7 +7538,120 @@ static int read_object(CK_SESSION_HANDLE session)
 
 				EVP_PKEY_free(key);
 			} else if (type == CKK_ML_DSA || type == CKK_ML_KEM || type == CKK_SLH_DSA) {
-				// TODO
+				unsigned long parameter_set = getPARAMETER_SET(session, obj);
+				const char *evp_name = NULL;
+				unsigned char *value = NULL;
+				size_t value_len = 0;
+
+				switch (type) {
+				case CKK_ML_DSA:
+					switch (parameter_set) {
+					case CKP_ML_DSA_44:
+						evp_name = "ML-DSA-44";
+						break;
+					case CKP_ML_DSA_65:
+						evp_name = "ML-DSA-65";
+						break;
+					case CKP_ML_DSA_87:
+						evp_name = "ML-DSA-87";
+						break;
+					default:
+						util_fatal("Unknown parameter set (%lu)",
+								parameter_set);
+					}
+					break;
+				case CKK_ML_KEM:
+					switch (parameter_set) {
+					case CKP_ML_KEM_512:
+						evp_name = "ML-KEM-512";
+						break;
+					case CKP_ML_KEM_768:
+						evp_name = "ML-KEM-768";
+						break;
+					case CKP_ML_KEM_1024:
+						evp_name = "ML-KEM-1024";
+						break;
+					default:
+						util_fatal("Unknown parameter set (%lu)",
+								parameter_set);
+					}
+					break;
+				case CKK_SLH_DSA:
+					switch (parameter_set) {
+					case CKP_SLH_DSA_SHA2_128S:
+						evp_name = "SLH-DSA-SHA2-128s";
+						break;
+					case CKP_SLH_DSA_SHAKE_128S:
+						evp_name = "SLH-DSA-SHAKE-128s";
+						break;
+					case CKP_SLH_DSA_SHA2_128F:
+						evp_name = "SLH-DSA-SHA2-128f";
+						break;
+					case CKP_SLH_DSA_SHAKE_128F:
+						evp_name = "SLH-DSA-SHAKE-128f";
+						break;
+					case CKP_SLH_DSA_SHA2_192S:
+						evp_name = "SLH-DSA-SHA2-192s";
+						break;
+					case CKP_SLH_DSA_SHAKE_192S:
+						evp_name = "SLH-DSA-SHAKE-192s";
+						break;
+					case CKP_SLH_DSA_SHA2_192F:
+						evp_name = "SLH-DSA-SHA2-192f";
+						break;
+					case CKP_SLH_DSA_SHAKE_192F:
+						evp_name = "SLH-DSA-SHAKE-192f";
+						break;
+					case CKP_SLH_DSA_SHA2_256S:
+						evp_name = "SLH-DSA-SHA2-256s";
+						break;
+					case CKP_SLH_DSA_SHAKE_256S:
+						evp_name = "SLH-DSA-SHAKE-256s";
+						break;
+					case CKP_SLH_DSA_SHA2_256F:
+						evp_name = "SLH-DSA-SHA2-256f";
+						break;
+					case CKP_SLH_DSA_SHAKE_256F:
+						evp_name = "SLH-DSA-SHAKE-256f";
+						break;
+					default:
+						util_fatal("Unknown parameter set (%lu)",
+								parameter_set);
+					}
+					break;
+				default:
+					util_fatal("Unknown key type (%lu)", type);
+					return -1;
+				}
+
+				/* Public key value */
+				value = getVALUE(session, obj, &value_len);
+				if (value == NULL) {
+					util_fatal("get CKA_VALUE failed");
+				}
+
+				if (!(ctx = EVP_PKEY_CTX_new_from_name(osslctx, evp_name, NULL)) ||
+					!(bld = OSSL_PARAM_BLD_new()) ||
+					OSSL_PARAM_BLD_push_octet_string(bld, "pub", value, value_len) != 1 ||
+					!(params = OSSL_PARAM_BLD_to_param(bld))) {
+					EVP_PKEY_CTX_free(ctx);
+					OSSL_PARAM_BLD_free(bld);
+					util_fatal("Unable to set key params");
+				}
+				OSSL_PARAM_BLD_free(bld);
+				if (EVP_PKEY_fromdata_init(ctx) != 1 ||
+					EVP_PKEY_fromdata(ctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+					EVP_PKEY_CTX_free(ctx);
+					OSSL_PARAM_free(params);
+					util_fatal("Unable to build key");
+				}
+				EVP_PKEY_CTX_free(ctx);
+				OSSL_PARAM_free(params);
+
+				if (i2d_PUBKEY_bio(pout, pkey) < 1) {
+					util_fatal("cannot write public key to output");
+				}
+				EVP_PKEY_free(pkey);
 #endif
 			} else
 				util_fatal("Reading public keys of type 0x%lX not (yet) supported", type);

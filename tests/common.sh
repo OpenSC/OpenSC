@@ -55,10 +55,8 @@ function generate_key() {
 	# convert it to more digestible PEM format
 	if [[ ${TYPE:0:3} == "RSA" ]]; then
 		openssl rsa -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
-	elif [[ $TYPE == "EC:edwards25519" ]]; then
-		openssl pkey -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
 	else
-		openssl ec -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+		openssl pkey -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
 	fi
 	rm $ID.der
 }
