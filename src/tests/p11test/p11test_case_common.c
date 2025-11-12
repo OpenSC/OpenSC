@@ -358,6 +358,7 @@ int callback_certificates(test_certs_t *objects,
 	EVP_PKEY *evp = NULL;
 	const u_char *cp = NULL;
 	test_cert_t *o = NULL;
+	int base_id;
 
 	if (*(CK_CERTIFICATE_TYPE *)template[3].pValue != CKC_X_509)
 		return 0;
@@ -380,19 +381,40 @@ int callback_certificates(test_certs_t *objects,
 		return -1;
 	}
 
-	if (EVP_PKEY_base_id(evp) == EVP_PKEY_RSA) {
+	base_id = EVP_PKEY_base_id(evp);
+	switch (base_id) {
+	case EVP_PKEY_RSA:
+	case EVP_PKEY_EC:
+	case EVP_PKEY_ED25519:
+	case EVP_PKEY_X25519:
+	case EVP_PKEY_ED448:
+	case EVP_PKEY_X448:
+#ifdef EVP_PKEY_ML_DSA_44
+	case EVP_PKEY_ML_DSA_44:
+	case EVP_PKEY_ML_DSA_65:
+	case EVP_PKEY_ML_DSA_87:
+#endif
+#ifdef EVP_PKEY_SLH_DSA_SHA2_128S
+	case EVP_PKEY_SLH_DSA_SHA2_128S:
+	case EVP_PKEY_SLH_DSA_SHAKE_128S:
+	case EVP_PKEY_SLH_DSA_SHA2_128F:
+	case EVP_PKEY_SLH_DSA_SHAKE_128F:
+	case EVP_PKEY_SLH_DSA_SHA2_192S:
+	case EVP_PKEY_SLH_DSA_SHAKE_192S:
+	case EVP_PKEY_SLH_DSA_SHA2_192F:
+	case EVP_PKEY_SLH_DSA_SHAKE_192F:
+	case EVP_PKEY_SLH_DSA_SHA2_256S:
+	case EVP_PKEY_SLH_DSA_SHAKE_256S:
+	case EVP_PKEY_SLH_DSA_SHA2_256F:
+	case EVP_PKEY_SLH_DSA_SHAKE_256F:
+#endif
 		o->key = evp;
-		o->type = EVP_PKEY_RSA;
+		o->type = base_id;
 		o->bits = EVP_PKEY_bits(evp);
-
-	} else if (EVP_PKEY_base_id(evp) == EVP_PKEY_EC) {
-		o->key = evp;
-		o->type = EVP_PKEY_EC;
-		o->bits = EVP_PKEY_bits(evp);
-
-	} else {
+		break;
+	default:
 		EVP_PKEY_free(evp);
-		fprintf(stderr, "[WARN %s ]evp->type = 0x%.4X (not RSA, EC)\n",
+		fprintf(stderr, "[WARN %s ]evp->type = 0x%.4X (not supported)\n",
 			o->id_str, EVP_PKEY_id(evp));
 	}
 
@@ -900,90 +922,159 @@ int callback_public_keys(test_certs_t *objects,
 			o->bits = exp_length * 8;
 		}
 		ASN1_STRING_free(os);
-#ifdef EVP_PKEY_ML_DSA_44
-	} else if (o->key_type == CKK_ML_DSA) {
-		o->parameter_set = (template[10].ulValueLen == sizeof(CK_ULONG))
-			? *((CK_ULONG *)template[10].pValue) : CK_UNAVAILABLE_INFORMATION;
-		switch (o->parameter_set) {
-		case CKP_ML_DSA_44:
-			o->type = EVP_PKEY_ML_DSA_44;
+#if defined(EVP_PKEY_ML_DSA_44) || defined(EVP_PKEY_ML_KEM_512) || defined(EVP_PKEY_SLH_DSA_SHA2_128S)
+	} else if (o->key_type == CKK_ML_DSA ||
+			o->key_type == CKK_ML_KEM ||
+			o->key_type == CKK_SLH_DSA) {
+		int base_id = 0;
+
+		o->parameter_set = (template[11].ulValueLen == sizeof(CK_ULONG))
+			? *((CK_ULONG *)template[11].pValue) : CK_UNAVAILABLE_INFORMATION;
+		switch (o->key_type) {
+		case CKK_ML_DSA:
+			switch (o->parameter_set) {
+			case CKP_ML_DSA_44:
+				base_id = EVP_PKEY_ML_DSA_44;
+				break;
+			case CKP_ML_DSA_65:
+				base_id = EVP_PKEY_ML_DSA_65;
+				break;
+			case CKP_ML_DSA_87:
+				base_id = EVP_PKEY_ML_DSA_87;
+				break;
+			default:
+				debug_print(" [WARN %s ] Unknown parameter set (%lu)",
+					o->id_str, o->parameter_set);
+				return -1;
+			}
 			break;
-		case CKP_ML_DSA_65:
-			o->type = EVP_PKEY_ML_DSA_65;
-			break;
-		case CKP_ML_DSA_87:
-			o->type = EVP_PKEY_ML_DSA_87;
-			break;
-		default:
-			return -1;
-		}
-		// TODO more processing
-#endif /* EVP_PKEY_ML_DSA_44 */
 #ifdef EVP_PKEY_ML_KEM_512
-	} else if (o->key_type == CKK_ML_KEM) {
-		o->parameter_set = (template[10].ulValueLen == sizeof(CK_ULONG))
-			? *((CK_ULONG *)template[10].pValue) : CK_UNAVAILABLE_INFORMATION;
-		switch (o->parameter_set) {
-		case CKP_ML_KEM_512:
-			o->key_type = EVP_PKEY_ML_KEM_512;
+		case CKK_ML_KEM:
+			switch (o->parameter_set) {
+			case CKP_ML_KEM_512:
+				base_id = EVP_PKEY_ML_KEM_512;
+				break;
+			case CKP_ML_KEM_768:
+				base_id = EVP_PKEY_ML_KEM_768;
+				break;
+			case CKP_ML_KEM_1024:
+				base_id = EVP_PKEY_ML_KEM_1024;
+				break;
+			default:
+				debug_print(" [WARN %s ] Unknown parameter set (%lu)",
+					o->id_str, o->parameter_set);
+				return -1;
+			}
 			break;
-		case CKP_ML_KEM_768:
-			o->key_type = EVP_PKEY_ML_KEM_768;
-			break;
-		case CKP_ML_KEM_1024:
-			o->key_type = EVP_PKEY_ML_KEM_1024;
+#endif
+		case CKK_SLH_DSA:
+			switch (o->parameter_set) {
+			case CKP_SLH_DSA_SHA2_128S:
+				base_id = EVP_PKEY_SLH_DSA_SHA2_128S;
+				break;
+			case CKP_SLH_DSA_SHAKE_128S:
+				base_id = EVP_PKEY_SLH_DSA_SHAKE_128S;
+				break;
+			case CKP_SLH_DSA_SHA2_128F:
+				base_id = EVP_PKEY_SLH_DSA_SHA2_128F;
+				break;
+			case CKP_SLH_DSA_SHAKE_128F:
+				base_id = EVP_PKEY_SLH_DSA_SHAKE_128F;
+				break;
+			case CKP_SLH_DSA_SHA2_192S:
+				base_id = EVP_PKEY_SLH_DSA_SHA2_192S;
+				break;
+			case CKP_SLH_DSA_SHAKE_192S:
+				base_id = EVP_PKEY_SLH_DSA_SHAKE_192S;
+				break;
+			case CKP_SLH_DSA_SHA2_192F:
+				base_id = EVP_PKEY_SLH_DSA_SHA2_192F;
+				break;
+			case CKP_SLH_DSA_SHAKE_192F:
+				base_id = EVP_PKEY_SLH_DSA_SHAKE_192F;
+				break;
+			case CKP_SLH_DSA_SHA2_256S:
+				base_id = EVP_PKEY_SLH_DSA_SHA2_256S;
+				break;
+			case CKP_SLH_DSA_SHAKE_256S:
+				base_id = EVP_PKEY_SLH_DSA_SHAKE_256S;
+				break;
+			case CKP_SLH_DSA_SHA2_256F:
+				base_id = EVP_PKEY_SLH_DSA_SHA2_256F;
+				break;
+			case CKP_SLH_DSA_SHAKE_256F:
+				base_id = EVP_PKEY_SLH_DSA_SHAKE_256F;
+				break;
+			default:
+				debug_print(" [WARN %s ] Unknown parameter set (%lu)",
+					o->id_str, o->parameter_set);
+				return -1;
+			}
 			break;
 		default:
+			debug_print(" [WARN %s ] Unknown key type (%lu)",
+				o->id_str, o->key_type);
 			return -1;
 		}
-		// TODO more processing
-#endif /* EVP_PKEY_ML_KEM_512 */
-#ifdef EVP_PKEY_SLH_DSA_SHA2_128S
-	} else if (o->key_type == CKK_SLH_DSA) {
-		o->parameter_set = (template[10].ulValueLen == sizeof(CK_ULONG))
-			? *((CK_ULONG *)template[10].pValue) : CK_UNAVAILABLE_INFORMATION;
-		switch (o->parameter_set) {
-		case CKP_SLH_DSA_SHA2_128S:
-			o->key_type = EVP_PKEY_SLH_DSA_SHA2_128S;
-			break;
-		case CKP_SLH_DSA_SHAKE_128S:
-			o->key_type = EVP_PKEY_SLH_DSA_SHAKE_128S;
-			break;
-		case CKP_SLH_DSA_SHA2_128F:
-			o->key_type = EVP_PKEY_SLH_DSA_SHA2_128F;
-			break;
-		case CKP_SLH_DSA_SHAKE_128F:
-			o->key_type = EVP_PKEY_SLH_DSA_SHAKE_128F;
-			break;
-		case CKP_SLH_DSA_SHA2_192S:
-			o->key_type = EVP_PKEY_SLH_DSA_SHA2_192S;
-			break;
-		case CKP_SLH_DSA_SHAKE_192S:
-			o->key_type = EVP_PKEY_SLH_DSA_SHAKE_192S;
-			break;
-		case CKP_SLH_DSA_SHA2_192F:
-			o->key_type = EVP_PKEY_SLH_DSA_SHA2_192F;
-			break;
-		case CKP_SLH_DSA_SHAKE_192F:
-			o->key_type = EVP_PKEY_SLH_DSA_SHAKE_192F;
-			break;
-		case CKP_SLH_DSA_SHA2_256S:
-			o->key_type = EVP_PKEY_SLH_DSA_SHA2_256S;
-			break;
-		case CKP_SLH_DSA_SHAKE_256S:
-			o->key_type = EVP_PKEY_SLH_DSA_SHAKE_256S;
-			break;
-		case CKP_SLH_DSA_SHA2_256F:
-			o->key_type = EVP_PKEY_SLH_DSA_SHA2_256F;
-			break;
-		case CKP_SLH_DSA_SHAKE_256F:
-			o->key_type = EVP_PKEY_SLH_DSA_SHAKE_256F;
-			break;
-		default:
-			return -1;
+
+		if (o->key != NULL) {
+			// compare with the certificate
+			unsigned char *cert_pubkey = NULL;
+			size_t cert_pubkey_len = 0;
+
+			if (base_id != o->type) {
+				debug_print(" [WARN %s ] Got different key type than certificate "
+						"(got %d, expected %d)",
+						o->id_str, base_id, o->type);
+			}
+
+			if ((EVP_PKEY_get_octet_string_param(o->key, "pub", NULL, 0, &cert_pubkey_len) != 1)) {
+				fprintf(stderr, "Failed to extract public key length");
+				return -1;
+			}
+			if ((cert_pubkey = malloc(cert_pubkey_len)) == NULL) {
+				fprintf(stderr, "Out of memory");
+				return -1;
+			}
+			if ((EVP_PKEY_get_octet_string_param(o->key, "pub", cert_pubkey, cert_pubkey_len, &cert_pubkey_len) != 1)) {
+				fprintf(stderr, "Failed to extract public key");
+				free(cert_pubkey);
+				return -1;
+			}
+			if (template[12].ulValueLen == cert_pubkey_len ||
+					memcmp(template[12].pValue, cert_pubkey, cert_pubkey_len) == 0) {
+				o->verify_public = 1;
+			} else {
+				debug_print(" [WARN %s ] Got different public key then from the certificate",
+					o->id_str);
+			}
+			free(cert_pubkey);
+		} else {
+			// construct the OpenSSL key
+			o->type = base_id;
+			if (!(ctx = EVP_PKEY_CTX_new_id(o->type, NULL)) ||
+				!(bld = OSSL_PARAM_BLD_new()) ||
+				OSSL_PARAM_BLD_push_octet_string(bld, "pub", template[12].pValue,
+						template[12].ulValueLen) != 1 ||
+				!(params = OSSL_PARAM_BLD_to_param(bld))) {
+				EVP_PKEY_CTX_free(ctx);
+				OSSL_PARAM_BLD_free(bld);
+				fail_msg("Unable to set key params");
+				return -1;
+			}
+			OSSL_PARAM_BLD_free(bld);
+			if (EVP_PKEY_fromdata_init(ctx) != 1 ||
+				EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+				EVP_PKEY_CTX_free(ctx);
+				OSSL_PARAM_free(params);
+			 	fail_msg("Unable to build key");
+				return -1;
+			}
+			EVP_PKEY_CTX_free(ctx);
+			OSSL_PARAM_free(params);
+			o->bits = EVP_PKEY_bits(o->key);
 		}
-		// TODO more processing
-#endif /* EVP_PKEY_SLH_DSA_SHA2_128S */
+#endif /* EVP_PKEY_ML_DSA_44 */
 	} else {
 		debug_print(" [WARN %s ] unknown key. Key type: %02lX",
 			o->id_str, o->key_type);
@@ -1204,6 +1295,7 @@ void search_for_all_objects(test_certs_t *objects, token_info_t *info)
 			{ CKA_DERIVE, NULL, 0}, // CK_BBOOL
 			{ CKA_ENCAPSULATE, NULL, 0}, // CK_BBOOL
 			{ CKA_PARAMETER_SET, NULL, 0}, // CK_ULONG
+			{ CKA_VALUE, NULL, 0},
 	};
 	CK_ULONG public_attrs_size = sizeof (public_attrs) / sizeof (CK_ATTRIBUTE);
 	CK_ATTRIBUTE secret_attrs[] = {
