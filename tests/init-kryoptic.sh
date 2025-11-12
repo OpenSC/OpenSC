@@ -18,13 +18,13 @@ if [[ -z "$P11LIB" ]]; then
 fi
 
 function initialize_token() {
-	TMPPDIR="$BUILD_PATH/kryoptic/tmp"
-	export TOKDIR="$TMPPDIR/tokens"
+	TMPPDIR="kryoptic.tmp"
+	mkdir -p "$TMPPDIR"
+	export TOKDIR=$(realpath $TMPPDIR/tokens)
 	if [ -d "${TMPPDIR}" ]; then
 		rm -fr "${TMPPDIR}"
 	fi
-	mkdir -p "${TMPPDIR}"
-	mkdir "${TOKDIR}"
+	mkdir -p "${TOKDIR}"
 
 	export KRYOPTIC_CONF="${KRYOPTIC_CONF:-$TOKDIR/kryoptic.sql}"
 	export TOKENCONFIGVARS="export KRYOPTIC_CONF=$TOKDIR/kryoptic.sql"
@@ -37,6 +37,8 @@ function initialize_token() {
 	$PKCS11_TOOL --module "${P11LIB}" --so-pin "${PIN}" \
 		--login --login-type so --init-pin --pin "${PIN}"
 
+	#export PKCS11SPY=$P11LIB
+	#export P11LIB="../src/pkcs11/.libs/pkcs11-spy.so"
 	export PUB_ARGS=("--module=${P11LIB}" "--token-label=${TOKENLABEL}")
 	export PRIV_ARGS=("${PUB_ARGS[@]}" "--login" "--pin=${PIN}")
 	export PRIV_ARGS_KRYOPTIC=("${PRIV_ARGS[@]}")

@@ -242,15 +242,15 @@ supported_mechanisms_test(void **state)
 			}
 		}
 
-		printf("[      MECHANISM      ] [ KEY SIZE ] [  FLAGS   ]\n");
-		printf("[        CKM_*        ] [ MIN][ MAX] [          ]\n");
+		printf("[      MECHANISM      ] [ KEY SIZE  ] [  FLAGS   ]\n");
+		printf("[        CKM_*        ] [ MIN][ MAX ] [          ]\n");
 		P11TEST_DATA_ROW(info, 4,
 			's', "MECHANISM",
 			's', "MIN KEY",
 			's', "MAX KEY",
 			's', "FLAGS");
 		for (i = 0; i < mechanism_count; i++) {
-			printf("[%-21s] [%4lu][%4lu] [0x%.8lX]",
+			printf("[%-21s] [%4lu][%5lu] [0x%.8lX]",
 				get_mechanism_name(mechanism_list[i]),
 				mechanism_info[i].ulMinKeySize,
 				mechanism_info[i].ulMaxKeySize,

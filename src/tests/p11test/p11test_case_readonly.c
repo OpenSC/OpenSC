@@ -622,7 +622,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
+	CK_MECHANISM sign_mechanism = { mech->mech, mech->params, mech->params_len };
 	static int verify_support = 1;
 	char *name;
 
@@ -696,6 +696,12 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 			.ulContextDataLen = 0,
 			.pContextData = NULL,
 	};
+	CK_HASH_SIGN_ADDITIONAL_CONTEXT pqc_params = {
+			.hedgeVariant = CKH_HEDGE_PREFERRED,
+			.pContext = NULL,
+			.ulContextLen = 0,
+			.hash = CKM_SHA256,
+	};
 	int rv = 0;
 
 	if (message_length > strlen(MESSAGE_TO_SIGN)) {
@@ -751,14 +757,22 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 		return 0;
 	}
 
-	if (mech->mech == CKM_RSA_X_509) /* manually add padding */
+	if (mech->mech == CKM_RSA_X_509) { /* manually add padding */
 		message = rsa_x_509_pad_message(const_message,
 			&message_length, o, 0);
-	else if (mech->mech == CKM_RSA_PKCS) {
+	} else if (mech->mech == CKM_RSA_PKCS) {
 		/* DigestInfo + SHA1(message) */
 		message_length = 35;
 		message = malloc(message_length * sizeof(unsigned char));
 		memcpy(message, MESSAGE_DIGEST, message_length);
+	} else if (mech->mech == CKM_HASH_ML_DSA || mech->mech == CKM_HASH_SLH_DSA) {
+		/* Hash of the message,  */
+		message_length = 32;
+		message = malloc(message_length * sizeof(unsigned char));
+		memcpy(message, MESSAGE_DIGEST, message_length);
+		/* and requires parameter */
+		mech->params = &pqc_params;
+		mech->params_len = sizeof(CK_HASH_SIGN_ADDITIONAL_CONTEXT);
 	} else
 		message = (CK_BYTE *) strdup(MESSAGE_TO_SIGN);
 
@@ -856,11 +870,11 @@ void readonly_tests(void **state) {
 			o->id_str,
 			o->label);
 		printf("[%s] [%6lu] [ %s ] [%s%s] [%s%s]\n",
-			(o->key_type == CKK_RSA ? " RSA  " :
-				o->key_type == CKK_EC ? "  EC  " :
-				o->key_type == CKK_EC_EDWARDS ? "EDDSA " :
-				o->key_type == CKK_ML_DSA ? "ML-DSA" :
-				o->key_type == CKK_SLH_DSA ? "SLHDSA" : "  ??  "),
+			(o->key_type == CKK_RSA ? "  RSA  " :
+				o->key_type == CKK_EC ? "   EC  " :
+				o->key_type == CKK_EC_EDWARDS ? " EDDSA " :
+				o->key_type == CKK_ML_DSA ? "ML-DSA " :
+				o->key_type == CKK_SLH_DSA ? "SLH-DSA" : "  ??  "),
 			o->bits,
 			o->verify_public == 1 ? " ./ " : "    ",
 			o->sign ? "[./] " : "[  ] ",
@@ -881,7 +895,7 @@ void readonly_tests(void **state) {
 				/* not applicable mechanisms are skipped */
 				continue;
 			}
-			printf("  [ %-20s ] [   %s    ] [   %s    ]\n",
+			printf("  [ %-21s ] [   %s    ] [   %s    ]\n",
 				get_mechanism_name(mech->mech),
 				mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ",
 				mech->result_flags & FLAGS_DECRYPT_ANY ? "[./]" : "    ");
@@ -895,10 +909,10 @@ void readonly_tests(void **state) {
 				's', mech->result_flags & FLAGS_DECRYPT_ANY ? "YES" : "");
 		}
 	}
-	printf(" Public == Cert -----^       ^  ^  ^       ^  ^  ^\n");
-	printf(" Sign Attribute -------------'  |  |       |  |  '---- Decrypt Attribute\n");
-	printf(" Sign&Verify functionality -----'  |       |  '------- Enc&Dec functionality\n");
-	printf(" Verify Attribute -----------------'       '---------- Encrypt Attribute\n");
+	printf(" Public == Cert ------^       ^  ^  ^       ^  ^  ^\n");
+	printf(" Sign Attribute --------------'  |  |       |  |  '---- Decrypt Attribute\n");
+	printf(" Sign&Verify functionality- -----'  |       |  '------- Enc&Dec functionality\n");
+	printf(" Verify Attribute ------------------'       '---------- Encrypt Attribute\n");
 
 	clean_all_objects(&objects);
 	P11TEST_PASS(info);

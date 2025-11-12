@@ -30,6 +30,9 @@
 # include <openssl/core_names.h>
 # include <openssl/param_build.h>
 #endif
+#if OPENSSL_VERSION_NUMBER >= 0x30500000L
+# include <openssl/ml_kem.h>
+#endif
 #include "p11test_common.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
