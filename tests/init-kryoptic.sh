@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # set paths
-kryoptic_paths="$BUILD_PATH/kryoptic/target/debug/libkryoptic_pkcs11.so"
+kryoptic_paths="$BUILD_PATH/kryoptic/target/debug/libkryoptic_pkcs11.so \
+	/usr/lib64/pkcs11/libkryoptic_pkcs11.so \
+	/usr/lib/pkcs11/libkryoptic_pkcs11.so"
 
 for LIB in $kryoptic_paths; do
 	echo "Testing $LIB"
