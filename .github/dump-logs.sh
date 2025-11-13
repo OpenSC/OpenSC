@@ -6,7 +6,7 @@ fi
 echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 for F in ${REL}tests/*.log ${REL}src/tests/unittests/*.log; do
 	echo "::group::$F"
-	cat $F
+	tail -n50 $F
 	echo "::endgroup::"
 done
 echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
