@@ -142,7 +142,7 @@ add_supported_mechs(test_cert_t *o)
 
 	switch (o->type) {
 	case EVP_PKEY_RSA:
-		if (token.num_rsa_mechs > 0 ) {
+		if (token.num_rsa_mechs > 0) {
 			/* Get supported mechanisms by token */
 			o->num_mechs = 0;
 			for (i = 0; i < token.num_rsa_mechs; i++) {
@@ -172,7 +172,7 @@ add_supported_mechs(test_cert_t *o)
 		}
 		break;
 	case EVP_PKEY_EC:
-		if (token.num_ec_mechs > 0 ) {
+		if (token.num_ec_mechs > 0) {
 			o->num_mechs = token.num_ec_mechs;
 			for (i = 0; i < token.num_ec_mechs; i++) {
 				o->mechs[i].mech = token.ec_mechs[i].mech;
@@ -194,8 +194,12 @@ add_supported_mechs(test_cert_t *o)
 		break;
 #ifdef EVP_PKEY_ED25519
 	case EVP_PKEY_ED25519:
+#endif
+#ifdef EVP_PKEY_ED448
 	case EVP_PKEY_ED448:
-		if (token.num_ed_mechs > 0 ) {
+#endif
+#if defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_ED448)
+		if (token.num_ed_mechs > 0) {
 			o->num_mechs = token.num_ed_mechs;
 			for (i = 0; i < token.num_ed_mechs; i++) {
 				o->mechs[i].mech = token.ed_mechs[i].mech;
@@ -215,11 +219,15 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].usage_flags = CKF_SIGN | CKF_VERIFY;
 		}
 		break;
-#endif
+#endif /* defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_ED448) */
 #ifdef EVP_PKEY_X25519
 	case EVP_PKEY_X25519:
+#endif
+#ifdef EVP_PKEY_X448
 	case EVP_PKEY_X448:
-		if (token.num_montgomery_mechs > 0 ) {
+#endif
+#if defined(EVP_PKEY_X25519) ||  defined(EVP_PKEY_X448)
+		if (token.num_montgomery_mechs > 0) {
 			o->num_mechs = token.num_montgomery_mechs;
 			for (i = 0; i < token.num_montgomery_mechs; i++) {
 				o->mechs[i].mech = token.montgomery_mechs[i].mech;
@@ -239,20 +247,19 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].usage_flags = CKF_DERIVE;
 		}
 		break;
-#endif
+#endif /* defined(EVP_PKEY_X25519) ||  defined(EVP_PKEY_X448) */
 #ifdef EVP_PKEY_ML_DSA_44
 	case EVP_PKEY_ML_DSA_44:
 	case EVP_PKEY_ML_DSA_65:
 	case EVP_PKEY_ML_DSA_87:
-		if (token.num_ml_dsa_mechs > 0 ) {
+		if (token.num_ml_dsa_mechs > 0) {
 			o->num_mechs = token.num_ml_dsa_mechs;
 			for (i = 0; i < token.num_ml_dsa_mechs; i++) {
 				o->mechs[i].mech = token.ml_dsa_mechs[i].mech;
 				o->mechs[i].params = token.ml_dsa_mechs[i].params;
 				o->mechs[i].params_len = token.ml_dsa_mechs[i].params_len;
 				o->mechs[i].result_flags = 0;
-				o->mechs[i].usage_flags =
-					token.ml_dsa_mechs[i].usage_flags;
+				o->mechs[i].usage_flags = token.ml_dsa_mechs[i].usage_flags;
 			}
 		} else {
 			/* Use the default list */
@@ -269,15 +276,14 @@ add_supported_mechs(test_cert_t *o)
 	case EVP_PKEY_ML_KEM_512:
 	case EVP_PKEY_ML_KEM_768:
 	case EVP_PKEY_ML_KEM_1024:
-		if (token.num_ml_kem_mechs > 0 ) {
+		if (token.num_ml_kem_mechs > 0) {
 			o->num_mechs = token.num_ml_kem_mechs;
 			for (i = 0; i < token.num_ml_kem_mechs; i++) {
 				o->mechs[i].mech = token.ml_kem_mechs[i].mech;
 				o->mechs[i].params = token.ml_kem_mechs[i].params;
 				o->mechs[i].params_len = token.ml_kem_mechs[i].params_len;
 				o->mechs[i].result_flags = 0;
-				o->mechs[i].usage_flags =
-					token.ml_kem_mechs[i].usage_flags;
+				o->mechs[i].usage_flags = token.ml_kem_mechs[i].usage_flags;
 			}
 		} else {
 			/* Use the default list */
@@ -303,15 +309,14 @@ add_supported_mechs(test_cert_t *o)
 	case EVP_PKEY_SLH_DSA_SHAKE_256S:
 	case EVP_PKEY_SLH_DSA_SHA2_256F:
 	case EVP_PKEY_SLH_DSA_SHAKE_256F:
-		if (token.num_slh_dsa_mechs > 0 ) {
+		if (token.num_slh_dsa_mechs > 0) {
 			o->num_mechs = token.num_slh_dsa_mechs;
 			for (i = 0; i < token.num_slh_dsa_mechs; i++) {
 				o->mechs[i].mech = token.slh_dsa_mechs[i].mech;
 				o->mechs[i].params = token.slh_dsa_mechs[i].params;
 				o->mechs[i].params_len = token.slh_dsa_mechs[i].params_len;
 				o->mechs[i].result_flags = 0;
-				o->mechs[i].usage_flags =
-					token.slh_dsa_mechs[i].usage_flags;
+				o->mechs[i].usage_flags = token.slh_dsa_mechs[i].usage_flags;
 			}
 		} else {
 			/* Use the default list */
@@ -387,8 +392,12 @@ int callback_certificates(test_certs_t *objects,
 	case EVP_PKEY_EC:
 	case EVP_PKEY_ED25519:
 	case EVP_PKEY_X25519:
+#ifdef EVP_PKEY_ED448
 	case EVP_PKEY_ED448:
+#endif
+#ifdef EVP_PKEY_X448
 	case EVP_PKEY_X448:
+#endif
 #ifdef EVP_PKEY_ML_DSA_44
 	case EVP_PKEY_ML_DSA_44:
 	case EVP_PKEY_ML_DSA_65:
@@ -415,7 +424,7 @@ int callback_certificates(test_certs_t *objects,
 	default:
 		EVP_PKEY_free(evp);
 		fprintf(stderr, "[WARN %s ]evp->type = 0x%.4X (not supported)\n",
-			o->id_str, EVP_PKEY_id(evp));
+				o->id_str, EVP_PKEY_id(evp));
 	}
 
 	debug_print(" [  OK %s ] Certificate with label %s loaded successfully",
@@ -770,12 +779,14 @@ int callback_public_keys(test_certs_t *objects,
 				if (strcmp((char *)curve->data, "edwards25519") == 0) {
 					evp_type = EVP_PKEY_ED25519;
 					break;
+#ifdef EVP_PKEY_ED448
 				} else if (strcmp((char *)curve->data, "edwards448") == 0) {
 					evp_type = EVP_PKEY_ED448;
 					break;
+#endif /* EVP_PKEY_ED448 */
 				}
 				debug_print(" [WARN %s ] Unknown curve name. "
-						" expected edwards25519 or edwards448, got %s",
+					    " expected edwards25519 or edwards448, got %s",
 						o->id_str, curve->data);
 				break;
 #endif
@@ -784,12 +795,14 @@ int callback_public_keys(test_certs_t *objects,
 				if (strcmp((char *)curve->data, "curve25519") == 0) {
 					evp_type = EVP_PKEY_X25519;
 					break;
+#ifdef EVP_PKEY_X448
 				} else if (strcmp((char *)curve->data, "curve448") == 0) {
 					evp_type = EVP_PKEY_X448;
 					break;
+#endif /* EVP_PKEY_X448 */
 				}
 				debug_print(" [WARN %s ] Unknown curve name. "
-						" expected curve25519 or curve448, got %s",
+					    " expected curve25519 or curve448, got %s",
 						o->id_str, curve->data);
 				break;
 #endif
@@ -810,13 +823,15 @@ int callback_public_keys(test_certs_t *objects,
 				if (nid == NID_ED25519) {
 					evp_type = EVP_PKEY_ED25519;
 					break;
+#ifdef EVP_PKEY_ED448
 				} else if (nid == NID_ED448) {
 					evp_type = EVP_PKEY_ED448;
 					break;
+#endif /* EVP_PKEY_ED448 */
 				}
 				debug_print(" [WARN %s ] Unknown OID. "
-						" expected NID_ED25519 (%d) or NID_ED448 (%d), got %d",
-						o->id_str, NID_ED25519, NID_ED448, nid);
+					    " expected NID_ED25519 or NID_ED448, got %d",
+						o->id_str, nid);
 				break;
 #endif
 #ifdef EVP_PKEY_X25519
@@ -824,13 +839,15 @@ int callback_public_keys(test_certs_t *objects,
 				if (nid == NID_X25519) {
 					evp_type = EVP_PKEY_X25519;
 					break;
+#ifdef EVP_PKEY_X448
 				} else if (nid == NID_X448) {
 					evp_type = EVP_PKEY_X448;
 					break;
+#endif /* EVP_PKEY_X448 */
 				}
 				debug_print(" [WARN %s ] Unknown OID. "
-						" expected NID_X25519 (%d) or NID_X448 (%d), got %d",
-						o->id_str, NID_X25519, NID_X448, nid);
+					    " expected NID_X25519 or NID_X448, got %d",
+						o->id_str, nid);
 				break;
 #endif
 			default:
@@ -865,12 +882,16 @@ int callback_public_keys(test_certs_t *objects,
 		case EVP_PKEY_X25519:
 			exp_length = 32;
 			break;
+#ifdef EVP_PKEY_ED448
 		case EVP_PKEY_ED448:
 			exp_length = 57;
 			break;
+#endif
+#ifdef EVP_PKEY_X448
 		case EVP_PKEY_X448:
 			exp_length = 56;
 			break;
+#endif
 		}
 		if (os->length != exp_length) {
 			debug_print(" [WARN %s ] Invalid length of EC_POINT value. Got %d, expected %d",
@@ -944,7 +965,7 @@ int callback_public_keys(test_certs_t *objects,
 				break;
 			default:
 				debug_print(" [WARN %s ] Unknown parameter set (%lu)",
-					o->id_str, o->parameter_set);
+						o->id_str, o->parameter_set);
 				return -1;
 			}
 			break;
@@ -962,7 +983,7 @@ int callback_public_keys(test_certs_t *objects,
 				break;
 			default:
 				debug_print(" [WARN %s ] Unknown parameter set (%lu)",
-					o->id_str, o->parameter_set);
+						o->id_str, o->parameter_set);
 				return -1;
 			}
 			break;
@@ -1007,13 +1028,12 @@ int callback_public_keys(test_certs_t *objects,
 				break;
 			default:
 				debug_print(" [WARN %s ] Unknown parameter set (%lu)",
-					o->id_str, o->parameter_set);
+						o->id_str, o->parameter_set);
 				return -1;
 			}
 			break;
 		default:
-			debug_print(" [WARN %s ] Unknown key type (%lu)",
-				o->id_str, o->key_type);
+			debug_print(" [WARN %s ] Unknown key type (%lu)", o->id_str, o->key_type);
 			return -1;
 		}
 
@@ -1024,7 +1044,7 @@ int callback_public_keys(test_certs_t *objects,
 
 			if (base_id != o->type) {
 				debug_print(" [WARN %s ] Got different key type than certificate "
-						"(got %d, expected %d)",
+					    "(got %d, expected %d)",
 						o->id_str, base_id, o->type);
 			}
 
@@ -1046,17 +1066,17 @@ int callback_public_keys(test_certs_t *objects,
 				o->verify_public = 1;
 			} else {
 				debug_print(" [WARN %s ] Got different public key then from the certificate",
-					o->id_str);
+						o->id_str);
 			}
 			free(cert_pubkey);
 		} else {
 			// construct the OpenSSL key
 			o->type = base_id;
 			if (!(ctx = EVP_PKEY_CTX_new_id(o->type, NULL)) ||
-				!(bld = OSSL_PARAM_BLD_new()) ||
-				OSSL_PARAM_BLD_push_octet_string(bld, "pub", template[12].pValue,
-						template[12].ulValueLen) != 1 ||
-				!(params = OSSL_PARAM_BLD_to_param(bld))) {
+					!(bld = OSSL_PARAM_BLD_new()) ||
+					OSSL_PARAM_BLD_push_octet_string(bld, "pub", template[12].pValue,
+							template[12].ulValueLen) != 1 ||
+					!(params = OSSL_PARAM_BLD_to_param(bld))) {
 				EVP_PKEY_CTX_free(ctx);
 				OSSL_PARAM_BLD_free(bld);
 				fail_msg("Unable to set key params");
@@ -1064,10 +1084,10 @@ int callback_public_keys(test_certs_t *objects,
 			}
 			OSSL_PARAM_BLD_free(bld);
 			if (EVP_PKEY_fromdata_init(ctx) != 1 ||
-				EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
+					EVP_PKEY_fromdata(ctx, &o->key, EVP_PKEY_PUBLIC_KEY, params) != 1) {
 				EVP_PKEY_CTX_free(ctx);
 				OSSL_PARAM_free(params);
-			 	fail_msg("Unable to build key");
+				fail_msg("Unable to build key");
 				return -1;
 			}
 			EVP_PKEY_CTX_free(ctx);
@@ -1076,8 +1096,7 @@ int callback_public_keys(test_certs_t *objects,
 		}
 #endif /* EVP_PKEY_ML_DSA_44 */
 	} else {
-		debug_print(" [WARN %s ] unknown key. Key type: %02lX",
-			o->id_str, o->key_type);
+		debug_print(" [WARN %s ] unknown key. Key type: %02lX", o->id_str, o->key_type);
 		return -1;
 	}
 

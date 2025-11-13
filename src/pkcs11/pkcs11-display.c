@@ -108,7 +108,6 @@ buf_spec(CK_VOID_PTR buf_addr, CK_ULONG buf_len)
 	return ret;
 }
 
-
 void
 print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
@@ -125,14 +124,12 @@ print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR 
 	fprintf(f, "Value %lX not found for type %s\n", ctype, spec->name);
 }
 
-
 void
 print_boolean(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
 	CK_BYTE i = *((CK_BYTE *)value);
 	fprintf(f, i ? "True\n" : "False\n");
 }
-
 
 void
 print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
@@ -185,7 +182,6 @@ print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_P
 	fprintf(f, "\n");
 }
 
-
 #ifdef ENABLE_OPENSSL
 static void
 print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
@@ -209,30 +205,30 @@ print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR ar
 #endif
 
 static enum_specs ck_mldsa_s[] = {
-		{ CKP_ML_DSA_44, "CKP_ML_DSA_44" },
-		{ CKP_ML_DSA_65, "CKP_ML_DSA_65" },
-		{ CKP_ML_DSA_87, "CKP_ML_DSA_87" },
+		{CKP_ML_DSA_44, "CKP_ML_DSA_44"},
+		{CKP_ML_DSA_65, "CKP_ML_DSA_65"},
+		{CKP_ML_DSA_87, "CKP_ML_DSA_87"},
 };
 
 static enum_specs ck_mlkem_s[] = {
-		{ CKP_ML_KEM_512,  "CKP_ML_KEM_512" },
-		{ CKP_ML_KEM_768,  "CKP_ML_KEM_768" },
-		{ CKP_ML_KEM_1024, "CKP_ML_KEM_1024" },
+		{CKP_ML_KEM_512,	"CKP_ML_KEM_512"},
+		{CKP_ML_KEM_768,	"CKP_ML_KEM_768"},
+		{CKP_ML_KEM_1024,	"CKP_ML_KEM_1024"},
 };
 
 static enum_specs ck_slh_dsa_s[] = {
-		{ CKP_SLH_DSA_SHA2_128S,  "CKP_SLH_DSA_SHA2_128S"  },
-		{ CKP_SLH_DSA_SHAKE_128S, "CKP_SLH_DSA_SHAKE_128S" },
-		{ CKP_SLH_DSA_SHA2_128F,  "CKP_SLH_DSA_SHA2_128F"  },
-		{ CKP_SLH_DSA_SHAKE_128F, "CKP_SLH_DSA_SHAKE_128F" },
-		{ CKP_SLH_DSA_SHA2_192S,  "CKP_SLH_DSA_SHA2_192S"  },
-		{ CKP_SLH_DSA_SHAKE_192S, "CKP_SLH_DSA_SHAKE_192S" },
-		{ CKP_SLH_DSA_SHA2_192F,  "CKP_SLH_DSA_SHA2_192F"  },
-		{ CKP_SLH_DSA_SHAKE_192F, "CKP_SLH_DSA_SHAKE_192F" },
-		{ CKP_SLH_DSA_SHA2_256S,  "CKP_SLH_DSA_SHA2_256S"  },
-		{ CKP_SLH_DSA_SHAKE_256S, "CKP_SLH_DSA_SHAKE_256S" },
-		{ CKP_SLH_DSA_SHA2_256F,  "CKP_SLH_DSA_SHA2_256F"  },
-		{ CKP_SLH_DSA_SHAKE_256F, "CKP_SLH_DSA_SHAKE_256F" },
+		{CKP_SLH_DSA_SHA2_128S,	"CKP_SLH_DSA_SHA2_128S"},
+		{CKP_SLH_DSA_SHAKE_128S,	"CKP_SLH_DSA_SHAKE_128S"},
+		{CKP_SLH_DSA_SHA2_128F,	"CKP_SLH_DSA_SHA2_128F"},
+		{CKP_SLH_DSA_SHAKE_128F,	"CKP_SLH_DSA_SHAKE_128F"},
+		{CKP_SLH_DSA_SHA2_192S,	"CKP_SLH_DSA_SHA2_192S"},
+		{CKP_SLH_DSA_SHAKE_192S,	"CKP_SLH_DSA_SHAKE_192S"},
+		{CKP_SLH_DSA_SHA2_192F,	"CKP_SLH_DSA_SHA2_192F"},
+		{CKP_SLH_DSA_SHAKE_192F,	"CKP_SLH_DSA_SHAKE_192F"},
+		{CKP_SLH_DSA_SHA2_256S,	"CKP_SLH_DSA_SHA2_256S"},
+		{CKP_SLH_DSA_SHAKE_256S,	"CKP_SLH_DSA_SHAKE_256S"},
+		{CKP_SLH_DSA_SHA2_256F,	"CKP_SLH_DSA_SHA2_256F"},
+		{CKP_SLH_DSA_SHAKE_256F,	"CKP_SLH_DSA_SHAKE_256F"},
 };
 
 #define SZ_SPECS sizeof(enum_specs)
@@ -1497,7 +1493,7 @@ print_mech_info(FILE *f, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR minfo)
 			       CKF_FIND_OBJECTS | CKF_ENCRYPT | CKF_DECRYPT | CKF_DIGEST |
 			       CKF_SIGN | CKF_SIGN_RECOVER | CKF_VERIFY | CKF_VERIFY_RECOVER |
 			       CKF_GENERATE | CKF_GENERATE_KEY_PAIR | CKF_WRAP | CKF_UNWRAP |
-			       CKF_DERIVE | CKF_EC_F_P | CKF_EC_F_2M |CKF_EC_ECPARAMETERS |
+			       CKF_DERIVE | CKF_EC_F_P | CKF_EC_F_2M | CKF_EC_ECPARAMETERS |
 			       CKF_EC_OID | CKF_EC_UNCOMPRESS | CKF_EC_CURVENAME |
 			       CKF_EC_NAMEDCURVE | CKF_ENCAPSULATE | CKF_DECAPSULATE;
 
@@ -1554,7 +1550,7 @@ print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 
 	/* Some attributes are key type specific -- first check if we have a key type
 	 * in the template and if so, store it */
-	for (j = 0; j < ulCount ; j++) {
+	for (j = 0; j < ulCount; j++) {
 		if (pTemplate[j].type == CKA_KEY_TYPE && pTemplate[j].pValue) {
 			key_type = *(CK_KEY_TYPE *)pTemplate[j].pValue;
 			break;
@@ -1622,7 +1618,7 @@ print_session_info(FILE *f, CK_SESSION_INFO *info)
 	enum_specs ck_flags[] = {
 			{CKF_RW_SESSION     , "CKF_RW_SESSION                   "},
 			{CKF_SERIAL_SESSION , "CKF_SERIAL_SESSION               "},
-			{CKF_ASYNC_SESSION  , "CKF_ASYNC_SESSION                "}
+			{CKF_ASYNC_SESSION  , "CKF_ASYNC_SESSION                "},
 	};
 
 	fprintf(f, "      slotID:                  %ld\n",       info->slotID );

@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-typedef void (display_func) (FILE *, CK_LONG, CK_VOID_PTR, CK_ULONG, CK_VOID_PTR, CK_KEY_TYPE);
+typedef void(display_func) (FILE *, CK_LONG, CK_VOID_PTR, CK_ULONG, CK_VOID_PTR, CK_KEY_TYPE);
 
 typedef struct {
   CK_ULONG   type;

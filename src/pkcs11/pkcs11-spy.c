@@ -212,7 +212,7 @@ CK_INTERFACE compat_interfaces[NUM_INTERFACES] = {
 		{(CK_UTF8CHAR_PTR) "PKCS 11", NULL, 0}
 };
 
-CK_INTERFACE spy_interface = {(CK_UTF8CHAR_PTR)"PKCS 11", NULL, 0};
+CK_INTERFACE spy_interface = {(CK_UTF8CHAR_PTR) "PKCS 11", NULL, 0};
 
 /* Inits the spy. If successful, po != NULL */
 static CK_RV
@@ -337,7 +337,7 @@ init_spy(void)
 		return CKR_DEVICE_ERROR;
 	}
 	modhandle = C_LoadModule(module, &po_v2);
-	po = (CK_FUNCTION_LIST_3_2_PTR) po_v2;
+	po = (CK_FUNCTION_LIST_3_2_PTR)po_v2;
 	if (modhandle && po) {
 		fprintf(spy_output, "Loaded: \"%s\"\n", module);
 	}
@@ -2252,8 +2252,6 @@ C_EncapsulateKey(CK_SESSION_HANDLE hSession,
 	}
 	return retne(rv);
 }
-
-
 
 CK_RV
 C_DecapsulateKey(CK_SESSION_HANDLE hSession,

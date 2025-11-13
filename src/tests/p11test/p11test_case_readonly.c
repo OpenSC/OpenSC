@@ -582,7 +582,12 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 	}
 #ifdef EVP_PKEY_ED25519
 	case EVP_PKEY_ED25519:
-	case EVP_PKEY_ED448: {
+#endif
+#ifdef EVP_PKEY_ED448
+	case EVP_PKEY_ED448:
+#endif
+#if defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_ED448)
+	{
 		/* need to be created even though we do not do any MD */
 		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
 
@@ -609,7 +614,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		}
 		break;
 	}
-#endif
+#endif /* defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_ED448) */
 	default:
 		fprintf(stderr, " [ KEY %s ] Unknown type. Not verifying\n", o->id_str);
 	}
@@ -622,7 +627,7 @@ int verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 {
 	CK_RV rv;
 	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
-	CK_MECHANISM sign_mechanism = { mech->mech, mech->params, mech->params_len };
+	CK_MECHANISM sign_mechanism = {mech->mech, mech->params, mech->params_len};
 	static int verify_support = 1;
 	char *name;
 
@@ -691,11 +696,13 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	CK_BYTE *message = NULL;
 	CK_BYTE *sign = NULL;
 	CK_ULONG sign_length = 0;
+#ifdef EVP_PKEY_ED448
 	CK_EDDSA_PARAMS eddsa_params = {
 			.phFlag = CK_FALSE,
 			.ulContextDataLen = 0,
 			.pContextData = NULL,
 	};
+#endif
 	CK_HASH_SIGN_ADDITIONAL_CONTEXT pqc_params = {
 			.hedgeVariant = CKH_HEDGE_PREFERRED,
 			.pContext = NULL,
@@ -715,14 +722,14 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	}
 
 	switch (o->type) {
-	case EVP_PKEY_EC:
-	case EVP_PKEY_RSA:
-#ifdef EVP_PKEY_ED25519
+#ifdef EVP_PKEY_ED448
 	case EVP_PKEY_ED448:
 		/* The Ed448 requires parameter */
 		mech->params = &eddsa_params;
 		mech->params_len = sizeof(CK_EDDSA_PARAMS);
-		break;
+		/* fall through */
+#endif /* EVP_PKEY_ED448 */
+#ifdef EVP_PKEY_ED25519
 	case EVP_PKEY_ED25519:
 #endif
 #ifdef EVP_PKEY_ML_DSA_44
@@ -744,6 +751,8 @@ int sign_verify_test(test_cert_t *o, token_info_t *info, test_mech_t *mech,
 	case EVP_PKEY_SLH_DSA_SHA2_256F:
 	case EVP_PKEY_SLH_DSA_SHAKE_256F:
 #endif
+	case EVP_PKEY_EC:
+	case EVP_PKEY_RSA:
 		/* OK */
 		break;
 	default:
@@ -860,27 +869,25 @@ void readonly_tests(void **state) {
 		test_cert_t *o = &objects.data[i];
 
 		if (o->key_type != CKK_RSA &&
-		    o->key_type != CKK_EC &&
-		    o->key_type != CKK_EC_EDWARDS &&
-		    o->key_type != CKK_ML_DSA &&
-		    o->key_type != CKK_SLH_DSA)
+				o->key_type != CKK_EC &&
+				o->key_type != CKK_EC_EDWARDS &&
+				o->key_type != CKK_ML_DSA &&
+				o->key_type != CKK_SLH_DSA)
 			continue;
 
-		printf("\n[%-6s] [%s]\n",
-			o->id_str,
-			o->label);
+		printf("\n[%-6s] [%s]\n", o->id_str, o->label);
 		printf("[%s] [%6lu] [ %s ] [%s%s] [%s%s]\n",
-			(o->key_type == CKK_RSA ? "  RSA  " :
-				o->key_type == CKK_EC ? "   EC  " :
-				o->key_type == CKK_EC_EDWARDS ? " EDDSA " :
-				o->key_type == CKK_ML_DSA ? "ML-DSA " :
-				o->key_type == CKK_SLH_DSA ? "SLH-DSA" : "  ??  "),
-			o->bits,
-			o->verify_public == 1 ? " ./ " : "    ",
-			o->sign ? "[./] " : "[  ] ",
-			o->verify ? " [./] " : " [  ] ",
-			o->encrypt ? "[./] " : "[  ] ",
-			o->decrypt ? " [./] " : " [  ] ");
+				(o->key_type == CKK_RSA ? "  RSA  " :
+					o->key_type == CKK_EC ? "   EC  " :
+					o->key_type == CKK_EC_EDWARDS ? " EDDSA " :
+					o->key_type == CKK_ML_DSA ? "ML-DSA " :
+					o->key_type == CKK_SLH_DSA ? "SLH-DSA" : "  ??  "),
+				o->bits,
+				o->verify_public == 1 ? " ./ " : "    ",
+				o->sign ? "[./] " : "[  ] ",
+				o->verify ? " [./] " : " [  ] ",
+				o->encrypt ? "[./] " : "[  ] ",
+				o->decrypt ? " [./] " : " [  ] ");
 		if (!o->sign && !o->verify && !o->encrypt && !o->decrypt &&
 				!o->encapsulate && !o->decapsulate) {
 			printf("  no usable attributes found ... ignored\n");
@@ -896,11 +903,11 @@ void readonly_tests(void **state) {
 				continue;
 			}
 			printf("  [ %-21s ] [   %s    ] [   %s    ]\n",
-				get_mechanism_name(mech->mech),
-				mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ",
-				mech->result_flags & FLAGS_DECRYPT_ANY ? "[./]" : "    ");
+					get_mechanism_name(mech->mech),
+					mech->result_flags & FLAGS_SIGN_ANY ? "[./]" : "    ",
+					mech->result_flags & FLAGS_DECRYPT_ANY ? "[./]" : "    ");
 			if ((mech->result_flags & FLAGS_SIGN_ANY) == 0 &&
-				(mech->result_flags & FLAGS_DECRYPT_ANY) == 0)
+					(mech->result_flags & FLAGS_DECRYPT_ANY) == 0)
 				continue; /* skip empty rows for export */
 			P11TEST_DATA_ROW(info, 4,
 				's', o->id_str,
