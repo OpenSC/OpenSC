@@ -30,6 +30,9 @@
 # include <openssl/core_names.h>
 # include <openssl/param_build.h>
 #endif
+#if OPENSSL_VERSION_NUMBER >= 0x30500000L
+# include <openssl/ml_kem.h>
+#endif
 #include "p11test_common.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -54,9 +57,12 @@ typedef struct {
 	CK_KEY_TYPE	key_type;
 	CK_BBOOL	always_auth;
 	CK_BBOOL	extractable;
+	CK_BBOOL	decapsulate;
+	CK_BBOOL	encapsulate;
 	char		*label;
 	CK_ULONG 	 bits;
 	char 		*value;
+	CK_ULONG 	 parameter_set;
 	int			verify_public;
 	test_mech_t	mechs[MAX_PSS_MECHS];
 	size_t			num_mechs;

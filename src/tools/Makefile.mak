@@ -56,11 +56,11 @@ openpgp-tool.exe: openpgp-tool-helpers.obj $(LIBS)
 
 sc-hsm-tool.exe: sc-hsm-tool.obj fread_to_eof.obj $(OBJECTS) $(LIBS)
 	cl $(COPTS) /c $*.c
-	link $(LINKFLAGS) /out:$@ $*.obj sc-hsm-tool.obj fread_to_eof.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
+	link $(LINKFLAGS) /out:$@ $*.obj fread_to_eof.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib
 
 pkcs11-tool.exe: pkcs11-tool.obj pkcs11_uri.obj $(OBJECTS) $(LIBS)
 	cl $(COPTS) /c $*.c
-	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj pkcs11-tool.obj pkcs11_uri.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
+	link $(LINKFLAGS) /pdb:$*.pdb /out:$@ $*.obj $(OBJECTS) $(LIBS) $(OPENSSL_LIB) gdi32.lib shell32.lib User32.lib ws2_32.lib shlwapi.lib
 
 .c.exe:
 	cl $(COPTS) /c $<
