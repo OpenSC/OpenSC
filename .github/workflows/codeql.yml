@@ -38,6 +38,15 @@ jobs:
     - run: .github/setup-linux.sh force-install
     - run: .github/build.sh
 
+    - name: Upload test logs
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: codeql-logs
+        path: |
+          tests/*.log
+          src/tests/unittests/*.log
+
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       with:
