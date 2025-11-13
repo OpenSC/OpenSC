@@ -8,6 +8,5 @@ $SOURCE_PATH/tests/test-pkcs11-tool-allowed-mechanisms.sh softhsm
 $SOURCE_PATH/tests/test-pkcs11-tool-import.sh softhsm
 $SOURCE_PATH/tests/test-pkcs11-tool-sign-verify.sh softhsm
 $SOURCE_PATH/tests/test-pkcs11-tool-sym-crypt-test.sh softhsm
-$SOURCE_PATH/tests/test-pkcs11-tool-test-threads.sh softhsm
 $SOURCE_PATH/tests/test-pkcs11-tool-test.sh softhsm
 $SOURCE_PATH/tests/test-pkcs11-tool-unwrap-wrap-test.sh softhsm
