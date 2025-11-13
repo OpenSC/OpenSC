@@ -41,38 +41,38 @@ void usage_test(void **state) {
 		if (objects.data[i].sign && !objects.data[i].verify) {
 			errors++;
 			fprintf(stderr, " [ ERROR %s ] If Sign is set, Verify should be set too.\n",
-			    objects.data[i].id_str);
+					objects.data[i].id_str);
 		}
 		if (objects.data[i].decrypt && !objects.data[i].encrypt) {
 			errors++;
 			fprintf(stderr, " [ ERROR %s ] If Decrypt is set, Encrypt should be set too.\n",
-			    objects.data[i].id_str);
+					objects.data[i].id_str);
 		}
 		if (objects.data[i].unwrap && !objects.data[i].wrap) {
 			errors++;
 			fprintf(stderr, " [ ERROR %s ] If Unwrap is set, Wrap should be set too.\n",
-			    objects.data[i].id_str);
+					objects.data[i].id_str);
 		}
 		if (objects.data[i].encapsulate && !objects.data[i].decapsulate) {
 			errors++;
 			fprintf(stderr, " [ ERROR %s ] If Encapsulate is set, Decapsulate should be set too.\n",
-			    objects.data[i].id_str);
+					objects.data[i].id_str);
 		}
 		if (objects.data[i].derive_pub != objects.data[i].derive_priv) {
 			errors++;
 			fprintf(stderr, " [ ERROR %s ] Derive should be set on both private and public part.\n",
-			    objects.data[i].id_str);
+					objects.data[i].id_str);
 		}
 
 		/* We have at least one usage flag for every key group */
 		if (!objects.data[i].sign        && !objects.data[i].verify &&
-		    !objects.data[i].encrypt     && !objects.data[i].decrypt &&
-		    !objects.data[i].wrap        && !objects.data[i].unwrap &&
-		    !objects.data[i].encapsulate && !objects.data[i].decapsulate &&
-		    !objects.data[i].derive_pub  && !objects.data[i].derive_priv) {
+				!objects.data[i].encrypt     && !objects.data[i].decrypt &&
+				!objects.data[i].wrap        && !objects.data[i].unwrap &&
+				!objects.data[i].encapsulate && !objects.data[i].decapsulate &&
+				!objects.data[i].derive_pub  && !objects.data[i].derive_priv) {
 			errors++;
 			fprintf(stderr, " [ ERROR %s ] Key group should have at least one usage flag.\n",
-			    objects.data[i].id_str);
+					objects.data[i].id_str);
 		}
 	}
 
@@ -80,22 +80,22 @@ void usage_test(void **state) {
 	printf("[KEY ID] [LABEL]\n");
 	printf("[ TYPE ] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [WRAP&UNWR] [ENC&DECAPS] [ DERIVE ] [ALWAYS_AUTH]\n");
 	P11TEST_DATA_ROW(info, 16,
-		's', "KEY ID",
-		's', "LABEL",
-		's', "TYPE",
-		's', "BITS",
-		's', "VERIFY PUBKEY",
-		's', "SIGN",
-		's', "VERIFY",
-		's', "ENCRYPT",
-		's', "DECRYPT",
-		's', "WRAP",
-		's', "UNWRAP",
-		's', "ENCAPSULATE",
-		's', "DECAPSULATE",
-		's', "DERIVE PUBLIC",
-		's', "DERIVE PRIVATE",
-		's', "ALWAYS AUTH");
+			's', "KEY ID",
+			's', "LABEL",
+			's', "TYPE",
+			's', "BITS",
+			's', "VERIFY PUBKEY",
+			's', "SIGN",
+			's', "VERIFY",
+			's', "ENCRYPT",
+			's', "DECRYPT",
+			's', "WRAP",
+			's', "UNWRAP",
+			's', "ENCAPSULATE",
+			's', "DECAPSULATE",
+			's', "DERIVE PUBLIC",
+			's', "DERIVE PRIVATE",
+			's', "ALWAYS AUTH");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 

@@ -251,10 +251,10 @@ supported_mechanisms_test(void **state)
 			's', "FLAGS");
 		for (i = 0; i < mechanism_count; i++) {
 			printf("[%-21s] [%4lu][%5lu] [0x%.8lX]",
-				get_mechanism_name(mechanism_list[i]),
-				mechanism_info[i].ulMinKeySize,
-				mechanism_info[i].ulMaxKeySize,
-				mechanism_info[i].flags);
+					get_mechanism_name(mechanism_list[i]),
+					mechanism_info[i].ulMinKeySize,
+					mechanism_info[i].ulMaxKeySize,
+					mechanism_info[i].flags);
 			P11TEST_DATA_ROW(info, 4,
 				's', get_mechanism_name(mechanism_list[i]),
 				'd', mechanism_info[i].ulMinKeySize,

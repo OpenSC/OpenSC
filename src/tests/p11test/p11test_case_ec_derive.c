@@ -97,14 +97,15 @@ pkcs11_derive(test_cert_t *o, token_info_t * info,
 	return get_value.ulValueLen;
 }
 
-int test_derive_montgomery(test_cert_t *o, token_info_t *info, test_mech_t *mech)
+int
+test_derive_montgomery(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 {
 #ifdef EVP_PKEY_X25519
 	unsigned char *secret = NULL, *pkcs11_secret = NULL;
 	EVP_PKEY_CTX *pctx = NULL;
 	EVP_PKEY *pkey = NULL; /* This is peer key */
 	unsigned char *pub = NULL;
-	size_t pub_len = 0, secret_len = o->bits/8, pkcs11_secret_len = 0;
+	size_t pub_len = 0, secret_len = o->bits / 8, pkcs11_secret_len = 0;
 	int rc;
 
 	if (o->private_handle == CK_INVALID_HANDLE) {
@@ -114,7 +115,9 @@ int test_derive_montgomery(test_cert_t *o, token_info_t *info, test_mech_t *mech
 
 	switch (o->type) {
 	case EVP_PKEY_X25519:
+#ifdef EVP_PKEY_X448
 	case EVP_PKEY_X448:
+#endif
 		/* OK */
 		break;
 	default:
@@ -438,16 +441,14 @@ void derive_tests(void **state) {
 			continue;
 
 		test_cert_t *o = &objects.data[i];
-		printf("\n[%-6s] [%s]\n",
-			o->id_str,
-			o->label);
+		printf("\n[%-6s] [%s]\n", o->id_str, o->label);
 		printf("[%s] [%6lu] [  %s  ] [ %s%s ]\n",
-			(o->key_type == CKK_EC ? "ECDSA " :
-				o->key_type == CKK_EC_MONTGOMERY ? "XEDDSA" : " ?? "),
-			o->bits,
-			o->verify_public == 1 ? " ./ " : "    ",
-			o->derive_pub ? "[./]" : "[  ]",
-			o->derive_priv ? "[./]" : "[  ]");
+				(o->key_type == CKK_EC ? "ECDSA " :
+					o->key_type == CKK_EC_MONTGOMERY ? "XEDDSA" : " ?? "),
+				o->bits,
+				o->verify_public == 1 ? " ./ " : "    ",
+				o->derive_pub ? "[./]" : "[  ]",
+				o->derive_priv ? "[./]" : "[  ]");
 		if (!o->derive_pub && !o->derive_priv) {
 			printf("  no usable attributes found ... ignored\n");
 			continue;
