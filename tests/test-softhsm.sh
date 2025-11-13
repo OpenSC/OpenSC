@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 SOURCE_PATH=${SOURCE_PATH:-..}
 
 echo "Running all supported tests for SoftHSM token..."
