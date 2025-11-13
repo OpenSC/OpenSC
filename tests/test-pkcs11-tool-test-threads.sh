@@ -14,12 +14,12 @@ fi
 source $SOURCE_PATH/tests/common.sh $TOKENTYPE
 
 # Test our PKCS #11 module here
-P11LIB="../src/pkcs11/.libs/opensc-pkcs11.so"
+P11LIB="$BUILD_PATH/src/pkcs11/.libs/opensc-pkcs11.so"
 
 echo "======================================================="
 echo "Test pkcs11 threads IN "
 echo "======================================================="
-OPENSC_TOOL="../src/tools/opensc-tool"
+OPENSC_TOOL="$BUILD_PATH/src/tools/opensc-tool"
 echo "check for opensc-tool"
 if [[ -f $OPENSC_TOOL ]] ; then
 echo "trying opensc-tool -a"
