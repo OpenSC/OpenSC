@@ -590,6 +590,8 @@
 		"DECRYPT",
 		"WRAP",
 		"UNWRAP",
+		"ENCAPSULATE",
+		"DECAPSULATE",
 		"DERIVE PUBLIC",
 		"DERIVE PRIVATE",
 		"ALWAYS AUTH"
@@ -608,6 +610,8 @@
 		"YES",
 		"",
 		"",
+		"",
+		"",
 		""
 	],
 	[
@@ -624,6 +628,8 @@
 		"YES",
 		"",
 		"",
+		"",
+		"",
 		""
 	],
 	[
@@ -638,6 +644,8 @@
 		"YES",
 		"YES",
 		"YES",
+		"",
+		"",
 		"YES",
 		"YES",
 		""
@@ -654,6 +662,8 @@
 		"YES",
 		"YES",
 		"YES",
+		"",
+		"",
 		"YES",
 		"YES",
 		""
@@ -670,6 +680,8 @@
 		"YES",
 		"YES",
 		"YES",
+		"",
+		"",
 		"",
 		"",
 		""
