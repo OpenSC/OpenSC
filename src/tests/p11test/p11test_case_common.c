@@ -1171,7 +1171,7 @@ int callback_secret_keys(test_certs_t *objects,
 
 
 int search_objects(test_certs_t *objects, token_info_t *info,
-	CK_ATTRIBUTE filter[], CK_LONG filter_size, CK_ATTRIBUTE template[], CK_LONG template_size,
+	CK_ATTRIBUTE filter[], long filter_size, CK_ATTRIBUTE template[], long template_size,
 	int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned long, CK_OBJECT_HANDLE))
 {
 	CK_RV rv;

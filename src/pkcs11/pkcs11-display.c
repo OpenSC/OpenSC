@@ -109,7 +109,7 @@ buf_spec(CK_VOID_PTR buf_addr, CK_ULONG buf_len)
 }
 
 void
-print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
+print_enum(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
 	enum_spec *spec = (enum_spec*)arg;
 	CK_ULONG i;
@@ -125,18 +125,18 @@ print_enum(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR 
 }
 
 void
-print_boolean(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
+print_boolean(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
 	CK_BYTE i = *((CK_BYTE *)value);
 	fprintf(f, i ? "True\n" : "False\n");
 }
 
 void
-print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
+print_generic(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
 	CK_ULONG i;
 
-	if((CK_LONG)size != -1 && value != NULL) {
+	if((long)size != -1 && value != NULL) {
 		char hex[16*3+1] = {0};
 		char ascii[16+1];
 		char *hex_ptr = hex, *ascii_ptr = ascii;
@@ -184,7 +184,7 @@ print_generic(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_P
 
 #ifdef ENABLE_OPENSSL
 static void
-print_dn(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
+print_dn(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
 	print_generic(f, type, value, size, arg, key_type);
 	if(size && value) {
@@ -244,7 +244,7 @@ static enum_spec ck_slh_dsa_t[] = {
 };
 
 void
-print_parameter_set(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg,
+print_parameter_set(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg,
 		CK_KEY_TYPE key_type)
 {
 	switch (key_type) {
@@ -264,12 +264,12 @@ print_parameter_set(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_
 }
 
 void
-print_print(FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
+print_print(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
 	CK_ULONG i, j=0;
 	CK_BYTE  c;
 
-	if((CK_LONG)size != -1) {
+	if((long)size != -1) {
 		fprintf(f, "%s\n    ", buf_spec(value, size));
 		for(i = 0; i < size; i += j) {
 			for(j = 0; ((i + j < size) && (j < 32)); j++) {
@@ -1563,7 +1563,7 @@ print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 			if(ck_attribute_specs[k].type == pTemplate[j].type) {
 				found = 1;
 				fprintf(f, "    %s ", ck_attribute_specs[k].name);
-				if(pTemplate[j].pValue && ((CK_LONG) pTemplate[j].ulValueLen) > 0) {
+				if(pTemplate[j].pValue && ((long)pTemplate[j].ulValueLen) > 0) {
 					ck_attribute_specs[k].display(
 							f, pTemplate[j].type, pTemplate[j].pValue,
 							pTemplate[j].ulValueLen,
