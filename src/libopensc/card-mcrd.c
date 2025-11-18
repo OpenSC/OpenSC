@@ -658,10 +658,10 @@ select_down(sc_card_t * card,
 			/* first try to select an EF and retry an DF
 			   on error. */
 			r = select_part(card, MCRD_SEL_EF, *pathptr, file);
-			if (!r)
+			if (r == SC_SUCCESS)
 				found_ef = 1;
 		}
-		if (r)
+		if (r != SC_SUCCESS)
 			r = select_part(card, MCRD_SEL_DF, *pathptr,
 					pathlen == 1 ? file : NULL);
 		LOG_TEST_RET(card->ctx, r, "unable to select DF");
