@@ -1062,13 +1062,15 @@ const u8 *sc_compacttlv_find_tag(const u8 *buf, size_t len, u8 tag, size_t *outl
 		size_t expected_len = tag & 0x0F;
 
 	        for (idx = 0; idx < len; idx++) {
-			if ((buf[idx] & 0xF0) == plain_tag && idx + expected_len < len &&
-			    (expected_len == 0 || expected_len == (buf[idx] & 0x0F))) {
+			u8 ctag = buf[idx] & 0xF0;
+			size_t ctag_len = buf[idx] & 0x0F;
+			if (ctag == plain_tag && idx + ctag_len < len &&
+					(expected_len == 0 || expected_len == ctag_len)) {
 				if (outlen != NULL)
-					*outlen = buf[idx] & 0x0F;
+					*outlen = ctag_len;
 				return buf + (idx + 1);
 			}
-			idx += (buf[idx] & 0x0F);
+			idx += ctag_len;
                 }
         }
 	return NULL;
