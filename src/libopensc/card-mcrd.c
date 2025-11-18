@@ -586,11 +586,11 @@ do_select(sc_card_t * card, u8 kind,
 	}
 
 	if (p2 == 0x04 && apdu.resplen > 2 && apdu.resp[0] == 0x62) {
+		if (apdu.resp[1] > apdu.resplen - 2)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		*file = sc_file_new();
 		if (!*file)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-		if (apdu.resp[1] > apdu.resplen - 2)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		process_fcp(card, *file, apdu.resp + 2, apdu.resp[1]);
 		return SC_SUCCESS;
 	}
