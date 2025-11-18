@@ -46,7 +46,6 @@ function test_unwrapped_aes_encryption() {
     rm aes_ciphertext_openssl.data aes_ciphertext_pkcs11.data aes_plain.data
 }
 
-source $SOURCE_PATH/tests/help.sh
 # Initialize tokens with their custom pkcs11-tool arguments
 source $SOURCE_PATH/tests/common.sh softokn
 initialize_token
@@ -124,11 +123,11 @@ for MECH in AES-CBC AES-KEY-WRAP RSA-PKCS; do
             $PKCS11_TOOL "${ARGS[@]}" --write-object aes.key --id $ID_AES --type secrkey --key-type AES:32 \
                 --usage-decrypt --extractable --label "stored-aes-32"
             assert $? "Failed to write AES key on $WRAPPER"
-            # 2. Wrap 
+            # 2. Wrap
             $PKCS11_TOOL "${ARGS[@]}" --wrap -m $MECH --id $ID_WRAP --iv $IV --application-id $ID_AES \
                 --output-file wrapped_key.data
             assert $? "Failed to wrap AES key with $MECH from $WRAPPER"
-            
+
             get_priv_args "$UNWRAPPER"
             #3. Unwrap
             $PKCS11_TOOL "${ARGS[@]}" --unwrap -m $MECH --id $ID_WRAP --iv $IV --application-id $ID_AES \
