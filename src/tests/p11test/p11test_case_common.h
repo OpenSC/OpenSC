@@ -79,7 +79,7 @@ void test_certs_init(test_certs_t *objects);
 void always_authenticate(test_cert_t *o, token_info_t *info);
 
 int search_objects(test_certs_t *objects, token_info_t *info,
-	CK_ATTRIBUTE filter[], CK_LONG filter_size, CK_ATTRIBUTE template[], CK_LONG template_size,
+	CK_ATTRIBUTE filter[], long filter_size, CK_ATTRIBUTE template[], long template_size,
 	int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned long, CK_OBJECT_HANDLE));
 void search_for_all_objects(test_certs_t *objects, token_info_t *info);
 void clean_all_objects(test_certs_t *objects);

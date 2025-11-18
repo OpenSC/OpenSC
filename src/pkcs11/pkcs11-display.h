@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-typedef void(display_func) (FILE *, CK_LONG, CK_VOID_PTR, CK_ULONG, CK_VOID_PTR, CK_KEY_TYPE);
+typedef void(display_func) (FILE *, long, CK_VOID_PTR, CK_ULONG, CK_VOID_PTR, CK_KEY_TYPE);
 
 typedef struct {
   CK_ULONG   type;
@@ -75,10 +75,10 @@ enum ck_type {
 
 const char *lookup_enum_spec(enum_spec *spec, CK_ULONG value);
 const char *lookup_enum(CK_ULONG type, CK_ULONG value);
-void print_enum    (FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type);
-void print_boolean (FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type);
-void print_generic (FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type);
-void print_print   (FILE *f, CK_LONG type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type);
+void print_enum    (FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type);
+void print_boolean (FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type);
+void print_generic (FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type);
+void print_print   (FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type);
 void show_error    (FILE *f, char *str, CK_RV rc);
 
 void print_ck_info(FILE *f, CK_INFO *info);
