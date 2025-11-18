@@ -11,7 +11,7 @@ endif
 
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
-OPENSC_PKCS11_INC = sc-pkcs11.h pkcs11.h pkcs11-opensc.h
+OPENSC_PKCS11_INC = sc-pkcs11.h pd-pkcs11.h pkcs11.h pkcs11-opensc.h
 OPENSC_PKCS11_SRC = pkcs11-global.c pkcs11-session.c pkcs11-object.c misc.c slot.c \
 	mechanism.c openssl.c framework-pkcs15.c \
 	framework-pkcs15init.c debug.c pkcs11.exports \
