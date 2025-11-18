@@ -612,6 +612,11 @@ cosm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Generate key failed: RSA only supported");
 
+	if (key_info->path.len < 4) {
+		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_VALID,
+				"The path needs to be at least four bytes long");
+	}
+
 	path = key_info->path;
 	path.len -= 2;
 
@@ -721,8 +726,10 @@ cosm_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Create key failed: RSA only supported");
 
-	if (key_info->path.len < 2)
-		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_VALID, "The path needs to be at least to bytes long");
+	if (key_info->path.len < 2) {
+		LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_VALID,
+				"The path needs to be at least two bytes long");
+	}
 
 	sc_log(ctx,  "create private key ID:%s",  sc_pkcs15_print_id(&key_info->id));
 	/* Here, the path of private key file should be defined.
