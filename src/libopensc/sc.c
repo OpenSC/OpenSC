@@ -1061,7 +1061,7 @@ const u8 *sc_compacttlv_find_tag(const u8 *buf, size_t len, u8 tag, size_t *outl
 		u8 plain_tag = tag & 0xF0;
 		size_t expected_len = tag & 0x0F;
 
-	        for (idx = 0; idx < len; idx++) {
+		for (idx = 0; idx < len; idx++) {
 			u8 ctag = buf[idx] & 0xF0;
 			size_t ctag_len = buf[idx] & 0x0F;
 			if (ctag == plain_tag && idx + ctag_len < len &&
@@ -1071,8 +1071,8 @@ const u8 *sc_compacttlv_find_tag(const u8 *buf, size_t len, u8 tag, size_t *outl
 				return buf + (idx + 1);
 			}
 			idx += ctag_len;
-                }
-        }
+		}
+	}
 	return NULL;
 }
 
