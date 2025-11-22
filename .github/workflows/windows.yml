@@ -22,7 +22,7 @@ jobs:
       matrix:
         platform: [x86, x64, arm64]
         configuration: [Light, Release]
-        image: [windows-2022]
+        image: [windows-2025]
         include:
           - platform: x86
             setenv: amd64_x86
@@ -37,9 +37,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Git describe
-        id: ghd
-        uses: proudust/gh-describe@v2
       - name: Package name
         shell: bash
         run: |
@@ -52,7 +49,7 @@ jobs:
           else
             SUFFIX="-${{ github.base_ref }}-pr${{ github.event.number }}"
           fi
-          echo ARTIFACT=${{ steps.ghd.outputs.tag }}${SUFFIX}_${{ matrix.platform }}${{ matrix.configuration == 'Light' && '-Light' || '' }} >> $GITHUB_ENV
+          echo "DIST_SUFFIX=${{ matrix.configuration == 'Light' && '-Light' || '' }}${SUFFIX}" >> $GITHUB_ENV
       - name: Install CPDK
         run: choco install windows-cryptographic-provider-development-kit -y > $null
       - name: Setup dev env
@@ -64,7 +61,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/vcpkg_cache
-          key: vcpkg-${{ matrix.configuration }}-${{ matrix.platform }}-${{ hashFiles('.github/workflows/windows.yml', '.github/vcpkg.json') }}
+          key: vcpkg-${{ matrix.configuration }}-${{ matrix.platform }}-${{ hashFiles('.github/vcpkg.json') }}
       - name: Prepare vcpkg
         if: matrix.configuration == 'Release'
         uses: lukka/run-vcpkg@v11
@@ -117,18 +114,16 @@ jobs:
           echo "OPENPACE_DEF=/DENABLE_OPENPACE" >> $env:GITHUB_ENV
           echo "OPENPACE_DIR=${env:GITHUB_WORKSPACE}\openpace-${env:OPENPACE_VER}" >> $env:GITHUB_ENV
       - name: Build OpenSC
-        run: |
-          nmake /nologo /f Makefile.mak opensc.msi
-          move win32\OpenSC.msi OpenSC-${env:ARTIFACT}.msi
+        run: nmake /nologo /f Makefile.mak opensc.msi
       - name: Archive artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: msi_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
-          path: ./*.msi
+          path: ./win32/*.msi
       - name: Archive debug artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: OpenSC-${{ env.ARTIFACT }}-Debug
+          name: debug_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
           path: |
             ./src/**/*.pdb
             ./win32/*.pdb
