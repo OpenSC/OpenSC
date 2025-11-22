@@ -586,11 +586,11 @@ do_select(sc_card_t * card, u8 kind,
 	}
 
 	if (p2 == 0x04 && apdu.resplen > 2 && apdu.resp[0] == 0x62) {
+		if (apdu.resp[1] > apdu.resplen - 2)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		*file = sc_file_new();
 		if (!*file)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-		if (apdu.resp[1] > apdu.resplen - 2)
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		process_fcp(card, *file, apdu.resp + 2, apdu.resp[1]);
 		return SC_SUCCESS;
 	}
@@ -658,10 +658,10 @@ select_down(sc_card_t * card,
 			/* first try to select an EF and retry an DF
 			   on error. */
 			r = select_part(card, MCRD_SEL_EF, *pathptr, file);
-			if (!r)
+			if (r == SC_SUCCESS)
 				found_ef = 1;
 		}
-		if (r)
+		if (r != SC_SUCCESS)
 			r = select_part(card, MCRD_SEL_DF, *pathptr,
 					pathlen == 1 ? file : NULL);
 		LOG_TEST_RET(card->ctx, r, "unable to select DF");
