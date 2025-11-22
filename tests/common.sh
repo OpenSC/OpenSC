@@ -9,8 +9,8 @@ if [ -n "$VALGRIND" -a -n "$LOG_COMPILER" ]; then
     VALGRIND="$LOG_COMPILER"
 fi
 
-export SOPIN="12345678"
-export PIN="123456"
+export SOPIN="12345678abcdefgh"
+export PIN="123456abcdef"
 PKCS11_TOOL="$VALGRIND $BUILD_PATH/src/tools/pkcs11-tool"
 
 if [ "${TOKENTYPE}" == "softhsm" ]; then
@@ -55,10 +55,8 @@ function generate_key() {
 	# convert it to more digestible PEM format
 	if [[ ${TYPE:0:3} == "RSA" ]]; then
 		openssl rsa -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
-	elif [[ $TYPE == "EC:edwards25519" ]]; then
-		openssl pkey -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
 	else
-		openssl ec -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+		openssl pkey -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
 	fi
 	rm $ID.der
 }
@@ -81,6 +79,24 @@ function card_setup() {
 		echo "Couldn't generate GENERIC key"
 		return 1
 	fi
+	if [ "${TOKENTYPE}" == "kryoptic" ]; then
+		# Generate Ed25519 Key pair
+		generate_key "EC:ed25519" "06" "ed25519" || return 1
+		# Generate Ed448 Key pair
+		generate_key "EC:ed448" "07" "ed448" || return 1
+		# Generate x25519 Key pair
+		generate_key "EC:x25519" "08" "x25519" || return 1
+		# Generate x448 Key pair
+		generate_key "EC:x448" "09" "x448" || return 1
+
+		# Generate ML-DSA-65 Key pair
+		generate_key "ML-DSA-65" "10" "ML-DSA-65" || return 1
+		# Generate ML-KEM-768 Key pair
+		generate_key "ML-KEM-768" "11" "ML-KEM-768" || return 1
+		# Generate SLH-DSA-SHA2-192S Key pair
+		generate_key "SLH-DSA-SHA2-192S" "12" "SLH-DSA-SHA2-192S" || return 1
+	fi
+
 }
 
 function card_cleanup() {

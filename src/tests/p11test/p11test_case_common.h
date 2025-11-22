@@ -30,6 +30,9 @@
 # include <openssl/core_names.h>
 # include <openssl/param_build.h>
 #endif
+#if OPENSSL_VERSION_NUMBER >= 0x30500000L
+# include <openssl/ml_kem.h>
+#endif
 #include "p11test_common.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -54,9 +57,12 @@ typedef struct {
 	CK_KEY_TYPE	key_type;
 	CK_BBOOL	always_auth;
 	CK_BBOOL	extractable;
+	CK_BBOOL	decapsulate;
+	CK_BBOOL	encapsulate;
 	char		*label;
 	CK_ULONG 	 bits;
 	char 		*value;
+	CK_ULONG 	 parameter_set;
 	int			verify_public;
 	test_mech_t	mechs[MAX_PSS_MECHS];
 	size_t			num_mechs;
@@ -73,7 +79,7 @@ void test_certs_init(test_certs_t *objects);
 void always_authenticate(test_cert_t *o, token_info_t *info);
 
 int search_objects(test_certs_t *objects, token_info_t *info,
-	CK_ATTRIBUTE filter[], CK_LONG filter_size, CK_ATTRIBUTE template[], CK_LONG template_size,
+	CK_ATTRIBUTE filter[], long filter_size, CK_ATTRIBUTE template[], long template_size,
 	int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned long, CK_OBJECT_HANDLE));
 void search_for_all_objects(test_certs_t *objects, token_info_t *info);
 void clean_all_objects(test_certs_t *objects);

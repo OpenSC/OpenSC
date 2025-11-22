@@ -1786,6 +1786,122 @@ CK_RV C_MessageVerifyFinal(CK_SESSION_HANDLE hSession)    /* the session's handl
 	return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
+CK_RV
+C_EncapsulateKey(CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hPublicKey,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulAttributeCount,
+		CK_BYTE_PTR pCiphertext,
+		CK_ULONG_PTR pulCiphertextLen,
+		CK_OBJECT_HANDLE_PTR phKey)
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
+CK_RV
+C_DecapsulateKey(CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hPrivateKey,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulAttributeCount,
+		CK_BYTE_PTR pCiphertext,
+		CK_ULONG ulCiphertextLen,
+		CK_OBJECT_HANDLE_PTR phKey)
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
+CK_RV
+C_VerifySignatureInit(CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hKey,
+		CK_BYTE_PTR pSignature,
+		CK_ULONG ulSignatureLen)
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
+CK_RV
+C_VerifySignature(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen)
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
+CK_RV
+C_VerifySignatureUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen)
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
+CK_RV
+C_VerifySignatureFinal(CK_SESSION_HANDLE hSession)
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
+CK_RV
+C_GetSessionValidationFlags(CK_SESSION_HANDLE hSession,
+		CK_SESSION_VALIDATION_FLAGS_TYPE type,
+		CK_FLAGS_PTR pFlags)
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
+CK_RV
+C_AsyncComplete(CK_SESSION_HANDLE hSession,
+		CK_UTF8CHAR_PTR pFunctionName,
+		CK_ASYNC_DATA_PTR pResult)
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
+CK_RV
+C_AsyncGetID(CK_SESSION_HANDLE hSession,
+		CK_UTF8CHAR_PTR pFunctionName,
+		CK_ULONG_PTR pulID)
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
+CK_RV
+C_AsyncJoin(CK_SESSION_HANDLE hSession,
+		CK_UTF8CHAR_PTR pFunctionName,
+		CK_ULONG ulID,
+		CK_BYTE_PTR pData,
+		CK_ULONG ulData)
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
+CK_RV
+C_WrapKeyAuthenticated(CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hWrappingKey,
+		CK_OBJECT_HANDLE hKey,
+		CK_BYTE_PTR pAssociatedData,
+		CK_ULONG ulAssociatedDataLen,
+		CK_BYTE_PTR pWrappedKey,
+		CK_ULONG_PTR pulWrappedKeyLen)
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
+CK_RV
+C_UnwrapKeyAuthenticated(CK_SESSION_HANDLE hSession,
+		CK_MECHANISM_PTR pMechanism,
+		CK_OBJECT_HANDLE hUnwrappingKey,
+		CK_BYTE_PTR pWrappedKey,
+		CK_ULONG ulWrappedKeyLen,
+		CK_ATTRIBUTE_PTR pTemplate,
+		CK_ULONG ulAttributeCount,
+		CK_BYTE_PTR pAssociatedData,
+		CK_ULONG ulAssociatedDataLen,
+		CK_OBJECT_HANDLE_PTR phKey)
+{
+	return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
 /*
  * Helper function to compare attributes on any sort of object
  */
