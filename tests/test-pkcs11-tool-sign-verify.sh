@@ -33,6 +33,10 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
     if [[ "$ID" == "rhel" || "$ID_LIKE" =~ ".*rhel.*" ]] && [[ "$VERSION" -gt 8 ]] && [[ "$HASH" == "SHA1" ]]; then
         RETOSSL="1"
     fi
+    # Kryoptic does not do SHA1 anymore
+    if [[ "$TOKENTYPE" == "kryoptic" ]] && [[ "$HASH" == "SHA1" ]]; then
+        continue;
+    fi
     for SIGN_KEY in "01" "02"; do
         METHOD="RSA-PKCS"
         # RSA-PKCS works only on small data - generate small data:
