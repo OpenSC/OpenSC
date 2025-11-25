@@ -33,7 +33,7 @@ jobs:
   test-kryoptic:
     runs-on: ubuntu-24.04
     container:
-      image: fedora:latest
+      image: quay.io/fedora/fedora:latest
     env:
       SOURCE_PATH: ./
       BUILD_PATH: ./
@@ -90,11 +90,11 @@ jobs:
         env:
           LD_LIBRARY_PATH: /usr/local/lib
         run: tests/test-softhsm.sh
-  
+
   test-interoperability:
     runs-on: ubuntu-24.04
     container:
-      image: fedora:latest
+      image: quay.io/fedora/fedora:latest
     env:
       SOURCE_PATH: ./
       BUILD_PATH: ./
