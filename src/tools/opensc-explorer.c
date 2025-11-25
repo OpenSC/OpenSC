@@ -477,7 +477,7 @@ static int pattern_match(const char *pattern, const char *string)
 		}
 		/* simple character class matching a single character */
 		else if (*pattern == '[') {
-			char *end = strchr(pattern, ']');
+			const char *end = strchr(pattern, ']');
 			int match = 0;
 
 			for (pattern++; end != NULL && pattern != end; pattern++) {
