@@ -2013,9 +2013,9 @@ is_macro_character(char c)
 }
 
 static int
-get_inner_word(char *str, char word[WORD_SIZE])
+get_inner_word(const char *str, char word[WORD_SIZE])
 {
-	char *inner = NULL;
+	const char *inner = NULL;
 	size_t len = 0;
 
 	inner = str;
@@ -2039,7 +2039,7 @@ static int
 check_macro_reference_loop(const char *start_name, sc_macro_t *macro, sc_profile_t *profile, int depth)
 {
 	scconf_list *value;
-	char *name = NULL;
+	const char *name = NULL;
 	sc_macro_t	*m;
 	char word[WORD_SIZE];
 
@@ -2087,7 +2087,7 @@ build_argv(struct state *cur, const char *cmdname,
 		str = list->data;
 		if (str[0] != '$') {
 			/* When str contains macro inside, macro reference loop needs to be checked */
-			char *macro_name = NULL;
+			const char *macro_name = NULL;
 			if ((macro_name = strchr(str, '$'))) {
 				/* Macro does not to start at the first position */
 				char word[WORD_SIZE];
