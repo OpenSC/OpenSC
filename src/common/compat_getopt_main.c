@@ -94,7 +94,7 @@ handle(char *progname,
       if (rotate && isalpha(c))
         {
           const char *letters = "abcdefghijklmnopqrstuvwxyz";
-          char *match;
+          const char *match;
           if ((match = strchr(letters, tolower(c))))
             {
               char rc = letters[(match - letters + rotate) % 26];
