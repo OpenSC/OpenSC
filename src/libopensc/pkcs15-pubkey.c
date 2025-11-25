@@ -1332,6 +1332,10 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	       "sc_pkcs15_pubkey_from_spki_fields() called: %p:%"SC_FORMAT_LEN_SIZE_T"u\n%s",
 	       buf, buflen, sc_dump_hex(buf, buflen));
 
+	if (buflen < 1) {
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "subjectPublicKeyInfo can not be empty");
+	}
+
 	tmp_buf = malloc(buflen);
 	if (!tmp_buf) {
 		r = SC_ERROR_OUT_OF_MEMORY;
