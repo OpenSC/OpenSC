@@ -69,9 +69,9 @@ allocate_function_list(int v)
 	CK_FUNCTION_LIST_3_2_PTR list_3_2 = NULL;
 
 	if (v == 30) {
-		list = malloc(sizeof(CK_FUNCTION_LIST_3_0));
+		list = (CK_FUNCTION_LIST_PTR)malloc(sizeof(CK_FUNCTION_LIST_3_0));
 	} else if (v == 32) {
-		list = malloc(sizeof(CK_FUNCTION_LIST_3_2));
+		list = (CK_FUNCTION_LIST_PTR)malloc(sizeof(CK_FUNCTION_LIST_3_2));
 	} else {
 		list = malloc(sizeof(CK_FUNCTION_LIST));
 	}
