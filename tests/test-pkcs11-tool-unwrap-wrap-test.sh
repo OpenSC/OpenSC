@@ -40,6 +40,7 @@ function test_unwrapped_aes_encryption() {
 }
 
 TOKENTYPE=$1
+TOKENTYPE=${TOKENTYPE:-$TEST_PKCS11_BACKEND}
 
 if [ "${TOKENTYPE}" == "" ]; then
     TOKENTYPE=softhsm
@@ -286,7 +287,7 @@ if [[ -n $is_openssl_3 ]]; then
     # Wrap with OpenSSL
     openssl enc -id-aes256-wrap -e -K $AES_WRAP -iv $IV -in aes.key -out openssl_wrapped.data
     assert $? "OpenSSL / Failed to AES KEY WRAP wrap AES key"
-    
+
     # Wrap with pkcs11-tool
     $PKCS11_TOOL "${PRIV_ARGS[@]}" --wrap -m AES-KEY-WRAP --id $ID_AES_WRAP --iv $IV --application-id $ID_AES_UNWRAPPED_4 \
         --output-file pkcs11_wrapped.data
@@ -349,7 +350,7 @@ if [[ -n $is_openssl_3 ]]; then
 
         # Compare original and unwrapped key
         compare_keys $? aes.key unwrapped.key
-        
+
         # Check if AES key was correctly unwrapped with encryption
         test_unwrapped_aes_encryption $AES_256_KEY $ID_AES_UNWRAPPED_4
     fi
