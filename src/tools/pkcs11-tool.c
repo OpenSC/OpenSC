@@ -6819,11 +6819,11 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("%sderive", sepa);
 		sepa = ", ";
 	}
-	if (getENCAPSULATE(sess, obj)) {
+	if (pub && getENCAPSULATE(sess, obj)) {
 		printf("%sencapsulate", sepa);
 		sepa = ", ";
 	}
-	if (getDECAPSULATE(sess, obj)) {
+	if ((!pub && !sec) && getDECAPSULATE(sess, obj)) {
 		printf("%sdecapsulate", sepa);
 		sepa = ", ";
 	}
