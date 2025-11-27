@@ -4750,7 +4750,7 @@ parse_pqc_pkey(EVP_PKEY *pkey, CK_KEY_TYPE type, int private, struct pqckey_info
 		pqc->type = CKP_SLH_DSA_SHAKE_256S;
 	}
 	if (private) {
-		size_t priv_len;
+		size_t priv_len = 0;
 		char *seed_param = NULL;
 
 		/* Some keys might have only the seed -- skip if not available */
@@ -4764,7 +4764,6 @@ parse_pqc_pkey(EVP_PKEY *pkey, CK_KEY_TYPE type, int private, struct pqckey_info
 					pqc->private.value, priv_len, NULL);
 			if (rc != 1) {
 				OPENSSL_free(pqc->private.value);
-
 				return -1;
 			}
 		} else {
@@ -4795,7 +4794,7 @@ parse_pqc_pkey(EVP_PKEY *pkey, CK_KEY_TYPE type, int private, struct pqckey_info
 					return -1;
 				}
 			} else {
-				util_fatal("PRIVATE key value available");
+				util_fatal("PRIVATE key value not available");
 			}
 		}
 	} else {
@@ -5365,12 +5364,12 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_privkey_attr++;
 			if (pqc_key.private.value != NULL) {
 				FILL_ATTR(privkey_templ[n_privkey_attr], CKA_VALUE,
-						&pqc_key.private.value, pqc_key.private.len);
+						pqc_key.private.value, pqc_key.private.len);
 				n_privkey_attr++;
 			}
 			if (pqc_key.seed.value != NULL) {
 				FILL_ATTR(privkey_templ[n_privkey_attr], CKA_SEED,
-						&pqc_key.seed.value, pqc_key.seed.len);
+						pqc_key.seed.value, pqc_key.seed.len);
 				n_privkey_attr++;
 			}
 		} else {
