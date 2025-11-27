@@ -849,22 +849,18 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				/* See RFC 5280 and PKCS#11 V2.40 */
 				if (ckis[i].cert_keyUsage_present) {
 					if (ckis[i].cert_keyUsage & SC_X509_DIGITAL_SIGNATURE) {
-						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT /* extra*/
-									|SC_PKCS15_PRKEY_USAGE_WRAP
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_WRAP
 									|SC_PKCS15_PRKEY_USAGE_VERIFY
 									|SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER;
-					        ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT /*extra */
-									|SC_PKCS15_PRKEY_USAGE_UNWRAP
+					        ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_UNWRAP
 									|SC_PKCS15_PRKEY_USAGE_SIGN
 									|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
 					}
 					if (ckis[i].cert_keyUsage & SC_X509_NON_REPUDIATION) {
-						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT /* extra */
-									|SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
+						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
 									|SC_PKCS15_PRKEY_USAGE_VERIFY
 									|SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER;
-						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT /*extra*/
-									|SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
+						ckis[i].priv_usage |= SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
 									|SC_PKCS15_PRKEY_USAGE_SIGN
 									|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
 					}
