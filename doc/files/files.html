@@ -275,6 +275,21 @@ app <em class="replaceable"><code>application</code></em> {
 							</p></li></ul></div><p>
 						(Default: <code class="literal">decipher</code>).
 				</p></dd><dt><span class="term">
+					<code class="option">openssl_config = <em class="replaceable"><code>path</code></em>;</code>
+				</span></dt><dd><p>
+						Specify a OpenSSL configuration file to be loaded into the
+						OpenSC's library context. This should not be needed for general
+						operation, but is needed if you need to confirure some
+						specifics of OpenSSL, without the need to rebuild OpenSC (for
+						example configure and load a FIPS provider).
+						For more information about configuring OpenSSL, see
+						<span class="citerefentry"><span class="refentrytitle">config</span>(5).
+						</span>
+						and
+						<span class="citerefentry"><span class="refentrytitle">fips_config</span>(5).
+						</span>.
+						(Default: <code class="literal">empty</code>).
+				</p></dd><dt><span class="term">
 					<code class="option">secure_messaging <em class="replaceable"><code>name</code></em> {
 						<em class="replaceable"><code>block_contents</code></em>
 						}

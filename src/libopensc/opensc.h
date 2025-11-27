@@ -895,6 +895,7 @@ typedef struct sc_context {
 	void *mutex;
 
 #ifdef ENABLE_OPENSSL
+	char *openssl_config;
 	ossl3ctx_t *ossl3ctx;
 #endif
 
