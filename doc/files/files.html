@@ -275,6 +275,21 @@ app <em class="replaceable"><code>application</code></em> {
 							</p></li></ul></div><p>
 						(Default: <code class="literal">decipher</code>).
 				</p></dd><dt><span class="term">
+					<code class="option">openssl_config = <em class="replaceable"><code>path</code></em>;</code>
+				</span></dt><dd><p>
+						Specify a OpenSSL configuration file to be loaded into the
+						OpenSC' library context. This should not be needed for general
+						operation, but is needed if you need to confirure some
+						specifics of OpenSSL, without the need to rebuild OpenSC (for
+						example configure and load a FIPS provider).
+						For more information about configuring OpenSSL, see
+						<span class="citerefentry"><span class="refentrytitle">config</span>(5).
+						</span>
+						and
+						<span class="citerefentry"><span class="refentrytitle">fips_config</span>(5).
+						</span>.
+						(Default: <code class="literal">empty</code>).
+				</p></dd><dt><span class="term">
 					<code class="option">secure_messaging <em class="replaceable"><code>name</code></em> {
 						<em class="replaceable"><code>block_contents</code></em>
 						}
@@ -1225,6 +1240,10 @@ app <em class="replaceable"><code>application</code></em> {
 					<code class="filename">/usr/share/doc/opensc/opensc.conf</code>
 				</span></dt><dd><p>
 						Extended example configuration file
+				</p></dd><dt><span class="term">
+					<code class="filename">/etc/opensc/openssl.cnf</code>
+				</span></dt><dd><p>
+						OpenSSL configuration used by OpenSC.
 				</p></dd></dl></div></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-profile"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-profile — format of profile for <span class="command"><strong>pkcs15-init</strong></span></p></div><div class="refsect1"><a name="id-1.3.3"></a><h2>Description</h2><p>
 			The <span class="command"><strong>pkcs15-init</strong></span> utility for PKCS #15 smart card
 			personalization is controlled via profiles. When starting, it will read two
