@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       # Create with piv-sm build with java deps
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }} ${{ matrix.build == 'piv-sm' && env.JAVA_DEPS || '' }}
           version: apt-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build == 'piv-sm' && 'java' || 'base' }}
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -91,7 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -103,7 +103,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-24.04-amd64-base
@@ -128,7 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -154,7 +154,7 @@ jobs:
     runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
           version: apt-${{ matrix.dist }}-${{ matrix.arch }}-java
@@ -186,7 +186,7 @@ jobs:
     runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
           version: apt-${{ matrix.dist }}-${{ matrix.arch }}-java
@@ -206,7 +206,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [build]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-24.04-amd64-base
@@ -231,7 +231,7 @@ jobs:
     runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-${{ matrix.dist }}-${{ matrix.arch }}-base
@@ -248,7 +248,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -293,7 +293,7 @@ jobs:
         target: [cac, oseid]
     needs: [build-libressl]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
