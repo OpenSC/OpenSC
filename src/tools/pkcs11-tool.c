@@ -7473,7 +7473,7 @@ static int read_object(CK_SESSION_HANDLE session)
 #ifdef EVP_PKEY_ED448
 									NID_ED448,
 #endif
-#ifdef EVP_PKEY_X44
+#ifdef EVP_PKEY_X448
 									NID_X448,
 #endif
 									nid);
