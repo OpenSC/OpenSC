@@ -2352,7 +2352,7 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 			return -1;
 		}
 
-		if (!new_pin || !*new_pin || strlen(new_pin) > 20) {
+		if (strlen(new_pin) > 20) {
 			if (new_pin != opt_new_pin)
 				free(new_pin);
 			return 1;
