@@ -66,14 +66,12 @@ if [ "$1" == "mingw" -o "$1" == "mingw32" -o "$1" == "ix86" ]; then
 	$SUDO dpkg --add-architecture i386
 fi
 
-if [ -z "$GITHUB_ACTIONS" -o "$FORCE_INSTALL" = "1" ]; then
-	# make sure we do not get prompts
-	export DEBIAN_FRONTEND=noninteractive
-	export DEBCONF_NONINTERACTIVE_SEEN=true
-	$SUDO apt-get update -qq
+# make sure we do not get prompts
+export DEBIAN_FRONTEND=noninteractive
+export DEBCONF_NONINTERACTIVE_SEEN=true
+$SUDO apt-get update -qq
 
-	$SUDO apt-get install -y build-essential $DEPS
-fi
+$SUDO apt-get install -y build-essential $DEPS
 
 # install libressl if needed
 if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
