@@ -45,12 +45,6 @@ jobs:
     runs-on: ubuntu-${{ matrix.dist }}${{ matrix.arch == 'arm64' && '-arm' || '' }}
     steps:
       - uses: actions/checkout@v5
-      # Create with piv-sm build with java deps
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ matrix.build == 'piv-sm' && env.JAVA_DEPS || '' }}
-          version: apt-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build == 'piv-sm' && 'java' || 'base' }}
-          execute_install_scripts: true
       - run: .github/setup-linux.sh ${{ matrix.build != 'dist' && 'debug' || '' }} # install debug with valgrind builds
       - run: .github/build.sh ${{ matrix.build }} ${{ matrix.build == 'piv-sm' && 'valgrind' || '' }} # configure piv-sm with valgrind tests
       - name: Upload test logs
@@ -79,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -91,7 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -103,7 +97,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-24.04-amd64-base
@@ -128,11 +122,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-latest-base
-          execute_install_scripts: true
       - run: .github/setup-linux.sh mingw32
       - run: .github/build.sh mingw32
       - name: Cache build artifacts
@@ -154,11 +143,6 @@ jobs:
     runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-${{ matrix.dist }}-${{ matrix.arch }}-java
-          execute_install_scripts: true
       - run: git clone $JCARDSIM
       - uses: actions/setup-java@v4
         with:
@@ -186,11 +170,6 @@ jobs:
     runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-${{ matrix.dist }}-${{ matrix.arch }}-java
-          execute_install_scripts: true
       - *use_cache
       - run: git clone $JCARDSIM
       - uses: actions/setup-java@v4
@@ -206,7 +185,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [build]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-24.04-amd64-base
@@ -231,11 +210,6 @@ jobs:
     runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-${{ matrix.dist }}-${{ matrix.arch }}-base
-          execute_install_scripts: true
       - *use_cache
       - run: .github/setup-linux.sh ${{ matrix.target }} debug
       - run: .github/test-${{ matrix.target }}.sh
@@ -248,7 +222,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -293,7 +267,7 @@ jobs:
         target: [cac, oseid]
     needs: [build-libressl]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
