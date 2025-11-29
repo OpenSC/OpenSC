@@ -142,6 +142,12 @@ AM_CONDITIONAL([HAVE_SHORTEN_WARNING_OPTION], [test "${have_shorten_warning_opti
 
 AX_VALGRIND_CHECK()
 
+if test ${VALGRIND_ENABLED} = "yes"; then
+	# to avoid false positive leaks from pcsclite
+	PCSCLITE_PATH=$(ldconfig -p | grep libpcsclite.so.1 |  tr ' ' '\n' | grep / | head -n 1)
+	AC_SUBST([PCSCLITE_PATH])
+fi
+
 AC_ARG_ENABLE(
 	[fuzzing],
 	[AS_HELP_STRING([--enable-fuzzing],[enable compile of fuzzing tests @<:@disabled@:>@, note that CC, CFLAGS and FUZZING_LIBS should be set accordingly, e.g. to something like CC="clang" CFLAGS="-fsanitize=fuzzer-no-link" FUZZING_LIBS="-fsanitize=fuzzer"])],
@@ -1282,6 +1288,7 @@ CRYPTOTOKENKIT_CFLAGS:   ${CRYPTOTOKENKIT_CFLAGS}
 GIO2_CFLAGS:             ${GIO2_CFLAGS}
 GIO2_LIBS:               ${GIO2_LIBS}
 FUZZING_LIBS:            ${FUZZING_LIBS}
+PCSCLITE_PATH:           ${PCSCLITE_PATH}
 
 EOF
 

@@ -12,5 +12,5 @@ if [ "$1" == "valgrind" -o "$2" == "valgrind" ]; then
 	# https://github.com/opendnssec/SoftHSMv2/commit/f94aaffc879ade97a51b8e1308af42f86be1885f
 	export VALGRIND="valgrind -q --error-exitcode=1 --leak-check=full --keep-debuginfo=yes --trace-children=yes --gen-suppressions=all --suppressions=$PWD/tests/opensc.supp"
 	# this should help us getting better traces as some of pcsclite and avoid false positives
-	export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libpcsclite.so.1"
+	export LD_PRELOAD=$(ldconfig -p | grep libpcsclite.so.1 |  tr ' ' '\n' | grep /)
 fi
