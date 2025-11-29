@@ -46,11 +46,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       # Create with piv-sm build with java deps
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ matrix.build == 'piv-sm' && env.JAVA_DEPS || '' }}
-          version: apt-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build == 'piv-sm' && 'java' || 'base' }}
-          execute_install_scripts: true
+      # - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      #   with:
+      #     packages: ${{ env.BASE_DEPS }} ${{ matrix.build == 'piv-sm' && env.JAVA_DEPS || '' }}
+      #     version: apt-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build == 'piv-sm' && 'java' || 'base' }}
+      #     execute_install_scripts: true
       - run: .github/setup-linux.sh ${{ matrix.build != 'dist' && 'debug' || '' }} # install debug with valgrind builds
       - run: .github/build.sh ${{ matrix.build }} ${{ matrix.build == 'piv-sm' && 'valgrind' || '' }} # configure piv-sm with valgrind tests
       - name: Upload test logs
