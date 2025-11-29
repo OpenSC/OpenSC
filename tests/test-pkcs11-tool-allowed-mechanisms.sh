@@ -2,6 +2,7 @@
 SOURCE_PATH=${SOURCE_PATH:-..}
 
 TOKENTYPE=$1
+TOKENTYPE=${TOKENTYPE:-$TEST_PKCS11_BACKEND}
 
 if [ "${TOKENTYPE}" == "softokn" ]; then
 	echo "Generate key-pair with CKA_ALLOWED_MECHANISMS not supported"
