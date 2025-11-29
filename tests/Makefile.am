@@ -20,7 +20,7 @@ LOG_COMPILER = $(LOG_VALGRIND)
 # the LD_PRELOAD is to avoid false positive leaks from pcsclite
 AM_TESTS_ENVIRONMENT += \
 	VALGRIND='$(LOG_VALGRIND)'; \
-	LD_PRELOAD='/usr/lib/x86_64-linux-gnu/libpcsclite.so.1';
+	LD_PRELOAD='$(PCSCLITE_PATH)'
 endif
 
 dist_noinst_SCRIPTS = common.sh \
