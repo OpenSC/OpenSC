@@ -165,7 +165,7 @@ COPTS = /O1 /$(BUILD_TYPE) $(COPTS)
 	rc $(DEFS) /l 0x0409 /I$(TOPDIR)\win32 $<
 
 .exports.def:
-	echo LIBRARY $* > $*.def
+	echo LIBRARY > $*.def
 	echo EXPORTS >> $*.def
 	type $*.exports >> $*.def
 
