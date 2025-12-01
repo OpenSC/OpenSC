@@ -32,6 +32,10 @@ else
 	DEPS="$DEPS libpcsclite-dev libcmocka-dev libssl-dev zlib1g-dev libreadline-dev softhsm2"
 fi
 
+if [ "$1" == "debug" -o "$2" == "debug" ]; then
+	DEPS="debuginfod $DEPS"
+fi
+
 if [ "$1" == "clang-tidy" ]; then
 	DEPS="$DEPS clang-tidy"
 elif [ "$1" == "cac" ]; then
@@ -81,31 +85,6 @@ if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
 		cat /tmp/libressl.log
 		exit $RET
 	fi
-elif [ "$1" == "debug" -o "$2" == "debug" ]; then
-	# install debug symbols
-	$SUDO apt-get install -y lsb-release ubuntu-dbgsym-keyring
-	echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse
-deb http://ddebs.ubuntu.com $(lsb_release -cs 2> /dev/null)-updates main restricted universe multiverse
-deb http://ddebs.ubuntu.com $(lsb_release -cs 2> /dev/null)-proposed main restricted universe multiverse" | \
-	$SUDO tee -a /etc/apt/sources.list.d/ddebs.list
-	$SUDO apt-get update -qq
-
-	# Github Actions images are terribly large containing a lot of nonsense that takes ages just to upgrade
-	if [ -n "$GITHUB_ACTIONS" ]; then
-		$SUDO apt-get autopurge snapd
-		$SUDO apt-mark hold snapd
-		$SUDO apt-get remove -y -qq mysql* php* firefox ruby* dotnet*
-	fi
-
-	$SUDO apt-get upgrade -qq
-	ARCH_TRIPLET=$(dpkg-architecture -qDEB_HOST_MULTIARCH)
-	DEP="libssl1.1-dbgsym"
-	if [ -f "/usr/lib/${ARCH_TRIPLET}/libssl.so.3" ]; then
-#		libcrypto is in same package as libssl
-		DEPX=`dpkg -S "/usr/lib/${ARCH_TRIPLET}/libssl.so.3"`
-		DEP="${DEPX%%:*}-dbgsym"
-	fi
-	$SUDO apt-get install -y openssl-dbgsym "$DEP" softhsm2-dbgsym libsofthsm2-dbgsym libc6-dbg
 fi
 
 if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
