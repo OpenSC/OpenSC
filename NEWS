@@ -1,9 +1,14 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.27.0; 2026-03-XX
+# New in 0.27.0; 2026-03-30
 
 ## Security
-* Several uses of potentially uninitialized memory detected by fuzzers
+* CVE-2025-13763: Several uses of potentially uninitialized memory detected by fuzzers
+* CVE-2025-49010: Possible write beyond buffer bounds during processing of GET RESPONSE APDU
+* CVE-2025-66215: Possible write beyond buffer bounds in oberthur driver
+* CVE-2025-66038: Possible read beyond buffer bounds when parsing historical bytes in PIV driver
+* CVE-2025-66037: Possible buffer overrun while parsing SPKI
+* More low-severity data handling issues when parsing profile configuration
 
 ## General improvements
 * Added support for PKCS#11 3.2 in tools and pkcs11-spy and p11test(#3510)
@@ -16,6 +21,7 @@ NEWS for OpenSC -- History of user visible changes
 * Removed internal caching for current EF/DF (#3403)
 * Correctly detect OS-level FIPS mode in OpenSSL automatically (#3551)
   or through custom configuration file (#3525)
+* Added support for Brainpool twisted curves to pkcs11-tool and SC-HSM (#3601)
 
 ## PC/SC
 * Handle case when smart card is removed and inserted between two subsequent calls to
@@ -58,6 +64,7 @@ NEWS for OpenSC -- History of user visible changes
 * Add support for ChaCha20 and Poly1305 (#3339)
 * Add support for AES CTR in decrypt_data() and encrypt_data() (#3338)
 * Add initial support for PKCS#11 URIs (#3289)
+* Print more information about RSA keys (#3623)
 
 # New in 0.26.1; 2025-01-14
 

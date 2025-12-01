@@ -5,7 +5,7 @@ Summary:        Smart card library and applications
 
 License:        LGPL-2.1-or-later AND BSD-3-Clause
 URL:            https://github.com/OpenSC/OpenSC/wiki
-Source0:        https://github.com/OpenSC/OpenSC/releases/download/%{version}/%{name}-%{version}-rc2.tar.gz
+Source0:        https://github.com/OpenSC/OpenSC/releases/download/%{version}/%{name}-%{version}.tar.gz
 Source1:        opensc.module
 
 BuildRequires:  make
@@ -57,7 +57,7 @@ OpenSC libraries.
 
 
 %prep
-%setup -q -n opensc-%{version}-rc2
+%setup -q -n opensc-%{version}
 
 XFAIL_TESTS="test-pkcs11-tool-test-threads.sh test-pkcs11-tool-test.sh"
 
