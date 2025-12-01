@@ -9,8 +9,8 @@ backport security fixes into them. Only the last release is supported.
 
 | Version  | Supported          |
 | -------- | ------------------ |
-| 0.26.1   | :white_check_mark: |
-| < 0.26.1 | :x:                |
+| 0.27.0   | :white_check_mark: |
+| < 0.27.0 | :x:                |
 
 ## Reporting a Vulnerability
 
