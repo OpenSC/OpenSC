@@ -131,31 +131,8 @@ jobs:
           path:
             win32/Output/OpenSC*.exe
 
-  test-isoapplet:
-    name: test-isoapplet-${{ matrix.target }}
-    strategy:
-      fail-fast: false
-      matrix:
-        dist: ['24.04']
-        arch: [amd64]
-        build: [valgrind]
-        target: [v0, v1]
-    runs-on: ubuntu-${{ matrix.dist }}
-    needs: [build]
-    steps:
-      - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'semeru'
-          java-version: '8'
-          cache: 'maven'
-      - *use_cache
-      - run: .github/setup-linux.sh isoapplet debug
-      - run: .github/test-isoapplet.sh ${{ matrix.target }}
-      - run: .github/test-isoapplet.sh ${{ matrix.target }} valgrind
-
   test-java:
-    name: test-${{ matrix.target }}-${{ matrix.dist }}-${{ matrix.build }}
+    name: test-${{ matrix.target }}${{ matrix.ver }}-${{ matrix.dist }}-${{ matrix.build }}
     strategy:
       fail-fast: false
       matrix:
@@ -163,9 +140,12 @@ jobs:
         arch: [amd64]
         build: [valgrind]
         target: [piv, gidsapplet, openpgp]
+        ver: ['']
         include: [
           { dist: '22.04', arch: amd64, build: 'piv-sm', target: 'piv' },
-          { dist: '24.04', arch: amd64, build: 'piv-sm', target: 'piv' }
+          { dist: '24.04', arch: amd64, build: 'piv-sm', target: 'piv' },
+          { dist: '24.04', arch: amd64, build: 'valgrind', target: 'isoapplet', ver: 'v0' },
+          { dist: '24.04', arch: amd64, build: 'valgrind', target: 'isoapplet', ver: 'v1' }
         ]
     runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
@@ -178,8 +158,8 @@ jobs:
           java-version: '8'
           cache: 'maven'
       - run: .github/setup-linux.sh ${{ matrix.target }} debug
-      - run: .github/test-${{ matrix.target }}.sh
-      - run: .github/test-${{ matrix.target }}.sh valgrind
+      - run: .github/test-${{ matrix.target }}.sh ${{ matrix.ver }}
+      - run: .github/test-${{ matrix.target }}.sh ${{ matrix.ver }} valgrind
 
   build-clang-tidy:
     runs-on: ubuntu-24.04
