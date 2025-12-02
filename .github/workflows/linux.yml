@@ -48,7 +48,7 @@ jobs:
       - run: .github/setup-linux.sh ${{ matrix.build != 'dist' && 'debug' || '' }} # install debug with valgrind builds
       - run: .github/build.sh ${{ matrix.build }} ${{ matrix.build == 'piv-sm' && 'valgrind' || '' }} # configure piv-sm with valgrind tests
       - name: Upload test logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: ubuntu-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build }}-test-logs
@@ -63,7 +63,7 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build }}-${{ github.sha }}
       - name: Upload build artifacts
         if: matrix.build == 'dist'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: opensc-build-${{ matrix.dist }}-${{ matrix.arch }}
           path:
@@ -72,7 +72,7 @@ jobs:
   build-no-shared:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
@@ -84,7 +84,7 @@ jobs:
   build-no-openssl:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
@@ -96,7 +96,7 @@ jobs:
   build-ix86:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
@@ -108,11 +108,11 @@ jobs:
   build-mingw:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: .github/setup-linux.sh mingw force-install
       - run: .github/build.sh mingw
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: opensc-build-mingw
           path:
@@ -121,15 +121,32 @@ jobs:
   build-mingw32:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: .github/setup-linux.sh mingw32
       - run: .github/build.sh mingw32
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: opensc-build-mingw32
           path:
             win32/Output/OpenSC*.exe
+
+  build-clang-tidy:
+    runs-on: ubuntu-24.04
+    needs: [build]
+    steps:
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+        with:
+          packages: ${{ env.BASE_DEPS }}
+          version: apt-24.04-amd64-base
+          execute_install_scripts: true
+      - uses: actions/cache@v4
+        id: cache-build
+        with:
+          path: ./*
+          key: ${{ runner.os }}-24.04-amd64-valgrind-${{ github.sha }}
+      - run: .github/setup-linux.sh clang-tidy
+      - run: .github/build.sh clang-tidy
 
   test-java:
     name: test-${{ matrix.target }}${{ matrix.ver }}-${{ matrix.dist }}-${{ matrix.build }}
@@ -161,23 +178,6 @@ jobs:
       - run: .github/test-${{ matrix.target }}.sh ${{ matrix.ver }}
       - run: .github/test-${{ matrix.target }}.sh ${{ matrix.ver }} valgrind
 
-  build-clang-tidy:
-    runs-on: ubuntu-24.04
-    needs: [build]
-    steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-24.04-amd64-base
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-24.04-amd64-valgrind-${{ github.sha }}
-      - run: .github/setup-linux.sh clang-tidy
-      - run: .github/build.sh clang-tidy
-
   test:
     name: test-${{ matrix.target }}-${{ matrix.dist }}
     strategy:
@@ -201,7 +201,7 @@ jobs:
   build-libressl:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
@@ -216,7 +216,7 @@ jobs:
           key: libressl-${{ env.LIBRESSL_VERSION }}
       - run: .github/setup-linux.sh libressl
       - run: .github/build.sh dist libressl valgrind
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: libressl-logs
