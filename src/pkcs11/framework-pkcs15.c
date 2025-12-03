@@ -4694,7 +4694,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 
 	/* only padding error must be handled in constant-time way,
 	 * other error can be returned straight away */
-	if ((~constant_time_eq_i(rv, SC_ERROR_WRONG_PADDING) & constant_time_lt_s(sizeof(decrypted), (size_t)rv)))
+	if ((~(size_t)constant_time_eq_i(rv, SC_ERROR_WRONG_PADDING) & constant_time_lt_s(sizeof(decrypted), (size_t)rv)))
 		return sc_to_cryptoki_error(rv, "C_Decrypt");
 
 	/* check rv for padding error */
