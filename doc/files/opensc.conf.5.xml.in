@@ -359,6 +359,29 @@ app <replaceable>application</replaceable> {
 			</varlistentry>
 			<varlistentry>
 				<term>
+					<option>openssl_config = <replaceable>path</replaceable>;</option>
+				</term>
+				<listitem><para>
+						Specify a OpenSSL configuration file to be loaded into the
+						OpenSC's library context. This should not be needed for general
+						operation, but is needed if you need to confirure some
+						specifics of OpenSSL, without the need to rebuild OpenSC (for
+						example configure and load a FIPS provider).
+						For more information about configuring OpenSSL, see
+						<citerefentry>
+							<refentrytitle>config</refentrytitle>
+							<manvolnum>5</manvolnum>.
+						</citerefentry>
+						and
+						<citerefentry>
+							<refentrytitle>fips_config</refentrytitle>
+							<manvolnum>5</manvolnum>.
+						</citerefentry>.
+						(Default: <literal>empty</literal>).
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
 					<option>secure_messaging <replaceable>name</replaceable> {
 						<replaceable>block_contents</replaceable>
 						}
