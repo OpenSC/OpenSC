@@ -539,6 +539,9 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	/* Build the CHV path */
 	path = *df_path;
+	if (path.len + 2 > SC_MAX_PATH_SIZE) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	path.value[path.len++] = ref - 1;
 	path.value[path.len++] = 0;
 
