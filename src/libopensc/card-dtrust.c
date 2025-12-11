@@ -450,6 +450,24 @@ dtrust_init(sc_card_t *card)
 		_sc_card_add_ec_alg(card, 384, flags, ext_flags, &oid_secp384r1);
 		break;
 
+	case SC_CARD_TYPE_DTRUST_V6_1_STD:
+	case SC_CARD_TYPE_DTRUST_V6_4_STD:
+		flags |= SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01;
+		flags |= SC_ALGORITHM_RSA_PAD_PSS;
+		flags |= SC_ALGORITHM_RSA_HASH_SHA1;
+		flags |= SC_ALGORITHM_RSA_HASH_SHA224;
+		flags |= SC_ALGORITHM_RSA_HASH_SHA256;
+		flags |= SC_ALGORITHM_RSA_HASH_SHA384;
+		flags |= SC_ALGORITHM_RSA_HASH_SHA512;
+		flags |= SC_ALGORITHM_MGF1_SHA1;
+		flags |= SC_ALGORITHM_MGF1_SHA224;
+		flags |= SC_ALGORITHM_MGF1_SHA256;
+		flags |= SC_ALGORITHM_MGF1_SHA384;
+		flags |= SC_ALGORITHM_MGF1_SHA512;
+
+		_sc_card_add_rsa_alg(card, 4096, flags, 0);
+		break;
+
 	default:
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_CARD);
 	}
@@ -1200,6 +1218,111 @@ dtrust_restore_security_env(sc_card_t *card,
 }
 
 static int
+dtrust_set_security_starcos(sc_card_t *card,
+		const sc_security_env_t *env)
+{
+	struct sc_apdu apdu;
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 *p;
+	int r;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
+
+	switch (env->operation) {
+	case SC_SEC_OPERATION_SIGN:
+		apdu.p2 = 0xB6;
+		break;
+	default:
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	p = sbuf;
+
+	/* Encode key reference */
+	*p++ = 0x84;
+	*p++ = 0x03;
+	*p++ = 0x80;
+	*p++ = env->key_ref[0];
+	*p++ = 0x00;
+
+	/* Encode algorithm */
+	*p++ = 0x89;
+
+	switch (env->operation) {
+	case SC_SEC_OPERATION_SIGN:
+		*p++ = 0x03;
+		*p++ = 0x13;
+
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01) {
+			*p++ = 0x23;
+
+			switch (env->algorithm_flags & SC_ALGORITHM_RSA_HASHES) {
+			case SC_ALGORITHM_RSA_HASH_SHA1:
+				*p++ = 0x10;
+				break;
+			case SC_ALGORITHM_RSA_HASH_SHA224:
+				*p++ = 0x60;
+				break;
+			case SC_ALGORITHM_RSA_HASH_SHA256:
+				*p++ = 0x30;
+				break;
+			case SC_ALGORITHM_RSA_HASH_SHA384:
+				*p++ = 0x40;
+				break;
+			case SC_ALGORITHM_RSA_HASH_SHA512:
+				*p++ = 0x50;
+				break;
+
+			default:
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+		} else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS) {
+			*p++ = 0x33;
+
+			switch (env->algorithm_flags & SC_ALGORITHM_MGF1_HASHES) {
+			case SC_ALGORITHM_MGF1_SHA1:
+				*p++ = 0x10;
+				break;
+			case SC_ALGORITHM_MGF1_SHA224:
+				*p++ = 0x60;
+				break;
+			case SC_ALGORITHM_MGF1_SHA256:
+				*p++ = 0x30;
+				break;
+			case SC_ALGORITHM_MGF1_SHA384:
+				*p++ = 0x40;
+				break;
+			case SC_ALGORITHM_MGF1_SHA512:
+				*p++ = 0x50;
+				break;
+
+			default:
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+		} else {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+		}
+		break;
+
+	default:
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	}
+
+	r = (int)(p - sbuf);
+	apdu.lc = r;
+	apdu.datalen = r;
+	apdu.data = sbuf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+static int
 dtrust_set_security_env(sc_card_t *card,
 		const sc_security_env_t *env,
 		int se_num)
@@ -1232,6 +1355,15 @@ dtrust_set_security_env(sc_card_t *card,
 	case SC_CARD_TYPE_DTRUST_V5_1_M100:
 	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
 		r = dtrust_restore_security_env(card, drv_data, env);
+		LOG_FUNC_RETURN(card->ctx, r);
+		break;
+
+	case SC_CARD_TYPE_DTRUST_V6_1_STD:
+	case SC_CARD_TYPE_DTRUST_V6_4_STD:
+	case SC_CARD_TYPE_DTRUST_V6_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V6_1_M100:
+	case SC_CARD_TYPE_DTRUST_V6_4_MULTI:
+		r = dtrust_set_security_starcos(card, env);
 		LOG_FUNC_RETURN(card->ctx, r);
 		break;
 	}
