@@ -980,63 +980,78 @@ dtrust_pin_cmd(struct sc_card *card,
 		sc_log(card->ctx, "Additional verification of PIN 0x%02x is necessary.", data->pin_reference);
 	}
 
+	switch (card->type) {
 	/* No special handling for D-Trust Card 4.1/4.4 */
-	if (card->type >= SC_CARD_TYPE_DTRUST_V4_1_STD && card->type <= SC_CARD_TYPE_DTRUST_V4_4_MULTI) {
+	case SC_CARD_TYPE_DTRUST_V4_1_STD:
+	case SC_CARD_TYPE_DTRUST_V4_4_STD:
+	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V4_1_M100:
+	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
 		r = iso_ops->pin_cmd(card, data, tries_left);
 		LOG_FUNC_RETURN(card->ctx, r);
+		break;
+
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_4_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_M100:
+	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+		switch (data->cmd) {
+		case SC_PIN_CMD_GET_INFO:
+			r = dtrust_pin_cmd_get_info(card, data, tries_left);
+			break;
+
+		case SC_PIN_CMD_VERIFY:
+			r = dtrust_pin_cmd_verify(card, data, tries_left);
+			break;
+
+		case SC_PIN_CMD_CHANGE:
+			/* The card requires a secure channel to change the
+			 * PIN. Although we could return the error code of the
+			 * card, we prevent to send the APDU in case no secure
+			 * channel was established. This prevents us from
+			 * exposing our new PIN inadvertently in plaintext over
+			 * the contactless interface in case of a software
+			 * error in the upper layers. */
+			if (!drv_data->pace) {
+				sc_log(card->ctx, "Secure channel required for PIN change");
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED);
+			}
+
+			if (data->pin1.len != 0 || !(data->flags & SC_PIN_CMD_IMPLICIT_CHANGE)) {
+				sc_log(card->ctx, "Card supports implicit PIN change only");
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+
+			if (data->pin2.len == 0 && !(data->flags & SC_PIN_CMD_USE_PINPAD)) {
+				sc_log(card->ctx, "No value provided for the new PIN");
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+			}
+
+			r = iso_ops->pin_cmd(card, data, tries_left);
+			break;
+
+		case SC_PIN_CMD_UNBLOCK:
+			/* The card supports only to reset the retry counter to
+			 * its default value, but not to set verify or set a
+			 * PIN. */
+			if (data->pin1.len != 0 || data->pin2.len != 0 ||
+					data->flags & SC_PIN_CMD_USE_PINPAD) {
+				sc_log(card->ctx, "Card supports retry counter reset only");
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+			}
+
+			r = iso_ops->pin_cmd(card, data, tries_left);
+			break;
+
+		default:
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+		}
+		LOG_FUNC_RETURN(card->ctx, r);
+		break;
 	}
 
-	switch (data->cmd) {
-	case SC_PIN_CMD_GET_INFO:
-		r = dtrust_pin_cmd_get_info(card, data, tries_left);
-		break;
-
-	case SC_PIN_CMD_VERIFY:
-		r = dtrust_pin_cmd_verify(card, data, tries_left);
-		break;
-
-	case SC_PIN_CMD_CHANGE:
-		/* The card requires a secure channel to change the PIN.
-		 * Although we could return the error code of the card, we
-		 * prevent to send the APDU in case no secure channel was
-		 * established. This prevents us from exposing our new PIN
-		 * inadvertently in plaintext over the contactless interface in
-		 * case of a software error in the upper layers. */
-		if (!drv_data->pace) {
-			sc_log(card->ctx, "Secure channel required for PIN change");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED);
-		}
-
-		if (data->pin1.len != 0 || !(data->flags & SC_PIN_CMD_IMPLICIT_CHANGE)) {
-			sc_log(card->ctx, "Card supports implicit PIN change only");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-		}
-
-		if (data->pin2.len == 0 && !(data->flags & SC_PIN_CMD_USE_PINPAD)) {
-			sc_log(card->ctx, "No value provided for the new PIN");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-		}
-
-		r = iso_ops->pin_cmd(card, data, tries_left);
-		break;
-
-	case SC_PIN_CMD_UNBLOCK:
-		/* The supports only to reset the retry counter to its default
-		 * value, but not to set verify or set a PIN. */
-		if (data->pin1.len != 0 || data->pin2.len != 0 ||
-				data->flags & SC_PIN_CMD_USE_PINPAD) {
-			sc_log(card->ctx, "Card supports retry counter reset only");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-		}
-
-		r = iso_ops->pin_cmd(card, data, tries_left);
-		break;
-
-	default:
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
-	}
-
-	LOG_FUNC_RETURN(card->ctx, r);
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_CARD);
 }
 
 static int
