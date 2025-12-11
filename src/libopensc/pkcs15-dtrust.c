@@ -108,6 +108,38 @@ _dtrust_parse_prkdf(struct sc_pkcs15_card *p15card)
 }
 
 static int
+_dtrust_parse_aodf(struct sc_pkcs15_card *p15card)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_object *pkobjs[32];
+	struct sc_pkcs15_auth_info *auth_info;
+	int rv, i, count;
+
+	LOG_FUNC_CALLED(ctx);
+
+	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, pkobjs, sizeof(pkobjs) / sizeof(pkobjs[0]));
+	LOG_TEST_RET(ctx, rv, "Cannot get AUTH PIN objects list");
+
+	count = rv;
+	for (i = 0; i < count; i++) {
+		auth_info = (struct sc_pkcs15_auth_info *)pkobjs[i]->data;
+
+		switch (p15card->card->type) {
+		case SC_CARD_TYPE_DTRUST_V6_1_STD:
+		case SC_CARD_TYPE_DTRUST_V6_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V6_1_M100:
+			/* The AOD object encodes the wrong PIN reference. We
+			 * have to work around it. */
+			if (!strcmp(pkobjs[i]->label, "Authentication-PIN"))
+				auth_info->attrs.pin.reference = 0x82;
+			break;
+		}
+	}
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+static int
 _dtrust_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 {
 	struct sc_context *ctx = p15card->card->ctx;
@@ -126,6 +158,8 @@ _dtrust_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 
 	if (df->type == SC_PKCS15_PRKDF) {
 		rv = _dtrust_parse_prkdf(p15card);
+	} else if (df->type == SC_PKCS15_AODF) {
+		rv = _dtrust_parse_aodf(p15card);
 	} else {
 		rv = SC_SUCCESS;
 	}
