@@ -28,7 +28,7 @@
 #include "pkcs15.h"
 
 static int
-_dtrust_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
+_dtrust_parse_prkdf(struct sc_pkcs15_card *p15card)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *pkobjs[32];
@@ -36,18 +36,6 @@ _dtrust_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	int rv, i, count;
 
 	LOG_FUNC_CALLED(ctx);
-
-	if (!df)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-	if (df->enumerated)
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-
-	rv = sc_pkcs15_parse_df(p15card, df);
-	LOG_TEST_RET(ctx, rv, "DF parse error");
-
-	if (df->type != SC_PKCS15_PRKDF)
-		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, pkobjs, sizeof(pkobjs) / sizeof(pkobjs[0]));
 	LOG_TEST_RET(ctx, rv, "Cannot get PRKEY objects list");
@@ -114,6 +102,32 @@ _dtrust_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 			}
 			break;
 		}
+	}
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+static int
+_dtrust_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
+{
+	struct sc_context *ctx = p15card->card->ctx;
+	int rv;
+
+	LOG_FUNC_CALLED(ctx);
+
+	if (!df)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	if (df->enumerated)
+		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+	rv = sc_pkcs15_parse_df(p15card, df);
+	LOG_TEST_RET(ctx, rv, "DF parse error");
+
+	if (df->type == SC_PKCS15_PRKDF) {
+		rv = _dtrust_parse_prkdf(p15card);
+	} else {
+		rv = SC_SUCCESS;
 	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
