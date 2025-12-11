@@ -1080,24 +1080,14 @@ dtrust_pin_cmd(struct sc_card *card,
 }
 
 static int
-dtrust_set_security_env(sc_card_t *card,
-		const sc_security_env_t *env,
-		int se_num)
+dtrust_restore_security_env(sc_card_t *card,
+		struct dtrust_drv_data_t *drv_data,
+		const sc_security_env_t *env)
 {
-	struct dtrust_drv_data_t *drv_data;
-
-	if (card == NULL || env == NULL)
-		return SC_ERROR_INVALID_ARGUMENTS;
+	int se_num;
+	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
-	drv_data = card->drv_data;
-	drv_data->env = env;
-
-	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1) {
-		sc_log(card->ctx, "No or invalid key reference");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
 
 	/*
 	 * The card does not support to set a security environment. Instead a
@@ -1122,10 +1112,10 @@ dtrust_set_security_env(sc_card_t *card,
 				break;
 
 			default:
-				return SC_ERROR_NOT_SUPPORTED;
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 		} else {
-			return SC_ERROR_NOT_SUPPORTED;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 		}
 		break;
 
@@ -1143,7 +1133,7 @@ dtrust_set_security_env(sc_card_t *card,
 				break;
 
 			default:
-				return SC_ERROR_NOT_SUPPORTED;
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 		} else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS) {
 			/*
@@ -1166,7 +1156,7 @@ dtrust_set_security_env(sc_card_t *card,
 				break;
 
 			default:
-				return SC_ERROR_NOT_SUPPORTED;
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 		} else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW) {
 			switch (card->type) {
@@ -1185,10 +1175,10 @@ dtrust_set_security_env(sc_card_t *card,
 				break;
 
 			default:
-				return SC_ERROR_NOT_SUPPORTED;
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 		} else {
-			return SC_ERROR_NOT_SUPPORTED;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 		}
 		break;
 
@@ -1196,15 +1186,57 @@ dtrust_set_security_env(sc_card_t *card,
 		if (env->algorithm_flags & SC_ALGORITHM_ECDH_CDH_RAW) {
 			se_num = 0x39;
 		} else {
-			return SC_ERROR_NOT_SUPPORTED;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 		}
 		break;
 
 	default:
-		return SC_ERROR_NOT_SUPPORTED;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 
-	return iso_ops->restore_security_env(card, se_num);
+	r = iso_ops->restore_security_env(card, se_num);
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+static int
+dtrust_set_security_env(sc_card_t *card,
+		const sc_security_env_t *env,
+		int se_num)
+{
+	struct dtrust_drv_data_t *drv_data;
+	int r;
+
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	drv_data = card->drv_data;
+	drv_data->env = env;
+
+	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1) {
+		sc_log(card->ctx, "No or invalid key reference");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	switch (card->type) {
+	case SC_CARD_TYPE_DTRUST_V4_1_STD:
+	case SC_CARD_TYPE_DTRUST_V4_4_STD:
+	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V4_1_M100:
+	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_4_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_M100:
+	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+		r = dtrust_restore_security_env(card, drv_data, env);
+		LOG_FUNC_RETURN(card->ctx, r);
+		break;
+	}
+
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_CARD);
 }
 
 static int
