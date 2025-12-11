@@ -45,6 +45,7 @@
 #include "asn1.h"
 #include "card-cardos-common.h"
 #include "internal.h"
+#include "iso7816.h"
 #include "sm/sm-eac.h"
 
 #include "card-dtrust.h"
@@ -488,6 +489,175 @@ dtrust_finish(sc_card_t *card)
 	free(card->drv_data);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+static int
+dtrust6_select_file(struct sc_card *card,
+		const struct sc_path *path,
+		struct sc_file **file_out)
+{
+	int r;
+	size_t i;
+	const unsigned char *fid;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (path->aid.len) {
+		r = iso7816_select_aid(card, path->aid.value, path->aid.len, NULL, NULL);
+		LOG_TEST_RET(card->ctx, r, "SELECT by AID failed");
+	}
+
+	switch (path->type) {
+	case SC_PATH_TYPE_DF_NAME:
+		r = iso7816_select_aid(card, path->value, path->len, NULL, NULL);
+		LOG_TEST_RET(card->ctx, r, "SELECT by DF NAME failed");
+		break;
+
+	case SC_PATH_TYPE_FILE_ID:
+	case SC_PATH_TYPE_PATH:
+		for (i = 0; i + 1 < path->len; i += 2) {
+			sc_apdu_t apdu;
+			unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
+			const u8 *buffer;
+			struct sc_file *file;
+			unsigned int cla, tag;
+			size_t buffer_len;
+
+			fid = path->value + i;
+
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0, 0x0C);
+
+			apdu.resp = NULL;
+			apdu.resplen = 0;
+			apdu.le = 0;
+			apdu.lc = 2;
+			apdu.data = fid;
+			apdu.datalen = 2;
+
+			if (fid[0] == 0x3F && fid[1] == 0x00) {
+				apdu.p1 = 0;
+			} else {
+				/* Treat FID as a directory first. */
+				apdu.p1 = 1;
+			}
+
+			if (i + 2 >= path->len && file_out != NULL) {
+				apdu.cse = SC_APDU_CASE_4_SHORT;
+				apdu.p2 = 4;
+
+				apdu.resp = buf;
+				apdu.resplen = sizeof(buf);
+				apdu.le = sc_get_max_recv_size(card) < 256 ? sc_get_max_recv_size(card) : 256;
+			}
+
+			r = sc_transmit_apdu(card, &apdu);
+			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+			if (i + 2 < path->len) {
+				/* Every FID except the last one must be a directory file. */
+				LOG_TEST_RET(card->ctx, r, "SELECT DF by ID failed");
+				continue;
+			}
+
+			if (r != SC_SUCCESS) {
+				/* We reached the last path element and failed
+				 * to select it as a directory. Thus it either
+				 * does not exist or is an elementary file.
+				 * Let's try to select it as a file. */
+				apdu.p1 = 2;
+
+				if (file_out != NULL) {
+					apdu.resplen = sizeof(buf);
+					apdu.le = sc_get_max_recv_size(card) < 256 ? sc_get_max_recv_size(card) : 256;
+				}
+
+				r = sc_transmit_apdu(card, &apdu);
+				LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+				r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+				LOG_TEST_RET(card->ctx, r, "SELECT EF by ID failed");
+			}
+
+			if (file_out == NULL)
+				break;
+
+			if (apdu.resplen < 2)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+
+			switch (apdu.resp[0]) {
+			case ISO7816_TAG_FCI:
+			case ISO7816_TAG_FCP:
+				file = sc_file_new();
+				if (file == NULL)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+
+				file->path = *path;
+				if (card->ops->process_fci == NULL) {
+					sc_file_free(file);
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+				}
+
+				buffer = apdu.resp;
+				r = sc_asn1_read_tag(&buffer, apdu.resplen, &cla, &tag, &buffer_len);
+
+				if (r == SC_SUCCESS)
+					card->ops->process_fci(card, file, buffer, buffer_len);
+
+				*file_out = file;
+				break;
+
+			default:
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+			}
+		}
+		break;
+
+	default:
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
+
+static int
+dtrust_select_file(struct sc_card *card,
+		const struct sc_path *path,
+		struct sc_file **file_out)
+{
+	int r;
+
+	if (card == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	switch (card->type) {
+	/* No special handling for D-Trust Card 4.1/4.4 and 5.1/5.4 */
+	case SC_CARD_TYPE_DTRUST_V4_1_STD:
+	case SC_CARD_TYPE_DTRUST_V4_4_STD:
+	case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V4_1_M100:
+	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_4_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V5_1_M100:
+	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+		r = iso_ops->select_file(card, path, file_out);
+		LOG_FUNC_RETURN(card->ctx, r);
+		break;
+
+	case SC_CARD_TYPE_DTRUST_V6_1_STD:
+	case SC_CARD_TYPE_DTRUST_V6_4_STD:
+	case SC_CARD_TYPE_DTRUST_V6_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V6_1_M100:
+	case SC_CARD_TYPE_DTRUST_V6_4_MULTI:
+		r = dtrust6_select_file(card, path, file_out);
+		LOG_FUNC_RETURN(card->ctx, r);
+		break;
+	}
+
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_CARD);
 }
 
 static int
@@ -1125,6 +1295,7 @@ sc_get_dtrust_driver(void)
 	dtrust_ops.match_card = dtrust_match_card;
 	dtrust_ops.init = dtrust_init;
 	dtrust_ops.finish = dtrust_finish;
+	dtrust_ops.select_file = dtrust_select_file;
 	dtrust_ops.pin_cmd = dtrust_pin_cmd;
 	dtrust_ops.set_security_env = dtrust_set_security_env;
 	dtrust_ops.compute_signature = dtrust_compute_signature;
