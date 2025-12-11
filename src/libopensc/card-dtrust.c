@@ -97,6 +97,10 @@ static const struct sc_atr_table dtrust_atrs[] = {
 	{ "3b:82:80:01:cb:01:c9",             NULL, NULL, SC_CARD_TYPE_DTRUST_V5_1_STD, 0, NULL },
 	{ "07:78:77:74:03:cb:01:09",          NULL, NULL, SC_CARD_TYPE_DTRUST_V5_1_STD, 0, NULL },
 
+
+	/* D-Trust Signature Card v6.1 and v6.4 - STARCOS 3.7 */
+	{ "3b:da:96:ff:81:b1:fe:45:1f:07:80:58:44:54:52:20:56:31:2e:31:e2", NULL, NULL, SC_CARD_TYPE_DTRUST_V6_1_STD, 0, NULL },
+
 	{ NULL,                               NULL, NULL, 0,                            0, NULL }
 };
 // clang-format on
@@ -109,14 +113,29 @@ static struct sc_object_id oid_secp384r1 = {
 };
 
 static int
-_dtrust_match_cardos(sc_card_t *card)
+_dtrust_match_os(sc_card_t *card)
 {
 	int r;
 	size_t prodlen;
 	u8 buf[32];
 
+	if (card->type == SC_CARD_TYPE_DTRUST_V6_1_STD)
+		card->cla = 0xa0;
+
 	/* check OS version */
-	r = sc_get_data(card, 0x0182, buf, 32);
+	switch (card->type) {
+	case SC_CARD_TYPE_DTRUST_V4_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+		r = sc_get_data(card, 0x0182, buf, 32);
+		break;
+
+	case SC_CARD_TYPE_DTRUST_V6_1_STD:
+		r = sc_get_data(card, 0x9f6a, buf, 32);
+		break;
+
+	default:
+		return SC_ERROR_WRONG_CARD;
+	}
 	LOG_TEST_RET(card->ctx, r, "OS version check failed");
 
 	if (card->type == SC_CARD_TYPE_DTRUST_V4_1_STD) {
@@ -125,10 +144,25 @@ _dtrust_match_cardos(sc_card_t *card)
 	} else if (card->type == SC_CARD_TYPE_DTRUST_V5_1_STD) {
 		if (r != 2 || buf[0] != 0xcb || buf[1] != 0x01)
 			return SC_ERROR_WRONG_CARD;
+	} else if (card->type == SC_CARD_TYPE_DTRUST_V6_1_STD) {
+		if (r != 7 || memcmp(buf, "\x47\x44\x00\xb7\x04\x01\x01", 7))
+			return SC_ERROR_WRONG_CARD;
 	}
 
 	/* check product name */
-	r = sc_get_data(card, 0x0180, buf, 32);
+	switch (card->type) {
+	case SC_CARD_TYPE_DTRUST_V4_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+		r = sc_get_data(card, 0x0180, buf, 32);
+		break;
+
+	case SC_CARD_TYPE_DTRUST_V6_1_STD:
+		r = sc_get_data(card, 0x9f6b, buf, 32);
+		break;
+
+	default:
+		return SC_ERROR_WRONG_CARD;
+	}
 	LOG_TEST_RET(card->ctx, r, "Product name check failed");
 
 	prodlen = (size_t)r;
@@ -138,7 +172,12 @@ _dtrust_match_cardos(sc_card_t *card)
 	} else if (card->type == SC_CARD_TYPE_DTRUST_V5_1_STD) {
 		if (prodlen != strlen("CardOS V6.0 2021") + 1 || memcmp(buf, "CardOS V6.0 2021", prodlen))
 			return SC_ERROR_WRONG_CARD;
+	} else if (card->type == SC_CARD_TYPE_DTRUST_V6_1_STD) {
+		if (prodlen != 8 || memcmp(buf, "\x05\x16\x00\x13\x00\x02\x00\x00", 8))
+			return SC_ERROR_WRONG_CARD;
 	}
+
+	card->cla = 0x00;
 
 	return SC_SUCCESS;
 }
@@ -153,9 +192,23 @@ _dtrust_match_profile(sc_card_t *card)
 	const u8 *sp, *pp;
 	char *name;
 
-	sc_format_path("5032", &cia_path);
-	cia_path.aid.len = sizeof(cia_path.aid.value);
-	r = sc_hex_to_bin("E8:28:BD:08:0F:A0:00:00:01:67:45:53:49:47:4E", (u8 *)&cia_path.aid.value, &cia_path.aid.len);
+	switch (card->type) {
+	case SC_CARD_TYPE_DTRUST_V4_1_STD:
+	case SC_CARD_TYPE_DTRUST_V5_1_STD:
+		sc_format_path("5032", &cia_path);
+		cia_path.aid.len = sizeof(cia_path.aid.value);
+		r = sc_hex_to_bin("E8:28:BD:08:0F:A0:00:00:01:67:45:53:49:47:4E", (u8 *)&cia_path.aid.value, &cia_path.aid.len);
+		break;
+
+	case SC_CARD_TYPE_DTRUST_V6_1_STD:
+		sc_format_path("i5032", &cia_path);
+		cia_path.aid.len = sizeof(cia_path.aid.value);
+		r = sc_hex_to_bin("A0:00:00:00:63:50:4B:43:53:2D:31:35", (u8 *)&cia_path.aid.value, &cia_path.aid.len);
+		break;
+
+	default:
+		return SC_ERROR_WRONG_CARD;
+	}
 	LOG_TEST_RET(card->ctx, r, "Formatting AID failed");
 
 	r = sc_select_file(card, &cia_path, NULL);
@@ -212,6 +265,19 @@ _dtrust_match_profile(sc_card_t *card)
 			card->type = SC_CARD_TYPE_DTRUST_V5_4_MULTI;
 		else
 			return SC_ERROR_WRONG_CARD;
+	} else if (card->type == SC_CARD_TYPE_DTRUST_V6_1_STD) {
+		if (plen >= 27 && !memcmp(pp, "D-TRUST Card 6.1 Std. RSA 2", 27))
+			card->type = SC_CARD_TYPE_DTRUST_V6_1_STD;
+		else if (plen >= 28 && !memcmp(pp, "D-TRUST Card 6.1 Multi ECC 2", 28))
+			card->type = SC_CARD_TYPE_DTRUST_V6_1_MULTI;
+		else if (plen >= 27 && !memcmp(pp, "D-TRUST Card 6.1 M100 ECC 2", 27))
+			card->type = SC_CARD_TYPE_DTRUST_V6_1_M100;
+		else if (plen >= 27 && !memcmp(pp, "D-TRUST Card 6.4 Std. RSA 2", 27))
+			card->type = SC_CARD_TYPE_DTRUST_V6_4_STD;
+		else if (plen >= 28 && !memcmp(pp, "D-TRUST Card 6.4 Multi ECC 2", 28))
+			card->type = SC_CARD_TYPE_DTRUST_V6_4_MULTI;
+		else
+			return SC_ERROR_WRONG_CARD;
 	}
 
 	name = malloc(plen + 1);
@@ -232,7 +298,7 @@ dtrust_match_card(sc_card_t *card)
 	if (_sc_match_atr(card, dtrust_atrs, &card->type) < 0)
 		return 0;
 
-	if (_dtrust_match_cardos(card) != SC_SUCCESS)
+	if (_dtrust_match_os(card) != SC_SUCCESS)
 		return 0;
 
 	if (_dtrust_match_profile(card) != SC_SUCCESS)
