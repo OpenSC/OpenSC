@@ -940,6 +940,7 @@ dtrust_pin_cmd(struct sc_card *card,
 {
 	struct dtrust_drv_data_t *drv_data;
 	int r;
+	int orgcla;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1047,6 +1048,30 @@ dtrust_pin_cmd(struct sc_card *card,
 		default:
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
+		LOG_FUNC_RETURN(card->ctx, r);
+		break;
+
+	case SC_CARD_TYPE_DTRUST_V6_1_STD:
+	case SC_CARD_TYPE_DTRUST_V6_4_STD:
+	case SC_CARD_TYPE_DTRUST_V6_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V6_1_M100:
+	case SC_CARD_TYPE_DTRUST_V6_4_MULTI:
+		r = sc_lock(card);
+		LOG_TEST_RET(card->ctx, r, "sc_lock() failed");
+
+		orgcla = card->cla;
+
+		/* Querying the PIN status requires a special class byte.
+		 * Otherwise we cannot distinguish if the transport protection
+		 * is still in force. */
+		if (data->cmd == SC_PIN_CMD_GET_INFO)
+			card->cla = 0x80;
+
+		r = iso_ops->pin_cmd(card, data, tries_left);
+
+		card->cla = orgcla;
+		sc_unlock(card);
+
 		LOG_FUNC_RETURN(card->ctx, r);
 		break;
 	}
@@ -1300,6 +1325,31 @@ dtrust_logout(sc_card_t *card)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+static int
+dtrust_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
+{
+	int r;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	switch (card->type) {
+	case SC_CARD_TYPE_DTRUST_V6_1_STD:
+	case SC_CARD_TYPE_DTRUST_V6_4_STD:
+	case SC_CARD_TYPE_DTRUST_V6_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V6_1_M100:
+	case SC_CARD_TYPE_DTRUST_V6_4_MULTI:
+		/* If transport protection is still in force, VERIFY returns
+		 * 0x62C1. We translate this to a proper OpenSC failure code. */
+		if (sw1 == 0x62 && sw2 == 0xC1)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_REF_DATA_NOT_USABLE);
+		break;
+	}
+
+	r = iso_ops->check_sw(card, sw1, sw2);
+
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
 struct sc_card_driver *
 sc_get_dtrust_driver(void)
 {
@@ -1316,6 +1366,7 @@ sc_get_dtrust_driver(void)
 	dtrust_ops.compute_signature = dtrust_compute_signature;
 	dtrust_ops.decipher = dtrust_decipher;
 	dtrust_ops.logout = dtrust_logout;
+	dtrust_ops.check_sw = dtrust_check_sw;
 
 	return &dtrust_drv;
 }
