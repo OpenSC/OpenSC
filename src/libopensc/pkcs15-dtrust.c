@@ -72,6 +72,48 @@ _dtrust_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 			prkey_info->field_length = 384;
 			break;
 		}
+
+		switch (p15card->card->type) {
+		case SC_CARD_TYPE_DTRUST_V6_1_STD:
+		case SC_CARD_TYPE_DTRUST_V6_4_STD:
+		case SC_CARD_TYPE_DTRUST_V6_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V6_1_M100:
+		case SC_CARD_TYPE_DTRUST_V6_4_MULTI:
+			/* Key reference `ref` is encoded as `0x80 ref 0x00` in
+			 * the ASN.1 data structure. This is an invalid
+			 * negative number. We fix it to return `ref`.
+			 */
+			if (prkey_info->key_reference < 0) {
+				/* Revert the hack from src/libopensc/pkcs15-prkey.c */
+				prkey_info->key_reference -= 256;
+
+				/* Extract the key reference */
+				prkey_info->key_reference >>= 8;
+				prkey_info->key_reference &= 0xff;
+			}
+
+			/* OpenSC (re)selects the application between verifying
+			 * the PIN and performing the security operation.
+			 * STARCOS cannot select whole paths. Instead it
+			 * selects files by sequentially navigating through the
+			 * directory tree. This would destroy our security
+			 * status by first selecting the master file.
+			 *
+			 * Thus we strip the path from the PKCS#15 data
+			 * structure and set the proper AID according to the
+			 * specs. Selecting a file with its AID, doesn't
+			 * destroy the security status. */
+			prkey_info->path.len = 0;
+
+			if (prkey_info->key_reference == 0x11) {
+				memcpy(prkey_info->path.aid.value, "\xD2\x76\x00\x00\x66\x01", 6);
+				prkey_info->path.aid.len = 6;
+			} else if (prkey_info->key_reference == 0x17) {
+				memcpy(prkey_info->path.aid.value, "\xA0\x00\x00\x01\x67\x45\x53\x49\x47\x4E", 10);
+				prkey_info->path.aid.len = 10;
+			}
+			break;
+		}
 	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -83,7 +125,7 @@ dtrust_pkcs15emu_detect_card(sc_pkcs15_card_t *p15card)
 	if (p15card->card->type < SC_CARD_TYPE_DTRUST_V4_1_STD)
 		return SC_ERROR_WRONG_CARD;
 
-	if (p15card->card->type > SC_CARD_TYPE_DTRUST_V5_4_MULTI)
+	if (p15card->card->type > SC_CARD_TYPE_DTRUST_V6_4_MULTI)
 		return SC_ERROR_WRONG_CARD;
 
 	return SC_SUCCESS;
