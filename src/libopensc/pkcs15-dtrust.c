@@ -57,6 +57,9 @@ _dtrust_parse_prkdf(struct sc_pkcs15_card *p15card)
 		case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
 		case SC_CARD_TYPE_DTRUST_V5_1_M100:
 		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+		case SC_CARD_TYPE_DTRUST_V6_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V6_1_M100:
+		case SC_CARD_TYPE_DTRUST_V6_4_MULTI:
 			prkey_info->field_length = 384;
 			break;
 		}
@@ -93,10 +96,10 @@ _dtrust_parse_prkdf(struct sc_pkcs15_card *p15card)
 			 * destroy the security status. */
 			prkey_info->path.len = 0;
 
-			if (prkey_info->key_reference == 0x11) {
+			if (prkey_info->key_reference == 0x11 || prkey_info->key_reference == 0x21) {
 				memcpy(prkey_info->path.aid.value, "\xD2\x76\x00\x00\x66\x01", 6);
 				prkey_info->path.aid.len = 6;
-			} else if (prkey_info->key_reference == 0x17) {
+			} else if (prkey_info->key_reference == 0x17 || prkey_info->key_reference == 0x25) {
 				memcpy(prkey_info->path.aid.value, "\xA0\x00\x00\x01\x67\x45\x53\x49\x47\x4E", 10);
 				prkey_info->path.aid.len = 10;
 			}

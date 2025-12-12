@@ -469,6 +469,16 @@ dtrust_init(sc_card_t *card)
 		_sc_card_add_rsa_alg(card, 4096, flags, 0);
 		break;
 
+	case SC_CARD_TYPE_DTRUST_V6_1_MULTI:
+	case SC_CARD_TYPE_DTRUST_V6_1_M100:
+	case SC_CARD_TYPE_DTRUST_V6_4_MULTI:
+		flags |= SC_ALGORITHM_ECDSA_RAW;
+		flags |= SC_ALGORITHM_ECDH_CDH_RAW;
+		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
+
+		_sc_card_add_ec_alg(card, 384, flags, ext_flags, &oid_secp384r1);
+		break;
+
 	default:
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_CARD);
 	}
@@ -1268,10 +1278,9 @@ dtrust_set_security_starcos(sc_card_t *card,
 		break;
 
 	case SC_SEC_OPERATION_SIGN:
-		*p++ = 0x03;
-		*p++ = 0x13;
-
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01) {
+			*p++ = 0x03;
+			*p++ = 0x13;
 			*p++ = 0x23;
 
 			switch (env->algorithm_flags & SC_ALGORITHM_RSA_HASHES) {
@@ -1295,6 +1304,8 @@ dtrust_set_security_starcos(sc_card_t *card,
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 		} else if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS) {
+			*p++ = 0x03;
+			*p++ = 0x13;
 			*p++ = 0x33;
 
 			switch (env->algorithm_flags & SC_ALGORITHM_MGF1_HASHES) {
@@ -1317,6 +1328,10 @@ dtrust_set_security_starcos(sc_card_t *card,
 			default:
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 			}
+		} else if (env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW) {
+			*p++ = 0x02;
+			*p++ = 0x13;
+			*p++ = 0x35;
 		} else {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 		}
