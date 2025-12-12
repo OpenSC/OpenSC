@@ -454,6 +454,7 @@ dtrust_init(sc_card_t *card)
 	case SC_CARD_TYPE_DTRUST_V6_4_STD:
 		flags |= SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01;
 		flags |= SC_ALGORITHM_RSA_PAD_PSS;
+		flags |= SC_ALGORITHM_RSA_PAD_OAEP;
 		flags |= SC_ALGORITHM_RSA_HASH_SHA1;
 		flags |= SC_ALGORITHM_RSA_HASH_SHA224;
 		flags |= SC_ALGORITHM_RSA_HASH_SHA256;
@@ -1231,6 +1232,9 @@ dtrust_set_security_starcos(sc_card_t *card,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
 
 	switch (env->operation) {
+	case SC_SEC_OPERATION_DECIPHER:
+		apdu.p2 = 0xB8;
+		break;
 	case SC_SEC_OPERATION_SIGN:
 		apdu.p2 = 0xB6;
 		break;
@@ -1251,6 +1255,18 @@ dtrust_set_security_starcos(sc_card_t *card,
 	*p++ = 0x89;
 
 	switch (env->operation) {
+	case SC_SEC_OPERATION_DECIPHER:
+		/* The card only supports OAEP with SHA256-Hash. */
+		if ((env->algorithm_flags & SC_ALGORITHM_RSA_PAD_OAEP) &&
+				((env->algorithm_flags & SC_ALGORITHM_MGF1_HASHES) == SC_ALGORITHM_MGF1_SHA256)) {
+			*p++ = 0x02;
+			*p++ = 0x11;
+			*p++ = 0x32;
+		} else {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+		}
+		break;
+
 	case SC_SEC_OPERATION_SIGN:
 		*p++ = 0x03;
 		*p++ = 0x13;
@@ -1439,6 +1455,8 @@ dtrust_decipher(struct sc_card *card, const u8 *data,
 	case SC_CARD_TYPE_DTRUST_V4_4_STD:
 	case SC_CARD_TYPE_DTRUST_V5_1_STD:
 	case SC_CARD_TYPE_DTRUST_V5_4_STD:
+	case SC_CARD_TYPE_DTRUST_V6_1_STD:
+	case SC_CARD_TYPE_DTRUST_V6_4_STD:
 		LOG_FUNC_RETURN(card->ctx, iso_ops->decipher(card, data, data_len, out, outlen));
 
 	/* Elliptic Curve cards cannot use PSO:DECIPHER command and need to
