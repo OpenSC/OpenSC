@@ -5693,6 +5693,8 @@ static int piv_match_card_continued(sc_card_t *card)
 
 		case SC_CARD_TYPE_PIV_II_NITROKEY:
 			priv->card_issues |= CI_OTHER_AID_LOSE_STATE;
+			if (priv->yubico_version >= 0x00010802) /* use for NitroKey too */
+				priv->card_issues |= CI_RSA_4096;
 			break;
 
 		case SC_CARD_TYPE_PIV_II_GI_DE:
