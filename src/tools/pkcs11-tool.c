@@ -383,6 +383,7 @@ static const char *option_help[] = {
 		"Specify 'decrypt' key usage flag (sets DECRYPT in privkey and ENCRYPT in pubkey for RSA, sets both DECRYPT and ENCRYPT for secret keys)",
 		"Specify 'derive' key usage flag (EC only)",
 		"Specify 'wrap' key usage flag",
+		"Specify 'encapsulate' key usage flag (sets ENCAPSULATE in public and DECAPSULATE in private)",
 		"Write an object (key, cert, data) to the card",
 		"Get object's CKA_VALUE attribute (use with --type)",
 		"Delete an object (use with --type cert/data/privkey/pubkey/secrkey)",
