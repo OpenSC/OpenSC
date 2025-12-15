@@ -338,7 +338,7 @@ static const struct option options[] = {
 	{ "public-key-info",	0, NULL,		OPT_PUBLIC_KEY_INFO},
 	{ "uri",		1, NULL,		OPT_URI},
 	{ "uri-with-slot-id",	0, NULL,		OPT_URI_WITH_SLOT_ID},
-	{ NULL, 0, NULL, 0 }
+	{ NULL, 0, NULL, 0 },
 };
 // clang-format on
 
@@ -434,7 +434,9 @@ static const char *option_help[] = {
 		"Specify the file containing the info for HKDF (optional)",
 		"When reading a public key, try to read PUBLIC_KEY_INFO (DER encoding of SPKI)",
 		"Specify the PKCS#11 URI for module, slot, token or object",
-		"Include SlotId in PKCS#11 URI"};
+		"Include SlotId in PKCS#11 URI",
+		"",
+};
 
 static const char *	app_name = "pkcs11-tool"; /* for utils.c */
 
@@ -833,6 +835,9 @@ int main(int argc, char * argv[])
 	int do_generate_random = 0;
 	char *s = NULL;
 	CK_RV rv;
+
+	static_assert(sizeof(options) / sizeof(options[0]) == sizeof(option_help) / sizeof(option_help[0]),
+			"Inconsistent size of the options and options_help structures!");
 
 #ifdef _WIN32
 	char expanded_val[PATH_MAX];
