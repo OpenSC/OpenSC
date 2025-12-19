@@ -4,5 +4,5 @@ set -ex -o xtrace
 
 pushd .github/
 security delete-keychain mac-build.keychain
-rm -f DeveloperIDApplication.cer DeveloperIDInstaller.cer key.p12
+rm -f DeveloperIDApplication.p12 DeveloperIDInstaller.p12
 popd

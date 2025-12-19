@@ -2,6 +2,6 @@
 
 set -ex -o xtrace
 
-if [ -n "$PASS_SECRETS_TAR_ENC" ]; then
+if [ -n "$KEY_PASSWORD" ]; then
     .github/remove_signing_key.sh
 fi

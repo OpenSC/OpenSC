@@ -3,7 +3,6 @@
 set -ex -o xtrace
 
 pushd .github/
-tar xvf secrets.tar
 KEY_CHAIN=mac-build.keychain
 
 # Create the keychain with a password
@@ -21,13 +20,10 @@ curl -L https://developer.apple.com/certificationauthority/AppleWWDRCA.cer > App
 security import AppleWWDRCA.cer \
     -k ~/Library/Keychains/$KEY_CHAIN \
     -T /usr/bin/codesign -T /usr/bin/productsign
-security import DeveloperIDApplication.cer \
-    -k ~/Library/Keychains/$KEY_CHAIN \
+security import DeveloperIDApplication.p12 \
+    -k ~/Library/Keychains/$KEY_CHAIN -P $KEY_PASSWORD \
     -T /usr/bin/codesign -T /usr/bin/productsign
-security import DeveloperIDInstaller.cer \
-    -k ~/Library/Keychains/$KEY_CHAIN \
-    -T /usr/bin/codesign -T /usr/bin/productsign
-security import key.p12 \
+security import DeveloperIDInstaller.p12 \
     -k ~/Library/Keychains/$KEY_CHAIN -P $KEY_PASSWORD \
     -T /usr/bin/codesign -T /usr/bin/productsign
 security unlock-keychain -p travis $KEY_CHAIN
