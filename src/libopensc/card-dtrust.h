@@ -29,5 +29,8 @@
 #define DTRUST5_PIN_ID_PIN_T_AUT 0x0c
 #define DTRUST5_PIN_ID_QES	 0x87
 #define DTRUST5_PIN_ID_AUT	 0x91
+#define DTRUST6_PIN_ID_PUK	 0x07
+#define DTRUST6_PIN_ID_QES	 0x81
+#define DTRUST6_PIN_ID_AUT	 0x82
 
 #endif

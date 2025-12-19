@@ -1004,6 +1004,35 @@ main(int argc, char *argv[])
 
 			pin_status(card, DTRUST5_PIN_ID_QES, "Signature PIN", 0);
 			break;
+
+		case SC_CARD_TYPE_DTRUST_V6_1_STD:
+		case SC_CARD_TYPE_DTRUST_V6_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V6_1_M100:
+			/* We have to select the eSign app to verify and change the Authentication PIN. */
+			sc_format_path("3F000102", &path);
+			r = sc_select_file(card, &path, NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, DTRUST6_PIN_ID_AUT, "Authentication PIN", 0);
+			/* fall through */
+
+		case SC_CARD_TYPE_DTRUST_V6_4_STD:
+		case SC_CARD_TYPE_DTRUST_V6_4_MULTI:
+			r = sc_select_file(card, sc_get_mf_path(), NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, DTRUST6_PIN_ID_PUK, "Card Holder PUK", 0);
+
+			/* We have to select the QES app to verify and change the Signature PIN. */
+			sc_format_path("3F000604", &path);
+			r = sc_select_file(card, &path, NULL);
+			if (r)
+				goto out;
+
+			pin_status(card, DTRUST6_PIN_ID_QES, "Signature PIN", 0);
+			break;
 		}
 	}
 
