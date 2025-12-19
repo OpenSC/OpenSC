@@ -21,7 +21,6 @@ while IFS='=' read -r key value; do
 done < $BUILDPATH/VERSION.mk
 
 export PACKAGE_VERSION=${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}.${PACKAGE_VERSION_FIX}
-export SED=/usr/bin/sed
 PREFIX=/Library/OpenSC
 export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
 
@@ -31,8 +30,9 @@ if test "$FORCE_OPENSSL_BUILD" == "1" || ! pkg-config libcrypto --atleast-versio
 		# Build OpenSSL manually, because Apple's binaries are deprecated
 		sh $BUILDPATH/MacOSX/build-openssl-macos.sh -b $BUILDPATH -p $PREFIX
 	fi
-	export OPENSSL_CFLAGS="`env PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openssl_bin pkg-config --static --cflags libcrypto`"
-	export OPENSSL_LIBS="`  env PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openssl_bin pkg-config --static --libs   libcrypto`"
+	PKGPREFIX="PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openssl_bin"
+	export OPENSSL_CFLAGS="`env $PKGPREFIX pkg-config --static --cflags libcrypto`"
+	export OPENSSL_LIBS="`  env $PKGPREFIX pkg-config --static --libs   libcrypto`"
 	export CRYPTO_CFLAGS="$OPENSSL_CFLAGS"
 	export CRYPTO_LIBS="$OPENSSL_LIBS"
 fi
@@ -52,8 +52,9 @@ if ! test -e $BUILDPATH/openpace_bin/$PREFIX/lib/pkgconfig; then
 	make DESTDIR=$BUILDPATH/openpace_bin install
 	cd ..
 fi
-export OPENPACE_CFLAGS="`env PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig:$BUILDPATH/openpace_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openpace_bin pkg-config --static --cflags libeac` $OPENSSL_CFLAGS"
-export OPENPACE_LIBS="`  env PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig:$BUILDPATH/openpace_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openpace_bin pkg-config --static --libs   libeac` $OPENSSL_LIBS"
+PKGPREFIX="PKG_CONFIG_PATH=$BUILDPATH/openssl_bin/$PREFIX/lib/pkgconfig:$BUILDPATH/openpace_bin/$PREFIX/lib/pkgconfig PKG_CONFIG_SYSROOT_DIR=$BUILDPATH/openpace_bin"
+export OPENPACE_CFLAGS="`env $PKGPREFIX pkg-config --static --cflags libeac` $OPENSSL_CFLAGS"
+export OPENPACE_LIBS="`  env $PKGPREFIX pkg-config --static --libs   libeac` $OPENSSL_LIBS"
 
 if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 	./configure --prefix=$PREFIX \
@@ -63,7 +64,7 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 		--enable-openssl-secure-malloc=65536 \
 		--disable-dependency-tracking \
 		--enable-shared \
-		--enable-static \
+		--disable-static \
 		--enable-strict \
 		--disable-assert \
 		--enable-sm # TODO: remove this (must be sensible default in master)
@@ -80,7 +81,6 @@ if ! test -e ${BUILDPATH}/target/$PREFIX/lib/pkgconfig; then
 
 	# remove garbage
 	rm -f ${BUILDPATH}/target/$PREFIX/lib/*.la
-	rm -f ${BUILDPATH}/target/$PREFIX/lib/*.a
 
 	# generate .bundle (required by Adobe Acrobat)
 	./MacOSX/libtool-bundle ${BUILDPATH}/target/$PREFIX/lib/opensc-pkcs11.so ${BUILDPATH}/target/$PREFIX/lib
@@ -189,3 +189,8 @@ do
 	fi
 done
 rm -rf ${imagedir}
+
+if test -n "${NOTARIZATION_PASSWORD}"; then
+	xcrun notarytool submit --team-id ${DEVELOPMENT_TEAM} --apple-id ${APPLE_ID} --password ${NOTARIZATION_PASSWORD} --wait OpenSC-${PACKAGE_VERSION}.dmg
+	xcrun stapler staple OpenSC-${PACKAGE_VERSION}.dmg
+fi

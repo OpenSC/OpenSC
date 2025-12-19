@@ -11,8 +11,9 @@ fi
 export PATH="/usr/local/opt/ccache/libexec:$PATH"
 git clone https://github.com/frankmorgner/OpenSCToken.git
 
-if [ -n "$PASS_SECRETS_TAR_ENC" ]; then
-    gpg --quiet --batch --yes --decrypt --passphrase="$PASS_SECRETS_TAR_ENC" --output .github/secrets.tar .github/secrets.tar.gpg
+if [ -n "$KEY_PASSWORD" ]; then
+    echo $DEV_ID_APPLICATION | base64 --decode > .github/DeveloperIDApplication.p12
+    echo $DEV_ID_INSTALLER | base64 --decode > .github/DeveloperIDInstaller.p12
     .github/add_signing_key.sh;
 else
     unset CODE_SIGN_IDENTITY INSTALLER_SIGN_IDENTITY;

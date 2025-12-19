@@ -24,10 +24,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
-      - run: .github/setup-macos.sh
-        env:
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
       - name: Checkout OpenSSL sources
         uses: actions/checkout@v5
         with:
@@ -44,23 +40,29 @@ jobs:
           key: ${{ matrix.os }}-OpenSSL-${{ steps.openssl_hash.outputs.hash }}
       - run: sh MacOSX/build-openssl-macos.sh
         if: steps.cache.outputs.cache-hit != 'true'
+      - run: .github/setup-macos.sh
+        env:
+          KEY_PASSWORD: ${{ secrets.DEV_ID_PASSWORD }}
+          DEV_ID_INSTALLER: ${{ secrets.DEV_ID_INSTALLER }}
+          DEV_ID_APPLICATION: ${{ secrets.DEV_ID_APPLICATION }}
       - run: .github/build.sh
         env:
           CODE_SIGN_IDENTITY: ${{ secrets.CODE_SIGN_IDENTITY }}
           DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
           INSTALLER_SIGN_IDENTITY: ${{ secrets.INSTALLER_SIGN_IDENTITY }}
+          NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+      - run: .github/cleanup-macos.sh
+        env:
+          KEY_PASSWORD: ${{ secrets.DEV_ID_PASSWORD }}
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: opensc-build-${{ matrix.os }}
           path:
             OpenSC*.dmg
-      - run: .github/cleanup-macos.sh
-        env:
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
       - name: Upload test logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: ${{ matrix.os }}-logs

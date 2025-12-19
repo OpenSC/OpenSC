@@ -26,7 +26,6 @@ done
 pushd $BUILDPATH
 if ! test -e openssl; then
     git clone --depth=1 https://github.com/openssl/openssl.git -b openssl-3.5
-    sed -ie 's!my @disablables = (!my @disablables = (\n    "apps",!' openssl/Configure
 fi
 
 pushd openssl
