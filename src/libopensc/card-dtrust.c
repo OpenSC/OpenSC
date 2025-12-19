@@ -1408,9 +1408,9 @@ dtrust_compute_signature(struct sc_card *card, const u8 *data,
 {
 	struct dtrust_drv_data_t *drv_data;
 	unsigned long flags;
+	int r;
 	size_t buflen = 0, tmplen;
 	u8 *buf = NULL;
-	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1426,8 +1426,10 @@ dtrust_compute_signature(struct sc_card *card, const u8 *data,
 	 */
 
 	/* Only PKCS#1 signature scheme requires special handling */
-	if (!(flags & SC_ALGORITHM_RSA_PAD_PKCS1))
-		return iso_ops->compute_signature(card, data, data_len, out, outlen);
+	if (!(flags & SC_ALGORITHM_RSA_PAD_PKCS1)) {
+		r = iso_ops->compute_signature(card, data, data_len, out, outlen);
+		LOG_FUNC_RETURN(card->ctx, r);
+	}
 
 	/*
 	 * We have to clear the padding flag, because padding is done in
@@ -1455,7 +1457,7 @@ dtrust_compute_signature(struct sc_card *card, const u8 *data,
 err:
 	sc_mem_secure_clear_free(buf, buflen);
 
-	return r;
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int
@@ -1485,7 +1487,7 @@ dtrust_decipher(struct sc_card *card, const u8 *data,
 		LOG_FUNC_RETURN(card->ctx, cardos_ec_compute_shared_value(card, data, data_len, out, outlen));
 
 	default:
-		return SC_ERROR_NOT_SUPPORTED;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_CARD);
 	}
 }
 
