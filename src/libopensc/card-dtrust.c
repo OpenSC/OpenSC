@@ -1567,5 +1567,7 @@ sc_get_dtrust_driver(void)
 	dtrust_ops.logout = dtrust_logout;
 	dtrust_ops.check_sw = dtrust_check_sw;
 
+	dtrust_drv.name = strdup(dtrust_drv.name);
+
 	return &dtrust_drv;
 }
