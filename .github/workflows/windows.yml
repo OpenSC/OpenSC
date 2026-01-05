@@ -33,6 +33,7 @@ jobs:
     env:
       OPENPACE_VER: 1.1.3
       VCPKG_INSTALLED: ${{ github.workspace }}\vcpkg_installed
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.platform }}-windows-static
       BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - name: Checkout
@@ -64,14 +65,12 @@ jobs:
           key: vcpkg-${{ matrix.configuration }}-${{ matrix.platform }}-${{ hashFiles('.github/vcpkg.json') }}
       - name: Prepare vcpkg
         if: matrix.configuration == 'Release'
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgJsonGlob: .github/vcpkg.json
-          runVcpkgInstall: true
         env:
           VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/vcpkg_cache,readwrite
-          VCPKG_DEFAULT_TRIPLET: ${{ matrix.platform }}-windows-static
-          VCPKG_INSTALLED_DIR: ${{ env.VCPKG_INSTALLED }}
+        run: |
+          C:\vcpkg\vcpkg install `
+            --x-manifest-root ${{ github.workspace }}/.github `
+            --x-install-root ${env:VCPKG_INSTALLED}
       - name: Install WIX
         run: powershell -ExecutionPolicy Bypass -File .github/setup-wix.ps1
       - name: Restore Cache
