@@ -130,6 +130,7 @@ jobs:
           project-slug: 'OpenSC'
           signing-policy-slug: 'release-signing'
           github-artifact-id: '${{ steps.upload-unsigned-artifact.outputs.artifact-id }}'
+          wait-for-completion: false
       - name: Archive debug artifacts
         uses: actions/upload-artifact@v5
         with:
