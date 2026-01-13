@@ -337,15 +337,32 @@ init_spy(void)
 		return CKR_DEVICE_ERROR;
 	}
 	modhandle = C_LoadModule(module, &po_v2);
-	po = (CK_FUNCTION_LIST_3_2_PTR)po_v2;
+	/* Make sure we do not overrun underlying list if broken
+	 * module returns version 3 from GetFuntionList()
+	 * https://github.com/softhsm/SoftHSMv2/issues/839
+	 */
+	po = calloc(1, sizeof(CK_FUNCTION_LIST_3_2));
+	if (po == NULL) {
+		free(pkcs11_spy);
+		pkcs11_spy = NULL;
+		free(pkcs11_spy_3_0);
+		pkcs11_spy_3_0 = NULL;
+		free(pkcs11_spy_3_2);
+		pkcs11_spy_3_2 = NULL;
+		return CKR_HOST_MEMORY;
+	}
+	memcpy(po, po_v2, sizeof(CK_FUNCTION_LIST));
 	if (modhandle && po) {
 		fprintf(spy_output, "Loaded: \"%s\"\n", module);
 	}
 	else {
 		po = NULL;
 		free(pkcs11_spy);
+		pkcs11_spy = NULL;
 		free(pkcs11_spy_3_0);
+		pkcs11_spy_3_0 = NULL;
 		free(pkcs11_spy_3_2);
+		pkcs11_spy_3_2 = NULL;
 		rv = CKR_GENERAL_ERROR;
 	}
 
@@ -1750,7 +1767,7 @@ C_GetInterfaceList(CK_INTERFACE_PTR pInterfacesList, CK_ULONG_PTR pulCount)
 	}
 
 	enter("C_GetInterfaceList");
-	if (po->version.major < 3) {
+	if (po->version.major < 3 || po->C_GetInterfaceList == NULL) {
 		fprintf(spy_output, "[compat]\n");
 
 		if (pulCount == NULL_PTR)
@@ -1820,7 +1837,7 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 	}
 
 	enter("C_GetInterface");
-	if (po->version.major < 3) {
+	if (po->version.major < 3 || po->C_GetInterface == NULL) {
 		fprintf(spy_output, "[compat]\n");
 	}
 	if (pInterfaceName != NULL) {
@@ -1835,7 +1852,7 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 	}
 	fprintf(spy_output, "[in] flags = %s\n",
 		(flags & CKF_INTERFACE_FORK_SAFE ? "CKF_INTERFACE_FORK_SAFE" : ""));
-	if (po->version.major >= 3) {
+	if (po->version.major >= 3 && po->C_GetInterface != NULL) {
 		CK_VERSION in_version = {0, 0};
 		CK_VERSION_PTR fakeVersion = NULL;
 		CK_INTERFACE_PTR rInterface = NULL;
