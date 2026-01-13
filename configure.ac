@@ -437,7 +437,6 @@ AC_CHECK_HEADERS([ \
 ])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
 AC_TYPE_UID_T
 AC_TYPE_SIZE_T
 

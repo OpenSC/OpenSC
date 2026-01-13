@@ -203,7 +203,6 @@ ID_AES_UNWRAPPED_5="0103" # AES-KEY-WRAP
 ID_AES_UNWRAPPED_6="0104" # AES-KEY-WRAP-PAD
 
 is_openssl_3=$(openssl version | grep "OpenSSL 3.")
-is_softhsm2_2_6_1=$(softhsm2-util -version | grep "2.6.1")
 
 # Generate AES key for unwrap/wrap operation
 AES_WRAP=$(head /dev/urandom | sha256sum | head -c 64)
@@ -212,8 +211,9 @@ $PKCS11_TOOL "${PRIV_ARGS[@]}" --write-object aes_kek.key --id $ID_AES_WRAP --ty
     --key-type AES:32 --usage-wrap --extractable --label aes-32-wrapping-key
 assert $? "Failed to write AES key"
 
-if [[ "$TOKENTYPE" != "softhsm" || -n "$is_softhsm2_2_6_1" ]]; then
+if [[ "$TOKENTYPE" != "softhsm" ]]; then
     # CKM_AES_CBC -- SoftHSM2 AES CBC wrapping currently has a bug, the IV is not correctly used. Only IV=0 will work --*
+    # https://github.com/softhsm/SoftHSMv2/issues/782
     IV="00000000000000000000000000000000"
 
     echo "-------------------------------------------------------"
@@ -276,7 +276,7 @@ if [[ "$TOKENTYPE" != "softhsm" ]]; then
     assert $?  "AES 256 CBC PAD wrapped keys do not match"
 fi
 
-if [[ -n $is_openssl_3 ]]; then
+if [[ -n $is_openssl_3 && "$TOKENTYPE" != "softhsm" ]]; then
     echo "-------------------------------------------------------"
     echo "AES-KEY-WRAP Wrap AES test"
     echo "-------------------------------------------------------"
