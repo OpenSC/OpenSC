@@ -57,6 +57,9 @@ else
 		export CFLAGS="-m32"
 		export LDFLAGS="-m32"
 	fi
+	if [ "$1" == "fips" ]; then
+		export OPENSSL_FORCE_FIPS_MODE=1
+	fi
 	# normal procedure
 
 	CONFIGURE_FLAGS="--disable-dependency-tracking"
