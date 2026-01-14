@@ -58,4 +58,4 @@ endif
 endif
 endif
 # no tests expected to fail
-#XFAIL_TESTS =
+#XFAIL_TESTS=

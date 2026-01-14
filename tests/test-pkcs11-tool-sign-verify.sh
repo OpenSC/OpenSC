@@ -180,6 +180,13 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
     if [[ ! -z "$HASH" ]]; then
         continue;
     fi
+    # Skip in FIPS mode -- RSA-PKCS encryption is no longer allowed
+    if [[ -e "/etc/system-fips" ]]; then
+        continue;
+    fi
+    if [[ -f "/proc/sys/crypto/fips_enabled" && $(cat /proc/sys/crypto/fips_enabled) == "1" ]]; then
+        continue;
+    fi
     METHOD="RSA-PKCS"
     # RSA-PKCS works only on small data - generate small data:
     head -c 64 </dev/urandom > data

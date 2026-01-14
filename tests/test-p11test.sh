@@ -46,6 +46,9 @@ fi
 if [[ -f "/proc/sys/crypto/fips_enabled" && $(cat /proc/sys/crypto/fips_enabled) == "1" ]]; then
 	REF_FILE="$SOURCE_PATH/tests/${TOKENTYPE}_fips_ref.json"
 fi
+if [[ -e "/etc/system-fips" ]]; then
+	REF_FILE="$SOURCE_PATH/tests/${TOKENTYPE}_fips_ref.json"
+fi
 
 echo "Comparing with $REF_FILE"
 diff -U5 <(filter_log $REF_FILE) <(filter_log $TOKENTYPE.json)
