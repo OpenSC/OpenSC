@@ -1,0 +1,44 @@
+name: CentOS Stream Linux
+
+on:
+  pull_request:
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.sh'
+      - .github/workflows/centos.yml
+      - '**.am'
+      - doc/**
+      - configure.ac
+  push:
+
+permissions:
+  contents: read  #  to fetch code (actions/checkout)
+
+jobs:
+  c10s:
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/centos/centos:stream10
+
+    steps:
+      - uses: actions/checkout@v4
+      - run: .github/setup-centos.sh
+      - run: .github/build.sh dist
+      - name: Upload test logs
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: c10s-test-logs
+          path: |
+            tests/*.log
+            src/tests/unittests/*.log
+
+  c10s-fips:
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/centos/centos:stream10
+    steps:
+      - uses: actions/checkout@v4
+      - run: .github/setup-centos.sh fips
+      - run: .github/build.sh fips

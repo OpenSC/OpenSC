@@ -364,7 +364,7 @@ app <replaceable>application</replaceable> {
 				<listitem><para>
 						Specify a OpenSSL configuration file to be loaded into the
 						OpenSC's library context. This should not be needed for general
-						operation, but is needed if you need to confirure some
+						operation, but is needed if you need to configure some
 						specifics of OpenSSL, without the need to rebuild OpenSC (for
 						example configure and load a FIPS provider).
 						For more information about configuring OpenSSL, see

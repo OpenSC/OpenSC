@@ -866,7 +866,11 @@ static int sc_openssl3_init(sc_context_t *ctx)
 	} else {
 		/* We do not have configuration file specified: load the default
 		 * and legacy providers */
-		ctx->ossl3ctx->defprov = OSSL_PROVIDER_load(ctx->ossl3ctx->libctx, "default");
+		const char *defprov_name = "default";
+		if (FIPS_mode()) {
+			defprov_name = "fips";
+		}
+		ctx->ossl3ctx->defprov = OSSL_PROVIDER_load(ctx->ossl3ctx->libctx, defprov_name);
 		if (ctx->ossl3ctx->defprov == NULL) {
 			OSSL_LIB_CTX_free(ctx->ossl3ctx->libctx);
 			free(ctx->ossl3ctx);
