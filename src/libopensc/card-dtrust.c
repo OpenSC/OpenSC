@@ -45,6 +45,7 @@
 #include "asn1.h"
 #include "card-cardos-common.h"
 #include "internal.h"
+#include "sm.h"
 #include "sm/sm-eac.h"
 
 #include "card-dtrust.h"

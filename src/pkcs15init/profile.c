@@ -43,11 +43,12 @@
 #endif
 
 #include "common/compat_strlcpy.h"
-#include "scconf/scconf.h"
+#include "common/libscdl.h"
 #include "libopensc/log.h"
 #include "libopensc/pkcs15.h"
 #include "pkcs15-init.h"
 #include "profile.h"
+#include "scconf/scconf.h"
 
 #define DEF_PRKEY_RSA_ACCESS	0x1D
 #define DEF_PUBKEY_ACCESS	0x12
