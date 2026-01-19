@@ -47,6 +47,7 @@
 #ifdef ENABLE_OPENSSL
 #include <openssl/err.h>
 #endif /* ENABLE_OPENSSL */
+#include "common/compat_strlcat.h"
 
 #include "internal.h"
 
@@ -362,6 +363,7 @@ void _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line,
 void sc_hex_dump(const u8 * in, size_t count, char *buf, size_t len)
 {
 	char *p = buf;
+	size_t p_len = len;
 	int lines = 0;
 
 	if (buf == NULL || (in == NULL && count != 0)) {
@@ -381,18 +383,19 @@ void sc_hex_dump(const u8 * in, size_t count, char *buf, size_t len)
 			else
 				ascbuf[i] = '.';
 			p += 3;
+			p_len -= 3;
 			in++;
 		}
 		count -= i;
 		ascbuf[i] = 0;
 		for (; i < 16 && lines; i++) {
-			strcat(p, "   ");
+			strlcat(p, "   ", p_len);
 			p += 3;
+			p_len -= 3;
 		}
-		strcat(p, ascbuf);
-		p += strlen(p);
-		sprintf(p, "\n");
-		p++;
+		snprintf(p, p_len, "%s\n", ascbuf);
+		p += strlen(ascbuf) + 1;
+		p_len -= strlen(ascbuf) - 1;
 		lines++;
 	}
 }

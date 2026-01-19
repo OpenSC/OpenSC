@@ -49,6 +49,8 @@
 #endif
 #endif
 
+#include "common/compat_strlcat.h"
+#include "common/compat_strlcpy.h"
 #include "internal.h"
 
 /* 800-73-4 SM and VCI need: ECC, SM and OpenSSL or LibreSSL */
@@ -5136,11 +5138,11 @@ piv_process_history(sc_card_t *card)
 		if (r != SC_SUCCESS)
 			goto err;
 #ifdef _WIN32
-		strcat(filename,"\\");
+		strlcat(filename, "\\", PATH_MAX);
 #else
-		strcat(filename,"/");
+		strlcat(filename, "/", PATH_MAX);
 #endif
-		strcat(filename,fp);
+		strlcat(filename, fp, PATH_MAX);
 
 		r = piv_read_obj_from_file(card, filename,
 			 &ocfhfbuf, &ocfhflen);

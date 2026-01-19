@@ -33,6 +33,8 @@
 #include "pkcs15.h"
 #include "asn1.h"
 #include "common/libscdl.h"
+#include "common/compat_strlcat.h"
+#include "common/compat_strlcpy.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/sha.h>
@@ -2961,19 +2963,19 @@ sc_pkcs15_serialize_guid(unsigned char *in, size_t in_size, unsigned flags,
 
 	*out = '\0';
 	if (!flags)
-		strcpy(out, "{");
+		strlcpy(out, "{", out_size);
 	for (ii=0; ii<4; ii++)
 		sprintf(out + strlen(out), "%02x", *(in + offs++));
 	for (jj=0; jj<3; jj++)   {
-		strcat(out, "-");
+		strlcat(out, "-", out_size);
 		for (ii=0; ii<2; ii++)
 			sprintf(out + strlen(out), "%02x", *(in + offs++));
 	}
-	strcat(out, "-");
+	strlcat(out, "-", out_size);
 	for (ii=0; ii<6; ii++)
 		sprintf(out + strlen(out), "%02x", *(in + offs++));
 	if (!flags)
-		strcat(out, "}");
+		strlcat(out, "}", out_size);
 
 	return SC_SUCCESS;
 }
