@@ -77,7 +77,7 @@ OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(PLATFORM)\$(BUILD_TYPE)\libcrypto_static.l
 OPENSSL_LIB = $(OPENSSL_LIB) user32.lib advapi32.lib crypt32.lib ws2_32.lib
 
 PROGRAMS_OPENSSL = cryptoflex-tool.exe pkcs15-init.exe netkey-tool.exe piv-tool.exe \
-	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe gids-tool.exe
+	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe gids-tool.exe lteid-tool.exe
 OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
 WIXFLAGS = -d OpenSSL="$(OPENSSL_DIR)" $(WIXFLAGS)
 !ENDIF

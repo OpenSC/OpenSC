@@ -584,7 +584,19 @@ app <em class="replaceable"><code>application</code></em> {
 						directory <code class="literal">file_cache_dir</code>. The cached CAN is used
 						later to avoid interactively prompting for the CAN. This feature is
 						enabled by default.
-						</p></dd></dl></div></div><div class="refsect2"><a name="piv"></a><h3>Configuration Options for PIV Card</h3><div class="variablelist"><dl class="variablelist"></dl></div></div><div class="refsect2"><a name="card_atr"></a><h3>Configuration based on ATR</h3><p>
+						</p></dd></dl></div></div><div class="refsect2"><a name="piv"></a><h3>Configuration Options for PIV Card</h3><div class="variablelist"><dl class="variablelist"></dl></div></div><div class="refsect2"><a name="lteid"></a><h3>Configuration Options for Lithuanian ID Card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">can = <em class="replaceable"><code>value</code></em>;</code>
+					</span></dt><dd><p>
+							Lithuanian ID card requires the card access
+							number (CAN) to be verified before reading it or
+							performing any operation. It is printed on the
+							front side bottom right corner of the card.
+					</p><p>
+							Note that alternatively it can also be set by
+							<span class="application">lteid-tool</span>. For command
+							line tools it can also be provided via
+							<code class="literal">LTEID_CAN</code> environment variable.
+					</p></dd></dl></div></div><div class="refsect2"><a name="card_atr"></a><h3>Configuration based on ATR</h3><p>
 				</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 							<code class="option">atrmask = <em class="replaceable"><code>hexstring</code></em>;</code>
 						</span></dt><dd><p>
