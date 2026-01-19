@@ -12,6 +12,7 @@
 	<xi:include href="eidenv.1.xml"/>
 	<xi:include href="gids-tool.1.xml"/>
 	<xi:include href="iasecc-tool.1.xml"/>
+	<xi:include href="lteid-tool.1.xml"/>
 	<xi:include href="netkey-tool.1.xml"/>
 	<xi:include href="npa-tool.1.xml"/>
 	<xi:include href="openpgp-tool.1.xml"/>
