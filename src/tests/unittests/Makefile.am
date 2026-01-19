@@ -30,6 +30,7 @@ AM_CFLAGS = -I$(top_srcdir)/src/ \
 AM_CPPFLAGS =$(CODE_COVERAGE_CPPFLAGS)
 LDADD = $(top_builddir)/src/libopensc/libopensc.la \
 	$(top_builddir)/src/common/libscdl.la \
+	$(top_builddir)/src/common/libcompat.la \
 	$(CODE_COVERAGE_LIBS) \
 	$(OPTIONAL_OPENSSL_LIBS) \
 	$(CMOCKA_LIBS)
