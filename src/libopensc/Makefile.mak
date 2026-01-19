@@ -29,6 +29,7 @@ OBJECTS			= \
 	card-masktech.obj card-gids.obj card-jpki.obj \
 	card-npa.obj card-esteid2018.obj card-esteid2025.obj card-idprime.obj \
 	card-edo.obj card-nqApplet.obj card-skeid.obj card-eoi.obj card-dtrust.obj \
+	card-lteid.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-starcert.obj pkcs15-cardos.obj pkcs15-tcos.obj \
 	pkcs15-actalis.obj pkcs15-atrust-acos.obj pkcs15-tccardos.obj pkcs15-piv.obj \
