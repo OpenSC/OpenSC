@@ -30,7 +30,7 @@ if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 	westcos-tool sc-hsm-tool dnie-tool gids-tool
 if ENABLE_OPENPACE
-bin_PROGRAMS += npa-tool
+bin_PROGRAMS += npa-tool lteid-tool
 endif
 endif
 
@@ -104,6 +104,10 @@ endif
 if HAVE_SHORTEN_WARNING_OPTION
 npa_tool_CFLAGS += -Wno-shorten-64-to-32
 endif
+
+lteid_tool_SOURCES = lteid-tool.c util.c
+lteid_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(OPENPACE_LIBS)
+lteid_tool_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPENPACE_CFLAGS)
 
 opensc_notify_SOURCES = opensc-notify.c opensc-notify-cmdline.c
 opensc_notify_CFLAGS = $(PTHREAD_CFLAGS)

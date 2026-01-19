@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="lteid-tool">
+	<refmeta>
+		<refentrytitle>lteid-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>lteid-tool</refname>
+		<refpurpose>Lithuanian National eID card (asmens tapatybės kortelė) utility</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>lteid-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>lteid-tool</command> utility is used to set up Lithuanian National eID card access;
+			unblock it after incorrect PIN entry attempts.
+		</para>
+		<para>
+			When invoked without any options, <command>lteid-tool</command> will try to determine if card is
+			ready for use or card access number (CAN) needs to be entered first. Card access number is a 6
+			digit number printed on the front side bottom right corner of the card. Type it in and it will
+			be persisted for subsequent uses of the card.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option>
+					</term>
+					<listitem><para>Display tool options.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>Causes <command>lteid-tool</command> to be more verbose.
+						Specify this flag several times to enable debug output.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>arg</replaceable>,
+						<option>-r</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Number of the reader to use. By default, the first
+							reader with a present card is used. If
+							<replaceable>arg</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Causes <command>lteid-tool</command> to wait for the token
+						to be inserted into reader.</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--can</option> <replaceable>can</replaceable>
+						<option>-c</option> <replaceable>can</replaceable>
+					</term>
+					<listitem>
+						<para>
+							This option can be used to specify the CAN value
+							on the command line. If the value is set to
+							<literal>env:</literal><replaceable>VARIABLE</replaceable>, the value
+							of the specified environment variable is used. By default,
+							the code is prompted on the command line if needed.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--pin</option> <replaceable>pin</replaceable>
+						<option>-p</option> <replaceable>pin</replaceable>
+					</term>
+					<listitem>
+						<para>
+							This option can be used to specify the PIN value
+							on the command line. If the value is set to
+							<literal>env:</literal><replaceable>VARIABLE</replaceable>, the value
+							of the specified environment variable is used. By default,
+							the code is prompted on the command line if needed.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--puk</option> <replaceable>puk</replaceable>
+						<option>-u</option> <replaceable>puk</replaceable>
+					</term>
+					<listitem>
+						<para>
+							This option can be used to specify the PUK value
+							on the command line. If the value is set to
+							<literal>env:</literal><replaceable>VARIABLE</replaceable>, the value
+							of the specified environment variable is used. By default,
+							the code is prompted on the command line if needed.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--change-pin</option>
+						<option>-C</option>
+					</term>
+					<listitem>
+						<para>
+							Change PIN.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--resume</option>
+						<option>-R</option>
+					</term>
+					<listitem>
+						<para>
+							Resume eID PIN use after 2 incorrect attempts using current PIN.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--unblock</option>
+						<option>-U</option>
+					</term>
+					<listitem>
+						<para>
+							Unblock eID PIN use after 3 incorrect attempts using PUK.
+						</para>
+					</listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>lteid-tool</command> was written by
+		Tadas Sasnauskas <email>tadas@yoyo.lt</email>.</para>
+	</refsect1>
+
+</refentry>
