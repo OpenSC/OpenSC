@@ -5084,6 +5084,10 @@ piv_process_history(sc_card_t *card)
 
 			url = sc_asn1_find_tag(card->ctx, body, bodylen, 0xF3, &urllen);
 			if (url) {
+				if (urllen > 118) {
+					r = SC_ERROR_INVALID_ASN1_OBJECT;
+					goto err;
+				}
 				priv->offCardCertURL = calloc(1,urllen+1);
 				if (priv->offCardCertURL == NULL)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -5110,8 +5114,9 @@ piv_process_history(sc_card_t *card)
 	 * the card. some of the certs may be on the card as well.
 	 *
 	 * Get file name from url. verify that the filename is valid
-	 * The URL ends in a SHA1 string. We will use this as the filename
+	 * The URL ends in a SHA-256 string. We will use this as the filename
 	 * in the directory used for the  PKCS15 cache
+	 * "http://" <DNS name> "/" <ASCII-HEX encoded SHA-256 hash of OffCardKeyHistoryFile>
 	 */
 
 	r = 0;
@@ -5130,6 +5135,11 @@ piv_process_history(sc_card_t *card)
 			goto err;
 		}
 		fp++;
+		if (strlen(fp) != 64) {  /* ASCII-HEX encoded SHA-256 */
+			r = SC_ERROR_INVALID_DATA;
+			goto err;
+		}
+
 
 		/* Use the same directory as used for other OpenSC cached items */
 		r = sc_get_cache_dir(card->ctx, filename, sizeof(filename) - strlen(fp) - 2);
