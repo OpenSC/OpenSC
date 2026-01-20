@@ -2576,8 +2576,9 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 
 	/* CKA_TOKEN defaults to false */
 	rv = attr_find(pTemplate, ulCount, CKA_TOKEN, &_token, NULL);
-	if (rv != CKR_OK)
+	if (rv != CKR_TEMPLATE_INCOMPLETE && rv != CKR_OK) {
 		return rv;
+	}
 
 	/* See if the "slot" is pin protected. If so, get the PIN id */
 	if ((pin = slot_data_auth_info(slot->fw_data)) != NULL)
@@ -2721,7 +2722,6 @@ out:
 		free(key_obj); /* do not free if the object was created by pkcs15init. It will be freed in C_Finalize */
 	return rv;
 }
-
 
 static CK_RV
 pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile,
@@ -3119,24 +3119,12 @@ pkcs15_create_object(struct sc_pkcs11_slot *slot, CK_ATTRIBUTE_PTR pTemplate, CK
 		return rv;
 
 	rv = attr_find(pTemplate, ulCount, CKA_TOKEN, &_token, NULL);
-	if (rv == CKR_TEMPLATE_INCOMPLETE) {
-		/* TODO OpenSC has not checked CKA_TOKEN == TRUE, so only
-		 * so only enforce for secret_key
-		 */
-		if (_class != CKO_SECRET_KEY)
-			_token = TRUE; /* default if not in template */
-	}
-	else if (rv != CKR_OK) {
+	if (rv != CKR_TEMPLATE_INCOMPLETE && rv != CKR_OK) {
 		return rv;
 	}
 
-	/* TODO The previous code does not check for CKA_TOKEN=TRUE
-	 * PKCS#11 CreatObject examples always have it, but
-	 * PKCS#11 says the default is false.
-	 * for backward compatibility, will default to TRUE
-	 */
-	 /* Dont need profile id creating session only objects,
-		except when the card supports temporary on card session objects */
+	/* Dont need profile if creating session only objects,
+	 * except when the card supports temporary on card session objects */
 	p15init_create_object = _token == TRUE || (p11card->card->caps & SC_CARD_CAP_ONCARD_SESSION_OBJECTS) == SC_CARD_CAP_ONCARD_SESSION_OBJECTS;
 
 	if (p15init_create_object) {
