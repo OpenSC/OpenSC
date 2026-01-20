@@ -4021,6 +4021,32 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 
 			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 			n_attr++;
+		} else if (strncasecmp(type, "MAGMA", strlen("MAGMA")) == 0) {
+			CK_MECHANISM_TYPE mtypes[] = {CKM_MAGMA_KEY_GEN};
+			size_t mtypes_num = sizeof(mtypes) / sizeof(mtypes[0]);
+
+			key_type = CKK_MAGMA;
+			opt_is_private = 1;
+
+			if (!opt_mechanism_used)
+				if (!find_mechanism(slot, CKF_GENERATE, mtypes, mtypes_num, &opt_mechanism))
+					util_fatal("Generate Key mechanism not supported");
+
+			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_attr++;
+		} else if (strncasecmp(type, "KUZNECHIK", strlen("KUZNECHIK")) == 0) {
+			CK_MECHANISM_TYPE mtypes[] = {CKM_KUZNECHIK_KEY_GEN};
+			size_t mtypes_num = sizeof(mtypes) / sizeof(mtypes[0]);
+
+			key_type = CKK_KUZNECHIK;
+			opt_is_private = 1;
+
+			if (!opt_mechanism_used)
+				if (!find_mechanism(slot, CKF_GENERATE, mtypes, mtypes_num, &opt_mechanism))
+					util_fatal("Generate Key mechanism not supported");
+
+			FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
+			n_attr++;
 		} else {
 			util_fatal("Unknown key type %s", type);
 		}
@@ -6760,6 +6786,12 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 				free(value);
 			}
 		}
+		break;
+	case CKK_MAGMA:
+		printf("; MAGMA\n");
+		break;
+	case CKK_KUZNECHIK:
+		printf("; KUZNECHIK\n");
 		break;
 	default:
 		printf("; unknown key algorithm %lu\n",
@@ -10393,6 +10425,8 @@ static struct mech_info	p11_mechanisms[] = {
 	{ CKM_GOST28147_MAC,	"GOST28147-MAC", NULL, MF_UNKNOWN },
 	{ CKM_GOST28147_KEY_WRAP,	"GOST28147-KEY-WRAP", NULL, MF_UNKNOWN },
 	{ CKM_GOSTR3410_KEY_PAIR_GEN,"GOSTR3410-KEY-PAIR-GEN", NULL, MF_UNKNOWN },
+	{ CKM_MAGMA_KEY_GEN,		"MAGMA-KEY-GEN", NULL, MF_UNKNOWN },
+	{ CKM_KUZNECHIK_KEY_GEN,	"KUZNECHIK-KEY-GEN", NULL, MF_UNKNOWN },
 	{ CKM_GOSTR3410,		"GOSTR3410", NULL, MF_UNKNOWN },
 	{ CKM_GOSTR3410_DERIVE,	"GOSTR3410-DERIVE", NULL, MF_UNKNOWN },
 	{ CKM_GOSTR3410_WITH_GOSTR3411,"GOSTR3410-WITH-GOSTR3411", NULL, MF_UNKNOWN },
