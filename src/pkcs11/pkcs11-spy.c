@@ -52,6 +52,9 @@ static CK_FUNCTION_LIST_PTR pkcs11_spy = NULL;
 static CK_FUNCTION_LIST_3_0_PTR pkcs11_spy_3_0 = NULL;
 static CK_FUNCTION_LIST_3_2_PTR pkcs11_spy_3_2 = NULL;
 /* Real Module Function List */
+/** Function pointer list of the module that is spied on
+ *
+ * If this pointer is `NULL`, then PKCS#11 Spy was not yet initialized. */
 static CK_FUNCTION_LIST_3_2_PTR po = NULL;
 /* Real module interface list */
 static CK_INTERFACE_PTR orig_interfaces = NULL;
@@ -326,8 +329,8 @@ init_spy(void)
 		}
 	}
 #endif
-	if (module == NULL) {
-		fprintf(spy_output, "Error: no module specified. Please set PKCS11SPY environment.\n");
+	if (module == NULL || (modhandle = C_LoadModule(module, &po_v2)) == NULL) {
+		fprintf(spy_output, "Error: '%s' cannot be loaded. Please set PKCS11SPY environment.\n", module);
 		free(pkcs11_spy);
 		pkcs11_spy = NULL;
 		free(pkcs11_spy_3_0);
@@ -336,7 +339,7 @@ init_spy(void)
 		pkcs11_spy_3_2 = NULL;
 		return CKR_DEVICE_ERROR;
 	}
-	modhandle = C_LoadModule(module, &po_v2);
+
 	/* Make sure we do not overrun underlying list if broken
 	 * module returns version 3 from GetFuntionList()
 	 * https://github.com/softhsm/SoftHSMv2/issues/839
@@ -350,12 +353,9 @@ init_spy(void)
 		free(pkcs11_spy_3_2);
 		pkcs11_spy_3_2 = NULL;
 		return CKR_HOST_MEMORY;
-	}
-	memcpy(po, po_v2, sizeof(CK_FUNCTION_LIST));
-	if (modhandle && po) {
-		fprintf(spy_output, "Loaded: \"%s\"\n", module);
-	}
-	else {
+	} else {
+		memcpy(po, po_v2, sizeof(CK_FUNCTION_LIST));
+		fprintf(spy_output, "Loaded: '%s'\n", module);
 		po = NULL;
 		free(pkcs11_spy);
 		pkcs11_spy = NULL;
