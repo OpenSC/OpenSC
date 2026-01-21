@@ -32,6 +32,7 @@
 struct cryptotokenkit_private_data {
 	TKSmartCardSlot* tksmartcardslot;
 	TKSmartCard* tksmartcard;
+	dispatch_semaphore_t sema_lock;
 };
 
 static struct sc_reader_operations cryptotokenkit_ops;
@@ -219,6 +220,8 @@ static int cryptotokenkit_lock(sc_reader_t *reader)
 		goto err;
 	}
 
+	dispatch_semaphore_wait(priv->sema_lock, DISPATCH_TIME_FOREVER);
+
 	[priv->tksmartcard beginSessionWithReply:^(BOOL success, NSError *error) {
 		if (success != TRUE) {
 			r = convertError(error);
@@ -243,6 +246,8 @@ static int cryptotokenkit_unlock(sc_reader_t *reader)
 		return SC_ERROR_NOT_ALLOWED;
 
 	[priv->tksmartcard endSession];
+
+	dispatch_semaphore_signal(priv->sema_lock);
 
 	LOG_FUNC_RETURN(reader->ctx, SC_SUCCESS);
 }
@@ -489,6 +494,8 @@ int cryptotokenkit_use_reader(sc_context_t *ctx, void *pcsc_context_handle, void
 	priv->tksmartcard = [tksmartcard retain];
 	[priv->tksmartcardslot autorelease];
 	priv->tksmartcardslot = [tksmartcardslot retain];
+	[priv->sema_lock autorelease];
+	priv->sema_lock = dispatch_semaphore_create(1);
 
 	reader->drv_data = priv;
 	reader->ops = &cryptotokenkit_ops;
