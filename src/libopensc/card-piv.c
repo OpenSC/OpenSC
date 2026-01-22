@@ -4284,7 +4284,8 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 {
 	int r;
 	int i;
-	u8 gbits;
+	u8 gbits = 0; /* 0 not present or wrong length or all zeros */
+	u8 fbits = 0; /* 0 not present or wrong length or all zeros */
 	u8 *rbuf = NULL;
 	const u8 *body;
 	const u8 *fascn;
@@ -4312,9 +4313,15 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 		body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x53, &bodylen); /* Pass the outer wrapper asn1 */
 		if (body != NULL && bodylen != 0 && rbuf[0] == 0x53) {
 			fascn = sc_asn1_find_tag(card->ctx, body, bodylen, 0x30, &fascnlen); /* Find the FASC-N data */
+
+			if (fascn && fascnlen == 25) {
+				for (i = 0; i < 25; i++) {
+					fbits = fbits || fascn[i]; /* if all are zero, gbits will be zero */
+				}
+			}
+
 			guid = sc_asn1_find_tag(card->ctx, body, bodylen, 0x34, &guidlen);
 
-			gbits = 0; /* if guid is valid, gbits will not be zero */
 			if (guid && guidlen == 16) {
 				for (i = 0; i < 16; i++) {
 					gbits = gbits | guid[i]; /* if all are zero, gbits will be zero */
@@ -4324,8 +4331,9 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 					"fascn=%p,fascnlen=%"SC_FORMAT_LEN_SIZE_T"u,guid=%p,guidlen=%"SC_FORMAT_LEN_SIZE_T"u,gbits=%2.2x",
 					fascn, fascnlen, guid, guidlen, gbits);
 
-			if (fascn && fascnlen == 25) {
+			if (fascn && fascnlen == 25 && fbits) {
 				/* test if guid and the fascn starts with ;9999 (in ISO 4bit + parity code) */
+				/* ;9999 is non-gov issued FASC-N, will use FASC-N for gov issued if no guid */
 				if (!(gbits && fascn[0] == 0xD4 && fascn[1] == 0xE7
 							&& fascn[2] == 0x39 && (fascn[3] | 0x7F) == 0xFF)) {
 					/* fascnlen is 25 */
@@ -4335,13 +4343,18 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 					gbits = 0; /* set to skip using guid below */
 				}
 			}
-			if (guid && gbits) {
-				/* guidlen is 16 */
+			if (guid && guidlen == 16 && gbits) {
 				serial->len = guidlen;
 				memcpy (serial->value, guid, serial->len);
 				r = SC_SUCCESS;
 			}
 		}
+	}
+
+	if (fbits == 0 && gbits == 0) { /* were not able to set the serial number */
+		serial->len = 16;
+		memset(serial->value, 0x00, serial->len);
+		r = SC_ERROR_INTERNAL;
 	}
 
 	card->serialnr = *serial;
