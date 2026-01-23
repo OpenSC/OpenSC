@@ -6469,6 +6469,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	int		sec = 0;
 	CK_TOKEN_INFO info;
 	CK_ULONG parameter_set;
+	int kem = 0;
 
 	switch(getCLASS(sess, obj)) {
 		case CKO_PRIVATE_KEY:
@@ -6678,6 +6679,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			}
 			break;
 		case CKK_ML_KEM:
+			kem = 1;
 			switch (parameter_set) {
 			case CKP_ML_KEM_512:
 				printf("; ML-KEM-512\n");
@@ -6818,11 +6820,11 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("%sderive", sepa);
 		sepa = ", ";
 	}
-	if (pub && getENCAPSULATE(sess, obj)) {
+	if (pub && kem && getENCAPSULATE(sess, obj)) {
 		printf("%sencapsulate", sepa);
 		sepa = ", ";
 	}
-	if ((!pub && !sec) && getDECAPSULATE(sess, obj)) {
+	if (!pub && !sec && kem && getDECAPSULATE(sess, obj)) {
 		printf("%sdecapsulate", sepa);
 		sepa = ", ";
 	}
