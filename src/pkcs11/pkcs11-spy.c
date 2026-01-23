@@ -223,7 +223,7 @@ init_spy(void)
 {
 	CK_FUNCTION_LIST_PTR po_v2 = NULL;
 	const char *output, *module;
-	CK_RV rv = CKR_OK;
+	CK_RV rv = CKR_GENERAL_ERROR;
 #ifdef _WIN32
         char temp_path[PATH_MAX], expanded_path[PATH_MAX];
         DWORD temp_len, expanded_len;
@@ -233,22 +233,11 @@ init_spy(void)
 
 	/* Allocates and initializes the pkcs11_spy structure */
 	pkcs11_spy = allocate_function_list(2);
-	if (pkcs11_spy == NULL) {
-		return CKR_HOST_MEMORY;
-	}
 	pkcs11_spy_3_0 = allocate_function_list(30);
-	if (pkcs11_spy_3_0 == NULL) {
-		free(pkcs11_spy);
-		pkcs11_spy = NULL;
-		return CKR_HOST_MEMORY;
-	}
 	pkcs11_spy_3_2 = allocate_function_list(32);
-	if (pkcs11_spy_3_2 == NULL) {
-		free(pkcs11_spy);
-		pkcs11_spy = NULL;
-		free(pkcs11_spy_3_0);
-		pkcs11_spy_3_0 = NULL;
-		return CKR_HOST_MEMORY;
+	if (pkcs11_spy == NULL || pkcs11_spy_3_0 == NULL || pkcs11_spy_3_2 == NULL) {
+		rv = CKR_HOST_MEMORY;
+		goto err;
 	}
 
 	compat_interfaces[0].pFunctionList = pkcs11_spy;
@@ -329,15 +318,17 @@ init_spy(void)
 		}
 	}
 #endif
-	if (module == NULL || (modhandle = C_LoadModule(module, &po_v2)) == NULL) {
-		fprintf(spy_output, "Error: '%s' cannot be loaded. Please set PKCS11SPY environment.\n", module);
-		free(pkcs11_spy);
-		pkcs11_spy = NULL;
-		free(pkcs11_spy_3_0);
-		pkcs11_spy_3_0 = NULL;
-		free(pkcs11_spy_3_2);
-		pkcs11_spy_3_2 = NULL;
-		return CKR_DEVICE_ERROR;
+	if (module == NULL) {
+		fprintf(spy_output, "Error: no module specified. Please set PKCS11SPY environment.\n");
+		rv = CKR_DEVICE_ERROR;
+		goto err;
+	}
+
+	modhandle = C_LoadModule(module, &po_v2);
+	if (modhandle == NULL) {
+		fprintf(spy_output, "Error: Could not load PKCS#11 interfaces from \"%s\".\n", module);
+		rv = CKR_DEVICE_ERROR;
+		goto err;
 	}
 
 	/* Make sure we do not overrun underlying list if broken
@@ -346,25 +337,25 @@ init_spy(void)
 	 */
 	po = calloc(1, sizeof(CK_FUNCTION_LIST_3_2));
 	if (po == NULL) {
-		free(pkcs11_spy);
-		pkcs11_spy = NULL;
-		free(pkcs11_spy_3_0);
-		pkcs11_spy_3_0 = NULL;
-		free(pkcs11_spy_3_2);
-		pkcs11_spy_3_2 = NULL;
-		return CKR_HOST_MEMORY;
-	} else {
-		memcpy(po, po_v2, sizeof(CK_FUNCTION_LIST));
-		fprintf(spy_output, "Loaded: '%s'\n", module);
-		po = NULL;
-		free(pkcs11_spy);
-		pkcs11_spy = NULL;
-		free(pkcs11_spy_3_0);
-		pkcs11_spy_3_0 = NULL;
-		free(pkcs11_spy_3_2);
-		pkcs11_spy_3_2 = NULL;
-		rv = CKR_GENERAL_ERROR;
+		rv = CKR_HOST_MEMORY;
+		goto err;
 	}
+
+	memcpy(po, po_v2, sizeof(CK_FUNCTION_LIST));
+	fprintf(spy_output, "Loaded: \"%s\"\n", module);
+
+	return CKR_OK;
+
+err:
+	po = NULL;
+	C_UnloadModule(modhandle);
+	modhandle = NULL;
+	free(pkcs11_spy);
+	pkcs11_spy = NULL;
+	free(pkcs11_spy_3_0);
+	pkcs11_spy_3_0 = NULL;
+	free(pkcs11_spy_3_2);
+	pkcs11_spy_3_2 = NULL;
 
 	return rv;
 }
