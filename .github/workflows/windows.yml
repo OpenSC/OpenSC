@@ -121,7 +121,7 @@ jobs:
           name: msi_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
           path: ./win32/*.msi
       - name: Push to Signpath.io
-        if: ${{ github.repository == 'OpenSC/OpenSC' }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') && github.repository == 'OpenSC/OpenSC' }}
         uses: signpath/github-action-submit-signing-request@v2
         with:
           api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
