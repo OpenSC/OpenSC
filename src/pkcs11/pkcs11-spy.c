@@ -52,6 +52,9 @@ static CK_FUNCTION_LIST_PTR pkcs11_spy = NULL;
 static CK_FUNCTION_LIST_3_0_PTR pkcs11_spy_3_0 = NULL;
 static CK_FUNCTION_LIST_3_2_PTR pkcs11_spy_3_2 = NULL;
 /* Real Module Function List */
+/** Function pointer list of the module that is spied on
+ *
+ * If this pointer is `NULL`, then PKCS#11 Spy was not yet initialized. */
 static CK_FUNCTION_LIST_3_2_PTR po = NULL;
 /* Real module interface list */
 static CK_INTERFACE_PTR orig_interfaces = NULL;
@@ -220,7 +223,7 @@ init_spy(void)
 {
 	CK_FUNCTION_LIST_PTR po_v2 = NULL;
 	const char *output, *module;
-	CK_RV rv = CKR_OK;
+	CK_RV rv = CKR_GENERAL_ERROR;
 #ifdef _WIN32
         char temp_path[PATH_MAX], expanded_path[PATH_MAX];
         DWORD temp_len, expanded_len;
@@ -230,22 +233,11 @@ init_spy(void)
 
 	/* Allocates and initializes the pkcs11_spy structure */
 	pkcs11_spy = allocate_function_list(2);
-	if (pkcs11_spy == NULL) {
-		return CKR_HOST_MEMORY;
-	}
 	pkcs11_spy_3_0 = allocate_function_list(30);
-	if (pkcs11_spy_3_0 == NULL) {
-		free(pkcs11_spy);
-		pkcs11_spy = NULL;
-		return CKR_HOST_MEMORY;
-	}
 	pkcs11_spy_3_2 = allocate_function_list(32);
-	if (pkcs11_spy_3_2 == NULL) {
-		free(pkcs11_spy);
-		pkcs11_spy = NULL;
-		free(pkcs11_spy_3_0);
-		pkcs11_spy_3_0 = NULL;
-		return CKR_HOST_MEMORY;
+	if (pkcs11_spy == NULL || pkcs11_spy_3_0 == NULL || pkcs11_spy_3_2 == NULL) {
+		rv = CKR_HOST_MEMORY;
+		goto err;
 	}
 
 	compat_interfaces[0].pFunctionList = pkcs11_spy;
@@ -328,43 +320,42 @@ init_spy(void)
 #endif
 	if (module == NULL) {
 		fprintf(spy_output, "Error: no module specified. Please set PKCS11SPY environment.\n");
-		free(pkcs11_spy);
-		pkcs11_spy = NULL;
-		free(pkcs11_spy_3_0);
-		pkcs11_spy_3_0 = NULL;
-		free(pkcs11_spy_3_2);
-		pkcs11_spy_3_2 = NULL;
-		return CKR_DEVICE_ERROR;
+		rv = CKR_DEVICE_ERROR;
+		goto err;
 	}
+
 	modhandle = C_LoadModule(module, &po_v2);
+	if (modhandle == NULL) {
+		fprintf(spy_output, "Error: Could not load PKCS#11 interfaces from \"%s\".\n", module);
+		rv = CKR_DEVICE_ERROR;
+		goto err;
+	}
+
 	/* Make sure we do not overrun underlying list if broken
 	 * module returns version 3 from GetFuntionList()
 	 * https://github.com/softhsm/SoftHSMv2/issues/839
 	 */
 	po = calloc(1, sizeof(CK_FUNCTION_LIST_3_2));
 	if (po == NULL) {
-		free(pkcs11_spy);
-		pkcs11_spy = NULL;
-		free(pkcs11_spy_3_0);
-		pkcs11_spy_3_0 = NULL;
-		free(pkcs11_spy_3_2);
-		pkcs11_spy_3_2 = NULL;
-		return CKR_HOST_MEMORY;
+		rv = CKR_HOST_MEMORY;
+		goto err;
 	}
+
 	memcpy(po, po_v2, sizeof(CK_FUNCTION_LIST));
-	if (modhandle && po) {
-		fprintf(spy_output, "Loaded: \"%s\"\n", module);
-	}
-	else {
-		po = NULL;
-		free(pkcs11_spy);
-		pkcs11_spy = NULL;
-		free(pkcs11_spy_3_0);
-		pkcs11_spy_3_0 = NULL;
-		free(pkcs11_spy_3_2);
-		pkcs11_spy_3_2 = NULL;
-		rv = CKR_GENERAL_ERROR;
-	}
+	fprintf(spy_output, "Loaded: \"%s\"\n", module);
+
+	return CKR_OK;
+
+err:
+	po = NULL;
+	C_UnloadModule(modhandle);
+	modhandle = NULL;
+	free(pkcs11_spy);
+	pkcs11_spy = NULL;
+	free(pkcs11_spy_3_0);
+	pkcs11_spy_3_0 = NULL;
+	free(pkcs11_spy_3_2);
+	pkcs11_spy_3_2 = NULL;
 
 	return rv;
 }
