@@ -18,10 +18,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "ui/char_str_from_wchar.h"
 #include "ui/strings.h"
 #include "libopensc/internal.h"
 #include "libopensc/log.h"
+#include "ui/char_str_from_wchar.h"
 #include <locale.h>
 #include <stdlib.h>
 #include <string.h>
