@@ -94,92 +94,102 @@ option "disable-ca-checks"   -
     "Disable passive authentication"
     flag off
 
+section "Card application"
+option "application"    -
+    "What card application to select"
+    values="eID","eMRTD" default="eID"
+    enum
+    optional
+
 section "Read and write data groups"
+option "read-all-dgs"   -
+    "Read all available data groups"
+    flag off
 option "read-dg1"       -
-    "Read DG 1   (Document Type)"
+    "Read data group 1"
     flag off
 option "read-dg2"       -
-    "Read DG 2   (Issuing State)"
+    "Read data group 2"
     flag off
 option "read-dg3"       -
-    "Read DG 3   (Date of Expiry)"
+    "Read data group 3"
     flag off
 option "read-dg4"       -
-    "Read DG 4   (Given Names)"
+    "Read data group 4"
     flag off
 option "read-dg5"       -
-    "Read DG 5   (Family Names)"
+    "Read data group 5"
     flag off
 option "read-dg6"       -
-    "Read DG 6   (Religious/Artistic Name)"
+    "Read data group 6"
     flag off
 option "read-dg7"       -
-    "Read DG 7   (Academic Title)"
+    "Read data group 7"
     flag off
 option "read-dg8"       -
-    "Read DG 8   (Date of Birth)"
+    "Read data group 8"
     flag off
 option "read-dg9"       -
-    "Read DG 9   (Place of Birth)"
+    "Read data group 9"
     flag off
 option "read-dg10"      -
-    "Read DG 10  (Nationality)"
+    "Read data group 10"
     flag off
 option "read-dg11"      -
-    "Read DG 11  (Sex)"
+    "Read data group 11"
     flag off
 option "read-dg12"      -
-    "Read DG 12  (Optional Data)"
+    "Read data group 12"
     flag off
 option "read-dg13"      -
-    "Read DG 13  (Birth Name)"
+    "Read data group 13"
     flag off
 option "read-dg14"      -
-    "Read DG 14"
+    "Read data group 14"
     flag off
 option "read-dg15"      -
-    "Read DG 15"
+    "Read data group 15"
     flag off
 option "read-dg16"      -
-    "Read DG 16"
+    "Read data group 16"
     flag off
 option "read-dg17"      -
-    "Read DG 17  (Normal Place of Residence)"
+    "Read data group 17"
     flag off
 option "read-dg18"      -
-    "Read DG 18  (Community ID)"
+    "Read data group 18"
     flag off
 option "read-dg19"      -
-    "Read DG 19  (Residence Permit I)"
+    "Read data group 19"
     flag off
 option "read-dg20"      -
-    "Read DG 20  (Residence Permit II)"
+    "Read data group 20"
     flag off
 option "read-dg21"      -
-    "Read DG 21  (Optional Data)"
+    "Read data group 21"
     flag off
 option "write-dg17"      -
-    "Write DG 17 (Normal Place of Residence)"
+    "Write data group 17"
     string
     typestr="HEX_STRING"
     optional
 option "write-dg18"      -
-    "Write DG 18 (Community ID)"
+    "Write data group 18"
     string
     typestr="HEX_STRING"
     optional
 option "write-dg19"      -
-    "Write DG 19 (Residence Permit I)"
+    "Write data group 19"
     string
     typestr="HEX_STRING"
     optional
 option "write-dg20"      -
-    "Write DG 20 (Residence Permit II)"
+    "Write data group 20"
     string
     typestr="HEX_STRING"
     optional
 option "write-dg21"      -
-    "Write DG 21 (Optional Data)"
+    "Write data group 21"
     string
     typestr="HEX_STRING"
     optional
