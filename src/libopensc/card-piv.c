@@ -5135,14 +5135,14 @@ piv_process_history(sc_card_t *card)
 			goto err;
 		}
 		fp++;
-		if (strlen(fp) != 64) {  /* ASCII-HEX encoded SHA-256 */
+		if (strlen(fp) != 64) { /* ASCII-HEX encoded SHA-256 */
 			r = SC_ERROR_INVALID_DATA;
 			goto err;
 		}
 		for (i = 0; i < 64; i++) {
 			if (isxdigit((unsigned char)fp[i]) == 0) {
-					r = SC_ERROR_INVALID_DATA;
-					goto err;
+				r = SC_ERROR_INVALID_DATA;
+				goto err;
 			}
 		}
 
