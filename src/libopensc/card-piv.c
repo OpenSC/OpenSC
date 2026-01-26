@@ -5139,7 +5139,12 @@ piv_process_history(sc_card_t *card)
 			r = SC_ERROR_INVALID_DATA;
 			goto err;
 		}
-
+		for (i = 0; i < 64; i++) {
+			if (isxdigit((unsigned char)fp[i]) == 0) {
+					r = SC_ERROR_INVALID_DATA;
+					goto err;
+			}
+		}
 
 		/* Use the same directory as used for other OpenSC cached items */
 		r = sc_get_cache_dir(card->ctx, filename, sizeof(filename) - strlen(fp) - 2);
