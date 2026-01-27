@@ -236,8 +236,6 @@ jacartapki_init(struct sc_card *card)
 	if (private_data == NULL)
 		LOG_ERROR_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate private blob for card driver.");
 
-	memset(private_data, 0, sizeof(struct jacartapki_private_data));
-
 	private_data->auth_state[0].pin_reference = JACARTAPKI_USER_PIN_REFERENCE;
 	private_data->auth_state[1].pin_reference = JACARTAPKI_SO_PIN_REFERENCE;
 
@@ -1641,7 +1639,7 @@ jacartapki_compute_signature_dst(struct sc_card *card,
 	struct jacartapki_private_data *private_data = (struct jacartapki_private_data *)card->drv_data;
 	struct sc_security_env *env = &private_data->security_env;
 	struct sc_apdu apdu;
-	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], rbuf[MAX(SC_MAX_EXT_APDU_DATA_SIZE, SC_MAX_EXT_APDU_RESP_SIZE)];
+	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], rbuf[SC_MAX_EXT_APDU_RESP_SIZE];
 	unsigned char dataTag;
 	unsigned char pso;
 	unsigned char algo;

@@ -574,7 +574,7 @@ jacartapki_create_dir(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 	p15card->card->version.hw_major = JACARTAPKI_VERSION_HW_MAJOR;
 	p15card->card->version.hw_minor = JACARTAPKI_VERSION_HW_MINOR;
 	p15card->card->version.fw_major = JACARTAPKI_VERSION_FW_MAJOR;
-	p15card->card->version.fw_minor = JACARTAPKI_VERSION_FW_MAJOR;
+	p15card->card->version.fw_minor = JACARTAPKI_VERSION_FW_MINOR;
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -1178,9 +1178,7 @@ jacartapki_cmap_update(struct sc_profile *profile, struct sc_pkcs15_card *p15car
 
 	free(cmap_dobj_info->data.value);
 
-	data_len = cmap_len + sizeof(jacartapki_cmap_record_t);
-	if (data_len < 5 * sizeof(jacartapki_cmap_record_t))
-		data_len = 5 * sizeof(jacartapki_cmap_record_t);
+	data_len = MAX(cmap_len + sizeof(jacartapki_cmap_record_t), 5 * sizeof(jacartapki_cmap_record_t));
 
 	cmap_dobj_info->data.value = calloc(1, data_len);
 	if (cmap_dobj_info->data.value == NULL) {

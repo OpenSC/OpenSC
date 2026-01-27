@@ -91,7 +91,8 @@ static int
 _jacartapki_type(int id)
 {
 	if ((id & 0xFF00) == 0x0) {
-		if ((id & 0xC0 /*JACARTAPKI_FS_REF_MASK*/) == JACARTAPKI_FS_BASEFID_PUBKEY)
+		/* (id & 0xC0) == 0x80 */
+		if ((id & (0xFF & ~JACARTAPKI_FS_REF_MASK) ) == JACARTAPKI_FS_BASEFID_PUBKEY)
 			return JACARTAPKI_TYPE_PUBKEY;
 		else
 			return JACARTAPKI_TYPE_PRVKEY;

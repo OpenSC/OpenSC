@@ -189,7 +189,7 @@ _get_attr(unsigned char *data, size_t length, size_t *in_offs, struct jacartapki
 	if (offs >= length - 4)
 		return;
 
-	if (data[offs + 0] == 0x80)
+	if (data[offs] == 0x80)
 		attr->cka = CKA_VENDOR_DEFINED + data[offs + 1];
 	else
 		attr->cka = data[offs + 0] * 0x100 + data[offs + 1];
@@ -507,18 +507,21 @@ jacartapki_attrs_pubkey_decode(struct sc_context *ctx,
 		case CKA_END_DATE:
 			break;
 		case CKA_MODULUS:
-		case CKA_PUBLIC_EXPONENT:
 			rv = _cka_get_blob(&attr, &der);
 			LOG_TEST_RET(ctx, rv, "Cannot get public key modulus");
 
 			pub_key.algorithm = SC_ALGORITHM_RSA;
-			if (attr.cka == CKA_MODULUS) {
-				pub_key.u.rsa.modulus.data = der.value;
-				pub_key.u.rsa.modulus.len = der.len;
-			} else {
-				pub_key.u.rsa.exponent.data = der.value;
-				pub_key.u.rsa.exponent.len = der.len;
-			}
+			pub_key.u.rsa.modulus.data = der.value;
+			pub_key.u.rsa.modulus.len = der.len;
+			have_public_key = 1;
+			break;
+		case CKA_PUBLIC_EXPONENT:
+			rv = _cka_get_blob(&attr, &der);
+			LOG_TEST_RET(ctx, rv, "Cannot get public key exponent");
+
+			pub_key.algorithm = SC_ALGORITHM_RSA;
+			pub_key.u.rsa.exponent.data = der.value;
+			pub_key.u.rsa.exponent.len = der.len;
 			have_public_key = 1;
 			break;
 		case CKA_MODULUS_BITS:
@@ -642,13 +645,8 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 
 			private_key.algorithm = SC_ALGORITHM_RSA;
 
-			if (attr.cka == CKA_MODULUS) {
-				private_key.u.rsa.modulus.data = der.value;
-				private_key.u.rsa.modulus.len = der.len;
-			} else {
-				private_key.u.rsa.exponent.data = der.value;
-				private_key.u.rsa.exponent.len = der.len;
-			}
+			private_key.u.rsa.exponent.data = der.value;
+			private_key.u.rsa.exponent.len = der.len;
 			break;
 		case CKA_EXTRACTABLE:
 			sc_log(ctx, "CKA_EXTRACTABLE: %s", (*attr.val) ? "yes" : "no");
@@ -1539,8 +1537,7 @@ jacartapki_cmap_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
 		ordered_prkeys[idx] = prkeys[ii];
-		if (idx_max < idx)
-			idx_max = idx;
+		idx_max = MAX(idx_max, idx);
 	}
 
 	for (idx = 0; idx < idx_max + 1; idx++) {

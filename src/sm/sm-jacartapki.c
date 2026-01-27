@@ -909,8 +909,13 @@ jacartapki_iso_sm_get_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc
 		CC -> CB
 		48 -> 47
 		*/
-		if (sm_apdu_correct->ins == 0xCC || sm_apdu_correct->ins == 0x48) {
-			sm_apdu_correct->ins = (sm_apdu_correct->ins == 0xCC ? 0xCB : 0x47); /* not a good practice */
+		switch (sm_apdu_correct->ins) { /* not a good practice */
+		case 0xCC:
+			sm_apdu_correct->ins = 0xCB;
+			break;
+		case 0x48:
+			sm_apdu_correct->ins = 0x47;
+			break;
 		}
 	}
 	return rv;
