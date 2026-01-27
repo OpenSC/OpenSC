@@ -5,6 +5,7 @@
 # Building should also work on older macOS versions with slight changes; YMMV.
 
 set -ex
+BUILDPATH=${PWD}
 
 # keep in sync with MacOSX/build
 while IFS='=' read -r key value; do
