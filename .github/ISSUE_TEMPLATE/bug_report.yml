@@ -19,6 +19,18 @@ body:
       required: true
 
   - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce the issue?
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
     id: expected
     attributes:
       label: Expected behavior
@@ -31,18 +43,6 @@ body:
     attributes:
       label: Actual behavior
       description: What actually happened.
-    validations:
-      required: true
-
-  - type: textarea
-    id: steps
-    attributes:
-      label: Steps to reproduce
-      description: How can we reproduce the issue?
-      placeholder: |
-        1.
-        2.
-        3.
     validations:
       required: true
 
