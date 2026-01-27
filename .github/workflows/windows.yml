@@ -37,7 +37,7 @@ jobs:
       BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Package name
         shell: bash
         run: |
@@ -59,7 +59,7 @@ jobs:
           arch: ${{ matrix.setenv }}
       - name: Cache vcpkg
         if: matrix.configuration == 'Release'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ github.workspace }}/vcpkg_cache
           key: vcpkg-${{ matrix.configuration }}-${{ matrix.platform }}-${{ hashFiles('.github/vcpkg.json') }}
@@ -75,7 +75,7 @@ jobs:
         run: powershell -ExecutionPolicy Bypass -File .github/setup-wix.ps1
       - name: Restore Cache
         if: matrix.configuration == 'Release'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache
         with:
           path: openpace-${{ env.OPENPACE_VER }}
@@ -116,7 +116,7 @@ jobs:
         run: nmake /nologo /f Makefile.mak opensc.msi
       - name: Archive artifacts
         id: upload-unsigned-artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: msi_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
           path: ./win32/*.msi
@@ -131,7 +131,7 @@ jobs:
           github-artifact-id: '${{ steps.upload-unsigned-artifact.outputs.artifact-id }}'
           wait-for-completion: false
       - name: Archive debug artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: debug_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
           path: |

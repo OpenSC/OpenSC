@@ -23,9 +23,9 @@ jobs:
         os: [macos-26, macos-15, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Checkout OpenSSL sources
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: openssl/openssl
           ref: openssl-3.5
@@ -33,7 +33,7 @@ jobs:
       - name: Get OpenSSL commit hash
         id: openssl_hash
         run: echo "hash=$(cd openssl && git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache
         with:
           path: openssl_bin
@@ -63,13 +63,13 @@ jobs:
         env:
           KEY_PASSWORD: ${{ secrets.DEV_ID_PASSWORD }}
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: opensc-build-${{ matrix.os }}
           path:
             OpenSC*.dmg
       - name: Upload test logs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: ${{ matrix.os }}-logs
@@ -82,12 +82,12 @@ jobs:
         os: [macos-26, macos-15, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: .github/setup-macos.sh libressl
       - run: .github/build.sh libressl
       - run: .github/cleanup-macos.sh
       - name: Upload test logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: ${{ matrix.os }}-libressl-logs
@@ -98,9 +98,9 @@ jobs:
     runs-on: macos-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Pull build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: opensc-build-macos-15
       - run: git config --global user.email "builds@github.com"
