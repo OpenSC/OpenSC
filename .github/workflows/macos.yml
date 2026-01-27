@@ -46,19 +46,16 @@ jobs:
           DEV_ID_INSTALLER: ${{ secrets.DEV_ID_INSTALLER }}
           DEV_ID_APPLICATION: ${{ secrets.DEV_ID_APPLICATION }}
       - run: .github/build.sh
-        if: ${{   startsWith(github.ref, 'refs/tags/') && github.repository == 'OpenSC/OpenSC' }}
         env:
           CODE_SIGN_IDENTITY: ${{ secrets.CODE_SIGN_IDENTITY }}
           DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
           INSTALLER_SIGN_IDENTITY: ${{ secrets.INSTALLER_SIGN_IDENTITY }}
+      - run: MacOSX/notarize
+        if: ${{ startsWith(github.ref, 'refs/tags/') && github.repository == 'OpenSC/OpenSC' }}
+        env:
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
           NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
-      - run: .github/build.sh
-        if: ${{ ! startsWith(github.ref, 'refs/tags/') || github.repository != 'OpenSC/OpenSC' }}
-        env:
-          CODE_SIGN_IDENTITY: ${{ secrets.CODE_SIGN_IDENTITY }}
-          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
-          INSTALLER_SIGN_IDENTITY: ${{ secrets.INSTALLER_SIGN_IDENTITY }}
       - run: .github/cleanup-macos.sh
         env:
           KEY_PASSWORD: ${{ secrets.DEV_ID_PASSWORD }}
