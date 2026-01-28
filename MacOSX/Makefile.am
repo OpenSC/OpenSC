@@ -3,6 +3,7 @@ EXTRA_DIST = build \
 	build-openssl-macos.sh \
 	Distribution.xml.in \
 	libtool-bundle \
+	notarize \
 	OpenSC_applescripts.entitlements \
 	OpenSC_binaries.entitlements \
 	OpenSC_Notify.applescript \

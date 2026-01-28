@@ -14,12 +14,14 @@ set -ex
 test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
 
+# keep in sync with MacOSX/notarize
 while IFS='=' read -r key value; do
     # Skip empty or comment lines
     [[ -z "$key" || "$key" =~ ^# ]] && continue
     export "$key=$value"
 done < $BUILDPATH/VERSION.mk
 
+# keep in sync with MacOSX/notarize
 export PACKAGE_VERSION=${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}.${PACKAGE_VERSION_FIX}
 PREFIX=/Library/OpenSC
 export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
@@ -189,8 +191,3 @@ do
 	fi
 done
 rm -rf ${imagedir}
-
-if test -n "${NOTARIZATION_PASSWORD}"; then
-	xcrun notarytool submit --team-id ${DEVELOPMENT_TEAM} --apple-id ${APPLE_ID} --password ${NOTARIZATION_PASSWORD} --wait OpenSC-${PACKAGE_VERSION}.dmg
-	xcrun stapler staple OpenSC-${PACKAGE_VERSION}.dmg
-fi

@@ -1,0 +1,23 @@
+#!/bin/bash
+# Notarize and staple the macOS installer image.
+#
+# This is only tested and supported on macOS 10.10 or later, using Xcode 6.0.1.
+# Building should also work on older macOS versions with slight changes; YMMV.
+
+set -ex
+BUILDPATH=${PWD}
+
+# keep in sync with MacOSX/build
+while IFS='=' read -r key value; do
+    # Skip empty or comment lines
+    [[ -z "$key" || "$key" =~ ^# ]] && continue
+    export "$key=$value"
+done < $BUILDPATH/VERSION.mk
+
+# keep in sync with MacOSX/build
+export PACKAGE_VERSION=${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}.${PACKAGE_VERSION_FIX}
+
+if test -n "${NOTARIZATION_PASSWORD}" -a -n "${DEVELOPMENT_TEAM}"; then
+    xcrun notarytool submit --team-id ${DEVELOPMENT_TEAM} --apple-id ${APPLE_ID} --password ${NOTARIZATION_PASSWORD} --wait OpenSC-${PACKAGE_VERSION}.dmg
+    xcrun stapler staple OpenSC-${PACKAGE_VERSION}.dmg
+fi
