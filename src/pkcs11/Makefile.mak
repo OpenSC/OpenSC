@@ -15,7 +15,9 @@ LIBS = $(TOPDIR)\src\libopensc\opensc_a.lib \
 	   $(TOPDIR)\src\common\libscdl.lib \
 	   $(TOPDIR)\src\ui\strings.lib \
 	   $(TOPDIR)\src\ui\notify.lib \
+!IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
 	   $(TOPDIR)\src\sm\libsm.lib \
+!ENDIF
 	   $(TOPDIR)\src\sm\libsmiso.lib \
 	   $(TOPDIR)\src\sm\libsmeac.lib \
 	   $(TOPDIR)\src\sm\libsmjacartapki.lib \
