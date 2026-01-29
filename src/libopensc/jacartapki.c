@@ -177,6 +177,7 @@ static void
 _get_attr(unsigned char *data, size_t length, size_t *in_offs, struct jacartapki_cka *attr)
 {
 	size_t offs;
+	size_t attrLen;
 
 	if (!attr || !data || !in_offs)
 		return;
@@ -189,12 +190,16 @@ _get_attr(unsigned char *data, size_t length, size_t *in_offs, struct jacartapki
 	if (offs >= length - 4)
 		return;
 
+	attrLen = data[offs + 3] * 0x100 + data[offs + 4];
+	if (offs + attrLen >= length - 4)
+		return;
+
 	if (data[offs] == 0x80)
 		attr->cka = CKA_VENDOR_DEFINED + data[offs + 1];
 	else
 		attr->cka = data[offs + 0] * 0x100 + data[offs + 1];
 	attr->internal_cka = data[offs + 2];
-	attr->len = data[offs + 3] * 0x100 + data[offs + 4];
+	attr->len = attrLen;
 	attr->val = data + offs + 5;
 
 	*in_offs = offs + 5 + attr->len;
@@ -218,7 +223,7 @@ _cka_get_unsigned(const struct jacartapki_cka *attr, unsigned *out)
 }
 
 static int
-_cka_set_label(const struct jacartapki_cka *attr, struct sc_pkcs15_object *obj)
+_cka_get_label(const struct jacartapki_cka *attr, struct sc_pkcs15_object *obj)
 {
 	size_t len;
 
@@ -234,7 +239,7 @@ _cka_set_label(const struct jacartapki_cka *attr, struct sc_pkcs15_object *obj)
 }
 
 static int
-_cka_set_application(const struct jacartapki_cka *attr, struct sc_pkcs15_data_info *info)
+_cka_get_application(const struct jacartapki_cka *attr, struct sc_pkcs15_data_info *info)
 {
 	size_t len;
 
@@ -283,7 +288,7 @@ _cka_get_blob(const struct jacartapki_cka *attr, struct sc_pkcs15_der *out)
 }
 
 static int
-_cka_set_id(const struct jacartapki_cka *attr, struct sc_pkcs15_id *out)
+_cka_get_id(const struct jacartapki_cka *attr, struct sc_pkcs15_id *out)
 {
 	if (attr == NULL || out == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -321,9 +326,11 @@ jacartapki_add_attribute(unsigned char **buf, size_t *buf_sz, unsigned char flag
 	ptr[offs++] = (cka_len >> 8) & 0xFF; /* cka length: 2 bytes*/
 	ptr[offs++] = cka_len & 0xFF;
 
-	memset(ptr + offs, 0, cka_len);
 	if (data != NULL)
 		memcpy(ptr + offs, (const unsigned char *)data, cka_len);
+	else
+		memset(ptr + offs, 0, cka_len);
+
 	offs += cka_len;
 
 	*buf = ptr;
@@ -359,20 +366,20 @@ jacartapki_attrs_cert_decode(struct sc_context *ctx,
 				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid CKA_CLASS");
 			break;
 		case CKA_TOKEN:
-			if (*attr.val == 0)
+			if (*attr.val == CK_FALSE)
 				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
 			break;
 		case CKA_PRIVATE:
-			if (*attr.val)
+			if (*attr.val == CK_TRUE)
 				object->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 			break;
 		case CKA_LABEL:
-			rv = _cka_set_label(&attr, object);
-			LOG_TEST_RET(ctx, rv, "Cannot set certificate object label");
+			rv = _cka_get_label(&attr, object);
+			LOG_TEST_RET(ctx, rv, "Cannot get certificate object label");
 			break;
 		case CKA_VALUE:
 			rv = _cka_get_blob(&attr, &info->value);
-			LOG_TEST_RET(ctx, rv, "Cannot set certificate object value");
+			LOG_TEST_RET(ctx, rv, "Cannot get certificate object value");
 			break;
 		case CKA_CERTIFICATE_TYPE:
 			rv = _cka_get_unsigned(&attr, &uval);
@@ -388,7 +395,7 @@ jacartapki_attrs_cert_decode(struct sc_context *ctx,
 			info->authority = (*attr.val != 0);
 			break;
 		case CKA_ID:
-			rv = _cka_set_id(&attr, &info->id);
+			rv = _cka_get_id(&attr, &info->id);
 			LOG_TEST_RET(ctx, rv, "Cannot get CKA_ID");
 			break;
 		case CKA_MODIFIABLE:
@@ -456,8 +463,8 @@ jacartapki_attrs_pubkey_decode(struct sc_context *ctx,
 				object->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 			break;
 		case CKA_LABEL:
-			rv = _cka_set_label(&attr, object);
-			LOG_TEST_RET(ctx, rv, "Cannot set certificate object label");
+			rv = _cka_get_label(&attr, object);
+			LOG_TEST_RET(ctx, rv, "Cannot get certificate object label");
 			break;
 		case CKA_KEY_TYPE:
 			rv = _cka_get_unsigned(&attr, &uval);
@@ -476,7 +483,7 @@ jacartapki_attrs_pubkey_decode(struct sc_context *ctx,
 		case CKA_TRUSTED:
 			break;
 		case CKA_ID:
-			rv = _cka_set_id(&attr, &info->id);
+			rv = _cka_get_id(&attr, &info->id);
 			LOG_TEST_RET(ctx, rv, "Cannot get CKA_ID");
 			break;
 		case CKA_MODIFIABLE:
@@ -591,8 +598,8 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 				object->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 			break;
 		case CKA_LABEL:
-			rv = _cka_set_label(&attr, object);
-			LOG_TEST_RET(ctx, rv, "Cannot set certificate object label");
+			rv = _cka_get_label(&attr, object);
+			LOG_TEST_RET(ctx, rv, "Cannot get certificate object label");
 			break;
 		case CKA_TRUSTED:
 			break;
@@ -611,10 +618,10 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 			break;
 		case CKA_SUBJECT:
 			rv = _cka_get_blob(&attr, &info->subject);
-			LOG_TEST_RET(ctx, rv, "Cannot set private key subject");
+			LOG_TEST_RET(ctx, rv, "Cannot get private key subject");
 			break;
 		case CKA_ID:
-			rv = _cka_set_id(&attr, &info->id);
+			rv = _cka_get_id(&attr, &info->id);
 			LOG_TEST_RET(ctx, rv, "Cannot get CKA_ID");
 			break;
 		case CKA_SENSITIVE:
@@ -729,20 +736,20 @@ jacartapki_attrs_data_object_decode(struct sc_context *ctx,
 				object->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 			break;
 		case CKA_LABEL:
-			rv = _cka_set_label(&attr, object);
-			LOG_TEST_RET(ctx, rv, "Cannot set data object label");
+			rv = _cka_get_label(&attr, object);
+			LOG_TEST_RET(ctx, rv, "Cannot get data object label");
 			break;
 		case CKA_APPLICATION:
-			rv = _cka_set_application(&attr, info);
-			LOG_TEST_RET(ctx, rv, "Cannot set data object application label");
+			rv = _cka_get_application(&attr, info);
+			LOG_TEST_RET(ctx, rv, "Cannot get data object application label");
 			break;
 		case CKA_VALUE:
 			rv = _cka_get_blob(&attr, &info->data);
-			LOG_TEST_RET(ctx, rv, "Cannot set data object object value");
+			LOG_TEST_RET(ctx, rv, "Cannot get data object object value");
 			break;
 		case CKA_OBJECT_ID:
 			rv = _cka_get_object_id(&attr, info);
-			LOG_TEST_RET(ctx, rv, "Cannot set data object ID");
+			LOG_TEST_RET(ctx, rv, "Cannot get data object ID");
 			break;
 		case CKA_MODIFIABLE:
 			if (*attr.val)
