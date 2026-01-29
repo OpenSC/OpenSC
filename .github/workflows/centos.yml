@@ -22,7 +22,7 @@ jobs:
       image: quay.io/centos/centos:stream10
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: .github/setup-centos.sh
       - run: .github/build.sh dist
       - name: Upload test logs
@@ -39,6 +39,6 @@ jobs:
     container:
       image: quay.io/centos/centos:stream10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: .github/setup-centos.sh fips
       - run: .github/build.sh fips

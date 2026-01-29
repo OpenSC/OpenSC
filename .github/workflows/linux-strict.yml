@@ -71,7 +71,7 @@ jobs:
             container: ubuntu:latest
     container: ${{ matrix.container }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: .github/setup-linux.sh ${{ matrix.compiler }} force-install
       - run: .github/build.sh dist
         env:

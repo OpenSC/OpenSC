@@ -44,7 +44,7 @@ jobs:
             arch: arm64
     runs-on: ubuntu-${{ matrix.dist }}${{ matrix.arch == 'arm64' && '-arm' || '' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: .github/setup-linux.sh ${{ matrix.build != 'dist' && 'debug' || '' }} # install debug with valgrind builds
       - run: .github/build.sh ${{ matrix.build }} ${{ matrix.build == 'piv-sm' && 'valgrind' || '' }} # configure piv-sm with valgrind tests
       - name: Upload test logs
@@ -72,7 +72,7 @@ jobs:
   build-no-shared:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
@@ -84,7 +84,7 @@ jobs:
   build-no-openssl:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
@@ -96,7 +96,7 @@ jobs:
   build-ix86:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
@@ -108,7 +108,7 @@ jobs:
   build-mingw:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: .github/setup-linux.sh mingw force-install
       - run: .github/build.sh mingw
       - name: Cache build artifacts
@@ -121,7 +121,7 @@ jobs:
   build-mingw32:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: .github/setup-linux.sh mingw32
       - run: .github/build.sh mingw32
       - name: Cache build artifacts
@@ -201,7 +201,7 @@ jobs:
   build-libressl:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}

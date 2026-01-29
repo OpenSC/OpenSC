@@ -23,9 +23,9 @@ jobs:
         os: [macos-26, macos-15, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Checkout OpenSSL sources
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: openssl/openssl
           ref: openssl-3.5
@@ -75,7 +75,7 @@ jobs:
         os: [macos-26, macos-15, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: .github/setup-macos.sh libressl
       - run: .github/build.sh libressl
       - run: .github/cleanup-macos.sh
@@ -91,7 +91,7 @@ jobs:
     runs-on: macos-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Pull build artifacts
         uses: actions/download-artifact@v4
         with:
