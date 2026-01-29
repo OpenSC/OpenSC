@@ -39,7 +39,7 @@ jobs:
     - run: .github/build.sh
 
     - name: Upload test logs
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       if: failure()
       with:
         name: codeql-logs

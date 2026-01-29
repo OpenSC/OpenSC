@@ -115,12 +115,12 @@ jobs:
       - name: Build OpenSC
         run: nmake /nologo /f Makefile.mak opensc.msi
       - name: Archive artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: msi_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
           path: ./win32/*.msi
       - name: Archive debug artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: debug_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
           path: |

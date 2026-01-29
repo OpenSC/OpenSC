@@ -56,13 +56,13 @@ jobs:
         env:
           KEY_PASSWORD: ${{ secrets.DEV_ID_PASSWORD }}
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: opensc-build-${{ matrix.os }}
           path:
             OpenSC*.dmg
       - name: Upload test logs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: ${{ matrix.os }}-logs
@@ -80,7 +80,7 @@ jobs:
       - run: .github/build.sh libressl
       - run: .github/cleanup-macos.sh
       - name: Upload test logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: ${{ matrix.os }}-libressl-logs
@@ -93,7 +93,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Pull build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: opensc-build-macos-15
       - run: git config --global user.email "builds@github.com"
