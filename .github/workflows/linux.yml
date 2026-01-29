@@ -208,7 +208,7 @@ jobs:
           version: apt-latest-base
           execute_install_scripts: true
       - name: Restore LibreSSL build
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: libressl-cache
         with:
           path: |
@@ -232,7 +232,7 @@ jobs:
           key: ${{ runner.os }}-libressl-${{ github.sha }}
       - if: ${{ steps.libressl-cache.outputs.cache-hit != 'true' }}
         name: Cache LibreSSL build
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |
             libressl-${{ env.LIBRESSL_VERSION }}/
