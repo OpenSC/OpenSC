@@ -59,7 +59,7 @@ jobs:
           arch: ${{ matrix.setenv }}
       - name: Cache vcpkg
         if: matrix.configuration == 'Release'
-        uses: actions/cache@v6
+        uses: actions/cache@v5
         with:
           path: ${{ github.workspace }}/vcpkg_cache
           key: vcpkg-${{ matrix.configuration }}-${{ matrix.platform }}-${{ hashFiles('.github/vcpkg.json') }}
@@ -75,7 +75,7 @@ jobs:
         run: powershell -ExecutionPolicy Bypass -File .github/setup-wix.ps1
       - name: Restore Cache
         if: matrix.configuration == 'Release'
-        uses: actions/cache@v6
+        uses: actions/cache@v5
         id: cache
         with:
           path: openpace-${{ env.OPENPACE_VER }}
