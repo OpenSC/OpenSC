@@ -44,11 +44,11 @@ jobs:
             arch: arm64
     runs-on: ubuntu-${{ matrix.dist }}${{ matrix.arch == 'arm64' && '-arm' || '' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: .github/setup-linux.sh ${{ matrix.build != 'dist' && 'debug' || '' }} # install debug with valgrind builds
       - run: .github/build.sh ${{ matrix.build }} ${{ matrix.build == 'piv-sm' && 'valgrind' || '' }} # configure piv-sm with valgrind tests
       - name: Upload test logs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: ubuntu-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build }}-test-logs
@@ -56,14 +56,14 @@ jobs:
             tests/*.log
             src/tests/unittests/*.log
       - &use_cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: cache-build
         with:
           path: ./*
           key: ${{ runner.os }}-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build }}-${{ github.sha }}
       - name: Upload build artifacts
         if: matrix.build == 'dist'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: opensc-build-${{ matrix.dist }}-${{ matrix.arch }}
           path:
@@ -72,7 +72,7 @@ jobs:
   build-no-shared:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
@@ -84,7 +84,7 @@ jobs:
   build-no-openssl:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
@@ -96,7 +96,7 @@ jobs:
   build-ix86:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
@@ -108,11 +108,11 @@ jobs:
   build-mingw:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: .github/setup-linux.sh mingw force-install
       - run: .github/build.sh mingw
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: opensc-build-mingw
           path:
@@ -121,11 +121,11 @@ jobs:
   build-mingw32:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - run: .github/setup-linux.sh mingw32
       - run: .github/build.sh mingw32
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: opensc-build-mingw32
           path:
@@ -140,7 +140,7 @@ jobs:
           packages: ${{ env.BASE_DEPS }}
           version: apt-24.04-amd64-base
           execute_install_scripts: true
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache-build
         with:
           path: ./*
@@ -201,14 +201,14 @@ jobs:
   build-libressl:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
           execute_install_scripts: true
       - name: Restore LibreSSL build
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: libressl-cache
         with:
           path: |
@@ -216,7 +216,7 @@ jobs:
           key: libressl-${{ env.LIBRESSL_VERSION }}
       - run: .github/setup-linux.sh libressl
       - run: .github/build.sh dist libressl valgrind
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: libressl-logs
@@ -224,7 +224,7 @@ jobs:
             config.log
             tests/*.log
             src/tests/unittests/*.log
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache-build
         if: ${{ success() }}
         with:
@@ -232,7 +232,7 @@ jobs:
           key: ${{ runner.os }}-libressl-${{ github.sha }}
       - if: ${{ steps.libressl-cache.outputs.cache-hit != 'true' }}
         name: Cache LibreSSL build
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |
             libressl-${{ env.LIBRESSL_VERSION }}/
@@ -252,7 +252,7 @@ jobs:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
           execute_install_scripts: true
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache-build
         with:
           path: ./*
@@ -268,13 +268,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, build-mingw]
     steps:
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache-build
         with:
           path: ./*
           key: ${{ runner.os }}-24.04-amd64-dist-${{ github.sha }}
       - name: Pull mingw build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: opensc-build-mingw
       - run: git config --global user.email "builds@github.com"
