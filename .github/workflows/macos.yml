@@ -33,7 +33,7 @@ jobs:
       - name: Get OpenSSL commit hash
         id: openssl_hash
         run: echo "hash=$(cd openssl && git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: cache
         with:
           path: openssl_bin
