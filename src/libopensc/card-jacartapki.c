@@ -106,6 +106,9 @@ unsigned char jacartapki_ops_ko[7] = {
 unsigned char jacartapki_ops_pin[7] = {
 		SC_AC_OP_READ, SC_AC_OP_PIN_CHANGE, SC_AC_OP_ADMIN, SC_AC_OP_DELETE_SELF, SC_AC_OP_GENERATE, SC_AC_OP_PIN_RESET, SC_AC_OP_CRYPTO};
 
+static const u8 jacartapki_root_fid[] = {
+		0x3F, 0x00};
+
 static int jacartapki_get_serialnr(struct sc_card *, struct sc_serial_number *);
 static int jacartapki_get_default_key(struct sc_card *, struct sc_cardctl_default_key *);
 static int jacartapki_parse_sec_attrs(struct sc_card *, struct sc_file *);
@@ -338,7 +341,7 @@ jacartapki_select_file(struct sc_card *card, const struct sc_path *in_path,
 	struct sc_file *file = NULL;
 	struct sc_apdu apdu;
 	unsigned char buf[SC_MAX_APDU_BUFFER_SIZE];
-	unsigned char pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
+	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
 	size_t pathlen;
 	int rv;
 	int reopen_sm_session = 0;
@@ -372,16 +375,19 @@ jacartapki_select_file(struct sc_card *card, const struct sc_path *in_path,
 		}
 		break;
 	case SC_PATH_TYPE_PATH:
-		apdu.p1 = 8;
 		if (in_path->len < 2) {
 			apdu.p1 = 0;
-			break;
-		} else if (memcmp(in_path->value, "\x3F\x00", 2) != 0) {
-			/* In a difference to ISO7816-4 specification (tab. 39)
-			 * leading 3F00 has to be included into 'path-from-MF'. */
-			memcpy(path, "\x3F\x00", 2);
-			memcpy(path + 2, in_path->value, in_path->len);
-			pathlen = in_path->len + 2;
+		} else {
+			apdu.p1 = 8;
+			if (memcmp(in_path->value, jacartapki_root_fid, sizeof(jacartapki_root_fid)) != 0) {
+				if (in_path->len + sizeof(jacartapki_root_fid) > SC_MAX_PATH_SIZE)
+					LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid non root starting path length");
+				/* In a difference to ISO7816-4 specification (tab. 39)
+				 * leading 3F00 has to be included into 'path-from-MF'. */
+				memcpy(path, jacartapki_root_fid, sizeof(jacartapki_root_fid));
+				memcpy(path + sizeof(jacartapki_root_fid), in_path->value, in_path->len);
+				pathlen = in_path->len + sizeof(jacartapki_root_fid);
+			}
 		}
 		break;
 	case SC_PATH_TYPE_FROM_CURRENT:
@@ -625,7 +631,10 @@ jacartapki_parse_sec_attrs(struct sc_card *card, struct sc_file *file)
 	} else {
 		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported file type");
 	}
+
 	sc_log(ctx, "sec.attrs(%" SC_FORMAT_LEN_SIZE_T "u) %s, ops_len %" SC_FORMAT_LEN_SIZE_T "u", len, sc_dump_hex(attrs, len), ops_len);
+	if (ops_len * 2 > len)
+		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Incorrect security attributes");
 
 	for (ii = 0; ii < ops_len; ii++) {
 		unsigned val = attrs[ii * 2] * 0x100 + attrs[ii * 2 + 1];
@@ -964,7 +973,7 @@ jacartapki_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
 	unsigned char rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	unsigned char p1s[] = {0x01, 0x38, 0x08};
+	unsigned char p1s[] = {0x01, 0x38, 0x08}; /* 0x01 list all EF, 0x38 list all subdirectories, 0x08 list all KO (keys/PIN) */
 	unsigned ii;
 	size_t offs;
 
@@ -976,6 +985,7 @@ jacartapki_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 		size_t oo;
 		int jj;
 		int rv;
+		int fileTLVs;
 
 		apdu.p1 = p1s[ii];
 		apdu.resplen = sizeof(rbuf);
@@ -990,14 +1000,29 @@ jacartapki_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 		if (apdu.resplen < 4)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
-		if (rbuf[3] * 2 + offs > buflen)
+		/* APDU responce
+		 *		TLV1		TLV2				TLVN
+		 *      ┌────┬────┬───────┬────┬───┬─────┬──────┬────┬────┬───┬─────┬──────┐
+		 *      │0xD1│0x02│DF size│0xD2│ L │ FID │ Name │... │0xD2│ L │ FID │ Name │
+		 *      └────┴────┴───────┴────┴───┴─────┴──────┴────┴────┴───┴─────┴──────┘
+		 */
+
+		/* number of the file TLVs in this chunk: rbuf[2] * 0x100 + rbuf[3]
+		 * for le <= 0x100 we can have no more than 0x3F file TLVs in chunk
+		 * which falls in rbuf[3]
+		 */
+		fileTLVs = rbuf[3];
+		if (fileTLVs * 2 + offs > buflen) /* offs: length of data already put to output buf */
 			LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 
-		for (oo = 4, jj = 0; jj < rbuf[3]; jj++) {
+		/* oo points to the file TLV being proccessed
+		 * file TLV size >= 4, name optional
+		 */
+		for (oo = 4, jj = 0; jj < fileTLVs && oo + 4 <= apdu.resplen; jj++) {
 			if (rbuf[oo] != 0xD2)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 			memcpy(buf + offs, rbuf + oo + 2, 2);
-			oo += 2 + rbuf[oo + 1];
+			oo += 2 + rbuf[oo + 1]; /* rbuf[oo + 1]: (file_ID || file_name) length */
 			offs += 2;
 		}
 	}

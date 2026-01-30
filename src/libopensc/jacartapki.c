@@ -688,7 +688,7 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 	}
 	/* not implemented:
 	sc_pkcs15_encode_prkey(ctx, &private_key, &object->content.value, &object->content.len);
-	}*/
+	 */
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
