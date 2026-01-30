@@ -1000,7 +1000,7 @@ jacartapki_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 		if (apdu.resplen < 4)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
-		/* APDU responce
+		/* APDU response
 		 *		TLV1		TLV2				TLVN
 		 *      ┌────┬────┬───────┬────┬───┬─────┬──────┬────┬────┬───┬─────┬──────┐
 		 *      │0xD1│0x02│DF size│0xD2│ L │ FID │ Name │... │0xD2│ L │ FID │ Name │
@@ -1015,7 +1015,7 @@ jacartapki_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 		if (fileTLVs * 2 + offs > buflen) /* offs: length of data already put to output buf */
 			LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 
-		/* oo points to the file TLV being proccessed
+		/* oo points to the file TLV being processed
 		 * file TLV size >= 4, name optional
 		 */
 		for (oo = 4, jj = 0; jj < fileTLVs && oo + 4 <= apdu.resplen; jj++) {
