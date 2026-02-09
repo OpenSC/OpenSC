@@ -2,7 +2,7 @@
  * piv-tool.c: Tool for accessing smart cards with libopensc
  *
  * Copyright (C) 2001  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2005,2010 Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2005,2010-2026 Douglas E. Engert <deengert@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -295,7 +295,7 @@ static int gen_key(const char * key_info)
 
 	sc_hex_to_bin(key_info, buf, &buflen);
 	if (buflen != 2) {
-		fprintf(stderr, "<keyref>:<algid> invalid, example: 9A:06\n");
+		fprintf(stderr, "<keyref>:<algid> invalid, example: 9A:07 9A ker with RSA 2048\n");
 		return 2;
 	}
 	switch (buf[0]) {
@@ -303,10 +303,30 @@ static int gen_key(const char * key_info)
 		case 0x9c:
 		case 0x9d:
 		case 0x9e:
+		case 0x82:  /* retired keys */
+		case 0x83:
+		case 0x84:
+		case 0x85:
+		case 0x86:
+		case 0x87:
+		case 0x88:
+		case 0x89:
+		case 0x8a:
+		case 0x8b:
+		case 0x8c:
+		case 0x8d:
+		case 0x8e:
+		case 0x8f:
+		case 0x90:
+		case 0x91:
+		case 0x92:
+		case 0x93:
+		case 0x94:
+		case 0x95:
 			keydata.key_num = buf[0];
 			break;
 		default:
-			fprintf(stderr, "<keyref>:<algid> must be 9A, 9C, 9D or 9E\n");
+			fprintf(stderr, "<keyref>:<algid> must be 9A, 9C, 9D, or 82-95 \n");
 			return 2;
 	}
 
