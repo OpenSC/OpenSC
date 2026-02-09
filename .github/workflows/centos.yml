@@ -22,11 +22,11 @@ jobs:
       image: quay.io/centos/centos:stream10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: .github/setup-centos.sh
       - run: .github/build.sh dist
       - name: Upload test logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: c10s-test-logs
@@ -39,6 +39,6 @@ jobs:
     container:
       image: quay.io/centos/centos:stream10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: .github/setup-centos.sh fips
       - run: .github/build.sh fips
