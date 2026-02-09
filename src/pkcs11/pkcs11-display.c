@@ -29,6 +29,8 @@
 
 #include "pkcs11-display.h"
 
+#include "common/compat_strlcat.h"
+
 /* NSS-specific stuff:
  * https://github.com/nss-dev/nss/blob/d86f709bb4974d10b343c746b6f89dd1ef80259b/lib/util/pkcs11n.h
  */
@@ -170,7 +172,7 @@ print_generic(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR 
 
 		/* padding */
 		while (strlen(hex) < 3*16)
-			strcat(hex, "   ");
+			strlcat(hex, "   ", sizeof(hex));
 		fprintf(f, "\n    %08X  %s %s", offset, hex, ascii);
 	}
 	else {

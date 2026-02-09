@@ -1,0 +1,103 @@
+name: Bug report
+description: Report a problem or unexpected behavior in OpenSC
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug in OpenSC!
+        Please fill out the sections below to help us diagnose the issue.
+        See https://github.com/OpenSC/OpenSC/wiki/How-to-write-a-good-bug-report on what to include here.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: What went wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce the issue?
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened.
+    validations:
+      required: true
+
+  - type: input
+    id: opensc_version
+    attributes:
+      label: OpenSC version
+      placeholder: e.g. 0.25.1
+      description: Only the latest release and development versions are supported.
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: e.g. Ubuntu 22.04, Windows 11, macOS 14
+    validations:
+      required: true
+
+  - type: input
+    id: card
+    attributes:
+      label: Smart card model or security token
+      placeholder: Try `opensc-tool -n` if unkown
+
+  - type: input
+    id: card
+    attributes:
+      label: Application used with smart card
+      placeholder: e.g. Firefox, Windows Logon, Apple Mail, ssh, ...
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and debug output
+      description: |
+        Please include relevant logs or debug output.
+        You can enable verbose output setting the environment variable `OPENSC_DEBUG` to `3`.
+        - `set OPENSC_DEBUG="3"` (Windows CMD)
+        - `export OPENSC_DEBUG="3"` (Unix shell)
+
+        Useful commands for getting debug information are:
+        - `opensc-tool --atr --name -vvv`
+        - `pkcs11-tool --test --login`
+        - `certutil -scinfo` (Windows only)
+        - `sc_auth identities` (macOS only)
+      render: shell
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I am using a supported OpenSC version
+          required: true
+        - label: I have searched existing issues to avoid duplicates
+          required: true

@@ -49,6 +49,8 @@
 #endif
 #endif
 
+#include "common/compat_strlcat.h"
+#include "common/compat_strlcpy.h"
 #include "internal.h"
 
 /* 800-73-4 SM and VCI need: ECC, SM and OpenSSL or LibreSSL */
@@ -4284,7 +4286,8 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 {
 	int r;
 	int i;
-	u8 gbits;
+	u8 gbits = 0; /* 0 not present or wrong length or all zeros */
+	u8 fbits = 0; /* 0 not present or wrong length or all zeros */
 	u8 *rbuf = NULL;
 	const u8 *body;
 	const u8 *fascn;
@@ -4312,9 +4315,15 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 		body = sc_asn1_find_tag(card->ctx, rbuf, rbuflen, 0x53, &bodylen); /* Pass the outer wrapper asn1 */
 		if (body != NULL && bodylen != 0 && rbuf[0] == 0x53) {
 			fascn = sc_asn1_find_tag(card->ctx, body, bodylen, 0x30, &fascnlen); /* Find the FASC-N data */
+
+			if (fascn && fascnlen == 25) {
+				for (i = 0; i < 25; i++) {
+					fbits = fbits || fascn[i]; /* if all are zero, gbits will be zero */
+				}
+			}
+
 			guid = sc_asn1_find_tag(card->ctx, body, bodylen, 0x34, &guidlen);
 
-			gbits = 0; /* if guid is valid, gbits will not be zero */
 			if (guid && guidlen == 16) {
 				for (i = 0; i < 16; i++) {
 					gbits = gbits | guid[i]; /* if all are zero, gbits will be zero */
@@ -4324,8 +4333,9 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 					"fascn=%p,fascnlen=%"SC_FORMAT_LEN_SIZE_T"u,guid=%p,guidlen=%"SC_FORMAT_LEN_SIZE_T"u,gbits=%2.2x",
 					fascn, fascnlen, guid, guidlen, gbits);
 
-			if (fascn && fascnlen == 25) {
+			if (fascn && fascnlen == 25 && fbits) {
 				/* test if guid and the fascn starts with ;9999 (in ISO 4bit + parity code) */
+				/* ;9999 is non-gov issued FASC-N, will use FASC-N for gov issued if no guid */
 				if (!(gbits && fascn[0] == 0xD4 && fascn[1] == 0xE7
 							&& fascn[2] == 0x39 && (fascn[3] | 0x7F) == 0xFF)) {
 					/* fascnlen is 25 */
@@ -4335,13 +4345,18 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 					gbits = 0; /* set to skip using guid below */
 				}
 			}
-			if (guid && gbits) {
-				/* guidlen is 16 */
+			if (guid && guidlen == 16 && gbits) {
 				serial->len = guidlen;
 				memcpy (serial->value, guid, serial->len);
 				r = SC_SUCCESS;
 			}
 		}
+	}
+
+	if (fbits == 0 && gbits == 0) { /* were not able to set the serial number */
+		serial->len = 16;
+		memset(serial->value, 0x00, serial->len);
+		r = SC_ERROR_INTERNAL;
 	}
 
 	card->serialnr = *serial;
@@ -5084,6 +5099,10 @@ piv_process_history(sc_card_t *card)
 
 			url = sc_asn1_find_tag(card->ctx, body, bodylen, 0xF3, &urllen);
 			if (url) {
+				if (urllen > 118) {
+					r = SC_ERROR_INVALID_ASN1_OBJECT;
+					goto err;
+				}
 				priv->offCardCertURL = calloc(1,urllen+1);
 				if (priv->offCardCertURL == NULL)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -5110,8 +5129,9 @@ piv_process_history(sc_card_t *card)
 	 * the card. some of the certs may be on the card as well.
 	 *
 	 * Get file name from url. verify that the filename is valid
-	 * The URL ends in a SHA1 string. We will use this as the filename
+	 * The URL ends in a SHA-256 string. We will use this as the filename
 	 * in the directory used for the  PKCS15 cache
+	 * "http://" <DNS name> "/" <ASCII-HEX encoded SHA-256 hash of OffCardKeyHistoryFile>
 	 */
 
 	r = 0;
@@ -5130,17 +5150,27 @@ piv_process_history(sc_card_t *card)
 			goto err;
 		}
 		fp++;
+		if (strlen(fp) != 64) { /* ASCII-HEX encoded SHA-256 */
+			r = SC_ERROR_INVALID_DATA;
+			goto err;
+		}
+		for (i = 0; i < 64; i++) {
+			if (isxdigit((unsigned char)fp[i]) == 0) {
+				r = SC_ERROR_INVALID_DATA;
+				goto err;
+			}
+		}
 
 		/* Use the same directory as used for other OpenSC cached items */
 		r = sc_get_cache_dir(card->ctx, filename, sizeof(filename) - strlen(fp) - 2);
 		if (r != SC_SUCCESS)
 			goto err;
 #ifdef _WIN32
-		strcat(filename,"\\");
+		strlcat(filename, "\\", PATH_MAX);
 #else
-		strcat(filename,"/");
+		strlcat(filename, "/", PATH_MAX);
 #endif
-		strcat(filename,fp);
+		strlcat(filename, fp, PATH_MAX);
 
 		r = piv_read_obj_from_file(card, filename,
 			 &ocfhfbuf, &ocfhflen);

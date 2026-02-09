@@ -30,6 +30,9 @@
 #include <string.h>
 
 #include <getopt.h>
+
+#include "common/compat_strlcat.h"
+#include "common/compat_strlcpy.h"
 #include "libopensc/opensc.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"
@@ -148,12 +151,13 @@ static void bintohex(char *buf, int len)
 static void exportprint(const char *key, const char *val)
 {
 	if (exec_program) {
-		char * cp;
-		cp = malloc(strlen(key) + strlen(val) + 2);
+		char *cp;
+		size_t cp_size = strlen(key) + strlen(val) + 2;
+		cp = malloc(cp_size);
 		if (cp) {
-			strcpy(cp, key);
-			strcat(cp, "=");
-			strcat(cp, val);
+			strlcpy(cp, key, cp_size);
+			strlcat(cp, "=", cp_size);
+			strlcat(cp, val, cp_size);
 			putenv(cp);
 			free(cp);
 		}
