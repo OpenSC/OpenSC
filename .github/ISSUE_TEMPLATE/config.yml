@@ -1,0 +1,21 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: 🚨 Security vulnerability report
+    url: https://github.com/OpenSC/OpenSC/security/advisories/new
+    about: |
+      Please report security vulnerabilities privately using GitHub Security Advisories.
+      Do NOT open a public issue for security-related problems.
+
+  - name: 📖 OpenSC documentation
+    url: https://github.com/OpenSC/OpenSC/wiki
+    about: Check the documentation and wiki before opening an issue
+
+  - name: 🤔 OpenSC GitHub Discussions
+    url: https://github.com/OpenSC/OpenSC/discussions
+    about: |
+      Ask questions, start discussions, or propose ideas that don't belong in an issue.
+
+  - name: 💬 OpenSC mailing lists
+    url: https://github.com/OpenSC/OpenSC/wiki/Mailing-lists
+    about: For general discussion and usage questions
