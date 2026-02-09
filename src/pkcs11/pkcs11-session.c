@@ -121,7 +121,7 @@ static CK_RV sc_pkcs11_close_session(CK_SESSION_HANDLE hSession)
 		if (sc_pkcs11_conf.atomic)
 			pop_all_login_states(slot);
 		else {
-			if (slot->p11card == NULL)
+			if (slot->p11card == NULL || (slot->p11card->flags & SC_PKCS11_CARD_INVALID))
 				return CKR_TOKEN_NOT_RECOGNIZED;
 			slot->p11card->framework->logout(slot);
 		}
@@ -365,7 +365,8 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		}
 		else   {
 			rv = restore_login_state(slot);
-			if (rv == CKR_OK && slot->p11card && slot->p11card->framework)
+			if (rv == CKR_OK && (slot->p11card && !(slot->p11card->flags & SC_PKCS11_CARD_INVALID))
+					&& slot->p11card->framework)
 				rv = slot->p11card->framework->login(slot, userType, pPin, ulPinLen);
 			rv = reset_login_state(slot, rv);
 		}
@@ -383,7 +384,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 		rv = restore_login_state(slot);
 		if (rv == CKR_OK) {
 			sc_log(context, "C_Login() userType %li", userType);
-			if (slot->p11card == NULL)
+			if (slot->p11card == NULL || (slot->p11card->flags & SC_PKCS11_CARD_INVALID))
 				return CKR_TOKEN_NOT_RECOGNIZED;
 			rv = slot->p11card->framework->login(slot, userType, pPin, ulPinLen);
 			sc_log(context, "fLogin() rv %li", rv);
@@ -437,7 +438,7 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession)
 		if (sc_pkcs11_conf.atomic)
 			pop_all_login_states(slot);
 		else {
-			if (!slot->p11card)
+			if (!slot->p11card || (slot->p11card->flags & SC_PKCS11_CARD_INVALID))
 				return CKR_TOKEN_NOT_RECOGNIZED;
 			rv = slot->p11card->framework->logout(slot);
 		}
@@ -477,7 +478,8 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession, CK_CHAR_PTR pPin, CK_ULONG ulPinLen)
 	slot = session->slot;
 	if (slot->login_user != CKU_SO) {
 		rv = CKR_USER_NOT_LOGGED_IN;
-	} else if (slot->p11card == NULL || slot->p11card->framework->init_pin == NULL) {
+	} else if ((slot->p11card == NULL || (slot->p11card->flags & SC_PKCS11_CARD_INVALID))
+			|| slot->p11card->framework->init_pin == NULL) {
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	} else {
 		rv = restore_login_state(slot);
@@ -523,7 +525,7 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 
 	rv = restore_login_state(slot);
 	if (rv == CKR_OK) {
-		if (slot->p11card == NULL)
+		if (slot->p11card == NULL || (slot->p11card->flags & SC_PKCS11_CARD_INVALID))
 			return CKR_TOKEN_NOT_RECOGNIZED;
 		rv = slot->p11card->framework->change_pin(slot, pOldPin, ulOldLen, pNewPin, ulNewLen);
 	}
