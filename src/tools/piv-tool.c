@@ -303,7 +303,7 @@ static int gen_key(const char * key_info)
 		case 0x9c:
 		case 0x9d:
 		case 0x9e:
-		case 0x82:  /* retired keys */
+		case 0x82: /* retired keys */
 		case 0x83:
 		case 0x84:
 		case 0x85:
