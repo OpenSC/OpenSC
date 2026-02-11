@@ -1,15 +1,11 @@
 blank_issues_enabled: false
 
 contact_links:
-  - name: 📖 OpenSC documentation
-    url: https://github.com/OpenSC/OpenSC/wiki
-    about: Check the documentation and wiki before opening an issue
-
-  - name: 🤔 OpenSC GitHub Discussions
-    url: https://github.com/OpenSC/OpenSC/discussions
+  - name: Start a discussion
+    url: https://github.com/OpenSC/OpenSC/discussions/new/choose
     about: |
       Ask questions, start discussions, or propose ideas that don't belong in an issue.
 
-  - name: 💬 OpenSC mailing lists
+  - name: Use the mailing lists
     url: https://github.com/OpenSC/OpenSC/wiki/Mailing-lists
-    about: For general discussion and usage questions
+    about: Write us an email or read the archive.
