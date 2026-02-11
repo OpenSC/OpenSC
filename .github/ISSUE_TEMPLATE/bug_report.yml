@@ -70,7 +70,7 @@ body:
       placeholder: Try `opensc-tool -n` if unkown
 
   - type: input
-    id: card
+    id: application
     attributes:
       label: Application used with smart card
       placeholder: e.g. Firefox, Windows Logon, Apple Mail, ssh, ...
