@@ -16,7 +16,7 @@ backport security fixes into them. Only the last release is supported.
 
 If you discovered security vulnerability in supported version of OpenSC,
 you can either report it with a button "Report a vulnerability" in
-[Security tab](https://github.com/OpenSC/OpenSC/security/)
+[Security tab](https://github.com/OpenSC/OpenSC/security/advisories/new)
 (Do not create normal public issue with security relevant information!)
 or you can send email to any recently active
 project developers frankmorgner(at)gmail.com, deengert(at)gmail.com and/or
