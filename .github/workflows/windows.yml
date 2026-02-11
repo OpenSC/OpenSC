@@ -115,10 +115,21 @@ jobs:
       - name: Build OpenSC
         run: nmake /nologo /f Makefile.mak opensc.msi
       - name: Archive artifacts
+        id: upload-unsigned-artifact
         uses: actions/upload-artifact@v6
         with:
           name: msi_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
           path: ./win32/*.msi
+      - name: Push to Signpath.io
+        if: ${{ startsWith(github.ref, 'refs/tags/') && github.repository == 'OpenSC/OpenSC' }}
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+          organization-id: '8d2463fe-39bd-4a41-bb72-f008b4b1fe17'
+          project-slug: 'OpenSC'
+          signing-policy-slug: 'release-signing'
+          github-artifact-id: '${{ steps.upload-unsigned-artifact.outputs.artifact-id }}'
+          wait-for-completion: false
       - name: Archive debug artifacts
         uses: actions/upload-artifact@v6
         with:
