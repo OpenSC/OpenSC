@@ -1820,16 +1820,23 @@ static int sc_hsm_init(struct sc_card *card)
 
 	card->caps |= SC_CARD_CAP_RNG|SC_CARD_CAP_APDU_EXT|SC_CARD_CAP_ISO7816_PIN_INFO;
 
-	// APDU Buffer limits
+	// APDU Size limits
 	//   JCOP 2.4.1r3           1462
 	//   JCOP 2.4.2r3           1454
 	//   JCOP 3                 1232
 	//   JCOP 4                 1454
 	//   MicroSD with JCOP 3    478 / 506 - handled in reader-pcsc.c
 	//   Reiner SCT             1014 - handled in reader-pcsc.c
+	//
+	// Note, that these are limits for the whole APDU, but the semantics of max_send_size
+	// is the size of the APDU send buffer so to get the right value from them, we need
+	// to subtract APDU headers (CLA, INS, P1, P2, Lc (3B)), 7 bytes altogether for
+	// class 3 APDU
+	// (or 9 bytes for case 4 when we pass in >255 B data and expect return of more than 255 B)
 
-	// Use JCOP 3 card limits for sending
-	card->max_send_size = 1232;
+	// Use JCOP 3 (smallest unhandled by reader limitation) card limits for sending
+	// And make it 9 smaller to make sure we fit the rest of the APDU.
+	card->max_send_size = 1232 - 9;
 	// Assume that card supports sending with extended length APDU and without limit
 	card->max_recv_size = 0;
 
