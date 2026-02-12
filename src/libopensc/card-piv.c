@@ -6078,11 +6078,11 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		 * return not logged in. Needed because of logic in e6f7373ef066
 		 */
 		if (data->pin_type == SC_AC_CONTEXT_SPECIFIC) {
-			data->pin1.logged_in = 0;
+			data->pin1.logged_in = SC_PIN_STATE_LOGGED_OUT;
 			 LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		}
 
-		if (priv->logged_in == SC_PIN_STATE_LOGGED_IN) {
+		if (priv->logged_in & SC_PIN_STATE_LOGGED_IN) {
 			/* Avoid status requests when the user is logged in to handle NIST
 			 * 800-73-4 Part 2:
 			 * The PKI cryptographic function (see Table 4b) is protected with
@@ -6157,7 +6157,7 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	if (data->cmd == SC_PIN_CMD_GET_INFO) {
 		if (priv->card_issues & CI_CANT_USE_GETDATA_FOR_STATE) {
 			sc_log(card->ctx, "CI_CANT_USE_GETDATA_FOR_STATE set, assume logged_in=%d", priv->logged_in);
-			data->pin1.logged_in =  priv->logged_in; /* use what ever we saw last */
+			data->pin1.logged_in = priv->logged_in; /* use what ever we saw last */
 		} else if (priv->card_issues & CI_VERIFY_LC0_FAIL
 			&& priv->pin_cmd_verify_sw1 == 0x63U ) { /* can not use modified return codes from iso->drv->pin_cmd */
 			/* try another method, looking at a protected object this may require adding one of these to NEO */
@@ -6281,7 +6281,7 @@ static int piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		goto err;
 
 	if (was_reset > 0)
-		priv->logged_in =  SC_PIN_STATE_UNKNOWN;
+		priv->logged_in = SC_PIN_STATE_UNKNOWN;
 
 	r = 0;
 
