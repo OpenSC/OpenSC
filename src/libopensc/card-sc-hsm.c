@@ -1824,6 +1824,7 @@ static int sc_hsm_init(struct sc_card *card)
 	//   JCOP 2.4.1r3           1462
 	//   JCOP 2.4.2r3           1454
 	//   JCOP 3                 1232
+	//   JCOP 4                 1454
 	//   MicroSD with JCOP 3    478 / 506 - handled in reader-pcsc.c
 	//   Reiner SCT             1014 - handled in reader-pcsc.c
 
