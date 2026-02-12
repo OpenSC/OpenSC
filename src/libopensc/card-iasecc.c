@@ -1993,7 +1993,7 @@ iasecc_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 		LOG_FUNC_RETURN(ctx, rv);
 
 	if (!rv)   {
-		if (pin_cmd.pin1.logged_in == SC_PIN_STATE_LOGGED_IN)
+		if (pin_cmd.pin1.logged_in & SC_PIN_STATE_LOGGED_IN)
 			if (iasecc_chv_cache_is_verified(card, &pin_cmd))
 				LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}

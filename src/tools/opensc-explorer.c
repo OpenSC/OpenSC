@@ -1212,16 +1212,20 @@ static int do_pininfo(int argc, char **argv)
 		fprintf(stderr, "Unable to get PIN info: %s\n", sc_strerror(r));
 		return -1;
 	}
-	switch (data.pin1.logged_in) {
-		case SC_PIN_STATE_LOGGED_IN:
-			printf("Logged in.\n");
-			break;
-		case SC_PIN_STATE_LOGGED_OUT:
-			printf("Logged out.\n");
-			break;
-		case SC_PIN_STATE_UNKNOWN:
-		default:
-			printf("Login status unknown.\n");
+	printf("State:\n\t");
+	if (data.pin1.logged_in == SC_PIN_STATE_UNKNOWN) {
+		printf("Login status unknown.");
+	} else {
+		if (data.pin1.logged_in & SC_PIN_STATE_LOGGED_IN) {
+			printf("Logged in ");
+		}
+		if (data.pin1.logged_in & SC_PIN_STATE_LOGGED_OUT) {
+			printf("Logged out ");
+		}
+		if (data.pin1.logged_in & SC_PIN_STATE_NEEDS_CHANGE) {
+			printf("Needs change ");
+		}
+		printf("\n");
 	}
 	if (tries_left >= 0)
 		printf("%d tries left.\n", tries_left);

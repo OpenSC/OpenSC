@@ -734,7 +734,7 @@ dtrust_pin_cmd(struct sc_card *card,
 		data2.pin_type = data->pin_type;
 		r = dtrust_pin_cmd(card, &data2, tries_left);
 
-		if (data2.pin1.logged_in == SC_PIN_STATE_LOGGED_IN) {
+		if (data2.pin1.logged_in & SC_PIN_STATE_LOGGED_IN) {
 			/* Return if we are already authenticated */
 			sc_log(card->ctx, "PIN 0x%02x already verified. Skipping authentication.", data->pin_reference);
 
