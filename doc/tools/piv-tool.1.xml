@@ -197,7 +197,7 @@
 
 	<refsect1>
 		<title>Examples</title>
-		<para>create History Object to use the 20 retired keys</para>
+		<para>Authenticate to the card and create History Object to use the 20 retired keys</para>
 		<para><command>piv-tool <option>-A</option> <replaceable>argument</replaceable> -s "00:DB:3F:FF:0F:5C:03:5F:C1:0C:53:08:C1:01:14:C2:01:00:FE:00"</command></para>
 	</refsect1>
 
