@@ -276,7 +276,7 @@ static int admin_mode(const char* admin_info)
 
 	r = sc_card_ctl(card, SC_CARDCTL_PIV_AUTHENTICATE, &opts);
 	if (r)
-		fprintf(stderr, " admin_mode failed %d\n", r);
+		fprintf(stderr, " admin_mode failed %s\n", sc_strerror(r));
 	return r;
 }
 
@@ -295,7 +295,7 @@ static int gen_key(const char * key_info)
 
 	sc_hex_to_bin(key_info, buf, &buflen);
 	if (buflen != 2) {
-		fprintf(stderr, "<keyref>:<algid> invalid, example: 9A:07 9A ker with RSA 2048\n");
+		fprintf(stderr, "<keyref>:<algid> invalid. Example: 9A:07 to create 9A key with RSA 2048\n");
 		return 2;
 	}
 	switch (buf[0]) {
@@ -326,7 +326,7 @@ static int gen_key(const char * key_info)
 			keydata.key_num = buf[0];
 			break;
 		default:
-			fprintf(stderr, "<keyref>:<algid> must be 9A, 9C, 9D, or 82-95 \n");
+			fprintf(stderr, "<keyref> must be 9A, 9C, 9D, 9E or 82-95 \n");
 			return 2;
 	}
 
@@ -351,7 +351,7 @@ static int gen_key(const char * key_info)
 			break;
 #endif
 		default:
-			fprintf(stderr, "<keyref>:<algid> algid=RSA - 05, 06, 07 for 3072, 1024, 2048;EC - 11, 14 for 256, 384\n");
+			fprintf(stderr, "<algid> must be: RSA - 05, 06, 07 for 3072, 1024, 2048; EC - 11, 14 for 256, 384; E0 for ED25519; or E1 X25519\n");
 			return 2;
 	}
 
@@ -360,7 +360,7 @@ static int gen_key(const char * key_info)
 
 	r = sc_card_ctl(card, SC_CARDCTL_PIV_GENERATE_KEY, &keydata);
 	if (r) {
-		fprintf(stderr, "gen_key failed %d\n", r);
+		fprintf(stderr, "gen_key failed %s\n", sc_strerror(r));
 		return 1;
 	}
 
@@ -385,7 +385,7 @@ static int gen_key(const char * key_info)
 #endif
 
 		if (!keydata.pubkey || !keydata.exponent) {
-			fprintf(stderr, "gen_key failed %d\n", r);
+			fprintf(stderr, "gen_key failed %s\n", sc_strerror(r));
 			r = 1;
 			goto out;
 		}
@@ -713,7 +713,7 @@ static void print_serial(sc_card_t *in_card)
 
 	r = sc_card_ctl(in_card, SC_CARDCTL_GET_SERIALNR, &serial);
 	if (r < 0)
-		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GET_SERIALNR, *) failed %d\n", r);
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GET_SERIALNR, *) failed %s\n", sc_strerror(r));
 	else
 		util_hex_dump_asc(stdout, serial.value, serial.len, -1);
 }
