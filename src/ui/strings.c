@@ -18,9 +18,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "ui/strings.h"
 #include "libopensc/internal.h"
 #include "libopensc/log.h"
-#include "ui/strings.h"
+#include "ui/char_str_from_wchar.h"
 #include <locale.h>
 #include <stdlib.h>
 #include <string.h>
@@ -161,11 +162,14 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 	if (!p15card || !p15card->tokeninfo
 			|| !find_lang_str(p15card->tokeninfo->preferred_language, &lang)) {
 #ifdef _WIN32
-		LANGID langid = GetUserDefaultUILanguage();
-		if ((langid & LANG_GERMAN) == LANG_GERMAN) {
-			lang = DE;
-			sc_log(ctx, "Using the system's language for user messages (German).");
-		}
+		WCHAR language_wc[LOCALE_NAME_MAX_LENGTH];
+		LCIDToLocaleName(
+				MAKELCID(GetUserDefaultUILanguage(), SORT_DEFAULT),
+				language_wc, LOCALE_NAME_MAX_LENGTH, 0);
+		char *language = char_str_from_wchar(language_wc);
+		if (find_lang_str(language, &lang))
+			sc_log(ctx, "Using the system's native environment locale for user messages (%s).", language);
+		LocalFree(language);
 #else
 		const char *language = getenv("LANGUAGE");
 		/* LANGUAGE supersedes locale */
