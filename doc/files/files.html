@@ -57,7 +57,7 @@ span.errortext {
 						<code class="literal">HKEY_LOCAL_MACHINE</code> (if available)
 				</p></li><li class="listitem"><p>
 						system-wide configuration file
-						(<code class="literal">/etc/opensc.conf</code>)
+						(<code class="literal">/opt/ossl-3.5.4/etc/opensc.conf</code>)
 				</p></li></ol></div><p>
 		</p><p>
 			The configuration file, <code class="literal">opensc.conf</code>, is composed
@@ -146,7 +146,7 @@ app <em class="replaceable"><code>application</code></em> {
 						directory for
 						<span class="citerefentry"><span class="refentrytitle">pkcs15-init</span>(1).
 						</span>
-						(Default: <code class="literal">/usr/share/opensc</code>).
+						(Default: <code class="literal">/opt/ossl-3.5.4/share/opensc</code>).
 					</p><p>
 						If this configuration value is not found on
 						Windows, the registry key
@@ -304,7 +304,7 @@ app <em class="replaceable"><code>application</code></em> {
 								<code class="option">module_path = <em class="replaceable"><code>filename</code></em>;</code>
 							</span></dt><dd><p>
 									Directory with external SM module
-									(Default: /usr/lib64).
+									(Default: /opt/ossl-3.5.4/lib).
 								</p><p>
 									If this configuration value is not
 									found on Windows, the registry key
@@ -469,7 +469,7 @@ app <em class="replaceable"><code>application</code></em> {
 						</span></dt><dd><p>
 								Use specific PC/SC provider
 								(Default:
-								<code class="literal">libpcsclite.so.1</code>).
+								<code class="literal">/usr/lib/x86_64-linux-gnu/libpcsclite.so</code>).
 						</p></dd></dl></div></div><div class="refsect3"><a name="openct"></a><h4>Configuration of OpenCT Readers</h4><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 							<code class="option">readers = <em class="replaceable"><code>num</code></em>;</code>
 						</span></dt><dd><p>
@@ -1233,11 +1233,11 @@ app <em class="replaceable"><code>application</code></em> {
 						PIV configuration during initialization
 						See Configuration Options for PIV Card.
 				</p></dd></dl></div></div><div class="refsect1"><a name="id-1.2.6"></a><h2>Files</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
-					<code class="filename">/etc/opensc.conf</code>
+					<code class="filename">/opt/ossl-3.5.4/etc/opensc.conf</code>
 				</span></dt><dd><p>
 						System-wide configuration file
 				</p></dd><dt><span class="term">
-					<code class="filename">/usr/share/doc/opensc/opensc.conf</code>
+					<code class="filename">/opt/ossl-3.5.4/share/doc/opensc/opensc.conf</code>
 				</span></dt><dd><p>
 						Extended example configuration file
 				</p></dd></dl></div></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-profile"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-profile — format of profile for <span class="command"><strong>pkcs15-init</strong></span></p></div><div class="refsect1"><a name="id-1.3.3"></a><h2>Description</h2><p>
@@ -1255,7 +1255,7 @@ app <em class="replaceable"><code>application</code></em> {
 		</p><p>
 			The card specific profile contains additional information required during
 			card initialization, such as location of PIN files, key references etc.
-			Profiles currently reside in <code class="filename">/usr/share/opensc</code>
+			Profiles currently reside in <code class="filename">/opt/ossl-3.5.4/share/opensc</code>
 		</p><p>
 			Basic PKCS#15 terminology:
 			</p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><p>

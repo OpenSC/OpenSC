@@ -28,7 +28,7 @@ pkcs15-profile.5.xml pkcs15-profile.5: $(srcdir)/pkcs15-profile.5.xml.in
 	$(AM_V_GEN)$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/manpages" --xinclude -o $@ man.xsl pkcs15-profile.5.xml 2>/dev/null
 
 files.html: $(srcdir)/files.xml $(wildcard $(srcdir)/*.5.xml) opensc.conf.5.xml pkcs15-profile.5.xml
-	$(AM_V_GEN)$(XSLTPROC) --nonet --path "$(builddir):$(srcdir)/..:$(xslstylesheetsdir)/html" --xinclude -o $@ html.xsl $< 2>/dev/null
+	$(AM_V_GEN)$(XSLTPROC) --nonet --path "$(builddir):$(srcdir)/..:$(xslstylesheetsdir)/html" --xinclude -o $(srcdir)/$@ html.xsl $< 2>/dev/null
 
 %.5: $(srcdir)/%.5.xml
 	$(AM_V_GEN)sed -e 's|@pkgdatadir[@]|$(pkgdatadir)|g' < $< \
