@@ -36,6 +36,8 @@ SM_DEF = /DENABLE_SM
 
 #Build with debugging support
 #DEBUG_DEF = /DDEBUG
+#Release build, disable asserts
+#DEBUG_DEF = /DNDEBUG
 
 !IF "$(BUILD_TYPE)" == ""
 !IF "$(DEBUG_DEF)" == "/DDEBUG"
