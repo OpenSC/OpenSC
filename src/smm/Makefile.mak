@@ -3,7 +3,10 @@ TOPDIR = ..\..
 TARGET = smm-local.dll
 
 OBJECTS = smm-local.obj sm-global-platform.obj sm-cwa14890.obj sm-card-iasecc.obj sm-card-authentic.obj
-LIBS = $(TOPDIR)\src\sm\libsm.lib \
+LIBS = \
+!IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
+	   $(TOPDIR)\src\sm\libsm.lib \
+!ENDIF
 	   $(TOPDIR)\src\libopensc\opensc_a.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib \
 	   $(TOPDIR)\src\scconf\scconf.lib \
@@ -13,6 +16,7 @@ LIBS = $(TOPDIR)\src\sm\libsm.lib \
 	   $(TOPDIR)\src\ui\notify.lib \
 	   $(TOPDIR)\src\sm\libsmiso.lib \
 	   $(TOPDIR)\src\sm\libsmeac.lib \
+	   $(TOPDIR)\src\sm\libsmjacartapki.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib
 
 all: $(TARGET)

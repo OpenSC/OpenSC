@@ -584,7 +584,23 @@ app <em class="replaceable"><code>application</code></em> {
 						directory <code class="literal">file_cache_dir</code>. The cached CAN is used
 						later to avoid interactively prompting for the CAN. This feature is
 						enabled by default.
-						</p></dd></dl></div></div><div class="refsect2"><a name="piv"></a><h3>Configuration Options for PIV Card</h3><div class="variablelist"><dl class="variablelist"></dl></div></div><div class="refsect2"><a name="card_atr"></a><h3>Configuration based on ATR</h3><p>
+						</p></dd></dl></div></div><div class="refsect2"><a name="piv"></a><h3>Configuration Options for PIV Card</h3><div class="variablelist"><dl class="variablelist"></dl></div></div><div class="refsect2"><a name="jacartapki"></a><h3>Configuration Options for JaCarta PKI token/card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">
+							secure_verify = <em class="replaceable"><code>value</code></em>;
+						</code>
+					</span></dt><dd><p>
+							Verify PIN in secure way:
+							</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
+										<code class="literal">yes</code>:
+										PIN verified in secure way. PIN SHA1 is used as a key
+										for card challenge encrypt. The result is sent to the applet.
+										Command can be wrapped in SM envelope if SM is in place (Default:
+										<code class="literal">yes</code>).
+									</p></li><li class="listitem"><p>
+										<code class="literal">no</code>:
+										PIN sent to the applet as plain text for verification.
+									</p></li></ul></div><p>
+						</p></dd></dl></div></div><div class="refsect2"><a name="card_atr"></a><h3>Configuration based on ATR</h3><p>
 				</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 							<code class="option">atrmask = <em class="replaceable"><code>hexstring</code></em>;</code>
 						</span></dt><dd><p>
