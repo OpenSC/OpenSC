@@ -40,16 +40,17 @@
 #endif
 
 #ifdef ENABLE_OPENSSL
-#include <openssl/opensslv.h>
-#include <openssl/opensslconf.h>
-#include <openssl/crypto.h>
+#include <openssl/asn1.h>
+#include <openssl/bio.h>
 #include <openssl/conf.h>
+#include <openssl/crypto.h>
 #include <openssl/evp.h>
+#include <openssl/opensslconf.h>
+#include <openssl/opensslv.h>
+#include <openssl/pem.h>
+#include <openssl/rsa.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
-#include <openssl/asn1t.h>
-#include <openssl/rsa.h>
-#include <openssl/pem.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 # include <openssl/core_names.h>
 # include <openssl/param_build.h>
@@ -58,6 +59,9 @@
 #if !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ECDSA)
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
+#if !defined(OPENSSL_NO_ENGINE)
+#include <openssl/engine.h>
+#endif
 #endif
 #include <openssl/bn.h>
 #include <openssl/err.h>
@@ -430,7 +434,7 @@ static const char *option_help[] = {
 		"Specify the value <arg> of the mechanism parameter CK_MAC_GENERAL_PARAMS",
 		"Specify additional authenticated data for AEAD ciphers as a hex string",
 		"Specify the required length (in bits) for the authentication tag for AEAD ciphers",
-		"Specify the file containing the salt for HKDF (optional)",
+		"Specify the file containing the salt for HKDF (optional) / UKM for GOSTR3410-12-DERIVE (required; 256: 8 bytes, 512: 8-16 bytes)",
 		"Specify the file containing the info for HKDF (optional)",
 		"When reading a public key, try to read PUBLIC_KEY_INFO (DER encoding of SPKI)",
 		"Specify the PKCS#11 URI for module, slot, token or object",
@@ -6127,8 +6131,6 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	char name[256]; size_t len = 0;
 	int nid = 0;
 #endif
-
-	printf("Using derive algorithm 0x%8.8lx %s\n", mech_mech, p11_mechanism_to_name(mech_mech));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = mech_mech;
 
@@ -6414,6 +6416,295 @@ derive_hkdf(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	return newkey;
 }
 
+#if defined(ENABLE_OPENSSL) && !defined(OPENSSL_NO_ENGINE)
+
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+static void
+uint32_to_le(CK_BYTE_PTR buffer, uint32_t value)
+{
+	buffer[0] = (CK_BYTE)(value & 0xFF);
+	buffer[1] = (CK_BYTE)((value >> 8) & 0xFF);
+	buffer[2] = (CK_BYTE)((value >> 16) & 0xFF);
+	buffer[3] = (CK_BYTE)((value >> 24) & 0xFF);
+}
+
+static ENGINE *
+rtengine_init_default(void)
+{
+	ENGINE *rtengine = NULL;
+
+	if (!OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG, NULL)) {
+		util_fatal("Failed to load openssl.cnf (set OPENSSL_CONF for rtengine)");
+	}
+
+	rtengine = ENGINE_by_id("rtengine");
+	if (!rtengine) {
+		util_fatal("Failed to get engine by id (rtengine). Set OPENSSL_CONF to config with rtengine.");
+	}
+	if (!ENGINE_init(rtengine)) {
+		ENGINE_free(rtengine);
+		util_fatal("Failed to initialize rtengine");
+	}
+	if (!ENGINE_set_default(rtengine, ENGINE_METHOD_ALL)) {
+		ENGINE_finish(rtengine);
+		ENGINE_free(rtengine);
+		util_fatal("Failed to set rtengine as default");
+	}
+	return rtengine;
+}
+
+/* Read UKM (User Key Material) from file for GOST derive operations */
+static void
+read_binary_file(const char *filename, CK_BYTE **out_buf, ssize_t *out_len)
+{
+	FILE *f;
+	ssize_t len;
+	CK_BYTE *buf = NULL;
+	size_t ret;
+
+	if (out_buf == NULL || out_len == NULL)
+		util_fatal("read_binary_file: invalid arguments");
+	if (filename == NULL) {
+		*out_buf = NULL;
+		*out_len = 0;
+		return;
+	}
+
+	f = fopen(filename, "rb");
+	if (f == NULL)
+		util_fatal("Cannot open %s: %m", filename);
+	if (fseek(f, 0L, SEEK_END) != 0) {
+		fclose(f);
+		util_fatal("Couldn't set file position to the end of the file \"%s\"", filename);
+	}
+	len = ftell(f);
+	if (len < 0) {
+		fclose(f);
+		util_fatal("Couldn't get file position \"%s\"", filename);
+	}
+	if (len > 0) {
+		buf = malloc((size_t)len);
+		if (buf == NULL) {
+			fclose(f);
+			util_fatal("malloc() failure");
+		}
+		if (fseek(f, 0L, SEEK_SET) != 0) {
+			free(buf);
+			fclose(f);
+			util_fatal("Couldn't set file position to the beginning of the file \"%s\"", filename);
+		}
+		ret = fread(buf, 1, (size_t)len, f);
+		if (ret != (size_t)len) {
+			free(buf);
+			fclose(f);
+			util_fatal("Couldn't read from file \"%s\"", filename);
+		}
+	}
+	fclose(f);
+
+	*out_buf = buf;
+	*out_len = len;
+}
+
+/* Decode peer public key from file.
+ * Supported input format: DER SPKI SubjectPublicKeyInfo.
+ * Parsed and validated via OpenSSL + rtengine only (no manual DER parsing).
+ */
+static void
+decode_peer_public_key(const CK_BYTE *file_buf, ssize_t file_len, CK_ULONG expected_peer_len,
+		CK_BYTE **out_peer_raw, CK_ULONG *out_peer_raw_len)
+{
+	CK_BYTE *peer_raw = NULL;
+	CK_ULONG peer_raw_len = 0;
+
+	/* X509_PUBKEY parses SPKI via OpenSSL; get0_param returns BIT STRING contents.
+	 * Our format: 0x04||len||X||Y (uncompressed point marker, length byte, raw X||Y). */
+	const unsigned char *pp = file_buf;
+	X509_PUBKEY *xpub = d2i_X509_PUBKEY(NULL, &pp, (long)file_len);
+	if (xpub) {
+		const unsigned char *pk = NULL;
+		int pklen = 0;
+		if (X509_PUBKEY_get0_param(NULL, &pk, &pklen, NULL, xpub) == 1 && pk != NULL &&
+				(CK_ULONG)pklen == expected_peer_len + 2 &&
+				pk[0] == 0x04 && pk[1] == (unsigned char)expected_peer_len) {
+			peer_raw = malloc(expected_peer_len);
+			if (peer_raw) {
+				memcpy(peer_raw, pk + 2, expected_peer_len);
+				peer_raw_len = expected_peer_len;
+			}
+		}
+		X509_PUBKEY_free(xpub);
+	}
+
+	*out_peer_raw = peer_raw;
+	*out_peer_raw_len = peer_raw_len;
+}
+
+/* Build Rutoken vendor-specific parameter blob for CKM_GOSTR3410_12_DERIVE */
+static CK_BYTE *
+build_rutoken_derive_params(CK_ULONG kdf_id, CK_ULONG peer_len, const CK_BYTE *peer_raw,
+		const CK_BYTE *ukm, ssize_t ukm_len, CK_ULONG *out_params_len)
+{
+	CK_BYTE *rtk_params;
+	CK_ULONG rtk_params_len;
+
+	/* Layout (little endian uint32 fields):
+	 *   [0..3]   kdf_id (CKM_KDF_GOSTR3411_2012_xxx)
+	 *   [4..7]   peer_len
+	 *   [8..8+peer_len-1]     peer_raw (peer public key X||Y)
+	 *   [8+peer_len..11+peer_len]  ukm_len
+	 *   [12+peer_len..12+peer_len+ukm_len-1] ukm bytes
+	 */
+	rtk_params_len = 4 + 4 + peer_len + 4 + (CK_ULONG)ukm_len;
+	rtk_params = (CK_BYTE *)calloc(1, rtk_params_len);
+	if (rtk_params == NULL)
+		util_fatal("malloc() failure");
+
+	uint32_to_le(rtk_params + 0, (uint32_t)kdf_id);
+	uint32_to_le(rtk_params + 4, (uint32_t)peer_len);
+	memcpy(rtk_params + 8, peer_raw, peer_len);
+	uint32_to_le(rtk_params + 8 + peer_len, (uint32_t)ukm_len);
+	memcpy(rtk_params + 12 + peer_len, ukm, (size_t)ukm_len);
+
+	*out_params_len = rtk_params_len;
+	return rtk_params;
+}
+
+static CK_OBJECT_HANDLE
+derive_gost2012_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE mech_mech)
+{
+	CK_MECHANISM mech;
+	CK_OBJECT_HANDLE newkey = 0;
+	CK_RV rv;
+
+	CK_OBJECT_CLASS derived_key_class = CKO_SECRET_KEY;
+	CK_KEY_TYPE derived_key_type = CKK_GOST28147;
+	CK_KEY_TYPE base_key_type = getKEY_TYPE(session, key);
+	CK_ULONG expected_peer_len = (base_key_type == CKK_GOSTR3410_512) ? 128 : 64;
+
+	/* Match Rutoken SDK defaults: session object, private, extractable, not sensitive, modifiable */
+	CK_ATTRIBUTE template[24] = {
+			{CKA_CLASS,	    &derived_key_class, sizeof(derived_key_class)},
+			{CKA_KEY_TYPE,    &derived_key_type,  sizeof(derived_key_type) },
+			{CKA_TOKEN,	    &s_false,	      sizeof(s_false)	     },
+			{CKA_MODIFIABLE,	 &s_true,		  sizeof(s_true)		},
+			{CKA_PRIVATE,     &s_true,	       sizeof(s_true)	     },
+			{CKA_EXTRACTABLE, &s_true,		   sizeof(s_true)		 },
+			{CKA_SENSITIVE,	&s_false,		  sizeof(s_false)		 },
+	};
+	int n_attrs = 7;
+
+	CK_BYTE *ukm = NULL;
+	ssize_t ukm_len = 0;
+
+	CK_BYTE *file_buf = NULL;
+	ssize_t file_len = 0;
+
+	CK_BYTE *peer_raw = NULL;
+	CK_ULONG peer_raw_len = 0;
+	CK_BYTE *rtk_params = NULL;
+	CK_ULONG rtk_params_len = 0;
+
+	/* For GOSTR3410-2012 VKO (GOSTR3410-12-DERIVE) we always derive
+	 * a GOST 28147 session key. Global --key-type is ignored here and
+	 * we intentionally do not fix CKA_GOST28147_PARAMS to any specific
+	 * paramset OID (token/vendor may choose its own defaults).
+	 * we intentionally do not constrain CKA_ALLOWED_MECHANISMS either;
+	 * derived key can be further restricted by caller if needed.
+	 */
+
+	/* allow caller to override privacy/sensitivity/extractability if explicitly requested */
+	if (opt_is_private != 0 || opt_is_sensitive != 0 || opt_is_extractable != 0) {
+		int i;
+		for (i = 0; i < n_attrs; i++) {
+			if (opt_is_private != 0 && template[i].type == CKA_PRIVATE)
+				template[i].pValue = &s_true;
+			if (opt_is_sensitive != 0 && template[i].type == CKA_SENSITIVE)
+				template[i].pValue = &s_true;
+			if (opt_is_extractable != 0 && template[i].type == CKA_EXTRACTABLE)
+				template[i].pValue = &s_true;
+		}
+	}
+
+	if (opt_input == NULL)
+		util_fatal("Peer public key file is required for derive (use --input)");
+
+	/* UKM is required for Rutoken VKO (GOSTR3410-12-DERIVE) */
+	if (opt_salt_file == NULL) {
+		util_fatal("For GOSTR3410-12-DERIVE you must provide --salt-file <ukm.bin> (UKM is required)");
+	}
+
+	/* Read UKM from file */
+	read_binary_file(opt_salt_file, &ukm, &ukm_len);
+	if (base_key_type == CKK_GOSTR3410_512) {
+		if (ukm_len < 8 || ukm_len > 16) {
+			free(ukm);
+			util_fatal("UKM length for GOSTR3410-2012-512 must be 8-16 bytes (got %ld).", (long)ukm_len);
+		}
+	} else {
+		if (ukm_len != 8) {
+			free(ukm);
+			util_fatal("UKM length for GOSTR3410-2012-256 must be 8 bytes (got %ld).", (long)ukm_len);
+		}
+	}
+
+	read_binary_file(opt_input, &file_buf, &file_len);
+
+	if (file_len == 0) {
+		free(ukm);
+		free(file_buf);
+		util_fatal("Empty peer key file: %s", opt_input);
+	}
+
+	ENGINE *rtengine = rtengine_init_default();
+
+	/* Decode peer public key via OpenSSL + rtengine (no manual DER parsing) */
+	decode_peer_public_key(file_buf, file_len, expected_peer_len, &peer_raw, &peer_raw_len);
+
+	ENGINE_finish(rtengine);
+	ENGINE_free(rtengine);
+
+	if (peer_raw_len != expected_peer_len) {
+		free(ukm);
+		free(file_buf);
+		free(peer_raw);
+		util_fatal("Peer public key must decode to %lu bytes from DER SPKI", (unsigned long)expected_peer_len);
+	}
+
+	rtk_params = build_rutoken_derive_params((CK_ULONG)CKM_KDF_GOSTR3411_2012_256,
+			expected_peer_len, peer_raw, ukm, ukm_len, &rtk_params_len);
+
+	memset(&mech, 0, sizeof(mech));
+	mech.mechanism = mech_mech;
+	mech.pParameter = rtk_params;
+	mech.ulParameterLen = rtk_params_len;
+
+	rv = p11->C_DeriveKey(session, &mech, key, template, n_attrs, &newkey);
+	if (rv != CKR_OK) {
+		free(rtk_params);
+		free(peer_raw);
+		free(file_buf);
+		free(ukm);
+		p11_fatal("C_DeriveKey", rv);
+	}
+
+	free(rtk_params);
+	free(peer_raw);
+	free(file_buf);
+	free(ukm);
+	return newkey;
+}
+
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+
+#endif // defined(ENABLE_OPENSSL) && !defined(OPENSSL_NO_ENGINE)
+
 static void
 derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 {
@@ -6428,6 +6719,8 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		if (!find_mechanism(slot, CKF_DERIVE|opt_allow_sw, NULL, 0, &opt_mechanism))
 			util_fatal("Derive mechanism not supported");
 
+	fprintf(stderr, "Using derive algorithm 0x%8.8lx %s\n", (unsigned long)opt_mechanism, p11_mechanism_to_name(opt_mechanism));
+
 	switch(opt_mechanism) {
 	case CKM_ECDH1_COFACTOR_DERIVE:
 	case CKM_ECDH1_DERIVE:
@@ -6436,6 +6729,13 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	case CKM_HKDF_DERIVE:
 		derived_key = derive_hkdf(session, key);
 		break;
+#if defined(ENABLE_OPENSSL) && !defined(OPENSSL_NO_EC) && !defined(OPENSSL_NO_ENGINE)
+	case CKM_GOSTR3410_12_DERIVE:
+		if (key_type != CKK_GOSTR3410 && key_type != CKK_GOSTR3410_512)
+			util_fatal("Key type %lu does not support derive with %s", key_type, p11_mechanism_to_name(opt_mechanism));
+		derived_key = derive_gost2012_key(session, key, opt_mechanism);
+		break;
+#endif
 	default:
 		util_fatal("Key type %lu does not support derive", key_type);
 		break;
@@ -6446,8 +6746,10 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		fd = STDOUT_FILENO;
 		if (opt_output)   {
 			fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, S_IRUSR|S_IWUSR);
-			if (fd < 0)
+			if (fd < 0) {
+				free(value);
 				util_fatal("failed to open %s: %m", opt_output);
+			}
 		}
 
 		sz = write(fd, value, value_len);
@@ -6457,9 +6759,11 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 
 		if (opt_output)
 			close(fd);
+
+		/* Report successful completion without mixing with binary output */
+		fprintf(stderr, "Derive operation completed successfully.\n");
 	}
 }
-
 
 static void
 show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
@@ -7437,8 +7741,75 @@ static int read_object(CK_SESSION_HANDLE session)
 				if (!i2d_PUBKEY_bio(pout, pkey))
 					util_fatal("cannot convert EC public key to DER");
 #endif
-					/* only if compiled with a version of OpenSSL or libressl */
-					/* do more tests for the other 3 as needed */
+#if defined(ENABLE_OPENSSL) && !defined(OPENSSL_NO_ENGINE)
+
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+			} else if (type == CKK_GOSTR3410 || type == CKK_GOSTR3410_512) {
+				ENGINE *rtengine = rtengine_init_default();
+
+				CK_ULONG oidSize = 0;
+				unsigned char *oid_buf = getGOSTR3411_PARAMS(session, obj, &oidSize);
+				if (!oid_buf) {
+					util_fatal("Unknown GOSTR3411 params.\n");
+				}
+				free(oid_buf);
+				oid_buf = getGOSTR3410_PARAMS(session, obj, &oidSize);
+				if (!oid_buf) {
+					util_fatal("Unknown GOSTR3410 params.\n");
+				}
+				free(oid_buf);
+
+				char pkcs11_uri[1024] = {0};
+				strcpy(pkcs11_uri, "pkcs11:");
+				size_t uri_len = strlen(pkcs11_uri);
+				CK_ULONG idSize = 0;
+				unsigned char *id = getID(session, obj, &idSize);
+				if (id && idSize) {
+					strcat(pkcs11_uri, "id=");
+					uri_len += strlen("id=");
+					for (size_t i = 0; i < idSize; ++i) {
+						uri_len += sprintf(pkcs11_uri + uri_len, "%%%02X", id[i]);
+					}
+				}
+				CK_ULONG label_len = 0;
+				char *label = getLABEL(session, obj, &label_len);
+				if (label && label_len) {
+					const char *sep = (idSize > 0) ? ";object=" : "object=";
+					strcat(pkcs11_uri, sep);
+					uri_len = strlen(pkcs11_uri);
+
+					const char *pct_label = percent_encode((unsigned char *)label, label_len);
+					if (pct_label) {
+						strcat(pkcs11_uri, (char *)pct_label);
+					}
+				}
+				pkey = ENGINE_load_public_key(rtengine, pkcs11_uri, NULL, NULL);
+				if (!pkey) {
+					free(id);
+					free(label);
+					util_fatal("cannot load public key into EVP_PKEY.\n");
+				}
+				if (!i2d_PUBKEY_bio(pout, pkey)) {
+					free(id);
+					free(label);
+					EVP_PKEY_free(pkey);
+					util_fatal("cannot convert GOST2012 public key to DER.\n");
+				}
+
+				free(id);
+				free(label);
+				EVP_PKEY_free(pkey);
+
+				ENGINE_finish(rtengine);
+				ENGINE_free(rtengine);
+#endif // defined(ENABLE_OPENSSL) && !defined(OPENSSL_NO_ENGINE)
+
+				/* only if compiled with a version of OpenSSL or libressl */
+				/* do more tests for the other 3 as needed */
 #if defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_ED448) || defined (EVP_PKEY_X25519) || defined(EVP_PKEY_X448)
 			} else if (type == CKK_EC_EDWARDS || type == CKK_EC_MONTGOMERY) {
 				EVP_PKEY *key = NULL;
