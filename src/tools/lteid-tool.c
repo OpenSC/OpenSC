@@ -230,6 +230,7 @@ int
 get_and_store_pace_can(sc_card_t *card, const char *opt_can)
 {
 	int rv;
+	struct sc_path path;
 	struct establish_pace_channel_input pace_input = {0};
 	struct establish_pace_channel_output pace_output = {0};
 	char *can = NULL;
@@ -241,6 +242,9 @@ get_and_store_pace_can(sc_card_t *card, const char *opt_can)
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
 
+	sc_format_path("3F00", &path);
+	sc_select_file(card, &path, NULL);
+
 	pace_input.pin_id = PACE_PIN_ID_CAN;
 	pace_input.pin = (unsigned char *)can;
 	pace_input.pin_length = strlen(can);
@@ -248,7 +252,7 @@ get_and_store_pace_can(sc_card_t *card, const char *opt_can)
 	rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 
 	if (rv != SC_SUCCESS) {
-		fprintf(stderr, "CAN number verification failed: %s\n. Check the number and try again.\n", sc_strerror(rv));
+		fprintf(stderr, "CAN number verification failed: %s\nCheck the number and try again.\n", sc_strerror(rv));
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
 
@@ -584,19 +588,20 @@ main(int argc, char *argv[])
 	}
 
 	rv = sc_pkcs15_bind(card, NULL, &p15card);
+
+	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+		printf("\nCAN number is not set/stored.\n\n");
+		err = get_and_store_pace_can(card, opt_can);
+		goto lteid_tool_end;
+	}
+
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PKCS#15 binding failed: %s\n", sc_strerror(rv));
 		err = -1;
 		goto lteid_tool_end;
 	}
 
-	if (p15card->tokeninfo->serial_number) {
-		display_basic_details(p15card);
-	} else {
-		printf("\nCAN number is not set/stored.\n\n");
-		err = get_and_store_pace_can(card, opt_can);
-		goto lteid_tool_end;
-	}
+	display_basic_details(p15card);
 
 	if (opt_change_pin) {
 		err = change_pin(card, opt_pin);

@@ -18,7 +18,6 @@
 #include "config.h"
 #endif
 
-#include "card-lteid.h"
 #include "internal.h"
 #include "pkcs15.h"
 
@@ -66,30 +65,11 @@ sc_pkcs15emu_lteid_init(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	LOG_FUNC_RETURN(p15card->card->ctx, rv);
 }
 
-static int
-sc_pkcs15emu_lteid_dummy_init(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
-{
-	LOG_FUNC_CALLED(p15card->card->ctx);
-
-	// If a valid PACE CAN code is not available - construct a dummy pkcs15 structure
-	// to help user with the initial set-up process.
-	set_string(&p15card->tokeninfo->label, "!! Run `lteid-tool` to set up !!");
-	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_READONLY;
-
-	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
-}
-
 int
 sc_pkcs15emu_lteid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
-	struct lteid_drv_data *drv_data = DRVDATA(p15card->card);
-
 	if (p15card->card->type == SC_CARD_TYPE_LTEID) {
-		if (drv_data->pace) {
-			return sc_pkcs15emu_lteid_init(p15card, aid);
-		} else {
-			return sc_pkcs15emu_lteid_dummy_init(p15card, aid);
-		}
+		return sc_pkcs15emu_lteid_init(p15card, aid);
 	}
 
 	return SC_ERROR_WRONG_CARD;

@@ -218,7 +218,7 @@ lteid_unlock(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (SC_SUCCESS != lteid_perform_pace(card, PACE_PIN_ID_CAN, NULL, 0, NULL)) {
-		sc_log(card->ctx, "Unlock with PACE CAN code failed. Good PACE CAN not provided yet.");
+		sc_log(card->ctx, "Unlock with CAN code failed. No CAN found in environment, opensc.conf or cache.");
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
