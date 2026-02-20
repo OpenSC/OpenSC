@@ -367,12 +367,11 @@ lteid_set_security_env(struct sc_card *card, const struct sc_security_env *env, 
 
 	sc_log(card->ctx, "algo: %lu operation: %d keyref: %d", env->algorithm, env->operation, env->key_ref[0]);
 
-	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN) {
-		const u8 data[] = {0x84, 0x01, env->key_ref[0]};
-		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, data, sizeof(data), NULL, 0);
-	} else {
+	if (env->algorithm != SC_ALGORITHM_EC || env->operation != SC_SEC_OPERATION_SIGN)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-	}
+
+	const u8 data[] = {0x84, 0x01, env->key_ref[0]};
+	sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, data, sizeof(data), NULL, 0);
 
 	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
 	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SET SECURITY ENV failed");
