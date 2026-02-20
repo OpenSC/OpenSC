@@ -24,7 +24,6 @@
 #include <string.h>
 
 #include "asn1.h"
-#include "card-lteid.h"
 #include "internal.h"
 #include "opensc.h"
 #include "sm/sm-eac.h"
@@ -39,6 +38,16 @@ static struct sc_card_driver lteid_drv = {
 static const struct sc_atr_table lteid_atrs[] = {
 		{"3b:9d:18:81:31:fc:35:80:31:c0:69:4d:54:43:4f:53:73:02:06:05:d0", NULL, NULL, SC_CARD_TYPE_LTEID, 0, NULL},
 		{NULL,							     NULL, NULL, 0,		      0, NULL}
+};
+
+#define DRVDATA(card)	 ((struct lteid_drv_data *)((card)->drv_data))
+#define LTEID_CAN_LENGTH 6
+
+struct lteid_drv_data {
+	unsigned char pace;
+	unsigned char pace_pin_ref;
+	unsigned char can[LTEID_CAN_LENGTH];
+	unsigned char can_from_file;
 };
 
 #ifdef _WIN32
@@ -218,7 +227,7 @@ lteid_unlock(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (SC_SUCCESS != lteid_perform_pace(card, PACE_PIN_ID_CAN, NULL, 0, NULL)) {
-		sc_log(card->ctx, "Unlock with PACE CAN code failed. Good PACE CAN not provided yet.");
+		sc_log(card->ctx, "Unlock with CAN code failed. No CAN found in environment, opensc.conf or cache.");
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
