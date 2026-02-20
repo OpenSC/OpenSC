@@ -172,6 +172,7 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 	r = sc_connect_card(reader, &card);
 	if (r < 0) {
 		fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
+		sc_disconnect_card(card);
 		return r;
 	}
 

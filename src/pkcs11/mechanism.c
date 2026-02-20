@@ -226,8 +226,8 @@ sc_pkcs11_get_mechanism_list(struct sc_pkcs11_card *p11card,
 	unsigned int n, count = 0;
 	CK_RV rv;
 
-	if (!p11card)
-		return CKR_TOKEN_NOT_PRESENT;
+	if (!p11card || (p11card->flags & SC_PKCS11_CARD_INVALID))
+		return CKR_TOKEN_NOT_RECOGNIZED;
 
 	for (n = 0; n < p11card->nmechanisms; n++) {
 		if (!(mt = p11card->mechanisms[n]))
