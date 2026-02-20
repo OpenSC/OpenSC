@@ -424,6 +424,7 @@ static int refresh_attributes(sc_reader_t *reader)
 			} else {
 				reader->flags |= SC_READER_CARD_CHANGED;
 			}
+			reader->flags &= ~SC_READER_CARD_INVALID;
 			reader->flags &= ~SC_READER_CARD_PRESENT;
 			reader->flags |= SC_READER_REMOVED;
 			priv->gpriv->removed_reader = reader;

@@ -227,12 +227,14 @@ again:
 	}
 	if (rc == 0) {
 		sc_log(context, "%s: card absent", reader->name);
+		reader->flags &= ~SC_READER_CARD_INVALID;
 		card_removed(reader);	/* Release all resources */
 		return CKR_TOKEN_NOT_PRESENT;
 	}
 
 	/* If the card was changed, disconnect the current one */
 	if (rc & SC_READER_CARD_CHANGED) {
+		reader->flags &= ~SC_READER_CARD_INVALID; /* try connect to new card */
 		sc_log(context, "%s: Card changed", reader->name);
 		/* The following should never happen - but if it
 		 * does we'll be stuck in an endless loop.
@@ -260,13 +262,26 @@ again:
 		p11card = (struct sc_pkcs11_card *)calloc(1, sizeof(struct sc_pkcs11_card));
 		if (!p11card)
 			return CKR_HOST_MEMORY;
-		free_p11card = 1;
+		free_p11card = 0;
 		p11card->reader = reader;
 	}
 
 	if (p11card->card == NULL) {
-		sc_log(context, "%s: Connecting ... ", reader->name);
-		rc = sc_connect_card(reader, &p11card->card);
+		if (reader->flags & SC_READER_CARD_INVALID) {
+			sc_log(context, "%s: Connecting to reader with invalid card", reader->name);
+			rc = SC_ERROR_INVALID_CARD;
+			free_p11card = 0;
+		} else {
+			sc_log(context, "%s: Connecting ... ", reader->name);
+			rc = sc_connect_card(reader, &p11card->card);
+			if (rc == SC_ERROR_INVALID_CARD) {
+				/* Reader has invalid card not try to connect to it again */
+				/* do not try to cconnect to the same card again */
+				reader->flags |= SC_READER_CARD_INVALID;
+				free_p11card = 0;
+			}
+		}
+
 		if (rc != SC_SUCCESS) {
 			sc_log(context, "%s: SC connect card error %i", reader->name, rc);
 			rv = sc_to_cryptoki_error(rc, NULL);
@@ -313,8 +328,8 @@ again:
 			scconf_block *conf_block = NULL;
 			int enable_InitToken = 0;
 
-			conf_block = sc_match_atr_block(p11card->card->ctx, NULL,
-				&p11card->reader->atr);
+			conf_block = sc_match_atr_block(context, NULL,
+					&p11card->reader->atr);
 			if (!conf_block) /* check default block */
 				conf_block = sc_get_conf_block(context,
 					"framework", "pkcs15", 1);
