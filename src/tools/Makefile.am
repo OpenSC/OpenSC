@@ -25,12 +25,12 @@ noinst_HEADERS = util.h fread_to_eof.h \
 bin_PROGRAMS = opensc-tool opensc-explorer opensc-asn1 \
 	pkcs15-tool pkcs15-crypt pkcs11-tool pkcs11-register \
 	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool goid-tool \
-	dtrust-tool
+	dtrust-tool lteid-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 	westcos-tool sc-hsm-tool dnie-tool gids-tool
 if ENABLE_OPENPACE
-bin_PROGRAMS += npa-tool lteid-tool
+bin_PROGRAMS += npa-tool
 endif
 endif
 

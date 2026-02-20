@@ -18,13 +18,13 @@
 #include "config.h"
 #endif
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
-#include "eac/objects.h"
 #include "libopensc/opensc.h"
 #include "libopensc/pkcs15.h"
 #include "sm/sm-eac.h"
