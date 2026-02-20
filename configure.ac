@@ -318,6 +318,13 @@ AC_ARG_ENABLE(
 	[enable_cmocka="detect"]
 )
 
+AC_ARG_ENABLE(
+	[libxml],
+	[AS_HELP_STRING([--enable-libxml],[Build PKCS#11 test tool in src/tests/pkcs11test directory @<:@detect@:>@])],
+	,
+	[enable_libxml2="detect"]
+)
+
 AC_ARG_WITH(
 	[xsl-stylesheetsdir],
 	[AS_HELP_STRING([--with-xsl-stylesheetsdir=PATH],[docbook xsl-stylesheets for svn build @<:@detect@:>@])],
@@ -628,6 +635,11 @@ AC_CHECK_HEADER([cmocka.h],, [have_cmocka="no"],
 #include <setjmp.h>
 ])
 
+have_libxml2="yes"
+PKG_CHECK_MODULES([LIBXML2], [libxml2 >= 2.10.0],,
+	[PKG_CHECK_MODULES([LIBXML2], [libxml-2.0 >= 2.10.0], [have_libxml2="yes"], [have_libxml2="no"])]
+)
+
 AC_ARG_VAR([ZLIB_CFLAGS], [C compiler flags for zlib])
 AC_ARG_VAR([ZLIB_LIBS], [linker flags for zlib])
 if test -z "${ZLIB_LIBS}"; then
@@ -760,6 +772,20 @@ fi
 if test "${enable_cmocka}" = "yes"; then
 	if test "${have_cmocka}" != "yes"; then
 		AC_MSG_ERROR([Tests required, but cmocka is not available])
+	fi
+fi
+
+if test "${enable_libxml2}" = "detect"; then
+	if test "${have_libxml2}" = "yes"; then
+		enable_libxml2="yes"
+	else
+		enable_libxml2="no"
+	fi
+fi
+
+if test "${enable_libxml2}" = "yes"; then
+	if test "${have_libxml2}" != "yes"; then
+		AC_MSG_ERROR([Tests required, but libxml2 is not available])
 	fi
 fi
 
@@ -1164,6 +1190,7 @@ AM_CONDITIONAL([ENABLE_DNIE_UI], [test "${enable_dnie_ui}" = "yes"])
 AM_CONDITIONAL([ENABLE_NPATOOL], [test "${ENABLE_NPATOOL}" = "yes"])
 AM_CONDITIONAL([ENABLE_AUTOSTART], [test "${enable_autostart}" = "yes"])
 AM_CONDITIONAL([ENABLE_CMOCKA], [test "${enable_cmocka}" = "yes"])
+AM_CONDITIONAL([ENABLE_LIBXML2], [test "${enable_libxml2}" = "yes"])
 AM_CONDITIONAL([GIT_CHECKOUT], [test "${GIT_CHECKOUT}" = "yes"])
 AM_CONDITIONAL([ENABLE_FUZZING], [test "${enable_fuzzing}" = "yes"])
 AM_CONDITIONAL([ENABLE_SHARED], [test "${enable_shared}" = "yes"])
@@ -1199,6 +1226,7 @@ AC_CONFIG_FILES([
 	src/tests/Makefile
 	src/tests/regression/Makefile
 	src/tests/p11test/Makefile
+	src/tests/pkcs11test/Makefile
 	src/tests/fuzzing/Makefile
 	src/tests/unittests/Makefile
 	src/tools/Makefile

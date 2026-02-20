@@ -3,7 +3,7 @@ include $(top_srcdir)/win32/ltrc.inc
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = Makefile.mak
 
-SUBDIRS = regression p11test fuzzing unittests
+SUBDIRS = regression p11test fuzzing unittests pkcs11test
 noinst_PROGRAMS = base64 lottery p15dump pintest prngtest
 
 AM_CPPFLAGS = -I$(top_srcdir)/src

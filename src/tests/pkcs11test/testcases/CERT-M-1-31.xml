@@ -1,0 +1,129 @@
+<!--
+     PKCS #11 Profiles Version 3.1
+     Committee Specification 01
+     14 July 2022
+     Copyright (c) OASIS Open 2022. All Rights Reserved.
+     Source: https://docs.oasis-open.org/pkcs11/pkcs11-profiles/v3.1/cs01/test-cases/
+     Latest version of narrative specification: https://docs.oasis-open.org/pkcs11/pkcs11-profiles/v3.1/pkcs11-profiles-v3.1.html
+     TC IPR Statement: https://www.oasis-open.org/committees/pkcs11/ipr.php
+-->
+<PKCS11>
+  <C_Initialize/>
+  <C_Initialize rv="OK"/>
+  <C_GetInfo/>
+  <C_GetInfo rv="OK">
+    <Info>
+      <CryptokiVersion major="3" minor="1"/>
+      <ManufacturerID value="OASIS PKCS#11 TC                "/>
+      <Flags value="0x0"/>
+      <LibraryDescription value="                                "/>
+      <LibraryVersion major="1" minor="0"/>
+    </Info>
+  </C_GetInfo>
+  <C_GetSlotList>
+    <TokenPresent value="true"/>
+    <SlotList/>
+  </C_GetSlotList>
+  <C_GetSlotList rv="OK">
+    <SlotList length="${SlotList.length}"/>
+  </C_GetSlotList>
+  <C_GetSlotList>
+    <TokenPresent value="true"/>
+    <SlotList length="${SlotList.length}"/>
+  </C_GetSlotList>
+  <C_GetSlotList rv="OK">
+    <SlotList>
+      <SlotID value="${SlotList.SlotID[0]}"/>
+    </SlotList>
+  </C_GetSlotList>
+  <C_OpenSession>
+    <SlotID value="${SlotList.SlotID[0]}"/>
+    <Flags value="SERIAL_SESSION"/>
+  </C_OpenSession>
+  <C_OpenSession rv="OK">
+    <Session value="${Session}"/>
+  </C_OpenSession>
+  <C_FindObjectsInit>
+    <Session value="${Session}"/>
+    <Template>
+      <Attribute type="TOKEN" value="TRUE"/>
+    </Template>
+  </C_FindObjectsInit>
+  <C_FindObjectsInit rv="OK"/>
+  <C_FindObjects>
+    <Session value="${Session}"/>
+    <Object length="5"/>
+  </C_FindObjects>
+  <C_FindObjects rv="OK">
+    <Object>
+      <Object value="${Object.Object[0]}"/>
+      <Object value="${Object.Object[1]}"/>
+      <Object value="${Object.Object[2]}"/>
+      <Object value="${Object.Object[3]}"/>
+      <Object value="${Object.Object[4]}"/>
+    </Object>
+  </C_FindObjects>
+  <C_GetAttributeValue>
+    <Session value="${Session}"/>
+    <Object value="${Object.Object[0]}"/>
+    <Template>
+      <Attribute type="LABEL"/>
+    </Template>
+  </C_GetAttributeValue>
+  <C_GetAttributeValue rv="OK">
+    <Template>
+      <Attribute type="LABEL" length="22"/>
+    </Template>
+  </C_GetAttributeValue>
+  <C_GetAttributeValue>
+    <Session value="${Session}"/>
+    <Object value="${Object.Object[0]}"/>
+    <Template>
+      <Attribute type="LABEL" length="22"/>
+    </Template>
+  </C_GetAttributeValue>
+  <C_GetAttributeValue rv="OK">
+    <Template>
+      <Attribute type="LABEL" value="Mozilla Builtin Roots"/>
+    </Template>
+  </C_GetAttributeValue>
+  <C_GetAttributeValue>
+    <Session value="${Session}"/>
+    <Object value="${Object.Object[1]}"/>
+    <Template>
+      <Attribute type="VALUE"/>
+    </Template>
+  </C_GetAttributeValue>
+  <C_GetAttributeValue rv="OK">
+    <Template>
+      <Attribute type="VALUE" length="889"/>
+    </Template>
+  </C_GetAttributeValue>
+  <C_GetAttributeValue>
+    <Session value="${Session}"/>
+    <Object value="${Object.Object[1]}"/>
+    <Template>
+      <Attribute type="VALUE" length="889"/>
+    </Template>
+  </C_GetAttributeValue>
+  <C_GetAttributeValue rv="OK">
+    <Template>
+      <Attribute type="VALUE" value="308203753082025da003020102020b040000000001154b5ac394300d06092a864886f70d01010505003057310b300906035504061302424531193017060355040a1310476c6f62616c5369676e206e762d73613110300e060355040b1307526f6f74204341311b301906035504031312476c6f62616c5369676e20526f6f74204341301e170d3938303930313132303030305a170d3238303132383132303030305a3057310b300906035504061302424531193017060355040a1310476c6f62616c5369676e206e762d73613110300e060355040b1307526f6f74204341311b301906035504031312476c6f62616c5369676e20526f6f7420434130820122300d06092a864886f70d01010105000382010f003082010a0282010100da0ee6998dcea3e34f8a7efbf18b83256bea481ff12ab0b9951104bdf063d1e26766cf1cddcf1b482bee8d898e9aaf298065abe9c72d12cbab1c4c7007a13d0a30cd158d4ff8ddd48c50151cef50eec42ef7fce952f2917de06dd535308e5e4373f241e9d56ae3b2893a5639386f063c88695b2a4dc5a754b86c89cc9bf93ccae5fd89f5123c927896d6dc746e934461d18dc746b2750e86e8198ad56d6cd5781695a2e9c80a38ebf224134f73549313853a1bbc1e34b58b058cb9778bb1db1f2091ab09536e90ce7b3774b97047912251631679aeb1ae412608c8192bd146aa48d6642ad78334ff2c2ac16c19434a0785e7d37cf62168efeaf2529f7f9390cf0203010001a3423040300e0603551d0f0101ff040403020106300f0603551d130101ff040530030101ff301d0603551d0e04160414607b661a450d97ca89502f7d04cd34a8fffcfd4b300d06092a864886f70d01010505000382010100d673e77c4f76d08dbfecbaa2be34c52832b57cfc6c9c2c2bbd099e53bf6b5eaa1148b6e508a3b3ca3d614dd34609b33ec3a0e363551bf2baefad39e143b938a3e62f8a263befa05056f9c60afd38cdc40b705194979804dfc35f94d515c914419cc45d7564150dff5530ec868fff0def2cb96346f6aafcdfbc69fd2e1248649ae095f0a6ef298f01b115b50c1da5fe692c6924781eb3a71c7162eecac897ac175d8ac2f847866e2ac4563195d06789852bf96ca65d469d0caa82e49951dd70b7db563d61e46ae15cd6f6fe3dde41cc07ae6352bf5353f42be9c7fdb6f7825f85d24118db81b3041cc51fa4806f1520c9de0c880a1dd66655e2fc48c9292669e0"/>
+    </Template>
+  </C_GetAttributeValue>
+  <C_FindObjectsFinal>
+    <Session value="${Session}"/>
+  </C_FindObjectsFinal>
+  <C_FindObjectsFinal rv="OK"/>
+  <C_CloseSession>
+    <Session value="${Session}"/>
+  </C_CloseSession>
+  <C_CloseSession rv="OK"/>
+  <C_CloseAllSessions>
+    <SlotID value="${SlotList.SlotID[0]}"/>
+  </C_CloseAllSessions>
+  <C_CloseAllSessions rv="OK"/>
+  <C_Finalize/>
+  <C_Finalize rv="OK"/>
+</PKCS11>
+
