@@ -407,8 +407,9 @@ lteid_process_fci(struct sc_card *card, struct sc_file *file, const u8 *buf, siz
 		LOG_FUNC_RETURN(card->ctx, rv);
 	}
 
-	// Card does not report most of the file sizes. So if it's zero -
-	// set to something large enough for any of the pkcs15 related files.
+	// Card reports most of the file size as 0, even if they're not empty.
+	// This confuses PKCS#15 loader, and it fails to load/init keys/certs/pins/etc.
+	// As a quick workaround - lets report size to be something large enough to fit any object.
 	if (file->size == 0) {
 		file->size = 2048;
 	}
