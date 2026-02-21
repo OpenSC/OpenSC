@@ -173,6 +173,7 @@ rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
 %{_bindir}/egk-tool
 %{_bindir}/goid-tool
 %{_bindir}/dtrust-tool
+%{_bindir}/lteid-tool
 %{_datadir}/opensc/
 %{_mandir}/man1/cardos-tool.1*
 %{_mandir}/man1/cryptoflex-tool.1*
@@ -198,6 +199,7 @@ rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
 %{_mandir}/man1/dnie-tool.1*
 %{_mandir}/man1/egk-tool.1*
 %{_mandir}/man1/dtrust-tool.1*
+%{_mandir}/man1/lteid-tool.1*
 %{_mandir}/man5/pkcs15-profile.5*
 
 %files libs

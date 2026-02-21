@@ -137,6 +137,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "idprime",	(void *(*)(void)) sc_get_idprime_driver },
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 	{ "edo",        (void *(*)(void)) sc_get_edo_driver },
+	{ "lteid", (void *(*)(void)) sc_get_lteid_driver },
 #endif
 
 /* Here should be placed drivers that need some APDU transactions in the
