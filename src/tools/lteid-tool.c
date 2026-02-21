@@ -206,9 +206,9 @@ input_number(const char *description, size_t min_len, size_t max_len, const char
 	printf("Enter %s ", description);
 
 	if (min_len == max_len) {
-		printf("(%lu digits): ", min_len);
+		printf("(%zu digits): ", min_len);
 	} else {
-		printf("(%lu..%lu digits): ", min_len, max_len);
+		printf("(%zu..%zu digits): ", min_len, max_len);
 	}
 
 	number_len = util_getpass(number, NULL, stdin);
