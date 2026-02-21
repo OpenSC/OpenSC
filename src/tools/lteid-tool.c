@@ -441,7 +441,6 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 	struct sc_card *card = p15card->card;
 	struct establish_pace_channel_input pace_input = {0};
 	struct establish_pace_channel_output pace_output = {0};
-	struct sc_apdu apdu;
 	struct sc_path path;
 	char *puk = NULL;
 	int pace_pin_tries_left, qes_pin_tries_left;
@@ -479,9 +478,12 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 	}
 
 	if (pace_pin_tries_left == 0) {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2c, 0x03, 0x07);
+		struct sc_pin_cmd_data pace_pin_cmd = {0};
+		pace_pin_cmd.cmd = SC_PIN_CMD_UNBLOCK;
+		pace_pin_cmd.pin_type = SC_AC_CHV;
+		pace_pin_cmd.pin_reference = 0x07;
 
-		rv = sc_transmit_apdu(card, &apdu);
+		rv = card->ops->pin_cmd(card, &pace_pin_cmd, NULL);
 
 		if (rv != SC_SUCCESS) {
 			fprintf(stderr, "PIN for authentication reset failed: %s\n", sc_strerror(rv));
@@ -490,12 +492,15 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 	}
 
 	if (qes_pin_tries_left == 0) {
+		struct sc_pin_cmd_data qes_pin_cmd = {0};
+		qes_pin_cmd.cmd = SC_PIN_CMD_UNBLOCK;
+		qes_pin_cmd.pin_type = SC_AC_CHV;
+		qes_pin_cmd.pin_reference = 0x81;
+
 		sc_format_path("3F00DF02", &path);
 		sc_select_file(card, &path, NULL);
 
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x2c, 0x03, 0x81);
-
-		rv = sc_transmit_apdu(card, &apdu);
+		rv = card->ops->pin_cmd(card, &qes_pin_cmd, NULL);
 
 		if (rv != SC_SUCCESS) {
 			fprintf(stderr, "PIN for signature reset failed: %s\n", sc_strerror(rv));
