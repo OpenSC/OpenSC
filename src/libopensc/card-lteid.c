@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "asn1.h"
+#include "common/compat_strlcat.h"
 #include "internal.h"
 #include "opensc.h"
 #include "sm/sm-eac.h"
@@ -58,7 +59,7 @@ lteid_get_stored_can(sc_card_t *card, unsigned char *can)
 	char path[PATH_MAX];
 
 	sc_get_cache_dir(card->ctx, path, sizeof(path));
-	strcat(path, CAN_STORE_FILE);
+	strlcat(path, CAN_STORE_FILE, PATH_MAX);
 
 	FILE *fd = fopen(path, "r");
 
@@ -83,7 +84,7 @@ lteid_clear_stored_can(sc_card_t *card)
 	char path[PATH_MAX];
 
 	sc_get_cache_dir(card->ctx, path, sizeof(path));
-	strcat(path, CAN_STORE_FILE);
+	strlcat(path, CAN_STORE_FILE, PATH_MAX);
 
 	if (unlink(path) == 0) {
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
@@ -223,6 +224,7 @@ static int
 lteid_init(sc_card_t *card)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	int rv;
 
 	struct lteid_drv_data *drv_data = calloc(1, sizeof(struct lteid_drv_data));
 
@@ -241,9 +243,11 @@ lteid_init(sc_card_t *card)
 
 	_sc_card_add_ec_alg(card, 384, SC_ALGORITHM_ECDSA_HASH_NONE | SC_ALGORITHM_ECDSA_RAW, 0, NULL);
 
-	LOG_TEST_RET(card->ctx, sc_enum_apps(card), "Enumerate apps failed");
+	rv = sc_enum_apps(card);
+	LOG_TEST_RET(card->ctx, rv, "Enumerate apps failed");
 
-	LOG_TEST_RET(card->ctx, lteid_unlock(card), "Unlock card failed");
+	rv = lteid_unlock(card);
+	LOG_TEST_RET(card->ctx, rv, "Unlock card failed");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -315,9 +319,10 @@ lteid_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_lef
 
 		sc_format_apdu_ex(&apdu, 0x00, 0xa4, 0x00, 0x04, id, sizeof(id), buf, sizeof(buf));
 
-		LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
+		rv = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
 
-		const u8 *tag = sc_asn1_find_tag(card->ctx, buf, sizeof(buf), 0x62, &taglen);
+		const u8 *tag = sc_asn1_find_tag(card->ctx, buf, apdu.resplen, 0x62, &taglen);
 		tag = sc_asn1_find_tag(card->ctx, tag, taglen, 0xa5, &taglen);
 		tag = sc_asn1_find_tag(card->ctx, tag, taglen, 0xa2, &taglen);
 		tag = sc_asn1_find_tag(card->ctx, tag, taglen, 0xa3, &taglen);
@@ -358,6 +363,7 @@ lteid_set_security_env(struct sc_card *card, const struct sc_security_env *env, 
 	LOG_FUNC_CALLED(card->ctx);
 
 	struct sc_apdu apdu;
+	int rv;
 
 	if (env == NULL || env->key_ref_len != 1)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
@@ -370,8 +376,11 @@ lteid_set_security_env(struct sc_card *card, const struct sc_security_env *env, 
 	const u8 data[] = {0x84, 0x01, env->key_ref[0]};
 	sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, data, sizeof(data), NULL, 0);
 
-	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
-	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SET SECURITY ENV failed");
+	rv = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
+
+	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, rv, "SET SECURITY ENV failed");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }

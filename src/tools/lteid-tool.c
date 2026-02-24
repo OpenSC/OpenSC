@@ -25,6 +25,7 @@
 #include <unistd.h>
 #endif
 
+#include "common/compat_strlcat.h"
 #include "libopensc/opensc.h"
 #include "libopensc/pkcs15.h"
 #include "sm/sm-eac.h"
@@ -139,9 +140,7 @@ lteid_store_can(sc_card_t *card, const char *can)
 	char path[PATH_MAX];
 
 	sc_get_cache_dir(card->ctx, path, sizeof(path));
-	strcat(path, CAN_STORE_FILE);
-
-	unlink(path);
+	strlcat(path, CAN_STORE_FILE, PATH_MAX);
 
 	FILE *fd = fopen(path, "w");
 
@@ -171,7 +170,7 @@ lteid_get_stored_can(sc_card_t *card)
 	can = calloc(7, 1);
 
 	sc_get_cache_dir(card->ctx, path, sizeof(path));
-	strcat(path, CAN_STORE_FILE);
+	strlcat(path, CAN_STORE_FILE, PATH_MAX);
 
 	FILE *fd = fopen(path, "r");
 
@@ -323,7 +322,7 @@ change_pin(sc_card_t *card, const char *opt_pin)
 	input_number("New PIN (repeat)", 6, 12, NULL, &new_pin_repeated);
 
 	if (new_pin_repeated == NULL || strcmp(new_pin, new_pin_repeated) != 0) {
-		fprintf(stderr, "New PIN and repated entry do not match. PIN was not changed.\n");
+		fprintf(stderr, "New PIN and repeated entry do not match. PIN was not changed.\n");
 		return SC_ERROR_INTERNAL;
 	}
 
