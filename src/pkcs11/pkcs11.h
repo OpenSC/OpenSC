@@ -74,6 +74,10 @@ extern "C" {
 #define CKM_GOSTR3411_12_256_HMAC	(CK_VENDOR_PKCS11_RU_TEAM_TK26 | 0x014)
 #define CKM_GOSTR3411_12_512_HMAC	(CK_VENDOR_PKCS11_RU_TEAM_TK26 | 0x015)
 
+#ifndef CKM_KDF_GOSTR3411_2012_256
+#define CKM_KDF_GOSTR3411_2012_256 (CK_VENDOR_PKCS11_RU_TEAM_TK26 | 0x026UL)
+#endif
+
 /* System dependencies.  */
 #if defined(_WIN32) || defined(CRYPTOKI_FORCE_WIN32)
 #pragma pack(pop, cryptoki)

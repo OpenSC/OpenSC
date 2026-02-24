@@ -178,6 +178,10 @@ static const struct sc_aid GOST_HASH2001_PARAMSET_OID = { { 0x06, 0x07, 0x2a, 0x
 static const struct sc_aid GOST_HASH2012_256_PARAMSET_OID = { { 0x06, 0x08, 0x2A, 0x85, 0x03, 0x07, 0x01, 0x01, 0x02, 0x02 }, 10 };
 static const struct sc_aid GOST_HASH2012_512_PARAMSET_OID = { { 0x06, 0x08, 0x2A, 0x85, 0x03, 0x07, 0x01, 0x01, 0x02, 0x03 }, 10 };
 
+/* id-tc26-gost3410-12-256 and id-tc26-gost3410-12-512 (RFC 9215) */
+static const unsigned char OID_GOST3410_12_256[] = { 0x06, 0x08, 0x2a, 0x85, 0x03, 0x07, 0x01, 0x01, 0x01, 0x01 };
+static const unsigned char OID_GOST3410_12_512[] = { 0x06, 0x08, 0x2a, 0x85, 0x03, 0x07, 0x01, 0x01, 0x01, 0x02 };
+
 enum {
 	OPT_MODULE = 0x100,
 	OPT_SLOT,
@@ -430,7 +434,7 @@ static const char *option_help[] = {
 		"Specify the value <arg> of the mechanism parameter CK_MAC_GENERAL_PARAMS",
 		"Specify additional authenticated data for AEAD ciphers as a hex string",
 		"Specify the required length (in bits) for the authentication tag for AEAD ciphers",
-		"Specify the file containing the salt for HKDF (optional)",
+		"Specify the file containing the salt for HKDF (optional) / UKM for GOSTR3410-12-DERIVE (required; 256: 8 bytes, 512: 8-16 bytes)",
 		"Specify the file containing the info for HKDF (optional)",
 		"When reading a public key, try to read PUBLIC_KEY_INFO (DER encoding of SPKI)",
 		"Specify the PKCS#11 URI for module, slot, token or object",
@@ -6127,8 +6131,6 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	char name[256]; size_t len = 0;
 	int nid = 0;
 #endif
-
-	printf("Using derive algorithm 0x%8.8lx %s\n", mech_mech, p11_mechanism_to_name(mech_mech));
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = mech_mech;
 
@@ -6414,6 +6416,397 @@ derive_hkdf(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	return newkey;
 }
 
+/* GOST 3410-12 export and derive. OpenSSL has no GOST support and will not add it;
+ * we build SPKI and parse peer keys manually, without OpenSSL. */
+static void
+uint32_to_le(CK_BYTE_PTR buffer, uint32_t value)
+{
+	buffer[0] = (CK_BYTE)(value & 0xFF);
+	buffer[1] = (CK_BYTE)((value >> 8) & 0xFF);
+	buffer[2] = (CK_BYTE)((value >> 16) & 0xFF);
+	buffer[3] = (CK_BYTE)((value >> 24) & 0xFF);
+}
+
+/* Read UKM (User Key Material) from file for GOST derive operations */
+static void
+read_binary_file(const char *filename, CK_BYTE **out_buf, ssize_t *out_len)
+{
+	FILE *f;
+	ssize_t len;
+	CK_BYTE *buf = NULL;
+	size_t ret;
+
+	if (out_buf == NULL || out_len == NULL)
+		util_fatal("read_binary_file: invalid arguments");
+	if (filename == NULL) {
+		*out_buf = NULL;
+		*out_len = 0;
+		return;
+	}
+
+	f = fopen(filename, "rb");
+	if (f == NULL)
+		util_fatal("Cannot open %s: %m", filename);
+	if (fseek(f, 0L, SEEK_END) != 0) {
+		fclose(f);
+		util_fatal("Couldn't set file position to the end of the file \"%s\"", filename);
+	}
+	len = ftell(f);
+	if (len < 0) {
+		fclose(f);
+		util_fatal("Couldn't get file position \"%s\"", filename);
+	}
+	if (len > 0) {
+		buf = malloc((size_t)len);
+		if (buf == NULL) {
+			fclose(f);
+			util_fatal("malloc() failure");
+		}
+		if (fseek(f, 0L, SEEK_SET) != 0) {
+			free(buf);
+			fclose(f);
+			util_fatal("Couldn't set file position to the beginning of the file \"%s\"", filename);
+		}
+		ret = fread(buf, 1, (size_t)len, f);
+		if (ret != (size_t)len) {
+			free(buf);
+			fclose(f);
+			util_fatal("Couldn't read from file \"%s\"", filename);
+		}
+	}
+	fclose(f);
+
+	*out_buf = buf;
+	*out_len = len;
+}
+
+/*
+ * Build SubjectPublicKeyInfo (DER) for GOST R 34.10-2012 from PKCS#11 attributes.
+ * Uses CKA_VALUE, CKA_GOSTR3410_PARAMS, CKA_GOSTR3411_PARAMS.
+ * Returns allocated buffer and length, or NULL on failure.
+ */
+static unsigned char *
+build_gost_spki_der(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE obj, CK_KEY_TYPE key_type,
+		size_t *out_len)
+{
+	unsigned char *val = NULL, *params_oid = NULL, *hash_oid = NULL;
+	CK_ULONG val_len = 0, params_len = 0, hash_len = 0;
+	unsigned char buf[512];
+	size_t off = 0;
+	unsigned char octet_str[136]; /* 04 + length(1 or 2) + 128 max */
+	size_t octet_len = 0;
+	size_t bitstring_len;
+	size_t params_seq_len, algid_len, spki_len;
+	const unsigned char *alg_oid;
+	size_t alg_oid_len;
+
+	val = getVALUE(session, obj, &val_len);
+	if (!val || (val_len != 64 && val_len != 128))
+		goto err;
+	params_oid = getGOSTR3410_PARAMS(session, obj, &params_len);
+	if (!params_oid || params_len == 0)
+		goto err;
+	hash_oid = getGOSTR3411_PARAMS(session, obj, &hash_len);
+	if (!hash_oid || hash_len == 0)
+		goto err;
+
+	if (key_type == CKK_GOSTR3410_512) {
+		alg_oid = OID_GOST3410_12_512;
+		alg_oid_len = sizeof(OID_GOST3410_12_512);
+	} else {
+		alg_oid = OID_GOST3410_12_256;
+		alg_oid_len = sizeof(OID_GOST3410_12_256);
+	}
+
+	/* OCTET STRING for public key (RFC 9215: raw X||Y, 64 or 128 bytes) */
+	octet_str[0] = 0x04; /* OCTET STRING tag */
+	if (val_len < 128) {
+		octet_str[1] = (unsigned char)val_len;
+		memcpy(octet_str + 2, val, val_len);
+		octet_len = 2 + val_len;
+	} else {
+		octet_str[1] = 0x81;
+		octet_str[2] = (unsigned char)val_len;
+		memcpy(octet_str + 3, val, val_len);
+		octet_len = 3 + val_len;
+	}
+
+	/* BIT STRING: unused bits 0, then OCTET STRING as contents */
+	bitstring_len = 1 + octet_len; /* 0 unused + contents */
+
+	/* GostR3410-2012-PublicKeyParameters SEQUENCE { publicKeyParamSet OID, digestParamSet OID } */
+	params_seq_len = params_len + hash_len;
+	if (params_seq_len > 255)
+		goto err;
+
+	/* AlgorithmIdentifier SEQUENCE */
+	algid_len = 2 + alg_oid_len + 2 + params_seq_len;
+	if (algid_len > 255)
+		goto err;
+
+	/* SubjectPublicKeyInfo SEQUENCE: content = AlgorithmIdentifier + BIT STRING */
+	{
+		size_t content_len = algid_len + 2 + (bitstring_len > 127 ? 2 : 1) + bitstring_len;
+		if (content_len > 255)
+			goto err;
+		spki_len = 1 + (content_len > 127 ? 2 : 1) + content_len;
+	}
+	if (spki_len > sizeof(buf))
+		goto err;
+
+	/* Build DER from outer to inner */
+	off = 0;
+	buf[off++] = 0x30; /* SEQUENCE */
+	if (spki_len - 2 > 127) {
+		buf[off++] = 0x81;
+		buf[off++] = (unsigned char)(spki_len - 3); /* long form: 1 byte length follows */
+	} else {
+		buf[off++] = (unsigned char)(spki_len - 2);
+	}
+
+	/* AlgorithmIdentifier */
+	buf[off++] = 0x30;
+	buf[off++] = (unsigned char)(algid_len - 2);
+	memcpy(buf + off, alg_oid, alg_oid_len);
+	off += alg_oid_len;
+	/* Parameters SEQUENCE (GostR3410-2012-PublicKeyParameters) */
+	buf[off++] = 0x30;
+	buf[off++] = (unsigned char)params_seq_len;
+	memcpy(buf + off, params_oid, params_len);
+	off += params_len;
+	memcpy(buf + off, hash_oid, hash_len);
+	off += hash_len;
+
+	/* BIT STRING */
+	buf[off++] = 0x03;
+	buf[off++] = (unsigned char)(bitstring_len > 127 ? 0x81 : bitstring_len);
+	if (bitstring_len > 127)
+		buf[off++] = (unsigned char)bitstring_len;
+	buf[off++] = 0x00; /* unused bits */
+	memcpy(buf + off, octet_str, octet_len);
+	off += octet_len;
+
+	{
+		unsigned char *out = malloc(off);
+		if (!out)
+			goto err;
+		memcpy(out, buf, off);
+		*out_len = off;
+		free(val);
+		free(params_oid);
+		free(hash_oid);
+		return out;
+	}
+err:
+	free(val);
+	free(params_oid);
+	free(hash_oid);
+	return NULL;
+}
+
+/* Decode peer public key from file. Accepts only the format produced by build_gost_spki_der:
+ * DER SPKI (RFC 9215) with BIT STRING containing OCTET STRING raw X||Y.
+ * 256-bit: 03 43 00 04 40 [64 bytes]; 512-bit: 03 81 84 00 04 81 80 [128 bytes].
+ */
+static void
+decode_peer_public_key(const CK_BYTE *file_buf, ssize_t file_len, CK_ULONG expected_peer_len,
+		CK_BYTE **out_peer_raw, CK_ULONG *out_peer_raw_len)
+{
+	CK_BYTE *peer_raw = NULL;
+	const unsigned char *p;
+	ssize_t i, last;
+	ssize_t min_len = (expected_peer_len == 64) ? 69 : 135;
+
+	*out_peer_raw = NULL;
+	*out_peer_raw_len = 0;
+
+	if (!file_buf || file_len < min_len)
+		return;
+	if (expected_peer_len != 64 && expected_peer_len != 128)
+		return;
+
+	if (expected_peer_len == 64) {
+		/* BIT STRING 03 43 00, OCTET STRING 04 40, 64 bytes raw */
+		last = file_len - 5 - 64;
+		for (i = 0; i <= last; i++) {
+			p = file_buf + i;
+			if (p[0] == 0x03 && p[1] == 0x43 && p[2] == 0x00 &&
+			    p[3] == 0x04 && p[4] == 0x40) {
+				peer_raw = malloc(64);
+				if (peer_raw)
+					memcpy(peer_raw, p + 5, 64);
+				break;
+			}
+		}
+	} else {
+		/* expected_peer_len == 128: BIT STRING 03 81 84 00, OCTET STRING 04 81 80, 128 bytes raw */
+		last = file_len - 7 - 128;
+		for (i = 0; i <= last; i++) {
+			p = file_buf + i;
+			if (p[0] == 0x03 && p[1] == 0x81 && p[2] == 0x84 && p[3] == 0x00 &&
+			    p[4] == 0x04 && p[5] == 0x81 && p[6] == 0x80) {
+				peer_raw = malloc(128);
+				if (peer_raw)
+					memcpy(peer_raw, p + 7, 128);
+				break;
+			}
+		}
+	}
+
+	*out_peer_raw = peer_raw;
+	*out_peer_raw_len = peer_raw ? expected_peer_len : 0;
+}
+
+/* Build vendor-specific parameter blob for CKM_GOSTR3410_12_DERIVE */
+static CK_BYTE *
+build_derive_params(CK_ULONG kdf_id, CK_ULONG peer_len, const CK_BYTE *peer_raw,
+		const CK_BYTE *ukm, ssize_t ukm_len, CK_ULONG *out_params_len)
+{
+	CK_BYTE *params;
+	CK_ULONG params_len;
+
+	/* Layout (little endian uint32 fields):
+	 *   [0..3]   kdf_id (CKM_KDF_GOSTR3411_2012_xxx)
+	 *   [4..7]   peer_len
+	 *   [8..8+peer_len-1]     peer_raw (peer public key X||Y)
+	 *   [8+peer_len..11+peer_len]  ukm_len
+	 *   [12+peer_len..12+peer_len+ukm_len-1] ukm bytes
+	 */
+	params_len = 4 + 4 + peer_len + 4 + (CK_ULONG)ukm_len;
+	params = (CK_BYTE *)calloc(1, params_len);
+	if (params == NULL)
+		util_fatal("malloc() failure");
+
+	uint32_to_le(params + 0, (uint32_t)kdf_id);
+	uint32_to_le(params + 4, (uint32_t)peer_len);
+	memcpy(params + 8, peer_raw, peer_len);
+	uint32_to_le(params + 8 + peer_len, (uint32_t)ukm_len);
+	memcpy(params + 12 + peer_len, ukm, (size_t)ukm_len);
+
+	*out_params_len = params_len;
+	return params;
+}
+
+static CK_OBJECT_HANDLE
+derive_gost2012_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE mech_mech)
+{
+	CK_MECHANISM mech;
+	CK_OBJECT_HANDLE newkey = 0;
+	CK_RV rv;
+
+	CK_OBJECT_CLASS derived_key_class = CKO_SECRET_KEY;
+	CK_KEY_TYPE derived_key_type = CKK_GOST28147;
+	CK_KEY_TYPE base_key_type = getKEY_TYPE(session, key);
+	CK_ULONG expected_peer_len = (base_key_type == CKK_GOSTR3410_512) ? 128 : 64;
+
+	/* Match typical defaults: session object, private, extractable, not sensitive, modifiable */
+	CK_ATTRIBUTE template[24] = {
+			{CKA_CLASS,	    &derived_key_class, sizeof(derived_key_class)},
+			{CKA_KEY_TYPE,    &derived_key_type,  sizeof(derived_key_type) },
+			{CKA_TOKEN,	    &s_false,	      sizeof(s_false)	     },
+			{CKA_MODIFIABLE,	 &s_true,		  sizeof(s_true)		},
+			{CKA_PRIVATE,     &s_true,	       sizeof(s_true)	     },
+			{CKA_EXTRACTABLE, &s_true,		   sizeof(s_true)		 },
+			{CKA_SENSITIVE,	&s_false,		  sizeof(s_false)		 },
+	};
+	int n_attrs = 7;
+
+	CK_BYTE *ukm = NULL;
+	ssize_t ukm_len = 0;
+
+	CK_BYTE *file_buf = NULL;
+	ssize_t file_len = 0;
+
+	CK_BYTE *peer_raw = NULL;
+	CK_ULONG peer_raw_len = 0;
+	CK_BYTE *params = NULL;
+	CK_ULONG params_len = 0;
+
+	/* For GOSTR3410-2012 VKO (GOSTR3410-12-DERIVE) we always derive
+	 * a GOST 28147 session key. Global --key-type is ignored here and
+	 * we intentionally do not fix CKA_GOST28147_PARAMS to any specific
+	 * paramset OID (token/vendor may choose its own defaults).
+	 * we intentionally do not constrain CKA_ALLOWED_MECHANISMS either;
+	 * derived key can be further restricted by caller if needed.
+	 */
+
+	/* allow caller to override privacy/sensitivity/extractability if explicitly requested */
+	if (opt_is_private != 0 || opt_is_sensitive != 0 || opt_is_extractable != 0) {
+		int i;
+		for (i = 0; i < n_attrs; i++) {
+			if (opt_is_private != 0 && template[i].type == CKA_PRIVATE)
+				template[i].pValue = &s_true;
+			if (opt_is_sensitive != 0 && template[i].type == CKA_SENSITIVE)
+				template[i].pValue = &s_true;
+			if (opt_is_extractable != 0 && template[i].type == CKA_EXTRACTABLE)
+				template[i].pValue = &s_true;
+		}
+	}
+
+	if (opt_input == NULL)
+		util_fatal("Peer public key file is required for derive (use --input)");
+
+	/* UKM is required for GOSTR3410-12-DERIVE */
+	if (opt_salt_file == NULL) {
+		util_fatal("For GOSTR3410-12-DERIVE you must provide --salt-file <ukm.bin> (UKM is required)");
+	}
+
+	/* Read UKM from file */
+	read_binary_file(opt_salt_file, &ukm, &ukm_len);
+	if (base_key_type == CKK_GOSTR3410_512) {
+		if (ukm_len < 8 || ukm_len > 16) {
+			free(ukm);
+			util_fatal("UKM length for GOSTR3410-2012-512 must be 8-16 bytes (got %ld).", (long)ukm_len);
+		}
+	} else {
+		if (ukm_len != 8) {
+			free(ukm);
+			util_fatal("UKM length for GOSTR3410-2012-256 must be 8 bytes (got %ld).", (long)ukm_len);
+		}
+	}
+
+	read_binary_file(opt_input, &file_buf, &file_len);
+
+	if (file_len == 0) {
+		free(ukm);
+		free(file_buf);
+		util_fatal("Empty peer key file: %s", opt_input);
+	}
+
+	/* Decode peer public key from DER SPKI */
+	decode_peer_public_key(file_buf, file_len, expected_peer_len, &peer_raw, &peer_raw_len);
+
+	if (peer_raw_len != expected_peer_len) {
+		free(ukm);
+		free(file_buf);
+		free(peer_raw);
+		util_fatal("Peer public key must decode to %lu bytes from DER SPKI", (unsigned long)expected_peer_len);
+	}
+
+	params = build_derive_params((CK_ULONG)CKM_KDF_GOSTR3411_2012_256,
+			expected_peer_len, peer_raw, ukm, ukm_len, &params_len);
+
+	memset(&mech, 0, sizeof(mech));
+	mech.mechanism = mech_mech;
+	mech.pParameter = params;
+	mech.ulParameterLen = params_len;
+
+	rv = p11->C_DeriveKey(session, &mech, key, template, n_attrs, &newkey);
+	if (rv != CKR_OK) {
+		free(params);
+		free(peer_raw);
+		free(file_buf);
+		free(ukm);
+		p11_fatal("C_DeriveKey", rv);
+	}
+
+	free(params);
+	free(peer_raw);
+	free(file_buf);
+	free(ukm);
+	return newkey;
+}
+
 static void
 derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 {
@@ -6428,6 +6821,8 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		if (!find_mechanism(slot, CKF_DERIVE|opt_allow_sw, NULL, 0, &opt_mechanism))
 			util_fatal("Derive mechanism not supported");
 
+	fprintf(stderr, "Using derive algorithm 0x%8.8lx %s\n", (unsigned long)opt_mechanism, p11_mechanism_to_name(opt_mechanism));
+
 	switch(opt_mechanism) {
 	case CKM_ECDH1_COFACTOR_DERIVE:
 	case CKM_ECDH1_DERIVE:
@@ -6435,6 +6830,11 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		break;
 	case CKM_HKDF_DERIVE:
 		derived_key = derive_hkdf(session, key);
+		break;
+	case CKM_GOSTR3410_12_DERIVE:
+		if (key_type != CKK_GOSTR3410 && key_type != CKK_GOSTR3410_512)
+			util_fatal("Key type %lu does not support derive with %s", key_type, p11_mechanism_to_name(opt_mechanism));
+		derived_key = derive_gost2012_key(session, key, opt_mechanism);
 		break;
 	default:
 		util_fatal("Key type %lu does not support derive", key_type);
@@ -6446,8 +6846,10 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 		fd = STDOUT_FILENO;
 		if (opt_output)   {
 			fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, S_IRUSR|S_IWUSR);
-			if (fd < 0)
+			if (fd < 0) {
+				free(value);
 				util_fatal("failed to open %s: %m", opt_output);
+			}
 		}
 
 		sz = write(fd, value, value_len);
@@ -6457,9 +6859,11 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 
 		if (opt_output)
 			close(fd);
+
+		/* Report successful completion without mixing with binary output */
+		fprintf(stderr, "Derive operation completed successfully.\n");
 	}
 }
-
 
 static void
 show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
@@ -7240,7 +7644,9 @@ static int read_object(CK_SESSION_HANDLE session)
 	}
 	if (clazz == CKO_PUBLIC_KEY) {
 		/* If module supports CKA_PUBLIC_KEY_INFO which is DER of SPKI
-		 * return whatever the module provides including ED448 and X448
+		 * return whatever the module provides including ED448, X448 and GOST.
+		 * For GOST 3410-12, if CKA_PUBLIC_KEY_INFO is not available or invalid,
+		 * we fall back to build_gost_spki_der for a single export format.
 		 */
 		if (opt_public_key_info) {
 			value = getPUBLIC_KEY_INFO(session, obj, &len);
@@ -7252,9 +7658,17 @@ static int read_object(CK_SESSION_HANDLE session)
 			}
 		}
 		if (value == NULL) { /* Do the old way */
+			CK_KEY_TYPE type = getKEY_TYPE(session, obj);
+			if (type == CKK_GOSTR3410 || type == CKK_GOSTR3410_512) {
+				size_t out_len;
+				value = build_gost_spki_der(session, obj, type, &out_len);
+				if (value)
+					len = (CK_ULONG)out_len;
+			}
 #ifdef ENABLE_OPENSSL
-			long derlen;
-			EVP_PKEY *pkey = NULL;
+			if (value == NULL) {
+				long derlen;
+				EVP_PKEY *pkey = NULL;
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 			EVP_PKEY_CTX *ctx = NULL;
 			OSSL_PARAM *params = NULL;
@@ -7264,7 +7678,6 @@ static int read_object(CK_SESSION_HANDLE session)
 			if (!pout)
 				util_fatal("out of memory");
 
-			type = getKEY_TYPE(session, obj);
 			if (type == CKK_RSA) {
 				BIGNUM *rsa_n = NULL;
 				BIGNUM *rsa_e = NULL;
@@ -7437,8 +7850,6 @@ static int read_object(CK_SESSION_HANDLE session)
 				if (!i2d_PUBKEY_bio(pout, pkey))
 					util_fatal("cannot convert EC public key to DER");
 #endif
-					/* only if compiled with a version of OpenSSL or libressl */
-					/* do more tests for the other 3 as needed */
 #if defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_ED448) || defined (EVP_PKEY_X25519) || defined(EVP_PKEY_X448)
 			} else if (type == CKK_EC_EDWARDS || type == CKK_EC_MONTGOMERY) {
 				EVP_PKEY *key = NULL;
@@ -7667,8 +8078,10 @@ static int read_object(CK_SESSION_HANDLE session)
 			value = BIO_copy_data(pout, &derlen);
 			BIO_free(pout);
 			len = derlen;
+			}
 #else
-			util_fatal("No OpenSSL support, cannot read public key");
+			if (value == NULL)
+				util_fatal("No OpenSSL support, cannot read public key");
 #endif /* ENABLE_OPENSSL */
 		} /* value is PUBKEY_KEY_INFO */
 	}
