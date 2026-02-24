@@ -35,11 +35,6 @@ static struct sc_card_driver lteid_drv = {
 		"Lithuanian eID card (asmens tapatybės kortelė)", "lteid",
 		&lteid_ops, NULL, 0, NULL};
 
-static const struct sc_atr_table lteid_atrs[] = {
-		{"3b:9d:18:81:31:fc:35:80:31:c0:69:4d:54:43:4f:53:73:02:06:05:d0", NULL, NULL, SC_CARD_TYPE_LTEID, 0, NULL},
-		{NULL,							     NULL, NULL, 0,		      0, NULL}
-};
-
 #define DRVDATA(card)	 ((struct lteid_drv_data *)((card)->drv_data))
 #define LTEID_CAN_LENGTH 6
 
@@ -55,15 +50,6 @@ struct lteid_drv_data {
 #else
 #define CAN_STORE_FILE "/lteid_can"
 #endif
-
-static int
-lteid_match_card(sc_card_t *card)
-{
-	if (_sc_match_atr(card, lteid_atrs, &card->type) >= 0) {
-		return 1;
-	}
-	return 0;
-}
 
 static int
 lteid_get_stored_can(sc_card_t *card, unsigned char *can)
@@ -434,7 +420,6 @@ sc_get_lteid_driver(void)
 		iso_ops = iso_drv->ops;
 
 	lteid_ops = *iso_ops;
-	lteid_ops.match_card = lteid_match_card;
 	lteid_ops.init = lteid_init;
 	lteid_ops.finish = lteid_finish;
 	lteid_ops.set_security_env = lteid_set_security_env;
