@@ -344,7 +344,9 @@ lteid_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_lef
 	}
 
 	// Any other commands - fall back to regular iso7816 methods.
-	// Mostly for PIN.QES(ID 0x81) which is a regular pin.
+	// This is for:
+	//   - All PIN.QES(ID 0x81) commands
+	//   - PACE PIN change and unblock, which has ref 0x03, but for change/unblock it's known as 0x07
 	rv = iso_ops->pin_cmd(card, data, tries_left);
 
 	LOG_FUNC_RETURN(card->ctx, rv);
