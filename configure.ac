@@ -13,8 +13,6 @@ m4_esyscmd([awk -F= '
   }
 ' "VERSION.mk"])
 
-m4_sinclude(m4/version.m4.ci)
-
 # Hint: MacOSX/build contains minimum OpenSSL reference
 m4_define([openssl_minimum_version], [1.1.1])
 

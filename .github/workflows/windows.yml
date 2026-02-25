@@ -38,19 +38,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Package name
+      - name: Package suffix
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref_name }}" == "master" ]]; then
-            SUFFIX=""
-          elif [[ "${{ github.event_name }}" == "push" ]]; then
-            SUFFIX="-${{ github.ref_name }}"
-          elif [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" == "master" ]]; then
-            SUFFIX="-pr${{ github.event.number }}"
-          else
-            SUFFIX="-${{ github.base_ref }}-pr${{ github.event.number }}"
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            if [[ "${{ github.ref_type }}" == "tag" && "${{ github.ref_name }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(.+)$ ]]; then
+              SUFFIX="${BASH_REMATCH[1]}"
+            elif [[ "${{ github.ref_name }}" != "master" ]]; then
+              SUFFIX="-${{ github.ref_name }}"
+            fi
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            if [[ "${{ github.base_ref }}" == "master" ]]; then
+              SUFFIX="-pr${{ github.event.number }}"
+            else
+              SUFFIX="-${{ github.base_ref }}-pr${{ github.event.number }}"
+            fi
           fi
-          echo "DIST_SUFFIX=${{ matrix.configuration == 'Light' && '-Light' || '' }}${SUFFIX}" >> $GITHUB_ENV
+          PACKAGE_SUFFIX="${{ matrix.configuration == 'Light' && '-Light' || '' }}${SUFFIX}"
+          sed -i.bak "s/^PACKAGE_SUFFIX=\([-~]*[0-9a-zA-Z]*\)$/PACKAGE_SUFFIX=$PACKAGE_SUFFIX/g" VERSION.mk
+          cat VERSION.mk
       - name: Install CPDK
         run: choco install windows-cryptographic-provider-development-kit -y > $null
       - name: Setup dev env
