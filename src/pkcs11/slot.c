@@ -262,7 +262,7 @@ again:
 		p11card = (struct sc_pkcs11_card *)calloc(1, sizeof(struct sc_pkcs11_card));
 		if (!p11card)
 			return CKR_HOST_MEMORY;
-		free_p11card = 0;
+		free_p11card = 1; /* Allocated it here not found in a slot */
 		p11card->reader = reader;
 	}
 
@@ -270,15 +270,13 @@ again:
 		if (reader->flags & SC_READER_CARD_INVALID) {
 			sc_log(context, "%s: Connecting to reader with invalid card", reader->name);
 			rc = SC_ERROR_INVALID_CARD;
-			free_p11card = 0;
 		} else {
 			sc_log(context, "%s: Connecting ... ", reader->name);
 			rc = sc_connect_card(reader, &p11card->card);
 			if (rc == SC_ERROR_INVALID_CARD) {
-				/* Reader has invalid card not try to connect to it again */
-				/* do not try to cconnect to the same card again */
+				/* Reader has invalid card do not try to connect to it again */
+				/* do not try to connect to the same card again */
 				reader->flags |= SC_READER_CARD_INVALID;
-				free_p11card = 0;
 			}
 		}
 
