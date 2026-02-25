@@ -17,7 +17,9 @@ if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
 	fi
 else
 	BRANCH=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
-	if [ "$BRANCH" != "master" ]; then
+	if [ "$GITHUB_REF_TYPE" == "tag" ] && [[ "$BRANCH" =~ ^[0-9]+\.[0-9]+\.[0-9]+(.+)$ ]]; then
+		SUFFIX="${BASH_REMATCH[1]}"
+	elif [ "$BRANCH" != "master" ]; then
 		SUFFIX="$BRANCH"
 	fi
 fi
