@@ -88,9 +88,9 @@ void *sc_dlopen(const char *filename)
 
 	dlhandle->handle = dlopen(filename, RTLD_LAZY | RTLD_LOCAL
 #ifdef RTLD_DEEPBIND
-				  | RTLD_DEEPBIND
+							    | RTLD_DEEPBIND
 #endif
-		);
+	);
 	if (!dlhandle->handle) {
 		free(dlhandle);
 		return NULL;
