@@ -96,7 +96,7 @@ void *sc_dlopen(const char *filename)
 		return NULL;
 	}
 
-#if defined(HAVE_DLINFO) && defined(RTLD_DI_LINKMAP)
+#if defined(HAVE_DLINFO)
 	struct link_map *lm;
 
 	if (dlinfo(dlhandle->handle, RTLD_DI_LINKMAP, &lm) < 0) {
