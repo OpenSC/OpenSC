@@ -104,7 +104,7 @@ void *sc_dlopen(const char *filename)
 		free(dlhandle);
 		return NULL;
 	}
-	dlhandle->address = lm->l_addr;
+	dlhandle->address = (void *) lm->l_addr;
 #endif
 
 	return dlhandle;
