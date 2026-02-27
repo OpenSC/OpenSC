@@ -43,12 +43,6 @@ static const char *app_name = "lteid-tool";
 #define OP_UNBLOCK    2 /* unblock using PUK code */
 #define OP_CHANGE_PIN 3
 
-#ifdef _WIN32
-#define CAN_STORE_FILE "\\lteid_can"
-#else
-#define CAN_STORE_FILE "/lteid_can"
-#endif
-
 static const struct option options[] = {
 		{"help",	 0, NULL, 'h'},
 		{"verbose",    0, NULL, 'v'},
@@ -109,8 +103,8 @@ display_pin_tries_left(sc_pkcs15_card_t *p15card)
 {
 	int pace_pin_tries_left, qes_pin_tries_left, puk_tries_left;
 
-	get_tries_left(p15card, 0x04, &puk_tries_left);
-	get_tries_left(p15card, 0x03, &pace_pin_tries_left);
+	get_tries_left(p15card, PACE_PIN_ID_PUK, &puk_tries_left);
+	get_tries_left(p15card, PACE_PIN_ID_PIN, &pace_pin_tries_left);
 	get_tries_left(p15card, 0x81, &qes_pin_tries_left);
 
 	printf("\n");
@@ -131,62 +125,6 @@ display_basic_details(sc_pkcs15_card_t *p15card)
 	display_pin_tries_left(p15card);
 
 	return SC_SUCCESS;
-}
-
-static int
-lteid_store_can(sc_card_t *card, const char *can)
-{
-	int rv;
-	char path[PATH_MAX];
-
-	sc_get_cache_dir(card->ctx, path, sizeof(path));
-	strlcat(path, CAN_STORE_FILE, PATH_MAX);
-
-	FILE *fd = fopen(path, "w");
-
-	if (!fd && errno == ENOENT) {
-		if ((rv = sc_make_cache_dir(card->ctx)) < 0)
-			return rv;
-
-		fd = fopen(path, "w");
-	}
-
-	if (!fd) {
-		return SC_ERROR_INTERNAL;
-	}
-
-	fwrite(can, 1, 6, fd);
-	fclose(fd);
-
-	return SC_SUCCESS;
-}
-
-char *
-lteid_get_stored_can(sc_card_t *card)
-{
-	char path[PATH_MAX];
-	char *can;
-
-	can = calloc(7, 1);
-
-	sc_get_cache_dir(card->ctx, path, sizeof(path));
-	strlcat(path, CAN_STORE_FILE, PATH_MAX);
-
-	FILE *fd = fopen(path, "r");
-
-	if (!fd) {
-		free(can);
-		return NULL;
-	}
-
-	if (6 != fread(can, 1, 6, fd)) {
-		free(can);
-		return NULL;
-	}
-
-	fclose(fd);
-
-	return can;
 }
 
 int
@@ -226,12 +164,10 @@ input_number(const char *description, size_t min_len, size_t max_len, const char
 }
 
 int
-get_and_store_pace_can(sc_card_t *card, const char *opt_can)
+verify_and_cache_pace_can(sc_card_t *card, const char *opt_can)
 {
 	int rv;
 	struct sc_path path;
-	struct establish_pace_channel_input pace_input = {0};
-	struct establish_pace_channel_output pace_output = {0};
 	char *can = NULL;
 
 	rv = input_number("number from the bottom right corner of the card", 6, 6, opt_can, &can);
@@ -244,22 +180,18 @@ get_and_store_pace_can(sc_card_t *card, const char *opt_can)
 	sc_format_path("3F00", &path);
 	sc_select_file(card, &path, NULL);
 
-	pace_input.pin_id = PACE_PIN_ID_CAN;
-	pace_input.pin = (unsigned char *)can;
-	pace_input.pin_length = strlen(can);
+	struct sc_pin_cmd_data can_verify_cmd = {0};
+	can_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
+	can_verify_cmd.pin_type = SC_AC_CHV;
+	can_verify_cmd.pin_reference = PACE_PIN_ID_CAN;
+	can_verify_cmd.pin1.data = (unsigned char *)can;
+	can_verify_cmd.pin1.len = strlen(can);
 
-	rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+	rv = card->ops->pin_cmd(card, &can_verify_cmd, NULL);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "CAN number verification failed: %s\nCheck the number and try again.\n", sc_strerror(rv));
 		return SC_ERROR_PIN_CODE_INCORRECT;
-	}
-
-	rv = lteid_store_can(card, can);
-
-	if (rv != SC_SUCCESS) {
-		fprintf(stderr, "Could not store the new CAN code.\n");
-		return SC_ERROR_INTERNAL;
 	}
 
 	printf("\nThe new CAN code is now persisted.\n");
@@ -271,8 +203,7 @@ get_and_store_pace_can(sc_card_t *card, const char *opt_can)
 /*
  * Officially card has a single PIN. But under the hood it's really two separate PINs:
  *
- *   - PACE-PIN with ID 0x03, tied to the key intended for authentication. However,
- *     when changing it reference is 0x07 (which is not listed at all in PIN objects)
+ *   - PACE-PIN with ID 0x03, tied to the key intended for authentication.
  *   - PIN.QES with ID 0x81, tied to the key intended for signature
  *
  * The procedure below follows this and applies change to both PINs.
@@ -281,8 +212,6 @@ int
 change_pin(sc_card_t *card, const char *opt_pin)
 {
 	int rv;
-	struct establish_pace_channel_input pace_input = {0};
-	struct establish_pace_channel_output pace_output = {0};
 	struct sc_path path;
 	char *pin = NULL;
 	char *new_pin = NULL;
@@ -296,16 +225,17 @@ change_pin(sc_card_t *card, const char *opt_pin)
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
 
-	sc_sm_stop(card);
-
 	sc_format_path("3F00", &path);
 	sc_select_file(card, &path, NULL);
 
-	pace_input.pin_id = PACE_PIN_ID_PIN;
-	pace_input.pin = (unsigned char *)pin;
-	pace_input.pin_length = strlen(pin);
+	struct sc_pin_cmd_data pin_verify_cmd = {0};
+	pin_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
+	pin_verify_cmd.pin_type = SC_AC_CHV;
+	pin_verify_cmd.pin_reference = PACE_PIN_ID_PIN;
+	pin_verify_cmd.pin1.data = (unsigned char *)pin;
+	pin_verify_cmd.pin1.len = strlen(pin);
 
-	rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+	rv = card->ops->pin_cmd(card, &pin_verify_cmd, NULL);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(rv));
@@ -331,7 +261,7 @@ change_pin(sc_card_t *card, const char *opt_pin)
 	struct sc_pin_cmd_data pace_pin_cmd = {0};
 	pace_pin_cmd.cmd = SC_PIN_CMD_CHANGE;
 	pace_pin_cmd.pin_type = SC_AC_CHV;
-	pace_pin_cmd.pin_reference = 0x07;
+	pace_pin_cmd.pin_reference = PACE_PIN_ID_PIN;
 	pace_pin_cmd.pin2.data = (unsigned char *)new_pin;
 	pace_pin_cmd.pin2.len = strlen(new_pin);
 
@@ -379,7 +309,7 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 	char *pin = NULL;
 	int tries_left;
 
-	rv = get_tries_left(p15card, 0x03, &tries_left);
+	rv = get_tries_left(p15card, PACE_PIN_ID_PIN, &tries_left);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "Cannot get remaining tries left: %s\n", sc_strerror(rv));
@@ -389,7 +319,9 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 	if (tries_left > 1) {
 		fprintf(stderr, "PIN for authentication is not blocked, there's %i tries remaining.\n", tries_left);
 		return SC_ERROR_NOT_ALLOWED;
-	} else if (tries_left == 0) {
+	}
+
+	if (tries_left == 0) {
 		fprintf(stderr, "PIN for authentication is fully blocked with 0 attempts remaining. Use 'lteid-tool --unblock' instead.\n");
 		return SC_ERROR_NOT_ALLOWED;
 	}
@@ -401,16 +333,18 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
 
-	sc_sm_stop(card);
-
-	pace_input.pin_id = PACE_PIN_ID_CAN;
-	pace_input.pin = (unsigned char *)opt_can;
-	pace_input.pin_length = strlen(opt_can);
-
 	sc_format_path("3F00", &path);
 	sc_select_file(card, &path, NULL);
 
-	rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+	struct sc_pin_cmd_data can_verify_cmd = {0};
+	can_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
+	can_verify_cmd.pin_type = SC_AC_CHV;
+	can_verify_cmd.pin_reference = PACE_PIN_ID_CAN;
+	can_verify_cmd.pin1.data = (unsigned char *)opt_can;
+	if (opt_can)
+		can_verify_cmd.pin1.len = strlen(opt_can);
+
+	rv = card->ops->pin_cmd(card, &can_verify_cmd, NULL);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "CAN code verification failed: %s\n", sc_strerror(rv));
@@ -438,13 +372,11 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 {
 	int rv;
 	struct sc_card *card = p15card->card;
-	struct establish_pace_channel_input pace_input = {0};
-	struct establish_pace_channel_output pace_output = {0};
 	struct sc_path path;
 	char *puk = NULL;
 	int pace_pin_tries_left, qes_pin_tries_left;
 
-	get_tries_left(p15card, 0x03, &pace_pin_tries_left);
+	get_tries_left(p15card, PACE_PIN_ID_PIN, &pace_pin_tries_left);
 	get_tries_left(p15card, 0x81, &qes_pin_tries_left);
 
 	if (pace_pin_tries_left > 0 && qes_pin_tries_left > 0) {
@@ -459,17 +391,17 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
 
-	pace_input.pin_id = PACE_PIN_ID_PUK;
-	pace_input.pin = (unsigned char *)puk;
-	pace_input.pin_length = strlen(puk);
-
-	// Stop previous PACE session established with CAN code
-	sc_sm_stop(card);
-
 	sc_format_path("3F00", &path);
 	sc_select_file(card, &path, NULL);
 
-	rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+	struct sc_pin_cmd_data puk_verify_cmd = {0};
+	puk_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
+	puk_verify_cmd.pin_type = SC_AC_CHV;
+	puk_verify_cmd.pin_reference = PACE_PIN_ID_PUK;
+	puk_verify_cmd.pin1.data = (unsigned char *)puk;
+	puk_verify_cmd.pin1.len = strlen(puk);
+
+	rv = card->ops->pin_cmd(card, &puk_verify_cmd, NULL);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PUK code verification failed: %s\n", sc_strerror(rv));
@@ -480,7 +412,7 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 		struct sc_pin_cmd_data pace_pin_cmd = {0};
 		pace_pin_cmd.cmd = SC_PIN_CMD_UNBLOCK;
 		pace_pin_cmd.pin_type = SC_AC_CHV;
-		pace_pin_cmd.pin_reference = 0x07;
+		pace_pin_cmd.pin_reference = PACE_PIN_ID_PIN;
 
 		rv = card->ops->pin_cmd(card, &pace_pin_cmd, NULL);
 
@@ -595,7 +527,7 @@ main(int argc, char *argv[])
 
 	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
 		printf("\nCAN number is not set/stored.\n\n");
-		err = get_and_store_pace_can(card, opt_can);
+		err = verify_and_cache_pace_can(card, opt_can);
 		goto lteid_tool_end;
 	}
 
@@ -610,9 +542,6 @@ main(int argc, char *argv[])
 	if (opt_change_pin) {
 		err = change_pin(card, opt_pin);
 	} else if (opt_resume) {
-		if (!opt_can) {
-			opt_can = lteid_get_stored_can(card);
-		}
 		err = resume(p15card, opt_can, opt_pin);
 	} else if (opt_unblock) {
 		err = unblock_using_puk(p15card, opt_puk);
