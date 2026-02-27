@@ -54,6 +54,7 @@ static const struct option options[] = {
 		{"change-pin", 0, NULL, 'C'},
 		{"resume",	   0, NULL, 'R'},
 		{"unblock",    0, NULL, 'U'},
+		{"verify-can", 0, NULL, 'V'},
 		{NULL,	       0, NULL, 0	 }
 };
 
@@ -68,6 +69,7 @@ static const char *option_help[] = {
 		"Change PIN",
 		"Resume authentication key PIN after 2 incorrect attempts",
 		"Unblock PIN using PUK",
+		"Verify Card Access Number (CAN)",
 };
 
 static int
@@ -456,6 +458,7 @@ main(int argc, char *argv[])
 	int opt_change_pin = 0;
 	int opt_resume = 0;
 	int opt_unblock = 0;
+	int opt_verify_can = 0;
 
 	int err = 0;
 	sc_context_t *ctx = NULL;
@@ -464,7 +467,7 @@ main(int argc, char *argv[])
 	struct sc_pkcs15_card *p15card = NULL;
 	int c, rv;
 
-	while ((c = getopt_long(argc, argv, "hr:wc:p:u:vCRU", options, (int *)0)) != -1) {
+	while ((c = getopt_long(argc, argv, "hr:wc:p:u:vCRUV", options, (int *)0)) != -1) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -492,6 +495,9 @@ main(int argc, char *argv[])
 			break;
 		case 'U':
 			opt_unblock = 1;
+			break;
+		case 'V':
+			opt_verify_can = 1;
 			break;
 		case 'h':
 		default:
@@ -525,7 +531,7 @@ main(int argc, char *argv[])
 
 	rv = sc_pkcs15_bind(card, NULL, &p15card);
 
-	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED || opt_verify_can) {
 		printf("\nCAN number is not set/stored.\n\n");
 		err = verify_and_cache_pace_can(card, opt_can);
 		goto lteid_tool_end;

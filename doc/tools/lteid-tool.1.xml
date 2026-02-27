@@ -163,6 +163,20 @@
 						</para>
 					</listitem>
 				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--verify-can</option>
+						<option>-V</option>
+					</term>
+					<listitem>
+						<para>
+							Verify Card Access Number (CAN). Use with
+							<literal>--can=XXXXXX</literal> option to
+							non-interactively verify and store CAN.
+						</para>
+					</listitem>
+				</varlistentry>
 			</variablelist>
 		</para>
 	</refsect1>
