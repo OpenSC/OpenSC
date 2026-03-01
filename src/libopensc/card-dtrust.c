@@ -609,7 +609,9 @@ dtrust_pin_cmd_get_info(struct sc_card *card,
 	switch (data->pin_reference) {
 	case PACE_PIN_ID_CAN:
 		/* unlimited number of retries */
-		*tries_left = -1;
+		if (tries_left != NULL) {
+			*tries_left = -1;
+		}
 		data->pin1.max_tries = -1;
 		data->pin1.tries_left = -1;
 		r = SC_SUCCESS;
