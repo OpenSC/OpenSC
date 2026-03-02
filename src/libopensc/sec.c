@@ -208,6 +208,11 @@ int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		card->ctx->debug = 0;
 	}
 
+	if (tries_left == NULL) {
+		/* FIXME refactor code to remove the obsolete tries_left */
+		tries_left = &data->pin1.tries_left;
+	}
+
 	if (card->ops->pin_cmd) {
 		r = card->ops->pin_cmd(card, data, tries_left);
 	} else if (!(data->flags & SC_PIN_CMD_USE_PINPAD)) {
