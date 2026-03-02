@@ -1025,8 +1025,7 @@ static int mcrd_compute_signature(sc_card_t * card,
 }
 
 /* added by -mp, to give pin information in the card driver (pkcs15emu->driver needed) */
-static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
-			int *tries_left)
+static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data)
 {
 	LOG_FUNC_CALLED(card->ctx);
 	data->pin1.offset = 5;
@@ -1037,7 +1036,7 @@ static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data,
 		if (data->pin_reference == 0x02)
 			data->pin_reference = data->pin_reference | 0x80;
 	}
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, iso_ops->pin_cmd(card, data, tries_left));
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, iso_ops->pin_cmd(card, data));
 }
 
 static int mcrd_logout(sc_card_t * card)

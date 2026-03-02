@@ -6040,7 +6040,7 @@ piv_check_protected_objects(sc_card_t *card)
 
 
 static int
-piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	int r = 0;
 	piv_private_data_t * priv = PIV_DATA(card);
@@ -6070,8 +6070,6 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	if (data->cmd == SC_PIN_CMD_GET_INFO) { /* fill in what we think it should be */
 		data->pin1.logged_in = priv->logged_in;
 		data->pin1.tries_left = priv->tries_left;
-		if (tries_left)
-			*tries_left = priv->tries_left;
 
 		/*
 		 * If called to check on the login state for a context specific login
@@ -6113,7 +6111,7 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	}
 
 	priv->pin_cmd_verify = 1; /* tell piv_check_sw its a verify to save sw1, sw2 */
-	r = iso_drv->ops->pin_cmd(card, data, tries_left);
+	r = iso_drv->ops->pin_cmd(card, data);
 	priv->pin_cmd_verify = 0;
 
 	/* tell user verify not supported on contactless without VCI */
@@ -6139,7 +6137,7 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		piv_find_aid(card);
 
 		priv->pin_cmd_verify = 1; /* tell piv_check_sw its a verify to save sw1, sw2 */
-		r = iso_drv->ops->pin_cmd(card, data, tries_left);
+		r = iso_drv->ops->pin_cmd(card, data);
 		priv->pin_cmd_verify = 0;
 	}
 

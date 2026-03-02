@@ -1475,8 +1475,7 @@ cardos_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
  * Unfortunately, it doesn't seem to work without this flag :-/
  */
 static int
-cardos_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
-		 int *tries_left)
+cardos_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	int rv;
@@ -1501,7 +1500,7 @@ cardos_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data,
 	if (data->pin2.max_length == 0)
 		data->pin2.max_length = 8;
 
-	rv = iso_ops->pin_cmd(card, data, tries_left);
+	rv = iso_ops->pin_cmd(card, data);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 

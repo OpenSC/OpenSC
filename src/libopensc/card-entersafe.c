@@ -870,8 +870,7 @@ static void entersafe_init_pin_info(struct sc_pin_cmd_pin *pin, unsigned int num
 	pin->pad_char   = 0x00;
 }
 
-static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
-							 int *tries_left)
+static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	int r;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -880,7 +879,7 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 
 	if (data->cmd != SC_PIN_CMD_UNBLOCK) {
-		r = iso_ops->pin_cmd(card, data, tries_left);
+		r = iso_ops->pin_cmd(card, data);
 		sc_log(card->ctx, "Verify rv:%i", r);
 	} else {
 		{ /*verify*/

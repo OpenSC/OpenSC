@@ -2101,8 +2101,7 @@ static int dnie_pin_change(struct sc_card *card, struct sc_pin_cmd_data * data)
  * @param tries_left; on fail stores the number of tries left before car lock
  * @return SC_SUCCESS if ok, else error code; on pin incorrect also sets tries_left
  */
-static int dnie_pin_verify(struct sc_card *card,
-                        struct sc_pin_cmd_data *data, int *tries_left)
+static int dnie_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	int res=SC_SUCCESS;
 	sc_apdu_t apdu;
@@ -2141,11 +2140,9 @@ static int dnie_pin_verify(struct sc_card *card,
 	}
 
 	/* check response and if requested setup tries_left */
-	if (tries_left != NULL) {	/* returning tries_left count is requested */
-		if ((apdu.sw1 == 0x63) && ((apdu.sw2 & 0xF0) == 0xC0)) {
-			*tries_left = apdu.sw2 & 0x0F;
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
-		}
+	if ((apdu.sw1 == 0x63) && ((apdu.sw2 & 0xF0) == 0xC0)) {
+		data->pin1.tries_left = apdu.sw2 & 0x0F;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 	}
 	res = dnie_check_sw(card, apdu.sw1, apdu.sw2);	/* not a pinerr: parse result */
 
@@ -2173,8 +2170,7 @@ static int dnie_pin_verify(struct sc_card *card,
  * @param tries_left; if pin_verify() operation, on incorrect pin stores the number of tries left before car lock
  * @return SC_SUCCESS if ok, else error code; on pin incorrect also sets tries_left
  */
-static int dnie_pin_cmd(struct sc_card *card,
-			struct sc_pin_cmd_data *data, int *tries_left)
+static int dnie_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	int res = SC_SUCCESS;
 	int lc = SC_CARDCTRL_LIFECYCLE_USER;
@@ -2211,7 +2207,7 @@ static int dnie_pin_cmd(struct sc_card *card,
 	/* This DNIe driver only supports VERIFY operation */
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
-		res =  dnie_pin_verify(card,data,tries_left);
+		res =  dnie_pin_verify(card,data);
 		break;
 	case SC_PIN_CMD_CHANGE:
 		res =  dnie_pin_change(card,data);

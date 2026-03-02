@@ -576,7 +576,6 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 int do_verify(sc_card_t *card, char *type, const char *in_pin)
 {
 	struct sc_pin_cmd_data data;
-	int tries_left;
 	int r;
 	if (!type || !in_pin)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -597,7 +596,7 @@ int do_verify(sc_card_t *card, char *type, const char *in_pin)
 	data.pin_reference = type[3] - '0';
 	data.pin1.data = (unsigned char *) in_pin;
 	data.pin1.len = (int)strlen(in_pin);
-	r = sc_pin_cmd(card, &data, &tries_left);
+	r = sc_pin_cmd(card, &data);
 	return r;
 }
 
