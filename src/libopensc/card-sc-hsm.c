@@ -343,8 +343,7 @@ static int sc_hsm_soc_select_minbioclient(sc_card_t *card)
 	return iso7816_select_aid(card, minBioClient_aid.value, minBioClient_aid.len, NULL, NULL);
 }
 
-static int sc_hsm_soc_change(sc_card_t *card, struct sc_pin_cmd_data *data,
-			   int *tries_left)
+static int sc_hsm_soc_change(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	sc_apdu_t apdu;
 	sc_path_t path;
@@ -410,8 +409,7 @@ err:
 	return r;
 }
 
-static int sc_hsm_soc_unblock(sc_card_t *card, struct sc_pin_cmd_data *data,
-			   int *tries_left)
+static int sc_hsm_soc_unblock(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	sc_apdu_t apdu;
 	sc_path_t path;
@@ -449,8 +447,7 @@ err:
 	return r;
 }
 
-static int sc_hsm_soc_biomatch(sc_card_t *card, struct sc_pin_cmd_data *data,
-			   int *tries_left)
+static int sc_hsm_soc_biomatch(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -615,8 +612,7 @@ static int sc_hsm_perform_chip_authentication(sc_card_t *card)
 
 
 
-static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
-			   int *tries_left)
+static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
 	sc_apdu_t apdu;
@@ -640,12 +636,12 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		   	&& (data->cmd == SC_PIN_CMD_CHANGE)
 		   	&& (data->pin_reference == 0x81)
 			&& (!data->pin1.data || data->pin1.len <= 0)) {
-		return sc_hsm_soc_change(card, data, tries_left);
+		return sc_hsm_soc_change(card, data);
 	} else if ((card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH)
 		   	&& (data->cmd == SC_PIN_CMD_UNBLOCK)
 		   	&& (data->pin_reference == 0x81)
 			&& (!data->pin1.data || data->pin1.len <= 0)) {
-		return sc_hsm_soc_unblock(card, data, tries_left);
+		return sc_hsm_soc_unblock(card, data);
 	}
 
 #ifdef ENABLE_SM
@@ -664,7 +660,7 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		r = SC_ERROR_NOT_ALLOWED;
 		if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT) {
 			/* check if the existing SM channel is still valid */
-			r = sc_pin_cmd(card, &check_sm_pin_data, NULL);
+			r = sc_pin_cmd(card, &check_sm_pin_data);
 		}
 		if (r == SC_ERROR_ASN1_OBJECT_NOT_FOUND || r == SC_ERROR_NOT_ALLOWED) {
 			/* need to establish a new SM channel */
@@ -679,7 +675,7 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			&& (data->cmd == SC_PIN_CMD_VERIFY)
 			&& (data->pin_reference == 0x81)
 			&& (!data->pin1.data || data->pin1.len <= 0)) {
-		r = sc_hsm_soc_biomatch(card, data, tries_left);
+		r = sc_hsm_soc_biomatch(card, data);
 	} else {
 		if ((data->cmd == SC_PIN_CMD_VERIFY) && (data->pin_reference == 0x88)) {
 			if (data->pin1.len != 16)
@@ -724,7 +720,7 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		data->pin1.offset = 5;
 		data->pin2.offset = 5;
 
-		r = (*iso_ops->pin_cmd)(card, data, tries_left);
+		r = (*iso_ops->pin_cmd)(card, data);
 		data->apdu = NULL;
 	}
 	LOG_TEST_RET(card->ctx, r, "Verification failed");
@@ -1316,7 +1312,7 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 		pincmd.pin1.data = params->user_pin;
 		pincmd.pin1.len = params->user_pin_len;
 
-		r = (*iso_ops->pin_cmd)(card, &pincmd, NULL);
+		r = (*iso_ops->pin_cmd)(card, &pincmd);
 		LOG_TEST_RET(ctx, r, "Could not verify PIN");
 
 		r = sc_hsm_write_ef(card, 0x2F03, 0, p, tilen);

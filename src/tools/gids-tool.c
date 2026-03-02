@@ -228,7 +228,7 @@ static int unblock(sc_card_t* card, const char *so_pin, const char *user_pin) {
 	data.pin2.len = strlen(_user_pin);
 	data.pin2.data = (unsigned char*) _user_pin;
 	data.pin_reference = 0x80;
-	r = sc_pin_cmd(card, &data, NULL);
+	r = sc_pin_cmd(card, &data);
 	if (r < 0) {
 		fprintf(stderr, "reset pin failed with %s\n", sc_strerror(r));
 		return -1;

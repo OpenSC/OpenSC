@@ -3186,7 +3186,7 @@ update_secret_key(struct sc_card *card, unsigned char ktype, unsigned char kid,
 
 /* use external auth secret as pin */
 static int
-epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	int r;
 	u8 kid;
@@ -3210,8 +3210,6 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 		r = get_external_key_retries(card, 0x80 | kid, &retries);
 		if (r == SC_SUCCESS) {
 			data->pin1.tries_left = retries;
-			if (tries_left)
-				*tries_left = retries;
 
 			r = get_external_key_maxtries(card, &maxtries);
 			LOG_TEST_RET(card->ctx, r, "get max counter failed");

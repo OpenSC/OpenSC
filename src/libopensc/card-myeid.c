@@ -663,8 +663,7 @@ static int myeid_delete_file(struct sc_card *card, const struct sc_path *path)
 	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
-			 int *tries_left)
+static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	myeid_private_data_t *priv = (myeid_private_data_t *) card->drv_data;
 
@@ -684,7 +683,7 @@ static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		return SC_SUCCESS;
 	}
 
-	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
+	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data));
 }
 
 #define IS_SYMETRIC_CRYPT(x) ((x) == SC_SEC_OPERATION_ENCRYPT_SYM || (x) == SC_SEC_OPERATION_DECRYPT_SYM)
