@@ -86,7 +86,7 @@ static int authentic_select_file(struct sc_card *card, const struct sc_path *pat
 static int authentic_process_fci(struct sc_card *card, struct sc_file *file, const unsigned char *buf, size_t buflen);
 static int authentic_get_serialnr(struct sc_card *card, struct sc_serial_number *serial);
 static int authentic_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struct sc_acl_entry *acls);
-static int authentic_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int *tries_left);
+static int authentic_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd);
 static int authentic_select_mf(struct sc_card *card, struct sc_file **file_out);
 static int authentic_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr);
 
@@ -980,7 +980,7 @@ authentic_delete_file(struct sc_card *card, const struct sc_path *path)
 
 
 static int
-authentic_chv_verify_pinpad(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int *tries_left)
+authentic_chv_verify_pinpad(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned char buffer[0x100];
@@ -990,7 +990,7 @@ authentic_chv_verify_pinpad(struct sc_card *card, struct sc_pin_cmd_data *pin_cm
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "Verify PIN(ref:%i) with pin-pad", pin_cmd->pin_reference);
 
-	rv = authentic_pin_is_verified(card, pin_cmd, tries_left);
+	rv = authentic_pin_is_verified(card, pin_cmd);
 	if (!rv)
 		LOG_FUNC_RETURN(ctx, rv);
 
@@ -1008,15 +1008,14 @@ authentic_chv_verify_pinpad(struct sc_card *card, struct sc_pin_cmd_data *pin_cm
 	pin_cmd->cmd = SC_PIN_CMD_VERIFY;
 	pin_cmd->flags |= SC_PIN_CMD_USE_PINPAD;
 
-	rv = iso_ops->pin_cmd(card, pin_cmd, tries_left);
+	rv = iso_ops->pin_cmd(card, pin_cmd);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
 static int
-authentic_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
-		int *tries_left)
+authentic_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -1047,7 +1046,7 @@ authentic_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
 		apdu.lc = pin_len;
 	}
 	else if ((card->reader->capabilities & SC_READER_CAP_PIN_PAD) && !pin1->data && !pin1->len)   {
-		rv = authentic_chv_verify_pinpad(card, pin_cmd, tries_left);
+		rv = authentic_chv_verify_pinpad(card, pin_cmd);
 		sc_log(ctx, "authentic_chv_verify() authentic_chv_verify_pinpad returned %i", rv);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
@@ -1060,8 +1059,6 @@ authentic_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
 
 	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0)   {
 		pin1->tries_left = apdu.sw2 & 0x0F;
-		if (tries_left)
-			*tries_left = apdu.sw2 & 0x0F;
 	}
 
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
@@ -1071,8 +1068,7 @@ authentic_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
 
 
 static int
-authentic_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd_data,
-		int *tries_left)
+authentic_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd_data)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_pin_cmd_data pin_cmd;
@@ -1087,7 +1083,7 @@ authentic_pin_is_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd_
 	pin_cmd.pin1.data = (unsigned char *)"";
 	pin_cmd.pin1.len = 0;
 
-	rv = authentic_chv_verify(card, &pin_cmd, tries_left);
+	rv = authentic_chv_verify(card, &pin_cmd);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -1107,7 +1103,7 @@ authentic_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 
 	if (pin_cmd->pin1.data && !pin_cmd->pin1.len)   {
 		pin_cmd->pin1.tries_left = -1;
-		rv = authentic_pin_is_verified(card, pin_cmd, &pin_cmd->pin1.tries_left);
+		rv = authentic_pin_is_verified(card, pin_cmd);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
 
@@ -1130,7 +1126,7 @@ authentic_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_LENGTH, "PIN policy check failed");
 
 	pin_cmd->pin1.tries_left = -1;
-	rv = authentic_chv_verify(card, pin_cmd, &pin_cmd->pin1.tries_left);
+	rv = authentic_chv_verify(card, pin_cmd);
 	LOG_TEST_RET(ctx, rv, "PIN CHV verification error");
 
 	memcpy(prv_data->pins_sha1[pin_cmd->pin_reference], pin_sha1, SHA_DIGEST_LENGTH);
@@ -1182,14 +1178,14 @@ authentic_pin_change_pinpad(struct sc_card *card, unsigned reference, int *tries
 	       pin_cmd.pin2.max_length, pin_cmd.pin2.min_length,
 	       pin_cmd.pin2.pad_length);
 
-	rv = iso_ops->pin_cmd(card, &pin_cmd, tries_left);
+	rv = iso_ops->pin_cmd(card, &pin_cmd);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
 static int
-authentic_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+authentic_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	struct authentic_private_data *prv_data = (struct authentic_private_data *) card->drv_data;
@@ -1206,7 +1202,7 @@ authentic_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 	if (!data->pin1.data && !data->pin1.len && !data->pin2.data && !data->pin2.len)   {
 		if (!(card->reader->capabilities & SC_READER_CAP_PIN_PAD))
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "PIN pad not supported");
-		rv = authentic_pin_change_pinpad(card, data->pin_reference, tries_left);
+		rv = authentic_pin_change_pinpad(card, data->pin_reference, &data->pin1.tries_left);
 		sc_log(ctx, "authentic_pin_cmd(SC_PIN_CMD_CHANGE) chv_change_pinpad returned %i", rv);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
@@ -1274,7 +1270,7 @@ authentic_chv_set_pinpad(struct sc_card *card, unsigned char reference)
 	       "PIN2 max/min/pad %"SC_FORMAT_LEN_SIZE_T"u/%"SC_FORMAT_LEN_SIZE_T"u/%"SC_FORMAT_LEN_SIZE_T"u",
 	       pin_cmd.pin2.max_length, pin_cmd.pin2.min_length,
 	       pin_cmd.pin2.pad_length);
-	rv = iso_ops->pin_cmd(card, &pin_cmd, NULL);
+	rv = iso_ops->pin_cmd(card, &pin_cmd);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -1332,7 +1328,7 @@ authentic_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, st
 
 
 static int
-authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	struct authentic_private_data *prv_data = (struct authentic_private_data *) card->drv_data;
@@ -1376,9 +1372,6 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 
 			rv = authentic_pin_verify(card, &puk_cmd);
 
-			if (tries_left && rv == SC_ERROR_PIN_CODE_INCORRECT)
-				*tries_left = puk_cmd.pin1.tries_left;
-
 			LOG_TEST_RET(ctx, rv, "Cannot verify PUK");
 		}
 	}
@@ -1418,7 +1411,7 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 
 
 static int
-authentic_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+authentic_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	int rv = SC_ERROR_INTERNAL;
@@ -1433,10 +1426,10 @@ authentic_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 		rv = authentic_pin_verify(card, data);
 		break;
 	case SC_PIN_CMD_CHANGE:
-		rv = authentic_pin_change(card, data, tries_left);
+		rv = authentic_pin_change(card, data);
 		break;
 	case SC_PIN_CMD_UNBLOCK:
-		rv = authentic_pin_reset(card, data, tries_left);
+		rv = authentic_pin_reset(card, data);
 		break;
 	case SC_PIN_CMD_GET_INFO:
 		rv = authentic_pin_get_policy(card, data, NULL);
@@ -1444,9 +1437,6 @@ authentic_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	default:
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported PIN command");
 	}
-
-	if (rv == SC_ERROR_PIN_CODE_INCORRECT && tries_left)
-		*tries_left = data->pin1.tries_left;
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
