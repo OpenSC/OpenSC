@@ -182,6 +182,16 @@
 	</refsect1>
 
 	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>opensc.conf</refentrytitle>
+				<manvolnum>5</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+	<refsect1>
 		<title>Authors</title>
 		<para><command>lteid-tool</command> was written by
 		Tadas Sasnauskas <email>tadas@yoyo.lt</email>.</para>
