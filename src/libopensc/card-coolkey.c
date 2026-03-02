@@ -253,8 +253,8 @@ typedef struct coolkey_attribute_header {
  * Definitions:
  *
 struct coolkey_fixed_attributes_values {
-	uint32_t  cka_id:4;
-	uint32_t  cka_class:3;
+	unsigned int  cka_id:4;
+	unsigned int  cka_class:3;
 	unsigned int  cka_token:1;
 	unsigned int  cka_private:1;
 	unsigned int  cka_modifiable:1;
@@ -272,7 +272,7 @@ struct coolkey_fixed_attributes_values {
 	unsigned int  cka_always_sensitive:1;
 	unsigned int  cka_extractable:1;
 	unsigned int  cka_never_extractable:1;
-	uint32_t  reserved:8;
+	unsigned int  reserved:8;
 };
 
  *  cka_class is used to determine which booleans are valid. Any attributes in the full attribute list
