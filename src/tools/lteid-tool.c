@@ -462,7 +462,7 @@ main(int argc, char *argv[])
 
 	int err = 0;
 	sc_context_t *ctx = NULL;
-	sc_context_param_t ctx_param;
+	sc_context_param_t ctx_param = {0};
 	sc_card_t *card = NULL;
 	struct sc_pkcs15_card *p15card = NULL;
 	int c, rv;
@@ -505,7 +505,6 @@ main(int argc, char *argv[])
 		}
 	}
 
-	memset(&ctx_param, 0, sizeof(ctx_param));
 	ctx_param.app_name = app_name;
 	ctx_param.debug = verbose;
 	if (verbose)
@@ -514,19 +513,19 @@ main(int argc, char *argv[])
 	if (rv) {
 		fprintf(stderr, "Error: Failed to establish context: %s\n", sc_strerror(rv));
 		err = -1;
-		goto lteid_tool_end;
+		goto cleanup;
 	}
 
 	if (util_connect_card(ctx, &card, opt_reader, opt_wait)) {
 		fprintf(stderr, "Error: Cannot connect with card\n");
 		err = -1;
-		goto lteid_tool_end;
+		goto cleanup;
 	}
 
 	if (strcmp("lteid", card->driver->short_name) != 0) {
 		fprintf(stderr, "Error: Card in the reader does not appear to be Lithuanian identity card.\n");
 		err = -1;
-		goto lteid_tool_end;
+		goto cleanup;
 	}
 
 	rv = sc_pkcs15_bind(card, NULL, &p15card);
@@ -534,13 +533,13 @@ main(int argc, char *argv[])
 	if (rv == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED || opt_verify_can) {
 		printf("\nCAN number is not set/stored.\n\n");
 		err = verify_and_cache_pace_can(card, opt_can);
-		goto lteid_tool_end;
+		goto cleanup;
 	}
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PKCS#15 binding failed: %s\n", sc_strerror(rv));
 		err = -1;
-		goto lteid_tool_end;
+		goto cleanup;
 	}
 
 	display_basic_details(p15card);
@@ -553,7 +552,7 @@ main(int argc, char *argv[])
 		err = unblock_using_puk(p15card, opt_puk);
 	}
 
-lteid_tool_end:
+cleanup:
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card);

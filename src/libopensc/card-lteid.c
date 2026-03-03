@@ -46,11 +46,19 @@ struct lteid_drv_data {
 	unsigned char can_from_cache;
 };
 
+void
+lteid_get_can_cache_path(sc_card_t *card, char *buf, size_t buf_len)
+{
+	sc_get_cache_dir(card->ctx, buf, buf_len);
+
 #ifdef _WIN32
-#define CAN_CACHE_FILE "\\lteid_can"
+	strlcat(buf, "\\", buf_len);
 #else
-#define CAN_CACHE_FILE "/lteid_can"
+	strlcat(buf, "/", buf_len);
 #endif
+
+	strlcat(buf, "lteid_can", buf_len);
+}
 
 static int
 lteid_get_cached_can(sc_card_t *card, unsigned char *can)
@@ -58,8 +66,7 @@ lteid_get_cached_can(sc_card_t *card, unsigned char *can)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	char path[PATH_MAX];
 
-	sc_get_cache_dir(card->ctx, path, sizeof(path));
-	strlcat(path, CAN_CACHE_FILE, PATH_MAX);
+	lteid_get_can_cache_path(card, path, sizeof(path));
 
 	FILE *fd = fopen(path, "r");
 
@@ -82,8 +89,7 @@ lteid_cache_can(sc_card_t *card, const char *can)
 	int rv;
 	char path[PATH_MAX];
 
-	sc_get_cache_dir(card->ctx, path, sizeof(path));
-	strlcat(path, CAN_CACHE_FILE, PATH_MAX);
+	lteid_get_can_cache_path(card, path, sizeof(path));
 
 	FILE *fd = fopen(path, "w");
 
@@ -111,8 +117,7 @@ lteid_clear_cached_can(sc_card_t *card)
 
 	char path[PATH_MAX];
 
-	sc_get_cache_dir(card->ctx, path, sizeof(path));
-	strlcat(path, CAN_CACHE_FILE, PATH_MAX);
+	lteid_get_can_cache_path(card, path, sizeof(path));
 
 	if (!unlink(path)) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
@@ -248,7 +253,7 @@ lteid_unlock(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (SC_SUCCESS != lteid_perform_pace(card, PACE_PIN_ID_CAN, NULL, 0, NULL)) {
-		sc_log(card->ctx, "Unlock with CAN code failed. No CAN found in environment, opensc.conf or cache.");
+		sc_log(card->ctx, "Unlock with CAN code failed. No CAN found in environment, opensc.conf nor cache.");
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
