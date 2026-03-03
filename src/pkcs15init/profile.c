@@ -992,6 +992,10 @@ do_key_value(struct state *cur, int argc, char **argv)
 	if (key[0] == '=') {
 		++key;
 		key_len = strlen(key);
+		if (key_len > sizeof(keybuf)) {
+		    parse_error(cur, "Key value too long (%zu > %zu)\n", key_len, sizeof(keybuf));
+		    return 1;
+		}
 		memcpy(keybuf, key, key_len);
 	} else {
 		key_len = sizeof(keybuf);
