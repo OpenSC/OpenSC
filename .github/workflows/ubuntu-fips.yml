@@ -33,14 +33,14 @@ jobs:
         with:
           working-directory: /shared
           commands: |
-            ./.github/setup-linux.sh gcc force-install
+            ./.github/setup-linux.sh force-install
 
       - name: Build
         uses: canonical/setup-ubuntu-fips/run@v1
         with:
           working-directory: /shared
           commands: |
-            ./.github/build.sh fips dist
+            ./.github/build.sh dist
 
       - name: Upload test logs
         uses: actions/upload-artifact@v6
