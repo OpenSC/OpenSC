@@ -278,6 +278,12 @@ enum {
 	SC_CARD_TYPE_DTRUST_V5_1_M100,
 	SC_CARD_TYPE_DTRUST_V5_4_STD,
 	SC_CARD_TYPE_DTRUST_V5_4_MULTI,
+
+	/* Serbian eID and PKS Chamber of Commerce cards (CardEdge PKI applet) */
+	SC_CARD_TYPE_SRBEID_BASE = 43000,
+	SC_CARD_TYPE_SRBEID_GEMALTO,  /* Serbian eID Gemalto (2014+), ATR 3B:FF:94 */
+	SC_CARD_TYPE_SRBEID_IF2020,   /* Serbian eID IF2020 Foreigner (AID-matched) */
+	SC_CARD_TYPE_SRBEID_PKS,      /* PKS Chamber of Commerce card (AID-matched) */
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -322,6 +328,7 @@ extern sc_card_driver_t *sc_get_nqApplet_driver(void);
 extern sc_card_driver_t *sc_get_skeid_driver(void);
 extern sc_card_driver_t *sc_get_eoi_driver(void);
 extern sc_card_driver_t *sc_get_dtrust_driver(void);
+extern sc_card_driver_t *sc_get_srbeid_driver(void);
 
 #ifdef __cplusplus
 }
