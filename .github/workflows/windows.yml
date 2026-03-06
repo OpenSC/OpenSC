@@ -57,6 +57,12 @@ jobs:
           PACKAGE_SUFFIX="${{ matrix.configuration == 'Light' && '-Light' || '' }}${SUFFIX}"
           sed -i.bak "s/^PACKAGE_SUFFIX=\([-~]*[0-9a-zA-Z]*\)$/PACKAGE_SUFFIX=$PACKAGE_SUFFIX/g" VERSION.mk
           cat VERSION.mk
+          while IFS='=' read -r key value; do
+              # Skip empty or comment lines
+              [[ -z "$key" || "$key" =~ ^# ]] && continue
+              export "$key=$value"
+          done < VERSION.mk
+          echo "ARTIFACT_NAME=${PRODUCT_NAME}-${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}.${PACKAGE_VERSION_FIX}${PACKAGE_SUFFIX}_${{ matrix.platform }}" >> $GITHUB_ENV
       - name: Install CPDK
         run: choco install windows-cryptographic-provider-development-kit -y > $null
       - name: Setup dev env
@@ -124,7 +130,7 @@ jobs:
         id: upload-unsigned-artifact
         uses: actions/upload-artifact@v6
         with:
-          name: msi_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
+          name: ${{ env.ARTIFACT_NAME }}.zip
           path: ./win32/*.msi
       - name: Push to Signpath.io
         if: ${{ startsWith(github.ref, 'refs/tags/') && github.repository == 'OpenSC/OpenSC' }}
@@ -139,7 +145,7 @@ jobs:
       - name: Archive debug artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: debug_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
+          name: ${{ env.ARTIFACT_NAME }}-dbg.zip
           path: |
             ./src/**/*.pdb
             ./win32/*.pdb
