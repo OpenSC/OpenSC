@@ -31,7 +31,7 @@ jobs:
           - platform: arm64
             setenv: amd64_arm64
     env:
-      OPENPACE_VER: 1.1.3
+      OPENPACE_VER: 1.1.4
       VCPKG_INSTALLED: ${{ github.workspace }}\vcpkg_installed
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.platform }}-windows-static
       BUILD_NUMBER: ${{ github.run_number }}
