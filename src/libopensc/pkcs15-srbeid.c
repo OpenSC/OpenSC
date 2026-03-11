@@ -35,17 +35,16 @@
 
 /* CardEdge PKI applet AID  (A0 00 00 00 63 50 4B 43 53 2D 31 35) */
 static const u8 AID_PKCS15[] = {
-	0xA0, 0x00, 0x00, 0x00, 0x63,
-	0x50, 0x4B, 0x43, 0x53, 0x2D, 0x31, 0x35
-};
-#define AID_PKCS15_LEN	(sizeof(AID_PKCS15))
+		0xA0, 0x00, 0x00, 0x00, 0x63,
+		0x50, 0x4B, 0x43, 0x53, 0x2D, 0x31, 0x35};
+#define AID_PKCS15_LEN (sizeof(AID_PKCS15))
 
 /* CardEdge cmapfile constants. */
 #define CE_CMAP_RECORD_SIZE	86u
 #define CE_CMAP_FLAGS_OFFSET	80u
-#define CE_CMAP_SIG_SIZE_OFFSET	82u
+#define CE_CMAP_SIG_SIZE_OFFSET 82u
 #define CE_CMAP_KX_SIZE_OFFSET	84u
-#define CE_CMAP_VALID_CONTAINER	0x01u
+#define CE_CMAP_VALID_CONTAINER 0x01u
 #define CE_KEYS_BASE_FID	0x6000u
 #define CE_KEY_KIND_PRIVATE	1u
 #define CE_AT_KEYEXCHANGE	1u
@@ -55,17 +54,15 @@ static const u8 AID_PKCS15[] = {
 #define CE_DIR_ENTRY_SIZE	12u
 
 /* CardEdge PIN constants */
-#define CE_PIN_REFERENCE	0x80u
-#define CE_PIN_MAX_LENGTH	8u
+#define CE_PIN_REFERENCE  0x80u
+#define CE_PIN_MAX_LENGTH 8u
 
 /* Private key FID formula. */
-static unsigned int ce_private_key_fid(unsigned int cont_idx,
-	unsigned int key_pair_id)
+static unsigned int
+ce_private_key_fid(unsigned int cont_idx,
+		unsigned int key_pair_id)
 {
-	return CE_KEYS_BASE_FID
-		| ((cont_idx    << 4) & 0x0FF0u)
-		| ((key_pair_id << 2) & 0x000Cu)
-		| CE_KEY_KIND_PRIVATE;
+	return CE_KEYS_BASE_FID | ((cont_idx << 4) & 0x0FF0u) | ((key_pair_id << 2) & 0x000Cu) | CE_KEY_KIND_PRIVATE;
 }
 
 /*
@@ -76,8 +73,9 @@ static unsigned int ce_private_key_fid(unsigned int cont_idx,
  * *out_len receives the byte count; caller must free() the buffer.
  * Returns SC_SUCCESS or a negative SC_ERROR_* code.
  */
-static int srbeid_read_file(sc_card_t *card, unsigned int fid,
-	u8 **buf_out, size_t *out_len)
+static int
+srbeid_read_file(sc_card_t *card, unsigned int fid,
+		u8 **buf_out, size_t *out_len)
 {
 	sc_path_t path;
 	sc_file_t *file = NULL;
@@ -90,7 +88,7 @@ static int srbeid_read_file(sc_card_t *card, unsigned int fid,
 	memset(&path, 0, sizeof(path));
 	path.value[0] = (u8)((fid >> 8) & 0xFF);
 	path.value[1] = (u8)(fid & 0xFF);
-	path.len  = 2;
+	path.len = 2;
 	path.type = SC_PATH_TYPE_FILE_ID;
 
 	r = sc_select_file(card, &path, &file);
@@ -122,9 +120,9 @@ static int srbeid_read_file(sc_card_t *card, unsigned int fid,
 
 /* One entry from a CardEdge directory file. */
 typedef struct ce_dir_entry {
-	char     name[9];   /* 8-char name + NUL */
+	char name[9]; /* 8-char name + NUL */
 	unsigned fid;
-	int      is_dir;
+	int is_dir;
 } ce_dir_entry_t;
 
 /*
@@ -137,7 +135,8 @@ typedef struct ce_dir_entry {
  *
  * *entries_out: caller must free().  Returns entry count or -1 on error.
  */
-static int ce_parse_dir(const u8 *data, size_t len, ce_dir_entry_t **entries_out)
+static int
+ce_parse_dir(const u8 *data, size_t len, ce_dir_entry_t **entries_out)
 {
 	size_t count, i;
 	ce_dir_entry_t *entries;
@@ -169,7 +168,7 @@ static int ce_parse_dir(const u8 *data, size_t len, ce_dir_entry_t **entries_out
 		k = 7;
 		while (k >= 0 && (entries[i].name[k] == ' ' || entries[i].name[k] == '\0'))
 			entries[i].name[k--] = '\0';
-		entries[i].fid    = (unsigned)data[off + 8] | ((unsigned)data[off + 9] << 8);
+		entries[i].fid = (unsigned)data[off + 8] | ((unsigned)data[off + 9] << 8);
 		entries[i].is_dir = (data[off + 10] != 0);
 	}
 
@@ -178,17 +177,18 @@ static int ce_parse_dir(const u8 *data, size_t len, ce_dir_entry_t **entries_out
 }
 
 typedef struct cert_entry {
-	char     label[32];
+	char label[32];
 	unsigned cert_fid;
 	unsigned key_fid;
 	unsigned key_size_bits;
 	unsigned cont_id;
-	unsigned key_pair_id;  /* CE_AT_KEYEXCHANGE or CE_AT_SIGNATURE */
+	unsigned key_pair_id; /* CE_AT_KEYEXCHANGE or CE_AT_SIGNATURE */
 } cert_entry_t;
 
 /* Select AID_PKCS15 and enumerate certificates from mscp/cmapfile.
  * *certs_out: caller must free().  Returns cert count or negative error. */
-static int srbeid_enum_certs(sc_card_t *card, cert_entry_t **certs_out)
+static int
+srbeid_enum_certs(sc_card_t *card, cert_entry_t **certs_out)
 {
 	u8 *dir_buf = NULL, *mscp_buf = NULL, *cmap_buf = NULL;
 	size_t dir_len = 0, mscp_len = 0, cmap_len = 0;
@@ -260,28 +260,27 @@ static int srbeid_enum_certs(sc_card_t *card, cert_entry_t **certs_out)
 
 			if (strncmp(e->name, "kxc", 3) == 0) {
 				kp_id = CE_AT_KEYEXCHANGE;
-				lbl   = "Key Exchange Certificate";
+				lbl = "Key Exchange Certificate";
 			} else if (strncmp(e->name, "ksc", 3) == 0) {
 				kp_id = CE_AT_SIGNATURE;
-				lbl   = "Digital Signature Certificate";
+				lbl = "Digital Signature Certificate";
 			} else {
 				continue;
 			}
 
 			if (ncerts >= cap) {
 				cert_entry_t *tmp = realloc(certs,
-					(size_t)(cap * 2) * sizeof(*certs));
+						(size_t)(cap * 2) * sizeof(*certs));
 				if (!tmp) {
 					r = SC_ERROR_OUT_OF_MEMORY;
 					goto out;
 				}
 				certs = tmp;
-				cap  *= 2;
+				cap *= 2;
 			}
 
-			certs[ncerts].cont_id     = (unsigned)(e->name[3] - '0') * 10
-				+ (unsigned)(e->name[4] - '0');
-			certs[ncerts].cert_fid    = e->fid;
+			certs[ncerts].cont_id = (unsigned)(e->name[3] - '0') * 10 + (unsigned)(e->name[4] - '0');
+			certs[ncerts].cert_fid = e->fid;
 			certs[ncerts].key_pair_id = kp_id;
 			snprintf(certs[ncerts].label, sizeof(certs[ncerts].label), "%s", lbl);
 			ncerts++;
@@ -303,15 +302,14 @@ static int srbeid_enum_certs(sc_card_t *card, cert_entry_t **certs_out)
 		unsigned ci = certs[i].cont_id;
 
 		if (cmap_buf && ci < cmap_nrec) {
-			size_t rec  = cmap_offset + (size_t)ci * CE_CMAP_RECORD_SIZE;
-			u8 flags    = cmap_buf[rec + CE_CMAP_FLAGS_OFFSET];
+			size_t rec = cmap_offset + (size_t)ci * CE_CMAP_RECORD_SIZE;
+			u8 flags = cmap_buf[rec + CE_CMAP_FLAGS_OFFSET];
 
 			if (flags & CE_CMAP_VALID_CONTAINER) {
 				size_t sz_off = (certs[i].key_pair_id == CE_AT_KEYEXCHANGE)
-					? rec + CE_CMAP_KX_SIZE_OFFSET
-					: rec + CE_CMAP_SIG_SIZE_OFFSET;
-				unsigned kbits = (unsigned)cmap_buf[sz_off]
-					| ((unsigned)cmap_buf[sz_off + 1] << 8);
+								? rec + CE_CMAP_KX_SIZE_OFFSET
+								: rec + CE_CMAP_SIG_SIZE_OFFSET;
+				unsigned kbits = (unsigned)cmap_buf[sz_off] | ((unsigned)cmap_buf[sz_off + 1] << 8);
 				if (kbits != 0) {
 					certs[i].key_size_bits = kbits;
 					certs[i].key_fid = ce_private_key_fid(ci, certs[i].key_pair_id);
@@ -319,9 +317,9 @@ static int srbeid_enum_certs(sc_card_t *card, cert_entry_t **certs_out)
 			}
 		}
 		sc_log(card->ctx,
-			"srbeid: cert[%d] \"%s\" cert_fid=0x%04x key_fid=0x%04x key_size=%u",
-			i, certs[i].label, certs[i].cert_fid,
-			certs[i].key_fid, certs[i].key_size_bits);
+				"srbeid: cert[%d] \"%s\" cert_fid=0x%04x key_fid=0x%04x key_size=%u",
+				i, certs[i].label, certs[i].cert_fid,
+				certs[i].key_fid, certs[i].key_size_bits);
 	}
 
 	*certs_out = certs;
@@ -346,8 +344,9 @@ out:
  *   [0x01 0x00] [uncompressed len: 2 bytes LE] [zlib data]  — compressed
  *   OR [0x30 ...]                                            — raw DER
  */
-static int srbeid_read_cert_der(sc_card_t *card, unsigned cert_fid,
-	u8 **der_out, size_t *der_len_out)
+static int
+srbeid_read_cert_der(sc_card_t *card, unsigned cert_fid,
+		u8 **der_out, size_t *der_len_out)
 {
 	u8 *raw = NULL;
 	size_t raw_len = 0;
@@ -355,7 +354,7 @@ static int srbeid_read_cert_der(sc_card_t *card, unsigned cert_fid,
 	size_t dlen;
 	int r;
 
-	*der_out     = NULL;
+	*der_out = NULL;
 	*der_len_out = 0;
 
 	r = srbeid_read_file(card, cert_fid, &raw, &raw_len);
@@ -378,13 +377,13 @@ static int srbeid_read_cert_der(sc_card_t *card, unsigned cert_fid,
 		u8 *der = NULL;
 
 		r = sc_decompress_alloc(&der, &uncompressed_len,
-			data + 4, dlen - 4, COMPRESSION_ZLIB);
+				data + 4, dlen - 4, COMPRESSION_ZLIB);
 		if (r != SC_SUCCESS) {
 			sc_log(card->ctx, "srbeid: zlib decompress failed (ret=%d)", r);
 			free(raw);
 			return SC_ERROR_INVALID_DATA;
 		}
-		*der_out     = der;
+		*der_out = der;
 		*der_len_out = uncompressed_len;
 #else
 		sc_log(card->ctx, "srbeid: cert is zlib-compressed but zlib not available");
@@ -399,12 +398,12 @@ static int srbeid_read_cert_der(sc_card_t *card, unsigned cert_fid,
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
 		memcpy(der, data, dlen);
-		*der_out     = der;
+		*der_out = der;
 		*der_len_out = dlen;
 	} else {
 		sc_log(card->ctx,
-			"srbeid: cert FID 0x%04x: unknown format (byte0=0x%02x)",
-			cert_fid, data[0]);
+				"srbeid: cert FID 0x%04x: unknown format (byte0=0x%02x)",
+				cert_fid, data[0]);
 		free(raw);
 		return SC_ERROR_INVALID_DATA;
 	}
@@ -413,11 +412,12 @@ static int srbeid_read_cert_der(sc_card_t *card, unsigned cert_fid,
 	return SC_SUCCESS;
 }
 
-static int sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
+static int
+sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 {
-	sc_card_t    *card = p15card->card;
+	sc_card_t *card = p15card->card;
 	cert_entry_t *certs = NULL;
-	int           ncerts, i, r = SC_SUCCESS;
+	int ncerts, i, r = SC_SUCCESS;
 
 	sc_log(card->ctx, "srbeid: pkcs15 bind");
 
@@ -441,13 +441,12 @@ static int sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 		int pin_tries_left = -1;
 
 		memset(&pin_data, 0, sizeof(pin_data));
-		pin_data.cmd           = SC_PIN_CMD_GET_INFO;
-		pin_data.pin_type      = SC_AC_CHV;
+		pin_data.cmd = SC_PIN_CMD_GET_INFO;
+		pin_data.pin_type = SC_AC_CHV;
 		pin_data.pin_reference = CE_PIN_REFERENCE;
 
 		/* Best-effort: failure to query PIN status is not fatal. */
-		if (sc_pin_cmd(card, &pin_data, &pin_tries_left) >= 0
-				&& pin_tries_left < 0)
+		if (sc_pin_cmd(card, &pin_data, &pin_tries_left) >= 0 && pin_tries_left < 0)
 			pin_tries_left = pin_data.pin1.tries_left;
 		sc_log(card->ctx, "srbeid: PIN tries_left=%d", pin_tries_left);
 
@@ -455,26 +454,24 @@ static int sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 		 * Must be registered before private keys so auth_id links work. */
 		{
 			sc_pkcs15_auth_info_t auth_info;
-			sc_pkcs15_object_t    auth_obj;
+			sc_pkcs15_object_t auth_obj;
 
 			memset(&auth_info, 0, sizeof(auth_info));
-			memset(&auth_obj,  0, sizeof(auth_obj));
+			memset(&auth_obj, 0, sizeof(auth_obj));
 
-			auth_info.auth_type               = SC_PKCS15_PIN_AUTH_TYPE_PIN;
-			auth_info.auth_method             = SC_AC_CHV;
-			auth_info.tries_left              = pin_tries_left;
-			auth_info.attrs.pin.reference     = CE_PIN_REFERENCE;
-			auth_info.attrs.pin.min_length    = 4;
-			auth_info.attrs.pin.max_length    = CE_PIN_MAX_LENGTH;
+			auth_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
+			auth_info.auth_method = SC_AC_CHV;
+			auth_info.tries_left = pin_tries_left;
+			auth_info.attrs.pin.reference = CE_PIN_REFERENCE;
+			auth_info.attrs.pin.min_length = 4;
+			auth_info.attrs.pin.max_length = CE_PIN_MAX_LENGTH;
 			auth_info.attrs.pin.stored_length = CE_PIN_MAX_LENGTH;
-			auth_info.attrs.pin.type          = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
-			auth_info.attrs.pin.pad_char      = 0x00;
-			auth_info.attrs.pin.flags         = SC_PKCS15_PIN_FLAG_INITIALIZED
-				| SC_PKCS15_PIN_FLAG_LOCAL
-				| SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
+			auth_info.attrs.pin.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC;
+			auth_info.attrs.pin.pad_char = 0x00;
+			auth_info.attrs.pin.flags = SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_LOCAL | SC_PKCS15_PIN_FLAG_NEEDS_PADDING;
 			auth_info.path.aid.len = AID_PKCS15_LEN;
 			memcpy(auth_info.path.aid.value, AID_PKCS15, AID_PKCS15_LEN);
-			auth_info.auth_id.len      = 1;
+			auth_info.auth_id.len = 1;
 			auth_info.auth_id.value[0] = 1;
 
 			strncpy(auth_obj.label, "User PIN", sizeof(auth_obj.label) - 1);
@@ -490,24 +487,25 @@ static int sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 	}
 
 	for (i = 0; i < ncerts; i++) {
-		sc_pkcs15_prkey_info_t  key_info;
-		sc_pkcs15_object_t      key_obj;
-		sc_pkcs15_cert_info_t   cert_info;
-		sc_pkcs15_object_t      cert_obj;
-		u8                     *der = NULL;
-		size_t                  der_len = 0;
+		sc_pkcs15_prkey_info_t key_info;
+		sc_pkcs15_object_t key_obj;
+		sc_pkcs15_cert_info_t cert_info;
+		sc_pkcs15_object_t cert_obj;
+		u8 *der = NULL;
+		size_t der_len = 0;
 		int is_kxc = (certs[i].key_pair_id == CE_AT_KEYEXCHANGE);
 
 		/* ---- Private key object ---- */
 		memset(&key_info, 0, sizeof(key_info));
-		memset(&key_obj,  0, sizeof(key_obj));
+		memset(&key_obj, 0, sizeof(key_obj));
 
-		key_info.id.len      = 1;
+		key_info.id.len = 1;
 		key_info.id.value[0] = (u8)(i + 1);
-		key_info.native      = 1;
-		key_info.key_reference  = (int)certs[i].key_fid;
+		key_info.native = 1;
+		key_info.key_reference = (int)certs[i].key_fid;
 		key_info.modulus_length = certs[i].key_size_bits
-			? certs[i].key_size_bits : 2048;
+							  ? certs[i].key_size_bits
+							  : 2048;
 
 		/*
 		 * Key usage flags by type:
@@ -515,14 +513,9 @@ static int sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 		 *   ksc (AT_SIGNATURE)   — digital signature / non-repudiation only
 		 */
 		if (is_kxc) {
-			key_info.usage = SC_PKCS15_PRKEY_USAGE_ENCRYPT
-				| SC_PKCS15_PRKEY_USAGE_DECRYPT
-				| SC_PKCS15_PRKEY_USAGE_WRAP
-				| SC_PKCS15_PRKEY_USAGE_UNWRAP
-				| SC_PKCS15_PRKEY_USAGE_SIGN;
+			key_info.usage = SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_WRAP | SC_PKCS15_PRKEY_USAGE_UNWRAP | SC_PKCS15_PRKEY_USAGE_SIGN;
 		} else {
-			key_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN
-				| SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
+			key_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_NONREPUDIATION;
 		}
 
 		/*
@@ -538,8 +531,8 @@ static int sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 		memcpy(key_info.path.aid.value, AID_PKCS15, AID_PKCS15_LEN);
 
 		strncpy(key_obj.label, certs[i].label, sizeof(key_obj.label) - 1);
-		key_obj.flags            = SC_PKCS15_CO_FLAG_PRIVATE;
-		key_obj.auth_id.len      = 1;
+		key_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
+		key_obj.auth_id.len = 1;
 		key_obj.auth_id.value[0] = 1;
 
 		r = sc_pkcs15emu_add_rsa_prkey(p15card, &key_obj, &key_info);
@@ -555,15 +548,15 @@ static int sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 		}
 
 		memset(&cert_info, 0, sizeof(cert_info));
-		memset(&cert_obj,  0, sizeof(cert_obj));
+		memset(&cert_obj, 0, sizeof(cert_obj));
 
-		cert_info.id.len      = 1;
+		cert_info.id.len = 1;
 		cert_info.id.value[0] = (u8)(i + 1);
-		cert_info.authority   = 0;
+		cert_info.authority = 0;
 
 		/* Store DER directly in the PKCS#15 value buffer. */
-		cert_info.value.value = der;     /* ownership transferred */
-		cert_info.value.len   = der_len;
+		cert_info.value.value = der; /* ownership transferred */
+		cert_info.value.len = der_len;
 
 		strncpy(cert_obj.label, certs[i].label, sizeof(cert_obj.label) - 1);
 
@@ -583,7 +576,8 @@ out:
 	return r;
 }
 
-int sc_pkcs15emu_srbeid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
+int
+sc_pkcs15emu_srbeid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	(void)aid;
 

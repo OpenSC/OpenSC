@@ -33,26 +33,24 @@
 
 /* CardEdge PKI applet AID  (A0 00 00 00 63 50 4B 43 53 2D 31 35) */
 static const u8 AID_PKCS15[] = {
-	0xA0, 0x00, 0x00, 0x00, 0x63,
-	0x50, 0x4B, 0x43, 0x53, 0x2D, 0x31, 0x35
-};
-#define AID_PKCS15_LEN	(sizeof(AID_PKCS15))
+		0xA0, 0x00, 0x00, 0x00, 0x63,
+		0x50, 0x4B, 0x43, 0x53, 0x2D, 0x31, 0x35};
+#define AID_PKCS15_LEN (sizeof(AID_PKCS15))
 
 /* MSE algorithm byte for RSA-2048 PKCS#1 v1.5 */
-#define CE_MSE_ALG_RSA2048	0x02u
+#define CE_MSE_ALG_RSA2048 0x02u
 
 /* Base address of key files: key FID = CE_KEYS_BASE_FID | container/type bits */
-#define CE_KEYS_BASE_FID	0x6000u
+#define CE_KEYS_BASE_FID 0x6000u
 
 static struct sc_card_operations srbeid_ops;
 static const struct sc_card_operations *iso_ops;
 
 static struct sc_card_driver srbeid_drv = {
-	"Serbian CardEdge driver",
-	"srbeid",
-	&srbeid_ops,
-	NULL, 0, NULL
-};
+		"Serbian CardEdge driver",
+		"srbeid",
+		&srbeid_ops,
+		NULL, 0, NULL};
 
 /*
  * ATR table.
@@ -67,11 +65,12 @@ static struct sc_card_driver srbeid_drv = {
  * Apollo 2008 ATR 3B:B9:18 ... is intentionally absent — no CardEdge applet.
  */
 static const struct sc_atr_table srbeid_atrs[] = {
-	{ "3B:FF:94", "FF:FF:FF", "Serbian eID (Gemalto 2014+)", SC_CARD_TYPE_SRBEID_BASE, 0, NULL },
-	{ NULL, NULL, NULL, 0, 0, NULL }
+		{"3B:FF:94", "FF:FF:FF", "Serbian eID (Gemalto 2014+)", SC_CARD_TYPE_SRBEID_BASE, 0, NULL},
+		{NULL,       NULL,	     NULL,			   0,			      0, NULL}
 };
 
-static int srbeid_match_card(sc_card_t *card)
+static int
+srbeid_match_card(sc_card_t *card)
 {
 	/* ATR hit: Gemalto 2014+ Serbian eID (3B:FF:94 ...) */
 	if (_sc_match_atr(card, srbeid_atrs, &card->type) >= 0)
@@ -87,14 +86,15 @@ static int srbeid_match_card(sc_card_t *card)
 	return 0;
 }
 
-static int srbeid_init(sc_card_t *card)
+static int
+srbeid_init(sc_card_t *card)
 {
 	LOG_FUNC_CALLED(card->ctx);
 
 	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 
 	_sc_card_add_rsa_alg(card, 2048,
-		SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
+			SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -110,8 +110,9 @@ static int srbeid_init(sc_card_t *card)
  *
  * DF_NAME (AID) selection is delegated to the ISO layer.
  */
-static int srbeid_select_file(sc_card_t *card, const sc_path_t *in_path,
-	sc_file_t **file_out)
+static int
+srbeid_select_file(sc_card_t *card, const sc_path_t *in_path,
+		sc_file_t **file_out)
 {
 	sc_apdu_t apdu;
 	u8 fci[16];
@@ -125,18 +126,18 @@ static int srbeid_select_file(sc_card_t *card, const sc_path_t *in_path,
 	 * to select the applet before a PIN or key operation. */
 	if (in_path->len == 0 && in_path->aid.len > 0)
 		return iso7816_select_aid(card, in_path->aid.value,
-			in_path->aid.len, NULL, NULL);
+				in_path->aid.len, NULL, NULL);
 
 	if (in_path->len != 2)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x00, 0x00);
-	apdu.data    = in_path->value;
+	apdu.data = in_path->value;
 	apdu.datalen = 2;
-	apdu.lc      = 2;
-	apdu.resp    = fci;
+	apdu.lc = 2;
+	apdu.resp = fci;
 	apdu.resplen = sizeof(fci);
-	apdu.le      = 10;
+	apdu.le = 10;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -151,11 +152,11 @@ static int srbeid_select_file(sc_card_t *card, const sc_path_t *in_path,
 		if (!file)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 
-		file->id   = ((unsigned)in_path->value[0] << 8) | in_path->value[1];
+		file->id = ((unsigned)in_path->value[0] << 8) | in_path->value[1];
 		file->path = *in_path;
 		file->size = ((size_t)fci[2] << 8) | (size_t)fci[3];
 		file->type = SC_FILE_TYPE_WORKING_EF;
-		*file_out  = file;
+		*file_out = file;
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
@@ -174,8 +175,9 @@ static int srbeid_select_file(sc_card_t *card, const sc_path_t *in_path,
  *
  * MSE SET template P2: 0xB6 for signing, 0xB8 for deciphering.
  */
-static int srbeid_set_security_env(sc_card_t *card,
-	const struct sc_security_env *env, int se_num)
+static int
+srbeid_set_security_env(sc_card_t *card,
+		const struct sc_security_env *env, int se_num)
 {
 	sc_apdu_t apdu;
 	u8 mse_data[7];
@@ -188,8 +190,7 @@ static int srbeid_set_security_env(sc_card_t *card,
 
 	/* Extract key FID. */
 	if ((env->flags & SC_SEC_ENV_FILE_REF_PRESENT) && env->file_ref.len >= 2) {
-		key_ref = ((unsigned)env->file_ref.value[0] << 8)
-			| (unsigned)env->file_ref.value[1];
+		key_ref = ((unsigned)env->file_ref.value[0] << 8) | (unsigned)env->file_ref.value[1];
 	} else if ((env->flags & SC_SEC_ENV_KEY_REF_PRESENT) && env->key_ref_len >= 1) {
 		key_ref = CE_KEYS_BASE_FID | (unsigned)env->key_ref[0];
 	} else {
@@ -219,9 +220,9 @@ static int srbeid_set_security_env(sc_card_t *card,
 	mse_data[6] = (u8)(key_ref & 0xFF);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, p2);
-	apdu.data    = mse_data;
+	apdu.data = mse_data;
 	apdu.datalen = sizeof(mse_data);
-	apdu.lc      = sizeof(mse_data);
+	apdu.lc = sizeof(mse_data);
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -239,8 +240,9 @@ static int srbeid_set_security_env(sc_card_t *card,
  * CardEdge uses P2=0x00 (not 0x9A as in ISO 7816-8), so we cannot
  * delegate to iso7816_compute_signature().
  */
-static int srbeid_compute_signature(sc_card_t *card,
-	const u8 *data, size_t datalen, u8 *out, size_t outlen)
+static int
+srbeid_compute_signature(sc_card_t *card,
+		const u8 *data, size_t datalen, u8 *out, size_t outlen)
 {
 	sc_apdu_t apdu;
 	u8 resp[256];
@@ -249,12 +251,12 @@ static int srbeid_compute_signature(sc_card_t *card,
 	LOG_FUNC_CALLED(card->ctx);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x00);
-	apdu.data    = data;
+	apdu.data = data;
 	apdu.datalen = datalen;
-	apdu.lc      = datalen;
-	apdu.resp    = resp;
+	apdu.lc = datalen;
+	apdu.resp = resp;
 	apdu.resplen = sizeof(resp);
-	apdu.le      = 256;
+	apdu.le = 256;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -274,8 +276,9 @@ static int srbeid_compute_signature(sc_card_t *card,
  * CardEdge does not use a padding indicator byte, so we cannot
  * delegate to iso7816_decipher().
  */
-static int srbeid_decipher(sc_card_t *card,
-	const u8 *crgram, size_t crgram_len, u8 *out, size_t outlen)
+static int
+srbeid_decipher(sc_card_t *card,
+		const u8 *crgram, size_t crgram_len, u8 *out, size_t outlen)
 {
 	sc_apdu_t apdu;
 	u8 resp[256];
@@ -284,12 +287,12 @@ static int srbeid_decipher(sc_card_t *card,
 	LOG_FUNC_CALLED(card->ctx);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
-	apdu.data    = crgram;
+	apdu.data = crgram;
 	apdu.datalen = crgram_len;
-	apdu.lc      = crgram_len;
-	apdu.resp    = resp;
+	apdu.lc = crgram_len;
+	apdu.resp = resp;
 	apdu.resplen = sizeof(resp);
-	apdu.le      = 256;
+	apdu.le = 256;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -302,17 +305,18 @@ static int srbeid_decipher(sc_card_t *card,
 	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
-struct sc_card_driver *sc_get_srbeid_driver(void)
+struct sc_card_driver *
+sc_get_srbeid_driver(void)
 {
 	/* Save ISO ops for delegation, then override what we handle. */
 	iso_ops = sc_get_iso7816_driver()->ops;
 	srbeid_ops = *iso_ops;
-	srbeid_ops.match_card           = srbeid_match_card;
-	srbeid_ops.init                 = srbeid_init;
-	srbeid_ops.select_file          = srbeid_select_file;
-	srbeid_ops.set_security_env     = srbeid_set_security_env;
-	srbeid_ops.compute_signature    = srbeid_compute_signature;
-	srbeid_ops.decipher             = srbeid_decipher;
+	srbeid_ops.match_card = srbeid_match_card;
+	srbeid_ops.init = srbeid_init;
+	srbeid_ops.select_file = srbeid_select_file;
+	srbeid_ops.set_security_env = srbeid_set_security_env;
+	srbeid_ops.compute_signature = srbeid_compute_signature;
+	srbeid_ops.decipher = srbeid_decipher;
 
 	return &srbeid_drv;
 }
