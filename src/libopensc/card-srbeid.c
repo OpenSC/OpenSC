@@ -1,11 +1,9 @@
 /*
- * card-srbeid.c: Driver for Serbian eID and PKS Chamber of Commerce cards
- *               using the CardEdge PKI applet.
+ * card-srbeid.c: Driver for Serbian cards using the CardEdge PKI applet.
  *
- * Supported cards:
- *   - Serbian eID Gemalto (2014+)   ATR: 3B:FF:94 ...
- *   - Serbian eID IF2020 Foreigner  (AID-matched)
- *   - PKS Chamber of Commerce card  (AID-matched)
+ * Serbian eID, health insurance, and Chamber of Commerce cards use the
+ * same CardEdge PKCS#15 applet.  Cards are matched either by ATR
+ * (Gemalto 2014+ eID) or by AID selection.
  *
  * Copyright (C) 2026  LibreSCRS contributors
  *
@@ -40,14 +38,6 @@ static const u8 AID_PKCS15[] = {
 };
 #define AID_PKCS15_LEN	(sizeof(AID_PKCS15))
 
-/* Serbian health card (SERVSZK) AID — must be rejected in match_card()
- * to avoid false-positive (health cards also respond to AID_PKCS15). */
-static const u8 AID_SERVSZK[] = {
-	0xF3, 0x81, 0x00, 0x00, 0x02,
-	0x53, 0x45, 0x52, 0x56, 0x53, 0x5A, 0x4B, 0x01
-};
-#define AID_SERVSZK_LEN	(sizeof(AID_SERVSZK))
-
 /* MSE algorithm byte for RSA-2048 PKCS#1 v1.5 */
 #define CE_MSE_ALG_RSA2048	0x02u
 
@@ -58,7 +48,7 @@ static struct sc_card_operations srbeid_ops;
 static const struct sc_card_operations *iso_ops;
 
 static struct sc_card_driver srbeid_drv = {
-	"Serbian eID / CardEdge driver",
+	"Serbian CardEdge driver",
 	"srbeid",
 	&srbeid_ops,
 	NULL, 0, NULL
@@ -71,13 +61,13 @@ static struct sc_card_driver srbeid_drv = {
  * Mask FF:FF:FF matches the first 3 bytes; remaining bytes vary between
  * individual cards and are don't-cares.
  *
- * IF2020 Foreigner and PKS cards have no distinct ATR and are identified
- * via AID selection in match_card().
+ * Other CardEdge cards have no distinct ATR and are identified via AID
+ * selection in match_card().
  *
  * Apollo 2008 ATR 3B:B9:18 ... is intentionally absent — no CardEdge applet.
  */
 static const struct sc_atr_table srbeid_atrs[] = {
-	{ "3B:FF:94", "FF:FF:FF", "Serbian eID (Gemalto 2014+)", SC_CARD_TYPE_SRBEID_GEMALTO, 0, NULL },
+	{ "3B:FF:94", "FF:FF:FF", "Serbian eID (Gemalto 2014+)", SC_CARD_TYPE_SRBEID_BASE, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -87,19 +77,10 @@ static int srbeid_match_card(sc_card_t *card)
 	if (_sc_match_atr(card, srbeid_atrs, &card->type) >= 0)
 		return 1;
 
-	/*
-	 * AID-based match for IF2020 Foreigner and PKS cards.
-	 *
-	 * Health cards (SERVSZK) also accept AID_PKCS15 — reject them first.
-	 */
-	if (iso7816_select_aid(card, AID_SERVSZK, AID_SERVSZK_LEN, NULL, NULL) == SC_SUCCESS) {
-		sc_log(card->ctx, "srbeid: health card detected, not claiming");
-		return 0;
-	}
-
+	/* AID-based match for cards without a distinct ATR. */
 	if (iso7816_select_aid(card, AID_PKCS15, AID_PKCS15_LEN, NULL, NULL) == SC_SUCCESS) {
 		sc_log(card->ctx, "srbeid: CardEdge applet found via AID");
-		card->type = SC_CARD_TYPE_SRBEID_IF2020;
+		card->type = SC_CARD_TYPE_SRBEID_BASE;
 		return 1;
 	}
 

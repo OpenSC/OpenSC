@@ -1,6 +1,6 @@
 /*
- * pkcs15-srbeid.c: PKCS#15 emulation for Serbian eID and PKS cards
- *                 using the CardEdge PKI applet.
+ * pkcs15-srbeid.c: PKCS#15 emulation for Serbian cards using the
+ *                 CardEdge PKI applet.
  *
  * Copyright (C) 2026  LibreSCRS contributors
  *
@@ -26,7 +26,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef ENABLE_ZLIB
 #include "compression.h"
+#endif
 #include "internal.h"
 #include "log.h"
 #include "pkcs15.h"
@@ -137,14 +139,14 @@ typedef struct ce_dir_entry {
  */
 static int ce_parse_dir(const u8 *data, size_t len, ce_dir_entry_t **entries_out)
 {
-	unsigned count, i;
+	size_t count, i;
 	ce_dir_entry_t *entries;
 
 	*entries_out = NULL;
 	if (len < CE_DIR_HEADER_SIZE)
 		return -1;
 
-	count = (unsigned)data[6] | ((unsigned)data[7] << 8);
+	count = (size_t)data[6] | ((size_t)data[7] << 8);
 	if (count == 0)
 		return 0;
 
@@ -153,7 +155,7 @@ static int ce_parse_dir(const u8 *data, size_t len, ce_dir_entry_t **entries_out
 		return -1;
 
 	for (i = 0; i < count; i++) {
-		size_t off = CE_DIR_HEADER_SIZE + (size_t)i * CE_DIR_ENTRY_SIZE;
+		size_t off = CE_DIR_HEADER_SIZE + i * CE_DIR_ENTRY_SIZE;
 		int k;
 
 		if (off + CE_DIR_ENTRY_SIZE > len) {
@@ -371,6 +373,7 @@ static int srbeid_read_cert_der(sc_card_t *card, unsigned cert_fid,
 
 	if (dlen >= 4 && data[0] == 0x01 && data[1] == 0x00) {
 		/* zlib-compressed DER */
+#ifdef ENABLE_ZLIB
 		size_t uncompressed_len = (size_t)data[2] | ((size_t)data[3] << 8);
 		u8 *der = NULL;
 
@@ -383,6 +386,11 @@ static int srbeid_read_cert_der(sc_card_t *card, unsigned cert_fid,
 		}
 		*der_out     = der;
 		*der_len_out = uncompressed_len;
+#else
+		sc_log(card->ctx, "srbeid: cert is zlib-compressed but zlib not available");
+		free(raw);
+		return SC_ERROR_NOT_SUPPORTED;
+#endif
 	} else if (dlen >= 1 && data[0] == 0x30) {
 		/* Uncompressed DER (ASN.1 SEQUENCE tag). */
 		u8 *der = malloc(dlen);
@@ -423,11 +431,9 @@ static int sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 		goto out;
 	}
 
-	/* Set card label. */
-	free(p15card->tokeninfo->label);
-	p15card->tokeninfo->label = strdup("Serbian eID");
-	free(p15card->tokeninfo->manufacturer_id);
-	p15card->tokeninfo->manufacturer_id = strdup("LibreSCRS");
+	/* Set card label and manufacturer. */
+	set_string(&p15card->tokeninfo->label, "Serbian CardEdge");
+	set_string(&p15card->tokeninfo->manufacturer_id, "CardEdge");
 
 	/* Query PIN tries_left via card driver's pin_cmd. */
 	{
@@ -441,7 +447,7 @@ static int sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 
 		/* Best-effort: failure to query PIN status is not fatal. */
 		if (sc_pin_cmd(card, &pin_data, &pin_tries_left) >= 0
-		    && pin_tries_left < 0)
+				&& pin_tries_left < 0)
 			pin_tries_left = pin_data.pin1.tries_left;
 		sc_log(card->ctx, "srbeid: PIN tries_left=%d", pin_tries_left);
 
@@ -581,9 +587,7 @@ int sc_pkcs15emu_srbeid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 {
 	(void)aid;
 
-	if (p15card->card->type != SC_CARD_TYPE_SRBEID_GEMALTO &&
-	    p15card->card->type != SC_CARD_TYPE_SRBEID_IF2020  &&
-	    p15card->card->type != SC_CARD_TYPE_SRBEID_PKS)
+	if (p15card->card->type != SC_CARD_TYPE_SRBEID_BASE)
 		return SC_ERROR_WRONG_CARD;
 
 	return sc_pkcs15emu_srbeid_init(p15card);
