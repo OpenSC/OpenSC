@@ -77,7 +77,7 @@ static int
 srbeid_read_file(sc_card_t *card, unsigned int fid,
 		u8 **buf_out, size_t *out_len)
 {
-	sc_path_t path;
+	sc_path_t path = {0};
 	sc_file_t *file = NULL;
 	u8 *buf;
 	int r;
@@ -85,7 +85,6 @@ srbeid_read_file(sc_card_t *card, unsigned int fid,
 	*buf_out = NULL;
 	*out_len = 0;
 
-	memset(&path, 0, sizeof(path));
 	path.value[0] = (u8)((fid >> 8) & 0xFF);
 	path.value[1] = (u8)(fid & 0xFF);
 	path.len = 2;
@@ -98,6 +97,11 @@ srbeid_read_file(sc_card_t *card, unsigned int fid,
 	if (!file || file->size == 0) {
 		sc_file_free(file);
 		return SC_SUCCESS;
+	}
+
+	if (file->size > 65536) {
+		sc_file_free(file);
+		return SC_ERROR_INVALID_DATA;
 	}
 
 	buf = malloc(file->size);
@@ -149,7 +153,7 @@ ce_parse_dir(const u8 *data, size_t len, ce_dir_entry_t **entries_out)
 	if (count == 0)
 		return 0;
 
-	entries = calloc(count, sizeof(*entries));
+	entries = calloc(count, sizeof(ce_dir_entry_t));
 	if (!entries)
 		return -1;
 
@@ -241,7 +245,7 @@ srbeid_enum_certs(sc_card_t *card, cert_entry_t **certs_out)
 		goto out;
 	}
 
-	certs = calloc((size_t)cap, sizeof(*certs));
+	certs = calloc((size_t)cap, sizeof(cert_entry_t));
 	if (!certs) {
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
@@ -270,7 +274,7 @@ srbeid_enum_certs(sc_card_t *card, cert_entry_t **certs_out)
 
 			if (ncerts >= cap) {
 				cert_entry_t *tmp = realloc(certs,
-						(size_t)(cap * 2) * sizeof(*certs));
+						(size_t)(cap * 2) * sizeof(cert_entry_t));
 				if (!tmp) {
 					r = SC_ERROR_OUT_OF_MEMORY;
 					goto out;
@@ -437,10 +441,9 @@ sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 
 	/* Query PIN tries_left via card driver's pin_cmd. */
 	{
-		struct sc_pin_cmd_data pin_data;
+		struct sc_pin_cmd_data pin_data = {0};
 		int pin_tries_left = -1;
 
-		memset(&pin_data, 0, sizeof(pin_data));
 		pin_data.cmd = SC_PIN_CMD_GET_INFO;
 		pin_data.pin_type = SC_AC_CHV;
 		pin_data.pin_reference = CE_PIN_REFERENCE;
@@ -453,11 +456,8 @@ sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 		/* ---- PIN auth object ----
 		 * Must be registered before private keys so auth_id links work. */
 		{
-			sc_pkcs15_auth_info_t auth_info;
-			sc_pkcs15_object_t auth_obj;
-
-			memset(&auth_info, 0, sizeof(auth_info));
-			memset(&auth_obj, 0, sizeof(auth_obj));
+			sc_pkcs15_auth_info_t auth_info = {0};
+			sc_pkcs15_object_t auth_obj = {0};
 
 			auth_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 			auth_info.auth_method = SC_AC_CHV;
@@ -487,17 +487,15 @@ sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 	}
 
 	for (i = 0; i < ncerts; i++) {
-		sc_pkcs15_prkey_info_t key_info;
-		sc_pkcs15_object_t key_obj;
-		sc_pkcs15_cert_info_t cert_info;
-		sc_pkcs15_object_t cert_obj;
+		sc_pkcs15_prkey_info_t key_info = {0};
+		sc_pkcs15_object_t key_obj = {0};
+		sc_pkcs15_cert_info_t cert_info = {0};
+		sc_pkcs15_object_t cert_obj = {0};
 		u8 *der = NULL;
 		size_t der_len = 0;
 		int is_kxc = (certs[i].key_pair_id == CE_AT_KEYEXCHANGE);
 
 		/* ---- Private key object ---- */
-		memset(&key_info, 0, sizeof(key_info));
-		memset(&key_obj, 0, sizeof(key_obj));
 
 		key_info.id.len = 1;
 		key_info.id.value[0] = (u8)(i + 1);
@@ -509,7 +507,8 @@ sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 
 		/*
 		 * Key usage flags by type:
-		 *   kxc (AT_KEYEXCHANGE) — encryption / key wrapping / decryption
+		 *   kxc (AT_KEYEXCHANGE) — encryption / key wrapping / decryption + signing
+		 *                          (TLS client auth uses the key exchange cert for signing)
 		 *   ksc (AT_SIGNATURE)   — digital signature / non-repudiation only
 		 */
 		if (is_kxc) {
@@ -546,9 +545,6 @@ sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 			sc_log(card->ctx, "srbeid: could not read cert[%d] DER", i);
 			continue;
 		}
-
-		memset(&cert_info, 0, sizeof(cert_info));
-		memset(&cert_obj, 0, sizeof(cert_obj));
 
 		cert_info.id.len = 1;
 		cert_info.id.value[0] = (u8)(i + 1);
