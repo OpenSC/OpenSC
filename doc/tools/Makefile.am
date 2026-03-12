@@ -14,7 +14,7 @@ endif
 completion_DATA = $(patsubst $(srcdir)/%.1.xml, %, $(wildcard $(srcdir)/*.1.xml))
 
 tools.html: $(srcdir)/tools.xml $(wildcard $(srcdir)/*.1.xml)
-	$(AM_V_GEN)$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/html" --xinclude -o $@ html.xsl $< 2>/dev/null
+	$(AM_V_GEN)$(XSLTPROC) --nonet --path "$(srcdir)/..:$(xslstylesheetsdir)/html" --xinclude -o $(srcdir)/$@ html.xsl $< 2>/dev/null
 
 %.1: $(srcdir)/%.1.xml
 	$(AM_V_GEN)sed -e 's|@pkgdatadir[@]|$(pkgdatadir)|g' < $< \

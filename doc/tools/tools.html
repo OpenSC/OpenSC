@@ -47,7 +47,7 @@ span.errortext {
 		</span></dt><dt><span class="refentrytitle"><a href="#cryptoflex-tool">cryptoflex-tool</a></span><span class="refpurpose"> — utility for manipulating Schlumberger Cryptoflex data structures</span></dt><dt><span class="refentrytitle"><a href="#dnie-tool">dnie-tool</a></span><span class="refpurpose"> — displays information about DNIe based security tokens</span></dt><dt><span class="refentrytitle"><a href="#egk-tool">egk-tool</a></span><span class="refpurpose"> — displays information on the German electronic health card (elektronische Gesundheitskarte, <abbr class="abbrev">eGK</abbr>)
 		</span></dt><dt><span class="refentrytitle"><a href="#eidenv">eidenv</a></span><span class="refpurpose"> — utility for accessing visible data from
 		electronic identity cards</span></dt><dt><span class="refentrytitle"><a href="#gids-tool">gids-tool</a></span><span class="refpurpose"> — smart card utility for GIDS cards</span></dt><dt><span class="refentrytitle"><a href="#cardos-tool">iasecc-tool</a></span><span class="refpurpose"> — displays information about IAS/ECC card
-		</span></dt><dt><span class="refentrytitle"><a href="#netkey-tool">netkey-tool</a></span><span class="refpurpose"> — administrative utility for Netkey E4 cards</span></dt><dt><span class="refentrytitle"><a href="#npa-tool">npa-tool</a></span><span class="refpurpose"> — displays information on the German eID card (neuer Personalausweis, <abbr class="abbrev">nPA</abbr>).
+		</span></dt><dt><span class="refentrytitle"><a href="#netkey-tool">netkey-tool</a></span><span class="refpurpose"> — administrative utility for Netkey E4 cards</span></dt><dt><span class="refentrytitle"><a href="#npa-tool">npa-tool</a></span><span class="refpurpose"> — displays information of an ID card or ePassport.
 		</span></dt><dt><span class="refentrytitle"><a href="#openpgp-tool">openpgp-tool</a></span><span class="refpurpose"> — utility for accessing visible data OpenPGP smart cards
 		and compatible tokens</span></dt><dt><span class="refentrytitle"><a href="#opensc-asn1">opensc-asn1</a></span><span class="refpurpose"> — parse ASN.1 data
 		</span></dt><dt><span class="refentrytitle"><a href="#opensc-explorer">opensc-explorer</a></span><span class="refpurpose"> — 
@@ -459,15 +459,17 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
     </p></div><div class="refsect1"><a name="id-1.9.8"></a><h2>See also</h2><p>
       <span class="citerefentry"><span class="refentrytitle">opensc-explorer</span>(1)</span>
     </p></div><div class="refsect1"><a name="id-1.9.9"></a><h2>Authors</h2><p><span class="command"><strong>netkey-tool</strong></span> was written by
-    Peter Koch <code class="email">&lt;<a class="email" href="mailto:pk_opensc@web.de">pk_opensc@web.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="npa-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>npa-tool — displays information on the German eID card (neuer Personalausweis, <abbr class="abbrev">nPA</abbr>).
+    Peter Koch <code class="email">&lt;<a class="email" href="mailto:pk_opensc@web.de">pk_opensc@web.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="npa-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>npa-tool — displays information of an ID card or ePassport.
 		</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">npa-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.10.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>npa-tool</strong></span> utility is used to display information
-			stored on the German eID card (neuer Personalausweis, <abbr class="abbrev">nPA</abbr>),
-			and to perform some write and verification operations.
+            stored on an ID card or on a passport and to perform some write and
+            verification operations.
 		</p><p>
 			Extended Access Control version 2 is performed according to ICAO Doc
-			9303 or BSI TR-03110 so that other identity cards and machine
-			readable travel documents (MRTDs) may be read as well.
+            9303 or BSI TR-03110 so that an ICAO compliant machine readable
+			travel document (<abbr class="abbrev">MRTD</abbr>) as well as EAC compliant ID
+			cards, for example the German ID card (neuer Personalausweis,
+			<abbr class="abbrev">nPA</abbr>), may be read.
 		</p></div><div class="refsect1"><a name="id-1.10.5"></a><h2>Options</h2><p>
 			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 						<code class="option">--help</code>,
@@ -576,17 +578,21 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						(default=off)
 					</p></dd><dt><span class="term"><code class="option">--disable-ca-checks</code></span></dt><dd><p>
 						Disable passive authentication. (default=off)
-					</p></dd></dl></div></div><div class="refsect2"><a name="id-1.10.5.6"></a><h3>Read and write data groups</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--read-dg1</code></span></dt><dd><p>Read data group 1: Document Type.</p></dd><dt><span class="term"><code class="option">--read-dg2</code></span></dt><dd><p>Read data group 2: Issuing State.</p></dd><dt><span class="term"><code class="option">--read-dg3</code></span></dt><dd><p>Read data group 3: Date of Expiry.</p></dd><dt><span class="term"><code class="option">--read-dg4</code></span></dt><dd><p>Read data group 4: Given Name(s).</p></dd><dt><span class="term"><code class="option">--read-dg5</code></span></dt><dd><p>Read data group 5: Family Name.</p></dd><dt><span class="term"><code class="option">--read-dg6</code></span></dt><dd><p>Read data group 6: Religious/Artistic Name.</p></dd><dt><span class="term"><code class="option">--read-dg7</code></span></dt><dd><p>Read data group 7: Academic Title.</p></dd><dt><span class="term"><code class="option">--read-dg8</code></span></dt><dd><p>Read data group 8: Date of Birth.</p></dd><dt><span class="term"><code class="option">--read-dg9</code></span></dt><dd><p>Read data group 9: Place of Birth.</p></dd><dt><span class="term"><code class="option">--read-dg10</code></span></dt><dd><p>Read data group 10: Nationality.</p></dd><dt><span class="term"><code class="option">--read-dg11</code></span></dt><dd><p>Read data group 11: Sex.</p></dd><dt><span class="term"><code class="option">--read-dg12</code></span></dt><dd><p>Read data group 12: Optional Data.</p></dd><dt><span class="term"><code class="option">--read-dg13</code></span></dt><dd><p>Read data group 13: Birth Name.</p></dd><dt><span class="term"><code class="option">--read-dg14</code></span></dt><dd><p>Read data group 14.</p></dd><dt><span class="term"><code class="option">--read-dg15</code></span></dt><dd><p>Read data group 15.</p></dd><dt><span class="term"><code class="option">--read-dg16</code></span></dt><dd><p>Read data group 16.</p></dd><dt><span class="term"><code class="option">--read-dg17</code></span></dt><dd><p>Read data group 17: Normal Place of Residence.</p></dd><dt><span class="term"><code class="option">--read-dg18</code></span></dt><dd><p>Read data group 18: Community ID.</p></dd><dt><span class="term"><code class="option">--read-dg19</code></span></dt><dd><p>Read data group 19: Residence Permit I.</p></dd><dt><span class="term"><code class="option">--read-dg20</code></span></dt><dd><p>Read data group 20: Residence Permit II.</p></dd><dt><span class="term"><code class="option">--read-dg21</code></span></dt><dd><p>Read data group 21: Optional Data.</p></dd><dt><span class="term">
-					<code class="option">--write-dg17</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 17: Normal Place of Residence.</p></dd><dt><span class="term">
-					<code class="option">--write-dg18</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 18: Community ID.</p></dd><dt><span class="term">
-					<code class="option">--write-dg19</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 19: Residence Permit I.</p></dd><dt><span class="term">
-					<code class="option">--write-dg20</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 20: Residence Permit II.</p></dd><dt><span class="term"><code class="option">--write-dg21</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 21: Optional Data.</p></dd></dl></div></div><div class="refsect2"><a name="id-1.10.5.7"></a><h3>Verification of validity, age and community ID</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--verify-validity</code> <em class="replaceable"><code>YYYYMMDD</code></em></span></dt><dd><p>
+					</p></dd></dl></div></div><div class="refsect2"><a name="id-1.10.5.6"></a><h3>Card application</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--application</code> <em class="replaceable"><code>app</code></em></span></dt><dd><p>
+						What application to select on the card, use <code class="literal">eID</code> for the
+						electronic identification application and <code class="literal">eMRTD</code> for the
+						ePassport application. (default=<code class="literal">eID</code>)
+					</p></dd></dl></div></div><div class="refsect2"><a name="id-1.10.5.7"></a><h3>Read and write data groups</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--read-all-dgs</code></span></dt><dd><p>Read all available data groups.</p></dd><dt><span class="term"><code class="option">--read-dg1</code></span></dt><dd><p>Read data group 1.</p></dd><dt><span class="term"><code class="option">--read-dg2</code></span></dt><dd><p>Read data group 2.</p></dd><dt><span class="term"><code class="option">--read-dg3</code></span></dt><dd><p>Read data group 3.</p></dd><dt><span class="term"><code class="option">--read-dg4</code></span></dt><dd><p>Read data group 4.</p></dd><dt><span class="term"><code class="option">--read-dg5</code></span></dt><dd><p>Read data group 5.</p></dd><dt><span class="term"><code class="option">--read-dg6</code></span></dt><dd><p>Read data group 6.</p></dd><dt><span class="term"><code class="option">--read-dg7</code></span></dt><dd><p>Read data group 7.</p></dd><dt><span class="term"><code class="option">--read-dg8</code></span></dt><dd><p>Read data group 8.</p></dd><dt><span class="term"><code class="option">--read-dg9</code></span></dt><dd><p>Read data group 9.</p></dd><dt><span class="term"><code class="option">--read-dg10</code></span></dt><dd><p>Read data group 10.</p></dd><dt><span class="term"><code class="option">--read-dg11</code></span></dt><dd><p>Read data group 11.</p></dd><dt><span class="term"><code class="option">--read-dg12</code></span></dt><dd><p>Read data group 12.</p></dd><dt><span class="term"><code class="option">--read-dg13</code></span></dt><dd><p>Read data group 13.</p></dd><dt><span class="term"><code class="option">--read-dg14</code></span></dt><dd><p>Read data group 14.</p></dd><dt><span class="term"><code class="option">--read-dg15</code></span></dt><dd><p>Read data group 15.</p></dd><dt><span class="term"><code class="option">--read-dg16</code></span></dt><dd><p>Read data group 16.</p></dd><dt><span class="term"><code class="option">--read-dg17</code></span></dt><dd><p>Read data group 17.</p></dd><dt><span class="term"><code class="option">--read-dg18</code></span></dt><dd><p>Read data group 18.</p></dd><dt><span class="term"><code class="option">--read-dg19</code></span></dt><dd><p>Read data group 19.</p></dd><dt><span class="term"><code class="option">--read-dg20</code></span></dt><dd><p>Read data group 20.</p></dd><dt><span class="term"><code class="option">--read-dg21</code></span></dt><dd><p>Read data group 21.</p></dd><dt><span class="term">
+					<code class="option">--write-dg17</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 17.</p></dd><dt><span class="term">
+					<code class="option">--write-dg18</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 18.</p></dd><dt><span class="term">
+					<code class="option">--write-dg19</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 19.</p></dd><dt><span class="term">
+					<code class="option">--write-dg20</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 20.</p></dd><dt><span class="term"><code class="option">--write-dg21</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>Write data group 21.</p></dd></dl></div></div><div class="refsect2"><a name="id-1.10.5.8"></a><h3>Verification of validity, age and community ID</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--verify-validity</code> <em class="replaceable"><code>YYYYMMDD</code></em></span></dt><dd><p>
 						Verify chip's validity with a reference date.
 					</p></dd><dt><span class="term"><code class="option">--older-than</code> <em class="replaceable"><code>YYYYMMDD</code></em></span></dt><dd><p>
 						Verify age with a reference date.
 					</p></dd><dt><span class="term"><code class="option">--verify-community</code> <em class="replaceable"><code>HEX_STRING</code></em></span></dt><dd><p>
 						Verify community ID with a reference ID.
-					</p></dd></dl></div></div><div class="refsect2"><a name="id-1.10.5.8"></a><h3>Special options, not always useful</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+					</p></dd></dl></div></div><div class="refsect2"><a name="id-1.10.5.9"></a><h3>Special options, not always useful</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 						<code class="option">--break</code>,
 						<code class="option">-b</code>
 					</span></dt><dd><p>
@@ -1336,14 +1342,17 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 		</p></div><div class="refsect1"><a name="id-1.15.6"></a><h2>See also</h2><p>
 			<span class="citerefentry"><span class="refentrytitle">opensc-explorer</span>(1)</span>
 		</p></div><div class="refsect1"><a name="id-1.15.7"></a><h2>Authors</h2><p><span class="command"><strong>opensc-tool</strong></span> was written by
-		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="piv-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>piv-tool — smart card utility for HSPD-12 PIV cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">piv-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.16.4"></a><p>
+		Juha Yrjölä <code class="email">&lt;<a class="email" href="mailto:juha.yrjola@iki.fi">juha.yrjola@iki.fi</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="piv-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>piv-tool — smart card utility for HSPD-12 PIV cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">piv-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.16.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>piv-tool</strong></span> utility can be used from the command line to perform
-			miscellaneous smart card operations on a HSPD-12 PIV smart card as defined in NIST 800-73-3.
-			It is intended for use with test cards only. It can be used to load objects, and generate
+			miscellaneous smart card operations on a HSPD-12 PIV smart card as defined in
+			<a class="ulink" href="https://csrc.nist.gov/pubs/sp/800/73/pt1/5/final" target="_top">
+			NIST SP 800-73-5</a> a multi-part document.
+			
+			It is intended for use with test cards only. It can load objects and generate
 			key pairs, as well as send arbitrary APDU commands to a card after having authenticated
 			to the card using the card key provided by the card vendor.
 		</p></div><div class="refsect1"><a name="id-1.16.5"></a><h2>Options</h2><p>
-			</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+			</p><div class="variablelist"><p class="title"><b>Description</b></p><dl class="variablelist"><dt><span class="term">
 						<code class="option">--serial</code>
 					</span></dt><dd><p>Print the card serial number derived from the CHUID object,
 					if any. Output is in hex byte format.</p></dd><dt><span class="term">
@@ -1365,7 +1374,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					<code class="varname">PIV_EXT_AUTH_KEY</code> must point to either a binary file
 					matching the length of the key or a text file containing
 					the key in the format:
-					<code class="code">XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX</code>
+					<code class="code">XX:XX:XX:XX:XX...</code> 
 					</p></dd><dt><span class="term">
 						<code class="option">--genkey</code> <em class="replaceable"><code>argument</code></em>,
 						<code class="option">-G</code> <em class="replaceable"><code>argument</code></em>
@@ -1373,31 +1382,35 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					The <em class="replaceable"><code>argument</code></em> of the form
 					</p><pre class="synopsis"><em class="replaceable"><code>ref</code></em>:<em class="replaceable"><code>alg</code></em></pre><p>
 					is required, where <em class="replaceable"><code>ref</code></em> is <code class="literal">9A</code>,
-					<code class="literal">9C</code>, <code class="literal">9D</code> or <code class="literal">9E</code> and
-					<em class="replaceable"><code>alg</code></em> is <code class="literal">06</code>,
+					<code class="literal">9C</code>, <code class="literal">9D</code>, <code class="literal">9E</code> and
+					<code class="literal">82</code>-<code class="literal">95</code> for retired keys.
+					<em class="replaceable"><code>alg</code></em> is <code class="literal">05</code>, <code class="literal">06</code>,
 					<code class="literal">07</code>, <code class="literal">11</code> or <code class="literal">14</code>
-					for RSA 1024, RSA 2048,	ECC 256 or ECC 384 respectively. </p></dd><dt><span class="term">
+					for RSA 3072, RSA 1024, RSA 2048, ECC 256 or ECC 384 respectively.
+					Some non standard cards/tokens also support
+					<code class="literal">16</code>, <code class="literal">E0</code>, <code class="literal">E1</code>
+					for RSA 4096, EDDSA 25519 or XEDDSA 25519.
+					</p></dd><dt><span class="term">
 						<code class="option">--object</code> <em class="replaceable"><code>ContainerID</code></em>,
 						<code class="option">-O</code> <em class="replaceable"><code>ContainerID</code></em>
 					</span></dt><dd><p>Load an object onto the card.
-					The <em class="replaceable"><code>ContainerID</code></em> is as defined in NIST 800-73-n
-					without leading <code class="literal">0x</code>. Example: CHUID object is 3000
+					The <em class="replaceable"><code>ContainerID</code></em> is as defined in
+					NIST SP 800-73-5 Part 1  Table 2. "Data Model Containers"
+					(without leading <code class="literal">0x</code>). Example: CHUID object is 3000
 					</p></dd><dt><span class="term">
 						<code class="option">--cert</code> <em class="replaceable"><code>ref</code></em>,
 						<code class="option">-C</code> <em class="replaceable"><code>ref</code></em>
 					</span></dt><dd><p>Load a certificate onto the card.
-					<em class="replaceable"><code>ref</code></em> is <code class="literal">9A</code>,
-					<code class="literal">9C</code>, <code class="literal">9D</code> or
-					<code class="literal">9E</code></p></dd><dt><span class="term">
+					<em class="replaceable"><code>ref</code></em> as in <code class="option">--genkey</code>
+					</p></dd><dt><span class="term">
 						<code class="option">--compresscert</code> <em class="replaceable"><code>ref</code></em>,
 						<code class="option">-Z</code> <em class="replaceable"><code>ref</code></em>
 					</span></dt><dd><p>Load a certificate that has been gzipped onto the card.
-					<em class="replaceable"><code>ref</code></em> is <code class="literal">9A</code>,
-					<code class="literal">9C</code>, <code class="literal">9D</code> or
-					 <code class="literal">9E</code></p></dd><dt><span class="term">
+					<em class="replaceable"><code>ref</code></em> as in <code class="option">--genkey</code>
+					</p></dd><dt><span class="term">
 						<code class="option">--out</code> <em class="replaceable"><code>file</code></em>,
 						<code class="option">-o</code> <em class="replaceable"><code>file</code></em>
-					</span></dt><dd><p>Output file for any operation that produces output.
+			<span style="color: red">&lt;title&gt;Description&lt;/title&gt;</span>		</span></dt><dd><p>Output file for any operation that produces output.
 					</p></dd><dt><span class="term">
 						<code class="option">--in</code> <em class="replaceable"><code>file</code></em>,
 						<code class="option">-i</code> <em class="replaceable"><code>file</code></em>
@@ -1427,9 +1440,9 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Causes <span class="command"><strong>piv-tool</strong></span> to be more verbose.
 					Specify this flag several times to enable debug output in the opensc
 					library.</p></dd></dl></div><p>
-		</p></div><div class="refsect1"><a name="id-1.16.6"></a><h2>See also</h2><p>
+		</p></div><div class="refsect1"><a name="id-1.16.6"></a><h2>Examples</h2><p>Authenticate to the card and create History Object to use the 20 retired keys</p><p><span class="command"><strong>piv-tool <code class="option">-A</code> <em class="replaceable"><code>argument</code></em> -s "00:DB:3F:FF:0F:5C:03:5F:C1:0C:53:08:C1:01:14:C2:01:00:FE:00"</strong></span></p></div><div class="refsect1"><a name="id-1.16.7"></a><h2>See also</h2><p>
 			<span class="citerefentry"><span class="refentrytitle">opensc-tool</span>(1)</span>
-		</p></div><div class="refsect1"><a name="id-1.16.7"></a><h2>Authors</h2><p><span class="command"><strong>piv-tool</strong></span> was written by
+		</p></div><div class="refsect1"><a name="id-1.16.8"></a><h2>Authors</h2><p><span class="command"><strong>piv-tool</strong></span> was written by
 		Douglas E. Engert <code class="email">&lt;<a class="email" href="mailto:deengert@gmail.com">deengert@gmail.com</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs11-tool"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs11-tool — utility for managing and using PKCS #11 security tokens</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs11-tool</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.17.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>pkcs11-tool</strong></span> utility is used to manage the
 			data objects on smart cards and similar PKCS #11 security tokens.
