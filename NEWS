@@ -1,6 +1,6 @@
 NEWS for OpenSC -- History of user visible changes
 
-# New in 0.27.0; 2026-02-XX
+# New in 0.27.0; 2026-03-XX
 
 ## Security
 * Several uses of potentially uninitialized memory detected by fuzzers
