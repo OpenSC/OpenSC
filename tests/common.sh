@@ -97,10 +97,26 @@ function card_setup() {
 		generate_key "SLH-DSA-SHA2-192S" "12" "SLH-DSA-SHA2-192S" || return 1
 	fi
 
+	# Skip in FIPS mode -- Brainpool curves are not supported
+	if [[ -e "/etc/system-fips" ]]; then
+		return
+	fi
+	if [[ -f "/proc/sys/crypto/fips_enabled" && $(cat /proc/sys/crypto/fips_enabled) == "1" ]]; then
+		return
+	fi
+	if [[ -n "$LIBRESSL_VERSION" ]]; then
+		return
+	fi
+
+	# Generate brainpoolP256r1 Key pair
+	generate_key "EC:brainpoolP256r1" "13" "brainpoolP256r1" || echo "WARNING: brainpoolP256r1 not supported, skipping"
+	# Generate brainpoolP256t1 Key pair
+	generate_key "EC:brainpoolP256t1" "14" "brainpoolP256t1" || echo "WARNING: brainpoolP256t1 not supported, skipping"
+
 }
 
 function card_cleanup() {
 	token_cleanup
-	rm 0{1,2,3,4}.pub
+	rm -f 0{1,2,3,4}.pub 1{3,4}.pub
 	sleep 1
 }
