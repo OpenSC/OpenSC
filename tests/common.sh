@@ -99,10 +99,10 @@ function card_setup() {
 
 	# Skip in FIPS mode -- Brainpool curves are not supported
 	if [[ -e "/etc/system-fips" ]]; then
-	    return
+		return
 	fi
 	if [[ -f "/proc/sys/crypto/fips_enabled" && $(cat /proc/sys/crypto/fips_enabled) == "1" ]]; then
-	    return
+		return
 	fi
 
 	# Generate brainpoolP256r1 Key pair
