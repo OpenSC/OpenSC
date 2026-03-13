@@ -121,7 +121,7 @@ static void print_openssl_error(void)
 
 static int verify_pin(sc_card_t *card, int pin_reference, const char *pin_value)
 {
-	int r, tries_left = -1;
+	int r;
 	struct sc_pin_cmd_data data;
 
 	memset(&data, 0, sizeof(data));
@@ -150,14 +150,14 @@ static int verify_pin(sc_card_t *card, int pin_reference, const char *pin_value)
 		data.pin1.len = strlen(pin_value);
 	}
 
-	r = sc_pin_cmd(card, &data, &tries_left);
+	r = sc_pin_cmd(card, &data);
 
 	if (r)
 	{
 		if (r == SC_ERROR_PIN_CODE_INCORRECT)
 		{
-			if (tries_left >= 0)
-				printf("Error %d attempts left.\n", tries_left);
+			if (data.pin1.tries_left >= 0)
+				printf("Error %d attempts left.\n", data.pin1.tries_left);
 			else
 				printf("Wrong pin.\n");
 		}
@@ -174,7 +174,7 @@ static int change_pin(sc_card_t *card,
 		const char *pin_value1,
 		const char *pin_value2)
 {
-	int r, tries_left = -1;
+	int r;
 	struct sc_pin_cmd_data data;
 
 	memset(&data, 0, sizeof(data));
@@ -207,14 +207,14 @@ static int change_pin(sc_card_t *card,
 
 	}
 
-	r = sc_pin_cmd(card, &data, &tries_left);
+	r = sc_pin_cmd(card, &data);
 
 	if (r)
 	{
 		if (r == SC_ERROR_PIN_CODE_INCORRECT)
 		{
-			if (tries_left >= 0)
-				printf("Error %d attempts left.\n", tries_left);
+			if (data.pin1.tries_left >= 0)
+				printf("Error %d attempts left.\n", data.pin1.tries_left);
 			else
 				printf("Wrong pin.\n");
 		}
@@ -232,7 +232,7 @@ static int unlock_pin(sc_card_t *card,
 			const char *puk_value,
 			const char *pin_value)
 {
-	int r, tries_left = -1;
+	int r;
 	struct sc_pin_cmd_data data;
 
 	memset(&data, 0, sizeof(data));
@@ -265,14 +265,14 @@ static int unlock_pin(sc_card_t *card,
 
 	}
 
-	r = sc_pin_cmd(card, &data, &tries_left);
+	r = sc_pin_cmd(card, &data);
 
 	if (r)
 	{
 		if (r == SC_ERROR_PIN_CODE_INCORRECT)
 		{
-			if (tries_left >= 0)
-				printf("Error %d attempts left.\n", tries_left);
+			if (data.pin1.tries_left >= 0)
+				printf("Error %d attempts left.\n", data.pin1.tries_left);
 			else
 				printf("Wrong pin.\n");
 		}

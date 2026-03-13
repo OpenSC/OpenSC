@@ -472,12 +472,12 @@ static int npa_set_security_env(struct sc_card *card,
 }
 
 static int npa_pin_cmd_get_info(struct sc_card *card,
-		struct sc_pin_cmd_data *data, int *tries_left)
+		struct sc_pin_cmd_data *data)
 {
 	int r;
 	u8 pin_reference;
 
-	if (!data || data->pin_type != SC_AC_CHV || !tries_left) {
+	if (!data || data->pin_type != SC_AC_CHV) {
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto err;
 	}
@@ -487,28 +487,25 @@ static int npa_pin_cmd_get_info(struct sc_card *card,
 		case PACE_PIN_ID_CAN:
 		case PACE_PIN_ID_MRZ:
 			/* usually unlimited number of retries */
-			*tries_left = -1;
-			data->pin1.max_tries = -1;
 			data->pin1.tries_left = -1;
+			data->pin1.max_tries = -1;
 			r = SC_SUCCESS;
 			break;
 
 		case PACE_PIN_ID_PUK:
 			/* usually 10 tries */
-			*tries_left = 10;
+			data->pin1.tries_left = 10;
 			data->pin1.max_tries = 10;
 			r = eac_pace_get_tries_left(card,
-					pin_reference, tries_left);
-			data->pin1.tries_left = *tries_left;
+					pin_reference, &data->pin1.tries_left);
 			break;
 
 		case PACE_PIN_ID_PIN:
 			/* usually 3 tries */
-			*tries_left = 3;
+			data->pin1.tries_left = 3;
 			data->pin1.max_tries = 3;
 			r = eac_pace_get_tries_left(card,
-					pin_reference, tries_left);
-			data->pin1.tries_left = *tries_left;
+					pin_reference, &data->pin1.tries_left);
 			break;
 
 		default:
@@ -522,7 +519,7 @@ err:
 
 static int npa_pace_verify(struct sc_card *card,
 		unsigned char pin_reference, struct sc_pin_cmd_pin *pin,
-		const unsigned char *chat, size_t chat_length, int *tries_left)
+		const unsigned char *chat, size_t chat_length)
 {
 	int r;
 	struct establish_pace_channel_input pace_input;
@@ -543,13 +540,11 @@ static int npa_pace_verify(struct sc_card *card,
 
 	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 
-	if (tries_left) {
-		if (pace_output.mse_set_at_sw1 == 0x63
-				&& (pace_output.mse_set_at_sw2 & 0xc0) == 0xc0) {
-			*tries_left = pace_output.mse_set_at_sw2 & 0x0f;
-		} else {
-			*tries_left = -1;
-		}
+	if (pace_output.mse_set_at_sw1 == 0x63
+			&& (pace_output.mse_set_at_sw2 & 0xc0) == 0xc0) {
+		pin->tries_left = pace_output.mse_set_at_sw2 & 0x0f;
+	} else {
+		pin->tries_left = -1;
 	}
 
 	/* resume the PIN if needed */
@@ -579,27 +574,23 @@ static int npa_pace_verify(struct sc_card *card,
 
 			if (r == SC_SUCCESS) {
 				sc_log(card->ctx, "%s resumed.\n", eac_secret_name(pin_reference));
-				if (tries_left) {
-					*tries_left = EAC_MAX_PIN_TRIES;
-				}
+				pin->tries_left = EAC_MAX_PIN_TRIES;
 			} else {
-				if (tries_left) {
-					if (pace_output.mse_set_at_sw1 == 0x63
-							&& (pace_output.mse_set_at_sw2 & 0xc0) == 0xc0) {
-						*tries_left = pace_output.mse_set_at_sw2 & 0x0f;
-					} else {
-						*tries_left = -1;
-					}
+				if (pace_output.mse_set_at_sw1 == 0x63
+						&& (pace_output.mse_set_at_sw2 & 0xc0) == 0xc0) {
+					pin->tries_left = pace_output.mse_set_at_sw2 & 0x0f;
+				} else {
+					pin->tries_left = -1;
 				}
 			}
 		}
 	}
 
-	if (pin_reference == PACE_PIN_ID_PIN && tries_left) {
-	   if (*tries_left == 0) {
+	if (pin_reference == PACE_PIN_ID_PIN) {
+	   if (pin->tries_left == 0) {
 		   sc_log(card->ctx, "%s is suspended and must be resumed.\n",
 				   eac_secret_name(pin_reference));
-	   } else if (*tries_left == 1) {
+	   } else if (pin->tries_left == 1) {
 		   sc_log(card->ctx, "%s is blocked and must be unblocked.\n",
 				   eac_secret_name(pin_reference));
 	   }
@@ -616,7 +607,7 @@ static int npa_pace_verify(struct sc_card *card,
 }
 
 static int npa_standard_pin_cmd(struct sc_card *card,
-		struct sc_pin_cmd_data *data, int *tries_left)
+		struct sc_pin_cmd_data *data)
 {
 	int r;
 	struct sc_card_driver *iso_drv;
@@ -626,7 +617,7 @@ static int npa_standard_pin_cmd(struct sc_card *card,
 	if (!iso_drv || !iso_drv->ops || !iso_drv->ops->pin_cmd) {
 		r = SC_ERROR_INTERNAL;
 	} else {
-		r = iso_drv->ops->pin_cmd(card, data, tries_left);
+		r = iso_drv->ops->pin_cmd(card, data);
 	}
 
 	return r;
@@ -704,7 +695,7 @@ npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
 }
 
 static int npa_pin_cmd(struct sc_card *card,
-		struct sc_pin_cmd_data *data, int *tries_left)
+		struct sc_pin_cmd_data *data)
 {
 	int r;
 
@@ -720,7 +711,7 @@ static int npa_pin_cmd(struct sc_card *card,
 
 	switch (data->cmd) {
 		case SC_PIN_CMD_GET_INFO:
-			r = npa_pin_cmd_get_info(card, data, tries_left);
+			r = npa_pin_cmd_get_info(card, data);
 			if (r != SC_SUCCESS)
 				goto err;
 			break;
@@ -737,7 +728,7 @@ static int npa_pin_cmd(struct sc_card *card,
 			if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT) {
 				/* PUK has not yet been verified */
 				r = npa_pace_verify(card, PACE_PIN_ID_PUK, &(data->pin1), NULL,
-						0, NULL);
+						0);
 				if (r != SC_SUCCESS)
 					goto err;
 			}
@@ -756,7 +747,7 @@ static int npa_pin_cmd(struct sc_card *card,
 				case PACE_PIN_ID_MRZ:
 				case PACE_PIN_ID_PIN:
 					r = npa_pace_verify(card, data->pin_reference,
-							&(data->pin1), NULL, 0, tries_left);
+							&(data->pin1), NULL, 0);
 					if (r != SC_SUCCESS)
 						goto err;
 					break;
@@ -768,7 +759,7 @@ static int npa_pin_cmd(struct sc_card *card,
 					 * unlocked, see npa_init().
 					 *
 					 * Now, verify the QES PIN. */
-					r = npa_standard_pin_cmd(card, data, tries_left);
+					r = npa_standard_pin_cmd(card, data);
 					if (r != SC_SUCCESS)
 						goto err;
 					break;
