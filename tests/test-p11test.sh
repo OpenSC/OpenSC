@@ -54,8 +54,13 @@ if [[ -n "$LIBRESSL_VERSION" ]]; then
 fi
 
 echo "Comparing with $REF_FILE"
-diff -U5 <(filter_log $REF_FILE) <(filter_log $TOKENTYPE.json)
-assert $? "Unexpected results"
+if [[ -e "$REF_FILE" ]]; then
+	diff -U5 <(filter_log $REF_FILE) <(filter_log $TOKENTYPE.json)
+	assert $? "Unexpected results"
+else
+	echo "ERROR: Rerefence file $REF_FILE does not exist!"
+	exit 1
+fi
 
 echo "======================================================="
 echo "Run p11test with PKCS11SPY"
