@@ -72,10 +72,6 @@ function card_setup() {
 	generate_key "EC:secp256r1" "03" "ECC_auth" || return 1
 	# Generate 521b ECC Key pair
 	generate_key "EC:secp521r1" "04" "ECC521" || return 1
-	# Generate brainpoolP256r1 Key pair
-	generate_key "EC:brainpoolP256r1" "13" "brainpoolP256r1" || echo "WARNING: brainpoolP256r1 not supported, skipping"
-	# Generate brainpoolP256t1 Key pair
-	generate_key "EC:brainpoolP256t1" "14" "brainpoolP256t1" || echo "WARNING: brainpoolP256t1 not supported, skipping"
 
 	# Generate an HMAC:SHA256 key
 	$PKCS11_TOOL "${PRIV_ARGS[@]}" --keygen --key-type="GENERIC:64" --label="HMAC-SHA256" --id="05" --usage-sign
@@ -100,6 +96,19 @@ function card_setup() {
 		# Generate SLH-DSA-SHA2-192S Key pair
 		generate_key "SLH-DSA-SHA2-192S" "12" "SLH-DSA-SHA2-192S" || return 1
 	fi
+
+	# Skip in FIPS mode -- Brainpool curves are not supported
+	if [[ -e "/etc/system-fips" ]]; then
+	    return
+	fi
+	if [[ -f "/proc/sys/crypto/fips_enabled" && $(cat /proc/sys/crypto/fips_enabled) == "1" ]]; then
+	    return
+	fi
+
+	# Generate brainpoolP256r1 Key pair
+	generate_key "EC:brainpoolP256r1" "13" "brainpoolP256r1" || echo "WARNING: brainpoolP256r1 not supported, skipping"
+	# Generate brainpoolP256t1 Key pair
+	generate_key "EC:brainpoolP256t1" "14" "brainpoolP256t1" || echo "WARNING: brainpoolP256t1 not supported, skipping"
 
 }
 
