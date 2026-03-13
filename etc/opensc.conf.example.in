@@ -245,6 +245,17 @@ app default {
 		# Environment variables override opensc.conf
 	}
 
+	# JaCarta PKI token and smart card
+	card_driver jacartapki {
+		# 
+		name = "JaCarta PKI";
+
+		# Verify PIN in secure way
+		# yes -- use card challenge encrypted with PIN SHA1 as a key for PIN verification
+		# no  -- send PIN as plain text
+		secure_verify = yes;
+	}
+
 	# In addition to the built-in list of known cards in the
 	# card driver, you can configure a new card for the driver
 	# using the card_atr block. The goal is to centralize
@@ -814,6 +825,14 @@ app default {
 		notify_pin_good_text = "GoID ist entsperrt";
 		notify_pin_bad = "Fingerabdruck bzw. PIN nicht verifiziert";
 		notify_pin_bad_text = "GoID ist gesperrt";
+	}
+
+	# JaCarta PKI token and smart card
+	card_atr 3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:01:00:00:50:00:00:08 {
+		atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:F0:00:F0:FF:F0:0F";
+		driver = "jacartapki";
+		name = "JaCarta PKI";
+		default_transport_pin1 = "31:32:33:34";
 	}
 
 	# Disable PKCS#1 v1.5 padding in HW.
