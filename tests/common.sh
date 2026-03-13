@@ -104,6 +104,9 @@ function card_setup() {
 	if [[ -f "/proc/sys/crypto/fips_enabled" && $(cat /proc/sys/crypto/fips_enabled) == "1" ]]; then
 		return
 	fi
+	if [[ -n "$LIBRESSL_VERSION" ]]; then
+		return
+	fi
 
 	# Generate brainpoolP256r1 Key pair
 	generate_key "EC:brainpoolP256r1" "13" "brainpoolP256r1" || echo "WARNING: brainpoolP256r1 not supported, skipping"
