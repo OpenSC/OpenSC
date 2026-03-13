@@ -148,6 +148,13 @@ static struct ec_curve_info {
 	{"brainpoolP384r1", "1.3.36.3.3.2.8.1.1.11", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0B", 11, 384, 0},
 	{"brainpoolP512r1", "1.3.36.3.3.2.8.1.1.13", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0D", 11, 512, 0},
 
+	{"brainpoolP192t1", "1.3.36.3.3.2.8.1.1.4", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x04", 11, 192, 0},
+	{"brainpoolP224t1", "1.3.36.3.3.2.8.1.1.6", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x06", 11, 224, 0},
+	{"brainpoolP256t1", "1.3.36.3.3.2.8.1.1.8", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x08", 11, 256, 0},
+	{"brainpoolP320t1", "1.3.36.3.3.2.8.1.1.10", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0A", 11, 320, 0},
+	{"brainpoolP384t1", "1.3.36.3.3.2.8.1.1.12", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0C", 11, 384, 0},
+	{"brainpoolP512t1", "1.3.36.3.3.2.8.1.1.14", (unsigned char*)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0E", 11, 512, 0},
+
 	{"secp192k1",		"1.3.132.0.31", (unsigned char*)"\x06\x05\x2B\x81\x04\x00\x1F", 7, 192, 0},
 	{"secp256k1",		"1.3.132.0.10", (unsigned char*)"\x06\x05\x2B\x81\x04\x00\x0A", 7, 256, 0},
 	{"secp521k1",		"1.3.132.0.35", (unsigned char*)"\x06\x05\x2B\x81\x04\x00\x23", 7, 521, 0},

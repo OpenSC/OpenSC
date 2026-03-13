@@ -544,18 +544,6 @@
 		"ECDSA",
 		"YES",
 		""
-	],
-	[
-		"13",
-		"ECDSA",
-		"YES",
-		""
-	],
-	[
-		"14",
-		"ECDSA",
-		"YES",
-		""
 	]],
 	"result": "pass"
 },
@@ -742,42 +730,6 @@
 		"",
 		"",
 		"",
-		""
-	],
-	[
-		"13",
-		"brainpoolP256r1",
-		"EC",
-		"256",
-		"",
-		"YES",
-		"YES",
-		"YES",
-		"YES",
-		"YES",
-		"YES",
-		"",
-		"",
-		"YES",
-		"YES",
-		""
-	],
-	[
-		"14",
-		"brainpoolP256t1",
-		"EC",
-		"256",
-		"",
-		"YES",
-		"YES",
-		"YES",
-		"YES",
-		"YES",
-		"YES",
-		"",
-		"",
-		"YES",
-		"YES",
 		""
 	]],
 	"result": "pass"
@@ -1369,16 +1321,6 @@
 	],
 	[
 		"04",
-		"ECDH1_DERIVE",
-		"YES"
-	],
-	[
-		"13",
-		"ECDH1_DERIVE",
-		"YES"
-	],
-	[
-		"14",
 		"ECDH1_DERIVE",
 		"YES"
 	]],

@@ -49,10 +49,18 @@ fi
 if [[ -e "/etc/system-fips" ]]; then
 	REF_FILE="$SOURCE_PATH/tests/${TOKENTYPE}_fips_ref.json"
 fi
+if [[ -n "$LIBRESSL_VERSION" ]]; then
+	REF_FILE="$SOURCE_PATH/tests/${TOKENTYPE}_libressl_ref.json"
+fi
 
 echo "Comparing with $REF_FILE"
-diff -U5 <(filter_log $REF_FILE) <(filter_log $TOKENTYPE.json)
-assert $? "Unexpected results"
+if [[ -e "$REF_FILE" ]]; then
+	diff -U5 <(filter_log $REF_FILE) <(filter_log $TOKENTYPE.json)
+	assert $? "Unexpected results"
+else
+	echo "ERROR: Rerefence file $REF_FILE does not exist!"
+	exit 1
+fi
 
 echo "======================================================="
 echo "Run p11test with PKCS11SPY"
