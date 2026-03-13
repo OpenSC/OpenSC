@@ -1174,7 +1174,8 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 	slot = session->slot;
-	if (slot == NULL || slot->p11card == NULL || slot->p11card->framework == NULL
+	if (slot == NULL || (slot->p11card == NULL || (slot->p11card->flags & SC_PKCS11_CARD_INVALID))
+			|| slot->p11card->framework == NULL
 			|| slot->p11card->framework->gen_keypair == NULL)
 		rv = CKR_FUNCTION_NOT_SUPPORTED;
 	else {
@@ -1444,7 +1445,8 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	rv = get_session(hSession, &session);
 	if (rv == CKR_OK) {
 		slot = session->slot;
-		if (slot == NULL || slot->p11card == NULL || slot->p11card->framework == NULL
+		if (slot == NULL || (slot->p11card == NULL || (slot->p11card->flags & SC_PKCS11_CARD_INVALID))
+				|| slot->p11card->framework == NULL
 				|| slot->p11card->framework->get_random == NULL)
 			rv = CKR_RANDOM_NO_RNG;
 		else
