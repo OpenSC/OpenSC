@@ -40,8 +40,7 @@ extern struct sc_aid sc_hsm_aid;
 
 void sc_hsm_set_serialnr(sc_card_t *card, char *serial);
 
-
-
+// clang-format off
 static struct ec_curve curves[] = {
 		{
 				{ (unsigned char *) "\x2A\x86\x48\xCE\x3D\x03\x01\x01", 8},	// secp192r1 aka prime192r1
@@ -215,8 +214,7 @@ static struct ec_curve curves[] = {
 				{ NULL, 0}
 		}
 };
-
-
+// clang-format on
 
 #define C_ASN1_CVC_PUBKEY_SIZE 10
 static const struct sc_asn1_entry c_asn1_cvc_pubkey[C_ASN1_CVC_PUBKEY_SIZE] = {
