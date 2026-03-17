@@ -33,6 +33,7 @@ Nightly builds are available by their git hash in branches of [OpenSC/Nightly](h
 # Build and testing status
 
 [![Linux build](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml/badge.svg)](https://github.com/OpenSC/OpenSC/actions/workflows/linux.yml)
+[![Windows build](https://github.com/OpenSC/OpenSC/actions/workflows/windows.yml/badge.svg)](https://github.com/OpenSC/OpenSC/actions/workflows/windows.yml)
 [![OSX build](https://github.com/OpenSC/OpenSC/actions/workflows/macos.yml/badge.svg)](https://github.com/OpenSC/OpenSC/actions/workflows/macos.yml)
 [![AppVeyor CI Build Status](https://ci.appveyor.com/api/projects/status/github/OpenSC/OpenSC?branch=master&svg=true)](https://ci.appveyor.com/project/frankmorgner/opensc/branch/master)
 [![Coverity Scan Status](https://scan.coverity.com/projects/4026/badge.svg)](https://scan.coverity.com/projects/4026)
