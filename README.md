@@ -19,7 +19,8 @@ The [OpenSC Wiki](https://github.com/OpenSC/OpenSC/wiki) includes, among others,
 
 The [latest stable version of OpenSC](https://github.com/OpenSC/OpenSC/releases/latest) is available on Github.  It is available as
 
- * Windows installer for 64 bit and 32 bit programs (`OpenSC*_win64.msi` and `OpenSC*_win32.msi`)
+ * Windows installer for Intel 64 bit and 32 bit programs (`OpenSC*_x64.msi` and `OpenSC*_x86.msi`) and Arm
+   (`OpenSC*_arm64.msi`)
  * macOS installer (`OpenSC*.dmg`)
  * Source code distribution (`opensc*.tar.gz`)
 
