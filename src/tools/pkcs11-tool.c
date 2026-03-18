@@ -7566,9 +7566,6 @@ static int read_object(CK_SESSION_HANDLE session)
 	CK_RV rv;
 	CK_ATTRIBUTE attrs[20];
 	CK_OBJECT_CLASS clazz = opt_object_class;
-#ifdef ENABLE_OPENSSL
-	CK_KEY_TYPE type = CKK_RSA;
-#endif
 	CK_OBJECT_HANDLE obj = CK_INVALID_HANDLE;
 	int nn_attrs = 0;
 	unsigned char *value = NULL, *oid_buf = NULL;
