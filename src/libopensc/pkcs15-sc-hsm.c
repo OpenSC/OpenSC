@@ -838,7 +838,11 @@ int sc_pkcs15emu_sc_hsm_get_curve_oid(sc_cvc_t *cvc, const struct sc_lv_data **o
 	int i;
 
 	for (i = 0; curves[i].oid.value; i++) {
-		if ((curves[i].prime.len == cvc->primeOrModuluslen) && !memcmp(curves[i].prime.value, cvc->primeOrModulus, cvc->primeOrModuluslen)) {
+		if ((curves[i].prime.len == cvc->primeOrModuluslen) &&
+				!memcmp(curves[i].prime.value, cvc->primeOrModulus, cvc->primeOrModuluslen) &&
+				(curves[i].coefficientA.len == cvc->coefficientAorExponentlen) &&
+				!memcmp(curves[i].coefficientA.value,
+						cvc->coefficientAorExponent, cvc->coefficientAorExponentlen)) {
 			*oid = &curves[i].oid;
 			return SC_SUCCESS;
 		}
