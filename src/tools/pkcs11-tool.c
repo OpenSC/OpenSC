@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6467,6 +6468,23 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	}
 }
 
+#define BYTES_PER_LINE 32
+void
+print_hex(const u8 *bin_input, size_t input_size, int separator, bool newline)
+{
+	char out[BYTES_PER_LINE * 3] = {0};
+	size_t out_len = BYTES_PER_LINE * 3;
+	unsigned int n;
+
+	for (n = 0; n < input_size; n += BYTES_PER_LINE) {
+		size_t chunk_len = MIN(input_size - n, BYTES_PER_LINE);
+		const char *indent = n + chunk_len < input_size
+				? "\n              " /* continuation of block */
+				: (newline ? "\n" : ""); /* end of the block */
+		sc_bin_to_hex(bin_input + n, chunk_len, out, out_len, separator);
+		printf("%s%s", out, indent);
+	}
+}
 
 static void
 show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
@@ -6522,28 +6540,14 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			}
 			printf("\n");
 			if (modulus) {
-				unsigned int n;
-
-				printf("  MODULUS:    ");
-				for (n = 0; n < modulus_len; n++) {
-					if (n && (n % 32) == 0)
-						printf("\n              ");
-					printf("%02x", modulus[n]);
-				}
-				printf("\n");
+				printf("  Modulus:    ");
+				print_hex(modulus, modulus_len, 0, true);
 				free(modulus);
 			}
 			public_exponent = getPUBLIC_EXPONENT(sess, obj, &public_exponent_len);
 			if (public_exponent) {
-				unsigned int n;
-
-				printf("  PUBLIC_EXPONENT: ");
-				for (n = 0; n < public_exponent_len; n++) {
-					if (n && (n % 32) == 0)
-						printf("\n              ");
-					printf("%02x", public_exponent[n]);
-				}
-				printf("\n");
+				printf("  Public exponent: ");
+				print_hex(public_exponent, public_exponent_len, ':', true);
 				free(public_exponent);
 			}
 		}
@@ -6567,27 +6571,16 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 
 		oid = getGOSTR3410_PARAMS(sess, obj, &size);
 		if (oid) {
-			unsigned int	n;
-
-			printf("  PARAMS OID: ");
-			for (n = 0; n < size; n++)
-				printf("%02x", oid[n]);
-			printf("\n");
+			printf("  Params OID: ");
+			print_hex(oid, size, ':', true);
 			free(oid);
 		}
 
 		if (pub)   {
 			value = getVALUE(sess, obj, &size);
 			if (value) {
-				unsigned int	n;
-
-				printf("  VALUE:      ");
-				for (n = 0; n < size; n++)   {
-					if (n && (n%32)==0)
-						printf("\n              ");
-					printf("%02x", value[n]);
-				}
-				printf("\n");
+				printf("  Value:      ");
+				print_hex(value, size, 0, true);
 				free(value);
 			}
 		}
@@ -6626,18 +6619,15 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			 * "ECPoint ::= OCTET STRING"
 			 */
 			if (point_bytes && point_size) {
-				printf("  EC_POINT:   ");
-				for (n = 0; n < point_size; n++)
-					printf("%02x", point_bytes[n]);
-				printf("\n");
+				printf("  EC Point:   ");
+				print_hex(point_bytes, point_size, 0, true);
 			}
 
 			if (params_bytes && params_size > 0) {
 				struct sc_object_id oid;
 
-				printf("  EC_PARAMS:  ");
-				for (n = 0; n < params_size; n++)
-					printf("%02x", params_bytes[n]);
+				printf("  EC Params:  ");
+				print_hex(params_bytes, params_size, ':', false);
 
 				if (curve_info) { /* we matched it above, use printable OID */
 					printf(" (\"%s\" OID:\"%s\")\n", curve_info->name, curve_info->oid);
@@ -6692,15 +6682,8 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("\n");
 		value = getVALUE(sess, obj, &size);
 		if (value) {
-			unsigned int    n;
-
-			printf("  VALUE:      ");
-			for (n = 0; n < size; n++)   {
-				if (n && (n%32)==0)
-					printf("\n              ");
-				printf("%02x", value[n]);
-			}
-			printf("\n");
+			printf("  Value:      ");
+			print_hex(value, size, 0, true);
 			free(value);
 		}
 		break;
@@ -6789,15 +6772,8 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		if (pub) {
 			value = getVALUE(sess, obj, &size);
 			if (value) {
-				unsigned int n;
-
-				printf("  VALUE:      ");
-				for (n = 0; n < size; n++) {
-					if (n && (n % 32) == 0)
-						printf("\n              ");
-					printf("%02x", value[n]);
-				}
-				printf("\n");
+				printf("  Value:      ");
+				print_hex(value, size, 0, true);
 				free(value);
 			}
 		}
@@ -6813,12 +6789,8 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 	}
 
 	if ((id = getID(sess, obj, &idsize)) != NULL && idsize) {
-		unsigned int	n;
-
 		printf("  ID:         ");
-		for (n = 0; n < idsize; n++)
-			printf("%02x", id[n]);
-		printf("\n");
+		print_hex(id, idsize, ':', true);
 	}
 
 	printf("  Usage:      ");
@@ -7018,12 +6990,8 @@ static void show_cert(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 #endif /* ENABLE_OPENSSL */
 
 	if ((id = getID(sess, obj, &size)) != NULL && size) {
-		unsigned int	n;
-
 		printf("  ID:         ");
-		for (n = 0; n < size; n++)
-			printf("%02x", id[n]);
-		printf("\n");
+		print_hex(id, size, ':', true);
 	}
 	if ((unique_id = getUNIQUE_ID(sess, obj, NULL)) != NULL) {
 		printf("  Unique ID:  %s\n", unique_id);
@@ -9346,17 +9314,11 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 	failed = data_len != in_len || memcmp(orig_data, data, data_len);
 
 	if (failed) {
-		CK_ULONG n;
-
 		printf("resulting cleartext doesn't match input\n");
 		printf("    Original:");
-		for (n = 0; n < in_len; n++)
-			printf(" %02x", orig_data[n]);
-		printf("\n");
+		print_hex(orig_data, in_len, 0, true);
 		printf("    Decrypted:");
-		for (n = 0; n < data_len; n++)
-			printf(" %02x", data[n]);
-		printf("\n");
+		print_hex(data, data_len, 0, true);
 		return 1;
 	}
 
