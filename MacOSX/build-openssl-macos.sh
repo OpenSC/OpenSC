@@ -9,11 +9,17 @@ while [ $# -gt 0 ]; do
     case "$1" in
         -b|--buildpath)
             BUILDPATH="$2"
-            shift 2
+            if ! shift 2; then
+	    	echo "Error: Missing argument for $1" >&2
+	    	exit 1
+	    fi
             ;;
         -p|--prefix)
             PREFIX="$2"
-            shift 2
+            if ! shift 2; then
+	    	echo "Error: Missing argument for $1" >&2
+	    	exit 1
+	    fi
             ;;
         *)
             echo "Unknown option: $1" >&2
