@@ -197,6 +197,7 @@ CK_RV card_removed(sc_reader_t * reader)
 			/* Save the "card" object */
 			if (slot->p11card)
 				p11card = slot->p11card;
+			slot->flags &= ~SC_PKCS11_SLOT_FLAG_CARD_INVALID;
 			slot_token_removed(slot->id);
 		}
 	}
@@ -210,6 +211,7 @@ CK_RV card_removed(sc_reader_t * reader)
 CK_RV card_detect(sc_reader_t *reader)
 {
 	struct sc_pkcs11_card *p11card = NULL;
+	sc_pkcs11_slot_t *first_slot = NULL;
 	int free_p11card = 0;
 	int rc;
 	CK_RV rv;
@@ -249,9 +251,17 @@ again:
 	for (i=0; i<list_size(&virtual_slots); i++) {
 		sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
 		if (slot->reader == reader) {
+			if (first_slot == NULL)
+				first_slot = slot;
 			p11card = slot->p11card;
 			break;
 		}
+	}
+
+	/* Card present but previously found to be unsupported */
+	if (first_slot != NULL && first_slot->flags & SC_PKCS11_SLOT_FLAG_CARD_INVALID) {
+		sc_log(context, "%s: card present but unsupported (cached)", reader->name);
+		return CKR_TOKEN_NOT_RECOGNIZED;
 	}
 
 	/* Detect the card if it's not known already */
@@ -269,6 +279,8 @@ again:
 		rc = sc_connect_card(reader, &p11card->card);
 		if (rc != SC_SUCCESS) {
 			sc_log(context, "%s: SC connect card error %i", reader->name, rc);
+			if (first_slot != NULL)
+				first_slot->flags |= SC_PKCS11_SLOT_FLAG_CARD_INVALID;
 			rv = sc_to_cryptoki_error(rc, NULL);
 			goto fail;
 		}
