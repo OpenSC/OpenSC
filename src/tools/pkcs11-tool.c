@@ -5460,7 +5460,7 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 			n_pubkey_attr++;
 			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_PARAMETER_SET, &pqc_key.type, sizeof(pqc_key.type));
 			n_pubkey_attr++;
-			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_VALUE, &pqc_key.public.value, pqc_key.public.len);
+			FILL_ATTR(pubkey_templ[n_pubkey_attr], CKA_VALUE, pqc_key.public.value, pqc_key.public.len);
 			n_pubkey_attr++;
 		}
 #if !defined(OPENSSL_NO_EC)
