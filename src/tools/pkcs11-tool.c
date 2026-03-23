@@ -788,8 +788,8 @@ VARATTR_METHOD(MODULUS, CK_BYTE);			/* getMODULUS */
 #ifdef ENABLE_OPENSSL
 VARATTR_METHOD(SUBJECT, unsigned char);			/* getSUBJECT */
 VARATTR_METHOD(SERIAL_NUMBER, unsigned char);	/* getSERIAL_NUMBER */
-VARATTR_METHOD(PUBLIC_EXPONENT, CK_BYTE);		/* getPUBLIC_EXPONENT */
 #endif
+VARATTR_METHOD(PUBLIC_EXPONENT, CK_BYTE);		/* getPUBLIC_EXPONENT */
 VARATTR_METHOD(VALUE, unsigned char);			/* getVALUE */
 VARATTR_METHOD(GOSTR3410_PARAMS, unsigned char);	/* getGOSTR3410_PARAMS */
 VARATTR_METHOD(GOSTR3411_PARAMS, unsigned char);	/* getGOSTR3411_PARAMS */
@@ -6507,11 +6507,45 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			/* uninitialized secret key (type 0) */
 			printf("\n");
 		} else {
-			if (pub)
-				printf("; RSA %lu bits\n",
-						(unsigned long) getMODULUS_BITS(sess, obj));
-			else
-				printf("; RSA \n");
+			unsigned char *modulus = NULL, *public_exponent = NULL;
+			CK_ULONG modulus_len, public_exponent_len;
+			unsigned long modulus_bits = 0;
+
+			printf("; RSA ");
+			modulus = getMODULUS(sess, obj, &modulus_len);
+
+			if (pub && (modulus_bits = getMODULUS_BITS(sess, obj)) != 0) {
+				printf(" %lu bits", modulus_bits);
+			} else if (modulus != NULL) {
+				/* estimate, for private key or missing*/
+				printf(" %lu bits", modulus_len * 8);
+			}
+			printf("\n");
+			if (modulus) {
+				unsigned int n;
+
+				printf("  MODULUS:    ");
+				for (n = 0; n < modulus_len; n++) {
+					if (n && (n % 32) == 0)
+						printf("\n              ");
+					printf("%02x", modulus[n]);
+				}
+				printf("\n");
+				free(modulus);
+			}
+			public_exponent = getPUBLIC_EXPONENT(sess, obj, &public_exponent_len);
+			if (public_exponent) {
+				unsigned int n;
+
+				printf("  PUBLIC_EXPONENT: ");
+				for (n = 0; n < public_exponent_len; n++) {
+					if (n && (n % 32) == 0)
+						printf("\n              ");
+					printf("%02x", public_exponent[n]);
+				}
+				printf("\n");
+				free(public_exponent);
+			}
 		}
 		break;
 	case CKK_GOSTR3410:
