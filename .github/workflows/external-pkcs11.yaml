@@ -23,7 +23,6 @@ env:
     libglib2.0-dev libnss3-dev gnutls-bin libusb-dev libudev-dev flex
     libnss3-tools
     libpcsclite-dev libcmocka-dev libssl-dev zlib1g-dev libreadline-dev softhsm2
-  KRYOPTIC: https://github.com/latchset/kryoptic.git
 
 jobs:
   #######################
@@ -44,8 +43,6 @@ jobs:
         run: .github/setup-fedora.sh kryoptic
       - name: Install OpenSC
         run: .github/build.sh
-      - name: Setup Kryoptic
-        run: .github/setup-kryoptic.sh
       - name: Test with Kryoptic
         run: tests/test-kryoptic.sh
 
@@ -105,7 +102,5 @@ jobs:
         run: .github/setup-fedora.sh kryoptic
       - name: Install OpenSC
         run: .github/build.sh
-      - name: Setup Kryoptic
-        run: .github/setup-kryoptic.sh
       - name: Interoperability tests
         run: tests/test-pkcs11-tool-unwrap-wrap-interoperability-test.sh
