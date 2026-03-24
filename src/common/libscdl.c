@@ -34,6 +34,11 @@ void *sc_dlopen(const char *filename)
 	DWORD flags = PathIsRelativeA(filename) ? 0 : LOAD_WITH_ALTERED_SEARCH_PATH;
 	return (void *)LoadLibraryExA(filename, NULL, flags);
 }
+void *
+sc_dlopen_deep(const char *filename)
+{
+	return sc_dlopen(filename);
+}
 
 void *sc_dlsym(void *handle, const char *symbol)
 {
@@ -69,6 +74,12 @@ int sc_dlclose(void *handle)
 #include <dlfcn.h>
 
 void *sc_dlopen(const char *filename)
+{
+	return dlopen(filename, RTLD_LAZY | RTLD_LOCAL);
+}
+
+void *
+sc_dlopen_deep(const char *filename)
 {
 	return dlopen(filename, RTLD_LAZY | RTLD_LOCAL
 #ifdef RTLD_DEEPBIND
