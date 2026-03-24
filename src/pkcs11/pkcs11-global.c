@@ -60,6 +60,7 @@ sc_context_t *context = NULL;
 struct sc_pkcs11_config sc_pkcs11_conf;
 list_t sessions;
 list_t virtual_slots;
+void *slots_reader_states = NULL;
 #if !defined(_WIN32)
 pid_t initialized_pid = (pid_t)-1;
 #endif
@@ -439,6 +440,9 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	}
 	list_destroy(&virtual_slots);
 
+	sc_wait_for_event(context, 0, NULL, NULL, 0, &slots_reader_states);
+	slots_reader_states = NULL;
+
 	sc_release_context(context);
 	context = NULL;
 
@@ -767,11 +771,11 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 {
 	sc_reader_t *found;
 	unsigned int mask, events;
-	void *reader_states = NULL;
 	CK_SLOT_ID slot_id;
 	CK_RV rv;
 	int r;
 	int timeout;
+	void *event_reader_states = NULL;
 
 	if (pReserved != NULL_PTR)
 		return CKR_ARGUMENTS_BAD;
@@ -792,11 +796,11 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 		timeout = -1;
 
 	do {
-		sc_log(context, "C_WaitForSlotEvent() reader_states:%p", reader_states);
-		r = sc_wait_for_event(context, mask, &found, &events, timeout, &reader_states);
+		sc_log(context, "C_WaitForSlotEvent() event_reader_states:%p", event_reader_states);
+		r = sc_wait_for_event(context, mask, &found, &events, timeout, &event_reader_states);
 		/* Was C_Finalize called ? */
 		if (in_finalize == 1) {
-			sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
+			sc_wait_for_event(context, 0, NULL, NULL, -1, &event_reader_states);
 			return CKR_CRYPTOKI_NOT_INITIALIZED;
 		}
 
@@ -806,7 +810,7 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 			case SC_ERROR_EVENT_TIMEOUT:
 				if (flags & CKF_DONT_BLOCK) {
 					/* no change, no need to check further */
-					sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
+					sc_wait_for_event(context, 0, NULL, NULL, -1, &event_reader_states);
 					return CKR_NO_EVENT;
 				}
 				break;
@@ -817,8 +821,8 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 				sleep(1);
 				/* fall through */
 			case SC_ERROR_READER_DETACHED:
-				/* free the reader_states so that they get reinitialized in the next run */
-				sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
+				/* free the event_reader_states so that they get reinitialized in the next run */
+				sc_wait_for_event(context, 0, NULL, NULL, -1, &event_reader_states);
 				break;
 			default:
 				sc_log(context, "sc_wait_for_event() returned %d\n",  r);
@@ -840,9 +844,9 @@ out:
 		*pSlot = slot_id;
 
 	/* Free allocated readers states holder */
-	if (reader_states)   {
+	if (event_reader_states)   {
 		sc_log(context, "free reader states");
-		sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
+		sc_wait_for_event(context, 0, NULL, NULL, -1, &event_reader_states);
 	}
 
 	SC_LOG_RV("C_WaitForSlotEvent() = %s", rv);

@@ -392,8 +392,23 @@ CK_RV
 card_detect_all(void)
 {
 	unsigned int i, j;
+	sc_reader_t *found;
+	unsigned int mask, events;
 
 	sc_log(context, "Detect all cards");
+
+	/* Detect card and reader events */
+	mask = SC_EVENT_CARD_EVENTS | SC_EVENT_READER_EVENTS;
+	/* check if any event has occurred since last invocation of `card_detect_all()` */
+	int r = sc_wait_for_event(context, mask, &found, &events, 0, &slots_reader_states);
+	if (r == SC_ERROR_EVENT_TIMEOUT)
+		/* no change happened */
+		return CKR_OK;
+
+	/* start with fresh `slots_reader_states` to potentially add new readers */
+	sc_wait_for_event(context, 0, NULL, NULL, -1, &slots_reader_states);
+	sc_wait_for_event(context, mask, &found, &events, 0, &slots_reader_states);
+
 	/* Detect cards in all initialized readers */
 	for (i=0; i< sc_ctx_get_reader_count(context); i++) {
 		sc_reader_t *reader = sc_ctx_get_reader(context, i);

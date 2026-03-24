@@ -395,6 +395,7 @@ extern struct sc_pkcs11_config sc_pkcs11_conf;
 extern list_t sessions;
 extern list_t virtual_slots;
 extern list_t cards;
+extern void *slots_reader_states;
 
 /* Framework definitions */
 extern struct sc_pkcs11_framework_ops framework_pkcs15;
