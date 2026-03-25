@@ -1467,7 +1467,7 @@ static int asn1_encode_p15_object(sc_context_t *ctx, const struct sc_asn1_pkcs15
 		sc_format_asn1_entry(asn1_c_attr + 3, (void *) &p15_obj.user_consent, NULL, 1);
 
 	if (p15_obj.access_rules[0].access_mode)   {
-		for (ii=0; p15_obj.access_rules[ii].access_mode; ii++)   {
+		for (ii = 0; ii < SC_PKCS15_MAX_ACCESS_RULES && p15_obj.access_rules[ii].access_mode; ii++) {
 			access_mode_len = sizeof(p15_obj.access_rules[ii].access_mode);
 			sc_format_asn1_entry(asn1_ac_rule[ii] + 0, (void *) &p15_obj.access_rules[ii].access_mode, &access_mode_len, 1);
 			sc_format_asn1_entry(asn1_ac_rule[ii] + 1, (void *) &p15_obj.access_rules[ii].auth_id, NULL, 1);
