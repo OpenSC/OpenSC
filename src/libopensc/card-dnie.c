@@ -2116,6 +2116,9 @@ static int dnie_pin_verify(struct sc_card *card,
 	if (card->atr.value[15] >= DNIE_30_VERSION) {
 		/* the provider should be prepared for using PIN information */
 		sc_log(card->ctx, "DNIe 3.0 detected doing PIN initialization");
+		/* Tear down any active SM channel first to avoid desynchronization
+		 * when re-establishing SM (e.g. during PIN cache revalidation) */
+		cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_OFF);
 		dnie_change_cwa_provider_to_pin(card);
 	}
 	res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_ON);
