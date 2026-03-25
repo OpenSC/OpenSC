@@ -251,6 +251,12 @@ static int sign(struct sc_pkcs15_object *obj)
 				return 2;
 			}
 
+			if (seqlen > sizeof(out)) {
+				free(seq);
+				fprintf(stderr, "Signature sequence too large\n");
+				return 2;
+			}
+
 			memcpy(out, seq, seqlen);
 			len = seqlen;
 
