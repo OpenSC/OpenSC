@@ -6474,7 +6474,18 @@ print_hex(const u8 *bin_input, size_t input_size, int separator, bool newline)
 {
 	char out[BYTES_PER_LINE * 3] = {0};
 	size_t out_len = BYTES_PER_LINE * 3;
-	unsigned int n;
+	unsigned int dec = 0;
+	unsigned int n, i;
+
+	/* If it is small enough number, convert it to deccimal */
+	if (input_size <= sizeof(unsigned int)) {
+		for (i = 0; i < input_size; i++) {
+			dec = (dec << 8) + (bin_input[i] & 0xff);
+		}
+		if (dec != 0) {
+			printf("%u (0x", dec);
+		}
+	}
 
 	for (n = 0; n < input_size; n += BYTES_PER_LINE) {
 		size_t chunk_len = MIN(input_size - n, BYTES_PER_LINE);
@@ -6482,7 +6493,7 @@ print_hex(const u8 *bin_input, size_t input_size, int separator, bool newline)
 				? "\n              " /* continuation of block */
 				: (newline ? "\n" : ""); /* end of the block */
 		sc_bin_to_hex(bin_input + n, chunk_len, out, out_len, separator);
-		printf("%s%s", out, indent);
+		printf("%s%s%s", out, (dec != 0 ? ")" : ""), indent);
 	}
 }
 
@@ -6546,8 +6557,8 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 			}
 			public_exponent = getPUBLIC_EXPONENT(sess, obj, &public_exponent_len);
 			if (public_exponent) {
-				printf("  Public exponent: ");
-				print_hex(public_exponent, public_exponent_len, ':', true);
+				printf("  Public exp: ");
+				print_hex(public_exponent, public_exponent_len, 0, true);
 				free(public_exponent);
 			}
 		}
