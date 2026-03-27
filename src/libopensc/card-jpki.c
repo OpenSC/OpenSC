@@ -209,7 +209,7 @@ jpki_select_file(struct sc_card *card,
 }
 
 static int
-jpki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+jpki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	int rc;
 	sc_path_t path;
@@ -218,10 +218,6 @@ jpki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	int max_tries = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
-
-	if (tries_left) {
-		*tries_left = -1;
-	}
 
 	switch (data->pin_reference) {
 	case 1:
@@ -274,9 +270,6 @@ jpki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		}
 		data->pin1.logged_in = priv->logged_in;
 		data->pin1.tries_left = apdu.sw2 & 0xF;
-		if (tries_left) {
-			*tries_left = data->pin1.tries_left;
-		}
 		break;
 	default:
 		sc_log(card->ctx, "Card does not support PIN command: %d", data->cmd);
