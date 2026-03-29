@@ -1,0 +1,102 @@
+<!--
+     PKCS #11 Profiles Version 3.1
+     Committee Specification 01
+     14 July 2022
+     Copyright (c) OASIS Open 2022. All Rights Reserved.
+     Source: https://docs.oasis-open.org/pkcs11/pkcs11-profiles/v3.1/cs01/test-cases/
+     Latest version of narrative specification: https://docs.oasis-open.org/pkcs11/pkcs11-profiles/v3.1/pkcs11-profiles-v3.1.html
+     TC IPR Statement: https://www.oasis-open.org/committees/pkcs11/ipr.php
+-->
+<PKCS11>
+  <C_Initialize/>
+  <C_Initialize rv="OK"/>
+  <C_GetInfo/>
+  <C_GetInfo rv="OK">
+    <Info>
+      <CryptokiVersion major="3" minor="1"/>
+      <ManufacturerID value="OASIS PKCS#11 TC                "/>
+      <Flags value="0x0"/>
+      <LibraryDescription value="                                "/>
+      <LibraryVersion major="1" minor="0"/>
+    </Info>
+  </C_GetInfo>
+  <C_GetSlotList>
+    <TokenPresent value="true"/>
+    <SlotList/>
+  </C_GetSlotList>
+  <C_GetSlotList rv="OK">
+    <SlotList length="${SlotList.length}"/>
+  </C_GetSlotList>
+  <C_GetSlotList>
+    <TokenPresent value="true"/>
+    <SlotList length="${SlotList.length}"/>
+  </C_GetSlotList>
+  <C_GetSlotList rv="OK">
+    <SlotList>
+      <SlotID value="${SlotList.SlotID[0]}"/>
+    </SlotList>
+  </C_GetSlotList>
+  <C_GetSlotInfo>
+    <SlotID value="${SlotList.SlotID[0]}"/>
+  </C_GetSlotInfo>
+  <C_GetSlotInfo rv="OK">
+    <Info>
+      <SlotDescription value="OASIS PKCS#11 TC Slot Description                               "/>
+      <ManufacturerID value="OASIS PKCS#11 TC                "/>
+      <Flags value="TOKEN_PRESENT"/>
+      <HardwareVersion major="1" minor="0"/>
+      <FirmwareVersion major="1" minor="0"/>
+    </Info>
+  </C_GetSlotInfo>
+  <C_GetTokenInfo>
+    <SlotID value="${SlotList.SlotID[0]}"/>
+  </C_GetTokenInfo>
+  <C_GetTokenInfo rv="OK">
+    <Info MaxSessionCount="0" SessionCount="0" MaxRwSessionCount="0" RwSessionCount="0" MaxPinLen="255" MinPinLen="4" TotalPublicMemory="0" FreePublicMemory="0" TotalPrivateMemory="0" FreePrivateMemory="0">
+      <label value="token1                          "/>
+      <ManufacturerID value="OASIS PKCS#11 TC                "/>
+      <model value="v3.1            "/>
+      <serialNumber value="0000000000000000"/>
+      <Flags value="RNG|LOGIN_REQUIRED|USER_PIN_INITIALIZED|RESTORE_KEY_NOT_NEEDED|TOKEN_INITIALIZED"/>
+      <HardwareVersion major="1" minor="0"/>
+      <FirmwareVersion major="1" minor="0"/>
+      <utcTime value="2020102811572500"/>
+    </Info>
+  </C_GetTokenInfo>
+  <C_OpenSession>
+    <SlotID value="${SlotList.SlotID[0]}"/>
+    <Flags value="SERIAL_SESSION"/>
+  </C_OpenSession>
+  <C_OpenSession rv="OK">
+    <Session value="${Session}"/>
+  </C_OpenSession>
+  <C_FindObjectsInit>
+    <Session value="${Session}"/>
+    <Template>
+      <Attribute type="TOKEN" value="TRUE"/>
+    </Template>
+  </C_FindObjectsInit>
+  <C_FindObjectsInit rv="OK"/>
+  <C_FindObjects>
+    <Session value="${Session}"/>
+    <Object length="1"/>
+  </C_FindObjects>
+  <C_FindObjects rv="OK">
+    <Object/>
+  </C_FindObjects>
+  <C_FindObjectsFinal>
+    <Session value="${Session}"/>
+  </C_FindObjectsFinal>
+  <C_FindObjectsFinal rv="OK"/>
+  <C_CloseSession>
+    <Session value="${Session}"/>
+  </C_CloseSession>
+  <C_CloseSession rv="OK"/>
+  <C_CloseAllSessions>
+    <SlotID value="${SlotList.SlotID[0]}"/>
+  </C_CloseAllSessions>
+  <C_CloseAllSessions rv="OK"/>
+  <C_Finalize/>
+  <C_Finalize rv="OK"/>
+</PKCS11>
+
