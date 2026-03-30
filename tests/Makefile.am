@@ -24,6 +24,9 @@ AM_TESTS_ENVIRONMENT += \
 endif
 
 dist_noinst_SCRIPTS = common.sh \
+                      init-softhsm.sh \
+                      init-softokn.sh \
+                      init-kryoptic.sh \
                       test-manpage.sh \
                       test-duplicate-symbols.sh \
                       test-fuzzing.sh \
