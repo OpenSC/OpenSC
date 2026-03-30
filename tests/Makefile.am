@@ -53,7 +53,9 @@ TESTS += \
         test-pkcs11-tool-uri-with-slot-id.sh
 if ENABLE_TESTS
 if ENABLE_SHARED
+if ENABLE_CMOCKA
 TESTS += test-p11test.sh
+endif
 endif
 endif
 endif
