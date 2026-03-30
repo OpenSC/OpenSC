@@ -28,7 +28,6 @@ env:
   JAVA_DEPS: |
     ant openjdk-8-jdk maven cmake
   JCARDSIM: https://github.com/Jakuje/jcardsim.git
-  LIBRESSL_VERSION: 4.2.1
 
 jobs:
   build:
@@ -200,6 +199,8 @@ jobs:
   #######################
   build-libressl:
     runs-on: ubuntu-latest
+    env:
+      LIBRESSL_VERSION: 4.2.1
     steps:
       - uses: actions/checkout@v6
       - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
