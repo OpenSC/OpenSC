@@ -41,17 +41,23 @@ jobs:
       - name: Package suffix
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            if [[ "${{ github.ref_type }}" == "tag" && "${{ github.ref_name }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(.+)$ ]]; then
-              SUFFIX="${BASH_REMATCH[1]}"
-            elif [[ "${{ github.ref_name }}" != "master" ]]; then
-              SUFFIX="-${{ github.ref_name }}"
-            fi
-          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             if [[ "${{ github.base_ref }}" == "master" ]]; then
               SUFFIX="-pr${{ github.event.number }}"
             else
               SUFFIX="-${{ github.base_ref }}-pr${{ github.event.number }}"
+            fi
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            if [[ "${{ github.ref_type }}" == "tag" ]]; then
+              if [[ "${{ github.ref_name }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                SUFFIX="" # regular release tag
+              elif [[ "${{ github.ref_name }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(.+)$ ]]; then
+                SUFFIX="${BASH_REMATCH[1]}" # rc release tag
+              else
+                SUFFIX="-${{ github.ref_name }}"
+              fi
+            elif [[ "${{ github.ref_name }}" != "master" ]]; then
+              SUFFIX="-${{ github.ref_name }}"
             fi
           fi
           PACKAGE_SUFFIX="${SUFFIX}${{ matrix.configuration == 'Light' && '-Light' || '' }}"
