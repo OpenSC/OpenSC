@@ -1,6 +1,7 @@
 #!/bin/bash
 ## from OpenSC/src/tests/p11test/runtest.sh
 BUILD_PATH=${BUILD_PATH:-..}
+SOURCE_PATH=${SOURCE_PATH:-..}
 
 TOKENTYPE=$1
 
@@ -14,11 +15,11 @@ export PIN="123456abcdef"
 PKCS11_TOOL="$VALGRIND $BUILD_PATH/src/tools/pkcs11-tool"
 
 if [ "${TOKENTYPE}" == "softhsm" ]; then
-    source "${BUILD_PATH}/tests/init-softhsm.sh"
+    source "${SOURCE_PATH}/tests/init-softhsm.sh"
 elif [ "${TOKENTYPE}" == "softokn" ]; then
-    source "${BUILD_PATH}/tests/init-softokn.sh"
+    source "${SOURCE_PATH}/tests/init-softokn.sh"
 elif [ "${TOKENTYPE}" == "kryoptic" ]; then
-    source "${BUILD_PATH}/tests/init-kryoptic.sh"
+    source "${SOURCE_PATH}/tests/init-kryoptic.sh"
 else
     echo "Unknown token type: $1"
     exit 1
