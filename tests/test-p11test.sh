@@ -38,7 +38,7 @@ function filter_log() {
 	sed -n '/readonly_tests/,$p' $1
 }
 
-REF_FILE="$BUILD_PATH/tests/${TOKENTYPE}_ref.json"
+REF_FILE="$SOURCE_PATH/tests/${TOKENTYPE}_ref.json"
 if [[ "$TOKENTYPE" == "softhsm" ]]; then
 	VERSION=$(softhsm2-util --version)
 	REF_FILE="$SOURCE_PATH/tests/${TOKENTYPE}_${VERSION}_ref.json"
