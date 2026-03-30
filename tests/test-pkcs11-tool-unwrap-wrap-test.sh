@@ -379,7 +379,7 @@ function test_unwrapped_rsa_pkcs_decryption() {
     # Compare plaintexts
     cmp plaintext.data decrypted_plaintext.data >/dev/null 2>/dev/null
     assert $? "RSA decrypted plaintexts do not match"
-    rm plaintext.data decrypted_plaintext.data
+    rm plaintext.data decrypted_plaintext.data ciphertext.data
 }
 
 ID_AES_WRAP="0200"
@@ -467,6 +467,7 @@ fi
 echo "======================================================="
 echo "Cleanup"
 echo "======================================================="
+rm -f aes_kek.key
 token_cleanup
 
 exit $ERRORS
