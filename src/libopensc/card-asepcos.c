@@ -929,15 +929,11 @@ static int asepcos_build_pin_apdu(sc_card_t *card, sc_apdu_t *apdu,
 /* generic function to handle the different PIN operations, i.e verify
  * change and unblock.
  */
-static int asepcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *pdata,
-	int *tries_left)
+static int asepcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *pdata)
 {
 	sc_apdu_t apdu;
 	int r = SC_SUCCESS;
 	u8  sbuf[SC_MAX_APDU_BUFFER_SIZE];
-
-	if (tries_left)
-		*tries_left = -1;
 
 	/* only PIN verification is supported at the moment  */
 
@@ -1025,8 +1021,8 @@ static int asepcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *pdata,
 	/* check for remaining tries if verification failed */
 	if (r == SC_SUCCESS) {
 		if (apdu.sw1 == 0x63) {
-			if ((apdu.sw2 & 0xF0) == 0xC0 && tries_left != NULL)
-				*tries_left = apdu.sw2 & 0x0F;
+			if ((apdu.sw2 & 0xF0) == 0xC0)
+				pdata->pin1.tries_left = apdu.sw2 & 0x0F;
 			r = SC_ERROR_PIN_CODE_INCORRECT;
 			return r;
 		}

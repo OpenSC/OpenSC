@@ -68,7 +68,7 @@ sc_pkcs15emu_din_66291_init(sc_pkcs15_card_t *p15card)
     data.pin_type = SC_AC_CHV;
     data.pin_reference = user_pin_ref;
 
-    if (SC_SUCCESS == sc_pin_cmd(p15card->card, &data, NULL)) {
+    if (SC_SUCCESS == sc_pin_cmd(p15card->card, &data)) {
         const unsigned char user_pin_id = 1;
 
         for (i = 0; i < 2; i++) {

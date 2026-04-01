@@ -274,7 +274,7 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 			pin_cmd_data.cmd = SC_PIN_CMD_GET_INFO;
 			pin_cmd_data.pin_type = pin_info->attrs.pin.type;
 			pin_cmd_data.pin_reference = pin_info->attrs.pin.reference;
-			rv = sc_pin_cmd(p15card->card, &pin_cmd_data, NULL);
+			rv = sc_pin_cmd(p15card->card, &pin_cmd_data);
 			if (rv == SC_SUCCESS) {
 				pin_info->tries_left = pin_cmd_data.pin1.tries_left;
 				pin_info->logged_in = pin_cmd_data.pin1.logged_in;

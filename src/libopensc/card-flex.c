@@ -1160,8 +1160,7 @@ static void flex_init_pin_info(struct sc_pin_cmd_pin *pin, unsigned int num)
 	pin->offset     = 5 + num * 8;
 }
 
-static int flex_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
-			int *tries_left)
+static int flex_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	sc_apdu_t apdu;
 	int r;
@@ -1187,9 +1186,8 @@ static int flex_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 
 	/* According to the Cryptoflex documentation, the card
 	 * does not return the number of attempts left using
-	 * the 63C0xx convention, hence we don't pass the
-	 * tries_left pointer. */
-	r = iso_ops->pin_cmd(card, data, NULL);
+	 * the 63C0xx convention */
+	r = iso_ops->pin_cmd(card, data);
 	if (old_cla != -1)
 		card->cla = old_cla;
 	data->apdu = NULL;

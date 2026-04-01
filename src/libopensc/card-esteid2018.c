@@ -229,7 +229,7 @@ static int esteid_get_pin_remaining_tries(sc_card_t *card, int pin_reference) {
 	return (int)apdu_resp[13];
 }
 
-static int esteid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left) {
+static int esteid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data) {
 	int r;
 	struct sc_pin_cmd_data tmp;
 	LOG_FUNC_CALLED(card->ctx);
@@ -250,7 +250,7 @@ static int esteid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tr
 		tmp.cmd = SC_PIN_CMD_VERIFY;
 		tmp.pin_reference = PUK_REF;
 		tmp.pin2.len = 0;
-		r = iso_ops->pin_cmd(card, &tmp, tries_left);
+		r = iso_ops->pin_cmd(card, &tmp);
 		LOG_TEST_RET(card->ctx, r, "VERIFY during unblock failed");
 
 		if (data->pin_reference == PIN2_REF) {
@@ -260,12 +260,12 @@ static int esteid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tr
 		tmp = *data;
 		tmp.cmd = SC_PIN_CMD_UNBLOCK;
 		tmp.pin1.len = 0;
-		r = iso_ops->pin_cmd(card, &tmp, tries_left);
+		r = iso_ops->pin_cmd(card, &tmp);
 		sc_mem_clear(&tmp, sizeof(tmp));
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
+	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data));
 }
 
 static int esteid_init(sc_card_t *card) {
