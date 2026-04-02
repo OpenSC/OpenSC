@@ -2,7 +2,7 @@
  * pkcs15-srbeid.c: PKCS#15 emulation for Serbian cards using the
  *                 CardEdge PKI applet.
  *
- * Copyright (C) 2026  LibreSCRS contributors
+ * Copyright (C) 2026 LibreSCRS contributors
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -29,15 +29,10 @@
 #ifdef ENABLE_ZLIB
 #include "compression.h"
 #endif
+#include "card-srbeid.h"
 #include "internal.h"
 #include "log.h"
 #include "pkcs15.h"
-
-/* CardEdge PKI applet AID  (A0 00 00 00 63 50 4B 43 53 2D 31 35) */
-static const u8 AID_PKCS15[] = {
-		0xA0, 0x00, 0x00, 0x00, 0x63,
-		0x50, 0x4B, 0x43, 0x53, 0x2D, 0x31, 0x35};
-#define AID_PKCS15_LEN (sizeof(AID_PKCS15))
 
 /* CardEdge cmapfile constants. */
 #define CE_CMAP_RECORD_SIZE	86u
@@ -45,7 +40,6 @@ static const u8 AID_PKCS15[] = {
 #define CE_CMAP_SIG_SIZE_OFFSET 82u
 #define CE_CMAP_KX_SIZE_OFFSET	84u
 #define CE_CMAP_VALID_CONTAINER 0x01u
-#define CE_KEYS_BASE_FID	0x6000u
 #define CE_KEY_KIND_PRIVATE	1u
 #define CE_AT_KEYEXCHANGE	1u
 #define CE_AT_SIGNATURE		2u
