@@ -1,5 +1,5 @@
 project('opensc', 'c',
-        version: '0.26.1',
+        version: '0.27.1',
         license: 'LGPLv2.1+',
         default_options: [
             'b_ndebug=if-release',
@@ -11,7 +11,11 @@ project('opensc', 'c',
 
 modpkgconfig = import('pkgconfig')
 modfs        = import('fs')
+modkeyval    = import('keyval')
 modwindows   = import('windows')
+
+vmk = modkeyval.load('VERSION.mk')
+vmk_version = vmk['PACKAGE_VERSION_MAJOR'] + '.' + vmk['PACKAGE_VERSION_MINOR'] + '.' + vmk['PACKAGE_VERSION_FIX']
 
 all_languages = ['c']
 if host_machine.system() == 'windows'
@@ -36,6 +40,14 @@ elif host_machine.system() == 'darwin'
     extension_of_libraries = 'dylib'
 endif
 
+if meson.get_compiler('c').get_id() == 'msvc'
+    add_project_link_arguments(
+        '/MANIFEST:embed',
+        '/MANIFESTDEPENDENCY:type=\'Win32\' name=\'Microsoft.Windows.Common-Controls\' version=\'6.0.0.0\' processorArchitecture=\'*\' publicKeyToken=\'6595b64144ccf1df\' language=\'*\'',
+        language: ['c', 'cpp']
+    )
+endif
+
 absolute_bindir =     get_option('prefix') / get_option('bindir')
 absolute_libdir =     get_option('prefix') / get_option('libdir')
 absolute_sysconfdir = get_option('prefix') / get_option('sysconfdir')
@@ -48,37 +60,37 @@ absolute_docdir = absolute_datadir / 'doc' / 'opensc'
 # Dependencies and configuration
 #################################################
 conf = configuration_data()
-conf.set_quoted('PACKAGE_NAME', 'OpenSC')
-conf.set_quoted('PACKAGE_VERSION', meson.project_version())
-conf.set_quoted('PACKAGE_BUGREPORT', 'https://github.com/OpenSC/OpenSC/issues')
-conf.set_quoted('PACKAGE_TARNAME', 'opensc')
-conf.set_quoted('PACKAGE_URL', 'https://github.com/OpenSC/OpenSC')
+conf.set_quoted('PACKAGE_NAME', vmk['PRODUCT_NAME'])
+conf.set_quoted('PACKAGE_VERSION', vmk_version)
+conf.set_quoted('PACKAGE_BUGREPORT', vmk['PRODUCT_BUGREPORT'])
+conf.set_quoted('PACKAGE_TARNAME', vmk['PRODUCT_TARNAME'])
+conf.set_quoted('PACKAGE_URL', vmk['PRODUCT_URL'])
 conf.set_quoted('PACKAGE_SUMMARY', '')
 
-conf.set_quoted('OPENSC_VS_FF_COMPANY_NAME', 'OpenSC project')
-conf.set_quoted('OPENSC_VS_FF_COMPANY_URL', 'https://github.com/OpenSC')
-conf.set_quoted('OPENSC_VS_FF_PRODUCT_NAME', 'OpenSC smartcard framework')
-conf.set_quoted('OPENSC_VS_FF_PRODUCT_UPDATES', 'https://github.com/OpenSC/OpenSC/releases')
-conf.set_quoted('OPENSC_VS_FF_PRODUCT_URL', 'https://github.com/OpenSC/OpenSC')
-conf.set_quoted('OPENSC_VS_FF_COMMENTS', 'Provided under the terms of the GNU Lesser General Public License (LGPLv2.1+).')
-conf.set_quoted('OPENSC_VS_FF_LEGAL_COMPANY_NAME', 'OpenSC project')
-conf.set_quoted('OPENSC_VS_FF_LEGAL_COMPANY_URL', 'https://github.com/OpenSC')
-conf.set_quoted('OPENSC_VS_FF_LEGAL_COPYRIGHT', 'OpenSC Project')
+conf.set_quoted('OPENSC_VS_FF_COMPANY_NAME', vmk['VS_FF_LEGAL_COMPANY_NAME'])
+conf.set_quoted('OPENSC_VS_FF_COMPANY_URL', vmk['VS_FF_LEGAL_COMPANY_URL'])
+conf.set_quoted('OPENSC_VS_FF_PRODUCT_NAME', vmk['VS_FF_PRODUCT_NAME'])
+conf.set_quoted('OPENSC_VS_FF_PRODUCT_UPDATES', vmk['VS_FF_PRODUCT_UPDATES'])
+conf.set_quoted('OPENSC_VS_FF_PRODUCT_URL', vmk['PRODUCT_URL'])
+conf.set_quoted('OPENSC_VS_FF_COMMENTS', vmk['VS_FF_COMMENTS'])
+conf.set_quoted('OPENSC_VS_FF_LEGAL_COMPANY_NAME', vmk['VS_FF_LEGAL_COMPANY_NAME'])
+conf.set_quoted('OPENSC_VS_FF_LEGAL_COMPANY_URL', vmk['VS_FF_LEGAL_COMPANY_URL'])
+conf.set_quoted('OPENSC_VS_FF_LEGAL_COPYRIGHT', vmk['VS_FF_LEGAL_COPYRIGHT'])
 
 conf.set_quoted('OPENSC_CONF_PATH', absolute_sysconfdir / 'opensc.conf')
 conf.set_quoted('DEFAULT_SM_MODULE', prefix_of_libraries + 'smm-local.' + extension_of_libraries)
 
-project_version = meson.project_version().split('.')
-conf.set('OPENSC_VERSION_MAJOR', project_version[0])
-conf.set('OPENSC_VERSION_MINOR', project_version[1])
-conf.set('OPENSC_VERSION_FIX',   project_version[2])
-conf.set('OPENSC_VERSION_REVISION', '0')
-conf.set_quoted('OPENSC_SCM_REVISION', meson.project_version())
+conf.set('OPENSC_VERSION_MAJOR',    vmk['PACKAGE_VERSION_MAJOR'])
+conf.set('OPENSC_VERSION_MINOR',    vmk['PACKAGE_VERSION_MINOR'])
+conf.set('OPENSC_VERSION_FIX',      vmk['PACKAGE_VERSION_FIX'])
+conf.set('OPENSC_VERSION_REVISION', vmk['PACKAGE_VERSION_REVISION'])
+conf.set_quoted('OPENSC_SCM_REVISION', vmk_version)
 
 if host_machine.system() == 'windows'
     conf.set_quoted('DEFAULT_PCSC_PROVIDER', 'winscard.dll')
-    conf.set_quoted('SC_PKCS15_PROFILE_DIRECTORY', 'C:\\\\Program Files\\\\OpenSC Project\\\\OpenSC\\\\profiles')
-    conf.set_quoted('DEFAULT_SM_MODULE_PATH', '%PROGRAMFILES%\\\\OpenSC Project\\\\OpenSC\\\\sm')
+    conf.set_quoted('SC_PKCS15_PROFILE_DIRECTORY', '')
+    conf.set_quoted('DEFAULT_SM_MODULE_PATH', '')
+    conf.set_quoted('OPENSC_ARCH_SUFFIX', host_machine.cpu_family() == 'aarch64' ? '_arm64' : '')
     conf.set('PKCS11_REGISTER_SKIP_FIREFOX', 'on')
     conf.set('WIN32_LEAN_AND_MEAN', true)
 
@@ -101,6 +113,10 @@ if meson.get_compiler('c').get_id() == 'msvc'
     conf.set('strcasecmp', 'stricmp')
     conf.set('S_IRUSR', 'S_IREAD')
     conf.set('S_IWUSR', 'S_IWRITE')
+    conf.set('R_OK', 4)
+    conf.set('W_OK', 2)
+    conf.set('X_OK', 1)
+    conf.set('F_OK', 0)
 endif
 
 conf.set('ENABLE_SHARED', get_option('default_library') != 'static')
@@ -125,7 +141,7 @@ if get_option('driver') == 'pcsc'
         conf.set('HAVE_WINSCARD_H', meson.get_compiler('c').has_header('winscard.h', dependencies: deppcsc))
         conf.set('HAVE_PCSCLITE_H', meson.get_compiler('c').has_header('pcsclite.h', dependencies: deppcsc))
     endif
-elif get_option('driver') == 'crypttokenkit'
+elif get_option('driver') == 'cryptotokenkit'
     conf.set('ENABLE_CRYPTOTOKENKIT', true)
     depcryptotokenkit = dependency('appleframeworks', modules: 'CryptoTokenKit')
 
@@ -199,7 +215,7 @@ if get_option('components').contains('pkcs11')
     else
         if get_option('default_library') != 'static'
             if host_machine.system() == 'windows'
-                conf.set_quoted('DEFAULT_PKCS11_PROVIDER', '%PROGRAMFILES%\\\\OpenSC Project\\\\OpenSC\\\\pkcs11\\\\opensc-pkcs11.dll')
+                conf.set_quoted('DEFAULT_PKCS11_PROVIDER', '%PROGRAMFILES%\\\\OpenSC Project\\\\OpenSC' + (host_machine.cpu_family() == 'aarch64' ? '_arm64' : '') + '\\\\pkcs11\\\\opensc-pkcs11.dll')
             else
                 conf.set_quoted('DEFAULT_PKCS11_PROVIDER', absolute_libdir / prefix_of_libraries + 'opensc-pkcs11.' + extension_of_libraries)
             endif
@@ -305,9 +321,9 @@ conf_aux.set('OPENSC_VS_FF_LEGAL_COMPANY_NAME', conf.get_unquoted('OPENSC_VS_FF_
 conf_aux.set('OPENSC_VS_FF_LEGAL_COMPANY_URL',  conf.get_unquoted('OPENSC_VS_FF_LEGAL_COMPANY_URL'))
 conf_aux.set('OPENSC_VS_FF_LEGAL_COPYRIGHT',    conf.get_unquoted('OPENSC_VS_FF_LEGAL_COPYRIGHT'))
 
-conf_aux.set('OPENSC_VERSION_MAJOR', project_version[0])
-conf_aux.set('OPENSC_VERSION_MINOR', project_version[1])
-conf_aux.set('OPENSC_VERSION_FIX',   project_version[2])
+conf_aux.set('OPENSC_VERSION_MAJOR', vmk['PACKAGE_VERSION_MAJOR'])
+conf_aux.set('OPENSC_VERSION_MINOR', vmk['PACKAGE_VERSION_MINOR'])
+conf_aux.set('OPENSC_VERSION_FIX',   vmk['PACKAGE_VERSION_FIX'])
 
 conf_aux.set('OPENSC_VERSION_REVISION', conf.get('OPENSC_VERSION_REVISION'))
 

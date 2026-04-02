@@ -15,9 +15,8 @@ conf_tools.set('VDFORMAT', conf.get('ENABLE_ZLIB')? 'XML' : 'GZIP')
 tools_targets = []
 if host_machine.system() == 'windows' or host_machine.system() == 'cygwin'
     tools_targets += modwindows.compile_resources(
-        'tools.rc',
-        include_directories: core_inc,
-        depend_files: 'tools.manifest'
+        'versioninfo-tools.rc',
+        include_directories: core_inc
     )
 endif
 
@@ -50,7 +49,6 @@ libtool = static_library('tool',
 
 foreach name, sources : {
     'dnie-tool':   files('dnie-tool.c'),
-    'dtrust-tool': files('dtrust-tool.c'),
     'eidenv':      files('eidenv.c'),
     'iasecc-tool': files('iasecc-tool.c')
 }
@@ -98,6 +96,23 @@ executable('egk-tool',
     dependencies: depzlib,
     install: true
 )
+
+foreach name, sources : {
+    'dtrust-tool': files('dtrust-tool.c'),
+    'lteid-tool':  files('lteid-tool.c')
+}
+executable(name,
+    tools_targets,
+    include_directories: core_inc,
+    sources: sources,
+    link_with: [
+        libsmeac,
+        libtool
+    ],
+    dependencies: depopenpace,
+    install: true
+)
+endforeach
 
 executable('goid-tool',
     gengetopt.process(
@@ -186,7 +201,7 @@ endif
 executable('pkcs11-tool',
     tools_targets,
     include_directories: core_inc,
-    sources: files('pkcs11-tool.c'),
+    sources: files('pkcs11-tool.c', 'pkcs11_uri.c'),
     link_with: pkcs11_tool_libraries,
     dependencies: [
         depopenssl,
@@ -248,12 +263,9 @@ if conf.get('ENABLE_NOTIFY')
     opensc_notify_targets = []
     if host_machine.system() == 'windows' or host_machine.system() == 'cygwin'
         opensc_notify_targets += modwindows.compile_resources(
-            'opensc-notify.rc',
+            'versioninfo-opensc-notify.rc',
             include_directories: core_inc,
-            depend_files: [
-                '../../win32/DDORes.dll_14_2302.ico',
-                'tools.manifest'
-            ]
+            depend_files: '../../win32/DDORes.dll_14_2302.ico'
         )
     endif
 

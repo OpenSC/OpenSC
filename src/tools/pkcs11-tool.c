@@ -94,7 +94,7 @@
 #ifdef ENABLE_PKCS11
 #ifndef HAVE_P11KIT
 #ifndef ENABLE_SHARED
-extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
+	extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 #endif
 #endif
 #endif
@@ -104,15 +104,15 @@ extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 #endif
 
 #ifndef MIN
-# define MIN(a, b)	(((a) < (b))? (a) : (b))
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
-#define NEED_SESSION_RO	0x01
-#define NEED_SESSION_RW	0x02
+#define NEED_SESSION_RO 0x01
+#define NEED_SESSION_RW 0x02
 
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
-// clang-format off
+	// clang-format off
 /* EC, Edwards and Montgomery curves understood by pkcs11-tool */
 static struct ec_curve_info {
 	const char *name;	  /* common name of curve */

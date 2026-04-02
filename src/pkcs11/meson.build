@@ -26,15 +26,14 @@ libpkcs11_dependencies = [
 libpkcs11_targets = []
 if host_machine.system() == 'windows' or host_machine.system() == 'cygwin'
     libpkcs11_targets += modwindows.compile_resources(
-        'pkcs11.rc',
-        include_directories: core_inc,
-        depend_files: 'opensc-pkcs11.dll.manifest'
+        'versioninfo-pkcs11.rc',
+        include_directories: core_inc
     )
 endif
 
 libpkcs11_vs_defs = configure_file(
     configuration: {'EXPORTS': modfs.read('pkcs11.exports')},
-    input: 'pkcs11.def.in',
+    input: '../../win32/template.def.in',
     output: 'pkcs11.def'
 )
 
@@ -45,6 +44,7 @@ libpkcs11spy_sources = files(
 )
 
 libpkcs11spy_libraries = [
+    libcompat,
     libpkcs11_common
 ]
 
@@ -56,7 +56,7 @@ libpkcs11spy_dependencies = [
 libpkcs11spy_targets = []
 if host_machine.system() == 'windows' or host_machine.system() == 'cygwin'
     libpkcs11spy_targets += modwindows.compile_resources(
-        'pkcs11-spy.rc'
+        'versioninfo-pkcs11-spy.rc'
     )
 endif
 

@@ -4,12 +4,9 @@ endif
 
 libminidriver = shared_library('opensc-minidriver',
     modwindows.compile_resources(
-        'minidriver.rc',
+        'versioninfo-minidriver.rc',
         include_directories: core_inc,
-        depend_files: [
-            '../../win32/DDORes.dll_14_2302.ico',
-            'opensc-minidriver.dll.manifest'
-        ]
+        depend_files: '../../win32/DDORes.dll_14_2302.ico'
     ),
     include_directories: core_inc,
     sources: files('minidriver.c'),
@@ -23,8 +20,8 @@ libminidriver = shared_library('opensc-minidriver',
         depopenssl
     ],
     vs_module_defs: configure_file(
-        configuration: {'EXPORTS': modfs.read('minidriver.exports')},
-        input: 'minidriver.def.in',
+        configuration: {'EXPORTS': modfs.read('opensc-minidriver.exports')},
+        input: '../../win32/template.def.in',
         output: 'minidriver.def'
     ),
     install: true

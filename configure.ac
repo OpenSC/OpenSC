@@ -1086,6 +1086,9 @@ else
 	enable_minidriver_ca="no"
 fi
 
+AC_DEFINE([QUOTE_HELPER(x)], [#x], [Stringify macro helper])
+AC_DEFINE([QUOTE(x)], [QUOTE_HELPER(x)], [Stringify macro])
+
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MINOR], [${OPENSC_VERSION_MINOR}], [OpenSC version minor component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_FIX], [${OPENSC_VERSION_FIX}], [OpenSC version fix component])

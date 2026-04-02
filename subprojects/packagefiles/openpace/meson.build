@@ -1,5 +1,5 @@
 project('openpace', 'c',
-        version: '1.1.3',
+        version: '1.1.4',
         license: 'GPL-3.0-only',
         default_options: 'c_winlibs=ws2_32.lib',
         meson_version: '>= 1.3.0'

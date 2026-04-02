@@ -23,12 +23,9 @@ jobs:
         run: pacman -S --noconfirm --needed --noprogressbar gengetopt
       - name: Install CPDK
         run: choco install windows-cryptographic-provider-development-kit -y
-      - name: Install Wix 5
-        run: |
-          dotnet tool install --global wix
-          wix extension add -g WixToolset.UI.wixext
-          wix extension add -g WixToolset.Util.wixext
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+      - name: Install WIX
+        run: powershell -ExecutionPolicy Bypass -File .github/setup-wix.ps1
       - name: Setup dev env
         uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -48,7 +45,7 @@ jobs:
           meson compile -C build/ -v
           meson compile -C build/ -v msi
       - name: Archive artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: msi_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
           path: build/*.msi
