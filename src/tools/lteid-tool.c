@@ -153,11 +153,15 @@ input_number(const char *description, size_t min_len, size_t max_len, const char
 	number_len = util_getpass(number, NULL, stdin);
 
 	if (number_len < min_len || number_len > max_len) {
+		free(*number);
+		*number = NULL;
 		return SC_ERROR_INTERNAL;
 	}
 
 	for (size_t i = 0; i < number_len; i++) {
 		if ((*number)[i] < '0' || (*number)[i] > '9') {
+			free(*number);
+			*number = NULL;
 			return SC_ERROR_INTERNAL;
 		}
 	}
@@ -366,6 +370,7 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "CAN code verification failed: %s\n", sc_strerror(rv));
+		free(pin);
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
 
@@ -374,7 +379,7 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 	pace_input.pin_length = strlen(pin);
 
 	rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
-
+	free(pin);
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(rv));
 		return SC_ERROR_PIN_CODE_INCORRECT;
