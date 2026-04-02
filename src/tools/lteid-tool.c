@@ -153,11 +153,15 @@ input_number(const char *description, size_t min_len, size_t max_len, const char
 	number_len = util_getpass(number, NULL, stdin);
 
 	if (number_len < min_len || number_len > max_len) {
+		free(*number);
+		*number = NULL;
 		return SC_ERROR_INTERNAL;
 	}
 
 	for (size_t i = 0; i < number_len; i++) {
 		if ((*number)[i] < '0' || (*number)[i] > '9') {
+			free(*number);
+			*number = NULL;
 			return SC_ERROR_INTERNAL;
 		}
 	}
@@ -180,7 +184,11 @@ verify_and_cache_pace_can(sc_card_t *card, const char *opt_can)
 	}
 
 	sc_format_path("3F00", &path);
-	sc_select_file(card, &path, NULL);
+	rv = sc_select_file(card, &path, NULL);
+	if (rv != SC_SUCCESS) {
+		fprintf(stderr, "Failed to select MF.\n");
+		return rv;
+	}
 
 	struct sc_pin_cmd_data can_verify_cmd = {0};
 	can_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
@@ -228,7 +236,11 @@ change_pin(sc_card_t *card, const char *opt_pin)
 	}
 
 	sc_format_path("3F00", &path);
-	sc_select_file(card, &path, NULL);
+	rv = sc_select_file(card, &path, NULL);
+	if (rv != SC_SUCCESS) {
+		fprintf(stderr, "Failed to select MF.\n");
+		return rv;
+	}
 
 	struct sc_pin_cmd_data pin_verify_cmd = {0};
 	pin_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
@@ -277,7 +289,11 @@ change_pin(sc_card_t *card, const char *opt_pin)
 	}
 
 	sc_format_path("3F00DF02", &path);
-	sc_select_file(card, &path, NULL);
+	rv = sc_select_file(card, &path, NULL);
+	if (rv != SC_SUCCESS) {
+		fprintf(stderr, "Failed to select 3F:00:DF:02.\n");
+		return rv;
+	}
 
 	struct sc_pin_cmd_data qes_pin_cmd = {0};
 	qes_pin_cmd.cmd = SC_PIN_CMD_CHANGE;
@@ -336,7 +352,11 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 	}
 
 	sc_format_path("3F00", &path);
-	sc_select_file(card, &path, NULL);
+	rv = sc_select_file(card, &path, NULL);
+	if (rv != SC_SUCCESS) {
+		fprintf(stderr, "Failed to select MF.\n");
+		return rv;
+	}
 
 	struct sc_pin_cmd_data can_verify_cmd = {0};
 	can_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
@@ -350,6 +370,7 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "CAN code verification failed: %s\n", sc_strerror(rv));
+		free(pin);
 		return SC_ERROR_PIN_CODE_INCORRECT;
 	}
 
@@ -358,7 +379,7 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 	pace_input.pin_length = strlen(pin);
 
 	rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
-
+	free(pin);
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(rv));
 		return SC_ERROR_PIN_CODE_INCORRECT;
@@ -394,7 +415,11 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 	}
 
 	sc_format_path("3F00", &path);
-	sc_select_file(card, &path, NULL);
+	rv = sc_select_file(card, &path, NULL);
+	if (rv != SC_SUCCESS) {
+		fprintf(stderr, "Failed to select MF.\n");
+		return rv;
+	}
 
 	struct sc_pin_cmd_data puk_verify_cmd = {0};
 	puk_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
@@ -431,7 +456,11 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 		qes_pin_cmd.pin_reference = 0x81;
 
 		sc_format_path("3F00DF02", &path);
-		sc_select_file(card, &path, NULL);
+		rv = sc_select_file(card, &path, NULL);
+		if (rv != SC_SUCCESS) {
+			fprintf(stderr, "Failed to select 3F:00:DF:02.\n");
+			return rv;
+		}
 
 		rv = card->ops->pin_cmd(card, &qes_pin_cmd, NULL);
 
