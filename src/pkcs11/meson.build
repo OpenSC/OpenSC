@@ -23,21 +23,11 @@ libpkcs11_dependencies = [
     depthreads
 ]
 
-libpkcs11_targets = []
-if host_machine.system() == 'windows' or host_machine.system() == 'cygwin'
-    libpkcs11_targets += modwindows.compile_resources(
-        'pkcs11.rc',
-        include_directories: core_inc,
-        depend_files: 'opensc-pkcs11.dll.manifest'
-    )
-endif
-
 libpkcs11_vs_defs = configure_file(
     configuration: {'EXPORTS': modfs.read('pkcs11.exports')},
-    input: 'pkcs11.def.in',
+    input: '../../win32/template.def.in',
     output: 'pkcs11.def'
 )
-
 
 libpkcs11spy_sources = files(
     'pkcs11-display.c',
@@ -45,6 +35,7 @@ libpkcs11spy_sources = files(
 )
 
 libpkcs11spy_libraries = [
+    libcompat,
     libpkcs11_common
 ]
 
@@ -53,18 +44,23 @@ libpkcs11spy_dependencies = [
     depthreads
 ]
 
+libpkcs11_targets = []
 libpkcs11spy_targets = []
 if host_machine.system() == 'windows' or host_machine.system() == 'cygwin'
+    libpkcs11_targets += modwindows.compile_resources(
+        'versioninfo-pkcs11.rc',
+        include_directories: core_inc
+    )
     libpkcs11spy_targets += modwindows.compile_resources(
-        'pkcs11-spy.rc'
+        'versioninfo-pkcs11-spy.rc',
+        include_directories: core_inc
     )
 endif
 
 
 if depp11kit.found()
-    libpkcs11 = shared_library('opensc-pkcs11',
+    libpkcs11 = shared_module('opensc-pkcs11',
         libpkcs11_targets,
-        name_prefix: '',
         include_directories: core_inc,
         sources: libpkcs11_sources,
         link_with: libpkcs11_libraries,
@@ -74,13 +70,13 @@ if depp11kit.found()
         install_dir: p11kit_modules_path
     )
 
-    libpkcs11spy = shared_library('pkcs11-spy',
+    libpkcs11spy = shared_module('pkcs11-spy',
         libpkcs11spy_targets,
-        name_prefix: '',
         include_directories: core_inc,
         sources: libpkcs11spy_sources,
         link_with: libpkcs11spy_libraries,
         dependencies: libpkcs11spy_dependencies,
+        vs_module_defs: libpkcs11_vs_defs,
         install: true,
         install_dir: p11kit_modules_path
     )
@@ -100,8 +96,9 @@ if depp11kit.found()
         )
     endif
 else
-    libpkcs11 = library('opensc-pkcs11',
+    libpkcs11 = shared_module('opensc-pkcs11',
         libpkcs11_targets,
+        name_prefix: prefix_of_libraries,
         include_directories: core_inc,
         sources: libpkcs11_sources,
         link_with: libpkcs11_libraries,
@@ -110,12 +107,14 @@ else
         install: true
     )
 
-    libpkcs11spy = library('pkcs11-spy',
+    libpkcs11spy = shared_module('pkcs11-spy',
         libpkcs11spy_targets,
+        name_prefix: prefix_of_libraries,
         include_directories: core_inc,
         sources: libpkcs11spy_sources,
         link_with: libpkcs11spy_libraries,
         dependencies: libpkcs11spy_dependencies,
+        vs_module_defs: libpkcs11_vs_defs,
         install: true
     )
 

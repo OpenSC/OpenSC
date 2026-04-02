@@ -35,6 +35,7 @@
 #include <unistd.h>
 
 static pid_t child = -1;
+void *sc_notify_instance = NULL; // dummy variable to avoid linking issues
 
 void sc_notify_init(void)
 {

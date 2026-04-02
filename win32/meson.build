@@ -9,7 +9,7 @@ if meson.get_compiler('cpp').get_id() == 'msvc'
 
     shared_library('customactions',
         modwindows.compile_resources(
-            'customactions.rc',
+            'versioninfo-customactions.rc',
             include_directories: core_inc
         ),
         include_directories: core_inc,
@@ -17,48 +17,39 @@ if meson.get_compiler('cpp').get_id() == 'msvc'
         dependencies: depwcautil,
         vs_module_defs: configure_file(
             configuration: {'EXPORTS': modfs.read('customactions.exports')},
-            input: 'customactions.def.in',
+            input: 'template.def.in',
             output: 'customactions.def'
         )
     )
 
-    configure_file(
-        configuration: conf_aux,
-        input: 'OpenSC-meson.wxs.in',
-        output: 'OpenSC.wxs'
-    )
-
     progwix = find_program('wix', required: false)
     if progwix.found()
-        wix_args = []
-        if host_machine.cpu_family() == 'x86_64'
-            wix_args += ['-arch', 'x64']
-        elif host_machine.cpu_family() == 'aarch64'
-            wix_args += ['-arch', 'arm64']
-        elif host_machine.cpu_family() == 'x86'
-            wix_args += ['-arch', 'x86']
-        endif
+        wix_args = ['-arch', target_arch]
+        wix_args += ['-d', 'SOURCE_DIR=' + meson.project_source_root()]
+        wix_args += ['-d', 'BUILD_DIR='  + meson.project_build_root()]
+
+        wix_args += ['-d', 'PRODUCT_NAME='         + vmk['VS_FF_PRODUCT_NAME']]
+        wix_args += ['-d', 'PRODUCT_BUGREPORT='    + vmk['PRODUCT_BUGREPORT']]
+        wix_args += ['-d', 'PRODUCT_URL='          + vmk['PRODUCT_URL']]
+        wix_args += ['-d', 'VS_FF_LEGAL_COMPANY_NAME=' + vmk['VS_FF_LEGAL_COMPANY_NAME']]
+        wix_args += ['-d', 'VS_FF_LEGAL_COMPANY_URL='  + vmk['VS_FF_LEGAL_COMPANY_URL']]
+        wix_args += ['-d', 'VS_FF_PRODUCT_UPDATES='    + vmk['VS_FF_PRODUCT_UPDATES']]
 
         wix_args += get_option('components').contains('pkcs11')?     ['-d', 'ENABLE_PKCS11'] : []
         wix_args += get_option('components').contains('tools')?      ['-d', 'ENABLE_TOOLS']  : []
         wix_args += get_option('components').contains('minidriver')? ['-d', 'ENABLE_MINIDRIVER'] : []
         wix_args += get_option('components').contains('sm')?         ['-d', 'ENABLE_SM'] : []
 
-        wix_args += get_option('static_components').contains('pkcs11')?     ['-d', 'STATIC_PKCS11'] : []
-        wix_args += get_option('static_components').contains('tools')?      ['-d', 'STATIC_TOOLS'] : []
-        wix_args += get_option('static_components').contains('minidriver')? ['-d', 'STATIC_MINIDRIVER'] : []
-        wix_args += get_option('static_components').contains('sm')?         ['-d', 'STATIC_SM'] : []
-
-        wix_args += conf.get('ENABLE_OPENPACE')? ['-d', 'ENABLE_OPENPACE'] : []
-        wix_args += conf.get('ENABLE_OPENSSL')?  ['-d', 'ENABLE_OPENSSL'] : []
+        wix_args += conf.get('ENABLE_OPENPACE')? ['-d', 'OpenPACE'] : []
+        wix_args += conf.get('ENABLE_OPENSSL')?  ['-d', 'OpenSSL'] : []
         wix_args += conf.get('ENABLE_NOTIFY')?   ['-d', 'ENABLE_NOTIFY'] : []
 
         run_target('msi',
             command: [progwix, 'build', wix_args,
                 '-ext', 'WixToolset.Util.wixext',
                 '-ext', 'WixToolset.UI.wixext',
-                '-o', 'OpenSC-' + meson.project_version() + '.msi',
-                meson.current_build_dir() / 'OpenSC.wxs'
+                '-o', vmk['PRODUCT_NAME'] + '-' + meson.project_version() + '_' + target_arch + '.msi',
+                meson.project_source_root() / 'win32' / 'OpenSC.wxs'
             ]
         )
     endif

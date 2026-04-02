@@ -1,4 +1,4 @@
-option('components', type: 'array', choices: ['pkcs11', 'tools', 'minidriver', 'sm'], value: ['pkcs11', 'tools'])
+option('components', type: 'array', choices: ['pkcs11', 'tools', 'minidriver', 'sm'], value: ['pkcs11', 'tools', 'sm'])
 
 option('static_components', type: 'array', choices: ['pkcs11', 'tools', 'minidriver', 'sm'], value: ['minidriver'], description: 'Components that must be linked statically')
 

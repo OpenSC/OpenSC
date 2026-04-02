@@ -1,8 +1,15 @@
 project('opensc', 'c',
-        version: '0.26.1',
+        version: run_command(
+            find_program(['python3', 'python', 'py']),
+            '-c',
+            'import sys; d=dict(l.strip().split("=",1) for l in open(sys.argv[1]) if "=" in l); print(d["PACKAGE_VERSION_MAJOR"]+"."+d["PACKAGE_VERSION_MINOR"]+"."+d["PACKAGE_VERSION_FIX"])',
+            meson.current_source_dir() / 'VERSION.mk',
+            check: true
+        ).stdout().strip(),
         license: 'LGPLv2.1+',
         default_options: [
             'b_ndebug=if-release',
+            'b_vscrt=static_from_buildtype',
             'c_winlibs=advapi32.lib, bcrypt.lib, crypt32.lib, comctl32.lib, gdi32.lib, rpcrt4.lib, shell32.lib, shlwapi.lib, user32.lib, winmm.lib, ws2_32.lib',
             'cpp_winlibs=advapi32.lib, msi.lib, shell32.lib, user32.lib, version.lib'
         ],
@@ -11,29 +18,52 @@ project('opensc', 'c',
 
 modpkgconfig = import('pkgconfig')
 modfs        = import('fs')
+modkeyval    = import('keyval')
 modwindows   = import('windows')
+cc           = meson.get_compiler('c')
 
 all_languages = ['c']
+prefix_of_libraries = 'lib'
+extension_of_libraries = 'so'
 if host_machine.system() == 'windows'
     add_languages('cpp', native: false)
     all_languages += 'cpp'
+    prefix_of_libraries = ''
+    extension_of_libraries = 'dll'
+    if cc.get_define('_M_ARM64') != ''
+        target_arch = 'arm64'
+    elif cc.get_define('_M_AMD64') != ''
+        target_arch = 'x64'
+    else
+        target_arch = 'x86'
+    endif
+elif host_machine.system() == 'cygwin'
+    prefix_of_libraries = 'cyg'
 elif host_machine.system() == 'darwin'
     add_languages('objc', native: false)
     all_languages += 'objc'
-endif
-
-prefix_of_libraries = 'lib'
-if host_machine.system() == 'cygwin'
-    prefix_of_libraries = 'cyg'
-elif meson.get_compiler('c').get_id() == 'msvc'
     prefix_of_libraries = ''
+    extension_of_libraries = 'dylib'
 endif
 
-extension_of_libraries = 'so'
-if host_machine.system() == 'windows'
-    extension_of_libraries = 'dll'
-elif host_machine.system() == 'darwin'
-    extension_of_libraries = 'dylib'
+if cc.get_id() == 'msvc'
+    add_project_arguments(
+        '/D_CRT_SECURE_NO_DEPRECATE',
+        '/D_CRT_NONSTDC_NO_WARNINGS',
+        '/DWIN32_LEAN_AND_MEAN',
+        language: ['c', 'cpp']
+    )
+    add_project_link_arguments(
+        '/MANIFEST:embed',
+        '/MANIFESTDEPENDENCY:type=\'Win32\' name=\'Microsoft.Windows.Common-Controls\' version=\'6.0.0.0\' processorArchitecture=\'*\' publicKeyToken=\'6595b64144ccf1df\' language=\'*\'',
+        language: ['c', 'cpp']
+    )
+    if get_option('buildtype') != 'debug'
+        add_project_link_arguments(
+            '/OPT:REF', '/OPT:ICF', '/INCREMENTAL:NO',
+            language: ['c', 'cpp']
+        )
+    endif
 endif
 
 absolute_bindir =     get_option('prefix') / get_option('bindir')
@@ -47,40 +77,49 @@ absolute_docdir = absolute_datadir / 'doc' / 'opensc'
 #################################################
 # Dependencies and configuration
 #################################################
+vmk = modkeyval.load('VERSION.mk')
 conf = configuration_data()
-conf.set_quoted('PACKAGE_NAME', 'OpenSC')
+conf.set_quoted('PACKAGE_NAME', vmk['PRODUCT_NAME'])
 conf.set_quoted('PACKAGE_VERSION', meson.project_version())
-conf.set_quoted('PACKAGE_BUGREPORT', 'https://github.com/OpenSC/OpenSC/issues')
-conf.set_quoted('PACKAGE_TARNAME', 'opensc')
-conf.set_quoted('PACKAGE_URL', 'https://github.com/OpenSC/OpenSC')
+conf.set_quoted('VERSION', meson.project_version())
+conf.set_quoted('PACKAGE_BUGREPORT', vmk['PRODUCT_BUGREPORT'])
+conf.set_quoted('PACKAGE_TARNAME', vmk['PRODUCT_TARNAME'])
+conf.set_quoted('PACKAGE_URL', vmk['PRODUCT_URL'])
 conf.set_quoted('PACKAGE_SUMMARY', '')
 
-conf.set_quoted('OPENSC_VS_FF_COMPANY_NAME', 'OpenSC project')
-conf.set_quoted('OPENSC_VS_FF_COMPANY_URL', 'https://github.com/OpenSC')
-conf.set_quoted('OPENSC_VS_FF_PRODUCT_NAME', 'OpenSC smartcard framework')
-conf.set_quoted('OPENSC_VS_FF_PRODUCT_UPDATES', 'https://github.com/OpenSC/OpenSC/releases')
-conf.set_quoted('OPENSC_VS_FF_PRODUCT_URL', 'https://github.com/OpenSC/OpenSC')
-conf.set_quoted('OPENSC_VS_FF_COMMENTS', 'Provided under the terms of the GNU Lesser General Public License (LGPLv2.1+).')
-conf.set_quoted('OPENSC_VS_FF_LEGAL_COMPANY_NAME', 'OpenSC project')
-conf.set_quoted('OPENSC_VS_FF_LEGAL_COMPANY_URL', 'https://github.com/OpenSC')
-conf.set_quoted('OPENSC_VS_FF_LEGAL_COPYRIGHT', 'OpenSC Project')
+conf.set_quoted('OPENSC_VS_FF_COMPANY_NAME', vmk['VS_FF_LEGAL_COMPANY_NAME'])
+conf.set_quoted('OPENSC_VS_FF_COMPANY_URL', vmk['VS_FF_LEGAL_COMPANY_URL'])
+conf.set_quoted('OPENSC_VS_FF_PRODUCT_NAME', vmk['VS_FF_PRODUCT_NAME'])
+conf.set_quoted('OPENSC_VS_FF_PRODUCT_UPDATES', vmk['VS_FF_PRODUCT_UPDATES'])
+conf.set_quoted('OPENSC_VS_FF_PRODUCT_URL', vmk['PRODUCT_URL'])
+conf.set_quoted('OPENSC_VS_FF_COMMENTS', vmk['VS_FF_COMMENTS'])
+conf.set_quoted('OPENSC_VS_FF_LEGAL_COMPANY_NAME', vmk['VS_FF_LEGAL_COMPANY_NAME'])
+conf.set_quoted('OPENSC_VS_FF_LEGAL_COMPANY_URL', vmk['VS_FF_LEGAL_COMPANY_URL'])
+conf.set_quoted('OPENSC_VS_FF_LEGAL_COPYRIGHT', vmk['VS_FF_LEGAL_COPYRIGHT'])
 
 conf.set_quoted('OPENSC_CONF_PATH', absolute_sysconfdir / 'opensc.conf')
 conf.set_quoted('DEFAULT_SM_MODULE', prefix_of_libraries + 'smm-local.' + extension_of_libraries)
 
-project_version = meson.project_version().split('.')
-conf.set('OPENSC_VERSION_MAJOR', project_version[0])
-conf.set('OPENSC_VERSION_MINOR', project_version[1])
-conf.set('OPENSC_VERSION_FIX',   project_version[2])
-conf.set('OPENSC_VERSION_REVISION', '0')
+conf.set('OPENSC_VERSION_MAJOR',    vmk['PACKAGE_VERSION_MAJOR'])
+conf.set('OPENSC_VERSION_MINOR',    vmk['PACKAGE_VERSION_MINOR'])
+conf.set('OPENSC_VERSION_FIX',      vmk['PACKAGE_VERSION_FIX'])
+conf.set('OPENSC_VERSION_REVISION', vmk['PACKAGE_VERSION_REVISION'])
 conf.set_quoted('OPENSC_SCM_REVISION', meson.project_version())
 
 if host_machine.system() == 'windows'
+    arch_suffix = target_arch == 'arm64' ? '_arm64' : ''
+    opensc_install_dir = '%PROGRAMFILES%\\\\OpenSC Project\\\\OpenSC' + arch_suffix
+    openpace_default_options = [
+        'cv_certificates_path=' + opensc_install_dir + '\\\\cvc',
+        'x509_certificates_path=' + opensc_install_dir + '\\\\x509',
+        'default_library=static'
+    ]
+
     conf.set_quoted('DEFAULT_PCSC_PROVIDER', 'winscard.dll')
-    conf.set_quoted('SC_PKCS15_PROFILE_DIRECTORY', 'C:\\\\Program Files\\\\OpenSC Project\\\\OpenSC\\\\profiles')
-    conf.set_quoted('DEFAULT_SM_MODULE_PATH', '%PROGRAMFILES%\\\\OpenSC Project\\\\OpenSC\\\\sm')
+    conf.set_quoted('SC_PKCS15_PROFILE_DIRECTORY', '')
+    conf.set_quoted('DEFAULT_SM_MODULE_PATH', '')
+    conf.set_quoted('OPENSC_ARCH_SUFFIX', arch_suffix)
     conf.set('PKCS11_REGISTER_SKIP_FIREFOX', 'on')
-    conf.set('WIN32_LEAN_AND_MEAN', true)
 
 elif host_machine.system() == 'darwin'
     conf.set_quoted('DEFAULT_PCSC_PROVIDER', '/System/Library/Frameworks/PCSC.framework/PCSC')
@@ -95,12 +134,16 @@ else
     conf.set('PKCS11_REGISTER_SKIP_FIREFOX', 'off')
 endif
 
-if meson.get_compiler('c').get_id() == 'msvc'
+if cc.get_id() == 'msvc'
     conf.set('PATH_MAX', 'FILENAME_MAX')
     conf.set('strncasecmp', 'strnicmp')
     conf.set('strcasecmp', 'stricmp')
     conf.set('S_IRUSR', 'S_IREAD')
     conf.set('S_IWUSR', 'S_IWRITE')
+    conf.set('R_OK', 4)
+    conf.set('W_OK', 2)
+    conf.set('X_OK', 1)
+    conf.set('F_OK', 0)
 endif
 
 conf.set('ENABLE_SHARED', get_option('default_library') != 'static')
@@ -118,14 +161,14 @@ conf.set('HAVE_PCSCLITE_H', false)
 if get_option('driver') == 'pcsc'
     conf.set('ENABLE_PCSC', true)
     if host_machine.system() == 'windows'
-        deppcsc = meson.get_compiler('c').find_library('winscard')
-        conf.set('HAVE_WINSCARD_H', meson.get_compiler('c').has_header('winscard.h'))
+        deppcsc = cc.find_library('winscard')
+        conf.set('HAVE_WINSCARD_H', cc.has_header('winscard.h'))
     else
         deppcsc = dependency('libpcsclite', version: '>= 1.8.22')
-        conf.set('HAVE_WINSCARD_H', meson.get_compiler('c').has_header('winscard.h', dependencies: deppcsc))
-        conf.set('HAVE_PCSCLITE_H', meson.get_compiler('c').has_header('pcsclite.h', dependencies: deppcsc))
+        conf.set('HAVE_WINSCARD_H', cc.has_header('winscard.h', dependencies: deppcsc))
+        conf.set('HAVE_PCSCLITE_H', cc.has_header('pcsclite.h', dependencies: deppcsc))
     endif
-elif get_option('driver') == 'crypttokenkit'
+elif get_option('driver') == 'cryptotokenkit'
     conf.set('ENABLE_CRYPTOTOKENKIT', true)
     depcryptotokenkit = dependency('appleframeworks', modules: 'CryptoTokenKit')
 
@@ -140,7 +183,9 @@ else
     error('The option "driver" has unknown value')
 endif
 
-depopenpace = dependency('libeac', version: '>= 0.9', required: get_option('openpace'), default_options: 'default_library=static')
+depopenpace = dependency('libeac', version: '>= 0.9', required: get_option('openpace'),
+    default_options: get_variable('openpace_default_options', ['default_library=static'])
+)
 conf.set('ENABLE_OPENPACE', depopenpace.found())
 if depopenpace.found()
     conf.set_quoted('CVCDIR', depopenpace.get_variable('cvcdir'))
@@ -199,7 +244,7 @@ if get_option('components').contains('pkcs11')
     else
         if get_option('default_library') != 'static'
             if host_machine.system() == 'windows'
-                conf.set_quoted('DEFAULT_PKCS11_PROVIDER', '%PROGRAMFILES%\\\\OpenSC Project\\\\OpenSC\\\\pkcs11\\\\opensc-pkcs11.dll')
+                conf.set_quoted('DEFAULT_PKCS11_PROVIDER', opensc_install_dir + '\\\\pkcs11\\\\opensc-pkcs11.dll')
             else
                 conf.set_quoted('DEFAULT_PKCS11_PROVIDER', absolute_libdir / prefix_of_libraries + 'opensc-pkcs11.' + extension_of_libraries)
             endif
@@ -208,24 +253,26 @@ if get_option('components').contains('pkcs11')
 endif
 conf.set('DEFAULT_ONEPIN_PKCS11_PROVIDER', conf.get('DEFAULT_PKCS11_PROVIDER'))
 
-conf.set('HAVE_INTTYPES_H',       meson.get_compiler('c').has_header('inttypes.h'))
-conf.set('HAVE_STRING_H',         meson.get_compiler('c').has_header('string.h'))
-conf.set('HAVE_STRINGS_H',        meson.get_compiler('c').has_header('strings.h'))
-conf.set('HAVE_SYS_TIME_H',       meson.get_compiler('c').has_header('sys' / 'time.h'))
-conf.set('HAVE_SYS_MMAN_H',       meson.get_compiler('c').has_header('sys' / 'mman.h'))
-conf.set('HAVE_SYS_ENDIAN_H',     meson.get_compiler('c').has_header('sys' / 'endian.h'))
-conf.set('HAVE_UNISTD_H',         meson.get_compiler('c').has_header('unistd.h'))
-conf.set('HAVE_ENDIAN_H',         meson.get_compiler('c').has_header('endian.h'))
-conf.set('HAVE_PTHREAD',          meson.get_compiler('c').has_header('pthread.h'))
+conf.set('HAVE_INTTYPES_H',       cc.has_header('inttypes.h'))
+conf.set('HAVE_STRING_H',         cc.has_header('string.h'))
+conf.set('HAVE_STRINGS_H',        cc.has_header('strings.h'))
+conf.set('HAVE_SYS_TIME_H',       cc.has_header('sys' / 'time.h'))
+conf.set('HAVE_SYS_MMAN_H',       cc.has_header('sys' / 'mman.h'))
+conf.set('HAVE_SYS_ENDIAN_H',     cc.has_header('sys' / 'endian.h'))
+conf.set('HAVE_UNISTD_H',         cc.has_header('unistd.h'))
+conf.set('HAVE_ENDIAN_H',         cc.has_header('endian.h'))
+conf.set('HAVE_PTHREAD',          cc.has_header('pthread.h'))
 
-conf.set('HAVE_GETPASS',          meson.get_compiler('c').has_function('getpass'))
-conf.set('HAVE_GETTIMEOFDAY',     meson.get_compiler('c').has_function('gettimeofday'))
-conf.set('HAVE_GETLINE',          meson.get_compiler('c').has_function('getline'))
-conf.set('HAVE_MEMSET_S',         meson.get_compiler('c').has_function('memset_s'))
-conf.set('HAVE_EXPLICIT_BZERO',   meson.get_compiler('c').has_function('explicit_bzero'))
-conf.set('HAVE_STRNLEN',          meson.get_compiler('c').has_function('strnlen'))
-conf.set('HAVE_SIGACTION',        meson.get_compiler('c').has_function('sigaction'))
-conf.set('HAVE_BUILTIN_OVERFLOW', meson.get_compiler('c').has_function('__builtin_uadd_overflow'))
+conf.set('HAVE_GETPASS',          cc.has_function('getpass'))
+conf.set('HAVE_GETTIMEOFDAY',     cc.has_function('gettimeofday'))
+conf.set('HAVE_GETLINE',          cc.has_function('getline'))
+conf.set('HAVE_MEMSET_S',         cc.has_function('memset_s'))
+conf.set('HAVE_EXPLICIT_BZERO',   cc.has_function('explicit_bzero'))
+conf.set('HAVE_STRNLEN',          cc.has_function('strnlen'))
+#conf.set('HAVE_DECL_STRLCAT',     cc.has_function('strlcat'))
+#conf.set('HAVE_DECL_STRLCPY',     cc.has_function('strlcpy'))
+conf.set('HAVE_SIGACTION',        cc.has_function('sigaction'))
+conf.set('HAVE_BUILTIN_OVERFLOW', cc.has_function('__builtin_uadd_overflow'))
 
 opensc_features = ''
 opensc_features += conf.get('PKCS11_THREAD_LOCKING')? ' locking'  : ''
@@ -241,7 +288,7 @@ conf.set_quoted('OPENSC_FEATURES', opensc_features.strip())
 unset_variable('opensc_features')
 
 if get_option('components').contains('tools')
-    proggengetopt = find_program('gengetopt')
+    proggengetopt = find_program('gengetopt', required: false)
 endif
 
 if get_option('components').contains('minidriver')
@@ -305,13 +352,13 @@ conf_aux.set('OPENSC_VS_FF_LEGAL_COMPANY_NAME', conf.get_unquoted('OPENSC_VS_FF_
 conf_aux.set('OPENSC_VS_FF_LEGAL_COMPANY_URL',  conf.get_unquoted('OPENSC_VS_FF_LEGAL_COMPANY_URL'))
 conf_aux.set('OPENSC_VS_FF_LEGAL_COPYRIGHT',    conf.get_unquoted('OPENSC_VS_FF_LEGAL_COPYRIGHT'))
 
-conf_aux.set('OPENSC_VERSION_MAJOR', project_version[0])
-conf_aux.set('OPENSC_VERSION_MINOR', project_version[1])
-conf_aux.set('OPENSC_VERSION_FIX',   project_version[2])
+conf_aux.set('OPENSC_VERSION_MAJOR', vmk['PACKAGE_VERSION_MAJOR'])
+conf_aux.set('OPENSC_VERSION_MINOR', vmk['PACKAGE_VERSION_MINOR'])
+conf_aux.set('OPENSC_VERSION_FIX',   vmk['PACKAGE_VERSION_FIX'])
 
 conf_aux.set('OPENSC_VERSION_REVISION', conf.get('OPENSC_VERSION_REVISION'))
 
-if not meson.get_compiler('c').has_header('getopt.h')
+if not cc.has_header('getopt.h')
     getopt_target = modfs.copyfile('src' / 'common' / 'compat_getopt.h', 'getopt.h')
 endif
 

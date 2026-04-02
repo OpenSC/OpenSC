@@ -14,14 +14,13 @@ fi
 if [ -z "$MESON_BUILD_ROOT" ]; then
 	SOURCE_PATH=${SOURCE_PATH:-..}
 	BUILD_PATH=${BUILD_PATH:-..}
-	P11TEST="./../src/tests/p11test/p11test"
 	PKCS11SPY_MODULE="../src/pkcs11/.libs/pkcs11-spy.so"
 else
 	SOURCE_PATH="$MESON_SOURCE_ROOT"
 	BUILD_PATH="$MESON_BUILD_ROOT"
-	P11TEST="$MESON_BUILD_ROOT/src/tests/p11test/p11test"
 	PKCS11SPY_MODULE="$MESON_BUILD_ROOT/src/pkcs11/libpkcs11-spy.so"
 fi
+P11TEST="$BUILD_PATH/src/tests/p11test/p11test"
 
 source "$SOURCE_PATH/tests/common.sh" $TOKENTYPE
 

@@ -21,6 +21,7 @@ if conf.get('ENABLE_OPENSSL')
         'cryptoflex-tool.1.xml',
         'gids-tool.1.xml',
         'netkey-tool.1.xml',
+        'lteid-tool.1.xml',
         'piv-tool.1.xml',
         'pkcs15-init.1.xml',
         'sc-hsm-tool.1.xml',

@@ -31,6 +31,7 @@ libopensc_sources = files(
     'card-isoApplet.c',
     'card-itacns.c',
     'card-jpki.c',
+    'card-lteid.c',
     'card-masktech.c',
     'card-mcrd.c',
     'card-muscle.c',
@@ -88,6 +89,7 @@ libopensc_sources = files(
     'pkcs15-idprime.c',
     'pkcs15-itacns.c',
     'pkcs15-jpki.c',
+    'pkcs15-lteid.c',
     'pkcs15-nqApplet.c',
     'pkcs15-oberthur.c',
     'pkcs15-openpgp.c',
@@ -131,17 +133,10 @@ libopensc_dependencies = [
 libopensc_targets = []
 if host_machine.system() == 'windows' or host_machine.system() == 'cygwin'
     libopensc_targets += modwindows.compile_resources(
-        'libopensc.rc',
-        include_directories: core_inc,
-        depend_files: 'opensc.dll.manifest'
+        '../../win32/versioninfo.rc',
+        include_directories: core_inc
     )
 endif
-
-libopensc_vs_defs = configure_file(
-    configuration: {'EXPORTS': modfs.read('libopensc.exports')},
-    input: 'libopensc.def.in',
-    output: 'libopensc.def'
-)
 
 if conf.get('ENABLE_PCSC')
     libopensc_sources += files('reader-pcsc.c')
@@ -172,12 +167,16 @@ endforeach
 
 libopensc = shared_library('opensc',
     libopensc_targets,
-    version: '11.0.2',
+    soversion: host_machine.system() != 'windows' ? '13' : '',
     include_directories: core_inc,
     sources: libopensc_sources,
     link_with: libopensc_libraries,
     dependencies: libopensc_dependencies,
-    vs_module_defs: libopensc_vs_defs,
+    vs_module_defs: configure_file(
+        configuration: {'EXPORTS': modfs.read('opensc.exports')},
+        input: '../../win32/template.def.in',
+        output: 'libopensc.def'
+    ),
     install: libopensc_install
 )
 
