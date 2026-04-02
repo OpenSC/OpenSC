@@ -10,45 +10,71 @@ permissions:
 jobs:
   build:
     runs-on: ${{ matrix.image }}
+    env:
+      VCPKG_INSTALLED: ${{ github.workspace }}\vcpkg_installed
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.platform }}-windows-static
     strategy:
       matrix:
-        platform: [x86, x64]
+        platform: [x86, x64, arm64]
         configuration: [Light, Release]
         image: [windows-2022]
+        include:
+          - platform: arm64
+            setenv: amd64_arm64
+            crossfile: --cross-file .github/cross-arm64-windows.txt
     steps:
       - name: Install Meson
         run: python -m pip install meson ninja
-      - name: Install gengetopt
-        shell: C:\shells\msys2bash.cmd {0}
-        run: pacman -S --noconfirm --needed --noprogressbar gengetopt
       - name: Install CPDK
         run: choco install windows-cryptographic-provider-development-kit -y
-      - name: Install Wix 5
-        run: |
-          dotnet tool install --global wix
-          wix extension add -g WixToolset.UI.wixext
-          wix extension add -g WixToolset.Util.wixext
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+      - name: Install WIX
+        run: powershell -ExecutionPolicy Bypass -File .github/setup-wix.ps1
       - name: Setup dev env
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: ${{ matrix.platform }}
+          arch: ${{ matrix.setenv || matrix.platform }}
+      - name: Cache vcpkg
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/vcpkg_cache
+          key: vcpkg-${{ matrix.configuration }}-${{ matrix.platform }}-${{ hashFiles('.github/vcpkg.json') }}
+      - name: Prepare vcpkg
+        if: matrix.configuration == 'Release'
+        env:
+          VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/vcpkg_cache,readwrite
+        run: >
+          C:\vcpkg\vcpkg install
+          --x-manifest-root ${{ github.workspace }}/.github
+          --x-install-root ${env:VCPKG_INSTALLED}
       - name: Configure project (release)
         if: matrix.configuration == 'Release'
-        run: |
-          $env:Path += ";C:\msys64\usr\bin"
-          meson setup -Dbackend=ninja -Dbuildtype=release '-Dcomponents=pkcs11,tools,sm,minidriver' '-Dstatic_components=pkcs11,sm,minidriver' -Ddriver=pcsc -Dopenpace=enabled -Dopenssl=enabled -Dzlib=enabled --force-fallback-for=openssl '-Dopenpace:cv_certificates_path=%PROGRAMFILES%\\OpenSC Project\\OpenSC\\cvc' '-Dopenpace:x509_certificates_path=%PROGRAMFILES%\\OpenSC Project\\OpenSC\\x509' build/
+        run: >
+          meson setup build/ ${{ matrix.crossfile }}
+          -Dbackend=ninja -Dbuildtype=debugoptimized -Dwarning_level=2
+          -Dopenpace=enabled -Dopenssl=enabled -Dzlib=enabled
+          '-Dcomponents=pkcs11,tools,sm,minidriver' '-Dstatic_components=pkcs11,sm,minidriver'
+          --cmake-prefix-path "$env:VCPKG_INSTALLED\$env:VCPKG_DEFAULT_TRIPLET"
       - name: Configure project (light)
         if: matrix.configuration == 'Light'
-        run: |
-          $env:Path += ";C:\msys64\usr\bin"
-          meson setup -Dbackend=ninja -Dbuildtype=release '-Dcomponents=pkcs11,tools,sm,minidriver' '-Dstatic_components=pkcs11,sm,minidriver' -Ddriver=pcsc -Dopenpace=disabled -Dopenssl=disabled build/
+        run: >
+          meson setup build/ ${{ matrix.crossfile }}
+          -Dbackend=ninja -Dbuildtype=debugoptimized -Dwarning_level=2
+          -Dopenpace=disabled -Dopenssl=disabled
+          '-Dcomponents=pkcs11,tools,sm,minidriver' '-Dstatic_components=pkcs11,sm,minidriver'
       - name: Build project
         run: |
           meson compile -C build/ -v
           meson compile -C build/ -v msi
       - name: Archive artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: msi_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}
           path: build/*.msi
+      - name: Archive debug artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: msi_${{ matrix.image }}_${{ matrix.platform }}_${{ matrix.configuration }}-dbg
+          path: |
+            build/**/*.pdb
+            !build/**/vc*.pdb

@@ -1,8 +1,8 @@
 [wrap-file]
-directory = openpace-1.1.3
-source_url = https://github.com/frankmorgner/openpace/releases/download/1.1.3/openpace-1.1.3.tar.gz
-source_filename = openpace-1.1.3.tar.gz
-source_hash = ef82a172d82e8300b91b4ec08df282292ac841f9233188e00554f56e97c2c089
+directory = openpace-1.1.4
+source_url = https://github.com/frankmorgner/openpace/releases/download/1.1.4/openpace-1.1.4.tar.gz
+source_filename = openpace-1.1.4.tar.gz
+source_hash = 36954f0385a1cb9805a02cffbd0d99f2b3a0598a125edfa160b4cca65b417854
 
 patch_directory = openpace
 

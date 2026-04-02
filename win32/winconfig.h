@@ -1,6 +1,9 @@
 #ifndef _OPENSC_WINCONFIG_H
 #define _OPENSC_WINCONFIG_H
 
+#define QUOTE_HELPER(x) #x
+#define QUOTE(x)	QUOTE_HELPER(x)
+
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/timeb.h>

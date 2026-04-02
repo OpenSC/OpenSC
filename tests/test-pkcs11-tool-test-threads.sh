@@ -24,11 +24,10 @@ source "$SOURCE_PATH/tests/common.sh" $TOKENTYPE
 # Test our PKCS #11 module here
 if [ -z "$MESON_BUILD_ROOT" ]; then
 	P11LIB="../src/pkcs11/.libs/opensc-pkcs11.so"
-	OPENSC_TOOL="../src/tools/opensc-tool"
 else
 	P11LIB="$MESON_BUILD_ROOT/src/pkcs11/libopensc-pkcs11.so"
-	OPENSC_TOOL="$MESON_BUILD_ROOT/src/tools/opensc-tool"
 fi
+OPENSC_TOOL="$BUILD_PATH/src/tools/opensc-tool"
 
 echo "======================================================="
 echo "Test pkcs11 threads IN "

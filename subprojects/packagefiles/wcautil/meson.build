@@ -4,11 +4,12 @@ if meson.get_compiler('cpp', native: false).get_id() != 'msvc'
     error('Unsuitable compiler: this subproject requires Microsoft Visual Studio only')
 endif
 
-if host_machine.cpu_family() == 'x86_64'
-    folder = 'x64'
-elif host_machine.cpu_family() == 'aarch64'
+cc = meson.get_compiler('cpp')
+if cc.get_define('_M_ARM64') != ''
     folder = 'ARM64'
-elif host_machine.cpu_family() == 'x86'
+elif cc.get_define('_M_AMD64') != ''
+    folder = 'x64'
+elif cc.get_define('_M_IX86') != ''
     folder = 'x86'
 else
     error('Unsuitable architecture: this subproject requires x86, x86_64 or aarch64 only')

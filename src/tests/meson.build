@@ -1,19 +1,15 @@
 tests_targets = []
 if host_machine.system() == 'windows' or host_machine.system() == 'cygwin'
     tests_targets += modwindows.compile_resources(
-        'tests.rc',
-        include_directories: core_inc,
-        depend_files: 'tests.manifest'
+        '../../win32/versioninfo.rc',
+        include_directories: core_inc
     )
 endif
 
 libtest = static_library('common',
     include_directories: core_inc,
     sources: files('sc-test.c'),
-    link_with: [
-        libcompat,
-        libopensc_static
-    ]
+    link_with: libopensc_static
 )
 
 foreach name, sources : {

@@ -28,9 +28,11 @@
 #include <assert.h>
 #include <ctype.h>
 #ifdef _WIN32
+// clang-format off
 #include <windows.h>
 #include <shellapi.h>
 #include <tchar.h>
+// clang-format on
 #else
 #include <ftw.h>
 #endif

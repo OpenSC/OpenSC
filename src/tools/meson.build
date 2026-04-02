@@ -15,9 +15,8 @@ conf_tools.set('VDFORMAT', conf.get('ENABLE_ZLIB')? 'XML' : 'GZIP')
 tools_targets = []
 if host_machine.system() == 'windows' or host_machine.system() == 'cygwin'
     tools_targets += modwindows.compile_resources(
-        'tools.rc',
-        include_directories: core_inc,
-        depend_files: 'tools.manifest'
+        'versioninfo-tools.rc',
+        include_directories: core_inc
     )
 endif
 
@@ -25,15 +24,28 @@ tools_args = meson.get_compiler('c').get_supported_arguments(
     '-Wno-unknown-warning-option'
 )
 
-gengetopt = generator(proggengetopt,
-    arguments: [
-        '--input=@INPUT@',
-        '--set-version=' + meson.project_version(),
-        '--output-dir=@BUILD_DIR@',
-        '--file-name=@BASENAME@-cmdline'
-    ],
-    output: ['@BASENAME@-cmdline.h', '@BASENAME@-cmdline.c']
-)
+if proggengetopt.found()
+    gengetopt = generator(proggengetopt,
+        arguments: [
+            '--input=@INPUT@',
+            '--set-version=' + meson.project_version(),
+            '--output-dir=@BUILD_DIR@',
+            '--file-name=@BASENAME@-cmdline'
+        ],
+        output: ['@BASENAME@-cmdline.h', '@BASENAME@-cmdline.c']
+    )
+else
+    gengetopt = generator(find_program('python3'),
+        arguments: [
+            '-c',
+            'import sys,shutil,os; [shutil.copy2(os.path.join(sys.argv[1],sys.argv[2]+s),os.path.join(sys.argv[3],sys.argv[2]+s)) for s in ["-cmdline.h","-cmdline.c"]]',
+            meson.current_source_dir(),
+            '@BASENAME@',
+            '@BUILD_DIR@'
+        ],
+        output: ['@BASENAME@-cmdline.h', '@BASENAME@-cmdline.c']
+    )
+endif
 
 libtool = static_library('tool',
     include_directories: core_inc,
@@ -50,7 +62,6 @@ libtool = static_library('tool',
 
 foreach name, sources : {
     'dnie-tool':   files('dnie-tool.c'),
-    'dtrust-tool': files('dtrust-tool.c'),
     'eidenv':      files('eidenv.c'),
     'iasecc-tool': files('iasecc-tool.c')
 }
@@ -99,6 +110,20 @@ executable('egk-tool',
     install: true
 )
 
+foreach name, sources : {
+    'dtrust-tool': files('dtrust-tool.c'),
+    'lteid-tool':  files('lteid-tool.c')
+}
+executable(name,
+    tools_targets,
+    include_directories: core_inc,
+    sources: sources,
+    link_with: libtool,
+    dependencies: depopenpace,
+    install: true
+)
+endforeach
+
 executable('goid-tool',
     gengetopt.process(
         configure_file(
@@ -110,10 +135,7 @@ executable('goid-tool',
     c_args: tools_args,
     include_directories: core_inc,
     sources: files('goid-tool.c'),
-    link_with: [
-        libsmeac,
-        libtool
-    ],
+    link_with: libtool,
     dependencies: depopenpace,
     install: true
 )
@@ -186,7 +208,7 @@ endif
 executable('pkcs11-tool',
     tools_targets,
     include_directories: core_inc,
-    sources: files('pkcs11-tool.c'),
+    sources: files('pkcs11-tool.c', 'pkcs11_uri.c'),
     link_with: pkcs11_tool_libraries,
     dependencies: [
         depopenssl,
@@ -230,10 +252,7 @@ if conf.get('ENABLE_OPENSSL')
             c_args: tools_args,
             include_directories: core_inc,
             sources: files('npa-tool.c'),
-            link_with: [
-                libsmeac,
-                libtool
-            ],
+            link_with: libtool,
             dependencies: [
                 depopenpace,
                 depopenssl
@@ -248,12 +267,9 @@ if conf.get('ENABLE_NOTIFY')
     opensc_notify_targets = []
     if host_machine.system() == 'windows' or host_machine.system() == 'cygwin'
         opensc_notify_targets += modwindows.compile_resources(
-            'opensc-notify.rc',
+            'versioninfo-opensc-notify.rc',
             include_directories: core_inc,
-            depend_files: [
-                '../../win32/DDORes.dll_14_2302.ico',
-                'tools.manifest'
-            ]
+            depend_files: '../../win32/DDORes.dll_14_2302.ico'
         )
     endif
 
@@ -300,9 +316,6 @@ endif
 executable('sceac-example',
     include_directories: core_inc,
     sources: files('sceac-example.c'),
-    link_with: [
-        libsmeac,
-        libtool
-    ],
+    link_with: libtool,
     build_by_default: false
 )
