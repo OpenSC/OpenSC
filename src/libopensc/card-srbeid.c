@@ -5,7 +5,7 @@
  * same CardEdge PKCS#15 applet.  Cards are matched either by ATR
  * (Gemalto 2014+ eID) or by AID selection.
  *
- * Copyright (C) 2026  LibreSCRS contributors
+ * Copyright (C) 2026 LibreSCRS contributors
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -28,20 +28,12 @@
 
 #include <string.h>
 
+#include "card-srbeid.h"
 #include "internal.h"
 #include "log.h"
 
-/* CardEdge PKI applet AID  (A0 00 00 00 63 50 4B 43 53 2D 31 35) */
-static const u8 AID_PKCS15[] = {
-		0xA0, 0x00, 0x00, 0x00, 0x63,
-		0x50, 0x4B, 0x43, 0x53, 0x2D, 0x31, 0x35};
-#define AID_PKCS15_LEN (sizeof(AID_PKCS15))
-
 /* MSE algorithm byte for RSA-2048 PKCS#1 v1.5 */
 #define CE_MSE_ALG_RSA2048 0x02u
-
-/* Base address of key files: key FID = CE_KEYS_BASE_FID | container/type bits */
-#define CE_KEYS_BASE_FID 0x6000u
 
 static struct sc_card_operations srbeid_ops;
 static const struct sc_card_operations *iso_ops;
@@ -256,7 +248,7 @@ srbeid_compute_signature(sc_card_t *card,
 	apdu.lc = datalen;
 	apdu.resp = resp;
 	apdu.resplen = sizeof(resp);
-	apdu.le = 256;
+	apdu.le = sizeof(resp);
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
@@ -292,7 +284,7 @@ srbeid_decipher(sc_card_t *card,
 	apdu.lc = crgram_len;
 	apdu.resp = resp;
 	apdu.resplen = sizeof(resp);
-	apdu.le = 256;
+	apdu.le = sizeof(resp);
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
