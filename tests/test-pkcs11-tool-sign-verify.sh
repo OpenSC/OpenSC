@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TOKENTYPE=$1
+TOKENTYPE=${TOKENTYPE:-$TEST_PKCS11_BACKEND}
 
 if [ "${TOKENTYPE}" == "" ]; then
     TOKENTYPE=softhsm
@@ -38,6 +39,10 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
 
     if [[ "$ID" == "rhel" || "$ID_LIKE" =~ ".*rhel.*" ]] && [[ "$VERSION" -gt 8 ]] && [[ "$HASH" == "SHA1" ]]; then
         RETOSSL="1"
+    fi
+    # Kryoptic does not do SHA1 anymore
+    if [[ "$TOKENTYPE" == "kryoptic" ]] && [[ "$HASH" == "SHA1" ]]; then
+        continue;
     fi
     for SIGN_KEY in "01" "02"; do
         METHOD="RSA-PKCS"
@@ -182,6 +187,13 @@ for HASH in "" "SHA1" "SHA224" "SHA256" "SHA384" "SHA512"; do
     if [[ ! -z "$HASH" ]]; then
         continue;
     fi
+    # Skip in FIPS mode -- RSA-PKCS encryption is no longer allowed
+    if [[ -e "/etc/system-fips" ]]; then
+        continue;
+    fi
+    if [[ -f "/proc/sys/crypto/fips_enabled" && $(cat /proc/sys/crypto/fips_enabled) == "1" ]]; then
+        continue;
+    fi
     METHOD="RSA-PKCS"
     # RSA-PKCS works only on small data - generate small data:
     head -c 64 </dev/urandom > data
@@ -213,6 +225,53 @@ echo "======================================================="
 # operations with ECDSA keys should work on data > 512 bytes; generate data:
 head -c 1024 </dev/urandom > data
 for SIGN_KEY in "03" "04"; do
+    METHOD="ECDSA"
+
+    echo
+    echo "======================================================="
+    echo "$METHOD: Sign & Verify (KEY $SIGN_KEY)"
+    echo "======================================================="
+    openssl dgst -binary -sha256 data > data.hash
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --id $SIGN_KEY -s -m $METHOD \
+        --input-file data.hash --output-file data.sig
+    assert $? "Failed to Sign data"
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --id $SIGN_KEY -s -m $METHOD \
+        --input-file data.hash --output-file data.sig.openssl \
+        --signature-format openssl
+    assert $? "Failed to Sign data into OpenSSL format"
+
+    # OpenSSL verification
+    echo -n "Verification by OpenSSL: "
+    openssl dgst -keyform PEM -verify $SIGN_KEY.pub -sha256 \
+               -signature data.sig.openssl data
+    assert $? "Failed to Verify signature using OpenSSL"
+
+    # pkcs11-tool verification
+    echo "Verification by pkcs11-tool:"
+    $PKCS11_TOOL "${PUB_ARGS[@]}" --id $SIGN_KEY --verify -m $METHOD \
+           --input-file data.hash --signature-file data.sig
+    assert $? "Failed to Verify signature using pkcs11-tool"
+    rm data.sig{,.openssl} data.hash
+done
+
+echo "======================================================="
+echo "Test brainpool ECDSA keys"
+echo "======================================================="
+# operations with ECDSA keys should work on data > 512 bytes; generate data:
+head -c 1024 </dev/urandom > data
+for SIGN_KEY in "13" "14"; do
+    # Skip brainpool tests in FIPS mode -- brainpool curves are not FIPS approved
+    if [[ -e "/etc/system-fips" ]]; then
+        continue;
+    fi
+    if [[ -f "/proc/sys/crypto/fips_enabled" && $(cat /proc/sys/crypto/fips_enabled) == "1" ]]; then
+        continue;
+    fi
+    # Skip if the key was not generated (token does not support this curve)
+    if [[ ! -f $SIGN_KEY.pub ]]; then
+        echo "Skipping brainpool key $SIGN_KEY: not supported by $TOKENTYPE"
+        continue
+    fi
     METHOD="ECDSA"
 
     echo

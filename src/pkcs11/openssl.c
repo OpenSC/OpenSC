@@ -305,12 +305,14 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 #endif
 #endif /* !defined(OPENSSL_NO_ENGINE) */
 
-	openssl_sha1_mech.mech_data = sc_evp_md(context, "sha1");
-	openssl_sha1_mech.free_mech_data = ossl_md_free;
-	openssl_sha1_mech.copy_mech_data = ossl_md_copy;
-	mt = dup_mem(&openssl_sha1_mech, sizeof openssl_sha1_mech);
-	sc_pkcs11_register_mechanism(p11card, mt, NULL);
-	sc_pkcs11_free_mechanism(&mt);
+	if (!FIPS_mode()) {
+		openssl_sha1_mech.mech_data = sc_evp_md(context, "sha1");
+		openssl_sha1_mech.free_mech_data = ossl_md_free;
+		openssl_sha1_mech.copy_mech_data = ossl_md_copy;
+		mt = dup_mem(&openssl_sha1_mech, sizeof openssl_sha1_mech);
+		sc_pkcs11_register_mechanism(p11card, mt, NULL);
+		sc_pkcs11_free_mechanism(&mt);
+	}
 
 	openssl_sha224_mech.mech_data = sc_evp_md(context, "sha224");
 	openssl_sha224_mech.free_mech_data = ossl_md_free;

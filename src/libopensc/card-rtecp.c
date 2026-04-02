@@ -437,6 +437,11 @@ static int rtecp_cipher(sc_card_t *card, const u8 *data, size_t data_len,
 	{
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		{
+			if (apdu.resplen > out_len) {
+				free(buf_out);
+				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,
+						SC_ERROR_BUFFER_TOO_SMALL);
+			}
 			for (i = 0; i < apdu.resplen; ++i)
 				out[i] = buf_out[apdu.resplen - 1 - i];
 			r = (i > 0) ? (int)i : SC_ERROR_INTERNAL;

@@ -575,7 +575,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 		goto out;
 	}
 	/* User PIN flags are cleared before re-calculation */
-	slot->token_info.flags &= ~(CKF_USER_PIN_COUNT_LOW|CKF_USER_PIN_FINAL_TRY|CKF_USER_PIN_LOCKED);
+	slot->token_info.flags &= ~(CKF_USER_PIN_COUNT_LOW | CKF_USER_PIN_FINAL_TRY | CKF_USER_PIN_LOCKED | CKF_USER_PIN_TO_BE_CHANGED);
 	auth = slot_data_auth(slot->fw_data);
 	sc_log(context,
 		"C_GetTokenInfo() auth. object %p, token-info flags 0x%lX", auth,
@@ -601,6 +601,9 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo)
 				slot->token_info.flags |= CKF_USER_PIN_LOCKED;
 			else if (pin_info->max_tries > 1 && pin_info->tries_left < pin_info->max_tries)
 				slot->token_info.flags |= CKF_USER_PIN_COUNT_LOW;
+		}
+		if (pin_info->logged_in & SC_PIN_STATE_NEEDS_CHANGE) {
+			slot->token_info.flags |= CKF_USER_PIN_TO_BE_CHANGED;
 		}
 	}
 	memcpy(pInfo, &slot->token_info, sizeof(CK_TOKEN_INFO));
@@ -1401,7 +1404,7 @@ int slot_get_logged_in_state(struct sc_pkcs11_slot *slot)
 	if (!pin_info)
 		goto out;
 	sc_pkcs15_get_pin_info(p15card, pin_obj);
-	logged_in = pin_info->logged_in;
+	logged_in = pin_info->logged_in & ~SC_PIN_STATE_NEEDS_CHANGE;
 out:
 	return logged_in;
 }
@@ -1606,7 +1609,7 @@ _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data)
 		/* Ignore 'private' object */
 		if (obj->p15_object->flags & SC_PKCS15_CO_FLAG_PRIVATE) {
 			/* If we found some non-accessible public object,
-			 * we can no longer claim Public Ceritificate Token conformance */
+			 * we can no longer claim Public Certificate Token conformance */
 			if ((obj->p15_object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PUBKEY ||
 				(obj->p15_object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_CERT) {
 				public_certificates = 0;
@@ -2573,8 +2576,9 @@ pkcs15_create_secret_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 
 	/* CKA_TOKEN defaults to false */
 	rv = attr_find(pTemplate, ulCount, CKA_TOKEN, &_token, NULL);
-	if (rv != CKR_OK)
+	if (rv != CKR_TEMPLATE_INCOMPLETE && rv != CKR_OK) {
 		return rv;
+	}
 
 	/* See if the "slot" is pin protected. If so, get the PIN id */
 	if ((pin = slot_data_auth_info(slot->fw_data)) != NULL)
@@ -2718,7 +2722,6 @@ out:
 		free(key_obj); /* do not free if the object was created by pkcs15init. It will be freed in C_Finalize */
 	return rv;
 }
-
 
 static CK_RV
 pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile,
@@ -2866,15 +2869,15 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 	}
 
 	if (key_type == CKK_EC_EDWARDS) {
-		if (ec->ecpointQ.len == BYTES4BITS(256))
+		if (ec->ecpointQ.len == BYTES4BITS(256)) /* note extra bit */
 			ec->params.id = oid_ED25519;
-		else if (ec->ecpointQ.len == BYTES4BITS(456)) /* note extra byte */
+		else if (ec->ecpointQ.len == ED448_KEY_SIZE_BYTES)
 			ec->params.id = oid_ED448;
 		else
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 
 	} else if (key_type == CKK_EC_MONTGOMERY) {
-		if (ec->ecpointQ.len == BYTES4BITS(256))
+		if (ec->ecpointQ.len == BYTES4BITS(256)) /* note extra bit */
 			ec->params.id = oid_X25519;
 		else if (ec->ecpointQ.len == BYTES4BITS(448))
 			ec->params.id = oid_X448;
@@ -3116,24 +3119,12 @@ pkcs15_create_object(struct sc_pkcs11_slot *slot, CK_ATTRIBUTE_PTR pTemplate, CK
 		return rv;
 
 	rv = attr_find(pTemplate, ulCount, CKA_TOKEN, &_token, NULL);
-	if (rv == CKR_TEMPLATE_INCOMPLETE) {
-		/* TODO OpenSC has not checked CKA_TOKEN == TRUE, so only
-		 * so only enforce for secret_key
-		 */
-		if (_class != CKO_SECRET_KEY)
-			_token = TRUE; /* default if not in template */
-	}
-	else if (rv != CKR_OK) {
+	if (rv != CKR_TEMPLATE_INCOMPLETE && rv != CKR_OK) {
 		return rv;
 	}
 
-	/* TODO The previous code does not check for CKA_TOKEN=TRUE
-	 * PKCS#11 CreatObject examples always have it, but
-	 * PKCS#11 says the default is false.
-	 * for backward compatibility, will default to TRUE
-	 */
-	 /* Dont need profile id creating session only objects,
-		except when the card supports temporary on card session objects */
+	/* Dont need profile if creating session only objects,
+	 * except when the card supports temporary on card session objects */
 	p15init_create_object = _token == TRUE || (p11card->card->caps & SC_CARD_CAP_ONCARD_SESSION_OBJECTS) == SC_CARD_CAP_ONCARD_SESSION_OBJECTS;
 
 	if (p15init_create_object) {
@@ -4691,7 +4682,7 @@ pkcs15_prkey_decrypt(struct sc_pkcs11_session *session, void *obj,
 
 	/* only padding error must be handled in constant-time way,
 	 * other error can be returned straight away */
-	if ((~constant_time_eq_i(rv, SC_ERROR_WRONG_PADDING) & constant_time_lt_s(sizeof(decrypted), (size_t)rv)))
+	if ((~constant_time_eq_s((size_t)rv, (size_t)SC_ERROR_WRONG_PADDING) & constant_time_lt_s(sizeof(decrypted), (size_t)rv)))
 		return sc_to_cryptoki_error(rv, "C_Decrypt");
 
 	/* check rv for padding error */

@@ -240,6 +240,8 @@ app <em class="replaceable"><code>application</code></em> {
 							</p></li><li class="listitem"><p>
 									<code class="literal">myeid</code>: See <a class="xref" href="#myeid" title="Configuration Options for MyEID Card">the section called “Configuration Options for MyEID Card”</a>
 							</p></li><li class="listitem"><p>
+									<code class="literal">dtrust</code>: See <a class="xref" href="#dtrust" title="Configuration Options for D-Trust Signature Cards">the section called “Configuration Options for D-Trust Signature Cards”</a>
+							</p></li><li class="listitem"><p>
 									Any other value: Configuration block for an externally loaded card driver
 							</p></li></ul></div><p>
 					</p></dd><dt><span class="term">
@@ -272,6 +274,21 @@ app <em class="replaceable"><code>application</code></em> {
 								is disabled both for signatures and decryption (PKCS#1 v1.5 type 1 and 2).
 							</p></li></ul></div><p>
 						(Default: <code class="literal">decipher</code>).
+				</p></dd><dt><span class="term">
+					<code class="option">openssl_config = <em class="replaceable"><code>path</code></em>;</code>
+				</span></dt><dd><p>
+						Specify a OpenSSL configuration file to be loaded into the
+						OpenSC's library context. This should not be needed for general
+						operation, but is needed if you need to configure some
+						specifics of OpenSSL, without the need to rebuild OpenSC (for
+						example configure and load a FIPS provider).
+						For more information about configuring OpenSSL, see
+						<span class="citerefentry"><span class="refentrytitle">config</span>(5).
+						</span>
+						and
+						<span class="citerefentry"><span class="refentrytitle">fips_config</span>(5).
+						</span>.
+						(Default: <code class="literal">empty</code>).
 				</p></dd><dt><span class="term">
 					<code class="option">secure_messaging <em class="replaceable"><code>name</code></em> {
 						<em class="replaceable"><code>block_contents</code></em>
@@ -551,7 +568,35 @@ app <em class="replaceable"><code>application</code></em> {
 							(in encrypted form) it can be used to automatically establish
 							secure connection, but only if the card is accessed over the
 							contact interface.
-					</p></dd></dl></div></div><div class="refsect2"><a name="piv"></a><h3>Configuration Options for PIV Card</h3><div class="variablelist"><dl class="variablelist"></dl></div></div><div class="refsect2"><a name="card_atr"></a><h3>Configuration based on ATR</h3><p>
+					</p></dd></dl></div></div><div class="refsect2"><a name="dtrust"></a><h3>Configuration Options for D-Trust Signature Cards</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">can = <em class="replaceable"><code>value</code></em>;</code>
+					</span></dt><dd><p>
+						CAN (Card Access Number – 6 digit number printed on the front side of
+						the card) is required to establish connection with the card. It might
+						be overwritten by <code class="literal">DTRUST_CAN</code> environment variable.
+						If not specified here, the CAN will be read from a card specific cache,
+						prompted on the card readers PIN pad or prompted interactively in the
+						following order.
+						</p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><p>Environment variable <code class="literal">DTRUST_CAN</code></p></li><li class="listitem"><p>This configuration file option</p></li><li class="listitem"><p>PKCS#15 card-specific cache</p></li><li class="listitem"><p>Pin pad of a PACE-capable card reader</p></li></ol></div></dd><dt><span class="term">
+						<code class="option">can_use_cache = <em class="replaceable"><code>bool</code></em>;</code>
+					</span></dt><dd><p>
+						Cache the CAN number of a card once it was provided by the user in the
+						directory <code class="literal">file_cache_dir</code>. The cached CAN is used
+						later to avoid interactively prompting for the CAN. This feature is
+						enabled by default.
+						</p></dd></dl></div></div><div class="refsect2"><a name="piv"></a><h3>Configuration Options for PIV Card</h3><div class="variablelist"><dl class="variablelist"></dl></div></div><div class="refsect2"><a name="lteid"></a><h3>Configuration Options for Lithuanian ID Card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">can = <em class="replaceable"><code>value</code></em>;</code>
+					</span></dt><dd><p>
+							Lithuanian ID card requires the card access
+							number (CAN) to be verified before reading it or
+							performing any operation. It is printed on the
+							front side bottom right corner of the card.
+					</p><p>
+							Note that alternatively it can also be set by
+							<span class="application">lteid-tool</span>. For command
+							line tools it can also be provided via
+							<code class="literal">LTEID_CAN</code> environment variable.
+					</p></dd></dl></div></div><div class="refsect2"><a name="card_atr"></a><h3>Configuration based on ATR</h3><p>
 				</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 							<code class="option">atrmask = <em class="replaceable"><code>hexstring</code></em>;</code>
 						</span></dt><dd><p>
@@ -812,7 +857,8 @@ app <em class="replaceable"><code>application</code></em> {
 							<code class="literal">mcrd</code> (deactivated driver),
 							<code class="literal">npa</code>,
 							<code class="literal">nqapplet</code>,
-							<code class="literal">tcos</code> and otherwise <code class="literal">no</code>).
+							<code class="literal">tcos</code>,
+							<code class="literal">dtrust</code> and otherwise <code class="literal">no</code>).
 						</p><p>
 							If caching is done by a system process, the
 							cached files may be placed inaccessible from
@@ -1229,7 +1275,7 @@ app <em class="replaceable"><code>application</code></em> {
 				</p></li><li class="listitem"><p>
 						DF(PKCS#15) is directory containing the PKCS#15 files and directories
 				</p></li><li class="listitem"><p>
-						EF(ODF) (Object Directory File) is elementary file containing pointers 
+						EF(ODF) (Object Directory File) is elementary file containing pointers
 						to other elementary files (PrKDFs, PuKDFs, SKDFs, CDFs, DODFs, AODFs)
 				</p></li><li class="listitem"><p>
 						PrKDF (Private Key Directory File) is elementary file containing

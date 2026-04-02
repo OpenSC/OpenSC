@@ -11,7 +11,7 @@ MAINTAINERCLEANFILES = \
 	$(srcdir)/m4/ltversion.m4 $(srcdir)/m4/lt~obsolete.m4 \
 	$(srcdir)/m4/ltoptions.m4 \
 	$(srcdir)/packaged
-EXTRA_DIST = Makefile.mak
+EXTRA_DIST = Makefile.mak VERSION.mk
 
 DISTCHECK_CONFIGURE_FLAGS = --with-completiondir=/tmp
 

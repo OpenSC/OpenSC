@@ -64,10 +64,7 @@ enum {
 	SC_CARD_TYPE_SETCOS_BASE = 6000,
 	SC_CARD_TYPE_SETCOS_GENERIC,
 	SC_CARD_TYPE_SETCOS_PKI,
-	SC_CARD_TYPE_SETCOS_FINEID,
-	SC_CARD_TYPE_SETCOS_FINEID_V2,
 	SC_CARD_TYPE_SETCOS_NIDEL,
-	SC_CARD_TYPE_SETCOS_FINEID_V2_2048,
 	SC_CARD_TYPE_SETCOS_44 = 6100,
 	SC_CARD_TYPE_SETCOS_EID_V2_0,
 	SC_CARD_TYPE_SETCOS_EID_V2_1,
@@ -232,7 +229,11 @@ enum {
 	/* EstEID cards */
 	SC_CARD_TYPE_ESTEID_2018 = 35000,
 	SC_CARD_TYPE_ESTEID_2018_V2_2025,
+	SC_CARD_TYPE_LATEID_2018_V2_2025,
 	SC_CARD_TYPE_ESTEID_2025,
+	SC_CARD_TYPE_FINEID_2022,
+	SC_CARD_TYPE_FINEID_2025,
+	SC_CARD_TYPE_LATEID_2018,
 
 	/* Rutoken cards */
 	SC_CARD_TYPE_RUTOKENS = 36000,
@@ -246,6 +247,7 @@ enum {
 	SC_CARD_TYPE_IDPRIME_3810,
 	SC_CARD_TYPE_IDPRIME_830,
 	SC_CARD_TYPE_IDPRIME_930,
+	SC_CARD_TYPE_IDPRIME_930_PLUS,
 	SC_CARD_TYPE_IDPRIME_940,
 	SC_CARD_TYPE_IDPRIME_840,
 	SC_CARD_TYPE_IDPRIME_GENERIC,
@@ -255,6 +257,7 @@ enum {
 
 	/* JCOP4 cards with NQ-Applet */
 	SC_CARD_TYPE_NQ_APPLET = 39000,
+	SC_CARD_TYPE_NQ_APPLET_RFID = 39001,
 
 	/* Slovak eID cards */
 	SC_CARD_TYPE_SKEID_BASE = 40000,
@@ -270,6 +273,14 @@ enum {
 	SC_CARD_TYPE_DTRUST_V4_1_M100,
 	SC_CARD_TYPE_DTRUST_V4_4_STD,
 	SC_CARD_TYPE_DTRUST_V4_4_MULTI,
+	SC_CARD_TYPE_DTRUST_V5_1_STD,
+	SC_CARD_TYPE_DTRUST_V5_1_MULTI,
+	SC_CARD_TYPE_DTRUST_V5_1_M100,
+	SC_CARD_TYPE_DTRUST_V5_4_STD,
+	SC_CARD_TYPE_DTRUST_V5_4_MULTI,
+
+	/* Lithuanian eID cards */
+	SC_CARD_TYPE_LTEID = 43000,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -314,6 +325,7 @@ extern sc_card_driver_t *sc_get_nqApplet_driver(void);
 extern sc_card_driver_t *sc_get_skeid_driver(void);
 extern sc_card_driver_t *sc_get_eoi_driver(void);
 extern sc_card_driver_t *sc_get_dtrust_driver(void);
+extern sc_card_driver_t *sc_get_lteid_driver(void);
 
 #ifdef __cplusplus
 }

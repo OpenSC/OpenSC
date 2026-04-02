@@ -157,7 +157,7 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 	LOG_TEST_RET(ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r == SC_ERROR_FILE_END_REACHED)
+	if (r == SC_ERROR_FILE_END_REACHED || r == SC_ERROR_INCORRECT_PARAMETERS)
 		LOG_FUNC_RETURN(ctx, (int)apdu.resplen);
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
@@ -988,7 +988,11 @@ iso7816_set_security_env(struct sc_card *card,
 	}
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
 	switch (env->operation) {
+	case SC_SEC_OPERATION_AUTHENTICATE:
+		apdu.p2 = 0xA4;
+		break;
 	case SC_SEC_OPERATION_DECIPHER:
+	case SC_SEC_OPERATION_DERIVE:
 		apdu.p2 = 0xB8;
 		break;
 	case SC_SEC_OPERATION_SIGN:
@@ -1529,11 +1533,7 @@ int iso7816_read_binary_sfid(sc_card_t *card, unsigned char sfid,
 	/* emulate the behaviour of iso7816_read_binary */
 	r = (int)apdu.resplen;
 
-	while(1) {
-		if (r >= 0 && ((size_t) r) != read) {
-			*ef_len += r;
-			break;
-		}
+	while (1) {
 		if (r <= 0) {
 			if (*ef_len > 0)
 				break;

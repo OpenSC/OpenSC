@@ -1332,6 +1332,10 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	       "sc_pkcs15_pubkey_from_spki_fields() called: %p:%"SC_FORMAT_LEN_SIZE_T"u\n%s",
 	       buf, buflen, sc_dump_hex(buf, buflen));
 
+	if (buflen < 1) {
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "subjectPublicKeyInfo can not be empty");
+	}
+
 	tmp_buf = malloc(buflen);
 	if (!tmp_buf) {
 		r = SC_ERROR_OUT_OF_MEMORY;
@@ -1339,7 +1343,7 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	}
 	memcpy(tmp_buf, buf, buflen);
 
-	if ((*tmp_buf & SC_ASN1_TAG_CONTEXT))
+	if (buflen > 0 && (*tmp_buf & SC_ASN1_TAG_CONTEXT))
 		*tmp_buf = SC_ASN1_TAG_CONSTRUCTED | SC_ASN1_TAG_SEQUENCE;
 
 	memset(&pk_alg, 0, sizeof(pk_alg));
@@ -1519,23 +1523,29 @@ static struct ec_curve_info {
 		{"brainpoolP384r1",	"1.3.36.3.3.2.8.1.1.11", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0B", 11}, 384, SC_ALGORITHM_EC},
 		{"brainpoolP512r1",	"1.3.36.3.3.2.8.1.1.13", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0D", 11}, 512, SC_ALGORITHM_EC},
 
+		{"brainpoolP192t1",	"1.3.36.3.3.2.8.1.1.4", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x04", 11}, 192, SC_ALGORITHM_EC},
+		{"brainpoolP224t1",	"1.3.36.3.3.2.8.1.1.6", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x06", 11}, 224, SC_ALGORITHM_EC},
+		{"brainpoolP256t1",	"1.3.36.3.3.2.8.1.1.8", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x08", 11}, 256, SC_ALGORITHM_EC},
+		{"brainpoolP320t1",	"1.3.36.3.3.2.8.1.1.10", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0A", 11}, 320, SC_ALGORITHM_EC},
+		{"brainpoolP384t1",	"1.3.36.3.3.2.8.1.1.12", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0C", 11}, 384, SC_ALGORITHM_EC},
+		{"brainpoolP512t1",	"1.3.36.3.3.2.8.1.1.14", {(u8 *)"\x06\x09\x2B\x24\x03\x03\x02\x08\x01\x01\x0E", 11}, 512, SC_ALGORITHM_EC},
+
 		{"secp192k1",		"1.3.132.0.31", {(u8 *)"\x06\x05\x2B\x81\x04\x00\x1F", 7}, 192, SC_ALGORITHM_EC},
 		{"secp256k1",		"1.3.132.0.10", {(u8 *)"\x06\x05\x2B\x81\x04\x00\x0A", 7}, 256, SC_ALGORITHM_EC},
 
 		/* OpenPGP extensions by Yubikey and GNUK are not defined in RFCs but we know the oid written to card */
 
-		{"edwards25519",	"1.3.6.1.4.1.11591.15.1", {(u8 *)"\x06\x09\x2B\x06\x01\x04\x01\xDA\x47\x0F\x01", 11}, 256, SC_ALGORITHM_EDDSA},
-		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", {(u8 *)"\x06\x0A\x2B\x06\x01\x04\x01\x97\x55\x01\x05\x01", 12}, 256, SC_ALGORITHM_XEDDSA},
+		{"edwards25519",	"1.3.6.1.4.1.11591.15.1", {(u8 *)"\x06\x09\x2B\x06\x01\x04\x01\xDA\x47\x0F\x01", 11}, 255, SC_ALGORITHM_EDDSA},
+		{"curve25519",		"1.3.6.1.4.1.3029.1.5.1", {(u8 *)"\x06\x0A\x2B\x06\x01\x04\x01\x97\x55\x01\x05\x01", 12}, 255, SC_ALGORITHM_XEDDSA},
 
 		/* RFC 8410 defined curves */
-		{"X25519",              "1.3.101.110", {(u8 *)"\x06\x03\x2b\x65\x6e", 5}, 256, SC_ALGORITHM_XEDDSA},
+		{"X25519",              "1.3.101.110", {(u8 *)"\x06\x03\x2b\x65\x6e", 5}, 255, SC_ALGORITHM_XEDDSA},
 		{"X448",		"1.3.101.111", {(u8 *)"\x06\x03\x2b\x65\x6f", 5}, 448, SC_ALGORITHM_XEDDSA},
-		{"Ed25519",             "1.3.101.112", {(u8 *)"\x06\x03\x2b\x65\x70", 5}, 256, SC_ALGORITHM_EDDSA},
-		/* Ed448 needs extra byte thus 456 */
-		{"Ed448",		"1.3.101.113", {(u8 *)"\x06\x03\x2b\x65\x71", 5}, 456, SC_ALGORITHM_EDDSA},
+		{"Ed25519",             "1.3.101.112", {(u8 *)"\x06\x03\x2b\x65\x70", 5}, 255, SC_ALGORITHM_EDDSA},
+		{"Ed448",		"1.3.101.113", {(u8 *)"\x06\x03\x2b\x65\x71", 5}, 448, SC_ALGORITHM_EDDSA},
 		/* GnuPG openpgp curves as used in gnupg-card are equivalent to RFC8410 OIDs */
-		{"cv25519",		"1.3.101.110", {(u8 *)"\x06\x03\x2b\x65\x6e", 5}, 256, SC_ALGORITHM_XEDDSA},
-		{"ed25519",		"1.3.101.112", {(u8 *)"\x06\x03\x2b\x65\x70", 5}, 256, SC_ALGORITHM_EDDSA},
+		{"cv25519",		"1.3.101.110", {(u8 *)"\x06\x03\x2b\x65\x6e", 5}, 255, SC_ALGORITHM_XEDDSA},
+		{"ed25519",		"1.3.101.112", {(u8 *)"\x06\x03\x2b\x65\x70", 5}, 255, SC_ALGORITHM_EDDSA},
 
 		{NULL, NULL, {NULL, 0}, 0, 0}, /* Do not touch this */
 };

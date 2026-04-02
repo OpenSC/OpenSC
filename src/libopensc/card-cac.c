@@ -229,7 +229,7 @@ static const cac_object_t *cac_find_obj_by_id(unsigned short object_id)
  */
 static int cac_is_cert(cac_private_data_t * priv, const sc_path_t *in_path)
 {
-	cac_object_t test_obj;
+	cac_object_t test_obj = {0};
 	test_obj.path = *in_path;
 	test_obj.path.index = 0;
 	test_obj.path.count = 0;
@@ -398,6 +398,8 @@ static int cac_read_file(sc_card_t *card, int file_type, u8 **out_buf, size_t *o
 	size_t len = 0;
 	int r;
 
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
 	params[0] = file_type;
 	params[1] = 2;
 
@@ -435,12 +437,12 @@ static int cac_read_file(sc_card_t *card, int file_type, u8 **out_buf, size_t *o
 	}
 	*out_len = size;
 	*out_buf = out;
-	return SC_SUCCESS;
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 fail:
 	if (out)
 		free(out);
 	*out_len = 0;
-	return r;
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
@@ -509,7 +511,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		}
 		priv->cache_buf_len = tlv_len;
 
-		for (tl_ptr = tl, val_ptr=val, tlv_ptr = priv->cache_buf;
+		for (tl_ptr = tl, val_ptr = val, tlv_ptr = priv->cache_buf;
 				tl_len >= 2 && tlv_len > 0;
 				val_len -= len, tlv_len -= len, val_ptr += len, tlv_ptr += len) {
 			/* get the tag and the length */
@@ -534,6 +536,8 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 			}
 			memcpy(tlv_ptr, val_ptr, len);
 		}
+		/* fixup the cache_buf_le to reflect for the bad data ignored above */
+		priv->cache_buf_len = (tlv_ptr - priv->cache_buf);
 		break;
 
 	case CAC_OBJECT_TYPE_CERT:
@@ -1181,7 +1185,7 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 		 * Do this only if we select applets for reading
 		 * (not during driver initialization)
 		 */
-		cac_properties_t prop;
+		cac_properties_t prop = {0};
 		size_t i = -1;
 
 		r = cac_get_properties(card, &prop);
@@ -1275,7 +1279,7 @@ static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_
 static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, const u8 *aid, int aid_len)
 {
 	cac_object_t new_object;
-	cac_properties_t prop;
+	cac_properties_t prop = {0};
 	size_t i;
 	int r;
 

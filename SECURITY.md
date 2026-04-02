@@ -9,14 +9,14 @@ backport security fixes into them. Only the last release is supported.
 
 | Version  | Supported          |
 | -------- | ------------------ |
-| 0.26.1   | :white_check_mark: |
-| < 0.26.1 | :x:                |
+| 0.27.0+  | :white_check_mark: |
+| < 0.27.0 | :x:                |
 
 ## Reporting a Vulnerability
 
 If you discovered security vulnerability in supported version of OpenSC,
 you can either report it with a button "Report a vulnerability" in
-[Security tab](https://github.com/OpenSC/OpenSC/security/)
+[Security tab](https://github.com/OpenSC/OpenSC/security/advisories/new)
 (Do not create normal public issue with security relevant information!)
 or you can send email to any recently active
 project developers frankmorgner(at)gmail.com, deengert(at)gmail.com and/or

@@ -137,6 +137,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "idprime",	(void *(*)(void)) sc_get_idprime_driver },
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 	{ "edo",        (void *(*)(void)) sc_get_edo_driver },
+	{ "lteid", (void *(*)(void)) sc_get_lteid_driver },
 #endif
 
 /* Here should be placed drivers that need some APDU transactions in the
@@ -214,7 +215,7 @@ sc_ctx_win32_get_config_value(const char *name_env,
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (!name_key)
-		name_key = "Software\\OpenSC Project\\OpenSC";
+		name_key = "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\OpenSC" OPENSC_ARCH_SUFFIX;
 
 	rc = RegOpenKeyExA(HKEY_CURRENT_USER, name_key, 0, KEY_QUERY_VALUE, &hKey);
 	if (rc == ERROR_SUCCESS) {
@@ -434,6 +435,13 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 	} else if (0 == strcmp(disable_hw_pkcs1_padding, "both")) {
 		ctx->disable_hw_pkcs1_padding = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_02;
 	}
+
+#ifdef USE_OPENSSL3_LIBCTX
+	val = scconf_get_str(block, "openssl_config", NULL);
+	if (val != NULL) {
+		ctx->openssl_config = strdup(val);
+	}
+#endif
 
 	return err;
 }
@@ -709,8 +717,8 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	memset(ctx->conf_blocks, 0, sizeof(ctx->conf_blocks));
 #ifdef _WIN32
 	temp_len = PATH_MAX-1;
-	r = sc_ctx_win32_get_config_value("OPENSC_CONF", "ConfigFile", "Software\\OpenSC Project\\OpenSC",
-		temp_path, &temp_len);
+	r = sc_ctx_win32_get_config_value("OPENSC_CONF", "ConfigFile", "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\OpenSC" OPENSC_ARCH_SUFFIX,
+			temp_path, &temp_len);
 	if (r)   {
 		sc_log(ctx, "process_config_file doesn't find opensc config file. Please set the registry key.");
 		return;
@@ -832,24 +840,49 @@ int sc_context_repair(sc_context_t **ctx_out)
 static int sc_openssl3_init(sc_context_t *ctx)
 {
 	ctx->ossl3ctx = calloc(1, sizeof(ossl3ctx_t));
-	if (ctx->ossl3ctx == NULL)
+	if (ctx->ossl3ctx == NULL) {
 		return SC_ERROR_OUT_OF_MEMORY;
+	}
+
 	ctx->ossl3ctx->libctx = OSSL_LIB_CTX_new();
 	if (ctx->ossl3ctx->libctx == NULL) {
 		return SC_ERROR_INTERNAL;
 	}
-	ctx->ossl3ctx->defprov = OSSL_PROVIDER_load(ctx->ossl3ctx->libctx,
-						    "default");
-	if (ctx->ossl3ctx->defprov == NULL) {
-		OSSL_LIB_CTX_free(ctx->ossl3ctx->libctx);
-		free(ctx->ossl3ctx);
-		ctx->ossl3ctx = NULL;
-		return SC_ERROR_INTERNAL;
-	}
-	ctx->ossl3ctx->legacyprov = OSSL_PROVIDER_load(ctx->ossl3ctx->libctx,
-						       "legacy");
-	if (ctx->ossl3ctx->legacyprov == NULL) {
-		sc_log(ctx, "Failed to load OpenSSL Legacy provider");
+
+	if (ctx->openssl_config != NULL) {
+		if (access(ctx->openssl_config, R_OK) != 0) {
+			sc_log(ctx, "Warning: provided OpenSSL configuration file '%s' is not readable",
+					ctx->openssl_config);
+		} else {
+			/*
+			 * Load OpenSC specific openssl config file to configure FIPS module
+			 * (or whatever else the user needs).
+			 * We assume that this config file will automatically activate the FIPS
+			 * and base providers so we don't need to explicitly load them here.
+			 */
+			if (!OSSL_LIB_CTX_load_config(ctx->ossl3ctx->libctx, ctx->openssl_config)) {
+				return SC_ERROR_INTERNAL;
+			}
+		}
+	} else {
+		/* We do not have configuration file specified: load the default
+		 * and legacy providers */
+		const char *defprov_name = "default";
+		if (FIPS_mode()) {
+			defprov_name = "fips";
+		}
+		ctx->ossl3ctx->defprov = OSSL_PROVIDER_load(ctx->ossl3ctx->libctx, defprov_name);
+		if (ctx->ossl3ctx->defprov == NULL) {
+			OSSL_LIB_CTX_free(ctx->ossl3ctx->libctx);
+			free(ctx->ossl3ctx);
+			ctx->ossl3ctx = NULL;
+			return SC_ERROR_INTERNAL;
+		}
+		/* yes, legacy -- smart cards depend on several legacy algorithms */
+		ctx->ossl3ctx->legacyprov = OSSL_PROVIDER_load(ctx->ossl3ctx->libctx, "legacy");
+		if (ctx->ossl3ctx->legacyprov == NULL) {
+			sc_log(ctx, "Failed to load OpenSSL Legacy provider");
+		}
 	}
 	return SC_SUCCESS;
 }
@@ -1063,7 +1096,7 @@ int sc_release_context(sc_context_t *ctx)
 		_sc_delete_reader(ctx, rdr);
 	}
 
-	if (ctx->reader_driver->ops->finish != NULL)
+	if (ctx->reader_driver != NULL && ctx->reader_driver->ops->finish != NULL)
 		ctx->reader_driver->ops->finish(ctx);
 
 	for (i = 0; ctx->card_drivers[i]; i++) {

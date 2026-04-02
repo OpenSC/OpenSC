@@ -403,7 +403,7 @@ typedef struct sc_reader {
 	unsigned long flags, capabilities;
 	unsigned int supported_protocols, active_protocol;
 	size_t max_send_size; /* Max Lc supported by the reader layer */
-	size_t max_recv_size; /* Mac Le supported by the reader layer */
+	size_t max_recv_size; /* Max Le supported by the reader layer */
 
 	struct sc_atr atr;
 	struct sc_uid uid;
@@ -433,10 +433,11 @@ typedef struct sc_reader {
 #define SC_PIN_ENCODING_BCD	1
 #define SC_PIN_ENCODING_GLP	2 /* Global Platform - Card Specification v2.0.1 */
 
-/** Values for sc_pin_cmd_pin.logged_in */
-#define SC_PIN_STATE_UNKNOWN	-1
-#define SC_PIN_STATE_LOGGED_OUT 0
-#define SC_PIN_STATE_LOGGED_IN  1
+/** Values for sc_pin_cmd_pin.logged_in, can be bitmapped together */
+#define SC_PIN_STATE_UNKNOWN	0
+#define SC_PIN_STATE_LOGGED_OUT 1
+#define SC_PIN_STATE_LOGGED_IN  2
+#define SC_PIN_STATE_NEEDS_CHANGE 4
 
 /* A card driver receives the sc_pin_cmd_data and sc_pin_cmd_pin structures filled in by the
  * caller, with the exception of the fields returned by the driver for SC_PIN_CMD_GET_INFO.
@@ -894,6 +895,7 @@ typedef struct sc_context {
 	void *mutex;
 
 #ifdef ENABLE_OPENSSL
+	char *openssl_config;
 	ossl3ctx_t *ossl3ctx;
 #endif
 

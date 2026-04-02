@@ -33,7 +33,6 @@ Some features are undocumented like the format used to store certificates. They 
 
 #include <stdlib.h>
 #include <string.h>
-#include "../common/compat_strlcpy.h"
 
 #ifdef ENABLE_OPENSSL
 /* openssl only needed for card administration */
@@ -52,6 +51,8 @@ Some features are undocumented like the format used to store certificates. They 
 // used for changing the default label if used twice
 #include "../pkcs15init/pkcs15-init.h"
 #include "card-gids.h"
+#include "../common/compat_strlcat.h"
+#include "../common/compat_strlcpy.h"
 
 #define GIDS_STATE_NONE 0
 #define GIDS_STATE_READ_DATA_PRESENT 1
@@ -1359,7 +1360,7 @@ static int gids_create_keyfile(sc_card_t *card, sc_pkcs15_object_t *object) {
 		char addition[4] = " 00";
 		addition[1] += containernum % 10;
 		addition[2] += (containernum & 0xFF) / 10;
-		strcat(object->label, addition);
+		strlcat(object->label, addition, SC_PKCS15_MAX_LABEL_SIZE);
 	}
 
 	// convert char to wchar

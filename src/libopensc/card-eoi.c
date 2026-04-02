@@ -422,18 +422,24 @@ static int eoi_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *
 static int
 eoi_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
-	int r = SC_SUCCESS;
+	struct sc_card_driver *iso_driver = NULL;
+	int r = SC_ERROR_NOT_SUPPORTED;
 
 	LOG_FUNC_CALLED(card->ctx);
 	switch (cmd) {
 	case SC_CARDCTL_GET_MODEL:
-		if (!ptr)
+		if (!ptr) {
 			r = SC_ERROR_INVALID_ARGUMENTS;
-		else
+		} else {
 			*(char **)ptr = eoi_model;
+			r = SC_SUCCESS;
+		}
 		break;
 	default:
-		r = sc_get_iso7816_driver()->ops->card_ctl(card, cmd, ptr);
+		iso_driver = sc_get_iso7816_driver();
+		if (iso_driver->ops->card_ctl != NULL) {
+			r = sc_get_iso7816_driver()->ops->card_ctl(card, cmd, ptr);
+		}
 	}
 	LOG_FUNC_RETURN(card->ctx, r);
 }

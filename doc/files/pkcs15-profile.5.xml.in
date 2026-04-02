@@ -44,7 +44,7 @@
 						DF(PKCS#15) is directory containing the PKCS#15 files and directories
 				</para></listitem>
 				<listitem><para>
-						EF(ODF) (Object Directory File) is elementary file containing pointers 
+						EF(ODF) (Object Directory File) is elementary file containing pointers
 						to other elementary files (PrKDFs, PuKDFs, SKDFs, CDFs, DODFs, AODFs)
 				</para></listitem>
 				<listitem><para>

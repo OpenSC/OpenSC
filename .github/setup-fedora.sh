@@ -19,7 +19,7 @@ else
 fi
 
 if [ "$1" == "kryoptic" ]; then
-	DEPS="$DEPS clang meson cargo expect pkgconf-pkg-config openssl-devel p11-kit-devel gnutls-utils g++ sqlite-devel python3-six git"
+	DEPS="$DEPS kryoptic"
 fi
 
 sudo dnf install -y $DEPS

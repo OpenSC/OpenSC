@@ -14,16 +14,16 @@ else
 	BUILD_PATH="$MESON_BUILD_ROOT"
 fi
 
-export SOPIN="12345678"
-export PIN="123456"
+export SOPIN="12345678abcdefgh"
+export PIN="123456abcdef"
 PKCS11_TOOL="$VALGRIND $BUILD_PATH/src/tools/pkcs11-tool"
 
 if [ "${TOKENTYPE}" == "softhsm" ]; then
-    source "${BUILD_PATH}/tests/init-softhsm.sh"
+    source "${SOURCE_PATH}/tests/init-softhsm.sh"
 elif [ "${TOKENTYPE}" == "softokn" ]; then
-    source "${BUILD_PATH}/tests/init-softokn.sh"
+    source "${SOURCE_PATH}/tests/init-softokn.sh"
 elif [ "${TOKENTYPE}" == "kryoptic" ]; then
-    source "${BUILD_PATH}/tests/init-kryoptic.sh"
+    source "${SOURCE_PATH}/tests/init-kryoptic.sh"
 else
     echo "Unknown token type: $1"
     exit 1
@@ -60,10 +60,8 @@ function generate_key() {
 	# convert it to more digestible PEM format
 	if [[ ${TYPE:0:3} == "RSA" ]]; then
 		openssl rsa -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
-	elif [[ $TYPE == "EC:edwards25519" ]]; then
-		openssl pkey -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
 	else
-		openssl ec -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
+		openssl pkey -inform DER -outform PEM -in $ID.der -pubin > $ID.pub
 	fi
 	rm $ID.der
 }
@@ -86,10 +84,44 @@ function card_setup() {
 		echo "Couldn't generate GENERIC key"
 		return 1
 	fi
+	if [ "${TOKENTYPE}" == "kryoptic" ]; then
+		# Generate Ed25519 Key pair
+		generate_key "EC:ed25519" "06" "ed25519" || return 1
+		# Generate Ed448 Key pair
+		generate_key "EC:ed448" "07" "ed448" || return 1
+		# Generate x25519 Key pair
+		generate_key "EC:x25519" "08" "x25519" || return 1
+		# Generate x448 Key pair
+		generate_key "EC:x448" "09" "x448" || return 1
+
+		# Generate ML-DSA-65 Key pair
+		generate_key "ML-DSA-65" "10" "ML-DSA-65" || return 1
+		# Generate ML-KEM-768 Key pair
+		generate_key "ML-KEM-768" "11" "ML-KEM-768" || return 1
+		# Generate SLH-DSA-SHA2-192S Key pair
+		generate_key "SLH-DSA-SHA2-192S" "12" "SLH-DSA-SHA2-192S" || return 1
+	fi
+
+	# Skip in FIPS mode -- Brainpool curves are not supported
+	if [[ -e "/etc/system-fips" ]]; then
+		return
+	fi
+	if [[ -f "/proc/sys/crypto/fips_enabled" && $(cat /proc/sys/crypto/fips_enabled) == "1" ]]; then
+		return
+	fi
+	if [[ -n "$LIBRESSL_VERSION" ]]; then
+		return
+	fi
+
+	# Generate brainpoolP256r1 Key pair
+	generate_key "EC:brainpoolP256r1" "13" "brainpoolP256r1" || echo "WARNING: brainpoolP256r1 not supported, skipping"
+	# Generate brainpoolP256t1 Key pair
+	generate_key "EC:brainpoolP256t1" "14" "brainpoolP256t1" || echo "WARNING: brainpoolP256t1 not supported, skipping"
+
 }
 
 function card_cleanup() {
 	token_cleanup
-	rm 0{1,2,3,4}.pub
+	rm -f 0{1,2,3,4}.pub 1{3,4}.pub
 	sleep 1
 }

@@ -38,6 +38,9 @@
 #include <ctype.h>
 
 #include <getopt.h>
+
+#include "common/compat_strlcat.h"
+#include "common/compat_strlcpy.h"
 #include "libopensc/opensc.h"
 #include "libopensc/asn1.h"
 #include "libopensc/cards.h"
@@ -234,13 +237,13 @@ static void display_data(const struct ef_name_map *map, u8 *data, size_t length)
 
 		if (value != NULL) {
 			if (exec_program) {
-				char *envvar= malloc(strlen(map->env_name) +
-							strlen(value) + 2);
+				size_t envvar_size = strlen(map->env_name) + strlen(value) + 2;
+				char *envvar = malloc(envvar_size);
 
 				if (envvar != NULL) {
-					strcpy(envvar, map->env_name);
-					strcat(envvar, "=");
-					strcat(envvar, value);
+					strlcpy(envvar, map->env_name, envvar_size);
+					strlcat(envvar, "=", envvar_size);
+					strlcat(envvar, value, envvar_size);
 					putenv(envvar);
 					/* envvar deliberately kept: see putenv(3) */
 				}

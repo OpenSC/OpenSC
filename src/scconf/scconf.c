@@ -30,6 +30,7 @@
 #include <ctype.h>
 #include <limits.h>
 
+#include "common/compat_strlcat.h"
 #include "scconf.h"
 
 scconf_context *scconf_new(const char *filename)
@@ -424,9 +425,9 @@ char *scconf_list_strdup(const scconf_list * list, const char *filler)
 		return NULL;
 	}
 	while (list && list->data) {
-		strcat(buf, list->data);
+		strlcat(buf, list->data, len);
 		if (filler) {
-			strcat(buf, filler);
+			strlcat(buf, filler, len);
 		}
 		list = list->next;
 	}

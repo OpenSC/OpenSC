@@ -1,4 +1,4 @@
-version: 0.26.1.{build}
+version: 0.27.1.{build}
 
 platform:
   - x86
@@ -9,11 +9,9 @@ configuration:
   - Light
 
 environment:
-  GH_TOKEN:
-    secure: jeReA6BNx/dXVMGfroKadgE9ByKAE/tAGcb2z+dIVZGAN29X1Pu22wi1TuVOy9ZugqBzjvFV4knwHJSGi0+U6Yj1fTfa2CYpeCBym4JOXqPis/GpKfSeBV9IrmJGT/Av
   PATH: C:\cygwin\bin;%PATH%
-  OPENPACE_VER: 1.1.3
-  ZLIB_VER_DOT: 1.3.1
+  OPENPACE_VER: 1.1.4
+  ZLIB_VER_DOT: 1.3.2
   matrix:
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
     VCVARSALL: "%ProgramFiles(x86)%/Microsoft Visual Studio/2017/Community/VC/Auxiliary/Build/vcvarsall.bat"
@@ -38,9 +36,9 @@ install:
         https://ci.appveyor.com/api/projects/$env:APPVEYOR_ACCOUNT_NAME/$env:APPVEYOR_PROJECT_SLUG/history?recordsNumber=50).builds | `
         Where-Object pullRequestId -eq $env:APPVEYOR_PULL_REQUEST_NUMBER)[0].buildNumber) { `
         throw "There are newer queued builds for this pull request, failing early." }
-  - ps: $env:PACKAGE_NAME=(git describe --tags --abbrev=0)
+  - ps: $env:PACKAGE_VERSION=(git describe --tags --abbrev=0)
   - ps: $env:OPENSSL_PF = If ($env:Platform -eq "x86") { "Win32" } Else { "Win64" }
-  - ps: $env:ARTIFACT="OpenSC-${env:PACKAGE_NAME}_${env:OPENSSL_PF}"
+  - ps: $env:ARTIFACT="OpenSC-${env:PACKAGE_VERSION}_${env:OPENSSL_PF}"
   - ps: >-
       If ($env:Configuration -Like "*Light*") {
         $env:ARTIFACT+="-Light"
@@ -92,14 +90,8 @@ build_script:
         $env:OPENPACE_DEF="/DENABLE_OPENPACE"
         $env:OPENPACE_DIR="C:\openpace-${env:OPENSSL_PF}"
       }
-  - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" == \"master\" -a -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap; fi"
-  - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" == \"master\" -a -n \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap.ci -s \"-pr$APPVEYOR_PULL_REQUEST_NUMBER\"; fi"
-  - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" != \"master\" -a -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap.ci -s \"-$APPVEYOR_REPO_BRANCH\"; fi"
-  - bash -c "exec 0</dev/null && if [ \"$APPVEYOR_REPO_BRANCH\" != \"master\" -a -n \"$APPVEYOR_PULL_REQUEST_NUMBER\" ]; then ./bootstrap.ci -s \"-$APPVEYOR_REPO_BRANCH-prAPPVEYOR_PULL_REQUEST_NUMBER\"; fi"
-  # disable features to speed up the script
-  - bash -c "exec 0</dev/null && ./configure --with-cygwin-native --disable-openssl --disable-readline --disable-zlib || cat config.log"
   - nmake /nologo /f Makefile.mak opensc.msi
-  - move win32\OpenSC.msi %ARTIFACT%.msi
+  - move win32\OpenSC*.msi %ARTIFACT%.msi
   # put all pdb files for dump analysis, but this consumes approx 100 MB per build
   - md %ARTIFACT%-Debug
   - ps: >-
@@ -112,12 +104,6 @@ build_script:
   - bash -c "git config --global user.email 'no-reply@appveyor.com'"
   - bash -c "git config --global user.name 'AppVeyor'"
   - bash -c "if [ \"$DO_PUSH_ARTIFACT\" = yes -a -z \"$APPVEYOR_PULL_REQUEST_NUMBER\" -a \"$APPVEYOR_REPO_NAME\" = \"OpenSC/OpenSC\" ]; then .github/push_artifacts.sh \"AppVeyor build ${APPVEYOR_BUILD_NUMBER}.${APPVEYOR_JOB_NUMBER}\"; fi"
-
-deploy:
-- provider: Webhook
-  url: https://app.signpath.io/API/v1/8d2463fe-39bd-4a41-bb72-f008b4b1fe17/Integrations/AppVeyor?ProjectSlug=OpenSC&SigningPolicySlug=release-signing&ArtifactConfigurationSlug=initial
-  authorization:
-     secure: 73Qvk9MbD7M7ZcoO6NnSH7zDA+9wSKZqNc602b1UeA5v6GsDyEvpCOlzJ9VvBcUuePTKBRsZ+uGQYKsddABgQA==
 
 cache:
   - C:\zlib -> .appveyor.yml

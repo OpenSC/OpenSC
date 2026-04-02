@@ -10,27 +10,22 @@ do_subst = $(SED) \
 	   -e 's,[@]bindir[@],$(bindir),g' \
 	   -e 's,[@]CVCDIR[@],$(CVCDIR),g' \
 	   -e 's,[@]PACKAGE_BUGREPORT[@],$(PACKAGE_BUGREPORT),g' \
-	   -e 's,[@]PACKAGE_NAME[@],$(PACKAGE_NAME),g' \
-	   -e 's,[@]PACKAGE_TARNAME[@],$(PACKAGE_TARNAME),g' \
-	   -e 's,[@]PACKAGE_URL[@],$(PACKAGE_URL),g' \
 	   -e 's,[@]PACKAGE_SUMMARY[@],$(PACKAGE_SUMMARY),g' \
-	   -e 's,[@]PACKAGE_VERSION[@],"$(PACKAGE_VERSION)",g' \
-	   -e 's,[@]DEFAULT_PKCS11_PROVIDER[@],"$(DEFAULT_PKCS11_PROVIDER)",g' \
 	   -e 's,[@]PKCS11_REGISTER_SKIP_FIREFOX[@],$(PKCS11_REGISTER_SKIP_FIREFOX),g' \
 	   -e 's,[@]VDFORMAT[@],$(VDFORMAT),g' \
 	   -e 's,[@]X509DIR[@],$(X509DIR),g'
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
-EXTRA_DIST = Makefile.mak versioninfo-tools.rc versioninfo-opensc-notify.rc goid-tool.ggo.in npa-tool.ggo.in opensc-notify.ggo.in egk-tool.ggo.in opensc-asn1.ggo.in org.opensc.notify.desktop.in exe.manifest pkcs11-register.desktop.in org.opensc-project.mac.pkcs11-register.plist.in org.opensc-project.mac.opensc-notify.plist.in
+EXTRA_DIST = Makefile.mak versioninfo-tools.rc versioninfo-opensc-notify.rc goid-tool.ggo.in npa-tool.ggo.in opensc-notify.ggo.in egk-tool.ggo.in opensc-asn1.ggo.in org.opensc.notify.desktop.in pkcs11-register.desktop.in org.opensc-project.mac.pkcs11-register.plist.in org.opensc-project.mac.opensc-notify.plist.in
 
 noinst_HEADERS = util.h fread_to_eof.h \
 	egk-tool-cmdline.h goid-tool-cmdline.h npa-tool-cmdline.h \
 	opensc-asn1-cmdline.h opensc-notify-cmdline.h pkcs11-register-cmdline.h \
-	openpgp-tool-helpers.h
+	openpgp-tool-helpers.h pkcs11_uri.h
 bin_PROGRAMS = opensc-tool opensc-explorer opensc-asn1 \
 	pkcs15-tool pkcs15-crypt pkcs11-tool pkcs11-register \
 	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool goid-tool \
-	dtrust-tool
+	dtrust-tool lteid-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 	westcos-tool sc-hsm-tool dnie-tool gids-tool
@@ -66,7 +61,7 @@ opensc_explorer_SOURCES = opensc-explorer.c util.c
 opensc_explorer_LDADD = $(OPTIONAL_READLINE_LIBS)
 pkcs15_tool_SOURCES = pkcs15-tool.c util.c ../pkcs11/pkcs11-display.c ../pkcs11/pkcs11-display.h
 pkcs15_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
-pkcs11_tool_SOURCES = pkcs11-tool.c util.c
+pkcs11_tool_SOURCES = pkcs11-tool.c util.c pkcs11_uri.c
 pkcs11_tool_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(PTHREAD_CFLAGS)
 pkcs11_tool_LDADD = \
 	$(top_builddir)/src/common/libpkcs11.la \
@@ -110,6 +105,10 @@ if HAVE_SHORTEN_WARNING_OPTION
 npa_tool_CFLAGS += -Wno-shorten-64-to-32
 endif
 
+lteid_tool_SOURCES = lteid-tool.c util.c
+lteid_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(OPENPACE_LIBS)
+lteid_tool_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPENPACE_CFLAGS)
+
 opensc_notify_SOURCES = opensc-notify.c opensc-notify-cmdline.c
 opensc_notify_CFLAGS = $(PTHREAD_CFLAGS)
 if HAVE_UNKNOWN_WARNING_OPTION
@@ -140,6 +139,8 @@ goid_tool_CFLAGS += -Wno-shorten-64-to-32
 endif
 
 dtrust_tool_SOURCES = dtrust-tool.c util.c
+dtrust_tool_LDADD = $(OPENPACE_LIBS)
+dtrust_tool_CFLAGS = $(OPENPACE_CFLAGS)
 
 opensc_asn1_SOURCES = opensc-asn1.c fread_to_eof.c opensc-asn1-cmdline.c
 opensc_asn1_CFLAGS =

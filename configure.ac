@@ -2,25 +2,18 @@ dnl -*- mode: m4; -*-
 
 AC_PREREQ(2.68)
 
-define([PRODUCT_NAME], [OpenSC])
-define([PRODUCT_TARNAME], [opensc])
-define([PRODUCT_BUGREPORT], [https://github.com/OpenSC/OpenSC/issues])
-define([PRODUCT_URL], [https://github.com/OpenSC/OpenSC])
-define([PACKAGE_VERSION_MAJOR], [0])
-define([PACKAGE_VERSION_MINOR], [26])
-define([PACKAGE_VERSION_FIX], [1])
-define([PACKAGE_SUFFIX], [])
+m4_esyscmd([awk -F= '
+  /^[[:space:]]*#/      { next }
+  /^[[:space:]]*$/      { next }
+  {
+    key = $1; val = $2;
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", key);
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", val);
+    printf("m4_define([%s],[%s])\n", key, val);
+  }
+' "VERSION.mk"])
 
-define([VS_FF_LEGAL_COPYRIGHT], [OpenSC Project])
-define([VS_FF_LEGAL_COMPANY_NAME], [OpenSC Project])
-define([VS_FF_LEGAL_COMPANY_URL], [https://github.com/OpenSC])
-define([VS_FF_COMMENTS], [Provided under the terms of the GNU Lesser General Public License (LGPLv2.1+).])
-define([VS_FF_PRODUCT_NAME], [OpenSC smartcard framework])
-define([VS_FF_PRODUCT_UPDATES], [https://github.com/OpenSC/OpenSC/releases])
-
-m4_sinclude(m4/version.m4.ci)
-
-# Hint: MacOSX/build-package.in contains minimum OpenSSL reference
+# Hint: MacOSX/build contains minimum OpenSSL reference
 m4_define([openssl_minimum_version], [1.1.1])
 
 AC_INIT([PRODUCT_NAME],[PACKAGE_VERSION_MAJOR.PACKAGE_VERSION_MINOR.PACKAGE_VERSION_FIX[]PACKAGE_SUFFIX],[PRODUCT_BUGREPORT],[PRODUCT_TARNAME],[PRODUCT_URL])
@@ -44,9 +37,9 @@ OPENSC_VS_FF_PRODUCT_UPDATES="VS_FF_PRODUCT_UPDATES"
 #   (Code changed:                      REVISION++)
 #   (Oldest interface changed/removed:  OLDEST++)
 #   (Interfaces added:                  CURRENT++, REVISION=0)
-OPENSC_LT_CURRENT="12"
-OPENSC_LT_OLDEST="12"
-OPENSC_LT_REVISION="2"
+OPENSC_LT_CURRENT="13"
+OPENSC_LT_OLDEST="13"
+OPENSC_LT_REVISION="0"
 OPENSC_LT_AGE="$((${OPENSC_LT_CURRENT}-${OPENSC_LT_OLDEST}))"
 
 AC_CONFIG_SRCDIR([src/libopensc/sc.c])
@@ -146,6 +139,12 @@ AX_CHECK_COMPILE_FLAG([-Wshorten-64-to-32], [have_shorten_warning_option="yes"],
 AM_CONDITIONAL([HAVE_SHORTEN_WARNING_OPTION], [test "${have_shorten_warning_option}" = "yes"])
 
 AX_VALGRIND_CHECK()
+
+if test ${VALGRIND_ENABLED} = "yes"; then
+	# to avoid false positive leaks from pcsclite
+	PCSCLITE_PATH=$(ldconfig -p | grep libpcsclite.so.1 |  tr ' ' '\n' | grep / | head -n 1)
+	AC_SUBST([PCSCLITE_PATH])
+fi
 
 AC_ARG_ENABLE(
 	[fuzzing],
@@ -418,8 +417,8 @@ if test "${GIT_CHECKOUT}" = "yes"; then
 	OPENSC_SCM_REVISION="OpenSC-${REVISION_DESCRIPTION}, ${HASH_COMMIT_DATE}"
 	OPENSC_VERSION_REVISION="$(${GIT} rev-list ${GIT_TAG_COMMIT}..HEAD --count || echo 0)"
 else
-	OPENSC_SCM_REVISION="No Git revision info available"
-	OPENSC_VERSION_REVISION="0"
+	OPENSC_SCM_REVISION="PACKAGE_SCM_REVISION"
+	OPENSC_VERSION_REVISION="PACKAGE_VERSION_REVISION"
 fi
 
 dnl C Compiler features
@@ -436,7 +435,6 @@ AC_CHECK_HEADERS([ \
 ])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
 AC_TYPE_UID_T
 AC_TYPE_SIZE_T
 
@@ -1101,6 +1099,7 @@ AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMMENTS], ["${OPENSC_VS_FF_COMMENTS}"], [OpenS
 AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_NAME], ["${OPENSC_VS_FF_PRODUCT_NAME}"], [OpenSC version-info ProductName])
 AC_DEFINE_UNQUOTED([OPENSC_VS_FF_PRODUCT_UPDATES], ["${OPENSC_VS_FF_PRODUCT_UPDATES}"], [OpenSC version-info UpdateURL])
 AC_DEFINE_UNQUOTED([OPENSC_VS_FF_COMPANY_URL], ["${OPENSC_VS_FF_COMPANY_URL}"], [OpenSC version-info UpdateURL])
+AC_DEFINE_UNQUOTED([OPENSC_ARCH_SUFFIX], [""], [OpenSC architecture suffix])
 
 pkcs11dir="\$(libdir)/pkcs11"
 
@@ -1207,11 +1206,8 @@ AC_CONFIG_FILES([
 	src/minidriver/Makefile
 	src/minidriver/opensc-minidriver.inf
 	win32/Makefile
-	win32/winconfig.h
 	win32/OpenSC.iss
-	win32/OpenSC.wxs
 	MacOSX/Makefile
-	MacOSX/build-package
 	MacOSX/Distribution.xml
 	MacOSX/resources/Welcome.html
 ])
@@ -1291,6 +1287,7 @@ CRYPTOTOKENKIT_CFLAGS:   ${CRYPTOTOKENKIT_CFLAGS}
 GIO2_CFLAGS:             ${GIO2_CFLAGS}
 GIO2_LIBS:               ${GIO2_LIBS}
 FUZZING_LIBS:            ${FUZZING_LIBS}
+PCSCLITE_PATH:           ${PCSCLITE_PATH}
 
 EOF
 

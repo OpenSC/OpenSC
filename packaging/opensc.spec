@@ -1,11 +1,12 @@
 Name:           opensc
-Version:        0.1.0
-Release:        1%{?dist}
+Version:        0.27.1
+Release:        %autorelease
 Summary:        Smart card library and applications
 
 License:        LGPL-2.1-or-later AND BSD-3-Clause
 URL:            https://github.com/OpenSC/OpenSC/wiki
-Source0:        opensc-0.1.0.tar.gz
+Source0:        https://github.com/OpenSC/OpenSC/releases/download/%{version}/%{name}-%{version}.tar.gz
+Source1:        opensc.module
 
 BuildRequires:  make
 BuildRequires:  pcsc-lite-devel
@@ -14,7 +15,7 @@ BuildRequires:  openssl-devel
 BuildRequires:  /usr/bin/xsltproc
 BuildRequires:  docbook-style-xsl
 BuildRequires:  autoconf automake libtool gcc
-%if 0%{?fedora} > 40 || 0%{?rhel} > 10
+%if 0%{?fedora} || 0%{?rhel} > 10
 BuildRequires:  bash-completion-devel
 %else
 BuildRequires:  bash-completion
@@ -25,10 +26,10 @@ BuildRequires:  p11-kit-devel
 BuildRequires:  libcmocka-devel
 BuildRequires:  vim-common
 %if ! 0%{?rhel}
-BuildRequires:  softhsm
-BuildRequires:  openssl
 BuildRequires:  openpace-devel
 %endif
+BuildRequires:  softhsm
+BuildRequires:  openssl
 Requires:       %{name}-libs = %{version}-%{release}
 Requires:       pcsc-lite-libs%{?_isa}
 Requires:       pcsc-lite
@@ -56,9 +57,8 @@ OpenSC libraries.
 
 
 %prep
-%setup -q
+%setup -q -n opensc-%{version}
 
-# The test-pkcs11-tool-allowed-mechanisms already works in Fedora
 XFAIL_TESTS="test-pkcs11-tool-test-threads.sh test-pkcs11-tool-test.sh"
 
 # In FIPS mode, OpenSSL doesn't allow RSA-PKCS, this is hardcoded into OpenSSL
@@ -102,6 +102,7 @@ make check || (cat tests/*.log src/tests/unittests/*.log && exit 1)
 
 %install
 %make_install
+install -Dpm 644 %{SOURCE1} $RPM_BUILD_ROOT%{_datadir}/p11-kit/modules/opensc.module
 
 %ifarch %{ix86}
 # To avoid multilib issues, move these files on 32b intel architectures
@@ -173,6 +174,7 @@ rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
 %{_bindir}/egk-tool
 %{_bindir}/goid-tool
 %{_bindir}/dtrust-tool
+%{_bindir}/lteid-tool
 %{_datadir}/opensc/
 %{_mandir}/man1/cardos-tool.1*
 %{_mandir}/man1/cryptoflex-tool.1*
@@ -198,6 +200,7 @@ rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
 %{_mandir}/man1/dnie-tool.1*
 %{_mandir}/man1/egk-tool.1*
 %{_mandir}/man1/dtrust-tool.1*
+%{_mandir}/man1/lteid-tool.1*
 %{_mandir}/man5/pkcs15-profile.5*
 
 %files libs
@@ -227,3 +230,6 @@ rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
 %config(noreplace) %{_sysconfdir}/eac/cvc/DESCHSMCVCA00001
 %config(noreplace) %{_sysconfdir}/eac/cvc/DESRCACC100001
 %endif
+
+%changelog
+%autochangelog

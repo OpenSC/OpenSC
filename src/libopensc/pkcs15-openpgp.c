@@ -315,7 +315,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 		/* only add valid keys, i.e. those with a legal algorithm identifier & finger print */
 		if (j >= 0 && cxdata[0] != 0) {
-			struct sc_object_id oid;
+			struct sc_object_id oid = {0};
 			struct sc_algorithm_info * algorithm_info; /* no need to free */
 
 			algorithm_info = NULL;

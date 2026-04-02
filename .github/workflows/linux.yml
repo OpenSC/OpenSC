@@ -28,7 +28,6 @@ env:
   JAVA_DEPS: |
     ant openjdk-8-jdk maven cmake
   JCARDSIM: https://github.com/Jakuje/jcardsim.git
-  LIBRESSL_VERSION: 4.0.0
 
 jobs:
   build:
@@ -37,41 +36,33 @@ jobs:
       fail-fast: false
       matrix:
         dist: ['22.04', '24.04']
-        arch: ['amd64', 'arm64']
-        build: ['dist', 'valgrind']
+        arch: [amd64, arm64]
+        build: [dist, valgrind, piv-sm] # piv-sm will also include valgrind tests
         exclude:
           - build: dist
             arch: arm64
-          - dist: 22.04
-            build: valgrind
-            arch: arm64
     runs-on: ubuntu-${{ matrix.dist }}${{ matrix.arch == 'arm64' && '-arm' || '' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-${{ matrix.dist }}-${{ matrix.arch }}-base
-          execute_install_scripts: true
-      - run: .github/setup-linux.sh ${{ matrix.build == 'valgrind' && 'debug' || '' }}
-      - run: .github/build.sh ${{ matrix.build }}
+      - uses: actions/checkout@v6
+      - run: .github/setup-linux.sh ${{ matrix.build != 'dist' && 'debug' || '' }} # install debug with valgrind builds
+      - run: .github/build.sh ${{ matrix.build }} ${{ matrix.build == 'piv-sm' && 'valgrind' || '' }} # configure piv-sm with valgrind tests
       - name: Upload test logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
-          name: ubuntu-${{ matrix.dist }}-${{ matrix.arch }}-test-logs
+          name: ubuntu-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build }}-test-logs
           path: |
             tests/*.log
             src/tests/unittests/*.log
-      - uses: actions/cache@v4
+      - &use_cache
+        uses: actions/cache@v5
         id: cache-build
-        if: matrix.build == 'dist'
         with:
           path: ./*
-          key: ${{ runner.os }}-${{ matrix.dist }}-${{ matrix.arch }}-${{ github.sha }}
+          key: ${{ runner.os }}-${{ matrix.dist }}-${{ matrix.arch }}-${{ matrix.build }}-${{ github.sha }}
       - name: Upload build artifacts
         if: matrix.build == 'dist'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opensc-build-${{ matrix.dist }}-${{ matrix.arch }}
           path:
@@ -80,8 +71,8 @@ jobs:
   build-no-shared:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: actions/checkout@v6
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -92,8 +83,8 @@ jobs:
   build-no-openssl:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: actions/checkout@v6
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -104,8 +95,8 @@ jobs:
   build-ix86:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: actions/checkout@v6
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-24.04-amd64-base
@@ -116,11 +107,11 @@ jobs:
   build-mingw:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: .github/setup-linux.sh mingw force-install
       - run: .github/build.sh mingw
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opensc-build-mingw
           path:
@@ -129,357 +120,96 @@ jobs:
   build-mingw32:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-latest-base
-          execute_install_scripts: true
+      - uses: actions/checkout@v6
       - run: .github/setup-linux.sh mingw32
       - run: .github/build.sh mingw32
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opensc-build-mingw32
           path:
             win32/Output/OpenSC*.exe
 
-  build-piv-sm:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-20-java
-          execute_install_scripts: true
-      - run: .github/setup-linux.sh
-      - run: .github/build.sh piv-sm dist
-      - name: Upload test logs
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: ubuntu-piv-sm-test-logs
-          path: |
-            tests/*.log
-            src/tests/unittests/*.log
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-piv-sm-${{ github.sha }}
-
-  test-piv:
-    runs-on: ubuntu-24.04
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-20-java
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
-      - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'semeru'
-          java-version: '8'
-          cache: 'maven'
-      - run: .github/setup-linux.sh piv
-      - run: .github/test-piv.sh
-      - run: .github/test-piv.sh valgrind
-
-  test-piv-sm:
-    runs-on: ubuntu-24.04
-    needs: [build-piv-sm]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-20-java
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-piv-sm-${{ github.sha }}
-      - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'semeru'
-          java-version: '8'
-          cache: 'maven'
-      - run: .github/setup-linux.sh piv
-      - run: .github/test-piv.sh
-      - run: .github/test-piv.sh valgrind
-
-  test-isoapplet-v0:
-    runs-on: ubuntu-24.04
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-20-java
-          execute_install_scripts: true
-      - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'semeru'
-          java-version: '8'
-          cache: 'maven'
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
-      - run: .github/setup-linux.sh isoapplet
-      - run: .github/test-isoapplet.sh v0
-      - run: .github/test-isoapplet.sh v0 valgrind
-
-  test-isoapplet-v1:
-    runs-on: ubuntu-24.04
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-20-java
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
-      - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'semeru'
-          java-version: '8'
-          cache: 'maven'
-      - run: .github/setup-linux.sh isoapplet
-      - run: .github/test-isoapplet.sh v1
-      - run: .github/test-isoapplet.sh v1 valgrind
-
-  test-gidsapplet:
-    runs-on: ubuntu-24.04
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-20-java
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
-      - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'semeru'
-          java-version: '8'
-          cache: 'maven'
-      - run: .github/setup-linux.sh gidsapplet
-      - run: .github/test-gidsapplet.sh
-      - run: .github/test-gidsapplet.sh valgrind
-
-  test-openpgp:
-    runs-on: ubuntu-24.04
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} %{{ env.JAVA_DEPS }}
-          version: apt-24.04-amd64-base
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
-      - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'semeru'
-          java-version: '8'
-          cache: 'maven'
-      - run: .github/setup-linux.sh openpgp
-      - run: .github/test-openpgp.sh
-      - run: .github/test-openpgp.sh valgrind
-
   build-clang-tidy:
     runs-on: ubuntu-24.04
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-24.04-amd64-base
           execute_install_scripts: true
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-valgrind-${{ github.sha }}
       - run: .github/setup-linux.sh clang-tidy
       - run: .github/build.sh clang-tidy
 
-  test-cac:
-    runs-on: ubuntu-24.04
+  test-java:
+    name: test-${{ matrix.target }}${{ matrix.ver }}-${{ matrix.dist }}-${{ matrix.build }}
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: ['24.04']
+        arch: [amd64]
+        build: [valgrind]
+        target: [piv, gidsapplet, openpgp]
+        ver: ['']
+        include: [
+          { dist: '22.04', arch: amd64, build: 'piv-sm', target: 'piv' },
+          { dist: '24.04', arch: amd64, build: 'piv-sm', target: 'piv' },
+          { dist: '24.04', arch: amd64, build: 'valgrind', target: 'isoapplet', ver: 'v0' },
+          { dist: '24.04', arch: amd64, build: 'valgrind', target: 'isoapplet', ver: 'v1' }
+        ]
+    runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-24.04-amd64-base
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
-      - run: .github/setup-linux.sh cac
-      - run: .github/test-cac.sh
-      - run: .github/test-cac.sh valgrind
-
-  test-oseid:
-    runs-on: ubuntu-24.04
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-24.04-amd64-base
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
-      - run: .github/setup-linux.sh oseid
-      - run: .github/test-oseid.sh
-      - run: .github/test-oseid.sh valgrind
-
-  ############################################
-  ## Ubuntu 22.04 with OpenSSL 3.0 pipeline ##
-  ############################################
-  build-ubuntu-22-piv-sm:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-22-java
-          execute_install_scripts: true
-      - run: .github/setup-linux.sh
-      - run: .github/build.sh piv-sm dist valgrind
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: ubuntu-22-piv-sm-test-logs
-          path: |
-            tests/*.log
-            src/tests/unittests/*.log
-      - uses: actions/cache@v4
-        id: cache-build
-        if: ${{ success() }}
-        with:
-          path: ./*
-          key: ${{ runner.os }}-22-piv-sm-${{ github.sha }}
-
-  test-piv-sm-ubuntu-22:
-    runs-on: ubuntu-22.04
-    needs: [build-ubuntu-22-piv-sm]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-22-java
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-22-piv-sm-${{ github.sha }}
+      - *use_cache
       - run: git clone $JCARDSIM
       - uses: actions/setup-java@v4
         with:
           distribution: 'semeru'
           java-version: '8'
           cache: 'maven'
-      - run: .github/setup-linux.sh piv
-      - run: .github/test-piv.sh
-      - run: .github/test-piv.sh valgrind
+      - run: .github/setup-linux.sh ${{ matrix.target }} debug
+      - run: .github/test-${{ matrix.target }}.sh ${{ matrix.ver }}
+      - run: .github/test-${{ matrix.target }}.sh ${{ matrix.ver }} valgrind
 
-  test-cac-ubuntu-22:
-    runs-on: ubuntu-22.04
+  test:
+    name: test-${{ matrix.target }}-${{ matrix.dist }}
+    strategy:
+      fail-fast: false
+      matrix:
+        dist: ['22.04', '24.04']
+        arch: [amd64]
+        build: [valgrind]
+        target: [cac, oseid]
+    runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }} ${{ env.JAVA_DEPS }}
-          version: apt-22-java
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-22.04-amd64-${{ github.sha }}
-      - run: .github/setup-linux.sh cac
-      - run: .github/test-cac.sh
-      - run: .github/test-cac.sh valgrind
-
-  test-oseid-ubuntu-22:
-    runs-on: ubuntu-22.04
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-22.04-amd64-base
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-22.04-amd64-${{ github.sha }}
-      - run: .github/setup-linux.sh oseid
-      - run: .github/test-oseid.sh
-      - run: .github/test-oseid.sh valgrind
+      - *use_cache
+      - run: .github/setup-linux.sh ${{ matrix.target }} debug
+      - run: .github/test-${{ matrix.target }}.sh
+      - run: .github/test-${{ matrix.target }}.sh valgrind
 
   #######################
   ## LibreSSL pipeline ##
   #######################
   build-libressl:
     runs-on: ubuntu-latest
+    env:
+      LIBRESSL_VERSION: 4.2.1
     steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: actions/checkout@v6
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
           execute_install_scripts: true
       - name: Restore LibreSSL build
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         id: libressl-cache
         with:
           path: |
@@ -487,7 +217,7 @@ jobs:
           key: libressl-${{ env.LIBRESSL_VERSION }}
       - run: .github/setup-linux.sh libressl
       - run: .github/build.sh dist libressl valgrind
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: libressl-logs
@@ -495,7 +225,7 @@ jobs:
             config.log
             tests/*.log
             src/tests/unittests/*.log
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache-build
         if: ${{ success() }}
         with:
@@ -503,49 +233,34 @@ jobs:
           key: ${{ runner.os }}-libressl-${{ github.sha }}
       - if: ${{ steps.libressl-cache.outputs.cache-hit != 'true' }}
         name: Cache LibreSSL build
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |
             libressl-${{ env.LIBRESSL_VERSION }}/
           key: libressl-${{ env.LIBRESSL_VERSION }}
 
-  test-cac-libressl:
+  test-libressl:
+    name: test-${{ matrix.target }}-libressl
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [cac, oseid]
     needs: [build-libressl]
     steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
           execute_install_scripts: true
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache-build
         with:
           path: ./*
           key: ${{ runner.os }}-libressl-${{ github.sha }}
-      - run: .github/setup-linux.sh cac libressl
-      - run: .github/test-cac.sh
-      - run: .github/test-cac.sh valgrind
-
-  test-oseid-libressl:
-    runs-on: ubuntu-latest
-    needs: [build-libressl]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: ${{ env.BASE_DEPS }}
-          version: apt-latest-base
-          execute_install_scripts: true
-      - uses: actions/cache@v4
-        id: cache-build
-        with:
-          path: ./*
-          key: ${{ runner.os }}-libressl-${{ github.sha }}
-      - run: .github/setup-linux.sh oseid libressl
-      - run: .github/test-oseid.sh
-      - run: .github/test-oseid.sh valgrind
+      - run: .github/setup-linux.sh ${{ matrix.target }} libressl
+      - run: .github/test-${{ matrix.target }}.sh
+      - run: .github/test-${{ matrix.target }}.sh valgrind
 
   ####################
   ## Push artifacts ##
@@ -554,14 +269,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, build-mingw]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         id: cache-build
         with:
           path: ./*
-          key: ${{ runner.os }}-24.04-amd64-${{ github.sha }}
+          key: ${{ runner.os }}-24.04-amd64-dist-${{ github.sha }}
       - name: Pull mingw build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: opensc-build-mingw
       - run: git config --global user.email "builds@github.com"

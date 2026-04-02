@@ -20,31 +20,53 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-15, macos-14, macos-13]
+        os: [macos-26, macos-15, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+      - name: Checkout OpenSSL sources
+        uses: actions/checkout@v6
+        with:
+          repository: openssl/openssl
+          ref: openssl-3.5
+          path: openssl
+      - name: Get OpenSSL commit hash
+        id: openssl_hash
+        run: echo "hash=$(cd openssl && git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v5
+        id: cache
+        with:
+          path: openssl_bin
+          key: ${{ matrix.os }}-OpenSSL-${{ steps.openssl_hash.outputs.hash }}
+      - run: sh MacOSX/build-openssl-macos.sh
+        if: steps.cache.outputs.cache-hit != 'true'
       - run: .github/setup-macos.sh
         env:
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
+          KEY_PASSWORD: ${{ secrets.DEV_ID_PASSWORD }}
+          DEV_ID_INSTALLER: ${{ secrets.DEV_ID_INSTALLER }}
+          DEV_ID_APPLICATION: ${{ secrets.DEV_ID_APPLICATION }}
       - run: .github/build.sh
         env:
           CODE_SIGN_IDENTITY: ${{ secrets.CODE_SIGN_IDENTITY }}
           DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
           INSTALLER_SIGN_IDENTITY: ${{ secrets.INSTALLER_SIGN_IDENTITY }}
+      - run: MacOSX/notarize
+        if: ${{ startsWith(github.ref, 'refs/tags/') && github.repository == 'OpenSC/OpenSC' }}
+        env:
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+          NOTARIZATION_PASSWORD: ${{ secrets.NOTARIZATION_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+      - run: .github/cleanup-macos.sh
+        env:
+          KEY_PASSWORD: ${{ secrets.DEV_ID_PASSWORD }}
       - name: Cache build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opensc-build-${{ matrix.os }}
           path:
             OpenSC*.dmg
-      - run: .github/cleanup-macos.sh
-        env:
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          PASS_SECRETS_TAR_ENC: ${{ secrets.PASS_SECRETS_TAR_ENC }}
       - name: Upload test logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: ${{ matrix.os }}-logs
@@ -54,15 +76,15 @@ jobs:
   build-libressl:
     strategy:
       matrix:
-        os: [macos-15, macos-14, macos-13]
+        os: [macos-26, macos-15, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: .github/setup-macos.sh libressl
       - run: .github/build.sh libressl
       - run: .github/cleanup-macos.sh
       - name: Upload test logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: ${{ matrix.os }}-libressl-logs
@@ -73,9 +95,9 @@ jobs:
     runs-on: macos-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Pull build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: opensc-build-macos-15
       - run: git config --global user.email "builds@github.com"

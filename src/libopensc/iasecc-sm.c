@@ -238,9 +238,8 @@ iasecc_sm_se_mutual_authentication(struct sc_card *card, unsigned se_num)
 	LOG_TEST_RET(ctx, rv, "Get SE info error");
 
 	rv = iasecc_se_get_crt(card, &se, crt);
-	LOG_TEST_RET(ctx, rv, "Cannot get authentication CRT");
-
 	sc_file_free(se.df);
+	LOG_TEST_RET(ctx, rv, "Cannot get authentication CRT");
 
 	/* MSE SET Mutual Authentication SK scheme */
 	offs = 0;

@@ -187,6 +187,13 @@
 
 				<varlistentry>
 					<term>
+						<option>--usage-encapsulate</option>
+					</term>
+					<listitem><para>Specify 'encapsulate' key usage flag (sets DECAPSULATE in privkey, sets ENCAPSULATE in pubkey).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--label</option> <replaceable>name</replaceable>,
 						<option>-a</option> <replaceable>name</replaceable>
 					</term>
@@ -749,6 +756,20 @@
 						<option>--info-file</option> <replaceable>filename</replaceable>
 					</term>
 					<listitem><para>Specify the file containing the info for HKDF (optional)</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--uri</option> <replaceable>value</replaceable>
+					</term>
+					<listitem><para>Specify the PKCS#11 URI for module, slot, token or object</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--uri-with-slot-id</option>
+					</term>
+					<listitem><para>Include SlotId in PKCS#11 URI</para></listitem>
 				</varlistentry>
 
 			</variablelist>

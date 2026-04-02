@@ -41,53 +41,61 @@ void usage_test(void **state) {
 		if (objects.data[i].sign && !objects.data[i].verify) {
 			errors++;
 			fprintf(stderr, " [ ERROR %s ] If Sign is set, Verify should be set too.\n",
-			    objects.data[i].id_str);
+					objects.data[i].id_str);
 		}
 		if (objects.data[i].decrypt && !objects.data[i].encrypt) {
 			errors++;
 			fprintf(stderr, " [ ERROR %s ] If Decrypt is set, Encrypt should be set too.\n",
-			    objects.data[i].id_str);
+					objects.data[i].id_str);
 		}
 		if (objects.data[i].unwrap && !objects.data[i].wrap) {
 			errors++;
 			fprintf(stderr, " [ ERROR %s ] If Unwrap is set, Wrap should be set too.\n",
-			    objects.data[i].id_str);
+					objects.data[i].id_str);
+		}
+		if (objects.data[i].encapsulate && !objects.data[i].decapsulate) {
+			errors++;
+			fprintf(stderr, " [ ERROR %s ] If Encapsulate is set, Decapsulate should be set too.\n",
+					objects.data[i].id_str);
 		}
 		if (objects.data[i].derive_pub != objects.data[i].derive_priv) {
 			errors++;
 			fprintf(stderr, " [ ERROR %s ] Derive should be set on both private and public part.\n",
-			    objects.data[i].id_str);
+					objects.data[i].id_str);
 		}
 
 		/* We have at least one usage flag for every key group */
-		if (! objects.data[i].sign       && ! objects.data[i].verify &&
-		    ! objects.data[i].encrypt    && ! objects.data[i].decrypt &&
-		    ! objects.data[i].wrap       && ! objects.data[i].unwrap &&
-		    ! objects.data[i].derive_pub && ! objects.data[i].derive_priv) {
+		if (!objects.data[i].sign        && !objects.data[i].verify &&
+				!objects.data[i].encrypt     && !objects.data[i].decrypt &&
+				!objects.data[i].wrap        && !objects.data[i].unwrap &&
+				!objects.data[i].encapsulate && !objects.data[i].decapsulate &&
+				!objects.data[i].derive_pub  && !objects.data[i].derive_priv) {
 			errors++;
 			fprintf(stderr, " [ ERROR %s ] Key group should have at least one usage flag.\n",
-			    objects.data[i].id_str);
+					objects.data[i].id_str);
 		}
 	}
 
 	/* print summary */
 	printf("[KEY ID] [LABEL]\n");
-	printf("[ TYPE ] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [WRAP&UNWR] [ DERIVE ] [ALWAYS_AUTH]\n");
-	P11TEST_DATA_ROW(info, 14,
-		's', "KEY ID",
-		's', "LABEL",
-		's', "TYPE",
-		's', "BITS",
-		's', "VERIFY PUBKEY",
-		's', "SIGN",
-		's', "VERIFY",
-		's', "ENCRYPT",
-		's', "DECRYPT",
-		's', "WRAP",
-		's', "UNWRAP",
-		's', "DERIVE PUBLIC",
-		's', "DERIVE PRIVATE",
-		's', "ALWAYS AUTH");
+	printf("[ TYPE ] [ SIZE ] [PUBLIC] [SIGN&VERIFY] [ENC&DECRYPT] [WRAP&UNWR] [ENC&DECAPS] [ DERIVE ] [ALWAYS_AUTH]\n");
+	P11TEST_DATA_ROW(info, 16,
+			's', "KEY ID",
+			's', "LABEL",
+			's', "TYPE",
+			's', "BITS",
+			's', "VERIFY PUBKEY",
+			's', "SIGN",
+			's', "VERIFY",
+			's', "ENCRYPT",
+			's', "DECRYPT",
+			's', "WRAP",
+			's', "UNWRAP",
+			's', "ENCAPSULATE",
+			's', "DECAPSULATE",
+			's', "DERIVE PUBLIC",
+			's', "DERIVE PRIVATE",
+			's', "ALWAYS AUTH");
 	for (i = 0; i < objects.count; i++) {
 		test_cert_t *o = &objects.data[i];
 
@@ -97,12 +105,15 @@ void usage_test(void **state) {
 		if (objects.data[i].private_handle == CK_INVALID_HANDLE)
 			continue;
 
-		printf("[ %s ] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s%s] [    %s   ]\n",
-				(o->key_type == CKK_RSA ? "RSA " : o->key_type == CKK_EC ? " EC "
-						: o->key_type == CKK_EC_EDWARDS ? "EC_E"
-						: o->key_type == CKK_EC_MONTGOMERY ? "EC_M"
-						: o->key_type == CKK_AES ? "AES "
-						: o->key_type == CKK_GENERIC_SECRET ? "GEN "
+		printf("[%s] [%6lu] [ %s ] [%s%s] [%s%s] [%s %s] [%s  %s] [%s%s] [    %s   ]\n",
+				(o->key_type == CKK_RSA ? " RSA  " : o->key_type == CKK_EC ? "  EC  "
+						: o->key_type == CKK_EC_EDWARDS ? "EDDSA "
+						: o->key_type == CKK_EC_MONTGOMERY ? "XEDDSA"
+						: o->key_type == CKK_AES ? " AES  "
+						: o->key_type == CKK_GENERIC_SECRET ? "GENER "
+						: o->key_type == CKK_ML_DSA ? "ML-DSA"
+						: o->key_type == CKK_ML_KEM ? "ML-KEM"
+						: o->key_type == CKK_SLH_DSA ? "SLHDSA"
 											: " ?? "),
 				o->bits,
 				o->verify_public == 1 ? " ./ " : "    ",
@@ -112,17 +123,22 @@ void usage_test(void **state) {
 				o->decrypt ? " [./] " : " [  ] ",
 				o->wrap ? "[./]" : "[  ]",
 				o->unwrap ? "[./]" : "[  ]",
+				o->encapsulate ? "[./]" : "[  ]",
+				o->decapsulate ? "[./]" : "[  ]",
 				o->derive_pub ? "[./]" : "[  ]",
 				o->derive_priv ? "[./]" : "[  ]",
 				o->always_auth ? "[./]" : "[  ]");
-		P11TEST_DATA_ROW(info, 14,
+		P11TEST_DATA_ROW(info, 16,
 				's', o->id_str,
 				's', o->label,
 				's', (o->key_type == CKK_RSA ? "RSA" : o->key_type == CKK_EC ? "EC"
-						: o->key_type == CKK_EC_EDWARDS ? "EC_E"
-						: o->key_type == CKK_EC_MONTGOMERY ? "EC_M"
+						: o->key_type == CKK_EC_EDWARDS ? "EDDSA"
+						: o->key_type == CKK_EC_MONTGOMERY ? "XEDDSA"
 						: o->key_type == CKK_AES ? "AES"
 						: o->key_type == CKK_GENERIC_SECRET ? "GEN"
+						: o->key_type == CKK_ML_DSA ? "ML-DSA"
+						: o->key_type == CKK_ML_KEM ? "ML-KEM"
+						: o->key_type == CKK_SLH_DSA ? "SLH-DSA"
 										: " ?? "),
 				'd', o->bits,
 				's', o->verify_public == 1 ? "YES" : "",
@@ -132,15 +148,19 @@ void usage_test(void **state) {
 				's', o->decrypt ? "YES" : "",
 				's', o->wrap ? "YES" : "",
 				's', o->unwrap ? "YES" : "",
+				's', o->encapsulate ? "YES" : "",
+				's', o->decapsulate ? "YES" : "",
 				's', o->derive_pub ? "YES" : "",
 				's', o->derive_priv ? "YES" : "",
 				's', o->always_auth ? "YES" : "");
 	}
-	printf(" Public == Cert -----^       ^-----^       ^-----^       ^----^      ^---^\n");
-	printf(" Sign & Verify Attributes ------'             |            |           |\n");
-	printf(" Encrypt & Decrypt Attributes ----------------'            |           |\n");
-	printf(" Wrap & Unwrap Attributes ---------------------------------'           |\n");
-	printf(" Public and Private key Derive Attributes -----------------------------'\n");
+	printf(" Public == Cert -----^       ^-----^       ^-----^       ^----^      ^-----^      ^---^          ^\n");
+	printf(" Sign & Verify Attributes ------'             |            |            |           |            |\n");
+	printf(" Encrypt & Decrypt Attributes ----------------'            |            |           |            |\n");
+	printf(" Wrap & Unwrap Attributes ---------------------------------'            |           |            |\n");
+	printf(" Encapsulate & Decapsulate Attributes ----------------------------------'           |            |\n");
+	printf(" Public and Private key Derive Attributes ------------------------------------------'            |\n");
+	printf(" Always Authenticate Attribute ------------------------------------------------------------------'\n");
 
 	clean_all_objects(&objects);
 	if (errors > 0)

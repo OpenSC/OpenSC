@@ -1,7 +1,7 @@
 include $(top_srcdir)/win32/ltrc.inc
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
-EXTRA_DIST = Makefile.mak versioninfo-minidriver.rc opensc-minidriver.dll.manifest
+EXTRA_DIST = Makefile.mak versioninfo-minidriver.rc
 
 if ENABLE_MINIDRIVER
 lib_LTLIBRARIES = opensc-minidriver@LIBRARY_BITNESS@.la
@@ -15,13 +15,13 @@ endif
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPENPACE_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
-opensc_minidriver@LIBRARY_BITNESS@_la_SOURCES = minidriver.c minidriver.exports versioninfo-minidriver.rc
+opensc_minidriver@LIBRARY_BITNESS@_la_SOURCES = minidriver.c opensc-minidriver.exports versioninfo-minidriver.rc
 opensc_minidriver@LIBRARY_BITNESS@_la_LIBADD =  \
 	$(top_builddir)/src/libopensc/libopensc_static.la \
 	$(OPTIONAL_OPENSSL_LIBS) \
 	-lbcrypt -lcrypt32 -lrpcrt4 -lwinmm
 opensc_minidriver@LIBRARY_BITNESS@_la_LDFLAGS = $(AM_LDFLAGS) \
-	-export-symbols "$(srcdir)/minidriver.exports" \
+	-export-symbols "$(srcdir)/opensc-minidriver.exports" \
 	-module -avoid-version -no-undefined
 
 if ENABLE_MINIDRIVER

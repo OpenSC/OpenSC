@@ -16,9 +16,19 @@ if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
 		SUFFIX="$GITHUB_BASE_REF-pr$PR_NUMBER"
 	fi
 else
-	BRANCH=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
-	if [ "$BRANCH" != "master" ]; then
-		SUFFIX="$BRANCH"
+	TAG_OR_BRANCH=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
+	if [ "$GITHUB_REF_TYPE" == "tag" ]; then
+		if [[ "$TAG_OR_BRANCH" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+			# Tag matches the version scheme without suffix -- no suffix needed
+			SUFFIX=""
+		elif [[ "$TAG_OR_BRANCH" =~ ^[0-9]+\.[0-9]+\.[0-9]+(.+)$ ]]; then
+			# rc suffix after version. Use the suffix part only
+			SUFFIX="${BASH_REMATCH[1]}"
+		else
+			SUFFIX="-$TAG_OR_BRANCH"
+		fi
+	elif [ "$TAG_OR_BRANCH" != "master" ]; then
+		SUFFIX="-$TAG_OR_BRANCH"
 	fi
 fi
 if [ -n "$SUFFIX" ]; then
@@ -56,6 +66,9 @@ else
 	if [ "$1" == "ix86" ]; then
 		export CFLAGS="-m32"
 		export LDFLAGS="-m32"
+	fi
+	if [ "$1" == "fips" ]; then
+		export OPENSSL_FORCE_FIPS_MODE=1
 	fi
 	# normal procedure
 

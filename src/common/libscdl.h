@@ -21,6 +21,7 @@
 #ifndef __LIBSCDL_H
 #define __LIBSCDL_H
 void *sc_dlopen(const char *filename);
+void *sc_dlopen_deep(const char *filename);
 void *sc_dlsym(void *handle, const char *symbol);
 int sc_dlclose(void *handle);
 const char *sc_dlerror(void);

@@ -150,7 +150,7 @@ HINSTANCE g_inst;
  /* defined twice: in versioninfo-minidriver.rc.in and in minidriver.c */
 #define IDI_SMARTCARD   102
 
-#define SUBKEY_ENABLE_CANCEL "Software\\OpenSC Project\\OpenSC\\md_pinpad_dlg_enable_cancel"
+#define SUBKEY_ENABLE_CANCEL "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\OpenSC" OPENSC_ARCH_SUFFIX "\\md_pinpad_dlg_enable_cancel"
 
 /* magic to determine previous pinpad authentication */
 #define MAGIC_SESSION_PIN "opensc-minidriver"
@@ -268,7 +268,7 @@ static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ co
 	int rv;
 
 	rv = sc_ctx_win32_get_config_value("CARDMOD_LOW_LEVEL_DEBUG",
-			"MiniDriverDebug", "Software\\OpenSC Project\\OpenSC",
+			"MiniDriverDebug", "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\OpenSC" OPENSC_ARCH_SUFFIX,
 			(char *)(&md_debug), &sz);
 	if (rv == SC_SUCCESS && md_debug != 0)   {
 		FILE *lldebugfp = fopen("C:\\tmp\\md.log","a+");

@@ -77,7 +77,7 @@ static int entersafe_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 
 	{/* MF */
 		 sc_file_t *mf_file;
-		 sc_entersafe_create_data mf_data;
+		 sc_entersafe_create_data mf_data = {0};
 
 		 SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 

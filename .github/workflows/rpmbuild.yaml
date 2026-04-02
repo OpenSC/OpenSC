@@ -1,0 +1,67 @@
+name: RPM Build
+on:
+  pull_request:
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.am'
+      - '**.sh'
+      - .github/workflows/rpmbuild.yaml
+      - packaging/opensc.spec
+      - configure.ac
+  push:
+
+jobs:
+  rpmbuild:
+    name: Release tarball and run RPM Build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [fedora, centos10]
+        include:
+          - name: fedora
+            container: quay.io/fedora/fedora:rawhide
+          - name: centos10
+            container: quay.io/centos/centos:stream10
+    container: ${{ matrix.container }}
+    steps:
+      - name: Get Date for DNF cache entry
+        id: get-date
+        run: |
+          echo "date=$(/bin/date -u "+%Y%V")" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Cache DNF packages (separate from the main job -- different dependencies)
+        uses: actions/cache@v4
+        with:
+          path: |
+            /var/cache/libdnf5
+            /var/cache/dnf
+          key: ${{ runner.os }}-${{ matrix.container }}-dnf-${{ steps.get-date.outputs.date }}
+
+      - name: Install git to have sensible checkout
+        run: |
+          dnf -y install git rpm-build
+
+      - uses: actions/checkout@v6
+        with:
+            fetch-depth: 0
+
+      - name: Install Dependencies
+        run: |
+          if [ "${{ matrix.name }}" = "centos10" ]; then
+            dnf install -y 'dnf-command(config-manager)'
+            dnf config-manager --set-enabled crb
+          fi
+          dnf -y builddep packaging/opensc.spec
+
+      - name: RPM Build
+        run: |
+          git config --global --add safe.directory /__w/opensc/opensc
+          ./bootstrap
+          ./configure
+          make dist
+          mkdir -p rpmbuild/SOURCES
+          cp opensc-*.tar.gz src/pkcs11/opensc.module rpmbuild/SOURCES/
+          rpmbuild --define "_topdir $PWD/rpmbuild" -ba packaging/opensc.spec

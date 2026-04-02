@@ -44,6 +44,7 @@ static struct sc_card_driver idprime_drv = {
 
 /* This ATR says, there is no EF.DIR nor EF.ATR so ISO discovery mechanisms
  * are not useful here */
+// clang-format off
 static const struct sc_atr_table idprime_atrs[] = {
 	/* known ATRs for IDPrime 3810:
 	 * 3b:7f:96:00:00:80:31:80:65:b0:84:41:3d:f6:12:0f:fe:82:90:00    Jakuje/xhanulik
@@ -70,9 +71,9 @@ static const struct sc_atr_table idprime_atrs[] = {
 	 * 3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:84:65:66:fb:12:01:78:82:90:00:85    metsma
 	 */
 	{ "3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:84:65:66:fb:12:01:78:82:90:00:85",
-	  "ff:ff:00:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff:00",
+	  "ff:ff:00:ff:ff:ff:ff:00:ff:ff:ff:ff:ff:ff:ff:00:00:00:ff:ff:ff:ff:ff:ff:00",
 	  "based Gemalto IDPrime 930 (eToken 5110+ FIPS)",
-	  SC_CARD_TYPE_IDPRIME_930, 0, NULL },
+	  SC_CARD_TYPE_IDPRIME_930_PLUS, 0, NULL },
 	/* known ATR for IDPrime 940: Placing in front of the 940 as its mask overlaps this one!
 	 * 3b:7f:96:00:00:80:31:80:65:b0:85:03:00:ef:12:0f:fe:82:90:00   msetina
 	 */
@@ -96,9 +97,10 @@ static const struct sc_atr_table idprime_atrs[] = {
 	  SC_CARD_TYPE_IDPRIME_940, 0, NULL },
 	/* Known ATRs for IDPrime 940 (eToken 5110)
 	 * 3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00:00    metsma, jurajsarinay
+	 * 3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:85:59:56:fb:12:01:78:82:90:00:88    hardening
 	 */
 	{ "3b:ff:96:00:00:81:31:fe:43:80:31:80:65:b0:85:59:56:fb:12:0f:fe:82:90:00:00",
-	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:ff:ff:ff:ff:ff:00",
+	  "ff:ff:00:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00:00:00:ff:f0:00:ff:ff:ff:00",
 	  "Gemalto IDPrime MD 940 (eToken 5110)",
 	  SC_CARD_TYPE_IDPRIME_940, 0, NULL },
 	{ "3b:7f:96:00:00:80:31:80:65:b0:84:41:3d:f6:12:0f:fe:82:90:00",
@@ -114,6 +116,7 @@ static const struct sc_atr_table idprime_atrs[] = {
 	  SC_CARD_TYPE_IDPRIME_GENERIC, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
+// clang-format on
 
 static const sc_path_t idprime_path = {
 	"", 0,
@@ -494,6 +497,9 @@ static int idprime_process_index(sc_card_t *card, idprime_private_data_t *priv, 
 			case SC_CARD_TYPE_IDPRIME_930:
 				new_object.key_reference = 0x11 + cert_id * 2;
 				break;
+			case SC_CARD_TYPE_IDPRIME_930_PLUS:
+				new_object.key_reference = 0x10 + cert_id * 2;
+				break;
 			case SC_CARD_TYPE_IDPRIME_940: {
 					idprime_keyref_t *keyref = (idprime_keyref_t *) list_seek(&priv->keyrefmap, &cert_id);
 					if (!keyref) {
@@ -668,6 +674,7 @@ static int idprime_init(sc_card_t *card)
 		card->name = "Gemalto IDPrime MD 830";
 		break;
 	case SC_CARD_TYPE_IDPRIME_930:
+	case SC_CARD_TYPE_IDPRIME_930_PLUS:
 		card->name = "Gemalto IDPrime 930/3930";
 		break;
 	case SC_CARD_TYPE_IDPRIME_940:
@@ -694,18 +701,20 @@ static int idprime_init(sc_card_t *card)
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
-	if (card->type == SC_CARD_TYPE_IDPRIME_940) {
+	switch (card->type) {
+	case SC_CARD_TYPE_IDPRIME_930_PLUS:
+	case SC_CARD_TYPE_IDPRIME_940:
 		_sc_card_add_rsa_alg(card, 3072, flags, 0);
-	}
-	if (card->type == SC_CARD_TYPE_IDPRIME_930
-	    || card->type == SC_CARD_TYPE_IDPRIME_940) {
+		/* fallthrough */
+	case SC_CARD_TYPE_IDPRIME_930:
 		_sc_card_add_rsa_alg(card, 4096, flags, 0);
-	}
-	if (card->type == SC_CARD_TYPE_IDPRIME_930 ||
-			card->type == SC_CARD_TYPE_IDPRIME_940 ||
-			card->type == SC_CARD_TYPE_IDPRIME_840) {
+		/* fallthrough */
+	case SC_CARD_TYPE_IDPRIME_840:
 		/* Set up algorithm info for EC */
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
+		if (card->type == SC_CARD_TYPE_IDPRIME_930_PLUS || card->type == SC_CARD_TYPE_IDPRIME_940) {
+			flags |= SC_ALGORITHM_ECDH_CDH_RAW;
+		}
 		ext_flags = SC_ALGORITHM_EXT_EC_F_P
 			| SC_ALGORITHM_EXT_EC_ECPARAMETERS
 			| SC_ALGORITHM_EXT_EC_NAMEDCURVE
@@ -714,6 +723,9 @@ static int idprime_init(sc_card_t *card)
 		_sc_card_add_ec_alg(card, 256, flags, ext_flags, NULL);
 		_sc_card_add_ec_alg(card, 384, flags, ext_flags, NULL);
 		_sc_card_add_ec_alg(card, 521, flags, ext_flags, NULL);
+		break;
+	default:
+		break;
 	}
 
 	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
@@ -1026,6 +1038,10 @@ idprime_set_security_env(struct sc_card *card,
 	new_env.flags |= SC_SEC_ENV_ALG_REF_PRESENT;
 	/* SHA-1 mechanisms are not allowed in the card I have available */
 	switch (env->operation) {
+	case SC_SEC_OPERATION_DERIVE:
+		priv->current_op = SC_ALGORITHM_EC;
+		new_env.flags &= ~SC_SEC_ENV_ALG_REF_PRESENT;
+		break;
 	case SC_SEC_OPERATION_DECIPHER:
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_OAEP) {
 			if (env->algorithm_flags & SC_ALGORITHM_MGF1_SHA1) {
@@ -1136,11 +1152,7 @@ idprime_compute_signature(struct sc_card *card,
 	apdu.resp = out;
 	apdu.resplen = outlen;
 	apdu.le = outlen;
-	if (apdu.le > sc_get_max_recv_size(card)) {
-		/* The lower layers will automatically do a GET RESPONSE, if possible.
-		 * All other workarounds must be carried out by the upper layers. */
-		apdu.le = sc_get_max_recv_size(card);
-	}
+	iso7816_fixup_transceive_length(card, &apdu);
 
 	apdu.data = NULL;
 	apdu.datalen = 0;
@@ -1166,11 +1178,13 @@ idprime_decipher(struct sc_card *card,
 	int r;
 	struct sc_apdu apdu;
 	u8 *sbuf = NULL;
+	idprime_private_data_t *priv;
 
 	if (card == NULL || crgram == NULL || out == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
+	priv = card->drv_data;
 	sc_log(card->ctx,
 		"IDPrime decipher: in-len %"SC_FORMAT_LEN_SIZE_T"u, out-len %"SC_FORMAT_LEN_SIZE_T"u",
 		crgram_len, outlen);
@@ -1187,19 +1201,11 @@ idprime_decipher(struct sc_card *card,
 	apdu.resplen = outlen;
 	apdu.le      = outlen;
 
-	sbuf[0] = 0x81; /* padding indicator byte, 0x81 = Proprietary */
+	sbuf[0] = priv->current_op == SC_ALGORITHM_EC ? 0x00 : 0x81; /* padding indicator byte, 0x81 = Proprietary, 0x00 = No further indication  */
 	memcpy(sbuf + 1, crgram, crgram_len);
 	apdu.data = sbuf;
 	apdu.lc = crgram_len + 1;
-	if (apdu.lc > sc_get_max_send_size(card)) {
-		/* The lower layers will automatically do chaining */
-		apdu.flags |= SC_APDU_FLAGS_CHAINING;
-	}
-	if (apdu.le > sc_get_max_recv_size(card)) {
-		/* The lower layers will automatically do a GET RESPONSE, if possible.
-		 * All other workarounds must be carried out by the upper layers. */
-		apdu.le = sc_get_max_recv_size(card);
-	}
+	iso7816_fixup_transceive_length(card, &apdu);
 	apdu.datalen = crgram_len + 1;
 
 	r = sc_transmit_apdu(card, &apdu);

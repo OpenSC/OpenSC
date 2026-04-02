@@ -1,6 +1,7 @@
 #!/bin/bash
 
 TOKENTYPE=$1
+TOKENTYPE=${TOKENTYPE:-$TEST_PKCS11_BACKEND}
 
 if [ "${TOKENTYPE}" == "" ]; then
     TOKENTYPE=softhsm

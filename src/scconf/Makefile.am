@@ -11,3 +11,4 @@ noinst_LTLIBRARIES = libscconf.la
 AM_CPPFLAGS = -I$(top_srcdir)/src
 
 libscconf_la_SOURCES = scconf.c parse.c write.c sclex.c 
+libscconf_la_LIBADD = $(top_builddir)/src/common/libcompat.la

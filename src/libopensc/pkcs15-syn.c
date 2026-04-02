@@ -63,6 +63,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "esign",      sc_pkcs15emu_starcos_esign_init_ex },
 	{ "eOI",        sc_pkcs15emu_eoi_init_ex },
 	{ "dtrust",     sc_pkcs15emu_dtrust_init_ex },
+	{ "lteid",      sc_pkcs15emu_lteid_init_ex },
 	{ NULL, NULL }
 };
 
@@ -110,6 +111,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_CARDOS_V5_0:
 		case SC_CARD_TYPE_CARDOS_V5_3:
 		case SC_CARD_TYPE_NQ_APPLET:
+		case SC_CARD_TYPE_NQ_APPLET_RFID:
 		case SC_CARD_TYPE_STARCOS_V3_4_ESIGN:
 		case SC_CARD_TYPE_STARCOS_V3_5_ESIGN:
 		case SC_CARD_TYPE_SKEID_V3:
@@ -120,6 +122,12 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
 		case SC_CARD_TYPE_DTRUST_V4_1_M100:
 		case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
+		case SC_CARD_TYPE_DTRUST_V5_1_STD:
+		case SC_CARD_TYPE_DTRUST_V5_4_STD:
+		case SC_CARD_TYPE_DTRUST_V5_1_MULTI:
+		case SC_CARD_TYPE_DTRUST_V5_1_M100:
+		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
+		case SC_CARD_TYPE_LTEID:
 			return 1;
 		default:
 			return 0;

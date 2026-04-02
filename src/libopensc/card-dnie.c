@@ -773,8 +773,10 @@ static int dnie_sm_free_wrapped_apdu(struct sc_card *card,
 			plain->sw1 = (*sm_apdu)->sw1;
 			plain->sw2 = (*sm_apdu)->sw2;
 		}
-		free((unsigned char *) (*sm_apdu)->data);
-		free((*sm_apdu)->resp);
+		if (plain == NULL || (*sm_apdu)->data != plain->data)
+			free((unsigned char *) (*sm_apdu)->data);
+		if (plain == NULL || (*sm_apdu)->resp != plain->resp)
+			free((*sm_apdu)->resp);
 		free(*sm_apdu);
 	}
 	*sm_apdu = NULL;
@@ -786,7 +788,6 @@ static int dnie_sm_get_wrapped_apdu(struct sc_card *card,
 		struct sc_apdu *plain, struct sc_apdu **sm_apdu)
 {
 	struct sc_context *ctx = card->ctx;
-	struct sc_apdu *apdu = NULL;
 	cwa_provider_t *provider = NULL;
 	int rv = SC_SUCCESS;
 
@@ -797,28 +798,18 @@ static int dnie_sm_get_wrapped_apdu(struct sc_card *card,
 	provider = GET_DNIE_PRIV_DATA(card)->cwa_provider;
 
 	if (((plain->cla & 0x0C) == 0) && (plain->ins != 0xC0)) {
-		*sm_apdu = NULL;
-		//construct new SM apdu from original apdu
-		apdu = calloc(1, sizeof(struct sc_apdu));
-		if (!apdu)
+		*sm_apdu = calloc(1, sizeof(struct sc_apdu));
+		if (!(*sm_apdu))
 			return SC_ERROR_OUT_OF_MEMORY;
 
-		memcpy(apdu, plain, sizeof(sc_apdu_t));
-
-		rv = cwa_encode_apdu(card, provider, plain, apdu);
+		rv = cwa_encode_apdu(card, provider, plain, *sm_apdu);
 
 		if (rv != SC_SUCCESS) {
-			dnie_sm_free_wrapped_apdu(card, NULL, &apdu);
-			goto err;
+			dnie_sm_free_wrapped_apdu(card, plain, sm_apdu);
 		}
-
-		*sm_apdu = apdu;
 	} else
 		*sm_apdu = plain;
 
-	apdu = NULL;
-err:
-	free(apdu);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -855,19 +846,24 @@ static int dnie_init(struct sc_card *card)
 	card->sm_ctx.ops.free_sm_apdu = dnie_sm_free_wrapped_apdu;
 	card->sm_ctx.sm_mode = SM_MODE_NONE;
 
-	res=cwa_create_secure_channel(card,provider,CWA_SM_OFF);
-	LOG_TEST_RET(card->ctx, res, "Failure creating CWA secure channel.");
+	res = cwa_create_secure_channel(card, provider, CWA_SM_OFF);
+	if (res < 0)
+		free(provider);
+	LOG_TEST_RET(card->ctx, res, "Failure resetting CWA secure channel.");
 
 	/* initialize private data */
 	card->drv_data = calloc(1, sizeof(dnie_private_data_t));
-	if (card->drv_data == NULL)
+	if (card->drv_data == NULL) {
+		free(provider);
 	    LOG_TEST_RET(card->ctx, SC_ERROR_OUT_OF_MEMORY, "Could not allocate DNIe private data.");
+	}
 
 #ifdef ENABLE_DNIE_UI
 	/* read environment from configuration file */
 	res = dnie_get_environment(card, &(GET_DNIE_UI_CTX(card)));
 	if (res != SC_SUCCESS) {
 		free(card->drv_data);
+		free(provider);
 		LOG_TEST_RET(card->ctx, res, "Failure reading DNIe environment.");
 	}
 #endif
@@ -1364,7 +1360,6 @@ static int dnie_get_challenge(struct sc_card *card, u8 * rnd, size_t len)
 static int dnie_logout(struct sc_card *card)
 {
 	int result = SC_SUCCESS;
-	sc_file_t *file = NULL;
 
 	if ((card == NULL) || (card->ctx == NULL))
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1375,15 +1370,8 @@ static int dnie_logout(struct sc_card *card)
 		result = cwa_create_secure_channel(card,
 			GET_DNIE_PRIV_DATA(card)->cwa_provider, CWA_SM_OFF);
 		LOG_TEST_RET(card->ctx, result, "Cannot close the secure channel");
-		/* request the Master File to provoke an SM error and close the channel */
-		result = dnie_compose_and_send_apdu(card, (const u8 *) DNIE_MF_NAME,
-			sizeof(DNIE_MF_NAME) - 1, 4, &file);
-		if (result == SC_ERROR_SM)
-			result = SC_SUCCESS;
 	}
 
-	if (file != NULL)
-		sc_file_free(file);
 	LOG_FUNC_RETURN(card->ctx, result);
 }
 

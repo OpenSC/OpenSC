@@ -419,6 +419,7 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 
 err:
 	free(key_info.u.ec.ecpointQ);
+	free(key_info.data);
 
 	LOG_FUNC_RETURN(ctx, r);
 }

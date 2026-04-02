@@ -2,7 +2,7 @@ include $(top_srcdir)/win32/ltrc.inc
 
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
-EXTRA_DIST = Makefile.mak opensc.dll.manifest
+EXTRA_DIST = Makefile.mak
 
 lib_LTLIBRARIES = libopensc.la
 noinst_HEADERS = cards.h ctbcs.h internal.h muscle.h muscle-filesystem.h \
@@ -13,7 +13,7 @@ noinst_HEADERS = cards.h ctbcs.h internal.h muscle.h muscle-filesystem.h \
 	authentic.h iasecc.h iasecc-sdo.h sm.h card-sc-hsm.h \
 	pace.h cwa14890.h cwa-dnie.h card-gids.h aux-data.h \
 	jpki.h sc-ossl-compat.h card-npa.h card-openpgp.h \
-	card-eoi.h ccid-types.h reader-tr03119.h \
+	card-eoi.h card-dtrust.h ccid-types.h reader-tr03119.h \
 	card-cac-common.h card-cardos-common.h
 
 AM_CPPFLAGS = -D'OPENSC_CONF_PATH="$(sysconfdir)/opensc.conf"' \
@@ -51,6 +51,7 @@ libopensc_la_SOURCES_BASE = \
 	card-isoApplet.c card-masktech.c card-gids.c card-jpki.c \
 	card-npa.c card-esteid2018.c card-esteid2025.c card-idprime.c \
 	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c card-dtrust.c \
+	card-lteid.c \
 	\
 	pkcs15-openpgp.c pkcs15-starcert.c pkcs15-cardos.c pkcs15-tcos.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
@@ -58,8 +59,8 @@ libopensc_la_SOURCES_BASE = \
 	pkcs15-oberthur.c pkcs15-itacns.c pkcs15-gemsafeV1.c pkcs15-sc-hsm.c \
 	pkcs15-coolkey.c pkcs15-din-66291.c pkcs15-idprime.c pkcs15-nqApplet.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c pkcs15-esteid2018.c \
-	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-eoi.c pkcs15-dtrust.c compression.c sm.c \
-	aux-data.c
+	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-eoi.c pkcs15-dtrust.c pkcs15-lteid.c \
+	compression.c sm.c aux-data.c
 
 if ENABLE_CRYPTOTOKENKIT
 # most platforms don't support objective C the way we needed.
@@ -70,7 +71,7 @@ libopensc_la_LIBTOOLFLAGS = --tag CC
 libopensc_static_la_LIBTOOLFLAGS = --tag CC
 
 libopensc_la_SOURCES = $(libopensc_la_SOURCES_BASE) \
-	libopensc.exports
+	opensc.exports
 libopensc_static_la_SOURCES = $(libopensc_la_SOURCES_BASE)
 
 if WIN32
@@ -83,15 +84,14 @@ libopensc_la_LIBADD = $(OPENPACE_LIBS) $(OPTIONAL_OPENSSL_LIBS) \
 	$(top_builddir)/src/common/libscdl.la \
 	$(top_builddir)/src/ui/libnotify.la \
 	$(top_builddir)/src/ui/libstrings.la \
-	$(top_builddir)/src/sm/libsmeac.la \
-	$(top_builddir)/src/common/libcompat.la
+	$(top_builddir)/src/sm/libsmeac.la
 if WIN32
 libopensc_la_LIBADD += -lws2_32 -lshlwapi -lcomctl32
 endif
 libopensc_static_la_LIBADD = $(libopensc_la_LIBADD)
 libopensc_la_LDFLAGS = $(AM_LDFLAGS) \
 	-version-info @OPENSC_LT_CURRENT@:@OPENSC_LT_REVISION@:@OPENSC_LT_AGE@ \
-	-export-symbols "$(srcdir)/libopensc.exports" \
+	-export-symbols "$(srcdir)/opensc.exports" \
 	-no-undefined
 
 if WIN32
@@ -133,6 +133,7 @@ TIDY_FILES = \
 	card-isoApplet.c card-masktech.c card-jpki.c \
 	card-npa.c card-esteid2018.c card-idprime.c \
 	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c card-dtrust.c \
+	card-lteid.c \
 	\
 	pkcs15-openpgp.c pkcs15-cardos.c pkcs15-tcos.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c \
@@ -140,8 +141,8 @@ TIDY_FILES = \
 	pkcs15-oberthur.c pkcs15-itacns.c pkcs15-sc-hsm.c \
 	pkcs15-coolkey.c pkcs15-din-66291.c pkcs15-idprime.c pkcs15-nqApplet.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c pkcs15-esteid2018.c \
-	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-dtrust.c compression.c sm.c \
-	aux-data.c \
+	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-dtrust.c pkcs15-lteid.c \
+	compression.c sm.c aux-data.c \
 	#$(SOURCES)
 
 check-local:

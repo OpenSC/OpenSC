@@ -71,14 +71,14 @@ jobs:
             container: ubuntu:latest
     container: ${{ matrix.container }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: .github/setup-linux.sh ${{ matrix.compiler }} force-install
       - run: .github/build.sh dist
         env:
           CC: ${{ matrix.compiler }}
           CFLAGS: ${{ env.CFLAGS }} ${{ matrix.compiler == 'clang' && env.CLANG_CFLAGS || '' }}
       - name: Upload test logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: ${{ matrix.name }}-${{ matrix.compiler }}-strict-test-logs

@@ -90,3 +90,15 @@ C_VerifyMessage
 C_VerifyMessageBegin
 C_VerifyMessageNext
 C_MessageVerifyFinal
+C_EncapsulateKey
+C_DecapsulateKey
+C_VerifySignatureInit
+C_VerifySignature
+C_VerifySignatureUpdate
+C_VerifySignatureFinal
+C_GetSessionValidationFlags
+C_AsyncComplete
+C_AsyncGetID
+C_AsyncJoin
+C_WrapKeyAuthenticated
+C_UnwrapKeyAuthenticated

@@ -1,5 +1,5 @@
 param(
-  [string]$version = '6.0.0'
+  [string]$version = '6.0.2'
 )
 & dotnet tool install -g --version $version wix
 & wix extension add -g WixToolset.UI.wixext/$version
