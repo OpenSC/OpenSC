@@ -648,10 +648,10 @@ static int find_object_type_or_id_or_label(CK_SESSION_HANDLE sess,
 		const char *, int obj_index);
 static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 				CK_OBJECT_HANDLE_PTR,
-				const unsigned char *, size_t id_len, int obj_index);
+				const unsigned char *, size_t id_len, const char *label, int obj_index);
 static int		find_object_flags(CK_SESSION_HANDLE, uint16_t flags,
 				CK_OBJECT_HANDLE_PTR,
-				const unsigned char *, size_t id_len, int obj_index);
+				const unsigned char *, size_t id_len, const char *label, int obj_index);
 static int find_object_flags_and_type_or_id_or_label(CK_SESSION_HANDLE sess,
 		uint16_t mf_flags, CK_OBJECT_HANDLE_PTR ret,
 		CK_OBJECT_CLASS cls, int cls_set,
@@ -1540,7 +1540,7 @@ int main(int argc, char * argv[])
 			} else {
 				find_object_flags(session, mf_flags, &object,
 						opt_object_id_len ? opt_object_id : NULL,
-						opt_object_id_len, 0);
+						opt_object_id_len, opt_object_label, 0);
 			}
 		} else if (opt_uri && opt_uri->type) {
 			/* If type in PKCS#11 URI is set, check the type and use it */
@@ -1552,9 +1552,9 @@ int main(int argc, char * argv[])
 				util_fatal("Private/secret key not found");
 			}
 		} else if (!find_object(session, CKO_PRIVATE_KEY, &object,
-					   opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0)) {
+					   opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0)) {
 			if (!find_object(session, CKO_SECRET_KEY, &object,
-					    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+					    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0))
 				util_fatal("Private/secret key not found");
 		}
 	}
@@ -1574,7 +1574,7 @@ int main(int argc, char * argv[])
 			} else {
 				find_object_flags(session, mf_flags, &object,
 						opt_object_id_len ? opt_object_id : NULL,
-						opt_object_id_len, 0);
+						opt_object_id_len, opt_object_label, 0);
 			}
 		} else if (opt_uri && opt_uri->type) {
 			/* If type in PKCS#11 URI is set, check the type and use it */
@@ -1586,9 +1586,9 @@ int main(int argc, char * argv[])
 				util_fatal("Private/secret key not found");
 			}
 		} else if (!find_object(session, CKO_PRIVATE_KEY, &object,
-					   opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+					   opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0))
 			if (!find_object(session, CKO_SECRET_KEY, &object,
-					 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+					 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0))
 				util_fatal("Private/secret key not found");
 	}
 
@@ -1608,7 +1608,7 @@ int main(int argc, char * argv[])
 			} else {
 				find_object_flags(session, mf_flags, &object,
 						opt_object_id_len ? opt_object_id : NULL,
-						opt_object_id_len, 0);
+						opt_object_id_len, opt_object_label, 0);
 			}
 		} else if (opt_uri && opt_uri->type) {
 			/* If type in PKCS#11 URI is set, check the type and use it */
@@ -1620,9 +1620,9 @@ int main(int argc, char * argv[])
 				util_fatal("Public/Secret key not found");
 			}
 		} else if (!find_object(session, CKO_PUBLIC_KEY, &object,
-					   opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+					   opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0))
 			if (!find_object(session, CKO_SECRET_KEY, &object,
-					    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+					    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0))
 				util_fatal("Public/Secret key not found");
 	}
 
@@ -1642,7 +1642,7 @@ int main(int argc, char * argv[])
 			} else {
 				find_object_flags(session, mf_flags, &object,
 						opt_object_id_len ? opt_object_id : NULL,
-						opt_object_id_len, 0);
+						opt_object_id_len, opt_object_label, 0);
 			}
 		} else if (opt_uri && opt_uri->type) {
 			/* If type in PKCS#11 URI is set, check the type and use it */
@@ -1655,10 +1655,10 @@ int main(int argc, char * argv[])
 			}
 		} else if (!find_object(session, CKO_PUBLIC_KEY, &object,
 					   opt_object_id_len ? opt_object_id : NULL,
-					   opt_object_id_len, 0) &&
+					   opt_object_id_len, opt_object_label, 0) &&
 				!find_object(session, CKO_CERTIFICATE, &object,
 						opt_object_id_len ? opt_object_id : NULL,
-						opt_object_id_len, 0))
+						opt_object_id_len, opt_object_label, 0))
 			util_fatal("Public key nor certificate not found");
 	}
 
@@ -4153,9 +4153,9 @@ unwrap_key(CK_SESSION_HANDLE session)
 	ssize_t sz;
 
 	if (!find_object(session, CKO_PRIVATE_KEY, &hUnwrappingKey,
-			 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+			 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
 		if (!find_object(session, CKO_SECRET_KEY, &hUnwrappingKey,
-				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
 			util_fatal("Private/secret key not found");
 
 	if (!opt_mechanism_used)
@@ -4317,14 +4317,14 @@ wrap_key(CK_SESSION_HANDLE session)
 	if (sc_hex_to_bin(opt_application_id, hkey_id, &hkey_id_len))
 		util_fatal("Invalid application-id \"%s\"\n", opt_application_id);
 
-	if (!find_object(session, CKO_SECRET_KEY, &hkey, hkey_id_len ? hkey_id : NULL, hkey_id_len, 0))
-		if (!find_object(session, CKO_PRIVATE_KEY, &hkey, hkey_id_len ? hkey_id : NULL, hkey_id_len, 0))
+	if (!find_object(session, CKO_SECRET_KEY, &hkey, hkey_id_len ? hkey_id : NULL, hkey_id_len, NULL, 0))
+		if (!find_object(session, CKO_PRIVATE_KEY, &hkey, hkey_id_len ? hkey_id : NULL, hkey_id_len, NULL, 0))
 			util_fatal("Key to be wrapped not found");
 
 	if (!find_object(session, CKO_PUBLIC_KEY, &hWrappingKey,
-			 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+			 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
 		if (!find_object(session, CKO_SECRET_KEY, &hWrappingKey,
-				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, 0))
+				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
 			util_fatal("Wrapping key not found");
 
 	rv = p11->C_WrapKey(session, &mechanism, hWrappingKey, hkey, pWrappedKey, &pulWrappedKeyLen);
@@ -5895,20 +5895,20 @@ done:
 
 static int find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 		CK_OBJECT_HANDLE_PTR ret,
-		const unsigned char *id, size_t id_len, int obj_index)
+		const unsigned char *id, size_t id_len, const char *label, int obj_index)
 {
-	return find_object_type_or_id_or_label(sess, cls, 1, ret, id, id_len, NULL, obj_index);
+	return find_object_type_or_id_or_label(sess, cls, 1, ret, id, id_len, label, obj_index);
 }
 
 static int find_object_flags(CK_SESSION_HANDLE sess, uint16_t mf_flags,
 		CK_OBJECT_HANDLE_PTR ret,
-		const unsigned char *id, size_t id_len, int obj_index)
+		const unsigned char *id, size_t id_len, const char *label, int obj_index)
 {
 	int count;
 	char err_key_types[1024] = {0};
 
 	if (mf_flags & MF_CKO_SECRET_KEY) {
-		count = find_object(sess, CKO_SECRET_KEY, ret, id, id_len, obj_index);
+		count = find_object(sess, CKO_SECRET_KEY, ret, id, id_len, label, obj_index);
 		if (count)
 			return count;
 
@@ -7795,7 +7795,7 @@ static CK_ULONG	get_private_key_length(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE 
 		return 0;
 	}
 
-	if (!find_object(sess, CKO_PUBLIC_KEY, &pubkey, id, idLen, 0)) {
+	if (!find_object(sess, CKO_PUBLIC_KEY, &pubkey, id, idLen, NULL, 0)) {
 		free(id);
 		fprintf(stderr, "couldn't find the corresponding pubkey\n");
 		return 0;
@@ -8265,7 +8265,7 @@ static EVP_PKEY *get_public_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE priv
 		return NULL;
 	}
 
-	if (!find_object(session, CKO_PUBLIC_KEY, &pubkeyObject, id, idLen, 0)) {
+	if (!find_object(session, CKO_PUBLIC_KEY, &pubkeyObject, id, idLen, NULL, 0)) {
 		free(id);
 		fprintf(stderr, "couldn't find the corresponding pubkey for validation\n");
 		return NULL;
@@ -8520,7 +8520,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 	}
 
 	printf("Signatures (currently only for RSA)\n");
-	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
+	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, NULL, j); j++) {
 		printf("  testing key %d ", j);
 		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
 			printf("(%s) ", label);
@@ -8692,7 +8692,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 			break;
 	ck_mech.mechanism = mechTypes[i];
 	j = 1;  /* j-th signature key */
-	while (find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j++) != 0) {
+	while (find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, NULL, j++) != 0) {
 		unsigned char   *id;
 		CK_ULONG        idLen;
 		CK_ULONG	modLenBits;
@@ -8716,7 +8716,7 @@ static int test_signature(CK_SESSION_HANDLE sess)
 		if ((id = getID(sess, privKeyObject, &idLen)) != NULL) {
 			int r;
 
-			r = find_object(sess, CKO_PUBLIC_KEY, &pubKeyObject, id, idLen, 0);
+			r = find_object(sess, CKO_PUBLIC_KEY, &pubKeyObject, id, idLen, NULL, 0);
 			free(id);
 			if (r == 0) {
 				printf(" -- can't find corresponding public key, skipping\n");
@@ -8858,7 +8858,7 @@ static int test_verify(CK_SESSION_HANDLE sess)
 
 	printf("Verify (currently only for RSA)\n");
 
-	for (i = 0; find_object(sess, CKO_PRIVATE_KEY, &priv_key, NULL, 0, i); i++) {
+	for (i = 0; find_object(sess, CKO_PRIVATE_KEY, &priv_key, NULL, 0, NULL, i); i++) {
 		char *label;
 		unsigned char *id;
 		CK_ULONG id_len;
@@ -8882,7 +8882,7 @@ static int test_verify(CK_SESSION_HANDLE sess)
 		if ((id = getID(sess, priv_key, &id_len)) != NULL) {
 			int r;
 
-			r = find_object(sess, CKO_PUBLIC_KEY, &pub_key, id, id_len, 0);
+			r = find_object(sess, CKO_PUBLIC_KEY, &pub_key, id, id_len, NULL, 0);
 			free(id);
 			if (r == 0) {
 				printf(" -- can't find corresponding public key, skipping\n");
@@ -9060,7 +9060,7 @@ static int test_unwrap(CK_SESSION_HANDLE sess)
 	}
 
 	printf("Key unwrap (currently only for RSA)\n");
-	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
+	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, NULL, j); j++) {
 		printf("  testing key %d ", j);
 		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
 			printf("(%s) ", label);
@@ -9372,7 +9372,7 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 	}
 
 	printf("Decryption (currently only for RSA)\n");
-	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, j); j++) {
+	for (j = 0; find_object(sess, CKO_PRIVATE_KEY, &privKeyObject, NULL, 0, NULL, j); j++) {
 		printf("  testing key %d", j);
 		if ((label = getLABEL(sess, privKeyObject, NULL)) != NULL) {
 			printf(" (%s)", label);
@@ -9390,7 +9390,7 @@ static int test_decrypt(CK_SESSION_HANDLE sess)
 		if ((id = getID(sess, privKeyObject, &id_len)) != NULL) {
 			int r;
 
-			r = find_object(sess, CKO_PUBLIC_KEY, &pubKeyObject, id, id_len, 0);
+			r = find_object(sess, CKO_PUBLIC_KEY, &pubKeyObject, id, id_len, NULL, 0);
 			free(id);
 			if (r == 0) {
 				printf(" -- can't find corresponding public key, skipping\n");
@@ -9601,7 +9601,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 	fclose(f);
 
 	/* Get for a not-yet-existing ID */
-	while(find_object(session, CKO_PRIVATE_KEY, &priv_key, id, id_len, 0))
+	while(find_object(session, CKO_PRIVATE_KEY, &priv_key, id, id_len, NULL, 0))
 		id[0]++;
 
 	printf("\n*** Generating a %s key pair ***\n", opt_key_type);
