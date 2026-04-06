@@ -6825,7 +6825,7 @@ show_key(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj)
 		printf("%sverify", sepa);
 		sepa = ", ";
 	}
-	if (pub && getVERIFY_RECOVER(sess, obj)) {
+	if (pub && !sec && getVERIFY_RECOVER(sess, obj)) {
 		printf("%sverifyRecover", sepa);
 		sepa = ", ";
 	}
