@@ -1,0 +1,7 @@
+[wrap-file]
+source_url = https://www.nuget.org/api/v2/package/WixToolset.WcaUtil/6.0.2
+source_filename = wcautil-6.0.2.zip
+source_hash = 5b3f153dc880ab89ef590a705125d78c64a47566d4a25c6ba75e12e51dcaf206
+lead_directory_missing = true
+
+patch_directory = wcautil
