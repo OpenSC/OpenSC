@@ -3727,9 +3727,6 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PARAMETER_SET,
 					&ml_dsa_parameter_set, sizeof(CK_ML_DSA_PARAMETER_SET_TYPE));
 			n_pubkey_attr++;
-			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PARAMETER_SET,
-					&ml_dsa_parameter_set, sizeof(CK_ML_DSA_PARAMETER_SET_TYPE));
-			n_privkey_attr++;
 
 			if (opt_key_usage_default || opt_key_usage_sign) {
 				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_VERIFY, &_true, sizeof(_true));
@@ -3761,9 +3758,6 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PARAMETER_SET,
 					&ml_kem_parameter_set, sizeof(CK_ML_KEM_PARAMETER_SET_TYPE));
 			n_pubkey_attr++;
-			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PARAMETER_SET,
-					&ml_kem_parameter_set, sizeof(CK_ML_KEM_PARAMETER_SET_TYPE));
-			n_privkey_attr++;
 
 			if (opt_key_usage_default || opt_key_usage_encapsulate) {
 				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_ENCAPSULATE, &_true, sizeof(_true));
@@ -3813,9 +3807,6 @@ static int gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_PARAMETER_SET,
 					&slh_dsa_parameter_set, sizeof(CK_SLH_DSA_PARAMETER_SET_TYPE));
 			n_pubkey_attr++;
-			FILL_ATTR(privateKeyTemplate[n_privkey_attr], CKA_PARAMETER_SET,
-					&slh_dsa_parameter_set, sizeof(CK_SLH_DSA_PARAMETER_SET_TYPE));
-			n_privkey_attr++;
 
 			if (opt_key_usage_default || opt_key_usage_sign) {
 				FILL_ATTR(publicKeyTemplate[n_pubkey_attr], CKA_VERIFY, &_true, sizeof(_true));
