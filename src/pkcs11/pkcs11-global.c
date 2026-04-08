@@ -427,6 +427,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	list_destroy(&sessions);
 
 	while ((slot = list_fetch(&virtual_slots))) {
+		sc_wait_for_event(context, 0, NULL, NULL, 0, &slot->reader_events);
 		list_destroy(&slot->objects);
 		list_destroy(&slot->logins);
 		free(slot);
@@ -648,7 +649,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 			now = get_current_time();
 			if (now >= slot->slot_state_expires || now == 0) {
 				/* Update slot status */
-				rv = card_detect(slot->reader);
+				rv = card_detect(slot->reader, slot->reader_events);
 				sc_log(context, "C_GetSlotInfo() card detect rv 0x%lX", rv);
 
 				if (rv == CKR_TOKEN_NOT_RECOGNIZED || rv == CKR_OK)
