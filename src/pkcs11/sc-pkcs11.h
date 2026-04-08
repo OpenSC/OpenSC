@@ -218,6 +218,7 @@ struct sc_pkcs11_slot {
 	CK_SLOT_INFO slot_info;		/* Slot specific information (information about reader) */
 	CK_TOKEN_INFO token_info;	/* Token specific information (information about card) */
 	sc_reader_t *reader;		/* same as card->reader if there's a card present */
+	void *reader_events;
 	struct sc_pkcs11_card *p11card;	/* The card associated with this slot */
 	unsigned int events;		/* Card events SC_EVENT_CARD_{INSERTED,REMOVED} */
 	void *fw_data;			/* Framework specific data */  /* TODO: get know how it used */
@@ -415,7 +416,7 @@ CK_RV card_removed(sc_reader_t *reader);
 CK_RV card_detect_all(void);
 CK_RV create_slot(sc_reader_t *reader);
 void init_slot_info(CK_SLOT_INFO_PTR pInfo, sc_reader_t *reader);
-CK_RV card_detect(sc_reader_t *reader);
+CK_RV card_detect(sc_reader_t *reader, void *reader_states);
 CK_RV slot_get_slot(CK_SLOT_ID id, struct sc_pkcs11_slot **);
 CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot **);
 CK_RV slot_token_removed(CK_SLOT_ID id);
