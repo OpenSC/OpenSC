@@ -120,6 +120,8 @@ static int object_list_seeker(const void *el, const void *key)
 
 CK_RV create_slot(sc_reader_t *reader)
 {
+	unsigned int events;
+	sc_reader_t *found;
 	/* find unused slots previously allocated for the same reader */
 	struct sc_pkcs11_slot *slot = reader_reclaim_slot(reader);
 
@@ -159,6 +161,7 @@ CK_RV create_slot(sc_reader_t *reader)
 	slot->id = (CK_SLOT_ID) list_locate(&virtual_slots, slot);
 	init_slot_info(&slot->slot_info, reader);
 	slot->reader = reader;
+	sc_wait_for_event(context, SC_EVENT_CARD_EVENTS | SC_EVENT_READER_EVENTS, &found, &events, 0, &slot->reader_events);
 
 	DEBUG_VSS(slot, "Finished initializing this slot");
 
@@ -206,12 +209,13 @@ CK_RV card_removed(sc_reader_t * reader)
 	return CKR_OK;
 }
 
-
-CK_RV card_detect(sc_reader_t *reader)
+CK_RV
+card_detect(sc_reader_t *reader, void *reader_states)
 {
 	struct sc_pkcs11_card *p11card = NULL;
 	int free_p11card = 0;
 	int rc;
+	int no_change = 0;
 	CK_RV rv;
 	unsigned int i;
 	int j;
@@ -219,6 +223,22 @@ CK_RV card_detect(sc_reader_t *reader)
 
 	sc_log(context, "%s: Detecting smart card", reader->name);
 	/* Check if someone inserted a card */
+
+	if (reader_states != NULL) {
+		/* check if any event has occurred since last invocation of `card_detect()` */
+		unsigned int mask, events;
+		sc_reader_t *event_reader;
+		/* Detect card and reader events */
+		mask = SC_EVENT_CARD_EVENTS | SC_EVENT_READER_EVENTS;
+		int r = sc_wait_for_event(context, mask, &event_reader, &events, 0, &reader_states);
+		if (r == SC_ERROR_EVENT_TIMEOUT || reader != event_reader)
+			/* no change happened */
+			no_change = 1;
+		else
+			/* if some error occurred or there actually was a change, continue with detection routine */
+			no_change = 0;
+	}
+
 again:
 	rc = sc_detect_card_presence(reader);
 	if (rc < 0) {
@@ -229,6 +249,11 @@ again:
 		sc_log(context, "%s: card absent", reader->name);
 		card_removed(reader);	/* Release all resources */
 		return CKR_TOKEN_NOT_PRESENT;
+	}
+
+	if (no_change == 1) {
+		sc_log(context, "%s: card present, no change detected", reader->name);
+		return CKR_OK;
 	}
 
 	/* If the card was changed, disconnect the current one */
@@ -410,6 +435,7 @@ card_detect_all(void)
 				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, j);
 				if (slot->reader == reader) {
 					slot->reader = NULL;
+					sc_wait_for_event(context, 0, NULL, NULL, 0, &slot->reader_events);
 				}
 			}
 		} else {
@@ -419,6 +445,7 @@ card_detect_all(void)
 				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, j);
 				if (slot->reader == reader) {
 					found = 1;
+					card_detect(slot->reader, slot->reader_events);
 					break;
 				}
 			}
@@ -428,8 +455,8 @@ card_detect_all(void)
 					if (rv != CKR_OK)
 						return rv;
 				}
+				card_detect(reader, NULL);
 			}
-			card_detect(reader);
 		}
 	}
 	sc_log(context, "All cards detected");
@@ -481,7 +508,7 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 		if ((*slot)->reader == NULL)
 			return CKR_TOKEN_NOT_PRESENT;
 		sc_log(context, "Slot(id=0x%lX): get token: now detect card", id);
-		rv = card_detect((*slot)->reader);
+		rv = card_detect((*slot)->reader, (*slot)->reader_events);
 		if (rv != CKR_OK)
 			return rv;
 	}
