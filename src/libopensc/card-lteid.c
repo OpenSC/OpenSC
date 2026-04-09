@@ -181,7 +181,7 @@ lteid_get_can(sc_card_t *card, struct establish_pace_channel_input *pace_input)
 }
 
 static int
-lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin, size_t pinlen, int *tries_left)
+lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin, size_t pinlen)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -315,7 +315,7 @@ lteid_logout(sc_card_t *card)
 }
 
 static int
-lteid_pin_cmd_verify(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+lteid_pin_cmd_verify(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -327,10 +327,10 @@ lteid_pin_cmd_verify(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 	case PACE_PIN_ID_CAN:
 	case PACE_PIN_ID_PIN:
 	case PACE_PIN_ID_PUK:
-		rv = lteid_perform_pace(card, data->pin_reference, data->pin1.data, data->pin1.len, tries_left);
+		rv = lteid_perform_pace(card, data->pin_reference, data->pin1.data, data->pin1.len);
 		break;
 	default:
-		rv = iso_ops->pin_cmd(card, data, tries_left);
+		rv = iso_ops->pin_cmd(card, data);
 		break;
 	}
 
@@ -338,7 +338,7 @@ lteid_pin_cmd_verify(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 }
 
 static int
-lteid_pin_cmd_get_info(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+lteid_pin_cmd_get_info(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -349,10 +349,6 @@ lteid_pin_cmd_get_info(struct sc_card *card, struct sc_pin_cmd_data *data, int *
 	if (data->pin_reference == PACE_PIN_ID_CAN) {
 		data->pin1.max_tries = -1;
 		data->pin1.tries_left = -1;
-
-		if (tries_left) {
-			*tries_left = -1;
-		}
 
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
@@ -389,10 +385,6 @@ lteid_pin_cmd_get_info(struct sc_card *card, struct sc_pin_cmd_data *data, int *
 		if (tag && taglen == 2) {
 			data->pin1.tries_left = tag[0];
 			data->pin1.max_tries = tag[1];
-
-			if (tries_left) {
-				*tries_left = data->pin1.tries_left;
-			}
 		} else {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_FOUND);
 		}
@@ -408,7 +400,7 @@ lteid_pin_cmd_get_info(struct sc_card *card, struct sc_pin_cmd_data *data, int *
 
 	// PIN.QES is a regular iso7816 pin
 	if (data->pin_reference == 0x81) {
-		rv = iso_ops->pin_cmd(card, data, tries_left);
+		rv = iso_ops->pin_cmd(card, data);
 		LOG_FUNC_RETURN(card->ctx, rv);
 	}
 
@@ -416,7 +408,7 @@ lteid_pin_cmd_get_info(struct sc_card *card, struct sc_pin_cmd_data *data, int *
 }
 
 static int
-lteid_pin_cmd_unblock(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+lteid_pin_cmd_unblock(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -427,13 +419,13 @@ lteid_pin_cmd_unblock(struct sc_card *card, struct sc_pin_cmd_data *data, int *t
 		struct sc_pin_cmd_data with_changed_pin_ref = *data;
 
 		with_changed_pin_ref.pin_reference = 0x07;
-		rv = iso_ops->pin_cmd(card, &with_changed_pin_ref, tries_left);
+		rv = iso_ops->pin_cmd(card, &with_changed_pin_ref);
 		LOG_FUNC_RETURN(card->ctx, rv);
 	}
 
 	// PIN.QES is a regular iso7816 pin
 	if (data->pin_reference == 0x81) {
-		rv = iso_ops->pin_cmd(card, data, tries_left);
+		rv = iso_ops->pin_cmd(card, data);
 		LOG_FUNC_RETURN(card->ctx, rv);
 	}
 
@@ -441,7 +433,7 @@ lteid_pin_cmd_unblock(struct sc_card *card, struct sc_pin_cmd_data *data, int *t
 }
 
 static int
-lteid_pin_cmd_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+lteid_pin_cmd_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -452,13 +444,13 @@ lteid_pin_cmd_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 		struct sc_pin_cmd_data with_changed_pin_ref = *data;
 
 		with_changed_pin_ref.pin_reference = 0x07;
-		rv = iso_ops->pin_cmd(card, &with_changed_pin_ref, tries_left);
+		rv = iso_ops->pin_cmd(card, &with_changed_pin_ref);
 		LOG_FUNC_RETURN(card->ctx, rv);
 	}
 
 	// PIN.QES is a regular iso7816 pin
 	if (data->pin_reference == 0x81) {
-		rv = iso_ops->pin_cmd(card, data, tries_left);
+		rv = iso_ops->pin_cmd(card, data);
 		LOG_FUNC_RETURN(card->ctx, rv);
 	}
 
@@ -466,7 +458,7 @@ lteid_pin_cmd_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 }
 
 static int
-lteid_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+lteid_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -474,16 +466,16 @@ lteid_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_lef
 
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
-		rv = lteid_pin_cmd_verify(card, data, tries_left);
+		rv = lteid_pin_cmd_verify(card, data);
 		break;
 	case SC_PIN_CMD_GET_INFO:
-		rv = lteid_pin_cmd_get_info(card, data, tries_left);
+		rv = lteid_pin_cmd_get_info(card, data);
 		break;
 	case SC_PIN_CMD_UNBLOCK:
-		rv = lteid_pin_cmd_unblock(card, data, tries_left);
+		rv = lteid_pin_cmd_unblock(card, data);
 		break;
 	case SC_PIN_CMD_CHANGE:
-		rv = lteid_pin_cmd_change(card, data, tries_left);
+		rv = lteid_pin_cmd_change(card, data);
 		break;
 	default:
 		rv = SC_ERROR_NOT_SUPPORTED;

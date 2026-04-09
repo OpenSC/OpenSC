@@ -1860,7 +1860,7 @@ static int cac_logout(sc_card_t *card)
 	return cac_find_first_pki_applet(card, &index);
 }
 
-static int cac_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+static int cac_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	/* CAC, like PIV needs Extra validation of (new) PIN during
 	 * a PIN change request, to ensure it's not outside the
@@ -1896,7 +1896,7 @@ static int cac_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries
 		}
 	}
 
-	rv = iso_drv->ops->pin_cmd(card, data, tries_left);
+	rv = iso_drv->ops->pin_cmd(card, data);
 
 	data->apdu = NULL;
 	return rv;
