@@ -21,6 +21,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "errors.h"
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -812,7 +813,8 @@ static int sc_hsm_read_binary(sc_card_t *card,
 	cmdbuff[2] = (idx >> 8) & 0xFF;
 	cmdbuff[3] = idx & 0xFF;
 
-	assert(count <= sc_get_max_recv_size(card));
+	if (count > sc_get_max_recv_size(card))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0xB1, 0x00, 0x00);
 	apdu.data = cmdbuff;
 	apdu.datalen = 4;
@@ -1162,7 +1164,8 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 			//
 			// The SmartCard-HSM returns the point result of the DH operation
 			// with a leading '04'
-			assert(apdu.resplen > 0);
+			if (apdu.resplen <= 0)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 			len = apdu.resplen - 1 > outlen ? outlen : apdu.resplen - 1;
 			memcpy(out, apdu.resp + 1, len);
 			LOG_FUNC_RETURN(card->ctx, (int)len);
@@ -1358,7 +1361,8 @@ static int sc_hsm_import_dkek_share(sc_card_t *card, sc_cardctl_sc_hsm_dkek_t *p
 
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
-	assert(apdu.resplen >= (sizeof(params->key_check_value) + 2));
+	if (apdu.resplen < (sizeof(params->key_check_value) + 2))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
 	params->dkek_shares = status[0];
 	params->outstanding_shares = status[1];
