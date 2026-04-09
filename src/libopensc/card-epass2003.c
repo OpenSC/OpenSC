@@ -1439,8 +1439,9 @@ end:
 static int
 decrypt_response(struct sc_card *card, unsigned char *in, size_t inlen, unsigned char *out, size_t * out_len)
 {
+	unsigned int cla = 0, tag = 0;
+	const unsigned char *p = in;
 	size_t cipher_len;
-	size_t i;
 	unsigned char iv[16] = {0};
 	unsigned char plaintext[4096] = {0};
 	epass2003_exdata *exdata = NULL;
@@ -1450,33 +1451,23 @@ decrypt_response(struct sc_card *card, unsigned char *in, size_t inlen, unsigned
 
 	exdata = (epass2003_exdata *)card->drv_data;
 
-	/* no cipher */
-	if (in[0] == 0x99)
-		return 0;
-
-	/* parse cipher length */
-	if (0x01 == in[2] && 0x82 != in[1]) {
-		cipher_len = in[1];
-		i = 3;
-	} else if (0x01 == in[3] && 0x81 == in[1]) {
-		cipher_len = in[2];
-		i = 4;
-	} else if (0x01 == in[4] && 0x82 == in[1]) {
-		cipher_len = in[2] * 0x100;
-		cipher_len += in[3];
-		i = 5;
-	} else {
+	if (SC_SUCCESS != sc_asn1_read_tag(&p, inlen, &cla, &tag, &cipher_len)
+			|| p == NULL) {
 		return -1;
 	}
+	if ((cla | tag) == 0x99)
+		return 0;
+	if ((cla | tag) != 0x87)
+		return -1;
 
-	if (cipher_len < 2 || i + cipher_len > inlen || cipher_len > sizeof plaintext)
+	if (cipher_len < 2 || cipher_len > sizeof plaintext)
 		return -1;
 
 	/* decrypt */
 	if (KEY_TYPE_AES == exdata->smtype)
-		aes128_decrypt_cbc(card, exdata->sk_enc, 16, iv, &in[i], cipher_len - 1, plaintext);
+		aes128_decrypt_cbc(card, exdata->sk_enc, 16, iv, p, cipher_len - 1, plaintext);
 	else
-		des3_decrypt_cbc(card, exdata->sk_enc, 16, iv, &in[i], cipher_len - 1, plaintext);
+		des3_decrypt_cbc(card, exdata->sk_enc, 16, iv, p, cipher_len - 1, plaintext);
 
 	/* unpadding */
 	while (0x80 != plaintext[cipher_len - 2] && (cipher_len > 2))
