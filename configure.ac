@@ -996,6 +996,8 @@ if test "${enable_sm}" = "yes"; then
 	esac
 fi
 
+AC_DEFINE([ENABLE_PKCS11], [1], [Enable building of PKCS#11 library])
+
 if test "${with_pkcs11_provider}" = "detect"; then
 	if test "${WIN32}" != "yes"; then
 		DEFAULT_PKCS11_PROVIDER="${libdir}/opensc-pkcs11${DYN_LIB_EXT}"
@@ -1083,6 +1085,9 @@ if test "${enable_minidriver}" = "yes"; then
 else
 	enable_minidriver_ca="no"
 fi
+
+AC_DEFINE([QUOTE_HELPER(x)], [#x], [Stringify macro helper])
+AC_DEFINE([QUOTE(x)], [QUOTE_HELPER(x)], [Stringify macro])
 
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MAJOR], [${OPENSC_VERSION_MAJOR}], [OpenSC version major component])
 AC_DEFINE_UNQUOTED([OPENSC_VERSION_MINOR], [${OPENSC_VERSION_MINOR}], [OpenSC version minor component])
