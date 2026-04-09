@@ -281,6 +281,9 @@ enum {
 
 	/* Lithuanian eID cards */
 	SC_CARD_TYPE_LTEID = 43000,
+
+	/* Serbian cards (CardEdge PKI applet) */
+	SC_CARD_TYPE_SRBEID_BASE = 44000,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -326,6 +329,7 @@ extern sc_card_driver_t *sc_get_skeid_driver(void);
 extern sc_card_driver_t *sc_get_eoi_driver(void);
 extern sc_card_driver_t *sc_get_dtrust_driver(void);
 extern sc_card_driver_t *sc_get_lteid_driver(void);
+extern sc_card_driver_t *sc_get_srbeid_driver(void);
 
 #ifdef __cplusplus
 }
