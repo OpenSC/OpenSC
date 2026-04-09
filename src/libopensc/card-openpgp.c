@@ -3730,6 +3730,8 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 		len = set_taglength_tlv(p, componenttags[i], componentlens[i]);
 		tpl_len += len;
 
+		if (kdata_len + componentlens[i] > sizeof(kdata))
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		/*
 		 *       <-- kdata_len --><--  Copy here  -->
 		 * kdata |===============|___________________
