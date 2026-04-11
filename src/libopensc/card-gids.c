@@ -167,7 +167,7 @@ static int gids_get_identifiers(sc_card_t* card, u8* masterfile, size_t masterfi
 	assert(masterfilesize >= 1);
 
 	for (i = 0; i < recordcount; i++) {
-		if (strcmp(directory, records[i].directory) == 0 && strcmp(filename, records[i].filename) == 0) {
+		if (strncmp(directory, records[i].directory, sizeof(records[i].directory)) == 0 && strncmp(filename, records[i].filename, sizeof(records[i].filename)) == 0) {
 			*fileIdentifier = records[i].fileIdentifier;
 			*dataObjectIdentifier = records[i].dataObjectIdentifier;
 			sc_log(card->ctx,

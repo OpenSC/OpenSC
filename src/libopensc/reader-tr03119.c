@@ -928,10 +928,11 @@ int escape_pace_capabilities_to_buf(sc_context_t *ctx,
 	return sc_asn1_encode(ctx, PACECapabilities, asn1, asn1_len);
 }
 
+#define MAX_RESPLEN 0xFF
 void sc_detect_escape_cmds(sc_reader_t *reader)
 {
 	int error = 0;
-	u8 rbuf[0xff+1];
+	u8 rbuf[MAX_RESPLEN + 1];
 	sc_apdu_t apdu;
 	unsigned long capabilities;
 
@@ -943,8 +944,8 @@ void sc_detect_escape_cmds(sc_reader_t *reader)
 		apdu.p1      = escape_p1_PIN;
 		apdu.p2      = escape_p2_GetReaderPACECapabilities;
 		apdu.resp    = rbuf;
-		apdu.resplen = sizeof rbuf;
-		apdu.le      = sizeof rbuf;
+		apdu.resplen = MAX_RESPLEN;
+		apdu.le      = MAX_RESPLEN;
 
 		if (reader->ops->transmit(reader, &apdu) == SC_SUCCESS
 				&& apdu.sw1 == 0x90 && apdu.sw2 == 0x00
@@ -975,7 +976,7 @@ void sc_detect_escape_cmds(sc_reader_t *reader)
 
 		apdu.p1      = escape_p1_IFD;
 		apdu.p2      = escape_p2_vendor;
-		apdu.resplen = sizeof rbuf;
+		apdu.resplen = MAX_RESPLEN;
 		if (reader->ops->transmit(reader, &apdu) == SC_SUCCESS
 				&& apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			if (!reader->vendor) {
@@ -989,7 +990,7 @@ void sc_detect_escape_cmds(sc_reader_t *reader)
 
 		apdu.p1      = escape_p1_IFD;
 		apdu.p2      = escape_p2_version_firmware;
-		apdu.resplen = sizeof rbuf;
+		apdu.resplen = MAX_RESPLEN;
 		if (reader->ops->transmit(reader, &apdu) == SC_SUCCESS
 				&& apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			if (!reader->version_major && !reader->version_minor) {
