@@ -1451,8 +1451,7 @@ decrypt_response(struct sc_card *card, unsigned char *in, size_t inlen, unsigned
 
 	exdata = (epass2003_exdata *)card->drv_data;
 
-	if (SC_SUCCESS != sc_asn1_read_tag(&p, inlen, &cla, &tag, &cipher_len)
-			|| p == NULL) {
+	if (SC_SUCCESS != sc_asn1_read_tag(&p, inlen, &cla, &tag, &cipher_len) || p == NULL) {
 		return -1;
 	}
 	if ((cla | tag) == 0x99)

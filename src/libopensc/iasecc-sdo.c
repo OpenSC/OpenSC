@@ -1271,7 +1271,7 @@ iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	memset(out, 0, sizeof(*out));
-	for (offs = 0; offs + 1 < data_len; ) {
+	for (offs = 0; offs + 1 < data_len;) {
 		rc = iasecc_parse_size(data + offs + 1, data_len - offs - 1, &size);
 		if (rc <= 0) {
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
