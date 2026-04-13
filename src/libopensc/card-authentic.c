@@ -61,13 +61,14 @@ static struct sc_card_driver authentic_drv = {
 	NULL, 0, NULL
 };
 
+#define AUTHENTIC_N_PINS 8
 /*
  * FIXME: use dynamic allocation for the PIN data to reduce memory usage
  * actually size of 'authentic_private_data' 140kb
  */
 struct authentic_private_data {
-	struct sc_pin_cmd_data pins[8];
-	unsigned char pins_sha1[8][SHA_DIGEST_LENGTH];
+	struct sc_pin_cmd_data pins[AUTHENTIC_N_PINS];
+	unsigned char pins_sha1[AUTHENTIC_N_PINS][SHA_DIGEST_LENGTH];
 
 	struct sc_cplc cplc;
 };
@@ -1110,6 +1111,10 @@ authentic_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 	sc_log(ctx, "PIN(type:%X,reference:%X,data:%p,length:%zu)",
 			pin_cmd->pin_type, pin_cmd->pin_reference, pin_cmd->pin1.data, pin_cmd->pin1.len);
 
+	if (pin_cmd->pin_reference < 0 || pin_cmd->pin_reference >= AUTHENTIC_N_PINS) {
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "PIN reference out of bounds");
+	}
+
 	if (pin_cmd->pin1.data && !pin_cmd->pin1.len)   {
 		pin_cmd->pin1.tries_left = -1;
 		rv = authentic_pin_is_verified(card, pin_cmd, &pin_cmd->pin1.tries_left);
@@ -1205,6 +1210,10 @@ authentic_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 
 	rv = authentic_pin_get_policy(card, data, NULL);
 	LOG_TEST_RET(ctx, rv, "Get 'PIN policy' error");
+
+	if (data->pin_reference < 0 || data->pin_reference >= AUTHENTIC_N_PINS) {
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "PIN reference out of bounds");
+	}
 
 	memset(prv_data->pins_sha1[data->pin_reference], 0, sizeof(prv_data->pins_sha1[0]));
 
@@ -1349,6 +1358,10 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "reset PIN (ref:%i,lengths %zu/%zu)", data->pin_reference, data->pin1.len, data->pin2.len);
+
+	if (data->pin_reference < 0 || data->pin_reference >= AUTHENTIC_N_PINS) {
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "PIN reference out of bounds");
+	}
 
 	memset(prv_data->pins_sha1[data->pin_reference], 0, sizeof(prv_data->pins_sha1[0]));
 
