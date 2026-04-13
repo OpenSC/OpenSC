@@ -168,7 +168,7 @@ jobs:
     steps:
       - *use_cache
       - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: 'semeru'
           java-version: '8'
