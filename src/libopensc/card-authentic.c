@@ -1032,6 +1032,9 @@ authentic_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0, pin_cmd->pin_reference);
 	}
 	else if (pin1->data && pin1->len)   {
+		if (pin1->len > sizeof(pin_buff)) {
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_PIN_LENGTH);
+		}
 		memcpy(pin_buff, pin1->data, pin1->len);
 		pin_len = pin1->len;
 
