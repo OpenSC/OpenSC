@@ -1231,11 +1231,18 @@ authentic_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 	memset(pin_data, data->pin1.pad_char, sizeof(pin_data));
 	offs = 0;
 	if (data->pin1.data && data->pin1.len)   {
+		if (data->pin1.len > sizeof(pin_data)) {
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "PIN length exceeds buffer");
+		}
 		memcpy(pin_data, data->pin1.data, data->pin1.len);
 		offs += data->pin1.pad_length;
 	}
-	if (data->pin2.data && data->pin2.len)
+	if (data->pin2.data && data->pin2.len) {
+		if (data->pin2.len + offs > sizeof(pin_data)) {
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "PIN2 length exceeds buffer");
+		}
 		memcpy(pin_data + offs, data->pin2.data, data->pin2.len);
+	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, offs ? 0x00 : 0x01, data->pin_reference);
 	apdu.data = pin_data;
