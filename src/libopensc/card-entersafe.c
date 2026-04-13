@@ -962,13 +962,21 @@ static int entersafe_erase_card(sc_card_t *card)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static void entersafe_encode_bignum(u8 tag, sc_pkcs15_bignum_t bignum, u8 **ptr)
+static int
+entersafe_encode_bignum(u8 tag, sc_pkcs15_bignum_t bignum, u8 **ptr, size_t *ptrlen)
 {
 	u8 *p = *ptr;
 
+	/* lower bound for 1B length encoding */
+	if (*ptrlen < bignum.len + 2) {
+		return SC_ERROR_INVALID_DATA;
+	}
+
 	*p++ = tag;
+	*ptrlen -= 1;
 	if (bignum.len < 128) {
 		*p++ = (u8)bignum.len;
+		*ptrlen -= 1;
 	} else {
 		u8 bytes = 1;
 		size_t len = bignum.len;
@@ -978,15 +986,25 @@ static void entersafe_encode_bignum(u8 tag, sc_pkcs15_bignum_t bignum, u8 **ptr)
 		}
 		bytes &= 0x0F;
 		*p++ = 0x80 | bytes;
+		*ptrlen -= 1;
 		while (bytes) {
 			*p++ = bignum.len >> ((bytes - 1) * 8);
+			*ptrlen -= 1;
 			--bytes;
 		}
 	}
+	/* Tag and length bytes already counted and checked */
+	if (*ptrlen < bignum.len) {
+		return SC_ERROR_INVALID_DATA;
+	}
+
 	memcpy(p, bignum.data, bignum.len);
 	entersafe_reverse_buffer(p, bignum.len);
 	p += bignum.len;
 	*ptr = p;
+	*ptrlen -= bignum.len;
+
+	return SC_SUCCESS;
 }
 
 static int entersafe_write_small_rsa_key(sc_card_t *card, u8 key_id, struct sc_pkcs15_prkey_rsa *rsa)
@@ -995,14 +1013,17 @@ static int entersafe_write_small_rsa_key(sc_card_t *card, u8 key_id, struct sc_p
 	u8 sbuff[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 	u8 *p = sbuff;
+	size_t buflen = sizeof(sbuff);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	{ /* write prkey */
 		*p++ = 0x00;			/* EC */
 		*p++ = 0x00;			/* ver */
-		entersafe_encode_bignum('E', rsa->exponent, &p);
-		entersafe_encode_bignum('D', rsa->d, &p);
+		r = entersafe_encode_bignum('E', rsa->exponent, &p, &buflen);
+		LOG_TEST_RET(card->ctx, r, "Failed to encode bignum. Buffer too small?");
+		r = entersafe_encode_bignum('D', rsa->d, &p, &buflen);
+		LOG_TEST_RET(card->ctx, r, "Failed to encode bignum. Buffer too small?");
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xF4, 0x22, key_id);
 		apdu.cla = 0x84;
@@ -1018,8 +1039,10 @@ static int entersafe_write_small_rsa_key(sc_card_t *card, u8 key_id, struct sc_p
 	{ /* write pukey */
 		*p++ = 0x00;			/* EC */
 		*p++ = 0x00;			/* ver */
-		entersafe_encode_bignum('E', rsa->exponent, &p);
-		entersafe_encode_bignum('N', rsa->modulus, &p);
+		r = entersafe_encode_bignum('E', rsa->exponent, &p, &buflen);
+		LOG_TEST_RET(card->ctx, r, "Failed to encode bignum. Buffer too small?");
+		r = entersafe_encode_bignum('N', rsa->modulus, &p, &buflen);
+		LOG_TEST_RET(card->ctx, r, "Failed to encode bignum. Buffer too small?");
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xF4, 0x2A, key_id);
 		apdu.cla = 0x84;
