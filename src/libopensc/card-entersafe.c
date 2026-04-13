@@ -892,6 +892,10 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 			sc_apdu_t apdu;
 			u8 sbuf[0x10] = {0};
 
+			if (data->pin1.len > sizeof(sbuf)) {
+				return SC_ERROR_INVALID_DATA;
+			}
+
 			memcpy(sbuf, data->pin1.data, data->pin1.len);
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, data->pin_reference + 1);
 			apdu.lc = apdu.datalen = sizeof(sbuf);
@@ -904,6 +908,10 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		{ /*change*/
 			sc_apdu_t apdu;
 			u8 sbuf[0x12] = {0};
+
+			if (data->pin2.len + 2 > sizeof(sbuf)) {
+				return SC_ERROR_INVALID_DATA;
+			}
 
 			sbuf[0] = 0x33;
 			sbuf[1] = 0x00;
