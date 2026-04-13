@@ -19,7 +19,7 @@ jobs:
     - run: .github/setup-linux.sh force-install
     - run: ./bootstrap
     - run: ./configure  --disable-dependency-tracking --enable-piv-sm
-    - uses: vapier/coverity-scan-action@v0
+    - uses: vapier/coverity-scan-action@v1
       if: ${{ env.HAS_COVERITY_SCAN_TOKEN == 'true' }}
       with:
         project: OpenSC%2FOpenSC
