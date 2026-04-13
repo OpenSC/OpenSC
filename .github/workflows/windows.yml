@@ -61,7 +61,7 @@ jobs:
             fi
           fi
           PACKAGE_SUFFIX="${SUFFIX}${{ matrix.configuration == 'Light' && '-Light' || '' }}"
-          sed -i.bak "s/^PACKAGE_SUFFIX=\([-~]*[0-9a-zA-Z]*\)$/PACKAGE_SUFFIX=$PACKAGE_SUFFIX/g" VERSION.mk
+          sed -i.bak "s|^PACKAGE_SUFFIX=\([-~]*[0-9a-zA-Z]*\)$|PACKAGE_SUFFIX=$PACKAGE_SUFFIX|g" VERSION.mk
           cat VERSION.mk
           while IFS='=' read -r key value; do
               # Skip empty or comment lines
