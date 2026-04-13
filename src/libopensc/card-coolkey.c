@@ -1696,6 +1696,11 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 	sc_log(card->ctx, "datalen=%"SC_FORMAT_LEN_SIZE_T"u outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		datalen, max_out_len);
 
+	if (datalen > 0xFFFF) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto done;
+	}
+
 	if (priv->key_id > 0xff) {
 		r = SC_ERROR_NO_DEFAULT_KEY;
 		goto done;
