@@ -347,8 +347,13 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 		}
 	}
 
+	if (apdu->lc + 4 > buffsize) {
+		r = SC_ERROR_INVALID_DATA;
+		goto out;
+	}
+
 	memcpy(buff, apdu->data, apdu->lc);
-	/* use first 4 bytes of last block as mac value*/
+	/* use first 4 bytes of last block as mac value */
 	memcpy(buff + apdu->lc, tmp_rounded + tmpsize_rounded - 8, 4);
 	apdu->data = buff;
 	apdu->lc += 4;
