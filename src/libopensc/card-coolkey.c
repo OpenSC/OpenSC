@@ -1774,7 +1774,7 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 			goto done;
 		}
 		out_length = bebytes2ushort(buf);
-		if (out_length > sizeof buf - 2) {
+		if (out_length > buf_len) {
 			r = SC_ERROR_WRONG_LENGTH;
 			goto done;
 		}
