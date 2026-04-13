@@ -46,7 +46,7 @@ rm -rf *~ *.cache config.guess config.log config.status config.sub depcomp ltmai
 if [ -n "$SUFFIX" ]
 then
     echo Set package suffix "$SUFFIX"
-    sed -i.bak 's/^PACKAGE_SUFFIX=\([-~]*[0-9a-zA-Z]*\)$/PACKAGE_SUFFIX='$SUFFIX'/g' VERSION.mk
+    sed -i.bak 's|^PACKAGE_SUFFIX=\([-~]*[0-9a-zA-Z]*\)$|PACKAGE_SUFFIX='$SUFFIX'|g' VERSION.mk
 fi
 
 ./bootstrap
