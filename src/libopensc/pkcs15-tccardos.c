@@ -213,7 +213,7 @@ static int parse_EF_CardInfo(sc_pkcs15_card_t *p15card)
 	size_t i;
 	unsigned int key_num;
 	struct sc_context *ctx = p15card->card->ctx;
-	size_t offset;
+	size_t offset, available_space;
 
 	/* read EF_CardInfo1 */
 	r = read_file(p15card->card, "3F001003b200", info1, &info1_len);
@@ -228,23 +228,30 @@ static int parse_EF_CardInfo(sc_pkcs15_card_t *p15card)
 		| (((unsigned int) info1[info1_len-2]) << 8)
 	   	| (((unsigned int) info1[info1_len-3]) << 16)
 	   	| (((unsigned int) info1[info1_len-4]) << 24);
-	sc_log(ctx, 
-		"found %d private keys\n", (int)key_num);
-	/* set p1 to the address of the first key descriptor */
-	offset = info1_len - 4 - key_num * 2;
-	if (offset >= info1_len)
+	sc_log(ctx, "found %u private keys", key_num);
+	available_space = info1_len - 4;
+
+	/* Verify bounds for the following loop
+	 *  - the info1 has 2 bytes for each key
+	 *  - the info2 has at least 14 bytes for each key (16 bytes at some cases -- checked later)
+	 */
+	if (key_num > available_space / 2 || key_num > info2_len / 14) {
 		return SC_ERROR_INVALID_DATA;
+	}
+	offset = available_space - key_num * 2;
+	/* set p1 to the address of the first key descriptor */
 	p1 = info1 + offset;
 	p2 = info2;
 
-	/* This is the minimum amount of data expected by the following code without
-	 * overunning the buffer without additional condition for cert_count == 4 */
-	if (info2_len < key_num * 14)
-		return SC_ERROR_INVALID_DATA;
 	for (i=0; i<key_num; i++) {
 		u8   pinId, keyId, cert_count;
 		int  ch_cert, ca_cert, r1_cert, r2_cert = 0;
 		int  key_descr;
+
+		/* Base record has 14 bytes */
+		if ((size_t)(p2 - info2) + 14 > info2_len) {
+			return SC_ERROR_INVALID_DATA;
+		}
 		/* evaluate CertInfo2 */
 		cert_count = *p2++;
 		p2 += 2; /* ignore cert DF (it's always 1002) */
@@ -259,6 +266,9 @@ static int parse_EF_CardInfo(sc_pkcs15_card_t *p15card)
 		r1_cert = (p2[0] << 8) | p2[1];
 		p2 += 2;
 		if (cert_count == 4) {
+			if ((size_t)(p2 - info2) + 2 > info2_len) {
+				return SC_ERROR_INVALID_DATA;
+			}
 			r2_cert = (p2[0] << 8) | p2[1];
 			p2 += 2;
 		}
