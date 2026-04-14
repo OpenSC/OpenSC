@@ -181,7 +181,7 @@ lteid_get_can(sc_card_t *card, struct establish_pace_channel_input *pace_input)
 }
 
 static int
-lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin, size_t pinlen)
+lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin, size_t pinlen, int *tries_left)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -327,7 +327,7 @@ lteid_pin_cmd_verify(struct sc_card *card, struct sc_pin_cmd_data *data)
 	case PACE_PIN_ID_CAN:
 	case PACE_PIN_ID_PIN:
 	case PACE_PIN_ID_PUK:
-		rv = lteid_perform_pace(card, data->pin_reference, data->pin1.data, data->pin1.len);
+		rv = lteid_perform_pace(card, data->pin_reference, data->pin1.data, data->pin1.len, &data->pin1.tries_left);
 		break;
 	default:
 		rv = iso_ops->pin_cmd(card, data);
