@@ -37,7 +37,7 @@ echo "Is pcscd running:"
 ps -ef | grep  pcscd
 
 # Needed for tput to not report warnings
-export TERM=xterm-256color
+export TERM=xterm-256color OPENSC_DEBUG=3
 
 pushd oseid/tools
 echo | ./OsEID-tool INIT
@@ -67,7 +67,7 @@ popd
 
 pushd src/tests/p11test/
 
-OPENSC_DEBUG=3 $VALGRIND ./p11test -s 0 -p 11111111 -o oseid.json
+$VALGRIND ./p11test -s 0 -p 11111111 -o oseid.json
 diff -u3 oseid_ref.json oseid.json
 popd
 
