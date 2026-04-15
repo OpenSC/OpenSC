@@ -7389,8 +7389,8 @@ static int read_object(CK_SESSION_HANDLE session)
 #endif
 				point = EC_POINT_new(group);
 				if (os) {
-					a = os->data;
-					a_len = os->length;
+					a = ASN1_STRING_get0_data(os);
+					a_len = ASN1_STRING_length(os);
 					success = EC_POINT_oct2point(group, point, a, a_len, NULL);
 				}
 				if (!success) { /* Workaround for broken PKCS#11 modules */
@@ -7464,9 +7464,9 @@ static int read_object(CK_SESSION_HANDLE session)
 
 					a = params;
 					if (d2i_ASN1_PRINTABLESTRING(&curve, &a, (long)len) != NULL) {
-						if (strcmp((char *)curve->data, "edwards25519") &&
-								strcmp((char *)curve->data, "curve25519")) {
-							util_fatal("Unknown curve name \"%si\"", curve->data);
+						if (strcmp((char *)ASN1_STRING_get0_data(curve), "edwards25519") &&
+								strcmp((char *)ASN1_STRING_get0_data(curve), "curve25519")) {
+							util_fatal("Unknown curve name \"%si\"", (char *)ASN1_STRING_get0_data(curve));
 						}
 						ASN1_PRINTABLESTRING_free(curve);
 					} else if (d2i_ASN1_OBJECT(&obj, &a, (long)len) != NULL) {
@@ -7526,26 +7526,26 @@ static int read_object(CK_SESSION_HANDLE session)
 					}
 				}
 
-				if (type == CKK_EC_EDWARDS && os->length == BYTES4BITS(256)) /* note extra bit */
+				if (type == CKK_EC_EDWARDS && len == BYTES4BITS(256)) /* note extra bit */
 					raw_pk = EVP_PKEY_ED25519;
 #ifdef EVP_PKEY_ED448
-				else if (type == CKK_EC_EDWARDS && os->length == ED448_KEY_SIZE_BYTES)
+				else if (type == CKK_EC_EDWARDS && len == ED448_KEY_SIZE_BYTES)
 					raw_pk = EVP_PKEY_ED448;
 #endif /* EVP_PKEY_ED448 */
 #ifdef EVP_PKEY_X25519
-				else if (type == CKK_EC_MONTGOMERY && os->length == BYTES4BITS(256)) /* note extra bit */
+				else if (type == CKK_EC_MONTGOMERY && len == BYTES4BITS(256)) /* note extra bit */
 					raw_pk = EVP_PKEY_X25519;
 #endif /*EVP_PKEY_X25519 */
 #ifdef EVP_PKEY_X448
-				else if (type == CKK_EC_MONTGOMERY && os->length == BYTES4BITS(448))
+				else if (type == CKK_EC_MONTGOMERY && len == BYTES4BITS(448))
 					raw_pk = EVP_PKEY_X448;
 #endif /* EVP_PKEY_X448 */
 				else
 					util_fatal("Invalid or not supported CKK_EC_EDWARDS or CKK_EC_MONTGOMERY public key");
 
 				key = EVP_PKEY_new_raw_public_key(raw_pk, NULL,
-						(const uint8_t *)os->data,
-						os->length);
+						(const uint8_t *)ASN1_STRING_get0_data(os),
+						ASN1_STRING_length(os));
 				ASN1_STRING_free(os);
 				if (key == NULL) {
 					util_fatal("out of memory");

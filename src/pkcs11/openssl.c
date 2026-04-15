@@ -463,6 +463,7 @@ static CK_RV gostr3410_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len
 	EC_POINT *P;
 	BIGNUM *X, *Y;
 	ASN1_OCTET_STRING *octet = NULL;
+	unsigned char *octet_rev = NULL;
 	char paramset[2] = "A";
 	int r = -1, ret_vrf = 0;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -516,13 +517,16 @@ static CK_RV gostr3410_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len
 		if (group && pubkey_len <= LONG_MAX) {
 			const unsigned char *p = pubkey;
 			octet = d2i_ASN1_OCTET_STRING(NULL, &p, (long)pubkey_len);
+			if (octet)
+				octet_rev = malloc(ASN1_STRING_length(octet));
 		}
-		if (group && octet) {
-			reverse(octet->data, octet->length);
-			Y = BN_bin2bn(octet->data, octet->length / 2, NULL);
-			X = BN_bin2bn((const unsigned char*)octet->data +
-					octet->length / 2, octet->length / 2, NULL);
+		if (group && octet && octet_rev) {
+			memcpy(octet_rev, ASN1_STRING_get0_data(octet), ASN1_STRING_length(octet));
+			reverse(octet_rev, ASN1_STRING_length(octet));
+			Y = BN_bin2bn(octet_rev, ASN1_STRING_length(octet) / 2, NULL);
+			X = BN_bin2bn(octet_rev + ASN1_STRING_length(octet) / 2, ASN1_STRING_length(octet) / 2, NULL);
 			ASN1_OCTET_STRING_free(octet);
+			free(octet_rev);
 			P = EC_POINT_new(group);
 			if (P && X && Y)
 				r = EC_POINT_set_affine_coordinates(group, P, X, Y, NULL);
