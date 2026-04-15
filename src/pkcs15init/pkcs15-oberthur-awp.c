@@ -51,21 +51,21 @@ awp_get_commonName(X509 *x)
    	r = X509_NAME_get_index_by_NID(X509_get_subject_name(x),
 		   NID_commonName, -1);
 	if (r >= 0)   {
-		X509_NAME_ENTRY *ne;
-		ASN1_STRING *a_str;
+		const X509_NAME_ENTRY *ne;
+		const ASN1_STRING *a_str;
 
 		if (!(ne = X509_NAME_get_entry(X509_get_subject_name(x), r)))
 			;
 		else if (!(a_str = X509_NAME_ENTRY_get_data(ne)))
 			;
-		else if (a_str->type == 0x0C)   {
-			ret = malloc(a_str->length + 1);
+		else if (ASN1_STRING_type(a_str) == V_ASN1_UTF8STRING) {
+			ret = malloc(ASN1_STRING_length(a_str) + 1);
 			if (ret)   {
-				memcpy(ret, a_str->data, a_str->length);
-				*(ret + a_str->length) = '\0';
+				memcpy(ret, ASN1_STRING_get0_data(a_str), ASN1_STRING_length(a_str));
+
+				*(ret + ASN1_STRING_length(a_str)) = '\0';
 			}
-		}
-		else    {
+		} else {
 			unsigned char *tmp = NULL;
 
 			r = ASN1_STRING_to_UTF8(&tmp, a_str);

@@ -144,25 +144,38 @@ static void show_certs(sc_card_t *card)
 			if(q[4]==6 && q[5]<10 && q[q[5]+6]==0x30 && q[q[5]+7]==0x82) q+=q[5]+6;
 			printf(", Len=%d\n", (q[2]<<8)|q[3]);
 			if((c=d2i_X509(NULL,&q,f->size))){
-				char buf2[2000];
-				if (X509_NAME_get_text_by_NID(X509_get_subject_name(c), NID_commonName, buf2, sizeof(buf2)) < 0) {
+				int idx;
+				const X509_NAME_ENTRY *ne = NULL; /* no free */
+				const ASN1_STRING *a_str = NULL;  /* no free */
+				int out_len = 0;
+				unsigned char *tmp = NULL;
+
+				idx = X509_NAME_get_index_by_NID(X509_get_subject_name(c), NID_commonName, -1);
+				if (idx >= 0 &&
+						((ne = X509_NAME_get_entry(X509_get_subject_name(c), idx)) != NULL) &&
+						((a_str = X509_NAME_ENTRY_get_data(ne)) != NULL) &&
+						((out_len = ASN1_STRING_to_UTF8(&tmp, a_str)) > 0)) {
+					printf("  Subject-CN: %s\n", tmp);
+					OPENSSL_free(tmp);
+					tmp = NULL;
+				} else {
 					sc_log_openssl(card->ctx);
 					printf("  Invalid Subject-CN\n");
-					X509_free(c);
-					continue;
 				}
-				printf("  Subject-CN: %s\n", buf2);
-				if (X509_NAME_get_text_by_NID(X509_get_issuer_name(c), NID_commonName, buf2, sizeof(buf2)) < 0) {
+
+				idx = X509_NAME_get_index_by_NID(X509_get_issuer_name(c), NID_commonName, -1);
+				if (idx >= 0 &&
+						((ne = X509_NAME_get_entry(X509_get_issuer_name(c), idx)) != NULL) &&
+						((a_str = X509_NAME_ENTRY_get_data(ne)) != NULL) &&
+						((out_len = ASN1_STRING_to_UTF8(&tmp, a_str)) > 0)) {
+					printf("  Issuer-CN:  %s\n", tmp);
+					OPENSSL_free(tmp);
+					tmp = NULL;
+				} else {
 					sc_log_openssl(card->ctx);
 					printf("  Invalid Issuer-CN\n");
-					X509_free(c);
-					continue;
 				}
-				printf("  Issuer-CN:  %s\n", buf2);
 				X509_free(c);
-			} else {
-				sc_log_openssl(card->ctx);
-				printf("  Invalid Certificate-Data\n");
 			}
 		} else printf(", empty\n");
 	}

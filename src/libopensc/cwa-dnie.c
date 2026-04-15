@@ -646,7 +646,7 @@ static int dnie_set_channel_data(sc_card_t * card, X509 * icc_intermediate_ca_ce
 	dnie_private_data_t *priv_data = GET_DNIE_PRIV_DATA(card);
 	LOG_FUNC_CALLED(card->ctx);
 
-	X509_NAME *issuer = X509_get_issuer_name(icc_intermediate_ca_cert);
+	const X509_NAME *issuer = X509_get_issuer_name(icc_intermediate_ca_cert);
 	if (issuer) {
 		buf = X509_NAME_oneline(issuer, buf, 0);
 		if (!buf) {

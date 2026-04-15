@@ -2593,8 +2593,8 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen, size_t expected)
 static char *
 cert_common_name(X509 *x509)
 {
-	X509_NAME_ENTRY *ne = NULL;
-	ASN1_STRING *a_str = NULL;
+	const X509_NAME_ENTRY *ne = NULL;
+	const ASN1_STRING *a_str = NULL;
 	char *out = NULL;
 	unsigned char *tmp = NULL;
 	int idx, out_len = 0;
