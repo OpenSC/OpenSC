@@ -28,12 +28,31 @@ sudo mv tmp/reader.conf /etc/reader.conf.d/reader.conf
 cat /etc/reader.conf.d/reader.conf
 popd
 
-# set up polkit rule to let user "runner" access PC/SC remotely for testing
-if [ ! -f "/usr/share/polkit-1/rules.d/03-polkit-pcscd.rules" ]; then
-	echo 'polkit.addRule(function(action, subject) { if ((action.id == "org.debian.pcsc-lite.access_pcsc" || action.id == "org.debian.pcsc-lite.access_card") && subject.user == "runner") { return polkit.Result.YES; } });' > /usr/share/polkit-1/rules.d/03-polkit-pcscd.rules;
+# prepare pcscd
+PCSCD_DEBUG="-d -a"
+. .github/restart-pcscd.sh
+
+sleep 5
+echo "Is pcscd running:"
+ps -ef | grep  pcscd
+
+echo "Test for /var/run/pcscd/"
+if [ -d /var/run/pcscd/ ] ; then
+	ls -la /var/run/pcscd/*
+	if [ -f /var/run/pcscd/pcscd.pid ] ; then
+		echo "/var/run/pcscd/pcscd.pid `cat /var/run/pcscd/pcscd.pid`"
+	fi
 fi
 
-sudo /etc/init.d/pcscd restart
+echo "Test for /run/pcscd/"
+if [ -d /run/pcscd/ ] ; then
+	ls -la /run/pcscd/*
+	if [ -f /run/pcscd/pcscd.pid ] ; then
+		echo "/run/pcscd/pcscd.pid `cat /run/pcscd/pcscd.pid`" 
+	fi
+
+fi
+ps  -ef |  grep pcsc
 
 # Needed for tput to not report warnings
 export TERM=xterm-256color
