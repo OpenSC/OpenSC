@@ -29,30 +29,12 @@ cat /etc/reader.conf.d/reader.conf
 popd
 
 # prepare pcscd
-PCSCD_DEBUG="-d -a"
+#PCSCD_DEBUG="-d -a"
 . .github/restart-pcscd.sh
 
 sleep 5
 echo "Is pcscd running:"
 ps -ef | grep  pcscd
-
-echo "Test for /var/run/pcscd/"
-if [ -d /var/run/pcscd/ ] ; then
-	ls -la /var/run/pcscd/*
-	if [ -f /var/run/pcscd/pcscd.pid ] ; then
-		echo "/var/run/pcscd/pcscd.pid `cat /var/run/pcscd/pcscd.pid`"
-	fi
-fi
-
-echo "Test for /run/pcscd/"
-if [ -d /run/pcscd/ ] ; then
-	ls -la /run/pcscd/*
-	if [ -f /run/pcscd/pcscd.pid ] ; then
-		echo "/run/pcscd/pcscd.pid `cat /run/pcscd/pcscd.pid`" 
-	fi
-
-fi
-ps  -ef |  grep pcsc
 
 # Needed for tput to not report warnings
 export TERM=xterm-256color
@@ -85,7 +67,7 @@ popd
 
 pushd src/tests/p11test/
 
-$VALGRIND ./p11test -s 0 -p 11111111 -o oseid.json
+OPENSC_DEBUG=3 $VALGRIND ./p11test -s 0 -p 11111111 -o oseid.json
 diff -u3 oseid_ref.json oseid.json
 popd
 
