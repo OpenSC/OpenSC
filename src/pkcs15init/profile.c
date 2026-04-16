@@ -720,7 +720,8 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	/* This loop relies on the fact that new files are always
 	 * appended to the list, after the parent files they refer to
 	 */
-	assert(base_file->instance);
+	if (!(base_file->instance))
+		return SC_ERROR_INTERNAL;
 	for (fi = tmpl->ef_list; fi; fi = fi->next) {
 		struct file_info	*parent, *instance;
 		unsigned int	skew = 0;
@@ -1277,7 +1278,8 @@ new_file(struct state *cur, const char *name, unsigned int type)
 		profile->df[df_type] = file;
 		free_file = 1;
 	}
-	assert(file);
+	if (!file)
+		return NULL;
 	if (file->type != type) {
 		parse_error(cur, "inconsistent file type (should be %s)",
 			file->type == SC_FILE_TYPE_DF

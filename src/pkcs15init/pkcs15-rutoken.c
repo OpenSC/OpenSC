@@ -181,14 +181,8 @@ static int create_pins(sc_card_t *card)
 		param_do.HDR.OP.byObjectFlags   = do_pins[i].flags;
 		param_do.HDR.OP.byObjectTry     = do_pins[i].try;
 		param_do.HDR.wDOBodyLen = sizeof(do_pins[i].pass);
-		/* assert(do_pins[i].p_sattr != NULL); */
-		/* assert(sizeof(*param_do.HDR.SA_V2)) */
-		/* assert(sizeof(param_do.HDR.SA_V2) == sizeof(*do_pins[i].p_sattr)); */
 		memcpy(param_do.HDR.SA_V2, *do_pins[i].p_sattr,
 				sizeof(*do_pins[i].p_sattr));
-		/* assert(do_pins[i].pass); */
-		/* assert(sizeof(*param_do.abyDOBody)) */
-		/* assert(sizeof(param_do.abyDOBody) >= sizeof(do_pins[i].pass)); */
 		memcpy(param_do.abyDOBody, do_pins[i].pass, sizeof(do_pins[i].pass));
 
 		r = sc_card_ctl(card, SC_CARDCTL_RUTOKEN_CREATE_DO, &param_do);

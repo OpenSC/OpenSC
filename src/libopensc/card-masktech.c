@@ -136,7 +136,8 @@ static int masktech_compute_signature(sc_card_t *card,
 		0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65,
 		0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20
 	};
-	assert(card != NULL && data != NULL && out != NULL);
+	if (card == NULL || data == NULL || out == NULL)
+		return SC_ERROR_INTERNAL;
 	sc_log(card->ctx,  "masktech_compute_signature()\n");
 
 	/* retrieve the key reference */
@@ -175,7 +176,8 @@ static int masktech_decipher(sc_card_t *card,
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 
-	assert(card != NULL && crgram != NULL && out != NULL);
+	if (card == NULL || crgram == NULL || out == NULL)
+		return SC_ERROR_INTERNAL;
 	sc_log(card->ctx,  "masktech_decipher()\n");
 
 	if (crgram_len > SC_MAX_EXT_APDU_BUFFER_SIZE) {

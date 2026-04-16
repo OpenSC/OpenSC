@@ -1937,19 +1937,25 @@ init_gost_params(struct sc_pkcs15init_keyarg_gost_params *params, EVP_PKEY *pkey
 #endif
 	int nid = NID_undef;
 
-	assert(pkey);
+	if (!pkey)
+		return;
 	if (EVP_PKEY_id(pkey) == NID_id_GostR3410_2001) {
-		assert(params);
+		if (!params)
+			return;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		key = EVP_PKEY_get0(pkey);
-		assert(key);
-		assert(EC_KEY_get0_group(key));
+		if (!key)
+			return;
+		if (!EC_KEY_get0_group(key))
+			return;
 		nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(key));
 #else
-		assert(EVP_PKEY_get_group_name(pkey, name, sizeof(name), NULL));
+		if (!EVP_PKEY_get_group_name(pkey, name, sizeof(name), NULL))
+			return;
 		nid = OBJ_txt2nid(name);
 #endif
-		assert(nid > 0);
+		if (!(nid > 0))
+			return;
 		switch (nid) {
 		case NID_id_GostR3410_2001_CryptoPro_A_ParamSet:
 			params->gostr3410 = SC_PKCS15_PARAMSET_GOSTR3410_A;

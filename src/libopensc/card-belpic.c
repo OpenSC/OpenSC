@@ -172,7 +172,8 @@ static int get_carddata(sc_card_t *card, u8* carddata_loc, unsigned int carddata
 	u8 carddata_cmd[] = { 0x80, 0xE4, 0x00, 0x00, 0x1C };
 	int r;
 
-	assert(carddataloc_len == BELPIC_CARDDATA_RESP_LEN);
+	if (carddataloc_len != BELPIC_CARDDATA_RESP_LEN)
+		return SC_ERROR_INTERNAL;
 
 	r = sc_bytes2apdu(card->ctx, carddata_cmd, sizeof(carddata_cmd), &apdu);
 	if(r) {
@@ -264,7 +265,8 @@ static int belpic_select_file(sc_card_t *card,
 	size_t pathlen;
 	sc_file_t *file = NULL;
 
-	assert(card != NULL && in_path != NULL);
+	if (card == NULL || in_path == NULL)
+		return SC_ERROR_INTERNAL;
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
 
@@ -353,7 +355,8 @@ static int belpic_set_security_env(sc_card_t *card,
 	sc_log(card->ctx,  "belpic_set_security_env(), keyRef = 0x%0x, algo = 0x%0lx\n",
 		 *env->key_ref, env->algorithm_flags);
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
 	switch (env->operation) {
 	case SC_SEC_OPERATION_SIGN:

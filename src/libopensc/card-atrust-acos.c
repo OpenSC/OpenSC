@@ -655,7 +655,8 @@ static int atrust_acos_decipher(struct sc_card *card,
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
-	assert(card != NULL && crgram != NULL && out != NULL);
+	if (card == NULL || crgram == NULL || out == NULL)
+		return SC_ERROR_INTERNAL;
 	LOG_FUNC_CALLED(card->ctx);
 	if (crgram_len > 255)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);

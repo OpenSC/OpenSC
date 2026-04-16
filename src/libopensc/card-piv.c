@@ -3124,7 +3124,8 @@ piv_get_cached_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	assert(enumtag >= 0 && enumtag < PIV_OBJ_LAST_ENUM);
+	if (!(enumtag >= 0 && enumtag < PIV_OBJ_LAST_ENUM))
+		return SC_ERROR_INTERNAL;
 
 	sc_log(card->ctx, "#%d, %s", enumtag, piv_objects[enumtag].name);
 

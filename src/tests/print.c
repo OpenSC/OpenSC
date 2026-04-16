@@ -24,7 +24,8 @@ void sc_test_print_card(const sc_pkcs15_card_t *mycard)
 	};
 	int i, count = 0;
 
-	assert(mycard != NULL);
+	if (!(mycard != NULL))
+		return;
 	printf("PKCS#15 Card [%s]:\n", mycard->tokeninfo->label);
 	printf("\tVersion        : %d\n", mycard->tokeninfo->version);
 	printf("\tSerial number  : %s\n", mycard->tokeninfo->serial_number);

@@ -371,7 +371,8 @@ static int setcos_pin_index_44(int *pins, int len, int pin)
 			return i;
 		}
 	}
-	assert(i != len); /* Too much PINs, shouldn't happen */
+	if (!(i != len))
+		return SC_ERROR_INTERNAL;
 	return 0;
 }
 
@@ -539,7 +540,8 @@ static int setcos_set_security_env2(sc_card_t *card,
 	u8 *p;
 	int r, locked = 0;
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 
 	if (card->type == SC_CARD_TYPE_SETCOS_44 ||
 	    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||

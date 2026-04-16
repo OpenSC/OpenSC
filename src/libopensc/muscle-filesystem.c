@@ -216,7 +216,8 @@ int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, size_t pathlen, mscfs_file_t
 {
 	msc_id fullPath = {{0, 0, 0, 0}};
 	int x, rc;
-	assert(fs != NULL && path != NULL && file_data != NULL);
+	if (fs == NULL || path == NULL || file_data == NULL)
+		return SC_ERROR_INTERNAL;
 	rc = mscfs_lookup_path(fs, path, pathlen, &fullPath, 0);
 	if (rc != SC_SUCCESS) {
 		return rc;

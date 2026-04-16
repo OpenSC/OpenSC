@@ -1056,7 +1056,8 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	struct sc_file *file = NULL;
 	cac_private_data_t * priv = CAC_DATA(card);
 
-	assert(card != NULL && in_path != NULL);
+	if (card == NULL || in_path == NULL)
+		return SC_ERROR_INTERNAL;
 	ctx = card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);

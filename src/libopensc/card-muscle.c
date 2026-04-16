@@ -136,7 +136,8 @@ static unsigned short muscle_parse_singleAcl(const sc_acl_entry_t* acl)
 
 static void muscle_parse_acls(const sc_file_t* file, unsigned short* read_perm, unsigned short* write_perm, unsigned short* delete_perm)
 {
-	assert(read_perm && write_perm && delete_perm);
+	if (!(read_perm && write_perm && delete_perm))
+		return;
 	*read_perm =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_READ));
 	*write_perm =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_UPDATE));
 	*delete_perm =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_DELETE));
@@ -433,7 +434,8 @@ static int muscle_select_file(sc_card_t *card, const sc_path_t *path_in,
 {
 	int r;
 
-	assert(card != NULL && path_in != NULL);
+	if (card == NULL || path_in == NULL)
+		return SC_ERROR_INTERNAL;
 
 	switch (path_in->type) {
 	case SC_PATH_TYPE_FILE_ID:
