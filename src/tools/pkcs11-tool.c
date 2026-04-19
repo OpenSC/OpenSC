@@ -8435,6 +8435,7 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 		errors++;
 	} else if (err != 1) {
 		printf("openssl error during verification: 0x%0x (%d)\n", err, err);
+		ERR_print_errors_fp(stdout);
 	} else
 		printf("OK\n");
 
