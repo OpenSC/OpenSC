@@ -492,11 +492,11 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		pubkey->u.rsa.modulus.len	= BYTES4BITS(keybits);
 		pubkey->u.rsa.modulus.data	= malloc(pubkey->u.rsa.modulus.len);
 		if (pubkey->u.rsa.modulus.data == NULL)
-				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		pubkey->u.rsa.exponent.len	= SETCOS_DEFAULT_PUBKEY_LEN;
 		pubkey->u.rsa.exponent.data	= malloc(SETCOS_DEFAULT_PUBKEY_LEN);
 		if (pubkey->u.rsa.exponent.data == NULL)
-				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		memcpy(pubkey->u.rsa.exponent.data, SETCOS_DEFAULT_PUBKEY, SETCOS_DEFAULT_PUBKEY_LEN);
 
 		/* Get public key modulus */
