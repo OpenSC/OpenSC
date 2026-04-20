@@ -97,7 +97,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Pull build artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: opensc-build-macos-15
       - run: git config --global user.email "builds@github.com"
