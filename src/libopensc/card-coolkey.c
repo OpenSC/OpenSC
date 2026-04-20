@@ -1811,6 +1811,11 @@ static int coolkey_ecc_op(sc_card_t *card,
 		 "datalen=%"SC_FORMAT_LEN_SIZE_T"u outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 datalen, outlen);
 
+	if (datalen > sizeof(params.buf)) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto done;
+	}
+
 	crypt_in = data;
 	crypt_in_len = datalen;
 
