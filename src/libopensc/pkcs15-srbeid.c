@@ -147,6 +147,10 @@ ce_parse_dir(const u8 *data, size_t len, ce_dir_entry_t **entries_out)
 	if (count == 0)
 		return 0;
 
+	/* Bound count against buffer size before allocation. */
+	if (count > (len - CE_DIR_HEADER_SIZE) / CE_DIR_ENTRY_SIZE)
+		return -1;
+
 	entries = calloc(count, sizeof(ce_dir_entry_t));
 	if (!entries)
 		return -1;
@@ -155,10 +159,6 @@ ce_parse_dir(const u8 *data, size_t len, ce_dir_entry_t **entries_out)
 		size_t off = CE_DIR_HEADER_SIZE + i * CE_DIR_ENTRY_SIZE;
 		int k;
 
-		if (off + CE_DIR_ENTRY_SIZE > len) {
-			free(entries);
-			return -1;
-		}
 		/* Name: up to 8 ASCII chars, may not be NUL-terminated on card. */
 		memcpy(entries[i].name, data + off, 8);
 		entries[i].name[8] = '\0';
