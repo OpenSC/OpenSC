@@ -476,7 +476,7 @@ coolkey_v0_get_attribute_count(const u8 *obj, size_t buf_len)
 		 * 	If the assert is true, you can easily see that the loop
 		 * 	will eventually break with len == 0, even if attribute_data_len
 		 * 	was invalid */
-		if (!(len <= buf_len))
+		if (len > buf_len)
 			return SC_ERROR_INTERNAL;
 		count++;
 		attr += len;
