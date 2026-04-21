@@ -458,7 +458,7 @@ static int entersafe_update_binary(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (!(count <= card->max_send_size))
+	if (count > card->max_send_size)
 		return SC_ERROR_INTERNAL;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (idx >> 8) & 0xFF, idx & 0xFF);
