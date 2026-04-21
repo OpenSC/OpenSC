@@ -431,7 +431,7 @@ static int entersafe_read_binary(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (!(count <= card->max_recv_size))
+	if (count > card->max_recv_size)
 		return SC_ERROR_INTERNAL;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, (idx >> 8) & 0xFF, idx & 0xFF);
 
