@@ -1426,7 +1426,7 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 			r = SC_ERROR_OUT_OF_MEMORY;
 			LOG_TEST_GOTO_ERR(ctx, r, "failed to malloc() memory");
 		}
-		
+
 		memcpy(pubkey->u.ec.ecpointQ.value, pk.value, pk.len);
 		pubkey->u.ec.ecpointQ.len = pk.len;
 	} else {
