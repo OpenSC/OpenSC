@@ -164,7 +164,7 @@ static int gids_get_identifiers(sc_card_t* card, u8* masterfile, size_t masterfi
 	gids_mf_record_t *records = (gids_mf_record_t *) (masterfile+1);
 	size_t recordcount = ((masterfilesize-1) / sizeof(gids_mf_record_t));
 	size_t i;
-	if (!(masterfilesize >= 1))
+	if (masterfilesize < 1)
 		return SC_ERROR_INTERNAL;
 
 	for (i = 0; i < recordcount; i++) {
