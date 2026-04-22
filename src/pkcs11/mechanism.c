@@ -203,6 +203,8 @@ sc_pkcs11_find_mechanism(struct sc_pkcs11_card *p11card, CK_MECHANISM_TYPE mech,
 	sc_pkcs11_mechanism_type_t *mt;
 	unsigned int n;
 
+	if (p11card == NULL)
+		return NULL;
 	for (n = 0; n < p11card->nmechanisms; n++) {
 		mt = p11card->mechanisms[n];
 		if (mt && mt->mech == mech && ((mt->mech_info.flags & flags) == flags))
