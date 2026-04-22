@@ -3469,6 +3469,10 @@ sc_pkcs15init_new_object(int type, const char *label, struct sc_pkcs15_id *auth_
 
 	if (data_size) {
 		object->data = calloc(1, data_size);
+		if (!object->data) {
+			return NULL;
+		}
+
 		if (data)
 			memcpy(object->data, data, data_size);
 	}
