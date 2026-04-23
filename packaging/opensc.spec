@@ -5,8 +5,7 @@ Summary:        Smart card library and applications
 
 License:        LGPL-2.1-or-later AND BSD-3-Clause
 URL:            https://github.com/OpenSC/OpenSC/wiki
-Source0:        https://github.com/OpenSC/OpenSC/releases/download/%{version}/%{name}-%{version}.tar.gz
-Source1:        opensc.module
+Source0:        https://github.com/OpenSC/OpenSC/releases/download/%{version}/%{name}-%{version}.tar.xz
 
 BuildRequires:  make
 BuildRequires:  pcsc-lite-devel
@@ -14,13 +13,13 @@ BuildRequires:  readline-devel
 BuildRequires:  openssl-devel
 BuildRequires:  /usr/bin/xsltproc
 BuildRequires:  docbook-style-xsl
-BuildRequires:  autoconf automake libtool gcc
+BuildRequires:  meson gcc
 %if 0%{?fedora} || 0%{?rhel} > 10
 BuildRequires:  bash-completion-devel
 %else
 BuildRequires:  bash-completion
 %endif
-BuildRequires:  zlib-ng-devel
+BuildRequires:  zlib-ng-compat-devel
 BuildRequires:  p11-kit-devel
 # For tests
 BuildRequires:  libcmocka-devel
@@ -77,72 +76,34 @@ cp -p src/scconf/README.scconf .
 # No {_libdir} here to avoid multilib conflicts; it's just an example
 sed -i -e 's|/usr/local/towitoko/lib/|/usr/lib/ctapi/|' etc/opensc.conf.example.in
 
+%conf
+%meson -Dopenssl=enabled \
+%if ! 0%{?rhel}
+        -Dopenpace=enabled \
+%else
+       -Dopenpace=disabled \
+%endif
+       -Ddnie_ui=disabled \
+       -Ddriver=pcsc \
+       -Dautostart=false \
+       -Dnotify=false
 
 %build
-autoreconf -fvi
-%ifarch %{ix86}
-sed -i -e 's/opensc.conf/opensc-%{_arch}.conf/g' src/libopensc/Makefile.in
-%endif
-sed -i -e 's|"/lib /usr/lib\b|"/%{_lib} %{_libdir}|' configure # lib64 rpaths
-%set_build_flags
-CFLAGS="$CFLAGS -Wstrict-aliasing=2 -Wno-deprecated-declarations"
-%configure --disable-static \
-  --disable-autostart-items \
-  --disable-notify \
-  --disable-assert \
-  --enable-pcsc \
-  --enable-cmocka \
-  --enable-sm
-%make_build
-
+%meson_build
 
 %check
-make check || (cat tests/*.log src/tests/unittests/*.log && exit 1)
-
+%meson_test
 
 %install
-%make_install
-install -Dpm 644 %{SOURCE1} $RPM_BUILD_ROOT%{_datadir}/p11-kit/modules/opensc.module
-
-%ifarch %{ix86}
-# To avoid multilib issues, move these files on 32b intel architectures
-rm -f $RPM_BUILD_ROOT%{_sysconfdir}/opensc.conf
-install -Dpm 644 etc/opensc.conf $RPM_BUILD_ROOT%{_sysconfdir}/opensc-%{_arch}.conf
-rm -f $RPM_BUILD_ROOT%{_mandir}/man5/opensc.conf.5
-install -Dpm 644 doc/files/opensc.conf.5 $RPM_BUILD_ROOT%{_mandir}/man5/opensc-%{_arch}.conf.5
-# use NEWS file timestamp as reference for configuration file
-touch -r NEWS $RPM_BUILD_ROOT%{_sysconfdir}/opensc-%{_arch}.conf
-touch -r NEWS $RPM_BUILD_ROOT%{_mandir}/man5/opensc-%{_arch}.conf.5
-%else
-# For backward compatibility, symlink the old location to the new files
-ln -s %{_sysconfdir}/opensc.conf $RPM_BUILD_ROOT%{_sysconfdir}/opensc-%{_arch}.conf
-%endif
-
-find $RPM_BUILD_ROOT%{_libdir} -type f -name "*.la" | xargs rm
+%meson_install
 
 rm -rf $RPM_BUILD_ROOT%{_datadir}/doc/opensc
 
 # Upstream considers libopensc API internal and no longer ships
 # public headers and pkgconfig files.
 # Remove the symlink as nothing is supposed to link against libopensc.
-rm -f $RPM_BUILD_ROOT%{_libdir}/libopensc.so
-# remove the .pc file so we do not confuse users #1673139
-rm -f $RPM_BUILD_ROOT%{_libdir}/pkgconfig/*.pc
-rm -f $RPM_BUILD_ROOT%{_libdir}/libsmm-local.so
-
-%if 0%{?rhel}
-rm -rf %{buildroot}%{_bindir}/npa-tool
-rm -rf %{buildroot}%{_mandir}/man1/npa-tool.1*
-%endif
-
-# the pkcs11-register is not applicable to Fedora/RHEL where we use p11-kit
-rm -rf %{buildroot}%{_bindir}/pkcs11-register
-rm -rf %{buildroot}%{_mandir}/man1/pkcs11-register.1*
-
-# Remove the notification files
-rm %{buildroot}%{_datadir}/applications/org.opensc.notify.desktop
-rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
-
+rm $RPM_BUILD_ROOT%{_libdir}/libopensc.so
+rm $RPM_BUILD_ROOT%{_libdir}/libsmm-local.so
 
 %files
 %doc COPYING NEWS README*

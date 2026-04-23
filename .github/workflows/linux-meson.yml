@@ -2,7 +2,15 @@ name: Linux (meson)
 
 on:
   pull_request:
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.sh'
+      - .github/workflows/linux-meson.yml
+      - '**meson.build'
+      - doc/**
     branches: master
+  push:
 
 permissions:
   contents: read  #  to fetch code (actions/checkout)

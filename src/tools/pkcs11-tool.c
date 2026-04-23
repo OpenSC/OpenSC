@@ -80,9 +80,9 @@
  * but does use some OpenSSL routines
  */
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	static OSSL_PROVIDER *legacy_provider = NULL;
-	static OSSL_PROVIDER *default_provider = NULL;
-	static OSSL_LIB_CTX *osslctx = NULL;
+static OSSL_PROVIDER *legacy_provider = NULL;
+static OSSL_PROVIDER *default_provider = NULL;
+static OSSL_LIB_CTX *osslctx = NULL;
 #endif
 
 #ifdef _WIN32
@@ -94,7 +94,7 @@
 #ifdef ENABLE_PKCS11
 #ifndef HAVE_P11KIT
 #ifndef ENABLE_SHARED
-	extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
+extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 #endif
 #endif
 #endif

@@ -92,7 +92,7 @@ if depp11kit.found()
     if host_machine.system() != 'windows'
         install_symlink('onepin-opensc-pkcs11.' + extension_of_libraries,
             install_dir: p11kit_modules_path,
-            pointing_to: 'opensc-pkcs11.' + extension_of_libraries
+            pointing_to: prefix_of_libraries + 'opensc-pkcs11.' + extension_of_libraries
         )
     endif
 else
