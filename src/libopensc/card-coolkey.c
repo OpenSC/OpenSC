@@ -1448,8 +1448,7 @@ coolkey_find_attribute(sc_card_t *card, sc_cardctl_coolkey_attribute_t *attribut
 	}
 
 	/* should be a static assert so we catch this at compile time */
-	if (!(sizeof(coolkey_object_header_t) >= sizeof(coolkey_v0_object_header_t)))
-		return SC_ERROR_INTERNAL;
+	static_assert(sizeof(coolkey_object_header_t) >= sizeof(coolkey_v0_object_header_t), "internal error");
 	/* make sure we have enough of the object to read the record_type */
 	if (buf_len <= sizeof(coolkey_v0_object_header_t)) {
 		return SC_ERROR_CORRUPTED_DATA;
