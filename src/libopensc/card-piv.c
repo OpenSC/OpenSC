@@ -871,10 +871,10 @@ static void piv_inc(u8 *counter, size_t size)
 	unsigned int c = 1;
 	unsigned int b;
 	int i;
-	for (i = size - 1; c != 0 && i >= 0; i--){
-			b = c + counter[i];
-			counter[i] = b & 0xff;
-			c = b>>8;
+	for (i = (int)size - 1; c != 0 && i >= 0; i--) {
+		b = c + counter[i];
+		counter[i] = b & 0xff;
+		c = b >> 8;
 	}
 }
 
@@ -995,8 +995,8 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		T87len = 0;
 		padlen = 0;
 	} else {
-		enc_datalen = ((plain->datalen + 15) / 16) * 16; /* may add extra 16 bytes */
-		padlen = enc_datalen - plain->datalen;
+		enc_datalen = (int)(((plain->datalen + 15) / 16) * 16); /* may add extra 16 bytes */
+		padlen = enc_datalen - (int)plain->datalen;
 		r = T87len = sc_asn1_put_tag(0x87, NULL, 1 + enc_datalen, NULL, 0, NULL);
 		if (r < 0)
 			goto err;
@@ -1022,13 +1022,13 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		*p++ = 0x01; /* padding context indicator */
 
 		/* first round encryptes Enc counter with zero IV, and does not save the output */
-		if (EVP_CIPHER_CTX_reset(ed_ctx) != 1
-				|| EVP_EncryptInit_ex(ed_ctx, (*cs->cipher_cbc)(), NULL, priv->sm_session.SKenc, IV) != 1
-				|| EVP_CIPHER_CTX_set_padding(ed_ctx,0) != 1
-				|| EVP_EncryptUpdate(ed_ctx, p ,&outl, plain->data, plain->datalen) != 1
-				|| EVP_EncryptUpdate(ed_ctx, p + outl, &outll, pad, padlen) != 1
-				|| EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1
-				|| outdl != 0) {  /* should not happen */
+		if (EVP_CIPHER_CTX_reset(ed_ctx) != 1 ||
+				EVP_EncryptInit_ex(ed_ctx, (*cs->cipher_cbc)(), NULL, priv->sm_session.SKenc, IV) != 1 ||
+				EVP_CIPHER_CTX_set_padding(ed_ctx, 0) != 1 ||
+				EVP_EncryptUpdate(ed_ctx, p, &outl, plain->data, (int)plain->datalen) != 1 ||
+				EVP_EncryptUpdate(ed_ctx, p + outl, &outll, pad, padlen) != 1 ||
+				EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1 ||
+				outdl != 0) { /* should not happen */
 			sc_log_openssl(card->ctx);
 			sc_log(card->ctx,"SM _encode failed in OpenSSL");
 			r = SC_ERROR_INTERNAL;
@@ -1042,7 +1042,7 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		*p++ = 0x01;
 		*p++ = plain->le;
 	}
-	macdatalen = p - sbuf;
+	macdatalen = (int)(p - sbuf);
 
 	memcpy(priv->sm_session.C_MCV_last, priv->sm_session.C_MCV, MCVlen); /* save is case fails */
 
@@ -1272,7 +1272,7 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 #endif
 
 	/*  MCV is first, then BER TLV Encoded Encrypted PIV Data and Status */
-	macdatalen = status.value + status.len - sm_apdu->resp;
+	macdatalen = (int)(status.value + status.len - sm_apdu->resp);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	if (CMAC_Init(cmac_ctx, priv->sm_session.SKrmac, priv->sm_session.aes_size, (*cs->cipher_cbc)(), NULL) != 1
@@ -1324,7 +1324,7 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		plain->resplen = 0;
 	} else {
 		p = ee.value;
-		inlen = ee.len;
+		inlen = (int)ee.len;
 		if (inlen < 17 || *p != 0x01) { /*padding and padding indicator are required */
 			sc_log(card->ctx, "SM padding indicator not 0x01");
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -2594,7 +2594,7 @@ static int piv_sm_open(struct sc_card *card)
 
 		memcpy(p, Qeh_OS, Qeh_OSlen);
 		p += Qeh_OSlen;
-		MacDatalen = p - MacData;
+		MacDatalen = (int)(p - MacData);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		if ((cmac_ctx = CMAC_CTX_new()) == NULL
