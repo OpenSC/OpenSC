@@ -53,7 +53,7 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 				|| p15card->card->uid.value[0] == RANDOM_UID_INDICATOR))
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (!(path->len <= SC_MAX_PATH_SIZE))
+	if (path->len > SC_MAX_PATH_SIZE)
 		return SC_ERROR_INTERNAL;
 	r = sc_get_cache_dir(p15card->card->ctx, dir, sizeof(dir));
 	if (r)

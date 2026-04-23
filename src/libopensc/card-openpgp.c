@@ -3570,7 +3570,7 @@ set_taglength_tlv(u8 *buffer, unsigned int tag, size_t length)
 {
 	u8 *p = buffer;
 
-	if (!(tag <= 0xffff))
+	if (tag > 0xffff)
 		return SC_ERROR_INTERNAL;
 	if (tag > 0xff)
 		*p++ = (tag >> 8) & 0xFF;

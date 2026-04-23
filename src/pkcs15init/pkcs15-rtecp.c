@@ -55,7 +55,7 @@ static int create_sysdf(sc_profile_t *profile, sc_card_t *card, const char *name
 	sc_path_t path;
 	int r;
 
-	if (!(profile && card && card->ctx && name))
+	if (profile == NULL || card == NULL || card->ctx == NULL || name == NULL)
 		return SC_ERROR_INTERNAL;
 	r = sc_profile_get_file(profile, name, &file);
 	if (r == SC_SUCCESS)
@@ -63,7 +63,7 @@ static int create_sysdf(sc_profile_t *profile, sc_card_t *card, const char *name
 		if (!file)
 			return SC_ERROR_INTERNAL;
 		path = file->path;
-		if (!(path.len > 2))
+		if (path.len <= 2)
 			return SC_ERROR_INTERNAL;
 		if (path.len > 2)
 			path.len -= 2;
@@ -99,7 +99,7 @@ static int rtecp_init(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 
 	r = sc_profile_get_file(profile, "MF", &file);
 	LOG_TEST_RET(card->ctx, r, "Get MF info failed");
-	if (!(file))
+	if (file == NULL)
 		return SC_ERROR_INTERNAL;
 	r = sc_create_file(card, file);
 	sc_file_free(file);
@@ -241,8 +241,7 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	r = sc_file_set_sec_attr(file, sec, sizeof(sec));
 	if (r == SC_SUCCESS)
 	{
-		if (!(sizeof(prop) / sizeof(prop[0]) > 3))
-			return SC_ERROR_INTERNAL;
+		static_assert(sizeof(prop)/sizeof(prop[0]) > 3, "internal error");
 		prop[1] = (unsigned char)auth_info->attrs.pin.min_length;
 		prop[3] = 0x11 * (unsigned char)(auth_info->tries_left & 0x0F);
 		r = sc_file_set_prop_attr(file, prop, sizeof(prop));

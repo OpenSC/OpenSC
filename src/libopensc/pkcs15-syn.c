@@ -349,7 +349,7 @@ static sc_pkcs15_df_t * sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card,
 			}
 		}
 
-		if (!(created == 0))
+		if (created != 0)
 			return NULL;
 
 		file = sc_file_new();

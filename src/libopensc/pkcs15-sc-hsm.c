@@ -1444,7 +1444,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	}
 
 	len = strnlen(devcert.chr, sizeof devcert.chr);		/* Strip last 5 digit sequence number from CHR */
-	if (!(len >= 8))
+	if (len < 8)
 		return SC_ERROR_INTERNAL;
 	len -= 5;
 
