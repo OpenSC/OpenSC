@@ -1954,7 +1954,7 @@ init_gost_params(struct sc_pkcs15init_keyarg_gost_params *params, EVP_PKEY *pkey
 			return;
 		nid = OBJ_txt2nid(name);
 #endif
-		if (!(nid > 0))
+		if (nid <= 0)
 			return;
 		switch (nid) {
 		case NID_id_GostR3410_2001_CryptoPro_A_ParamSet:

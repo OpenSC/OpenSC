@@ -720,7 +720,7 @@ sc_profile_instantiate_template(sc_profile_t *profile,
 	/* This loop relies on the fact that new files are always
 	 * appended to the list, after the parent files they refer to
 	 */
-	if (!(base_file->instance))
+	if (base_file->instance == NULL)
 		return SC_ERROR_INTERNAL;
 	for (fi = tmpl->ef_list; fi; fi = fi->next) {
 		struct file_info	*parent, *instance;

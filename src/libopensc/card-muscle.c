@@ -136,7 +136,7 @@ static unsigned short muscle_parse_singleAcl(const sc_acl_entry_t* acl)
 
 static void muscle_parse_acls(const sc_file_t* file, unsigned short* read_perm, unsigned short* write_perm, unsigned short* delete_perm)
 {
-	if (!(read_perm && write_perm && delete_perm))
+	if (read_perm == NULL || write_perm == NULL || delete_perm == NULL)
 		return;
 	*read_perm =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_READ));
 	*write_perm =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_UPDATE));

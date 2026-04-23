@@ -78,7 +78,7 @@ static int create_sysdf(sc_profile_t *profile, sc_card_t *card, const char *name
 			r = sc_create_file(card, file);
 		sc_file_free(file);
 	}
-	sc_log(card->ctx, 
+	sc_log(card->ctx,
 		"Create %s failed: %s\n", name, sc_strerror(r));
 	return r;
 }
@@ -330,7 +330,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 				&& key_info->modulus_length
 				!= SC_PKCS15_GOSTR3410_KEYSIZE))
 	{
-		sc_log(ctx, 
+		sc_log(ctx,
 			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
 			 key_info->modulus_length);
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -446,7 +446,7 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	if (key->algorithm == SC_ALGORITHM_RSA)
 	{
-		if (!(key_info->modulus_length % 128 == 0))
+		if (key_info->modulus_length % 128 != 0)
 			return SC_ERROR_INTERNAL;
 		len = key_info->modulus_length / 8 / 2;
 		key_len = len * 5 + 8;
@@ -454,7 +454,7 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 	else
 	{
-		if (!(key_info->modulus_length == SC_PKCS15_GOSTR3410_KEYSIZE))
+		if (key_info->modulus_length != SC_PKCS15_GOSTR3410_KEYSIZE)
 			return SC_ERROR_INTERNAL;
 		len = key_info->modulus_length / 8;
 		key_len = len;
@@ -475,7 +475,7 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	buf = calloc(1, buf_len);
 	if (!buf)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	if (!(key_len <= buf_len))
+	if (key_len > buf_len)
 		return SC_ERROR_INTERNAL;
 	if (key->algorithm == SC_ALGORITHM_RSA)
 	{
@@ -514,7 +514,7 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		key_len = len * 3;
 	else
 		goto end;
-	if (!(key_len <= buf_len))
+	if (key_len > buf_len)
 		return SC_ERROR_INTERNAL;
 	if (key->algorithm == SC_ALGORITHM_RSA)
 	{
@@ -593,7 +593,7 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	switch (data.type)
 	{
 	case SC_ALGORITHM_RSA:
-		if (!(key_info->modulus_length % 128 == 0))
+		if (key_info->modulus_length % 128 != 0)
 			return SC_ERROR_INTERNAL;
 		data.u.rsa.modulus_len = key_info->modulus_length / 8;
 		data.u.rsa.modulus = calloc(1, data.u.rsa.modulus_len);
@@ -607,7 +607,7 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		}
 		break;
 	case SC_ALGORITHM_GOSTR3410:
-		if (!(key_info->modulus_length == SC_PKCS15_GOSTR3410_KEYSIZE))
+		if (key_info->modulus_length != SC_PKCS15_GOSTR3410_KEYSIZE)
 			return SC_ERROR_INTERNAL;
 		data.u.gostr3410.xy_len = key_info->modulus_length / 8 * 2;
 		data.u.gostr3410.xy = calloc(1, data.u.gostr3410.xy_len);
@@ -657,7 +657,7 @@ static int rtecp_finalize(sc_card_t *card)
 
 /*
  * Delete object
- * 
+ *
  * Applied to private key: used to delete public part internal file
  */
 static int rtecp_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
