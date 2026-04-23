@@ -56,7 +56,8 @@ static int fuzz_card_connect(const uint8_t *data, size_t size, sc_pkcs11_slot_t 
 	struct sc_reader *reader = NULL;
 	struct sc_app_info *app_generic = NULL;
 	sc_pkcs11_slot_t *slot = NULL;
-	int rv = CKR_OK, free_p11card = 0;
+	CK_RV rv = CKR_OK;
+	int free_p11card = 0;
 
 	/* Erase possible virtual slots*/
 	list_clear(&virtual_slots);
@@ -81,7 +82,7 @@ static int fuzz_card_connect(const uint8_t *data, size_t size, sc_pkcs11_slot_t 
 
 	/* Locate a slot related to the reader */
 	for (size_t i = 0; i < list_size(&virtual_slots); i++) {
-		slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, i);
+		slot = (sc_pkcs11_slot_t *)list_get_at(&virtual_slots, (int)i);
 		if (slot->reader == reader) {
 			p11card = slot->p11card;
 			break;
@@ -143,7 +144,7 @@ fail:
 	if (free_p11card) {
 		sc_pkcs11_card_free(p11card);
 	}
-	return rv;
+	return (int)rv;
 }
 #endif
 
@@ -292,7 +293,8 @@ static void test_digest_update(const uint8_t *data, size_t size)
 	CK_MECHANISM      mech = {0, NULL_PTR, 0};
 	unsigned char     buffer[64] = {0};
 	CK_ULONG          hash_len = sizeof(buffer);
-	int               to_process = 0, rv = 0;
+	size_t to_process = 0;
+	CK_RV rv = 0;
 
 	if (set_mechanism(&data, &size, &mech))
 		return;
@@ -387,7 +389,7 @@ static int fuzz_find_object(CK_SESSION_HANDLE sess, CK_OBJECT_CLASS cls,
 	if (count == 0)
 		*ret = CK_INVALID_HANDLE;
 	p11->C_FindObjectsFinal(sess);
-	return count;
+	return (int)count;
 }
 
 static void test_sign(const uint8_t *data, size_t size)
