@@ -78,8 +78,7 @@ static int create_sysdf(sc_profile_t *profile, sc_card_t *card, const char *name
 			r = sc_create_file(card, file);
 		sc_file_free(file);
 	}
-	sc_log(card->ctx,
-		"Create %s failed: %s\n", name, sc_strerror(r));
+	sc_log(card->ctx, "Create %s failed: %s\n", name, sc_strerror(r));
 	return r;
 }
 
@@ -330,9 +329,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 				&& key_info->modulus_length
 				!= SC_PKCS15_GOSTR3410_KEYSIZE))
 	{
-		sc_log(ctx,
-			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
-			 key_info->modulus_length);
+		sc_log(ctx, "Unsupported key size %" SC_FORMAT_LEN_SIZE_T "u\n", key_info->modulus_length);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)
@@ -653,7 +650,6 @@ static int rtecp_finalize(sc_card_t *card)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	return sc_card_ctl(card, SC_CARDCTL_RTECP_INIT_END, NULL);
 }
-
 
 /*
  * Delete object
