@@ -142,7 +142,8 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		pin_cmd_data.cmd = SC_PIN_CMD_GET_INFO;
 		pin_cmd_data.pin_type = SC_AC_CHV;
 		pin_cmd_data.pin_reference = jpki_pin_ref[i];
-		rc = sc_pin_cmd(card, &pin_cmd_data, &pin_info.tries_left);
+		rc = sc_pin_cmd(card, &pin_cmd_data);
+		pin_info.tries_left = pin_cmd_data.pin1.tries_left;
 		LOG_TEST_RET(card->ctx, rc, "sc_pin_cmd failed");
 		strlcpy(pin_obj.label, jpki_pin_names[i], sizeof(pin_obj.label));
 		pin_obj.flags = jpki_pin_flags[i];

@@ -4053,7 +4053,7 @@ found:
 		pin_cmd.pin1.data = use_pinpad ? NULL : pinbuf;
 		pin_cmd.pin1.len = use_pinpad ? 0: pinsize;
 
-		r = sc_pin_cmd(p15card->card, &pin_cmd, NULL);
+		r = sc_pin_cmd(p15card->card, &pin_cmd);
 		LOG_TEST_RET(ctx, r, "'VERIFY' pin cmd failed");
 	}
 

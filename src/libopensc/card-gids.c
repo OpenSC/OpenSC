@@ -1021,11 +1021,11 @@ static int gids_get_pin_policy(struct sc_card *card, struct sc_pin_cmd_data *dat
 }
 
 static int
-gids_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left) {
+gids_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data) {
 	if (data->cmd == SC_PIN_CMD_GET_INFO) {
 		return gids_get_pin_policy(card, data);
 	} else {
-		return iso_ops->pin_cmd(card, data, tries_left);
+		return iso_ops->pin_cmd(card, data);
 	}
 }
 
@@ -1845,7 +1845,7 @@ static int gids_initialize(sc_card_t *card, sc_cardctl_gids_init_param_t* param)
 	pindata.pin2.data = param->user_pin;
 	pindata.pin_reference = 0x80;
 
-	r = sc_pin_cmd(card, &pindata, NULL);
+	r = sc_pin_cmd(card, &pindata);
 	LOG_TEST_RET(card->ctx, r, "gids set pin");
 
 	// create file

@@ -332,7 +332,7 @@ static int belpic_read_binary(sc_card_t *card,
 	return r;
 }
 
-static int belpic_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+static int belpic_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	data->pin1.encoding = data->pin2.encoding = BELPIC_PIN_ENCODING;
 	data->pin1.pad_char = data->pin2.pad_char = BELPIC_PAD_CHAR;
@@ -340,7 +340,7 @@ static int belpic_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tr
 	data->pin1.max_length = data->pin2.max_length = BELPIC_MAX_USER_PIN_LEN;
 	data->apdu = NULL;
 
-	return iso_ops->pin_cmd(card, data, tries_left);
+	return iso_ops->pin_cmd(card, data);
 }
 
 static int belpic_set_security_env(sc_card_t *card,

@@ -1281,16 +1281,13 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 
 
 static int
-iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_apdu local_apdu, *apdu;
 	int r;
 	u8  sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	data->pin1.tries_left = -1;
-	if (tries_left != NULL) {
-		*tries_left = data->pin1.tries_left;
-	}
 
 	/* Many cards do support PIN status queries, but some cards don't and
 	 * mistakenly count the command as a failed PIN attempt, so for now we
@@ -1359,9 +1356,6 @@ iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_l
 		data->pin1.logged_in = SC_PIN_STATE_LOGGED_OUT;
 		if (data->cmd == SC_PIN_CMD_GET_INFO)
 			r = SC_SUCCESS;
-	}
-	if (tries_left != NULL) {
-		*tries_left = data->pin1.tries_left;
 	}
 
 	return r;

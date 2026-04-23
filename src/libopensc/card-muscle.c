@@ -547,8 +547,7 @@ static int muscle_list_files(sc_card_t *card, u8 *buf, size_t bufLen)
 	return count;
 }
 
-static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
-				int *tries_left)
+static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd)
 {
 	muscle_private_t* priv = MUSCLE_DATA(card);
 	const int bufferLength = MSC_MAX_PIN_COMMAND_LENGTH;
@@ -564,7 +563,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 				return r;
 			cmd->apdu = &apdu;
 			cmd->pin1.offset = 5;
-			r = iso_ops->pin_cmd(card, cmd, tries_left);
+			r = iso_ops->pin_cmd(card, cmd);
 			if(r >= 0)
 				priv->verifiedPins |= (1 << cmd->pin_reference);
 			return r;
@@ -586,7 +585,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 			if (r < 0)
 				return r;
 			cmd->apdu = &apdu;
-			return iso_ops->pin_cmd(card, cmd, tries_left);
+			return iso_ops->pin_cmd(card, cmd);
 		}
 		case SC_AC_TERM:
 		case SC_AC_PRO:
@@ -605,7 +604,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 			if (r < 0)
 				return r;
 			cmd->apdu = &apdu;
-			return iso_ops->pin_cmd(card, cmd, tries_left);
+			return iso_ops->pin_cmd(card, cmd);
 		}
 		case SC_AC_TERM:
 		case SC_AC_PRO:

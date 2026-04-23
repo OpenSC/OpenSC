@@ -2350,7 +2350,7 @@ static int coolkey_init(sc_card_t *card)
 
 
 static int
-coolkey_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+coolkey_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	int r;
 	coolkey_private_data_t * priv = COOLKEY_DATA(card);
@@ -2372,9 +2372,6 @@ coolkey_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 			 * instead, coolkey slows down the login command exponentially
 			 */
 			data->pin1.tries_left = 0xf;
-		}
-		if (tries_left) {
-			*tries_left = data->pin1.tries_left;
 		}
 		r = SC_SUCCESS;
 		break;
