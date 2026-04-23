@@ -1127,7 +1127,7 @@ isoApplet_set_security_env(sc_card_t *card,
 	{
 		*p++ = 0x81;
 		*p++ = env->file_ref.len;
-		if (!(sizeof(sbuf) - (p - sbuf) >= env->file_ref.len))
+		if (sizeof(sbuf) - (p - sbuf) < env->file_ref.len)
 			return SC_ERROR_INTERNAL;
 		memcpy(p, env->file_ref.value, env->file_ref.len);
 		p += env->file_ref.len;
@@ -1140,7 +1140,7 @@ isoApplet_set_security_env(sc_card_t *card,
 		else
 			*p++ = 0x84;
 		*p++ = env->key_ref_len;
-		if (!(sizeof(sbuf) - (p - sbuf) >= env->key_ref_len))
+		if (sizeof(sbuf) - (p - sbuf) < env->key_ref_len)
 			return SC_ERROR_INTERNAL;
 		memcpy(p, env->key_ref, env->key_ref_len);
 		p += env->key_ref_len;

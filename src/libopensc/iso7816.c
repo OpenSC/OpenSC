@@ -825,7 +825,7 @@ iso7816_construct_fci(struct sc_card *card, const sc_file_t *file,
 	sc_asn1_put_tag(0x81, buf, 2, p, *outlen - (p - out), &p);
 
 	if (file->type_attr_len) {
-		if (!(sizeof(buf) >= file->type_attr_len))
+		if (sizeof(buf) < file->type_attr_len)
 			return SC_ERROR_INTERNAL;
 		memcpy(buf, file->type_attr, file->type_attr_len);
 		sc_asn1_put_tag(0x82, buf, file->type_attr_len,
@@ -852,14 +852,14 @@ iso7816_construct_fci(struct sc_card *card, const sc_file_t *file,
 	sc_asn1_put_tag(0x83, buf, 2, p, *outlen - (p - out), &p);
 	/* 0x84 = DF name */
 	if (file->prop_attr_len) {
-		if (!(sizeof(buf) >= file->prop_attr_len))
+		if (sizeof(buf) < file->prop_attr_len)
 			return SC_ERROR_INTERNAL;
 		memcpy(buf, file->prop_attr, file->prop_attr_len);
 		sc_asn1_put_tag(0x85, buf, file->prop_attr_len,
 				p, *outlen - (p - out), &p);
 	}
 	if (file->sec_attr_len) {
-		if (!(sizeof(buf) >= file->sec_attr_len))
+		if (sizeof(buf) < file->sec_attr_len)
 			return SC_ERROR_INTERNAL;
 		memcpy(buf, file->sec_attr, file->sec_attr_len);
 		sc_asn1_put_tag(0x86, buf, file->sec_attr_len,

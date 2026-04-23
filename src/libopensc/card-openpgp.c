@@ -3673,7 +3673,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 		memset(pritemplate, 0, max_prtem_len);
 
 		/* maximum 32 bit exponent length allowed on OpenPGP Card */
-		if (!(key_info->u.rsa.exponent_len <= SC_OPENPGP_MAX_EXP_BITS))
+		if (key_info->u.rsa.exponent_len > SC_OPENPGP_MAX_EXP_BITS)
 			return SC_ERROR_INTERNAL;
 
 		/* We need to right justify the exponent with allowed exponent length,

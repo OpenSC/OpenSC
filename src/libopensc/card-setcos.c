@@ -371,7 +371,7 @@ static int setcos_pin_index_44(int *pins, int len, int pin)
 			return i;
 		}
 	}
-	if (!(i != len))
+	if (i == len)
 		return SC_ERROR_INTERNAL;
 	return 0;
 }

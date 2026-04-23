@@ -371,7 +371,7 @@ static int rutoken_select_file(sc_card_t *card,
 		return SC_ERROR_INTERNAL;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (!(in_path && sizeof(pathbuf) >= in_path->len))
+	if (in_path == NULL || sizeof(pathbuf) < in_path->len)
 		return SC_ERROR_INTERNAL;
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
@@ -490,7 +490,7 @@ static int rutoken_construct_fci(sc_card_t *card, const sc_file_t *file,
 
 	if (!file || !out || !outlen)
 		return SC_ERROR_INTERNAL;
-	if (!(*outlen >= (size_t)(p - out) + 2))
+	if (*outlen < (size_t)(p - out) + 2)
 		return SC_ERROR_INTERNAL;
 	*p++ = 0x62; /* FCP template */
 	p++; /* for length */
@@ -503,7 +503,7 @@ static int rutoken_construct_fci(sc_card_t *card, const sc_file_t *file,
 	/* 0x82 - File descriptor byte */
 	if (file->type_attr_len)
 	{
-		if (!(sizeof(buf) >= file->type_attr_len))
+		if (sizeof(buf) < file->type_attr_len)
 			return SC_ERROR_INTERNAL;
 		memcpy(buf, file->type_attr, file->type_attr_len);
 		sc_asn1_put_tag(0x82, buf, file->type_attr_len,
@@ -533,7 +533,7 @@ static int rutoken_construct_fci(sc_card_t *card, const sc_file_t *file,
 
 	if (file->prop_attr_len)
 	{
-		if (!(sizeof(buf) >= file->prop_attr_len))
+		if (sizeof(buf) < file->prop_attr_len)
 			return SC_ERROR_INTERNAL;
 		memcpy(buf, file->prop_attr, file->prop_attr_len);
 		sc_asn1_put_tag(0x85, buf, file->prop_attr_len,
@@ -541,7 +541,7 @@ static int rutoken_construct_fci(sc_card_t *card, const sc_file_t *file,
 	}
 	if (file->sec_attr_len)
 	{
-		if (!(sizeof(buf) >= file->sec_attr_len))
+		if (sizeof(buf) < file->sec_attr_len)
 			return SC_ERROR_INTERNAL;
 		memcpy(buf, file->sec_attr, file->sec_attr_len);
 		sc_asn1_put_tag(0x86, buf, file->sec_attr_len,
@@ -621,7 +621,7 @@ static int rutoken_create_file(sc_card_t *card, sc_file_t *file)
 		ret = set_sec_attr_from_acl(card, file);
 		LOG_TEST_RET(card->ctx, ret, "Set sec_attr from ACL failed");
 	}
-	if (!(iso_ops && iso_ops->create_file))
+	if (!iso_ops || !iso_ops->create_file)
 		return SC_ERROR_INTERNAL;
 	ret = iso_ops->create_file(card, file);
 	LOG_FUNC_RETURN(card->ctx, ret);
@@ -851,12 +851,11 @@ static void rutoken_set_do_hdr(u8 *data, size_t *data_len, sc_DOHdrV2_t *hdr)
 	buf[2] = hdr->OP.byObjectTry;
 	sc_asn1_put_tag(0x85, buf, 3, p, *data_len - (p - data), &p);
 
-	if (!(sizeof(buf) >= sizeof(hdr->SA_V2)))
-		return;
+	static_assert(sizeof(buf) >= sizeof(hdr->SA_V2), "internal error");
 	memcpy(buf, hdr->SA_V2, sizeof(hdr->SA_V2));
 	sc_asn1_put_tag(0x86, buf, sizeof(hdr->SA_V2), p, *data_len - (p - data), &p);
 
-	if (!(*data_len >= (size_t)(p - data)))
+	if (*data_len < (size_t)(p - data))
 		return;
 	*data_len = p - data;
 }
@@ -922,7 +921,7 @@ static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 	else
 	{
 		rutoken_set_do_hdr(data, &data_len, &pDO->HDR);
-		if (!(sizeof(data) >= data_len + pDO->HDR.wDOBodyLen + 2))
+		if (sizeof(data) < data_len + pDO->HDR.wDOBodyLen + 2)
 			return SC_ERROR_INTERNAL;
 		ret = sc_asn1_put_tag(0xA5, pDO->abyDOBody, pDO->HDR.wDOBodyLen,
 				data + data_len, sizeof(data) - data_len, NULL);
