@@ -235,13 +235,13 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	file->id = auth_info->attrs.pin.reference;
 	file->size = pin_len;
-	static_assert(sizeof(prop)/sizeof(prop[0]) > 3, "internal error");
+	static_assert(sizeof(prop) / sizeof(prop[0]) > 3, "internal error");
 	sec[1] = (auth_info->attrs.pin.reference == RTECP_SO_PIN_REF) ? 0xFF : RTECP_SO_PIN_REF;
 	sec[2] = (unsigned char)auth_info->attrs.pin.reference | (reset_by_sopin ? RTECP_SO_PIN_REF : 0);
 	r = sc_file_set_sec_attr(file, sec, sizeof(sec));
 	if (r == SC_SUCCESS)
 	{
-		static_assert(sizeof(prop)/sizeof(prop[0]) > 3, "internal error");
+		static_assert(sizeof(prop) / sizeof(prop[0]) > 3, "internal error");
 		prop[1] = (unsigned char)auth_info->attrs.pin.min_length;
 		prop[3] = 0x11 * (unsigned char)(auth_info->tries_left & 0x0F);
 		r = sc_file_set_prop_attr(file, prop, sizeof(prop));
@@ -343,8 +343,8 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 				|| ((int*)key_info->params.data)[0] > 3)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		paramset = ((unsigned int*)key_info->params.data)[0] & 0x03;
-		static_assert(sizeof(prgkey_prop)/sizeof(prgkey_prop[0]) > 1, "internal error");
-		static_assert(sizeof(pbgkey_prop)/sizeof(pbgkey_prop[0]) > 1, "internal error");
+		static_assert(sizeof(prgkey_prop) / sizeof(prgkey_prop[0]) > 1, "internal error");
+		static_assert(sizeof(pbgkey_prop) / sizeof(pbgkey_prop[0]) > 1, "internal error");
 		prgkey_prop[1] = 0x10 + (paramset << 4);
 		pbgkey_prop[1] = prgkey_prop[1];
 	}
@@ -370,7 +370,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		file->size = key_info->modulus_length / 8;
 	if (r == SC_SUCCESS)
 	{
-		static_assert(sizeof(prkey_sec)/sizeof(prkey_sec[0]) > 7, "internal error");
+		static_assert(sizeof(prkey_sec) / sizeof(prkey_sec[0]) > 7, "internal error");
 		prkey_sec[2] = auth_id;
 		prkey_sec[3] = auth_id;
 		prkey_sec[7] = auth_id;
@@ -394,7 +394,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		file->size = key_info->modulus_length / 8 * 2;
 	if (r == SC_SUCCESS)
 	{
-		static_assert(sizeof(pbkey_sec)/sizeof(pbkey_sec[0]) > 7, "internal error");
+		static_assert(sizeof(pbkey_sec) / sizeof(pbkey_sec[0]) > 7, "internal error");
 		pbkey_sec[2] = auth_id;
 		pbkey_sec[7] = auth_id;
 		r = sc_file_set_sec_attr(file, pbkey_sec, sizeof(pbkey_sec));
