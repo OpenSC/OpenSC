@@ -73,7 +73,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - run: .github/setup-linux.sh ${{ matrix.compiler }} force-install
-      - run: .github/build.sh dist
+      - run: .github/build.sh piv-sm dist
         env:
           CC: ${{ matrix.compiler }}
           CFLAGS: ${{ env.CFLAGS }} ${{ matrix.compiler == 'clang' && env.CLANG_CFLAGS || '' }}
