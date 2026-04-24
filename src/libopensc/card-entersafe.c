@@ -201,10 +201,10 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	u8 iv[8] = {0};
 	int len;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 	if (card == NULL || apdu == NULL || key == NULL || buff == NULL)
 		return SC_ERROR_INTERNAL;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* padding as 0x80 0x00 0x00...... */
 	memset(buff, 0, buffsize);
