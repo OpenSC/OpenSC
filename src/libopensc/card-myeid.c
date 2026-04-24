@@ -1384,12 +1384,12 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 	int r;
 	myeid_private_data_t* priv;
 
-	LOG_FUNC_CALLED(card->ctx);
-
 	if (card == NULL || crgram == NULL || out == NULL)
 		return SC_ERROR_INTERNAL;
 
-	priv = (myeid_private_data_t*) card->drv_data;
+	LOG_FUNC_CALLED(card->ctx);
+
+	priv = (myeid_private_data_t*)card->drv_data;
 
 	if (priv->sec_env && priv->sec_env->algorithm == SC_ALGORITHM_EC
 		&& priv->sec_env->operation == SC_SEC_OPERATION_DERIVE
