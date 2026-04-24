@@ -352,11 +352,12 @@ static int belpic_set_security_env(sc_card_t *card,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
+
 	sc_log(card->ctx,  "belpic_set_security_env(), keyRef = 0x%0x, algo = 0x%0lx\n",
 		 *env->key_ref, env->algorithm_flags);
 
-	if (card == NULL || env == NULL)
-		return SC_ERROR_INTERNAL;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0, 0);
 	switch (env->operation) {
 	case SC_SEC_OPERATION_SIGN:
