@@ -505,8 +505,6 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	r = sc_select_file(card, &path, NULL);
 	if (r == SC_SUCCESS)
 		r = sc_change_reference_data(card, 0, 0, NULL, 0, buf, key_len, NULL);
-	if (!buf)
-		return SC_ERROR_INTERNAL;
 	sc_mem_clear(buf, key_len);
 	/* store public key */
 	if (key->algorithm == SC_ALGORITHM_RSA)
@@ -549,8 +547,6 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_log(card->ctx,  "%s\n", "Store public key failed");
 	}
 end:
-	if (!buf)
-		return SC_ERROR_INTERNAL;
 	free(buf);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
