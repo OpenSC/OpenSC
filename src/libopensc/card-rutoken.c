@@ -445,8 +445,6 @@ static int rutoken_select_file(sc_card_t *card,
 		sc_file_free(file);
 	else
 	{
-		if (!file_out)
-			return SC_ERROR_INTERNAL;
 		*file_out = file;
 	}
 	LOG_FUNC_RETURN(card->ctx, ret);
