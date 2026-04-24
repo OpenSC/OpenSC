@@ -1063,17 +1063,21 @@ isoApplet_set_security_env(sc_card_t *card,
 	u8 *p;
 	int r;
 	size_t sz;
-	struct isoApplet_drv_data *drvdata = DRVDATA(card);
+	struct isoApplet_drv_data *drvdata = NULL;
+
+	if (card == NULL || env == NULL) {
+		return SC_ERROR_INTERNAL;
+	}
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	drvdata = DRVDATA(card);
 
 	if(se_num != 0)
 	{
 		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
 		             "IsoApplet does not support storing of security environments.");
 	}
-	if (card == NULL || env == NULL)
-		return SC_ERROR_INTERNAL;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
 	switch (env->operation)
 	{
