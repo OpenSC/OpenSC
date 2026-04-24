@@ -728,10 +728,10 @@ static int entersafe_internal_set_security_env(sc_card_t *card,
 	u8 *p = sbuf;
 	int r;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 	if (card == NULL || env == NULL)
 		return SC_ERROR_INTERNAL;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	switch (env->operation) {
 		case SC_SEC_OPERATION_DECIPHER:
