@@ -1913,13 +1913,15 @@ static int coolkey_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 {
 	int r;
 	struct sc_file *file = NULL;
-	coolkey_private_data_t * priv = COOLKEY_DATA(card);
+	coolkey_private_data_t *priv;
 	unsigned long object_id;
 
 	if (card == NULL || in_path == NULL)
 		return SC_ERROR_INTERNAL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	priv = COOLKEY_DATA(card);
 
 	if (in_path->len != 4) {
 		return SC_ERROR_OBJECT_NOT_FOUND;
