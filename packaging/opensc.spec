@@ -99,10 +99,15 @@ sed -i -e 's|/usr/local/towitoko/lib/|/usr/lib/ctapi/|' etc/opensc.conf.example.
 
 rm -rf $RPM_BUILD_ROOT%{_datadir}/doc/opensc
 
+# the pkcs11-register is not applicable to Fedora/RHEL where we use p11-kit
+rm %{buildroot}%{_bindir}/pkcs11-register
+rm %{buildroot}%{_mandir}/man1/pkcs11-register.1*
+
+
 # Upstream considers libopensc API internal and no longer ships
 # public headers and pkgconfig files.
 # Remove the symlink as nothing is supposed to link against libopensc.
-rm $RPM_BUILD_ROOT%{_libdir}/libopensc.so
+rm $RPM_BUILD_ROOT%{_libdir}/libopensc.so*
 rm $RPM_BUILD_ROOT%{_libdir}/libsmm-local.so
 
 %files
