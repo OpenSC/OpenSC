@@ -408,26 +408,6 @@ endif
 # Documentation and completion files
 #################################################
 progxsltproc = find_program('xsltproc', required: false)
-if progxsltproc.found()
-    stylesheets_path = get_option('xsl_stylesheets_path')
-    if stylesheets_path == ''
-        foreach path : [
-            '/usr/share/xml/docbook/stylesheet/nwalsh',
-            '/usr/share/xml/docbook/stylesheet/nwalsh/current',
-            '/opt/local/share/xsl/docbook-xsl',
-            '/sw/share/xml/xsl/docbook-xsl' ]
-
-            if modfs.exists(path / 'html' / 'docbook.xsl')
-                stylesheets_path = path
-                break
-            endif
-        endforeach
-    else
-        if not modfs.exists(stylesheets_path / 'html' / 'docbook.xsl')
-            error('The file @0@ does not exist'.format(stylesheets_path / 'html' / 'docbook.xsl'))
-        endif
-    endif
-endif
 
 bash_completion_path = get_option('bash_completion_path')
 if bash_completion_path == ''

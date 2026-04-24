@@ -41,12 +41,12 @@ if conf.get('ENABLE_NOTIFY')
     ]
 endif
 
-if progxsltproc.found() and stylesheets_path != ''
+if progxsltproc.found()
     foreach xml : sources
         custom_target(
             command: [progxsltproc,
                 '--nonet',
-                '--path', meson.project_source_root() / 'doc' + ':' + stylesheets_path / 'manpages',
+                '--path', meson.project_source_root() / 'doc',
                 '--xinclude',
                 '-o', '@OUTPUT@',
                 'man.xsl',
@@ -63,7 +63,7 @@ if progxsltproc.found() and stylesheets_path != ''
     custom_target(
         command: [progxsltproc,
             '--nonet',
-            '--path', meson.project_source_root() / 'doc' + ':' + stylesheets_path / 'html',
+            '--path', meson.project_source_root() / 'doc',
             '--xinclude',
             '-o', '@OUTPUT@',
             'html.xsl',
