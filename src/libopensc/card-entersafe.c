@@ -374,10 +374,10 @@ static int entersafe_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	u8 *sbuf = NULL;
 	size_t ssize = 0;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 	if (card == NULL || apdu == NULL)
 		return SC_ERROR_INTERNAL;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if ((cipher || mac) && (!key || (keylen != 8 && keylen != 16)))
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
