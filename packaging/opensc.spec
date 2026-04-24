@@ -165,22 +165,13 @@ rm $RPM_BUILD_ROOT%{_libdir}/libsmm-local.so
 %{_mandir}/man5/pkcs15-profile.5*
 
 %files libs
-%ifarch %{ix86}
-%{_mandir}/man5/opensc-%{_arch}.conf.5*
-%else
 %config(noreplace) %{_sysconfdir}/opensc.conf
 %{_mandir}/man5/opensc.conf.5*
-%endif
 
-%config(noreplace) %{_sysconfdir}/opensc-%{_arch}.conf
 # Co-owned with p11-kit so it is not hard dependency
 %dir %{_datadir}/p11-kit
 %dir %{_datadir}/p11-kit/modules
 %{_datadir}/p11-kit/modules/opensc.module
-%{_libdir}/lib*.so.*
-%{_libdir}/opensc-pkcs11.so
-%{_libdir}/pkcs11-spy.so
-%{_libdir}/onepin-opensc-pkcs11.so
 %dir %{_libdir}/pkcs11
 %{_libdir}/pkcs11/opensc-pkcs11.so
 %{_libdir}/pkcs11/onepin-opensc-pkcs11.so

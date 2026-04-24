@@ -61,6 +61,7 @@ endif
 if depp11kit.found()
     libpkcs11 = shared_module('opensc-pkcs11',
         libpkcs11_targets,
+        name_prefix: '',
         include_directories: core_inc,
         sources: libpkcs11_sources,
         link_with: libpkcs11_libraries,
@@ -72,6 +73,7 @@ if depp11kit.found()
 
     libpkcs11spy = shared_module('pkcs11-spy',
         libpkcs11spy_targets,
+        name_prefix: '',
         include_directories: core_inc,
         sources: libpkcs11spy_sources,
         link_with: libpkcs11spy_libraries,
@@ -92,7 +94,7 @@ if depp11kit.found()
     if host_machine.system() != 'windows'
         install_symlink('onepin-opensc-pkcs11.' + extension_of_libraries,
             install_dir: p11kit_modules_path,
-            pointing_to: prefix_of_libraries + 'opensc-pkcs11.' + extension_of_libraries
+            pointing_to: 'opensc-pkcs11.' + extension_of_libraries
         )
     endif
 else
