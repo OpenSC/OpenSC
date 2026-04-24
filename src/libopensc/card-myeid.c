@@ -699,7 +699,8 @@ static int myeid_set_security_env_rsa(sc_card_t *card, const sc_security_env_t *
 	size_t i, sz;
 	sc_path_t *target_file;
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
@@ -849,7 +850,8 @@ static int myeid_set_security_env_ec(sc_card_t *card, const sc_security_env_t *e
 	size_t sz;
 	int r;
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
@@ -1023,7 +1025,8 @@ myeid_convert_ec_signature(struct sc_context *ctx, size_t s_len, unsigned char *
 	size_t len_size = 1;
 	size_t sig_len = 0;
 
-	assert(data && datalen && datalen > 3);
+	if (!data || !datalen || datalen <= 3)
+		return SC_ERROR_INTERNAL;
 
 	/*
 	 *	When validating the signature data, we have to consider that length of the signature
@@ -1153,8 +1156,8 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 	size_t field_length = 0;
 	size_t pad_chars = 0;
 
-
-	assert(card != NULL && data != NULL && out != NULL);
+	if (card == NULL || data == NULL || out == NULL)
+		return SC_ERROR_INTERNAL;
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
 
@@ -1383,7 +1386,8 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	assert(card != NULL && crgram != NULL && out != NULL);
+	if (card == NULL || crgram == NULL || out == NULL)
+		return SC_ERROR_INTERNAL;
 
 	priv = (myeid_private_data_t*) card->drv_data;
 
@@ -1408,7 +1412,8 @@ static int myeid_wrap_key(struct sc_card *card, u8 *out, size_t outlen)
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
-	assert(card != NULL);
+	if (card == NULL)
+		return SC_ERROR_INTERNAL;
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
 
@@ -1874,7 +1879,8 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 	size_t max_apdu_datalen;
 	size_t apdu_datalen;
 
-	assert(card != NULL);
+	if (card == NULL)
+		return SC_ERROR_INTERNAL;
 
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);

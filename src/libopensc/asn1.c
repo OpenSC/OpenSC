@@ -1533,7 +1533,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_BIT_STRING:
 		if (parm != NULL) {
 			int invert = entry->type == SC_ASN1_BIT_STRING ? 1 : 0;
-			assert(len != NULL);
+			if (len == NULL)
+				return SC_ERROR_INTERNAL;
 			if (objlen < 1) {
 				r = SC_ERROR_INVALID_ASN1_OBJECT;
 				break;
@@ -1564,7 +1565,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_OCTET_STRING:
 		if (parm != NULL) {
 			size_t c;
-			assert(len != NULL);
+			if (len == NULL)
+				return SC_ERROR_INTERNAL;
 
 			/* Strip off padding zero */
 			if ((entry->flags & SC_ASN1_UNSIGNED)
@@ -1595,7 +1597,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_GENERALIZEDTIME:
 		if (parm != NULL) {
 			size_t c;
-			assert(len != NULL);
+			if (len == NULL)
+				return SC_ERROR_INTERNAL;
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
 				if (objlen > 0) {
@@ -1621,7 +1624,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_PRINTABLESTRING:
 	case SC_ASN1_UTF8STRING:
 		if (parm != NULL) {
-			assert(len != NULL);
+			if (len == NULL)
+				return SC_ERROR_INTERNAL;
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
 				*buf = malloc(objlen+1);

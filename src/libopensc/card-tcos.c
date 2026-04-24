@@ -341,7 +341,8 @@ static int tcos_select_file(sc_card_t *card,
 	int r;
 	size_t pathlen;
 
-	assert(card != NULL && in_path != NULL);
+	if (card == NULL || in_path == NULL)
+		return SC_ERROR_INTERNAL;
 	ctx=card->ctx;
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
@@ -417,7 +418,8 @@ static int tcos_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE], p1;
 	int r, count = 0;
 
-	assert(card != NULL);
+	if (card == NULL)
+		return SC_ERROR_INTERNAL;
 	ctx = card->ctx;
 
 	for (p1=1; p1<=2; p1++) {
@@ -478,7 +480,8 @@ static int tcos_set_security_env(sc_card_t *card, const sc_security_env_t *env, 
 	int r, default_key, tcos3;
 	tcos_data *data;
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 	ctx = card->ctx;
 	tcos3=(card->type==SC_CARD_TYPE_TCOS_V3);
 	data=(tcos_data *)card->drv_data;

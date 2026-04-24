@@ -147,7 +147,8 @@ static int skeid_set_security_env(sc_card_t *card,
 	int key_id;
 	int r;
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1) {
 		sc_log(card->ctx, "No or invalid key reference");

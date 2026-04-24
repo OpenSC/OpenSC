@@ -113,7 +113,7 @@ static struct df_info_s *get_df_info(sc_card_t * card)
 	struct mcrd_priv_data *priv = DRVDATA(card);
 	struct df_info_s *dfi;
 
-	if(!(!priv->is_ef))
+	if (priv->is_ef)
 		return NULL;
 
 	if (!priv->curpathlen) {

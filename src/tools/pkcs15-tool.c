@@ -1508,7 +1508,8 @@ static void print_pin_info(const struct sc_pkcs15_object *obj)
 	const size_t pf_count = NELEMENTS(pin_flags);
 	size_t i;
 
-	assert(obj->type == SC_PKCS15_TYPE_AUTH_PIN || obj->type == SC_PKCS15_TYPE_AUTH_AUTHKEY);
+	if (obj->type != SC_PKCS15_TYPE_AUTH_PIN && obj->type != SC_PKCS15_TYPE_AUTH_AUTHKEY)
+		return;
 
 	if (compact) {
 		printf("\t%-3s  ID:%s", obj->type == SC_PKCS15_TYPE_AUTH_PIN ? "PIN" : "Key",
@@ -2152,7 +2153,8 @@ int main(int argc, char *argv[])
 	int action_count = 0;
 	sc_context_param_t ctx_param;
 
-	assert(sizeof(option_help)/sizeof(char *)==sizeof(options)/sizeof(struct option));
+	static_assert(sizeof(option_help) / sizeof(char *) == sizeof(options) / sizeof(struct option),
+			"internal error");
 
 	while (1) {
 		c = getopt_long(argc, argv, "r:cuko:sva:LR:CwDTU", options, &long_optind);

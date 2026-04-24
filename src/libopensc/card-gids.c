@@ -164,7 +164,8 @@ static int gids_get_identifiers(sc_card_t* card, u8* masterfile, size_t masterfi
 	gids_mf_record_t *records = (gids_mf_record_t *) (masterfile+1);
 	size_t recordcount = ((masterfilesize-1) / sizeof(gids_mf_record_t));
 	size_t i;
-	assert(masterfilesize >= 1);
+	if (masterfilesize < 1)
+		return SC_ERROR_INTERNAL;
 
 	for (i = 0; i < recordcount; i++) {
 		if (strcmp(directory, records[i].directory) == 0 && strcmp(filename, records[i].filename) == 0) {
@@ -187,7 +188,8 @@ static int gids_find_available_DO(sc_card_t *card, u8* masterfile, size_t master
 	size_t recordcount = (masterfilesize / sizeof(gids_mf_record_t));
 	size_t i;
 
-	assert(masterfilesize >= 1);
+	if (masterfilesize < 1)
+		return SC_ERROR_INTERNAL;
 
 	*fileIdentifier = CERT_FI;
 
@@ -751,7 +753,8 @@ static int gids_set_security_env(sc_card_t *card,
 	u8 *p;
 	int r, locked = 0;
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 
 	LOG_FUNC_CALLED(card->ctx);
 	memset(sbuf, 0, sizeof(sbuf));
@@ -789,7 +792,8 @@ static int gids_set_security_env(sc_card_t *card,
 	else
 		*p++ = 0x84;
 	*p++ = (u8) env->key_ref_len;
-	assert(sizeof(sbuf) - (p - sbuf) >= env->key_ref_len);
+	if (sizeof(sbuf) - (p - sbuf) < env->key_ref_len)
+		return SC_ERROR_INTERNAL;
 	memcpy(p, env->key_ref, env->key_ref_len);
 	p += env->key_ref_len;
 
@@ -876,7 +880,8 @@ static int gids_logout(sc_card_t *card)
 {
 	struct sc_apdu apdu;
 	int r;
-	assert(card && card->ctx);
+	if (card == NULL || card->ctx == NULL)
+		return SC_ERROR_INTERNAL;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1283,7 +1288,8 @@ static int gids_create_keyfile(sc_card_t *card, sc_pkcs15_object_t *object) {
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	// sanity check
-	assert((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY);
+	if ((object->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_PRKEY)
+		return SC_ERROR_INTERNAL;
 
 	if (!algid) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
@@ -1408,7 +1414,8 @@ static int gids_generate_key(sc_card_t *card, sc_pkcs15_object_t *object, struct
 	size_t buffersize = 0;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	assert((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY);
+	if ((object->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_PRKEY)
+		return SC_ERROR_INTERNAL;
 
 	if ((key_info->key_reference > GIDS_FIRST_KEY_IDENTIFIER + GIDS_MAX_CONTAINER) || (kid < GIDS_FIRST_KEY_IDENTIFIER)) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
@@ -1476,7 +1483,8 @@ static int gids_import_key(sc_card_t *card, sc_pkcs15_object_t *object, sc_pkcs1
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	assert((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY);
+	if ((object->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_PRKEY)
+		return SC_ERROR_INTERNAL;
 
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA || key->algorithm != SC_ALGORITHM_RSA) {
 		sc_log(card->ctx, "GIDS supports RSA keys only (but may support ECC one day).");
@@ -1567,8 +1575,10 @@ static int gids_save_certificate(sc_card_t *card, sc_pkcs15_object_t *certobject
 	struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *) privkeyobject->data;
 	unsigned char containernum;
 	char filename[9];
-	assert((certobject->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_CERT);
-	assert((privkeyobject->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY);
+	if ((certobject->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_CERT)
+		return SC_ERROR_INTERNAL;
+	if ((privkeyobject->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_PRKEY)
+		return SC_ERROR_INTERNAL;
 
 	// refresh the cached data in case some thing has been modified
 	r = gids_read_masterfile(card);
@@ -1674,8 +1684,8 @@ static int gids_delete_cert(sc_card_t *card, sc_pkcs15_object_t* object) {
 	size_t recordcount, recordnum = (size_t) -1;
 	size_t i;
 
-
-	assert((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_CERT);
+	if ((object->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_CERT)
+		return SC_ERROR_INTERNAL;
 	// refresh the cached data in case some thing has been modified
 	r = gids_read_masterfile(card);
 	LOG_TEST_RET(card->ctx, r, "gids read masterfile failed");
@@ -1729,7 +1739,8 @@ static int gids_delete_key(sc_card_t *card, sc_pkcs15_object_t* object) {
 	size_t containernum;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *) object->data;
 
-	assert((object->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY);
+	if ((object->type & SC_PKCS15_TYPE_CLASS_MASK) != SC_PKCS15_TYPE_PRKEY)
+		return SC_ERROR_INTERNAL;
 	// refresh the cached data in case some thing has been modified
 	r = gids_read_masterfile(card);
 	LOG_TEST_RET(card->ctx, r, "gids read masterfile failed");

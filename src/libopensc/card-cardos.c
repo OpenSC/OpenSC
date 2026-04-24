@@ -927,7 +927,8 @@ cardos_set_security_env(sc_card_t *card,
 	u8	data[9];
 	int	key_id, r;
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1) {
 		sc_log(card->ctx, "No or invalid key reference\n");
@@ -1081,8 +1082,8 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	int do_rsa_sig = 0;
 	size_t i;
 
-
-	assert(card != NULL && data != NULL && out != NULL);
+	if (card == NULL || data == NULL || out == NULL)
+		return SC_ERROR_INTERNAL;
 	ctx = card->ctx;
 	priv = (cardos_data_t*)card->drv_data;
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);

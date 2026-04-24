@@ -203,10 +203,8 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	assert(card);
-	assert(apdu);
-	assert(key);
-	assert(buff);
+	if (card == NULL || apdu == NULL || key == NULL || buff == NULL)
+		return SC_ERROR_INTERNAL;
 
 	/* padding as 0x80 0x00 0x00...... */
 	memset(buff, 0, buffsize);
@@ -276,10 +274,8 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	assert(card);
-	assert(apdu);
-	assert(key);
-	assert(buff);
+	if (card == NULL || apdu == NULL || key == NULL || buff == NULL)
+		return SC_ERROR_INTERNAL;
 
 	if (apdu->cse != SC_APDU_CASE_3_SHORT)
 		return SC_ERROR_INTERNAL;
@@ -380,8 +376,8 @@ static int entersafe_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	assert(card);
-	assert(apdu);
+	if (card == NULL || apdu == NULL)
+		return SC_ERROR_INTERNAL;
 
 	if ((cipher || mac) && (!key || (keylen != 8 && keylen != 16)))
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
@@ -435,7 +431,8 @@ static int entersafe_read_binary(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	assert(count <= card->max_recv_size);
+	if (count > card->max_recv_size)
+		return SC_ERROR_INTERNAL;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, (idx >> 8) & 0xFF, idx & 0xFF);
 
 	apdu.cla = idx > 0x7fff ? 0x80 : 0x00;
@@ -461,7 +458,8 @@ static int entersafe_update_binary(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	assert(count <= card->max_send_size);
+	if (count > card->max_send_size)
+		return SC_ERROR_INTERNAL;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (idx >> 8) & 0xFF, idx & 0xFF);
 	apdu.cla = idx > 0x7fff ? 0x80 : 0x00;
@@ -481,7 +479,8 @@ static int entersafe_process_fci(struct sc_card *card, struct sc_file *file,
 {
 	int r;
 
-	assert(file);
+	if (file == NULL)
+		return SC_ERROR_INTERNAL;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	r = iso_ops->process_fci(card, file, buf, buflen);
@@ -537,7 +536,8 @@ static int entersafe_select_aid(sc_card_t *card,
 
 	if (file_out) {
 		sc_file_t *file = *file_out;
-		assert(file);
+		if (file == NULL)
+			return SC_ERROR_INTERNAL;
 
 		file->type = SC_FILE_TYPE_DF;
 		file->ef_structure = SC_FILE_EF_UNKNOWN;
@@ -588,8 +588,8 @@ static int entersafe_select_file(sc_card_t *card,
 								const sc_path_t *in_path,
 								sc_file_t **file_out)
 {
-	assert(card);
-	assert(in_path);
+	if (card == NULL || in_path == NULL)
+		return SC_ERROR_INTERNAL;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	switch (in_path->type) {
@@ -730,7 +730,8 @@ static int entersafe_internal_set_security_env(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 
 	switch (env->operation) {
 		case SC_SEC_OPERATION_DECIPHER:
@@ -781,8 +782,8 @@ static int entersafe_set_security_env(sc_card_t *card,
 									  const sc_security_env_t *env,
 									  int se_num)
 {
-	assert(card);
-	assert(env);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1350,7 +1351,8 @@ static int entersafe_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	assert(serial);
+	if (serial == NULL)
+		return SC_ERROR_INTERNAL;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xEA, 0x00, 0x00);
 	apdu.cla = 0x80;

@@ -55,13 +55,16 @@ static int create_sysdf(sc_profile_t *profile, sc_card_t *card, const char *name
 	sc_path_t path;
 	int r;
 
-	assert(profile && card && card->ctx && name);
+	if (profile == NULL || card == NULL || card->ctx == NULL || name == NULL)
+		return SC_ERROR_INTERNAL;
 	r = sc_profile_get_file(profile, name, &file);
 	if (r == SC_SUCCESS)
 	{
-		assert(file);
+		if (!file)
+			return SC_ERROR_INTERNAL;
 		path = file->path;
-		assert(path.len > 2);
+		if (path.len <= 2)
+			return SC_ERROR_INTERNAL;
 		if (path.len > 2)
 			path.len -= 2;
 		r = sc_select_file(card, &path, NULL);
@@ -75,8 +78,7 @@ static int create_sysdf(sc_profile_t *profile, sc_card_t *card, const char *name
 			r = sc_create_file(card, file);
 		sc_file_free(file);
 	}
-	sc_log(card->ctx, 
-		"Create %s failed: %s\n", name, sc_strerror(r));
+	sc_log(card->ctx, "Create %s failed: %s\n", name, sc_strerror(r));
 	return r;
 }
 
@@ -96,14 +98,16 @@ static int rtecp_init(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 
 	r = sc_profile_get_file(profile, "MF", &file);
 	LOG_TEST_RET(card->ctx, r, "Get MF info failed");
-	assert(file);
+	if (file == NULL)
+		return SC_ERROR_INTERNAL;
 	r = sc_create_file(card, file);
 	sc_file_free(file);
 	LOG_TEST_RET(card->ctx, r, "Create MF failed");
 
 	r = sc_profile_get_file(profile, "DIR", &file);
 	LOG_TEST_RET(card->ctx, r, "Get DIR file info failed");
-	assert(file);
+	if (!file)
+		return SC_ERROR_INTERNAL;
 	r = sc_create_file(card, file);
 	sc_file_free(file);
 	LOG_TEST_RET(card->ctx, r, "Create DIR file failed");
@@ -230,13 +234,13 @@ static int rtecp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	file->id = auth_info->attrs.pin.reference;
 	file->size = pin_len;
-	assert(sizeof(sec)/sizeof(sec[0]) > 2);
+	static_assert(sizeof(prop) / sizeof(prop[0]) > 3, "internal error");
 	sec[1] = (auth_info->attrs.pin.reference == RTECP_SO_PIN_REF) ? 0xFF : RTECP_SO_PIN_REF;
 	sec[2] = (unsigned char)auth_info->attrs.pin.reference | (reset_by_sopin ? RTECP_SO_PIN_REF : 0);
 	r = sc_file_set_sec_attr(file, sec, sizeof(sec));
 	if (r == SC_SUCCESS)
 	{
-		assert(sizeof(prop)/sizeof(prop[0]) > 3);
+		static_assert(sizeof(prop) / sizeof(prop[0]) > 3, "internal error");
 		prop[1] = (unsigned char)auth_info->attrs.pin.min_length;
 		prop[3] = 0x11 * (unsigned char)(auth_info->tries_left & 0x0F);
 		r = sc_file_set_prop_attr(file, prop, sizeof(prop));
@@ -272,7 +276,8 @@ static int rtecp_select_key_reference(sc_profile_t *profile,
 
 	r = sc_profile_get_file(profile, "PrKey-DF", &df);
 	LOG_TEST_RET(p15card->card->ctx, r, "Get PrKey-DF info failed");
-	assert(df);
+	if (!df)
+		return SC_ERROR_INTERNAL;
 	key_info->path = df->path;
 	sc_file_free(df);
 	r = sc_append_file_id(&key_info->path, key_info->key_reference);
@@ -316,16 +321,15 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	auth_id = obj->auth_id.value[0];
 
 	key_info = (sc_pkcs15_prkey_info_t *)obj->data;
-	assert(key_info);
+	if (!key_info)
+		return SC_ERROR_INTERNAL;
 	if ((obj->type == SC_PKCS15_TYPE_PRKEY_RSA
 				&& key_info->modulus_length % 128 != 0)
 			|| (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410
 				&& key_info->modulus_length
 				!= SC_PKCS15_GOSTR3410_KEYSIZE))
 	{
-		sc_log(ctx, 
-			 "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
-			 key_info->modulus_length);
+		sc_log(ctx, "Unsupported key size %" SC_FORMAT_LEN_SIZE_T "u\n", key_info->modulus_length);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)
@@ -336,8 +340,8 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 				|| ((int*)key_info->params.data)[0] > 3)
 			return SC_ERROR_INVALID_ARGUMENTS;
 		paramset = ((unsigned int*)key_info->params.data)[0] & 0x03;
-		assert(sizeof(prgkey_prop)/sizeof(prgkey_prop[0]) > 1);
-		assert(sizeof(pbgkey_prop)/sizeof(pbgkey_prop[0]) > 1);
+		static_assert(sizeof(prgkey_prop) / sizeof(prgkey_prop[0]) > 1, "internal error");
+		static_assert(sizeof(pbgkey_prop) / sizeof(pbgkey_prop[0]) > 1, "internal error");
 		prgkey_prop[1] = 0x10 + (paramset << 4);
 		pbgkey_prop[1] = prgkey_prop[1];
 	}
@@ -363,7 +367,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		file->size = key_info->modulus_length / 8;
 	if (r == SC_SUCCESS)
 	{
-		assert(sizeof(prkey_sec)/sizeof(prkey_sec[0]) > 7);
+		static_assert(sizeof(prkey_sec) / sizeof(prkey_sec[0]) > 7, "internal error");
 		prkey_sec[2] = auth_id;
 		prkey_sec[3] = auth_id;
 		prkey_sec[7] = auth_id;
@@ -387,7 +391,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		file->size = key_info->modulus_length / 8 * 2;
 	if (r == SC_SUCCESS)
 	{
-		assert(sizeof(pbkey_sec)/sizeof(pbkey_sec[0]) > 7);
+		static_assert(sizeof(pbkey_sec) / sizeof(pbkey_sec[0]) > 7, "internal error");
 		pbkey_sec[2] = auth_id;
 		pbkey_sec[7] = auth_id;
 		r = sc_file_set_sec_attr(file, pbkey_sec, sizeof(pbkey_sec));
@@ -434,18 +438,21 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		return SC_ERROR_NOT_SUPPORTED;
 
 	key_info = (sc_pkcs15_prkey_info_t *)obj->data;
-	assert(key_info);
+	if (!key_info)
+		return SC_ERROR_INTERNAL;
 
 	if (key->algorithm == SC_ALGORITHM_RSA)
 	{
-		assert(key_info->modulus_length % 128 == 0);
+		if (key_info->modulus_length % 128 != 0)
+			return SC_ERROR_INTERNAL;
 		len = key_info->modulus_length / 8 / 2;
 		key_len = len * 5 + 8;
 		buf_len = key_len;
 	}
 	else
 	{
-		assert(key_info->modulus_length == SC_PKCS15_GOSTR3410_KEYSIZE);
+		if (key_info->modulus_length != SC_PKCS15_GOSTR3410_KEYSIZE)
+			return SC_ERROR_INTERNAL;
 		len = key_info->modulus_length / 8;
 		key_len = len;
 		buf_len = len;
@@ -465,7 +472,8 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	buf = calloc(1, buf_len);
 	if (!buf)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	assert(key_len <= buf_len);
+	if (key_len > buf_len)
+		return SC_ERROR_INTERNAL;
 	if (key->algorithm == SC_ALGORITHM_RSA)
 	{
 		/* p */
@@ -495,14 +503,16 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	r = sc_select_file(card, &path, NULL);
 	if (r == SC_SUCCESS)
 		r = sc_change_reference_data(card, 0, 0, NULL, 0, buf, key_len, NULL);
-	assert(buf);
+	if (!buf)
+		return SC_ERROR_INTERNAL;
 	sc_mem_clear(buf, key_len);
 	/* store public key */
 	if (key->algorithm == SC_ALGORITHM_RSA)
 		key_len = len * 3;
 	else
 		goto end;
-	assert(key_len <= buf_len);
+	if (key_len > buf_len)
+		return SC_ERROR_INTERNAL;
 	if (key->algorithm == SC_ALGORITHM_RSA)
 	{
 		/* modulus */
@@ -518,7 +528,8 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		r = sc_profile_get_file(profile, "PuKey-DF", &pukey_df);
 		if (r == SC_SUCCESS)
 		{
-			assert(pukey_df);
+			if (!pukey_df)
+				return SC_ERROR_INTERNAL;
 			path = pukey_df->path;
 			r = sc_append_file_id(&path, key_info->key_reference);
 			sc_file_free(pukey_df);
@@ -536,7 +547,8 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_log(card->ctx,  "%s\n", "Store public key failed");
 	}
 end:
-	assert(buf);
+	if (!buf)
+		return SC_ERROR_INTERNAL;
 	free(buf);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -570,13 +582,16 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 	key_info = (sc_pkcs15_prkey_info_t *)obj->data;
-	assert(key_info);
+	if (!key_info)
+		return SC_ERROR_INTERNAL;
 	data.key_id = key_info->key_reference;
-	assert(data.key_id != 0);
+	if (data.key_id == 0)
+		return SC_ERROR_INTERNAL;
 	switch (data.type)
 	{
 	case SC_ALGORITHM_RSA:
-		assert(key_info->modulus_length % 128 == 0);
+		if (key_info->modulus_length % 128 != 0)
+			return SC_ERROR_INTERNAL;
 		data.u.rsa.modulus_len = key_info->modulus_length / 8;
 		data.u.rsa.modulus = calloc(1, data.u.rsa.modulus_len);
 		data.u.rsa.exponent_len = key_info->modulus_length / 8 / 2;
@@ -589,7 +604,8 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		}
 		break;
 	case SC_ALGORITHM_GOSTR3410:
-		assert(key_info->modulus_length == SC_PKCS15_GOSTR3410_KEYSIZE);
+		if (key_info->modulus_length != SC_PKCS15_GOSTR3410_KEYSIZE)
+			return SC_ERROR_INTERNAL;
 		data.u.gostr3410.xy_len = key_info->modulus_length / 8 * 2;
 		data.u.gostr3410.xy = calloc(1, data.u.gostr3410.xy_len);
 		if (!data.u.gostr3410.xy)
@@ -599,12 +615,13 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		}
 		break;
 	default:
-		assert(0);
+		return SC_ERROR_INTERNAL;
 	}
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_RTECP_GENERATE_KEY, &data);
 	if (r == SC_SUCCESS)
 	{
-		assert(pubkey);
+		if (!pubkey)
+			return SC_ERROR_INTERNAL;
 		pubkey->algorithm = data.type;
 		switch (data.type)
 		{
@@ -634,10 +651,9 @@ static int rtecp_finalize(sc_card_t *card)
 	return sc_card_ctl(card, SC_CARDCTL_RTECP_INIT_END, NULL);
 }
 
-
 /*
  * Delete object
- * 
+ *
  * Applied to private key: used to delete public part internal file
  */
 static int rtecp_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,

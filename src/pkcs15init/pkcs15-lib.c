@@ -3392,7 +3392,8 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		}
 		sc_pkcs15_add_df(p15card, df_type, &file->path);
 		df = find_df_by_type(p15card, df_type);
-		assert(df != NULL);
+		if (df == NULL)
+			return SC_ERROR_INTERNAL;
 		is_new = 1;
 
 		/* Mark the df as enumerated, so libopensc doesn't try
@@ -3412,7 +3413,8 @@ sc_pkcs15init_add_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	}
 	else {
 		sc_log(ctx, "Reuse existing object");
-		assert(object->df == df);
+		if (object->df != df)
+			return SC_ERROR_INTERNAL;
 	}
 
 	if (profile->ops->emu_update_any_df)
@@ -4084,7 +4086,8 @@ sc_pkcs15init_authenticate(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	int  r = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	assert(file != NULL);
+	if (file == NULL)
+		return SC_ERROR_INTERNAL;
 	sc_log(ctx, "path '%s', op=%u", sc_print_path(&file->path), op);
 
 	if (file->acl_inactive) {

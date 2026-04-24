@@ -238,7 +238,8 @@ static int itacns_set_security_env(sc_card_t *card,
 	/* Do not complain about se_num; the argument is part of the API. */
 	(void) se_num;
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
 	 || env->key_ref_len != 1) {
