@@ -922,13 +922,15 @@ cardos_set_security_env(sc_card_t *card,
 			    const sc_security_env_t *env,
 			    int se_num)
 {
-	cardos_data_t* priv = (cardos_data_t*)card->drv_data;
+	cardos_data_t *priv;
 	sc_apdu_t apdu;
 	u8	data[9];
 	int	key_id, r;
 
 	if (card == NULL || env == NULL)
 		return SC_ERROR_INTERNAL;
+
+	priv = (cardos_data_t*)card->drv_data;
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1) {
 		sc_log(card->ctx, "No or invalid key reference\n");
