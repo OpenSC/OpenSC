@@ -448,9 +448,10 @@ auth_select_file(struct sc_card *card, const struct sc_path *in_path,
 	size_t offs, ii;
 	int rv;
 
-	LOG_FUNC_CALLED(card->ctx);
 	if (card == NULL || in_path == NULL)
 		return SC_ERROR_INTERNAL;
+
+	LOG_FUNC_CALLED(card->ctx);
 
 	memcpy(&path, in_path, sizeof(struct sc_path));
 
