@@ -63,8 +63,10 @@ static int create_sysdf(sc_profile_t *profile, sc_card_t *card, const char *name
 		if (!file)
 			return SC_ERROR_INTERNAL;
 		path = file->path;
-		if (path.len <= 2)
+		if (path.len <= 2) {
+			sc_file_free(file);
 			return SC_ERROR_INTERNAL;
+		}
 		if (path.len > 2)
 			path.len -= 2;
 		r = sc_select_file(card, &path, NULL);
