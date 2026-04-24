@@ -618,8 +618,6 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_RTECP_GENERATE_KEY, &data);
 	if (r == SC_SUCCESS)
 	{
-		if (!pubkey)
-			return SC_ERROR_INTERNAL;
 		pubkey->algorithm = data.type;
 		switch (data.type)
 		{
