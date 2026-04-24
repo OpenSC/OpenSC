@@ -272,10 +272,10 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	EVP_CIPHER_CTX *ctx = NULL;
 	EVP_CIPHER *alg = NULL;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 	if (card == NULL || apdu == NULL || key == NULL || buff == NULL)
 		return SC_ERROR_INTERNAL;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (apdu->cse != SC_APDU_CASE_3_SHORT)
 		return SC_ERROR_INTERNAL;
