@@ -1218,6 +1218,29 @@ app <em class="replaceable"><code>application</code></em> {
 					<code class="option">card_drivers =  <em class="replaceable"><code>name</code></em>... ;</code>
 				</a>
 				</p></dd><dt><span class="term">
+					<code class="envar">OPENSC_DEEPBIND</code>
+				</span></dt><dd><p>
+						The OpenSC and its tools are dynamically loading various
+						libraries (pcsclite, dynamic drivers and other pkcs11
+						modules) using
+						<span class="citerefentry"><span class="refentrytitle">dlopen</span>(3)</span>.
+					</p><p>
+						When this environment variable is set to
+						<code class="literal">1</code>
+						for the process running OpenSC, the calls will include
+						<code class="literal">RTLD_DEEPBIND</code> flag, which should
+						cause better symbol isolation between OpenSC and
+						loaded libraries. On the other hand, this is incompatible
+						with various static analysis tools as well as some
+						browser builds.
+					</p><p>
+						This option may be useful, if OpenSC needs to load a library
+						that pollutes the processes' global namespace and thereby
+						causes the unintended use of a different function with the
+						same name. In particular, this may happen when
+						<code class="literal">pkcs11-spy</code>
+						is used for logging between application and PKCS#11 library.
+				</p></dd><dt><span class="term">
 					<code class="envar">CARDMOD_LOW_LEVEL_DEBUG</code>
 				</span></dt><dd><p>
 						Write minidriver debug information to
