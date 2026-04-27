@@ -1,0 +1,58 @@
+name: Ubuntu w/FIPS
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check-secret:
+    runs-on: ubuntu-latest
+    outputs:
+      has-token: ${{ steps.check.outputs.has-token }}
+    steps:
+      - id: check
+        run: echo "has-token=${{ secrets.PRO_TOKEN != '' }}" >> $GITHUB_OUTPUT
+
+  ubuntu-fips:
+    needs: check-secret
+    if: needs.check-secret.outputs.has-token == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup FIPS environment
+        uses: canonical/setup-ubuntu-fips@v1
+        with:
+          pro-token: ${{ secrets.PRO_TOKEN }}
+          shared-path: ${{ github.workspace }}
+
+      - name: Install build dependencies
+        uses: canonical/setup-ubuntu-fips/run@v1
+        with:
+          working-directory: /shared
+          commands: |
+            ./.github/setup-linux.sh force-install
+
+      - name: Build
+        uses: canonical/setup-ubuntu-fips/run@v1
+        with:
+          working-directory: /shared
+          commands: |
+            ./.github/build.sh dist
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: ubuntu-fips-test-logs
+          path: |
+            tests/*.log
+            src/tests/unittests/*.log
+
+      - name: Cleanup
+        if: always()
+        uses: canonical/setup-ubuntu-fips/cleanup@v1
+        with:
+          vm-name: fips-vm
