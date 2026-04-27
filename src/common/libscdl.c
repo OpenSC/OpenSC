@@ -72,6 +72,7 @@ int sc_dlclose(void *handle)
 #else
 
 #include <dlfcn.h>
+#include <stdlib.h>
 
 void *sc_dlopen(const char *filename)
 {
@@ -81,11 +82,20 @@ void *sc_dlopen(const char *filename)
 void *
 sc_dlopen_deep(const char *filename)
 {
-	return dlopen(filename, RTLD_LAZY | RTLD_LOCAL
+	int flags = RTLD_LAZY | RTLD_LOCAL;
+
 #ifdef RTLD_DEEPBIND
-			| RTLD_DEEPBIND
+	/* By default, the pkcs11 modules are opened using with RTLD_DEEPBIND (if available).
+	 * But this causes issues for dynamic analysis tools such as ASAN
+	 * Whenso the OPENSC_DEEPBIND is set to "0", do not include this flag.
+	 * This should be used only for testing!
+	 */
+	char *deep = getenv("OPENSC_DEEPBIND");
+	if (deep == NULL || deep[0] != '0') {
+		flags |= RTLD_DEEPBIND;
+	}
 #endif
-			);
+	return dlopen(filename, flags);
 }
 
 void *sc_dlsym(void *handle, const char *symbol)
