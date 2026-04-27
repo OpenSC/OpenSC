@@ -1836,7 +1836,30 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Specify the PKCS#11 URI for module, slot, token or object</p></dd><dt><span class="term">
 						<code class="option">--uri-with-slot-id</code>
 					</span></dt><dd><p>Include SlotId in PKCS#11 URI</p></dd></dl></div><p>
-		</p></div><div class="refsect1"><a name="id-1.18.6"></a><h2>Examples</h2><p>
+		</p></div><div class="refsect1"><a name="id-1.18.6"></a><h2>Environment</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+					<code class="envar">OPENSC_DEEPBIND</code>
+				</span></dt><dd><p>
+						The OpenSC and its tools are dynamically loading various
+						libraries (pcsclite, dynamic drivers and other pkcs11
+						modules) using
+						<span class="citerefentry"><span class="refentrytitle">dlopen</span>(3)</span>.
+					</p><p>
+						When this environment variable is set to
+						<code class="literal">1</code>
+						for the process running OpenSC, the calls will include
+						<code class="literal">RTLD_DEEPBIND</code> flag, which should
+						cause better symbol isolation between OpenSC and
+						loaded libraries. On the other hand, this is incompatible
+						with various static analysis tools as well as some
+						browser builds.
+					</p><p>
+						This option may be useful, if OpenSC needs to load a library
+						that pollutes the processes' global namespace and thereby
+						causes the unintended use of a different function with the
+						same name. In particular, this may happen when
+						<code class="literal">pkcs11-spy</code>
+						is used for logging between application and PKCS#11 library.
+				</p></dd></dl></div></div><div class="refsect1"><a name="id-1.18.7"></a><h2>Examples</h2><p>
 			Perform a basic functionality test of the card:
 				</p><pre class="programlisting">pkcs11-tool --test --login</pre><p>
 
@@ -1931,7 +1954,7 @@ pkcs11-tool --login --unwrap --mechanism RSA-PKCS --id 22 \
 				</p><pre class="programlisting">
 pkcs11-tool --login --login-type so --init-pin
 				</pre><p>
-		</p></div><div class="refsect1"><a name="id-1.18.7"></a><h2>Authors</h2><p><span class="command"><strong>pkcs11-tool</strong></span> was written by
+		</p></div><div class="refsect1"><a name="id-1.18.8"></a><h2>Authors</h2><p><span class="command"><strong>pkcs11-tool</strong></span> was written by
 		Olaf Kirch <code class="email">&lt;<a class="email" href="mailto:okir@suse.de">okir@suse.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-crypt"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-crypt — perform crypto operations using PKCS#15 smart cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs15-crypt</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.19.4"></a><h2>Description</h2><p>
 			The <span class="command"><strong>pkcs15-crypt</strong></span> utility can be used from the
 			command line to perform cryptographic operations such as computing
