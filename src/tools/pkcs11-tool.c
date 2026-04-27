@@ -80,9 +80,9 @@
  * but does use some OpenSSL routines
  */
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	static OSSL_PROVIDER *legacy_provider = NULL;
-	static OSSL_PROVIDER *default_provider = NULL;
-	static OSSL_LIB_CTX *osslctx = NULL;
+static OSSL_PROVIDER *legacy_provider = NULL;
+static OSSL_PROVIDER *default_provider = NULL;
+static OSSL_LIB_CTX *osslctx = NULL;
 #endif
 
 #ifdef _WIN32
@@ -91,8 +91,12 @@
 #endif
 #endif
 
+#ifdef ENABLE_PKCS11
+#ifndef HAVE_P11KIT
 #ifndef ENABLE_SHARED
 extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
+#endif
+#endif
 #endif
 
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
@@ -100,15 +104,15 @@ extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 #endif
 
 #ifndef MIN
-# define MIN(a, b)	(((a) < (b))? (a) : (b))
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
-#define NEED_SESSION_RO	0x01
-#define NEED_SESSION_RW	0x02
+#define NEED_SESSION_RO 0x01
+#define NEED_SESSION_RW 0x02
 
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
-// clang-format off
+	// clang-format off
 /* EC, Edwards and Montgomery curves understood by pkcs11-tool */
 static struct ec_curve_info {
 	const char *name;	  /* common name of curve */
@@ -1356,10 +1360,14 @@ int main(int argc, char * argv[])
 		opt_module = expanded_val;
 #endif
 
+#ifdef ENABLE_PKCS11
+#ifndef HAVE_P11KIT
 #ifndef ENABLE_SHARED
 	if (strcmp(opt_module, DEFAULT_PKCS11_PROVIDER) == 0)
 		p11 = &pkcs11_function_list_3_0;
 	else
+#endif
+#endif
 #endif
 	{
 		CK_FUNCTION_LIST_PTR p11_v2 = NULL;
