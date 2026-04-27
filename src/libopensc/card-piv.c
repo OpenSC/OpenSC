@@ -454,6 +454,8 @@ struct piv_aid {
  */
 
 /* ATRs of cards known to have PIV applet. But must still be tested for a PIV applet */
+/* Yubico, NitroKey, Token2 are identified by ATR historic bytes */
+
 static const struct sc_atr_table piv_atrs[] = {
 	/* CAC cards with PIV from: CAC-utilziation-and-variation-matrix-v2.03-20May2016.doc */
 	/*
@@ -535,6 +537,9 @@ static const struct sc_atr_table piv_atrs[] = {
 	{ "3b:d6:97:00:81:b1:fe:45:1f:87:80:31:c1:52:41:12:23",
 	  "ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00", NULL, SC_CARD_TYPE_PIV_II_800_73_4, 0, NULL },
 	{ "3b:86:80:01:80:31:c1:52:41:12:76", NULL, NULL, SC_CARD_TYPE_PIV_II_800_73_4, 0, NULL }, /* contactless */
+
+	/* Token2 R3.3 with modified PivApplet follows Yubikey 5 version numbers Could also use Historic bytes */
+	{ "3b:8f:80:01:54:4b:00:50:49:56:04:02:38:38:38:38:38:38:38:60", NULL, NULL, SC_CARD_TYPE_PIV_II_TOKEN2, 0 ,NULL },
 
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
@@ -5350,6 +5355,7 @@ static int piv_match_card(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_SWISSBIT:
 		case SC_CARD_TYPE_PIV_II_800_73_4:
 		case SC_CARD_TYPE_PIV_II_NITROKEY:
+		case SC_CARD_TYPE_PIV_II_TOKEN2:
 			break;
 		default:
 			return 0; /* can not handle the card */
@@ -5402,6 +5408,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_SWISSBIT:
 		case SC_CARD_TYPE_PIV_II_800_73_4:
 		case SC_CARD_TYPE_PIV_II_NITROKEY:
+		case SC_CARD_TYPE_PIV_II_TOKEN2:
 			type = card->type;
 			break;
 		default:
@@ -5428,6 +5435,10 @@ static int piv_match_card_continued(sc_card_t *card)
 			else if (card->reader->atr_info.hist_bytes_len >= 6 &&
 					!(memcmp(card->reader->atr_info.hist_bytes, "PIVKEY", 6))) {
 				type = SC_CARD_TYPE_PIV_II_PIVKEY;
+			}
+			else if (card->reader->atr_info.hist_bytes_len >= 6 &&
+					!(memcmp(card->reader->atr_info.hist_bytes, (u8 *)"TK\x00PIV", 6))) {
+				type = SC_CARD_TYPE_PIV_II_TOKEN2;
 			}
 			/* look for TLV historic data */
 			else if (card->reader->atr_info.hist_bytes_len > 0
@@ -5534,7 +5545,7 @@ static int piv_match_card_continued(sc_card_t *card)
 
 	/*
 	 * if ATR matched or user forced card type
-	 * test if PIV is active applet without using AID If fails use the AID
+	 * test if PIV is active applet without using AID If fails try AID
 	 */
 
 	if (card->type != SC_CARD_TYPE_PIV_II_BASE)
@@ -5552,11 +5563,15 @@ static int piv_match_card_continued(sc_card_t *card)
 		goto err;
 	}
 
-	 /* Assumes all Yubikey/Nitrokey cards are identified via ATR Historic bytes */
+	 /* Assumes all Yubikey/Nitrokey/Token2 cards are identified via ATR or ATR Historic bytes */
 	switch (card->type) {
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
 		case SC_CARD_TYPE_PIV_II_NITROKEY: /* Nitrokey PIV iuses same APDU as Yubikey */
+		case SC_CARD_TYPE_PIV_II_TOKEN2:
+		case SC_CARD_TYPE_PIV_II_PIVAPPLET:
+		case SC_CARD_TYPE_PIV_II_GENERIC:
+		case SC_CARD_TYPE_PIV_II_BASE: /* unknown PIV card */
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xFD, 0x00, 0x00);
 			apdu.lc = 0;
 			apdu.data = NULL;
@@ -5629,6 +5644,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	if (!(priv->init_flags & PIV_INIT_AID_PARSED)) {
 		switch(card->type) {
 			case SC_CARD_TYPE_PIV_II_BASE:
+			case SC_CARD_TYPE_PIV_II_GENERIC:
 			case SC_CARD_TYPE_PIV_II_800_73_4:
 			case SC_CARD_TYPE_PIV_II_NITROKEY:
 				r2 = piv_find_aid(card);
@@ -5639,7 +5655,8 @@ static int piv_match_card_continued(sc_card_t *card)
 	/* SC_CARD_TYPE_PIV_II_NITROKEY is already known to be based on 800-73-4 */
 	switch(card->type) {
 		case SC_CARD_TYPE_PIV_II_BASE:
-			if (priv->init_flags & PIV_INIT_AID_AC) {
+		case SC_CARD_TYPE_PIV_II_GENERIC:
+			if (priv->init_flags & PIV_INIT_AID_AC_SM) {
 					card->type = SC_CARD_TYPE_PIV_II_800_73_4;
 			}
 
@@ -5682,12 +5699,13 @@ static int piv_match_card_continued(sc_card_t *card)
 			break;
 
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+		case SC_CARD_TYPE_PIV_II_TOKEN2:
 			priv->card_issues |=  CI_OTHER_AID_LOSE_STATE
 				| CI_LEAKS_FILE_NOT_FOUND;
 			if (priv->yubico_version  < 0x00040302)
 				priv->card_issues |= CI_VERIFY_LC0_FAIL;
 			/* TODO may need to relocate when I get card to test */
-			if (priv->yubico_version >= 0x00050700)
+			if (priv->yubico_version >= 0x00050700) /* Also used by Token2 */
 				priv->card_issues |= CI_RSA_4096 | CI_25519;
 			break;
 
