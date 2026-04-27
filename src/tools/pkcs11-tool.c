@@ -249,7 +249,9 @@ enum {
 	OPT_INFO_FILE,
 	OPT_PUBLIC_KEY_INFO,
 	OPT_URI,
-	OPT_URI_WITH_SLOT_ID
+	OPT_URI_WITH_SLOT_ID,
+	OPT_SIGN_CONTEXT,
+	OPT_SIGN_HEDGE
 };
 
 // clang-format off
@@ -346,6 +348,8 @@ static const struct option options[] = {
 	{ "public-key-info",	0, NULL,		OPT_PUBLIC_KEY_INFO},
 	{ "uri",		1, NULL,		OPT_URI},
 	{ "uri-with-slot-id",	0, NULL,		OPT_URI_WITH_SLOT_ID},
+	{ "sign-context",	1, NULL,		OPT_SIGN_CONTEXT},
+	{ "sign-hedge",		1, NULL,		OPT_SIGN_HEDGE},
 	{ NULL, 0, NULL, 0 },
 };
 // clang-format on
@@ -443,6 +447,8 @@ static const char *option_help[] = {
 		"When reading a public key, try to read PUBLIC_KEY_INFO (DER encoding of SPKI)",
 		"Specify the PKCS#11 URI for module, slot, token or object",
 		"Include SlotId in PKCS#11 URI",
+		"Specify the context for PQC signing/verification (ML-DSA, SLH-DSA) as a hex string",
+		"Specify the hedge variant for PQC signing (ML-DSA, SLH-DSA): preferred (default), required, or deterministic",
 		"",
 };
 
@@ -512,6 +518,8 @@ static const char *opt_info_file = NULL;
 static int opt_public_key_info = 0; /* return pubkey as SPKI DER */
 static struct pkcs11_uri *opt_uri = NULL;
 static int opt_uri_with_slot_id = 0; /* include slot-id in PKCS#11 URI */
+static const char *opt_sign_context = NULL; /* context for PQC signing (hex string) */
+static const char *opt_sign_hedge = NULL; /* hedge variant for PQC signing */
 
 static void *module = NULL;
 static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
@@ -1283,6 +1291,12 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_URI_WITH_SLOT_ID:
 			opt_uri_with_slot_id = 1;
+			break;
+		case OPT_SIGN_CONTEXT:
+			opt_sign_context = optarg;
+			break;
+		case OPT_SIGN_HEDGE:
+			opt_sign_hedge = optarg;
 			break;
 		default:
 			util_print_usage_and_die(app_name, options, option_help, NULL);
@@ -2446,6 +2460,19 @@ static unsigned long hash_length(const unsigned long hash) {
 	return sLen;
 }
 
+static CK_HEDGE_TYPE
+parse_hedge_variant(const char *hedge_str)
+{
+	if (strcasecmp(hedge_str, "preferred") == 0)
+		return CKH_HEDGE_PREFERRED;
+	if (strcasecmp(hedge_str, "required") == 0)
+		return CKH_HEDGE_REQUIRED;
+	if (strcasecmp(hedge_str, "deterministic") == 0)
+		return CKH_DETERMINISTIC_REQUIRED;
+	util_fatal("Invalid hedge variant '%s'. Valid values: preferred, required, deterministic\n", hedge_str);
+	return CKH_HEDGE_PREFERRED; /* unreachable */
+}
+
 static unsigned long
 parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
     CK_MECHANISM *mech, CK_RSA_PKCS_PSS_PARAMS *pss_params)
@@ -2612,6 +2639,8 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	int		fd;
 	ssize_t sz;
 	unsigned long	hashlen;
+	CK_BYTE_PTR sign_ctx_buf = NULL;
+	size_t sign_ctx_len = 0;
 
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_SIGN|opt_allow_sw, NULL, 0, &opt_mechanism))
@@ -2621,6 +2650,9 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 	hashlen = parse_pss_params(session, key, &mech, &pss_params);
+
+	if (opt_sign_context)
+		sign_ctx_buf = hex_string_to_byte_array(opt_sign_context, &sign_ctx_len, "sign context");
 
 	if (opt_input == NULL)
 		fd = 0;
@@ -2695,7 +2727,10 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	case CKM_HASH_SLH_DSA_SHA3_512:
 	case CKM_HASH_SLH_DSA_SHAKE128:
 	case CKM_HASH_SLH_DSA_SHAKE256:
-		/* TODO allow setting hedge and context */
+		if (opt_sign_hedge)
+			sign_params.hedgeVariant = parse_hedge_variant(opt_sign_hedge);
+		sign_params.pContext = sign_ctx_buf;
+		sign_params.ulContextLen = (CK_ULONG)sign_ctx_len;
 		mech.pParameter = &sign_params;
 		mech.ulParameterLen = sizeof(CK_SIGN_ADDITIONAL_CONTEXT);
 		break;
@@ -2712,7 +2747,10 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 					p11_mechanism_to_name(opt_mechanism), sz, hashlen);
 		}
 		hash_sign_params.hash = opt_hash_alg;
-		/* TODO allow setting hedge and context */
+		if (opt_sign_hedge)
+			hash_sign_params.hedgeVariant = parse_hedge_variant(opt_sign_hedge);
+		hash_sign_params.pContext = sign_ctx_buf;
+		hash_sign_params.ulContextLen = (CK_ULONG)sign_ctx_len;
 		mech.pParameter = &hash_sign_params;
 		mech.ulParameterLen = sizeof(CK_HASH_SIGN_ADDITIONAL_CONTEXT);
 		break;
@@ -2800,6 +2838,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (fd != 1)
 		close(fd);
 	free(sig_buffer);
+	free(sign_ctx_buf);
 }
 
 static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
@@ -2821,6 +2860,8 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	struct stat sig_st;
 	ssize_t sz, sz2;
 	unsigned long   hashlen;
+	CK_BYTE_PTR sign_ctx_buf = NULL;
+	size_t sign_ctx_len = 0;
 
 	if (!opt_mechanism_used)
 		if (!find_mechanism(slot, CKF_VERIFY|opt_allow_sw, NULL, 0, &opt_mechanism))
@@ -2830,6 +2871,9 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = opt_mechanism;
 	hashlen = parse_pss_params(session, key, &mech, &pss_params);
+
+	if (opt_sign_context)
+		sign_ctx_buf = hex_string_to_byte_array(opt_sign_context, &sign_ctx_len, "sign context");
 	if (hashlen && opt_salt_len_given) {
 		if (opt_salt_len == -2) {
 			/* openssl allow us to set sLen to -2 for autodetecting salt length
@@ -2977,7 +3021,10 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	case CKM_HASH_SLH_DSA_SHA3_512:
 	case CKM_HASH_SLH_DSA_SHAKE128:
 	case CKM_HASH_SLH_DSA_SHAKE256:
-		/* TODO allow setting hedge and context */
+		if (opt_sign_hedge)
+			sign_params.hedgeVariant = parse_hedge_variant(opt_sign_hedge);
+		sign_params.pContext = sign_ctx_buf;
+		sign_params.ulContextLen = (CK_ULONG)sign_ctx_len;
 		mech.pParameter = &sign_params;
 		mech.ulParameterLen = sizeof(CK_SIGN_ADDITIONAL_CONTEXT);
 		break;
@@ -2994,7 +3041,10 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 					p11_mechanism_to_name(opt_mechanism), sz, hashlen);
 		}
 		hash_sign_params.hash = opt_hash_alg;
-		/* TODO allow setting hedge and context */
+		if (opt_sign_hedge)
+			hash_sign_params.hedgeVariant = parse_hedge_variant(opt_sign_hedge);
+		hash_sign_params.pContext = sign_ctx_buf;
+		hash_sign_params.ulContextLen = (CK_ULONG)sign_ctx_len;
 		mech.pParameter = &hash_sign_params;
 		mech.ulParameterLen = sizeof(CK_HASH_SIGN_ADDITIONAL_CONTEXT);
 		break;
@@ -3039,6 +3089,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	else
 		util_fatal("Signature verification failed: rv = %s (0x%0x)\n", CKR2Str(rv), (unsigned int)rv);
 	free(sig_buffer);
+	free(sign_ctx_buf);
 }
 
 static void
