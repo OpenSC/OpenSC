@@ -439,16 +439,23 @@ static void sc_pkcs11_openssl_md_release(sc_pkcs11_operation_t *op)
 
 #if !defined(OPENSSL_NO_EC)
 
-static void reverse(unsigned char *buf, size_t len)
+static unsigned char *
+reverse(const unsigned char *buf, size_t len)
 {
+	unsigned char *out = malloc(len);
 	unsigned char tmp;
 	size_t i;
 
+	if (out == NULL)
+		return NULL;
+
+	memcpy(out, buf, len);
 	for (i = 0; i < len / 2; ++i) {
-		tmp = buf[i];
-		buf[i] = buf[len - 1 - i];
-		buf[len - 1 - i] = tmp;
+		tmp = out[i];
+		out[i] = out[len - 1 - i];
+		out[len - 1 - i] = tmp;
 	}
+	return out;
 }
 
 static CK_RV gostr3410_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
@@ -461,7 +468,6 @@ static CK_RV gostr3410_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len
 	EC_POINT *P;
 	BIGNUM *X, *Y;
 	ASN1_OCTET_STRING *octet = NULL;
-	unsigned char *octet_rev = NULL;
 	char paramset[2] = "A";
 	int r = -1, ret_vrf = 0;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -515,16 +521,11 @@ static CK_RV gostr3410_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len
 		if (group && pubkey_len <= LONG_MAX) {
 			const unsigned char *p = pubkey;
 			octet = d2i_ASN1_OCTET_STRING(NULL, &p, (long)pubkey_len);
-			if (octet)
-				octet_rev = malloc(ASN1_STRING_length(octet));
 		}
-		if (group && octet && octet_rev) {
-			memcpy(octet_rev, ASN1_STRING_get0_data(octet), ASN1_STRING_length(octet));
-			reverse(octet_rev, ASN1_STRING_length(octet));
-			Y = BN_bin2bn(octet_rev, ASN1_STRING_length(octet) / 2, NULL);
-			X = BN_bin2bn(octet_rev + ASN1_STRING_length(octet) / 2, ASN1_STRING_length(octet) / 2, NULL);
+		if (group && octet) {
+			X = BN_lebin2bn(ASN1_STRING_get0_data(octet), ASN1_STRING_length(octet) / 2, NULL);
+			Y = BN_lebin2bn(ASN1_STRING_get0_data(octet) + ASN1_STRING_length(octet) / 2, ASN1_STRING_length(octet) / 2, NULL);
 			ASN1_OCTET_STRING_free(octet);
-			free(octet_rev);
 			P = EC_POINT_new(group);
 			if (P && X && Y)
 				r = EC_POINT_set_affine_coordinates(group, P, X, Y, NULL);
@@ -580,11 +581,16 @@ static CK_RV gostr3410_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len
 			EC_POINT_free(P);
 		}
 		if (r == 1) {
-			r = EVP_PKEY_verify_init(pkey_ctx);
-			reverse(data, data_len);
-			if (r == 1)
-				ret_vrf = EVP_PKEY_verify(pkey_ctx, signat, signat_len,
-						data, data_len);
+			unsigned char *rev_data = reverse(data, data_len);
+			if (rev_data == NULL) {
+				r = -1;
+			} else {
+				r = EVP_PKEY_verify_init(pkey_ctx);
+				if (r == 1)
+					ret_vrf = EVP_PKEY_verify(pkey_ctx, signat, signat_len,
+							rev_data, data_len);
+				free(rev_data);
+			}
 		}
 	}
 	EVP_PKEY_CTX_free(pkey_ctx);
