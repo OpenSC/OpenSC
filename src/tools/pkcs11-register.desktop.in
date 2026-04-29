@@ -3,6 +3,4 @@ Name=Install OpenSC PKCS#11 module
 Type=Application
 Exec=@bindir@/pkcs11-register --skip-chrome=off --skip-firefox=off
 Categories=Security;System;
-X-GNOME-AutoRestart=true
-X-GNOME-Autostart-Phase=Initialization
 NoDisplay=true
