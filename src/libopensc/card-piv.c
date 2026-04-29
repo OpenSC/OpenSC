@@ -3,7 +3,7 @@
  * card-default.c: Support for cards with no driver
  *
  * Copyright (C) 2001, 2002  Juha Yrjölä <juha.yrjola@iki.fi>
- * Copyright (C) 2005-2025  Douglas E. Engert <deengert@gmail.com>
+ * Copyright (C) 2005-2026  Douglas E. Engert <deengert@gmail.com>
  * Copyright (C) 2006, Identity Alliance, Thomas Harning <thomas.harning@identityalliance.com>
  * Copyright (C) 2007, EMC, Russell Larner <rlarner@rsa.com>
  *
@@ -375,7 +375,7 @@ static const struct sc_card_error piv_sm_errors[] = {
 
 /* init_flags */
 #define PIV_INIT_AID_PARSED			0x00000001u
-#define PIV_INIT_AID_AC				0x00000002u
+#define PIV_INIT_AID_AC_SM			0x00000002u
 #define PIV_INIT_DISCOVERY_PARSED		0x00000004u
 #define PIV_INIT_DISCOVERY_PP			0x00000008u
 #define PIV_INIT_IN_READER_LOCK_OBTAINED	0x00000010u
@@ -394,6 +394,7 @@ typedef struct piv_private_data {
 	unsigned long algorithm; /* saved from set_security_env */
 	int key_ref; /* saved from set_security_env and */
 	int alg_id;  /* used in decrypt, signature, derive */
+	unsigned int alg_ids; /* from AID response, NIST required, card version */
 	int key_size; /*  RSA: modulus_bits EC: field_length in bits */
 	u8* w_buf;   /* write_binary buffer */
 	size_t w_buf_len; /* length of w_buff */
@@ -455,6 +456,7 @@ struct piv_aid {
 
 /* ATRs of cards known to have PIV applet. But must still be tested for a PIV applet */
 /* Yubico, NitroKey, Token2 are identified by ATR historic bytes */
+/* PivApplet does not provide ATR historic bytes */
 
 static const struct sc_atr_table piv_atrs[] = {
 	/* CAC cards with PIV from: CAC-utilziation-and-variation-matrix-v2.03-20May2016.doc */
@@ -538,9 +540,13 @@ static const struct sc_atr_table piv_atrs[] = {
 	  "ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00", NULL, SC_CARD_TYPE_PIV_II_800_73_4, 0, NULL },
 	{ "3b:86:80:01:80:31:c1:52:41:12:76", NULL, NULL, SC_CARD_TYPE_PIV_II_800_73_4, 0, NULL }, /* contactless */
 
-	/* Token2 R3.3 with modified PivApplet follows Yubikey 5 version numbers Could also use Historic bytes */
-	{ "3b:8f:80:01:54:4b:00:50:49:56:04:02:38:38:38:38:38:38:38:60", NULL, NULL, SC_CARD_TYPE_PIV_II_TOKEN2, 0 ,NULL },
-
+	/*
+	 * If your card is not listed it maybe identified by ATR Historic bytes: 
+	 * Yubikey, NitroKey, Token2 and PivApplet
+	 * If still not found it will be treated as a NIST compliant card,
+	 * or card that follows the Yubikey version numbers.
+	 * Or you may try using opensc.conf to force a driver and card type 
+	 */
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
@@ -576,11 +582,37 @@ static struct piv_aid piv_aids[] = {
 #define CI_OTHER_AID_LOSE_STATE		    0x00000100U /* Other drivers match routines may reset our security state and lose AID!!! */
 #define CI_NFC_EXPOSE_TOO_MUCH		    0x00000200U /* PIN, crypto and objects exposed over NFS in violation of 800-73-3 */
 
-#define CI_NO_RSA2048			    0x00010000U /* does not have RSA 2048 */
-#define CI_NO_EC384			    0x00020000U /* does not have EC 384 */
-#define CI_NO_EC			    0x00040000U /* No EC at all */
-#define CI_RSA_4096			    0x00080000U /* Card supports rsa 4096 */
-#define CI_25519			    0x00100000U /* Card supports ED25519 and X25519 */
+#define CI_NO_EC384			    0x00000400U /* does not have EC 384 */
+#define CI_NO_EC			    0x00000800U /* No EC at all */
+
+/* PIV and PIV like cards are know to support these asymmetric algorithm identifiers used in alg_ids */
+#define AI_RSA_1024			    0x00000001U
+#define AI_RSA_2048			    0x00000002U
+#define AI_RSA_3072			    0x00000004U
+#define AI_RSA_4096			    0x00000008U
+#define AI_EC_256			    0x00000100U
+#define AI_EC_384			    0x00000200U
+#define AI_25519			    0x00100000U
+#define AI_X25519			    0x00200000U
+/* NIST  cards have or do support these (non SM) algorithm identifiers */
+#define AI_NIST (AI_RSA_1024 | AI_RSA_2048 | AI_RSA_3072 | AI_EC_256 | AI_EC_384)
+
+static struct {
+	unsigned long ai_flag;
+	unsigned char ai_id;
+	unsigned long ai_sc_type;
+	int ai_bits;
+} ai_map[] = {
+		{ AI_RSA_3072, 0x05, SC_ALGORITHM_RSA, 3072 },
+		{ AI_RSA_1024, 0x06, SC_ALGORITHM_RSA, 1024 },
+		{ AI_RSA_2048, 0x07, SC_ALGORITHM_RSA, 2048 },
+		{ AI_RSA_4096, 0x16, SC_ALGORITHM_RSA,4096 },
+		{ AI_EC_256, 0x11, SC_ALGORITHM_EC, 256 },
+		{ AI_EC_384, 0x14, SC_ALGORITHM_EC, 384 },
+		{ AI_25519, 0xE0, SC_ALGORITHM_EDDSA, 255 },
+		{ AI_X25519, 0xE1, SC_ALGORITHM_XEDDSA, 255 },
+		{ 0, 0, 0, 0 }
+	};
 
 /*
  * Flags in the piv_object:
@@ -849,6 +881,11 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag);
 static int piv_logout(sc_card_t *card);
 static int piv_match_card_continued(sc_card_t *card);
 static int piv_obj_cache_free_entry(sc_card_t *card, int enumtag, int flags);
+#if 0
+static int piv_ai_map_find_by_flag(sc_card_t *card, unsigned long flag);
+#endif /* 0 */
+static int piv_ai_map_find_by_id(sc_card_t *card, u8);
+
 
 #ifdef ENABLE_PIV_SM
 static void piv_inc(u8 *counter, size_t size);
@@ -2840,6 +2877,34 @@ err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+#if 0
+static int piv_ai_map_find_by_flag(sc_card_t *card, unsigned long flag)
+{
+	/* piv_private_data_t * priv = PIV_DATA(card); */
+	int i;
+
+	for (i = 0; ai_map[i].ai_flag != 0; i++) {
+		if (ai_map[i].ai_flag == flag)
+			return i;
+	}
+	return -1;
+}
+#endif /* 0 */
+
+	
+static int piv_ai_map_find_by_id(sc_card_t *card, u8 id)
+{
+	/* piv_private_data_t * priv = PIV_DATA(card); */
+	int i;
+
+	for (i = 0; ai_map[i].ai_id != 0; i++) {
+		if (ai_map[i].ai_id == id)
+			return i;
+	}
+	return -1;
+}
+
+
 /* find the PIV AID on the card. If card->type already filled in,
  * then look for specific AID only
  */
@@ -2848,12 +2913,15 @@ static int piv_find_aid(sc_card_t * card)
 {
 	piv_private_data_t * priv = PIV_DATA(card);
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r,i;
+	int r, i, j;
 	const u8 *tag;
 	size_t taglen;
 	const u8 *nextac;
+	const u8 *next80;
 	const u8 *pix;
 	size_t pixlen;
+	const u8 *label;
+	size_t  labellen;
 	const u8 *actag;  /* Cipher Suite */
 	size_t actaglen;
 	const u8 *csai; /* Cipher Suite Algorithm Identifier */
@@ -2876,24 +2944,40 @@ static int piv_find_aid(sc_card_t * card)
 		/* no need to parse again, same as last time */
 	}
 	if (r >= 0 && resplen > 2 ) {
+/*DEEDEBUG*/sc_log(card->ctx,"Looking for 0x61 at:%p len:%u", (void *)rbuf, (unsigned int)resplen);
 		tag = sc_asn1_find_tag(card->ctx, rbuf, resplen, 0x61, &taglen);
 		if (tag != NULL) {
+/*DEEDEBUG*/sc_log(card->ctx,"        tag:0x%2.2x at:%p len:%u", *tag, (void *)tag, (unsigned int)taglen);
 			priv->init_flags |= PIV_INIT_AID_PARSED;
 			/* look for 800-73-4 0xAC for Cipher Suite Algorithm Identifier Table 14 */
 			/* 800-73-4 only expects 1 0xAC tag len 6 with a 80 01 xx 06 01 00
 			 * where xx is the SM csID either 27 or 2E.
 			 * Some vendors may include entries for supported Algorithms even when
-			 * not required */
+			 * not required. We will use these if possible 
+			 * Will look for multiple 0x80 with in 0xAC value too.
+			 */
 			nextac = tag;
 			while((actag = sc_asn1_find_tag(card->ctx, nextac, taglen - (nextac - tag),
 					0xAC, &actaglen)) != NULL) {
+/*DEEDEBUG*/sc_log(card->ctx,"Looking for 0xAC at:%p len:%u", (void *)nextac, (unsigned int)(taglen - (nextac - tag)));
+/*DEEDEBUG*/sc_log(card->ctx,"        tag:0x%2.2x at:%p len:%u", *actag, (void *)actag, (unsigned int)actaglen);
 				nextac = actag + actaglen;
 
-				csai = sc_asn1_find_tag(card->ctx, actag, actaglen, 0x80, &csailen);
-				if (csai != NULL) {
-					if (csailen == 1) {
-						sc_log(card->ctx,"found 0xAC 0x80 entry:0x%2.2x",*csai);
+				next80 = actag;
+				while((csai = sc_asn1_find_tag(card->ctx, next80, actaglen - (next80 - actag),
+						0x80, &csailen)) != NULL) {
+/*DEEDEBUG*/sc_log(card->ctx,"Looking for 0x80 at:%p len:%u", (void *)next80, (unsigned int)(actaglen - (nextac - actag)));
+/*DEEDEBUG*/sc_log(card->ctx,"        tag:0x%2.2x at:%p len:%u", *csai, (void *)csai, (unsigned int)csailen);
+				next80 = csai + csailen;
+				if (csailen == 1) {
+						sc_log(card->ctx,"0xAC 0x80 entry:0x%2.2x found", *csai);
+						j = piv_ai_map_find_by_id(card, *csai);
+						if (j >= 0) {
+							priv->alg_ids |= ai_map[j].ai_flag;
+							continue;
+						}
 #ifdef ENABLE_PIV_SM
+						/* check if id is NIST SM */
 						for (i = 0; i < PIV_CSS_SIZE; i++) {
 							if (*csai != css[i].id)
 								continue;
@@ -2903,7 +2987,7 @@ static int piv_find_aid(sc_card_t * card)
 								priv->cs = &css[i];
 								priv->csID = *csai;
 								found_csai++;
-								priv->init_flags |= PIV_INIT_AID_AC;
+								priv->init_flags |= PIV_INIT_AID_AC_SM;
 							}
 						}
 #endif /* ENABLE_PIV_SM */
@@ -2911,8 +2995,14 @@ static int piv_find_aid(sc_card_t * card)
 				}
 			}
 
+			/* last chance to distinguish card type based on Application Label '50' */
+			label = sc_asn1_find_tag(card->ctx, tag, taglen, 0x50, &labellen);
+			if (label != NULL) {
+				sc_log_hex(card->ctx,"Application Label", label, labellen);
+			}
+
 			pix = sc_asn1_find_tag(card->ctx, tag, taglen, 0x4F, &pixlen);
-			if (pix != NULL ) {
+			if (pix != NULL) {
 				sc_log(card->ctx, "found PIX");
 
 				/* early cards returned full AID, rather then just the pix */
@@ -5356,6 +5446,7 @@ static int piv_match_card(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_800_73_4:
 		case SC_CARD_TYPE_PIV_II_NITROKEY:
 		case SC_CARD_TYPE_PIV_II_TOKEN2:
+		case SC_CARD_TYPE_PIV_II_PIVAPPLET:
 			break;
 		default:
 			return 0; /* can not handle the card */
@@ -5409,6 +5500,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_800_73_4:
 		case SC_CARD_TYPE_PIV_II_NITROKEY:
 		case SC_CARD_TYPE_PIV_II_TOKEN2:
+		case SC_CARD_TYPE_PIV_II_PIVAPPLET:
 			type = card->type;
 			break;
 		default:
@@ -5446,6 +5538,7 @@ static int piv_match_card_continued(sc_card_t *card)
 				size_t datalen;
 				const u8 *data;
 
+				/* look for card issuer's data:  tag 5X where X is datalen */
 				if ((data = sc_compacttlv_find_tag(card->reader->atr_info.hist_bytes + 1,
 						card->reader->atr_info.hist_bytes_len - 1, 0x50, &datalen))) {
 					if (datalen >= 8 && !(memcmp(data, "Nitrokey", 8))) { /* first 8 are Nitrokey */
@@ -5475,6 +5568,7 @@ static int piv_match_card_continued(sc_card_t *card)
 				}
 			}
 		}
+
 		sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d type:%d r:%d\n", card->type, type, r);
 
 		if (type == -1) {
@@ -5518,7 +5612,8 @@ static int piv_match_card_continued(sc_card_t *card)
 	card->sm_ctx.ops.close = piv_sm_close;
 #endif /* ENABLE_PIV_SM */
 
-	/* see if contactless */
+	/* See if contactless  or run as virtual card */
+	/* PivApplet in .github/test_piv.sh for example */
 	if (card->reader->atr.len >= 4
 			&& card->reader->atr.value[0] == 0x3b
 			&& (card->reader->atr.value[1] & 0xF0) == 0x80
@@ -5527,6 +5622,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		priv->init_flags |= PIV_INIT_CONTACTLESS;
 	}
 
+	/* TODO is this needed? */
 	for (i=0; i < PIV_OBJ_LAST_ENUM -1; i++)
 		if(piv_objects[i].flags & PIV_OBJECT_NOT_PRESENT)
 			priv->obj_cache[i].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
@@ -5548,7 +5644,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	 * test if PIV is active applet without using AID If fails try AID
 	 */
 
-	if (card->type != SC_CARD_TYPE_PIV_II_BASE)
+	if (card->type != SC_CARD_TYPE_PIV_II_BASE) /* still do not know if is PIV card */
 		r = piv_find_discovery(card);
 	else
 		r = SC_CARD_TYPE_UNKNOWN;
@@ -5559,18 +5655,23 @@ static int piv_match_card_continued(sc_card_t *card)
 	}
 
 	/*if both fail, its not a PIV card */
+
 	if (r < 0) {
 		goto err;
 	}
 
 	 /* Assumes all Yubikey/Nitrokey/Token2 cards are identified via ATR or ATR Historic bytes */
+	 /* Will also check if card is a Yubikey like card, and return a version number */
 	switch (card->type) {
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
 		case SC_CARD_TYPE_PIV_II_NITROKEY: /* Nitrokey PIV iuses same APDU as Yubikey */
 		case SC_CARD_TYPE_PIV_II_TOKEN2:
 		case SC_CARD_TYPE_PIV_II_PIVAPPLET:
+<<<<<<< HEAD
 		case SC_CARD_TYPE_PIV_II_GENERIC:
+=======
+>>>>>>> 105cbb0f7 (card-piv.c crds.h - improved PIV card  identification)
 		case SC_CARD_TYPE_PIV_II_BASE: /* unknown PIV card */
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xFD, 0x00, 0x00);
 			apdu.lc = 0;
@@ -5579,14 +5680,16 @@ static int piv_match_card_continued(sc_card_t *card)
 			apdu.resp = yubico_version_buf;
 			apdu.resplen = sizeof(yubico_version_buf);
 			apdu.le = apdu.resplen;
-			r2 = sc_transmit_apdu(card, &apdu); /* on error yubico_version == 0 */
+			r2 = sc_transmit_apdu(card, &apdu); /* if not supported yubico_version == 0 */
 			if (apdu.resplen == 3) {
 				priv->yubico_version = (yubico_version_buf[0]<<16) | (yubico_version_buf[1] <<8) | yubico_version_buf[2];
-				sc_log(card->ctx, "Yubico/Nitrokey card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->yubico_version);
+				sc_log(card->ctx, "Yubikey version test card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->yubico_version);
 			}
 			break;
 	}
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
+
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d AI:%08x\n",
+			card->type, r2, priv->card_issues, r, priv->alg_ids);
 
 	 /* We now know PIV AID is active, test CCC object. 800-73-* say CCC is required */
 	 /* CCC not readable over contactless, unless using VCI. but dont need CCC for SC_CARD_TYPE_PIV_II_800_73_4 */
@@ -5603,8 +5706,8 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_GEMALTO:
 		case SC_CARD_TYPE_PIV_II_OBERTHUR:
 			r2 = piv_process_ccc(card);
-			sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d ccc_flags:%08x CI:%08x r:%d\n",
-					card->type, r2, priv->ccc_flags, priv->card_issues, r);
+			sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d AI:%08x\n",
+					card->type, r2, priv->card_issues, r, priv->alg_ids);
 			/* Ignore any error. */
 			/* If CCC says it has CAC with PKI on card set to one of the SC_CARD_TYPE_PIV_II_*_DUAL_CAC */
 			if (priv->ccc_flags & PIV_CCC_F3_CAC_PKI) {
@@ -5638,7 +5741,13 @@ static int piv_match_card_continued(sc_card_t *card)
 			priv->obj_cache[PIV_OBJ_DISCOVERY].flags |= PIV_OBJ_CACHE_NOT_PRESENT;
 			break;
 	}
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d AI:%08x\n",
+			card->type, r2, priv->card_issues, r, priv->alg_ids);
+
+	/* If contactless or run as virtual card try to get alg refs from AC entries in response to SELECT AID */
+	if (!(priv->init_flags & PIV_INIT_AID_PARSED) && priv->init_flags & PIV_INIT_CONTACTLESS) {
+		r2 = piv_find_aid(card);
+	}
 
 	/* Read AID if needed for these cards types */
 	if (!(priv->init_flags & PIV_INIT_AID_PARSED)) {
@@ -5647,15 +5756,26 @@ static int piv_match_card_continued(sc_card_t *card)
 			case SC_CARD_TYPE_PIV_II_GENERIC:
 			case SC_CARD_TYPE_PIV_II_800_73_4:
 			case SC_CARD_TYPE_PIV_II_NITROKEY:
+			case SC_CARD_TYPE_PIV_II_TOKEN2:
 				r2 = piv_find_aid(card);
 		}
 	}
 
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d AI:%08x\n",
+			card->type, r2, priv->card_issues, r, priv->alg_ids);
+
+	/* if card did not specify any of the NIST basic alg_ids add them */
+	if ((priv->alg_ids & AI_NIST) == 0) {
+		priv->alg_ids |= AI_NIST;
+	}
+
 	/* If unknown card has 800-73-4 features, it must be based on 800-73-4 or above */
-	/* SC_CARD_TYPE_PIV_II_NITROKEY is already known to be based on 800-73-4 */
 	switch(card->type) {
 		case SC_CARD_TYPE_PIV_II_BASE:
+<<<<<<< HEAD
 		case SC_CARD_TYPE_PIV_II_GENERIC:
+=======
+>>>>>>> 105cbb0f7 (card-piv.c crds.h - improved PIV card  identification)
 			if (priv->init_flags & PIV_INIT_AID_AC_SM) {
 					card->type = SC_CARD_TYPE_PIV_II_800_73_4;
 			}
@@ -5669,7 +5789,8 @@ static int piv_match_card_continued(sc_card_t *card)
 			break;
 	}
 
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d AI:%08x\n",
+			card->type, r2, priv->card_issues, r, priv->alg_ids);
 
 	/*
 	 * Set card_issues flags based card->type and version numbers if available.
@@ -5686,7 +5807,8 @@ static int piv_match_card_continued(sc_card_t *card)
 	 * may be set earlier or later then in the following code.
 	 */
 
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d CI:%08x r:%d\n", card->type, priv->card_issues, r);
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d AI:%08x\n",
+			card->type, r2, priv->card_issues, r, priv->alg_ids);
 	switch(card->type) {
 		case SC_CARD_TYPE_PIV_II_NEO:
 			priv->card_issues |= CI_NO_EC384
@@ -5699,20 +5821,20 @@ static int piv_match_card_continued(sc_card_t *card)
 			break;
 
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
+		case SC_CARD_TYPE_PIV_II_PIVAPPLET:
 		case SC_CARD_TYPE_PIV_II_TOKEN2:
 			priv->card_issues |=  CI_OTHER_AID_LOSE_STATE
 				| CI_LEAKS_FILE_NOT_FOUND;
 			if (priv->yubico_version  < 0x00040302)
 				priv->card_issues |= CI_VERIFY_LC0_FAIL;
-			/* TODO may need to relocate when I get card to test */
 			if (priv->yubico_version >= 0x00050700) /* Also used by Token2 */
-				priv->card_issues |= CI_RSA_4096 | CI_25519;
+				priv->alg_ids |= AI_RSA_4096 | AI_25519;
 			break;
 
 		case SC_CARD_TYPE_PIV_II_NITROKEY:
 			priv->card_issues |= CI_OTHER_AID_LOSE_STATE;
 			if (priv->yubico_version >= 0x00010802) /* use for NitroKey too */
-				priv->card_issues |= CI_RSA_4096;
+				priv->alg_ids |= AI_RSA_4096;
 			break;
 
 		case SC_CARD_TYPE_PIV_II_GI_DE:
@@ -5735,7 +5857,6 @@ static int piv_match_card_continued(sc_card_t *card)
 				| CI_PIV_AID_LOSE_STATE
 				| CI_NO_RANDOM
 				| CI_OTHER_AID_LOSE_STATE;
-			/* TODO may need more research */
 			break;
 
 		case SC_CARD_TYPE_PIV_II_GENERIC:
@@ -5759,8 +5880,8 @@ static int piv_match_card_continued(sc_card_t *card)
 			sc_log(card->ctx, "Unknown PIV card->type %d", card->type);
 			card->type = SC_CARD_TYPE_PIV_II_GENERIC;
 	}
-	sc_log(card->ctx, "PIV card-type=%d card_issues=0x%08x", card->type, priv->card_issues);
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
+	sc_log(card->ctx, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d AI:%08x\n",
+			card->type, r2, priv->card_issues, r, priv->alg_ids);
 
 	if (!(priv->card_issues & CI_DISCOVERY_USELESS) && !(priv->init_flags & PIV_INIT_DISCOVERY_PARSED) ) {
 		/*
@@ -5778,12 +5899,14 @@ static int piv_match_card_continued(sc_card_t *card)
 		}
 	}
 
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
+	sc_log(card->ctx, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d AI:%08x\n",
+			card->type, r2, priv->card_issues, r, priv->alg_ids);
 	/* Matched, caller will use or free priv and sc_lock as needed */
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 
 err:
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH failed card->type:%d r2:%d CI:%08x r:%d AI:%08x\n",
+			card->type, r2, priv->card_issues, r, priv->alg_ids);
 	/* don't match. Does not have a PIV applet. */
 	piv_finish(card);
 	card->type = saved_type;
@@ -5824,8 +5947,8 @@ static int piv_init(sc_card_t *card)
 	priv->pstate=PIV_STATE_INIT;
 
 	sc_log(card->ctx,
-			"Max send = %"SC_FORMAT_LEN_SIZE_T"u recv = %"SC_FORMAT_LEN_SIZE_T"u card->type = %d",
-			card->max_send_size, card->max_recv_size, card->type);
+			"Max send = %"SC_FORMAT_LEN_SIZE_T"u recv = %"SC_FORMAT_LEN_SIZE_T"u card->type:%d, CI:%08x AI:%08x",
+			card->max_send_size, card->max_recv_size, card->type, priv->card_issues, priv->alg_ids);
 	card->cla = 0x00;
 	if (card->name == NULL)
 		card->name = card->driver->name;
@@ -5843,11 +5966,17 @@ static int piv_init(sc_card_t *card)
 		flags |= SC_ALGORITHM_ONBOARD_KEY_GEN;
 	}
 
-	_sc_card_add_rsa_alg(card, 1024, flags, 0); /* mandatory */
-	_sc_card_add_rsa_alg(card, 2048, flags, 0); /* optional */
-	_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
-	if (priv->card_issues & CI_RSA_4096)
-		_sc_card_add_rsa_alg(card, 4096, flags, 0); /* some Yubikeys support this */
+	if (priv->alg_ids & AI_RSA_1024)
+		_sc_card_add_rsa_alg(card, 1024, flags, 0); /* mandatory */
+
+	if (priv->alg_ids & AI_RSA_2048)
+		_sc_card_add_rsa_alg(card, 2048, flags, 0); /* optional */
+
+	if (priv->alg_ids & AI_RSA_3072)
+		_sc_card_add_rsa_alg(card, 3072, flags, 0); /* optional */
+
+	if (priv->alg_ids & AI_RSA_4096)
+		_sc_card_add_rsa_alg(card, 4096, flags, 0); /* non standard */
 
 	if (!(priv->card_issues & CI_NO_EC)) {
 		int i;
@@ -5860,14 +5989,13 @@ static int piv_init(sc_card_t *card)
 			if (ec_curves[i].key_type == SC_ALGORITHM_EC) {
 				if (!(priv->card_issues & CI_NO_EC384 && ec_curves[i].size == 384))
 					_sc_card_add_ec_alg(card, ec_curves[i].size, flags, ext_flags, &ec_curves[i].oid);
-
-			} else if (priv->card_issues & CI_25519) {
-				if (ec_curves[i].key_type == SC_ALGORITHM_EDDSA) {
-					_sc_card_add_eddsa_alg(card, ec_curves[i].size, flags_eddsa, ext_flags, &ec_curves[i].oid);
-				} else if (ec_curves[i].key_type == SC_ALGORITHM_XEDDSA) {
-					_sc_card_add_xeddsa_alg(card, ec_curves[i].size, flags_xeddsa, ext_flags, &ec_curves[i].oid);
-				}
 			}
+
+			else if (priv->alg_ids & AI_25519 && ec_curves[i].key_type == SC_ALGORITHM_EDDSA)
+					_sc_card_add_eddsa_alg(card, ec_curves[i].size, flags_eddsa, ext_flags, &ec_curves[i].oid);
+
+			else if (priv->alg_ids & AI_X25519 &&ec_curves[i].key_type == SC_ALGORITHM_XEDDSA)
+					_sc_card_add_xeddsa_alg(card, ec_curves[i].size, flags_xeddsa, ext_flags, &ec_curves[i].oid);
 		}
 	}
 
@@ -6072,7 +6200,8 @@ piv_check_protected_objects(sc_card_t *card)
 	else if (r > 0)
 		r = SC_SUCCESS;
 
-	sc_log(card->ctx, "object_test_verify=%d, card_issues = 0x%08x", priv->object_test_verify, priv->card_issues);
+	sc_log(card->ctx, "card->type:%d CI:%08x r:%d AI:%08x\n",
+			card->type, priv->card_issues, r, priv->alg_ids);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
