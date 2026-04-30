@@ -395,6 +395,8 @@ typedef struct piv_private_data {
 	int key_ref; /* saved from set_security_env and */
 	int alg_id;  /* used in decrypt, signature, derive */
 	unsigned int alg_ids; /* from AID response, NIST required, card version */
+	unsigned char * al_label; /* from Select AID Application Label */
+	int al_labellen;
 	int key_size; /*  RSA: modulus_bits EC: field_length in bits */
 	u8* w_buf;   /* write_binary buffer */
 	size_t w_buf_len; /* length of w_buff */
@@ -612,6 +614,17 @@ static struct {
 		{ AI_25519, 0xE0, SC_ALGORITHM_EDDSA, 255 },
 		{ AI_X25519, 0xE1, SC_ALGORITHM_XEDDSA, 255 },
 		{ 0, 0, 0, 0 }
+	};
+
+/* Application Label from select AID response where ATR can not be matched */
+/* for example: PivApplet ATR has no historic Data so ATR may not be unique */
+static struct {
+	int al_type;
+	unsigned char * al_label;
+	int al_labellen;
+} al_map[] = {
+		{ SC_CARD_TYPE_PIV_II_PIVAPPLET, (u8 *)"PivApplet/", 10 },
+		{ 0, NULL, 0 }
 	};
 
 /*
@@ -2920,8 +2933,8 @@ static int piv_find_aid(sc_card_t * card)
 	const u8 *next80;
 	const u8 *pix;
 	size_t pixlen;
-	const u8 *label;
-	size_t  labellen;
+	const u8 *al_label;
+	size_t  al_labellen;
 	const u8 *actag;  /* Cipher Suite */
 	size_t actaglen;
 	const u8 *csai; /* Cipher Suite Algorithm Identifier */
@@ -2995,10 +3008,15 @@ static int piv_find_aid(sc_card_t * card)
 				}
 			}
 
-			/* last chance to distinguish card type based on Application Label '50' */
-			label = sc_asn1_find_tag(card->ctx, tag, taglen, 0x50, &labellen);
-			if (label != NULL) {
-				sc_log_hex(card->ctx,"Application Label", label, labellen);
+			/* Last chance to distinguish card type based on Application Label '50' */
+			al_label = sc_asn1_find_tag(card->ctx, tag, taglen, 0x50, &al_labellen);
+			if (al_label != NULL) {
+				sc_log_hex(card->ctx,"Application Label", al_label, al_labellen);
+					if ((priv->al_label = malloc(resplen)) == NULL) {
+						LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+					}
+					memcpy(priv->al_label, al_label, al_labellen);
+					priv->al_labellen = (int)al_labellen;
 			}
 
 			pix = sc_asn1_find_tag(card->ctx, tag, taglen, 0x4F, &pixlen);
@@ -5402,6 +5420,7 @@ piv_finish(sc_card_t *card)
 			sc_unlock(card);
 		}
 		free(priv->aid_der.value);
+		free(priv->al_label);
 		if (priv->w_buf)
 			free(priv->w_buf);
 		if (priv->offCardCertURL)
@@ -5572,7 +5591,7 @@ static int piv_match_card_continued(sc_card_t *card)
 		sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d type:%d r:%d\n", card->type, type, r);
 
 		if (type == -1) {
-			/* use known ATRs  */
+			/* use known ATRs  which changes the type */
 			i = _sc_match_atr(card, piv_atrs, &type);
 			if (i < 0)
 				type = SC_CARD_TYPE_PIV_II_BASE; /* May be some newer unknown card including CAC or PIV-like card */
@@ -5651,6 +5670,7 @@ static int piv_match_card_continued(sc_card_t *card)
 
 	if (r < 0) {
 		piv_obj_cache_free_entry(card, PIV_OBJ_DISCOVERY, 0); /* don't cache  on failure */
+		/* piv_find_aid saves al_label from response */
 		r = piv_find_aid(card);
 	}
 
@@ -5660,18 +5680,33 @@ static int piv_match_card_continued(sc_card_t *card)
 		goto err;
 	}
 
-	 /* Assumes all Yubikey/Nitrokey/Token2 cards are identified via ATR or ATR Historic bytes */
-	 /* Will also check if card is a Yubikey like card, and return a version number */
+	/* If card type still unknown, see if Application Label is known and set card->type */
+	if (priv->al_label && priv->al_labellen) {
+		switch (card->type) {
+			case SC_CARD_TYPE_PIV_II_BASE:
+			case SC_CARD_TYPE_PIV_II_GENERIC:
+				for (i = 0; al_map[i].al_label; i++) {
+					if (priv->al_labellen >= al_map[i].al_labellen &&
+							!memcmp(priv->al_label, al_map[i].al_label, al_map[i].al_labellen)) {
+						card->type = al_map[i].al_type;
+						break;
+					}
+				}
+			}
+		}
+	/*
+	 * Assumes all Yubikey/Nitrokey/Token2/PivApplet cards are all "Yubico like"
+	 * via ATR, ATR Historic bytes or Application Label
+	 * Will also check if BASE cards are Yubikey like card and return a version number
+	 * SC_CARD_TYPE_PIV_II_GENERIC can be set by user to not test for Yubico verion
+	 */
 	switch (card->type) {
 		case SC_CARD_TYPE_PIV_II_NEO:
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
-		case SC_CARD_TYPE_PIV_II_NITROKEY: /* Nitrokey PIV iuses same APDU as Yubikey */
+		case SC_CARD_TYPE_PIV_II_NITROKEY:
 		case SC_CARD_TYPE_PIV_II_TOKEN2:
 		case SC_CARD_TYPE_PIV_II_PIVAPPLET:
-<<<<<<< HEAD
 		case SC_CARD_TYPE_PIV_II_GENERIC:
-=======
->>>>>>> 105cbb0f7 (card-piv.c crds.h - improved PIV card  identification)
 		case SC_CARD_TYPE_PIV_II_BASE: /* unknown PIV card */
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xFD, 0x00, 0x00);
 			apdu.lc = 0;
@@ -5757,6 +5792,7 @@ static int piv_match_card_continued(sc_card_t *card)
 			case SC_CARD_TYPE_PIV_II_800_73_4:
 			case SC_CARD_TYPE_PIV_II_NITROKEY:
 			case SC_CARD_TYPE_PIV_II_TOKEN2:
+			case SC_CARD_TYPE_PIV_II_PIVAPPLET:
 				r2 = piv_find_aid(card);
 		}
 	}
@@ -5772,10 +5808,7 @@ static int piv_match_card_continued(sc_card_t *card)
 	/* If unknown card has 800-73-4 features, it must be based on 800-73-4 or above */
 	switch(card->type) {
 		case SC_CARD_TYPE_PIV_II_BASE:
-<<<<<<< HEAD
 		case SC_CARD_TYPE_PIV_II_GENERIC:
-=======
->>>>>>> 105cbb0f7 (card-piv.c crds.h - improved PIV card  identification)
 			if (priv->init_flags & PIV_INIT_AID_AC_SM) {
 					card->type = SC_CARD_TYPE_PIV_II_800_73_4;
 			}
