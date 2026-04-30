@@ -78,6 +78,11 @@ pushd src/tests/p11test/
 sleep 5
 $VALGRIND ./p11test -v -s 0 -p "$PIN" -o piv.json
 popd
+
+# temp to get more info
+set +e
 diff -u3 src/tests/p11test/piv{_ref,}.json
 
+opensc-tool -a -s '00 A4 04 00 09 A0 00 00 03 08 00 00 10 00 00' -s '00 FD 00 00 03' \
+               -s "00 CB 3F FF 05 5C 03 5F C1 0C 00" -s "00 CB 3F FF 05 5C 03 5F C1 02 00
 kill -9 $PID
