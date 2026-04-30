@@ -48,7 +48,8 @@ sleep 5
 
 # enforce the setting of different PIV type to support EC mechanisms
 # which are disabled for the generic ATR mapping to older Yubico devices
-export OPENSC_CONF="${PWD}/.github/opensc-piv.conf"
+# not needed
+#export OPENSC_CONF="${PWD}/.github/opensc-piv.conf"
 
 $VALGRIND opensc-tool --card-driver default --send-apdu 80b80000120ba000000308000010000100050000020F0F7f
 $VALGRIND opensc-tool -n
@@ -76,13 +77,14 @@ $VALGRIND pkcs11-tool -l -t -p "$PIN"
 # run p11test
 pushd src/tests/p11test/
 sleep 5
-$VALGRIND ./p11test -v -s 0 -p "$PIN" -o piv.json
+$VALGRIND ./p11test -v -s 0 -p "$PIN" -o piv.json 
 popd
 
 # temp to get more info
-set +e
-diff -u3 src/tests/p11test/piv{_ref,}.json
+diff -u3 src/tests/p11test/piv{_ref,}.json || true
 
-opensc-tool -a -s '00 A4 04 00 09 A0 00 00 03 08 00 00 10 00 00' -s '00 FD 00 00 03' \
-               -s "00 CB 3F FF 05 5C 03 5F C1 0C 00" -s "00 CB 3F FF 05 5C 03 5F C1 02 00
+OPENSC_DEBUG=7 OPENSC_DRIVER=PIV-II \
+    opensc-tool -a -s '00 A4 04 00 09 A0 00 00 03 08 00 00 10 00 00' \
+    -s '00 FD 00 00 03' -s '00 CB 3F FF 05 5C 03 5F C1 0C 00' -s '00 CB 3F FF 05 5C 03 5F C1 02 00'
+
 kill -9 $PID
