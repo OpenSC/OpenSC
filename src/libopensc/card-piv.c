@@ -526,8 +526,12 @@ static const struct sc_atr_table piv_atrs[] = {
 	{ "3b:89:80:01:53:50:49:56:4b:45:59:37:30:44", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
 	/* PIVKey SLE78 (57B) */
 	{ "3b:fd:96:00:00:81:31:fe:45:53:4c:4a:35:32:47:44:4c:31:32:38:43:52:57", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* This ATR is too generic. It will be accepted if Application Label in AID response matches */
+	/* Which looks like there is no Application Label in AID response of these cards */
+	/* PivApplet (at least when run in virtual machine) uses the same ATR */
 	/* PIVKey uTrust (01) ISO 14443 Type B without historical bytes */
-	{ "3b:80:80:01:01", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+	/* { "3b:80:80:01:01", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL }, */
+
 	/* PIVKey uTrust (73) */
 	{ "3b:96:11:81:21:75:75:54:72:75:73:74:73", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
 	/* PIVKey uTrust FIDO2 (73) */
@@ -617,13 +621,12 @@ static struct {
 	};
 
 /* Application Label from select AID response where ATR can not be matched */
-/* for example: PivApplet ATR has no historic Data so ATR may not be unique */
 static struct {
 	int al_type;
 	unsigned char * al_label;
 	int al_labellen;
 } al_map[] = {
-		{ SC_CARD_TYPE_PIV_II_PIVAPPLET, (u8 *)"PivApplet/", 10 },
+		{ SC_CARD_TYPE_PIV_II_PIVAPPLET, (u8 *)"PivApplet v", 11 },
 		{ 0, NULL, 0 }
 	};
 
@@ -3012,7 +3015,7 @@ static int piv_find_aid(sc_card_t * card)
 			al_label = sc_asn1_find_tag(card->ctx, tag, taglen, 0x50, &al_labellen);
 			if (al_label != NULL) {
 				sc_log_hex(card->ctx,"Application Label", al_label, al_labellen);
-					if ((priv->al_label = malloc(resplen)) == NULL) {
+					if ((priv->al_label = malloc(al_labellen)) == NULL) {
 						LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 					}
 					memcpy(priv->al_label, al_label, al_labellen);
@@ -5663,22 +5666,20 @@ static int piv_match_card_continued(sc_card_t *card)
 	 * test if PIV is active applet without using AID If fails try AID
 	 */
 
-	if (card->type != SC_CARD_TYPE_PIV_II_BASE) /* still do not know if is PIV card */
+	if (card->type > SC_CARD_TYPE_PIV_II_BASE) {
 		r = piv_find_discovery(card);
-	else
-		r = SC_CARD_TYPE_UNKNOWN;
-
-	if (r < 0) {
-		piv_obj_cache_free_entry(card, PIV_OBJ_DISCOVERY, 0); /* don't cache  on failure */
+		if (r < 0) {
+			piv_obj_cache_free_entry(card, PIV_OBJ_DISCOVERY, 0); /* don't cache  on failure */
+			r = piv_find_aid(card);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Not a PIV card");
+		}
+	} else {
 		/* piv_find_aid saves al_label from response */
 		r = piv_find_aid(card);
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Not a PIV card");
 	}
 
-	/*if both fail, its not a PIV card */
-
-	if (r < 0) {
-		goto err;
-	}
+	/* Know to be PIV card but not the type */
 
 	/* If card type still unknown, see if Application Label is known and set card->type */
 	if (priv->al_label && priv->al_labellen) {
@@ -5686,19 +5687,25 @@ static int piv_match_card_continued(sc_card_t *card)
 			case SC_CARD_TYPE_PIV_II_BASE:
 			case SC_CARD_TYPE_PIV_II_GENERIC:
 				for (i = 0; al_map[i].al_label; i++) {
-					if (priv->al_labellen >= al_map[i].al_labellen &&
-							!memcmp(priv->al_label, al_map[i].al_label, al_map[i].al_labellen)) {
+					if ((priv->al_labellen >= al_map[i].al_labellen) &&
+							(!memcmp(priv->al_label, al_map[i].al_label, al_map[i].al_labellen))) {
+						sc_debug(card->ctx, SC_LOG_DEBUG_MATCH, "AL match i:%d type:%d", i, al_map[i].al_type);
 						card->type = al_map[i].al_type;
 						break;
 					}
 				}
-			}
+				break;
 		}
+	}
+
+	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d  CI:%08x r:%d AI:%08x\n",
+			card->type, priv->card_issues, r, priv->alg_ids);
+
 	/*
 	 * Assumes all Yubikey/Nitrokey/Token2/PivApplet cards are all "Yubico like"
 	 * via ATR, ATR Historic bytes or Application Label
 	 * Will also check if BASE cards are Yubikey like card and return a version number
-	 * SC_CARD_TYPE_PIV_II_GENERIC can be set by user to not test for Yubico verion
+	 * SC_CARD_TYPE_PIV_II_GENERIC can be set by user to not test for Yubico version
 	 */
 	switch (card->type) {
 		case SC_CARD_TYPE_PIV_II_NEO:
@@ -5900,7 +5907,6 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_PIVKEY:
 			priv->card_issues |= CI_VERIFY_LC0_FAIL
 				| CI_PIV_AID_LOSE_STATE /* be conservative */
-				| CI_NO_EC384 | CI_NO_EC
 				| CI_NO_RANDOM; /* does not have 9B key */
 				/* Discovery object returns 6A 82 so is not on card by default */
 				/*  TODO may need more research */
