@@ -724,12 +724,17 @@ awp_update_object_list(struct sc_pkcs15_card *p15card, struct sc_profile *profil
 	if (rv < 0)
 		goto done;
 
+	if (lst_file->size < 5) {
+		rv = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+		goto done;
+	}
+
 	flags = lst_file->ef_structure;
 	rv = sc_read_binary(p15card->card, 0, buff, lst_file->size, &flags);
 	if (rv < 0)
 		goto done;
 
-	for (ii=0; ii < lst_file->size; ii+=5)
+	for (ii=0; ii <= lst_file->size-5; ii+=5)
 		if (*(buff + ii) != COSM_LIST_TAG)
 			break;
 	if (ii>=lst_file->size)   {
