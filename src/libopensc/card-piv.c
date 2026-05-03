@@ -456,6 +456,8 @@ struct piv_aid {
  * optional Virtual Contact Interface and pairing code.
  */
 
+// clang-format off
+
 /* ATRs of cards known to have PIV applet. But must still be tested for a PIV applet */
 /* Yubico, NitroKey, Token2 are identified by ATR historic bytes */
 /* PivApplet does not provide ATR historic bytes */
@@ -555,6 +557,7 @@ static const struct sc_atr_table piv_atrs[] = {
 	 */
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
+// clang-format on
 
 static struct piv_supported_ec_curves {
 	struct sc_object_id oid;
@@ -897,9 +900,6 @@ static int piv_cache_internal_data(sc_card_t *card, int enumtag);
 static int piv_logout(sc_card_t *card);
 static int piv_match_card_continued(sc_card_t *card);
 static int piv_obj_cache_free_entry(sc_card_t *card, int enumtag, int flags);
-#if 0
-static int piv_ai_map_find_by_flag(sc_card_t *card, unsigned long flag);
-#endif /* 0 */
 static int piv_ai_map_find_by_id(sc_card_t *card, u8);
 
 
@@ -2893,22 +2893,8 @@ err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-#if 0
-static int piv_ai_map_find_by_flag(sc_card_t *card, unsigned long flag)
-{
-	/* piv_private_data_t * priv = PIV_DATA(card); */
-	int i;
-
-	for (i = 0; ai_map[i].ai_flag != 0; i++) {
-		if (ai_map[i].ai_flag == flag)
-			return i;
-	}
-	return -1;
-}
-#endif /* 0 */
-
-	
-static int piv_ai_map_find_by_id(sc_card_t *card, u8 id)
+static int
+piv_ai_map_find_by_id(sc_card_t *card, u8 id)
 {
 	/* piv_private_data_t * priv = PIV_DATA(card); */
 	int i;
@@ -2919,7 +2905,6 @@ static int piv_ai_map_find_by_id(sc_card_t *card, u8 id)
 	}
 	return -1;
 }
-
 
 /* find the PIV AID on the card. If card->type already filled in,
  * then look for specific AID only
@@ -2960,10 +2945,8 @@ static int piv_find_aid(sc_card_t * card)
 		/* no need to parse again, same as last time */
 	}
 	if (r >= 0 && resplen > 2 ) {
-/*DEEDEBUG*/sc_log(card->ctx,"Looking for 0x61 at:%p len:%u", (void *)rbuf, (unsigned int)resplen);
 		tag = sc_asn1_find_tag(card->ctx, rbuf, resplen, 0x61, &taglen);
 		if (tag != NULL) {
-/*DEEDEBUG*/sc_log(card->ctx,"        tag:0x%2.2x at:%p len:%u", *tag, (void *)tag, (unsigned int)taglen);
 			priv->init_flags |= PIV_INIT_AID_PARSED;
 			/* look for 800-73-4 0xAC for Cipher Suite Algorithm Identifier Table 14 */
 			/* 800-73-4 only expects 1 0xAC tag len 6 with a 80 01 xx 06 01 00
@@ -2975,15 +2958,11 @@ static int piv_find_aid(sc_card_t * card)
 			nextac = tag;
 			while((actag = sc_asn1_find_tag(card->ctx, nextac, taglen - (nextac - tag),
 					0xAC, &actaglen)) != NULL) {
-/*DEEDEBUG*/sc_log(card->ctx,"Looking for 0xAC at:%p len:%u", (void *)nextac, (unsigned int)(taglen - (nextac - tag)));
-/*DEEDEBUG*/sc_log(card->ctx,"        tag:0x%2.2x at:%p len:%u", *actag, (void *)actag, (unsigned int)actaglen);
 				nextac = actag + actaglen;
 
 				next80 = actag;
 				while((csai = sc_asn1_find_tag(card->ctx, next80, actaglen - (next80 - actag),
 						0x80, &csailen)) != NULL) {
-/*DEEDEBUG*/sc_log(card->ctx,"Looking for 0x80 at:%p len:%u", (void *)next80, (unsigned int)(actaglen - (nextac - actag)));
-/*DEEDEBUG*/sc_log(card->ctx,"        tag:0x%2.2x at:%p len:%u", *csai, (void *)csai, (unsigned int)csailen);
 				next80 = csai + csailen;
 				if (csailen == 1) {
 						sc_log(card->ctx,"0xAC 0x80 entry:0x%2.2x found", *csai);
