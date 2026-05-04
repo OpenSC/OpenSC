@@ -1263,7 +1263,7 @@ int
 iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t data_len,
 	struct iasecc_sm_card_answer *out)
 {
-	int have_mac = 0, have_status = 0;
+	int rc, have_mac = 0, have_status = 0;
 	size_t size = 0, size_size, offs;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1271,8 +1271,15 @@ iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	memset(out, 0, sizeof(*out));
-	for (offs=0; offs<data_len; )   {
-		size_size = iasecc_parse_size(data + 1, data_len - 1, &size);
+	for (offs = 0; offs + 1 < data_len;) {
+		rc = iasecc_parse_size(data + offs + 1, data_len - offs - 1, &size);
+		if (rc <= 0) {
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+		}
+		size_size = rc;
+		if (offs + 1 + size_size + size > data_len) {
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+		}
 
 		if (*(data + offs) == IASECC_CARD_ANSWER_TAG_DATA )   {
 			if (size > sizeof(out->data))
@@ -1283,7 +1290,7 @@ iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t
 			offs += 1 + size_size + size;
 		}
 		else if (*(data + offs) == IASECC_CARD_ANSWER_TAG_SW )   {
-			if (*(data + offs + 1) != 2)
+			if (size_size != 1 || size != 2)
 				LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "iasecc_sm_decode_answer() SW length not 2");
 			out->sw = *(data + offs + 2) * 0x100 + *(data + offs + 3);
 
@@ -1293,7 +1300,7 @@ iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t
 			have_status = 1;
 		}
 		else if (*(data + offs) == IASECC_CARD_ANSWER_TAG_MAC )   {
-			if (*(data + offs + 1) != 8)
+			if (size_size != 1 || size != 8)
 				LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "iasecc_sm_decode_answer() MAC length not 8");
 			memcpy(out->mac, data + offs + 2, 8);
 
