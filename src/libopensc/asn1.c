@@ -1758,7 +1758,12 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 			r = asn1_decode(ctx,
 				(struct sc_asn1_entry *) entry->parm,
 				p, left, &p, &left, 1, depth + 1);
-			if (r >= 0)
+			/* When the inner call fails it returns before writing
+			 * back to *newp and *len_left, so the caller's p/left are
+			 * unchanged.  Swallowing the error for an optional
+			 * CHOICE is therefore safe: the next field will be
+			 * attempted at the same position. */
+			if (r >= 0 || (entry->flags & SC_ASN1_OPTIONAL))
 				r = 0;
 			goto decode_ok;
 		}
