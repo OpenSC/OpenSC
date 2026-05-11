@@ -2050,7 +2050,11 @@ write_publickey (struct sc_card *card, unsigned int offset,
 	args.data = key.modulus.data;
 	args.len = key.modulus.len;
 	rv = auth_update_component(card, &args);
-	LOG_TEST_RET(card->ctx, rv, "Update component failed");
+	free(args.data);
+	if (rv != SC_SUCCESS) {
+		free(key.exponent.data);
+		LOG_TEST_RET(card->ctx, rv, "Update component failed");
+	}
 
 	memset(&args, 0, sizeof(args));
 	args.type = SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC;
@@ -2058,6 +2062,7 @@ write_publickey (struct sc_card *card, unsigned int offset,
 	args.data = key.exponent.data;
 	args.len = key.exponent.len;
 	rv = auth_update_component(card, &args);
+	free(args.data);
 	LOG_TEST_RET(card->ctx, rv, "Update component failed");
 
 	LOG_FUNC_RETURN(card->ctx, (int)len);
