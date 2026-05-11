@@ -1132,7 +1132,7 @@ static int read_ssh_key(void)
 		len = sprintf((char *) buf+4,"ssh-rsa");
 		len+=4;
 
-		if (sizeof(buf)-len < 4+pubkey->u.rsa.exponent.len)
+		if (sizeof(buf)-len < 5+pubkey->u.rsa.exponent.len)
 			goto fail;
 
 		n = pubkey->u.rsa.exponent.len;
