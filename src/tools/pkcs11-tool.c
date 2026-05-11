@@ -1342,6 +1342,8 @@ int main(int argc, char * argv[])
 		}
 		if (opt_uri->id) {
 			opt_object_id_len = opt_uri->id_len;
+			if (opt_object_id_len > sizeof(opt_object_id))
+				util_fatal("URI's object ID too long");
 			memcpy(opt_object_id, opt_uri->id, opt_object_id_len);
 		}
 	}
@@ -9608,6 +9610,10 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 		return session;
 	}
 	opt_object_id_len = (size_t) i;
+	if (opt_object_id_len > sizeof(opt_object_id)) {
+		fprintf(stderr, "ERR: object ID too long\n");
+		return session;
+	}
 	memcpy(opt_object_id, tmp, opt_object_id_len);
 
 	/* This is done in NSS */
