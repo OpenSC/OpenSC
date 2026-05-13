@@ -980,8 +980,7 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 	cmac_params_n = 0;
 	cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
 	cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
-	if (mac == NULL
-			|| (cmac_ctx = EVP_MAC_CTX_new(mac)) == NULL) {
+	if (mac == NULL || (cmac_ctx = EVP_MAC_CTX_new(mac)) == NULL) {
 		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -994,11 +993,11 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		goto err;
 	}
 
-	if (EVP_EncryptInit_ex(ed_ctx, (*cs->cipher_ecb)(), NULL, priv->sm_session.SKenc, zeros) != 1
-			|| EVP_CIPHER_CTX_set_padding(ed_ctx, 0) != 1
-			|| EVP_EncryptUpdate(ed_ctx, IV, &outli, priv->sm_session.enc_counter, 16) != 1
-			|| EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1
-			|| outdl != 0) {
+	if (EVP_EncryptInit_ex(ed_ctx, (*cs->cipher_ecb)(), NULL, priv->sm_session.SKenc, zeros) != 1 ||
+			EVP_CIPHER_CTX_set_padding(ed_ctx, 0) != 1 ||
+			EVP_EncryptUpdate(ed_ctx, IV, &outli, priv->sm_session.enc_counter, 16) != 1 ||
+			EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1 ||
+			outdl != 0) {
 		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"SM encode failed in OpenSSL");
 		r = SC_ERROR_INTERNAL;
@@ -1094,22 +1093,22 @@ static int piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 	memcpy(priv->sm_session.C_MCV_last, priv->sm_session.C_MCV, MCVlen); /* save is case fails */
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-	if (CMAC_Init(cmac_ctx, priv->sm_session.SKmac, priv->sm_session.aes_size, (*cs->cipher_cbc)(), NULL) != 1
-			|| CMAC_Update(cmac_ctx, priv->sm_session.C_MCV, MCVlen) != 1
-			|| CMAC_Update(cmac_ctx, header, sizeof(header)) != 1
-			|| CMAC_Update(cmac_ctx, sbuf,  macdatalen) != 1
-			|| CMAC_Final(cmac_ctx, priv->sm_session.C_MCV, &C_MCVlen) != 1) {
+	if (CMAC_Init(cmac_ctx, priv->sm_session.SKmac, priv->sm_session.aes_size, (*cs->cipher_cbc)(), NULL) != 1 ||
+			CMAC_Update(cmac_ctx, priv->sm_session.C_MCV, MCVlen) != 1 ||
+			CMAC_Update(cmac_ctx, header, sizeof(header)) != 1 ||
+			CMAC_Update(cmac_ctx, sbuf,  macdatalen) != 1 ||
+			CMAC_Final(cmac_ctx, priv->sm_session.C_MCV, &C_MCVlen) != 1) {
 		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
 #else
 	if(!EVP_MAC_init(cmac_ctx, (const unsigned char *)priv->sm_session.SKmac,
-				priv->sm_session.aes_size, cmac_params)
-			|| !EVP_MAC_update(cmac_ctx, priv->sm_session.C_MCV, MCVlen)
-			|| !EVP_MAC_update(cmac_ctx, header, sizeof(header))
-			|| !EVP_MAC_update(cmac_ctx, sbuf,  macdatalen)
-			|| !EVP_MAC_final(cmac_ctx, priv->sm_session.C_MCV, &C_MCVlen, MCVlen)) {
+				priv->sm_session.aes_size, cmac_params) ||
+			!EVP_MAC_update(cmac_ctx, priv->sm_session.C_MCV, MCVlen) ||
+			!EVP_MAC_update(cmac_ctx, header, sizeof(header)) ||
+			!EVP_MAC_update(cmac_ctx, sbuf,  macdatalen) ||
+			!EVP_MAC_final(cmac_ctx, priv->sm_session.C_MCV, &C_MCVlen, MCVlen)) {
 		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -1180,9 +1179,9 @@ static int piv_get_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apd
 			/* If not contactless, could read in clear */
 			/* Discovery object never has PIV_SM_GET_DATA_IN_CLEAR set */
 			sc_log(card->ctx,"init_flags:0x%8.8x sm_flags:0x%8.8lx",priv->init_flags,priv->sm_flags);
-			if (!(priv->init_flags & PIV_INIT_CONTACTLESS)
-					&& !(priv->init_flags & PIV_INIT_IN_READER_LOCK_OBTAINED)
-					&& (priv->sm_flags & PIV_SM_GET_DATA_IN_CLEAR)) {
+			if (!(priv->init_flags & PIV_INIT_CONTACTLESS) &&
+					!(priv->init_flags & PIV_INIT_IN_READER_LOCK_OBTAINED) &&
+					(priv->sm_flags & PIV_SM_GET_DATA_IN_CLEAR)) {
 					priv->sm_flags &= ~PIV_SM_GET_DATA_IN_CLEAR;
 				LOG_FUNC_RETURN(card->ctx, SC_ERROR_SM_NOT_APPLIED);
 			}
@@ -1277,24 +1276,24 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		goto err;
 	}
 
-	if (asn1_sm_response[0].flags & SC_ASN1_PRESENT  /* optional */
-			&& ( ee.value == NULL || ee.len <= 2)) {
+	if (asn1_sm_response[0].flags & SC_ASN1_PRESENT && /* optional */
+			( ee.value == NULL || ee.len <= 2)) {
 		sc_log(card->ctx,"SM BER-TLV not valid");
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
 
-	if ((asn1_sm_response[1].flags & SC_ASN1_PRESENT) == 0
-			|| (asn1_sm_response[2].flags & SC_ASN1_PRESENT) == 0) {
+	if ((asn1_sm_response[1].flags & SC_ASN1_PRESENT) == 0 ||
+			(asn1_sm_response[2].flags & SC_ASN1_PRESENT) == 0) {
 		sc_log(card->ctx,"SM missing status or R-MAC");
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
 
-	if (status.len != 2
-			|| status.value == NULL
-			|| rmac8.len != 8
-			|| rmac8.value == NULL) {
+	if (status.len != 2 ||
+			status.value == NULL ||
+			rmac8.len != 8 ||
+			rmac8.value == NULL) {
 		sc_log(card->ctx,"SM status or R-MAC length invalid");
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
@@ -1322,20 +1321,20 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 	macdatalen = (int)(status.value + status.len - sm_apdu->resp);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-	if (CMAC_Init(cmac_ctx, priv->sm_session.SKrmac, priv->sm_session.aes_size, (*cs->cipher_cbc)(), NULL) != 1
-			|| CMAC_Update(cmac_ctx, priv->sm_session.R_MCV, MCVlen) != 1
-			|| CMAC_Update(cmac_ctx, sm_apdu->resp, macdatalen) != 1
-			|| CMAC_Final(cmac_ctx, priv->sm_session.R_MCV, &R_MCVlen) != 1) {
+	if (CMAC_Init(cmac_ctx, priv->sm_session.SKrmac, priv->sm_session.aes_size, (*cs->cipher_cbc)(), NULL) != 1 ||
+			CMAC_Update(cmac_ctx, priv->sm_session.R_MCV, MCVlen) != 1 ||
+			CMAC_Update(cmac_ctx, sm_apdu->resp, macdatalen) != 1 ||
+			CMAC_Final(cmac_ctx, priv->sm_session.R_MCV, &R_MCVlen) != 1) {
 		sc_log_openssl(card->ctx);
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 		goto err;
 	}
 #else
 	if(!EVP_MAC_init(cmac_ctx, (const unsigned char *)priv->sm_session.SKrmac,
-				priv->sm_session.aes_size, cmac_params)
-			|| !EVP_MAC_update(cmac_ctx, priv->sm_session.R_MCV, MCVlen)
-			|| !EVP_MAC_update(cmac_ctx, sm_apdu->resp, macdatalen)
-			|| !EVP_MAC_final(cmac_ctx, priv->sm_session.R_MCV, &R_MCVlen, MCVlen)) {
+				priv->sm_session.aes_size, cmac_params) ||
+			!EVP_MAC_update(cmac_ctx, priv->sm_session.R_MCV, MCVlen) ||
+			!EVP_MAC_update(cmac_ctx, sm_apdu->resp, macdatalen) ||
+			!EVP_MAC_final(cmac_ctx, priv->sm_session.R_MCV, &R_MCVlen, MCVlen)) {
 		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -1355,11 +1354,11 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 	}
 
 	/* generate same IV used to encrypt response on card */
-	if (EVP_EncryptInit_ex(ed_ctx, (*cs->cipher_ecb)(), NULL, priv->sm_session.SKenc, zeros) != 1
-			|| EVP_CIPHER_CTX_set_padding(ed_ctx,0) != 1
-			|| EVP_EncryptUpdate(ed_ctx, IV, &outli, priv->sm_session.resp_enc_counter, 16) != 1
-			|| EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1
-			|| outdl != 0) {
+	if (EVP_EncryptInit_ex(ed_ctx, (*cs->cipher_ecb)(), NULL, priv->sm_session.SKenc, zeros) != 1 ||
+			EVP_CIPHER_CTX_set_padding(ed_ctx,0) != 1 ||
+			EVP_EncryptUpdate(ed_ctx, IV, &outli, priv->sm_session.resp_enc_counter, 16) != 1 ||
+			EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1 ||
+			outdl != 0) {
 		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"SM encode failed in OpenSSL");
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -1403,14 +1402,14 @@ static int piv_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu
 		q = plain->resp;
 
 		/* first round encryptes counter with zero IV, and does not save the output */
-		if (EVP_CIPHER_CTX_reset(ed_ctx) != 1
-				|| EVP_DecryptInit_ex(ed_ctx, (*cs->cipher_cbc)(), NULL, priv->sm_session.SKenc, IV) != 1
-				|| EVP_CIPHER_CTX_set_padding(ed_ctx,0) != 1
-				|| EVP_DecryptUpdate(ed_ctx, q ,&outl, p, inlen) != 1
-				|| EVP_DecryptUpdate(ed_ctx, lastb, &outll, p + inlen, 16 ) != 1
-				|| EVP_DecryptFinal_ex(ed_ctx, discard, &outdl) != 1
-				|| outdl != 0
-				|| outll != 16) {  /* should not happen */
+		if (EVP_CIPHER_CTX_reset(ed_ctx) != 1 ||
+				EVP_DecryptInit_ex(ed_ctx, (*cs->cipher_cbc)(), NULL, priv->sm_session.SKenc, IV) != 1 ||
+				EVP_CIPHER_CTX_set_padding(ed_ctx,0) != 1 ||
+				EVP_DecryptUpdate(ed_ctx, q ,&outl, p, inlen) != 1 ||
+				EVP_DecryptUpdate(ed_ctx, lastb, &outll, p + inlen, 16 ) != 1 ||
+				EVP_DecryptFinal_ex(ed_ctx, discard, &outdl) != 1 ||
+				outdl != 0 ||
+				outll != 16) {  /* should not happen */
 			sc_log_openssl(card->ctx);
 			sc_log(card->ctx,"SM _decode failed in OpenSSL");
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -1484,8 +1483,8 @@ static int piv_free_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_ap
 	if (plain) {
 		plain->sw1 = (*sm_apdu)->sw1;
 		plain->sw2 = (*sm_apdu)->sw2;
-		if (((*sm_apdu)->sw1 == 0x90 && (*sm_apdu)->sw2 == 00)
-				|| (*sm_apdu)->sw1 == 61){
+		if (((*sm_apdu)->sw1 == 0x90 && (*sm_apdu)->sw2 == 00) ||
+				(*sm_apdu)->sw1 == 61){
 			r  = piv_decode_apdu(card, plain, *sm_apdu);
 			goto err;
 		}
@@ -1936,10 +1935,10 @@ static int piv_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
 		goto err;
 	}
 
-	if ((md_ctx = EVP_MD_CTX_new()) == NULL
-			|| EVP_DigestVerifyInit(md_ctx, NULL, type, NULL, pkey) != 1
-			|| EVP_DigestVerifyUpdate(md_ctx, data, data_size) != 1
-			|| EVP_DigestVerifyFinal(md_ctx, sig, siglen) != 1) {
+	if ((md_ctx = EVP_MD_CTX_new()) == NULL ||
+			EVP_DigestVerifyInit(md_ctx, NULL, type, NULL, pkey) != 1 ||
+			EVP_DigestVerifyUpdate(md_ctx, data, data_size) != 1 ||
+			EVP_DigestVerifyFinal(md_ctx, sig, siglen) != 1) {
 		sc_log_openssl(card->ctx);
 		sc_log (card->ctx, "EVP_DigestVerifyFinal failed");
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -2034,8 +2033,8 @@ static int piv_sm_verify_certs(struct sc_card *card)
 		goto err;
 	}
 
-	if ((cert = d2i_X509(NULL, (const u8 **)&cert_blob, cert_bloblen)) == NULL
-			|| (cert_pkey = X509_get0_pubkey(cert)) == NULL) {
+	if ((cert = d2i_X509(NULL, (const u8 **)&cert_blob, cert_bloblen)) == NULL ||
+			(cert_pkey = X509_get0_pubkey(cert)) == NULL) {
 		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"OpenSSL failed to get pubkey from SM_CERT_SIGNER");
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -2054,14 +2053,14 @@ static int piv_sm_verify_certs(struct sc_card *card)
 		}
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-		if ((in_cvc_group = EC_GROUP_new_by_curve_name(cs->nid)) == NULL
-				|| (in_cvc_pkey = EVP_PKEY_new()) == NULL
-				|| (in_cvc_eckey = EC_KEY_new_by_curve_name(cs->nid)) == NULL
-				|| (in_cvc_point = EC_POINT_new(in_cvc_group)) == NULL
-				|| EC_POINT_oct2point(in_cvc_group, in_cvc_point,
-					priv->sm_in_cvc.publicPoint, priv->sm_in_cvc.publicPointlen, NULL) <= 0
-				|| EC_KEY_set_public_key(in_cvc_eckey, in_cvc_point) <= 0
-				|| EVP_PKEY_set1_EC_KEY(in_cvc_pkey, in_cvc_eckey) != 1) {
+		if ((in_cvc_group = EC_GROUP_new_by_curve_name(cs->nid)) == NULL ||
+				(in_cvc_pkey = EVP_PKEY_new()) == NULL ||
+				(in_cvc_eckey = EC_KEY_new_by_curve_name(cs->nid)) == NULL ||
+				(in_cvc_point = EC_POINT_new(in_cvc_group)) == NULL ||
+				EC_POINT_oct2point(in_cvc_group, in_cvc_point,
+					priv->sm_in_cvc.publicPoint, priv->sm_in_cvc.publicPointlen, NULL) <= 0 ||
+				EC_KEY_set_public_key(in_cvc_eckey, in_cvc_point) <= 0 ||
+				EVP_PKEY_set1_EC_KEY(in_cvc_pkey, in_cvc_eckey) != 1) {
 			sc_log_openssl(card->ctx);
 			sc_log(card->ctx, "OpenSSL failed to set EC pubkey, during verify");
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -2074,10 +2073,10 @@ static int piv_sm_verify_certs(struct sc_card *card)
 				priv->sm_in_cvc.publicPoint, priv->sm_in_cvc.publicPointlen);
 		params[params_n] = OSSL_PARAM_construct_end();
 
-		if (!(in_cvc_pkey_ctx = EVP_PKEY_CTX_new_from_name(PIV_LIBCTX, "EC", NULL))
-				|| !EVP_PKEY_fromdata_init(in_cvc_pkey_ctx)
-				|| !EVP_PKEY_fromdata(in_cvc_pkey_ctx, &in_cvc_pkey, EVP_PKEY_PUBLIC_KEY, params)
-				|| !in_cvc_pkey) {
+		if (!(in_cvc_pkey_ctx = EVP_PKEY_CTX_new_from_name(PIV_LIBCTX, "EC", NULL)) ||
+				!EVP_PKEY_fromdata_init(in_cvc_pkey_ctx) ||
+				!EVP_PKEY_fromdata(in_cvc_pkey_ctx, &in_cvc_pkey, EVP_PKEY_PUBLIC_KEY, params) ||
+				!in_cvc_pkey) {
 			sc_log_openssl(card->ctx);
 			sc_log(card->ctx, "OpenSSL failed to set EC pubkey, during verify");
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -2241,18 +2240,18 @@ static int piv_sm_open(struct sc_card *card)
 	/* Step H2 generate ephemeral EC */
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-	if ((eph_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL)) == NULL
-			|| EVP_PKEY_keygen_init(eph_ctx) <= 0
-			|| EVP_PKEY_CTX_set_ec_paramgen_curve_nid(eph_ctx, cs->nid) <= 0
-			|| EVP_PKEY_keygen(eph_ctx, &eph_pkey) <= 0
-			|| (eph_eckey = EVP_PKEY_get0_EC_KEY(eph_pkey)) == NULL
-			|| (eph_group = EC_KEY_get0_group(eph_eckey)) == NULL
-			|| (Qehlen = EC_POINT_point2oct(eph_group, EC_KEY_get0_public_key(eph_eckey),
-				POINT_CONVERSION_UNCOMPRESSED, NULL, Qehlen, NULL)) <= 0 /* get length */
-			|| Qehlen > cs->Qlen
-			|| (Qehlen = EC_POINT_point2oct(eph_group, EC_KEY_get0_public_key(eph_eckey),
-				POINT_CONVERSION_UNCOMPRESSED, Qeh, Qehlen, NULL)) <= 0
-			|| Qehlen > cs->Qlen) {
+	if ((eph_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL)) == NULL ||
+			EVP_PKEY_keygen_init(eph_ctx) <= 0 ||
+			EVP_PKEY_CTX_set_ec_paramgen_curve_nid(eph_ctx, cs->nid) <= 0 ||
+			EVP_PKEY_keygen(eph_ctx, &eph_pkey) <= 0 ||
+			(eph_eckey = EVP_PKEY_get0_EC_KEY(eph_pkey)) == NULL ||
+			(eph_group = EC_KEY_get0_group(eph_eckey)) == NULL ||
+			(Qehlen = EC_POINT_point2oct(eph_group, EC_KEY_get0_public_key(eph_eckey),
+				POINT_CONVERSION_UNCOMPRESSED, NULL, Qehlen, NULL)) <= 0  || /* get length */
+			Qehlen > cs->Qlen ||
+			(Qehlen = EC_POINT_point2oct(eph_group, EC_KEY_get0_public_key(eph_eckey),
+				POINT_CONVERSION_UNCOMPRESSED, Qeh, Qehlen, NULL)) <= 0 ||
+			Qehlen > cs->Qlen) {
 		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"OpenSSL failed to create ephemeral EC key");
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -2264,14 +2263,13 @@ static int piv_sm_open(struct sc_card *card)
 	eph_params[eph_params_n++] = OSSL_PARAM_construct_utf8_string( "group", cs->curve_group, 0);
 	eph_params[eph_params_n++] = OSSL_PARAM_construct_utf8_string( "point-format","uncompressed", 0);
 	eph_params[eph_params_n] = OSSL_PARAM_construct_end();
-	if (!(eph_ctx = EVP_PKEY_CTX_new_from_name(PIV_LIBCTX, "EC", NULL))
-			|| !EVP_PKEY_keygen_init(eph_ctx)
-			|| !EVP_PKEY_CTX_set_params(eph_ctx, eph_params)
-			|| !EVP_PKEY_generate(eph_ctx, &eph_pkey)
-			|| !(Qehxlen = EVP_PKEY_get1_encoded_public_key(eph_pkey, &Qehx))
-			|| !Qehx
-			|| Qehxlen > cs->Qlen
-			) {
+	if (!(eph_ctx = EVP_PKEY_CTX_new_from_name(PIV_LIBCTX, "EC", NULL)) ||
+			!EVP_PKEY_keygen_init(eph_ctx) ||
+			!EVP_PKEY_CTX_set_params(eph_ctx, eph_params) ||
+			!EVP_PKEY_generate(eph_ctx, &eph_pkey) ||
+			!(Qehxlen = EVP_PKEY_get1_encoded_public_key(eph_pkey, &Qehx)) ||
+			!Qehx ||
+			Qehxlen > cs->Qlen) {
 		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"OpenSSL failed to create ephemeral EC key");
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -2409,8 +2407,8 @@ static int piv_sm_open(struct sc_card *card)
 		const u8* tmpder;
 		size_t tmpderlen;
 
-		if ((tag = sc_asn1_find_tag(card->ctx, cvcder, cvclen, 0x7F21, &taglen)) == NULL
-				|| *cvcder != 0x7F || *(cvcder + 1) != 0x21) {
+		if ((tag = sc_asn1_find_tag(card->ctx, cvcder, cvclen, 0x7F21, &taglen)) == NULL ||
+				*cvcder != 0x7F || *(cvcder + 1) != 0x21) {
 
 			r = SC_ERROR_INTERNAL;
 			goto err;
@@ -2420,9 +2418,9 @@ static int piv_sm_open(struct sc_card *card)
 		tmpder =  cvcder;
 		tmpderlen = cvclen;
 
-		if (EVP_DigestInit(hash_ctx,EVP_sha256()) != 1
-				|| EVP_DigestUpdate(hash_ctx, tmpder, tmpderlen) != 1
-				|| EVP_DigestFinal_ex(hash_ctx, hash, NULL) != 1) {
+		if (EVP_DigestInit(hash_ctx,EVP_sha256()) != 1 ||
+				EVP_DigestUpdate(hash_ctx, tmpder, tmpderlen) != 1 ||
+				EVP_DigestFinal_ex(hash_ctx, hash, NULL) != 1) {
 			sc_log_openssl(card->ctx);
 			sc_log(card->ctx,"IDsicc hash failed");
 			r = SC_ERROR_INTERNAL;
@@ -2434,15 +2432,15 @@ static int piv_sm_open(struct sc_card *card)
 	/* Step H7 get the cards public key Qsicc into OpenSSL Cicc_eckey */
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-	if ((Cicc_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL)) == NULL
-			|| (Cicc_group = EC_GROUP_new_by_curve_name(cs->nid)) == NULL
-			|| (Cicc_pkey = EVP_PKEY_new()) == NULL
-			|| (Cicc_eckey = EC_KEY_new_by_curve_name(cs->nid)) == NULL
-			|| (Cicc_point = EC_POINT_new(Cicc_group)) == NULL
-			|| EC_POINT_oct2point(Cicc_group, Cicc_point,
-				priv->sm_cvc.publicPoint, priv->sm_cvc.publicPointlen, NULL) <= 0
-			|| EC_KEY_set_public_key(Cicc_eckey, Cicc_point) <= 0
-			|| EVP_PKEY_set1_EC_KEY(Cicc_pkey, Cicc_eckey) <= 0) {
+	if ((Cicc_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, NULL)) == NULL ||
+			(Cicc_group = EC_GROUP_new_by_curve_name(cs->nid)) == NULL ||
+			(Cicc_pkey = EVP_PKEY_new()) == NULL ||
+			(Cicc_eckey = EC_KEY_new_by_curve_name(cs->nid)) == NULL ||
+			(Cicc_point = EC_POINT_new(Cicc_group)) == NULL ||
+			EC_POINT_oct2point(Cicc_group, Cicc_point,
+				priv->sm_cvc.publicPoint, priv->sm_cvc.publicPointlen, NULL) <= 0 ||
+			EC_KEY_set_public_key(Cicc_eckey, Cicc_point) <= 0 ||
+			EVP_PKEY_set1_EC_KEY(Cicc_pkey, Cicc_eckey) <= 0) {
 		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"OpenSSL failed to get card's EC pubkey");
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -2455,10 +2453,10 @@ static int piv_sm_open(struct sc_card *card)
 			priv->sm_cvc.publicPoint, priv->sm_cvc.publicPointlen);
 	Cicc_params[Cicc_params_n] = OSSL_PARAM_construct_end();
 
-	if (!(Cicc_ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL))
-			|| !EVP_PKEY_fromdata_init(Cicc_ctx)
-			|| !EVP_PKEY_fromdata(Cicc_ctx, &Cicc_pkey, EVP_PKEY_PUBLIC_KEY, Cicc_params)
-			|| !Cicc_pkey) {
+	if (!(Cicc_ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL)) ||
+			!EVP_PKEY_fromdata_init(Cicc_ctx) ||
+			!EVP_PKEY_fromdata(Cicc_ctx, &Cicc_pkey, EVP_PKEY_PUBLIC_KEY, Cicc_params) ||
+			!Cicc_pkey) {
 		sc_log_openssl(card->ctx);
 		sc_log(card->ctx, "OpenSSL failed to set EC pubkey for Cicc");
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -2475,14 +2473,14 @@ static int piv_sm_open(struct sc_card *card)
 	}
 
 	/* Step H8 Compute the shared secret Z */
-	if ((Z_ctx = EVP_PKEY_CTX_new(eph_pkey, NULL)) == NULL
-			|| EVP_PKEY_derive_init(Z_ctx) <= 0
-			|| EVP_PKEY_derive_set_peer(Z_ctx, Cicc_pkey) <= 0
-			|| EVP_PKEY_derive(Z_ctx, NULL, &Zlen) <= 0
-			|| Zlen != cs->Zlen
-			|| (Z = malloc(Zlen)) == NULL
-			|| EVP_PKEY_derive(Z_ctx, Z, &Zlen) <= 0
-			|| Zlen != cs->Zlen) {
+	if ((Z_ctx = EVP_PKEY_CTX_new(eph_pkey, NULL)) == NULL ||
+			EVP_PKEY_derive_init(Z_ctx) <= 0 ||
+			EVP_PKEY_derive_set_peer(Z_ctx, Cicc_pkey) <= 0 ||
+			EVP_PKEY_derive(Z_ctx, NULL, &Zlen) <= 0 ||
+			Zlen != cs->Zlen ||
+			(Z = malloc(Zlen)) == NULL ||
+			EVP_PKEY_derive(Z_ctx, Z, &Zlen) <= 0 ||
+			Zlen != cs->Zlen) {
 		sc_log_openssl(card->ctx);
 		sc_log(card->ctx,"OpenSSL failed to create secret Z");
 		r = SC_ERROR_SM_AUTHENTICATION_FAILED;
@@ -2555,9 +2553,9 @@ static int piv_sm_open(struct sc_card *card)
 
 	EVP_MD_CTX_reset(hash_ctx);
 	for (i = 0; i < reps; i++) {
-		if (EVP_DigestInit(hash_ctx,(*cs->kdf_md)()) != 1
-				|| EVP_DigestUpdate(hash_ctx, kdf_in, kdf_inlen) != 1
-				|| EVP_DigestFinal_ex(hash_ctx, p, &hashlen) != 1) {
+		if (EVP_DigestInit(hash_ctx,(*cs->kdf_md)()) != 1 ||
+				EVP_DigestUpdate(hash_ctx, kdf_in, kdf_inlen) != 1 ||
+				EVP_DigestFinal_ex(hash_ctx, p, &hashlen) != 1) {
 			sc_log_openssl(card->ctx);
 			sc_log(card->ctx,"KDF hash failed");
 			r = SC_ERROR_INTERNAL;
@@ -2620,10 +2618,10 @@ static int piv_sm_open(struct sc_card *card)
 		MacDatalen = (int)(p - MacData);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-		if ((cmac_ctx = CMAC_CTX_new()) == NULL
-				|| CMAC_Init(cmac_ctx, priv->sm_session.SKcfrm, cs->aeskeylen, (*cs->cipher_cbc)(), NULL) != 1
-				|| CMAC_Update(cmac_ctx, MacData, MacDatalen) != 1
-				|| CMAC_Final(cmac_ctx, Check_AuthCryptogram, &Check_Alen) != 1) {
+		if ((cmac_ctx = CMAC_CTX_new()) == NULL ||
+				CMAC_Init(cmac_ctx, priv->sm_session.SKcfrm, cs->aeskeylen, (*cs->cipher_cbc)(), NULL) != 1 ||
+				CMAC_Update(cmac_ctx, MacData, MacDatalen) != 1 ||
+				CMAC_Final(cmac_ctx, Check_AuthCryptogram, &Check_Alen) != 1) {
 			r = SC_ERROR_INTERNAL;
 			sc_log_openssl(card->ctx);
 			sc_log(card->ctx,"AES_CMAC failed %d",r);
@@ -2634,12 +2632,12 @@ static int piv_sm_open(struct sc_card *card)
 		cmac_params[cmac_params_n++] = OSSL_PARAM_construct_utf8_string("cipher", cs->cipher_cbc_name, 0);
 
 		cmac_params[cmac_params_n] = OSSL_PARAM_construct_end();
-		if (mac == NULL
-				|| (cmac_ctx = EVP_MAC_CTX_new(mac)) == NULL
-				|| !EVP_MAC_init(cmac_ctx, priv->sm_session.SKcfrm,
-					priv->sm_session.aes_size, cmac_params)
-				|| !EVP_MAC_update( cmac_ctx, MacData, MacDatalen)
-				|| !EVP_MAC_final(cmac_ctx, Check_AuthCryptogram, &Check_Alen, cs->AuthCryptogramlen)) {
+		if (mac == NULL ||
+				(cmac_ctx = EVP_MAC_CTX_new(mac)) == NULL ||
+				!EVP_MAC_init(cmac_ctx, priv->sm_session.SKcfrm,
+					priv->sm_session.aes_size, cmac_params) ||
+				!EVP_MAC_update( cmac_ctx, MacData, MacDatalen) ||
+				!EVP_MAC_final(cmac_ctx, Check_AuthCryptogram, &Check_Alen, cs->AuthCryptogramlen)) {
 			sc_log_openssl(card->ctx);
 			r = SC_ERROR_INTERNAL;
 			sc_log(card->ctx,"AES_CMAC failed %d",r);
@@ -2972,8 +2970,8 @@ static int piv_find_aid(sc_card_t * card)
 
 				/* early cards returned full AID, rather then just the pix */
 				for (i = 0; piv_aids[i].len_long != 0; i++) {
-					if ((pixlen >= 6 && memcmp(pix, piv_aids[i].value + 5, piv_aids[i].len_long - 5 ) == 0)
-							|| ((pixlen >=  piv_aids[i].len_short && memcmp(pix, piv_aids[i].value,
+					if ((pixlen >= 6 && memcmp(pix, piv_aids[i].value + 5, piv_aids[i].len_long - 5 ) == 0) ||
+							((pixlen >=  piv_aids[i].len_short && memcmp(pix, piv_aids[i].value,
 								piv_aids[i].len_short) == 0))) {
 						free(priv->aid_der.value);  /* free previous value if any */
 						if ((priv->aid_der.value = malloc(resplen)) == NULL) {
@@ -3029,8 +3027,8 @@ static int piv_read_obj_from_file(sc_card_t * card, char * filename,
 	body = tagbuf;
 	/* accept any tag for now, just get length */
 	r_tag = sc_asn1_read_tag(&body, len, &cla_out, &tag_out, &bodylen);
-	if ((r_tag != SC_SUCCESS && r_tag != SC_ERROR_ASN1_END_OF_CONTENTS)
-			|| body == NULL) {
+	if ((r_tag != SC_SUCCESS && r_tag != SC_ERROR_ASN1_END_OF_CONTENTS) ||
+			body == NULL) {
 		sc_log(card->ctx, "DER problem");
 		r = SC_ERROR_FILE_NOT_FOUND;
 		goto err;
@@ -3120,12 +3118,12 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 	 */
 	sc_log(card->ctx,"enumtag:%d sm_ctx.sm_mode:%d piv_objects[enumtag].flags:0x%8.8x sm_flags:0x%8.8lx it_flags:0x%8.8x",
 			enumtag, card->sm_ctx.sm_mode, piv_objects[enumtag].flags, priv->sm_flags, priv->init_flags);
-	if (priv->sm_flags & PIV_SM_FLAGS_SM_IS_ACTIVE
-			&& enumtag != PIV_OBJ_DISCOVERY
-			&& card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
-			&& !(piv_objects[enumtag].flags & PIV_OBJECT_NEEDS_PIN)
-			&& !(priv->sm_flags & (PIV_SM_FLAGS_NEVER | PIV_SM_FLAGS_ALWAYS))
-			&& !(priv->init_flags & ( PIV_INIT_CONTACTLESS | PIV_INIT_IN_READER_LOCK_OBTAINED))) {
+	if (priv->sm_flags & PIV_SM_FLAGS_SM_IS_ACTIVE &&
+			enumtag != PIV_OBJ_DISCOVERY &&
+			card->sm_ctx.sm_mode == SM_MODE_TRANSMIT &&
+			!(piv_objects[enumtag].flags & PIV_OBJECT_NEEDS_PIN) &&
+			!(priv->sm_flags & (PIV_SM_FLAGS_NEVER | PIV_SM_FLAGS_ALWAYS)) &&
+			!(priv->init_flags & ( PIV_INIT_CONTACTLESS | PIV_INIT_IN_READER_LOCK_OBTAINED))) {
 			sc_log(card->ctx,"Set PIV_SM_GET_DATA_IN_CLEAR");
 		priv->sm_flags |= PIV_SM_GET_DATA_IN_CLEAR;
 	}
@@ -3138,9 +3136,8 @@ piv_get_data(sc_card_t * card, int enumtag, u8 **buf, size_t *buf_len)
 		size_t bodylen = 0;
 		const u8 *body = *buf;
 		r_tag = sc_asn1_read_tag(&body, r, &cla_out, &tag_out, &bodylen);
-		if (r_tag != SC_SUCCESS
-				|| body == NULL
-				|| ((cla_out << 24 | tag_out) != piv_objects[enumtag].resp_tag)) {
+		if (r_tag != SC_SUCCESS || body == NULL ||
+				((cla_out << 24 | tag_out) != piv_objects[enumtag].resp_tag)) {
 			sc_log(card->ctx, "invalid tag or length r_tag:%d body:%p", r_tag, body);
 			r = SC_ERROR_FILE_NOT_FOUND;
 			goto err;
@@ -3333,9 +3330,10 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 			 * Could reconstruct ASN1 of (T)(L) stating location from length and known tag.
 			 * as the size of (L) depends on the length of value
 			 */
-			if ((tag = sc_asn1_find_tag(card->ctx, body, bodylen, 0x7F21, &taglen)) != NULL
-					&& cvc_start && cvc_start < tag
-					&& cvc_start[0] == 0x7f && cvc_start[1] == 0x21) {
+			if ((tag = sc_asn1_find_tag(card->ctx, body, bodylen, 0x7F21, &taglen)) != NULL &&
+					cvc_start &&
+					cvc_start < tag &&
+					cvc_start[0] == 0x7f && cvc_start[1] == 0x21) {
 				cvc_len = tag - cvc_start + taglen;
 				/* decode the intermediate CVC */
 				r = piv_decode_cvc(card, &cvc_start, &cvc_len, &priv->sm_in_cvc);
@@ -4396,8 +4394,8 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 			if (fascn && fascnlen == 25 && fbits) {
 				/* test if guid and the fascn starts with ;9999 (in ISO 4bit + parity code) */
 				/* ;9999 is non-gov issued FASC-N, will use FASC-N for gov issued if no guid */
-				if (!(gbits && fascn[0] == 0xD4 && fascn[1] == 0xE7
-							&& fascn[2] == 0x39 && (fascn[3] | 0x7F) == 0xFF)) {
+				if (!(gbits && fascn[0] == 0xD4 && fascn[1] == 0xE7 &&
+							fascn[2] == 0x39 && (fascn[3] | 0x7F) == 0xFF)) {
 					/* fascnlen is 25 */
 					serial->len = fascnlen;
 					memcpy (serial->value, fascn, serial->len);
@@ -4880,10 +4878,10 @@ static int piv_parse_discovery(sc_card_t *card, u8 * rbuf, size_t rbuflen, int a
 
 	if (rbuflen != 0) {
 		body = rbuf;
-		if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS
-				|| body == NULL
-				|| bodylen == 0
-				|| ((cla_out|tag_out) != 0x7E)) {
+		if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS ||
+				body == NULL ||
+				bodylen == 0 ||
+				((cla_out|tag_out) != 0x7E)) {
 			sc_log(card->ctx, "DER problem %d",r);
 			r = SC_ERROR_INVALID_ASN1_OBJECT;
 			goto err;
@@ -4907,8 +4905,8 @@ static int piv_parse_discovery(sc_card_t *card, u8 * rbuf, size_t rbuflen, int a
 				priv->pin_policy = (*pinp << 8) + *(pinp + 1);
 				sc_log(card->ctx, "Discovery pinp flags=0x%2.2x 0x%2.2x",*pinp, *(pinp+1));
 				if ((priv->pin_policy & (PIV_PP_PIN | PIV_PP_GLOBAL))
-						== (PIV_PP_PIN | PIV_PP_GLOBAL)
-						&& priv->pin_policy & PIV_PP_GLOBAL_PRIMARY) {
+						== (PIV_PP_PIN | PIV_PP_GLOBAL) &&
+						priv->pin_policy & PIV_PP_GLOBAL_PRIMARY) {
 					sc_log(card->ctx, "Pin Preference - Global");
 					priv->pin_preference = 0x00;
 				}
@@ -4969,10 +4967,10 @@ static int piv_parse_ccc(sc_card_t *card, u8* rbuf, size_t rbuflen)
 
 	/* Outer layer is a DER tlv */
 	body = rbuf;
-	if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS
-			|| body == NULL
-			|| bodylen == 0
-			|| ((cla_out << 24 | tag_out) != piv_objects[PIV_OBJ_CCC].resp_tag)) {
+	if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS ||
+			body == NULL ||
+			bodylen == 0 ||
+			((cla_out << 24 | tag_out) != piv_objects[PIV_OBJ_CCC].resp_tag)) {
 		sc_log(card->ctx, "DER problem %d",r);
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		goto err;
@@ -5059,9 +5057,9 @@ static int piv_find_discovery(sc_card_t *card)
 		if ( r == 0 && priv->obj_cache[PIV_OBJ_DISCOVERY].obj_len == 0)
 			goto end;
 
-		if (r >= 0 && priv->obj_cache[PIV_OBJ_DISCOVERY].obj_len == rbuflen
-				&& priv->obj_cache[PIV_OBJ_DISCOVERY].obj_data
-				&& !memcmp(rbuf, priv->obj_cache[PIV_OBJ_DISCOVERY].obj_data, rbuflen)) {
+		if (r >= 0 && priv->obj_cache[PIV_OBJ_DISCOVERY].obj_len == rbuflen &&
+				priv->obj_cache[PIV_OBJ_DISCOVERY].obj_data &&
+				!memcmp(rbuf, priv->obj_cache[PIV_OBJ_DISCOVERY].obj_data, rbuflen)) {
 				goto end;
 		}
 		/* This should not happen  bad card */
@@ -5125,8 +5123,8 @@ piv_process_history(sc_card_t *card)
 	/* the object is now cached, see what we have */
 	if (rbuflen != 0) {
 		body = rbuf;
-		if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS
-				|| ((cla_out << 24 | tag_out) != piv_objects[PIV_OBJ_HISTORY].resp_tag)) {
+		if ((r = sc_asn1_read_tag(&body, rbuflen, &cla_out, &tag_out,  &bodylen)) != SC_SUCCESS ||
+				((cla_out << 24 | tag_out) != piv_objects[PIV_OBJ_HISTORY].resp_tag)) {
 			sc_log(card->ctx, "DER problem %d",r);
 			r = SC_ERROR_INVALID_ASN1_OBJECT;
 			goto err;
@@ -5242,10 +5240,10 @@ piv_process_history(sc_card_t *card)
 		 */
 
 		body = ocfhfbuf;
-		if (sc_asn1_read_tag(&body, ocfhflen, &cla_out, &tag_out, &bodylen) != SC_SUCCESS
-				|| body == NULL
-				|| bodylen == 0
-				|| (cla_out|tag_out) != 0x30) {
+		if (sc_asn1_read_tag(&body, ocfhflen, &cla_out, &tag_out, &bodylen) != SC_SUCCESS ||
+				body == NULL ||
+				bodylen == 0 ||
+				(cla_out|tag_out) != 0x30) {
 			sc_log(card->ctx, "DER problem");
 			r = SC_ERROR_INVALID_ASN1_OBJECT;
 			goto err;
@@ -5253,10 +5251,10 @@ piv_process_history(sc_card_t *card)
 		seq = body;
 		while (bodylen > 0) {
 			seqtag = seq;
-			if (sc_asn1_read_tag(&seq, bodylen, &cla_out, &tag_out, &seqlen) != SC_SUCCESS
-					|| seq == 0
-					|| seqlen == 0
-					|| (cla_out|tag_out) != 0x30) {
+			if (sc_asn1_read_tag(&seq, bodylen, &cla_out, &tag_out, &seqlen) != SC_SUCCESS ||
+					seq == 0 ||
+					seqlen == 0 ||
+					(cla_out|tag_out) != 0x30) {
 				sc_log(card->ctx, "DER problem");
 				r = SC_ERROR_INVALID_ASN1_OBJECT;
 				goto err;
@@ -5494,8 +5492,8 @@ static int piv_match_card_continued(sc_card_t *card)
 				type = SC_CARD_TYPE_PIV_II_TOKEN2;
 			}
 			/* look for TLV historic data */
-			else if (card->reader->atr_info.hist_bytes_len > 0
-					&& card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
+			else if (card->reader->atr_info.hist_bytes_len > 0 &&
+					card->reader->atr_info.hist_bytes[0] == 0x80u) { /* compact TLV */
 				size_t datalen;
 				const u8 *data;
 
@@ -5520,8 +5518,8 @@ static int piv_match_card_continued(sc_card_t *card)
 					int k;
 
 					for (k = 0; piv_aids[k].len_long != 0; k++) {
-						if (datalen == piv_aids[k].len_long
-							&& !memcmp(data, piv_aids[k].value, datalen)) {
+						if (datalen == piv_aids[k].len_long &&
+							!memcmp(data, piv_aids[k].value, datalen)) {
 							type = SC_CARD_TYPE_PIV_II_HIST;
 							break;
 						}
@@ -5574,11 +5572,11 @@ static int piv_match_card_continued(sc_card_t *card)
 
 	/* See if contactless  or run as virtual card */
 	/* PivApplet in .github/test_piv.sh for example */
-	if (card->reader->atr.len >= 4
-			&& card->reader->atr.value[0] == 0x3b
-			&& (card->reader->atr.value[1] & 0xF0) == 0x80
-			&& card->reader->atr.value[2] == 0x80
-			&& card->reader->atr.value[3] == 0x01) {
+	if (card->reader->atr.len >= 4 &&
+			card->reader->atr.value[0] == 0x3b &&
+			(card->reader->atr.value[1] & 0xF0) == 0x80 &&
+			card->reader->atr.value[2] == 0x80 &&
+			card->reader->atr.value[3] == 0x01) {
 		priv->init_flags |= PIV_INIT_CONTACTLESS;
 	}
 
@@ -5789,11 +5787,11 @@ static int piv_match_card_continued(sc_card_t *card)
 			card->type, r2, priv->card_issues, r, priv->alg_ids);
 	switch(card->type) {
 		case SC_CARD_TYPE_PIV_II_NEO:
-			priv->card_issues |= CI_NO_EC384
-				| CI_VERIFY_630X
-				| CI_OTHER_AID_LOSE_STATE
-				| CI_LEAKS_FILE_NOT_FOUND
-				| CI_NFC_EXPOSE_TOO_MUCH;
+			priv->card_issues |= CI_NO_EC384 |
+				CI_VERIFY_630X |
+				CI_OTHER_AID_LOSE_STATE |
+				CI_LEAKS_FILE_NOT_FOUND |
+				CI_NFC_EXPOSE_TOO_MUCH;
 			if (priv->yubico_version  < 0x00040302)
 				priv->card_issues |= CI_VERIFY_LC0_FAIL;
 			break;
@@ -5801,8 +5799,8 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_YUBIKEY4:
 		case SC_CARD_TYPE_PIV_II_PIVAPPLET:
 		case SC_CARD_TYPE_PIV_II_TOKEN2:
-			priv->card_issues |=  CI_OTHER_AID_LOSE_STATE
-				| CI_LEAKS_FILE_NOT_FOUND;
+			priv->card_issues |=  CI_OTHER_AID_LOSE_STATE |
+				CI_LEAKS_FILE_NOT_FOUND;
 			if (priv->yubico_version  < 0x00040302)
 				priv->card_issues |= CI_VERIFY_LC0_FAIL;
 			if (priv->yubico_version >= 0x00050700) /* Also used by Token2 */
@@ -5836,27 +5834,27 @@ static int piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC:
 		case SC_CARD_TYPE_PIV_II_GEMALTO_DUAL_CAC:
 		case SC_CARD_TYPE_PIV_II_OBERTHUR_DUAL_CAC:
-			priv->card_issues |= CI_VERIFY_LC0_FAIL
-				| CI_PIV_AID_LOSE_STATE
-				| CI_NO_RANDOM
-				| CI_OTHER_AID_LOSE_STATE;
+			priv->card_issues |= CI_VERIFY_LC0_FAIL |
+				CI_PIV_AID_LOSE_STATE |
+				CI_NO_RANDOM |
+				CI_OTHER_AID_LOSE_STATE;
 			break;
 
 		case SC_CARD_TYPE_PIV_II_GENERIC:
-			priv->card_issues |= CI_VERIFY_LC0_FAIL
-				| CI_OTHER_AID_LOSE_STATE;
+			priv->card_issues |= CI_VERIFY_LC0_FAIL |
+				CI_OTHER_AID_LOSE_STATE;
 			break;
 
 		case SC_CARD_TYPE_PIV_II_PIVKEY:
-			priv->card_issues |= CI_VERIFY_LC0_FAIL
-				| CI_PIV_AID_LOSE_STATE /* be conservative */
-				| CI_NO_RANDOM; /* does not have 9B key */
+			priv->card_issues |= CI_VERIFY_LC0_FAIL |
+				CI_PIV_AID_LOSE_STATE | /* be conservative */
+				CI_NO_RANDOM; /* does not have 9B key */
 				/* Discovery object returns 6A 82 so is not on card by default */
 			break;
 
 		default:
-			priv->card_issues |= CI_VERIFY_LC0_FAIL
-				| CI_OTHER_AID_LOSE_STATE;
+			priv->card_issues |= CI_VERIFY_LC0_FAIL |
+				CI_OTHER_AID_LOSE_STATE;
 			/* opensc.conf may have it wrong, continue anyway */
 			sc_log(card->ctx, "Unknown PIV card->type %d", card->type);
 			card->type = SC_CARD_TYPE_PIV_II_GENERIC;
@@ -6007,14 +6005,14 @@ static int piv_init(sc_card_t *card)
 			sc_log(card->ctx,"User has requested PIV_SM_FLAGS_NEVER");
 			r = SC_SUCCESS; /* Users choice */
 
-		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS)
-				&& !(priv->pin_policy & PIV_PP_VCI_IMPL)) {
+		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS) &&
+				!(priv->pin_policy & PIV_PP_VCI_IMPL)) {
 			sc_log(card->ctx,"Contactless and no card support for VCI");
 			r = SC_SUCCESS; /* User should know VCI is not possible with their card; use like 800-73-3 contactless  */
 
-		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS)
-				&& !(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC)
-				&& (priv->pairing_code[0] == 0x00)) {
+		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS) &&
+				!(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC) &&
+				(priv->pairing_code[0] == 0x00)) {
 			sc_log(card->ctx,"Contactless, pairing_code required and no pairing code");
 			r = SC_ERROR_PIN_CODE_INCORRECT; /* User should know they need to set pairing code */
 
@@ -6263,9 +6261,9 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	priv->pin_cmd_verify = 0;
 
 	/* tell user verify not supported on contactless without VCI */
-	if (priv->pin_cmd_verify_sw1 == 0x69 && priv->pin_cmd_verify_sw2 == 0x82
-			&& priv->init_flags & PIV_INIT_CONTACTLESS
-			&& card->type == SC_CARD_TYPE_PIV_II_800_73_4) {
+	if (priv->pin_cmd_verify_sw1 == 0x69 && priv->pin_cmd_verify_sw2 == 0x82 &&
+			priv->init_flags & PIV_INIT_CONTACTLESS &&
+			card->type == SC_CARD_TYPE_PIV_II_800_73_4) {
 				sc_log(card->ctx, "Token does not support pin verify over contacless reader");
 				r = SC_ERROR_NOT_SUPPORTED;
 	}
@@ -6303,8 +6301,8 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		if (priv->card_issues & CI_CANT_USE_GETDATA_FOR_STATE) {
 			sc_log(card->ctx, "CI_CANT_USE_GETDATA_FOR_STATE set, assume logged_in=%d", priv->logged_in);
 			data->pin1.logged_in = priv->logged_in; /* use what ever we saw last */
-		} else if (priv->card_issues & CI_VERIFY_LC0_FAIL
-			&& priv->pin_cmd_verify_sw1 == 0x63U ) { /* can not use modified return codes from iso->drv->pin_cmd */
+		} else if (priv->card_issues & CI_VERIFY_LC0_FAIL &&
+				priv->pin_cmd_verify_sw1 == 0x63U ) { /* can not use modified return codes from iso->drv->pin_cmd */
 			/* try another method, looking at a protected object this may require adding one of these to NEO */
 			r = piv_check_protected_objects(card);
 			if (r == SC_SUCCESS)
