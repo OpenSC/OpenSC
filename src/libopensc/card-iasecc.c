@@ -3303,6 +3303,8 @@ iasecc_compute_signature_dst(struct sc_card *card,
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "It's not SC_SEC_OPERATION_SIGN");
 	else if (!(prv->key_size & 0x1E0) || (prv->key_size & ~0x1E0))
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid key size for SC_SEC_OPERATION_SIGN");
+	if (sizeof(rbuf) < prv->key_size)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
 	memset(&qsign_data, 0, sizeof(qsign_data));
 	if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)   {
