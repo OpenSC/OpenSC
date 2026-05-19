@@ -94,6 +94,11 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 		cert_info = (struct sc_pkcs15_cert_info *)obj.data;
 		if (cert_info && cert_info->path.len > 0) {
 			cert_slot = cert_info->path.value[cert_info->path.len - 1] - 1;
+			if (cert_slot != 0 && cert_slot != 1) {
+				/* unknown slot, see `cert_paths` below */
+				r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+				LOG_TEST_GOTO_ERR(card->ctx, r, "Unknown certificate path");
+			}
 		}
 
 		sc_pkcs15_free_cert_info(cert_info);
