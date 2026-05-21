@@ -1,3 +1,4 @@
+---
 BasedOnStyle: LLVM
 # defaults from LLVM
 # BreakBeforeBraces: Attach
@@ -40,3 +41,7 @@ BraceWrapping:
   AfterObjCDeclaration: true
   AfterUnion:      true
   AfterFunction:   true
+
+---
+Language: Json
+DisableFormat: true
