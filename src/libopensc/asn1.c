@@ -1492,7 +1492,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	void *parm = entry->parm;
 	int (*callback_func)(sc_context_t *nctx, void *arg, const u8 *nobj,
 			     size_t nobjlen, int ndepth);
-	size_t *len = (size_t *) entry->arg;
+	size_t *len = (size_t *)entry->arg;
 	int r = 0;
 
 	callback_func = parm;
@@ -1524,10 +1524,10 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_INTEGER:
 	case SC_ASN1_ENUMERATED:
 		if (parm != NULL) {
-			r = sc_asn1_decode_integer(obj, objlen, (int *) entry->parm, 0);
+			r = sc_asn1_decode_integer(obj, objlen, (int *)entry->parm, 0);
 			if (r == SC_SUCCESS) {
 				sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*sdecoding '%s' returned %d\n",
-					depth, depth, "", entry->name, *((int *) entry->parm));
+					depth, depth, "", entry->name, *((int *)entry->parm));
 			}
 		}
 		break;
@@ -1698,7 +1698,7 @@ static void sc_free_entry(struct sc_asn1_entry *asn1) {
 		switch (entry->type) {
 		case SC_ASN1_CHOICE:
 		case SC_ASN1_STRUCT:
-			sc_free_entry((struct sc_asn1_entry *) entry->parm);
+			sc_free_entry((struct sc_asn1_entry *)entry->parm);
 			break;
 		case SC_ASN1_OCTET_STRING:
 		case SC_ASN1_BIT_STRING_NI:
@@ -1758,7 +1758,7 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 		/* Special case CHOICE has no tag */
 		if (entry->type == SC_ASN1_CHOICE) {
 			r = asn1_decode(ctx,
-				(struct sc_asn1_entry *) entry->parm,
+				(struct sc_asn1_entry *)entry->parm,
 				p, left, &p, &left, 1, depth + 1);
 			/* When the inner call fails it returns before writing
 			 * back to *newp and *len_left, so the caller's p/left are
@@ -1829,7 +1829,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 	void *parm = entry->parm;
 	int (*callback_func)(sc_context_t *nctx, void *arg, u8 **nobj,
 			     size_t *nobjlen, int ndepth);
-	const size_t *len = (const size_t *) entry->arg;
+	const size_t *len = (const size_t *)entry->arg;
 	int r = 0;
 	u8 * buf = NULL;
 	size_t buflen = 0;
@@ -1896,7 +1896,7 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		break;
 	case SC_ASN1_INTEGER:
 	case SC_ASN1_ENUMERATED:
-		r = asn1_encode_integer(*((int *) entry->parm), &buf, &buflen);
+		r = asn1_encode_integer(*((int *)entry->parm), &buf, &buflen);
 		break;
 	case SC_ASN1_BIT_STRING_NI:
 	case SC_ASN1_BIT_STRING:
