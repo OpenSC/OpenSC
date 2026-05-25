@@ -134,6 +134,10 @@ static void show_certs(sc_card_t *card)
 			printf(", Invalid Cert-file: Type=%d, EF-Structure=%d\n", f->type, f->ef_structure);
 			continue;
 		}
+		if (f->size > sizeof(buf)) {
+			printf(", Certificate too large for buffer (%zu > %zu)\n", f->size, sizeof(buf));
+			continue;
+		}
 		if((j=sc_read_binary(card,0,buf,f->size,0))<0){
 			printf(", Cannot read Cert-file, %s\n", sc_strerror(j));
 			continue;
@@ -357,6 +361,10 @@ static void handle_readcert(sc_card_t *card, long cert, char *file)
 	sc_format_path(certlist[cert].path,&p);
 	if((i=sc_select_file(card,&p,&f))<0){
 		printf("cannot select certfile, %s\n", sc_strerror(i));
+		return;
+	}
+	if (f->size > sizeof(buf)) {
+		printf("Certificate too large for buffer (%zu > %zu)\n", f->size, sizeof(buf));
 		return;
 	}
 	if((len=sc_read_binary(card,0,buf,f->size,0))<0){
