@@ -492,6 +492,10 @@ static char *findPattern(u8 *pat, u8 *buf, size_t len)
 data_found:
 	/* assume length is less than 128 bytes, so is coded in 1 byte */
 	size = 0x000000ff & (int) *(from+6);
+	if (from + 7 + size > buf + len) {
+		/* not enough data in the source buffer -- invalid data received */
+		return NULL;
+	}
 	if ( size == 0 ) return NULL; /* empty data */
 	res = calloc( size+1, sizeof(char) );
 	if ( res == NULL) return NULL; /* calloc() error */
