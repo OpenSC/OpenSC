@@ -1462,6 +1462,8 @@ decrypt_response(struct sc_card *card, unsigned char *in, size_t inlen, unsigned
 	if (cipher_len < 2 || cipher_len > sizeof plaintext)
 		return -1;
 
+	/* Skip the 0x01 separator between tag and ciphertext */
+	p++;
 	/* decrypt */
 	if (KEY_TYPE_AES == exdata->smtype)
 		aes128_decrypt_cbc(card, exdata->sk_enc, 16, iv, p, cipher_len - 1, plaintext);
