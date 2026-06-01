@@ -4278,6 +4278,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 
 	free(iv);
 	free(aad);
+	free(in_buffer);
 	printf("Key unwrapped\n");
 	show_object(session, hSecretKey);
 	return 1;
