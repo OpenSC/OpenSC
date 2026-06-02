@@ -961,6 +961,11 @@ construct_data_tlv(struct sc_card *card, struct sc_apdu *apdu, unsigned char *ap
 
 	exdata = (epass2003_exdata *)card->drv_data;
 
+	/* we encrypt the pad buffer and then write it to the apdu_buf at offset block_size + tlv_more */
+	if (apdu->lc >= sizeof(pad) - block_size - 5)
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA,
+				"ePass2003 secure messaging APDU data too large");
+
 	/* padding */
 	apdu_buf[block_size] = 0x87;
 	memcpy(pad, apdu->data, apdu->lc);
