@@ -24,6 +24,11 @@ jakuje(at)gmail.com .
 
 You can expect update on the issue no later than in two weeks.
 
+If you use GitHub's private vulnerability reporting, make sure to submit
+ONE advisory per issue. The CVE assignment requires that the issue is
+self-contained. Assigning a CVE number for multiple issues (even if from
+similar class of weaknesses) is complicated.
+
 ## What Qualifies as a Security Issue
 
 Please use the private vulnerability reporting process only for issues that have **security impact**. This includes, but is not limited to:
