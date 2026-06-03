@@ -652,7 +652,7 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 {
 	int		r;
 	size_t		len, keylen, endpos;
-	u8		*buf, key[280], *p, num_keys;
+	u8		*buf, key[512], *p, num_keys;
 	sc_file_t	*tfile = NULL;
 	sc_path_t	tpath;
 
@@ -688,6 +688,11 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 	/* encode public key */
 	keylen = starcos_encode_pukey(rsa, NULL, kinfo);
 	if (!keylen) {
+		free(buf);
+		return SC_ERROR_INTERNAL;
+	}
+	/* The fixed buffer `key` should fit 3k RSA key + the header and footer added in this function */
+	if (keylen + 12 > sizeof(key)) {
 		free(buf);
 		return SC_ERROR_INTERNAL;
 	}
