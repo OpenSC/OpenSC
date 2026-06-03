@@ -197,7 +197,7 @@ verify_and_cache_pace_can(sc_card_t *card, const char *opt_can)
 	can_verify_cmd.pin1.data = (unsigned char *)can;
 	can_verify_cmd.pin1.len = strlen(can);
 
-	rv = card->ops->pin_cmd(card, &can_verify_cmd, NULL);
+	rv = card->ops->pin_cmd(card, &can_verify_cmd);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "CAN number verification failed: %s\nCheck the number and try again.\n", sc_strerror(rv));
@@ -249,7 +249,7 @@ change_pin(sc_card_t *card, const char *opt_pin)
 	pin_verify_cmd.pin1.data = (unsigned char *)pin;
 	pin_verify_cmd.pin1.len = strlen(pin);
 
-	rv = card->ops->pin_cmd(card, &pin_verify_cmd, NULL);
+	rv = card->ops->pin_cmd(card, &pin_verify_cmd);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(rv));
@@ -279,7 +279,7 @@ change_pin(sc_card_t *card, const char *opt_pin)
 	pace_pin_cmd.pin2.data = (unsigned char *)new_pin;
 	pace_pin_cmd.pin2.len = strlen(new_pin);
 
-	rv = card->ops->pin_cmd(card, &pace_pin_cmd, NULL);
+	rv = card->ops->pin_cmd(card, &pace_pin_cmd);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PIN for authentication change failed: %s\n", sc_strerror(rv));
@@ -304,7 +304,7 @@ change_pin(sc_card_t *card, const char *opt_pin)
 	qes_pin_cmd.pin2.data = (unsigned char *)new_pin;
 	qes_pin_cmd.pin2.len = strlen(new_pin);
 
-	rv = card->ops->pin_cmd(card, &qes_pin_cmd, NULL);
+	rv = card->ops->pin_cmd(card, &qes_pin_cmd);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PIN for signature change failed: %s\n", sc_strerror(rv));
@@ -366,7 +366,7 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 	if (opt_can)
 		can_verify_cmd.pin1.len = strlen(opt_can);
 
-	rv = card->ops->pin_cmd(card, &can_verify_cmd, NULL);
+	rv = card->ops->pin_cmd(card, &can_verify_cmd);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "CAN code verification failed: %s\n", sc_strerror(rv));
@@ -428,7 +428,7 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 	puk_verify_cmd.pin1.data = (unsigned char *)puk;
 	puk_verify_cmd.pin1.len = strlen(puk);
 
-	rv = card->ops->pin_cmd(card, &puk_verify_cmd, NULL);
+	rv = card->ops->pin_cmd(card, &puk_verify_cmd);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PUK code verification failed: %s\n", sc_strerror(rv));
@@ -441,7 +441,7 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 		pace_pin_cmd.pin_type = SC_AC_CHV;
 		pace_pin_cmd.pin_reference = PACE_PIN_ID_PIN;
 
-		rv = card->ops->pin_cmd(card, &pace_pin_cmd, NULL);
+		rv = card->ops->pin_cmd(card, &pace_pin_cmd);
 
 		if (rv != SC_SUCCESS) {
 			fprintf(stderr, "PIN for authentication reset failed: %s\n", sc_strerror(rv));
@@ -462,7 +462,7 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 			return rv;
 		}
 
-		rv = card->ops->pin_cmd(card, &qes_pin_cmd, NULL);
+		rv = card->ops->pin_cmd(card, &qes_pin_cmd);
 
 		if (rv != SC_SUCCESS) {
 			fprintf(stderr, "PIN for signature reset failed: %s\n", sc_strerror(rv));

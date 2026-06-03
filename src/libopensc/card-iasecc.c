@@ -144,8 +144,8 @@ static int iasecc_process_fci(struct sc_card *card, struct sc_file *file, const 
 static int iasecc_get_serialnr(struct sc_card *card, struct sc_serial_number *serial);
 static int iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo);
 static int iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struct iasecc_pin_policy *pin);
-static int iasecc_pin_get_status(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left);
-static int iasecc_pin_get_info(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left);
+static int iasecc_pin_get_status(struct sc_card *card, struct sc_pin_cmd_data *data);
+static int iasecc_pin_get_info(struct sc_card *card, struct sc_pin_cmd_data *data);
 static int iasecc_check_update_pin(struct sc_pin_cmd_data *data, struct sc_pin_cmd_pin *pin);
 static void iasecc_set_pin_padding(struct sc_pin_cmd_data *data, struct sc_pin_cmd_pin *pin,
 				   size_t pad_len);
@@ -1858,8 +1858,7 @@ iasecc_set_security_env(struct sc_card *card,
 
 
 static int
-iasecc_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, unsigned char *scbs,
-		  int *tries_left)
+iasecc_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, unsigned char *scbs)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned char scb = scbs[IASECC_ACLS_CHV_VERIFY];
@@ -1870,11 +1869,11 @@ iasecc_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, unsigne
 	       scb);
 
 	if (scb & IASECC_SCB_METHOD_SM) {
-		rv = iasecc_sm_pin_verify(card, scb & IASECC_SCB_METHOD_MASK_REF, pin_cmd, tries_left);
+		rv = iasecc_sm_pin_verify(card, scb & IASECC_SCB_METHOD_MASK_REF, pin_cmd);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
 
-	rv = iso_ops->pin_cmd(card, pin_cmd, tries_left);
+	rv = iso_ops->pin_cmd(card, pin_cmd);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -1917,7 +1916,7 @@ iasecc_se_at_to_chv_reference(struct sc_card *card, unsigned reference,
 
 
 static int
-iasecc_pin_get_status(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+iasecc_pin_get_status(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_pin_cmd_data info;
@@ -1933,7 +1932,7 @@ iasecc_pin_get_status(struct sc_card *card, struct sc_pin_cmd_data *data, int *t
 	info.pin_type = data->pin_type;
 	info.pin_reference = data->pin_reference;
 
-	rv = iso_ops->pin_cmd(card, &info, tries_left);
+	rv = iso_ops->pin_cmd(card, &info);
 	LOG_TEST_RET(ctx, rv, "Failed to get PIN info");
 
 	data->pin1.max_tries = info.pin1.max_tries;
@@ -1945,7 +1944,7 @@ iasecc_pin_get_status(struct sc_card *card, struct sc_pin_cmd_data *data, int *t
 
 
 static int
-iasecc_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+iasecc_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned type = data->pin_type;
@@ -1961,7 +1960,7 @@ iasecc_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	       type, reference, data->pin1.len, data->pin1.data);
 
 	if (type == SC_AC_AUT)   {
-		rv =  iasecc_sm_external_authentication(card, reference, tries_left);
+		rv =  iasecc_sm_external_authentication(card, reference, &data->pin1.tries_left);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
 
@@ -1988,7 +1987,7 @@ iasecc_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	pin_cmd.pin_reference = reference;
 	pin_cmd.cmd = SC_PIN_CMD_VERIFY;
 
-	rv = iasecc_pin_get_status(card, &pin_cmd, tries_left);
+	rv = iasecc_pin_get_status(card, &pin_cmd);
 	if (data->pin1.data && !data->pin1.len)
 		LOG_FUNC_RETURN(ctx, rv);
 
@@ -2013,7 +2012,7 @@ iasecc_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 			iasecc_set_pin_padding(&pin_cmd, &pin_cmd.pin1, policy.stored_length);
 	}
 
-	rv = iasecc_chv_verify(card, &pin_cmd, policy.scbs, tries_left);
+	rv = iasecc_chv_verify(card, &pin_cmd, policy.scbs);
 
 	/*
 	 * Detect and log PIN-pads which don't handle variable-length PIN - special case where they
@@ -2140,7 +2139,7 @@ err:
 
 
 static int
-iasecc_pin_get_info(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+iasecc_pin_get_info(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_pin_policy policy;
@@ -2155,7 +2154,7 @@ iasecc_pin_get_info(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 	 * tries, and the second one for the maximum tries. If a field is present in both, the
 	 * policy takes precedence.
 	 */
-	rv = iasecc_pin_get_status(card, data, tries_left);
+	rv = iasecc_pin_get_status(card, data);
 	LOG_TEST_RET(ctx, rv, "Failed to get PIN status");
 
 	rv = iasecc_pin_get_policy(card, data, &policy);
@@ -2170,9 +2169,6 @@ iasecc_pin_get_info(struct sc_card *card, struct sc_pin_cmd_data *data, int *tri
 	data->pin1.max_tries = policy.tries_maximum;
 	if (policy.tries_remaining >= 0)
 		data->pin1.tries_left = policy.tries_remaining;
-
-	if (tries_left)
-		*tries_left = data->pin1.tries_left;
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -2256,7 +2252,7 @@ iasecc_pin_merge_policy(struct sc_card *card, struct sc_pin_cmd_data *data,
 
 
 static int
-iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_sdo_update update;
@@ -2318,7 +2314,7 @@ iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
  *   Absent     Absent       Both PINs are input.
  */
 static int
-iasecc_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+iasecc_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_pin_cmd_data pin_cmd;
@@ -2348,7 +2344,7 @@ iasecc_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	LOG_TEST_RET(ctx, rv, "Failed to update PIN1 info");
 
 	if (!(pin_cmd.flags & SC_PIN_CMD_USE_PINPAD)) {
-		rv = iasecc_chv_verify(card, &pin_cmd, policy.scbs, tries_left);
+		rv = iasecc_chv_verify(card, &pin_cmd, policy.scbs);
 		LOG_TEST_RET(ctx, rv, "PIN CHV verification error");
 	}
 
@@ -2374,7 +2370,7 @@ iasecc_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
 	rv = iasecc_check_update_pin(&pin_cmd, &pin_cmd.pin2);
 	LOG_TEST_RET(ctx, rv, "Invalid PIN2");
 
-	rv = iso_ops->pin_cmd(card, &pin_cmd, tries_left);
+	rv = iso_ops->pin_cmd(card, &pin_cmd);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -2389,7 +2385,7 @@ iasecc_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries
  *   Absent     Absent       Both PUK and new PIN are input.
  */
 static int
-iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned char scb;
@@ -2422,7 +2418,7 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 				pin_cmd.pin_type = SC_AC_SEN;
 				pin_cmd.pin_reference = se_num;
 			}
-			rv = iasecc_pin_verify(card, &pin_cmd, tries_left);
+			rv = iasecc_pin_verify(card, &pin_cmd);
 			LOG_TEST_RET(ctx, rv, "iasecc_pin_reset() verify PUK error");
 
 			if (!need_all)
@@ -2435,7 +2431,7 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 		}
 
 		if (scb & IASECC_SCB_METHOD_EXT_AUTH)   {
-			rv =  iasecc_sm_external_authentication(card, data->pin_reference, tries_left);
+			rv =  iasecc_sm_external_authentication(card, data->pin_reference, &data->pin1.tries_left);
 			LOG_TEST_RET(ctx, rv, "iasecc_pin_reset() external authentication error");
 		}
 	} while(0);
@@ -2449,14 +2445,14 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_
 	rv = iasecc_pin_merge_policy(card, &pin_cmd, &pin_cmd.pin2, &policy);
 	LOG_TEST_RET(ctx, rv, "Failed to update PIN2 info");
 
-	rv = iso_ops->pin_cmd(card, &pin_cmd, tries_left);
+	rv = iso_ops->pin_cmd(card, &pin_cmd);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
 static int
-iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	int rv;
@@ -2468,19 +2464,19 @@ iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_le
 
 	switch (data->cmd)   {
 	case SC_PIN_CMD_VERIFY:
-		rv = iasecc_pin_verify(card, data, tries_left);
+		rv = iasecc_pin_verify(card, data);
 		break;
 	case SC_PIN_CMD_CHANGE:
 		if (data->pin_type == SC_AC_AUT)
-			rv = iasecc_keyset_change(card, data, tries_left);
+			rv = iasecc_keyset_change(card, data);
 		else
-			rv = iasecc_pin_change(card, data, tries_left);
+			rv = iasecc_pin_change(card, data);
 		break;
 	case SC_PIN_CMD_UNBLOCK:
-		rv = iasecc_pin_reset(card, data, tries_left);
+		rv = iasecc_pin_reset(card, data);
 		break;
 	case SC_PIN_CMD_GET_INFO:
-		rv = iasecc_pin_get_info(card, data, tries_left);
+		rv = iasecc_pin_get_info(card, data);
 		break;
 	default:
 		sc_log(ctx, "Other pin commands not supported yet: 0x%X", data->cmd);

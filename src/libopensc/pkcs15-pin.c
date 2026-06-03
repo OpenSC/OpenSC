@@ -439,7 +439,8 @@ int sc_pkcs15_verify_pin_with_session_pin(struct sc_pkcs15_card *p15card,
 			goto out;
 	}
 
-	r = sc_pin_cmd(card, &data, &auth_info->tries_left);
+	r = sc_pin_cmd(card, &data);
+	auth_info->tries_left = data.pin1.tries_left;
 	sc_log(ctx, "PIN cmd result %i", r);
 	if (r == SC_SUCCESS) {
 		sc_pkcs15_pincache_add(p15card, pin_obj, pincode, pinlen);
@@ -548,7 +549,8 @@ int sc_pkcs15_change_pin(struct sc_pkcs15_card *p15card,
 		}
 	}
 
-	r = sc_pin_cmd(card, &data, &auth_info->tries_left);
+	r = sc_pin_cmd(card, &data);
+	auth_info->tries_left = data.pin1.tries_left;
 	if (r == SC_SUCCESS)
 		sc_pkcs15_pincache_add(p15card, pin_obj, newpin, newpinlen);
 
@@ -674,7 +676,8 @@ int sc_pkcs15_unblock_pin(struct sc_pkcs15_card *p15card,
 		}
 	}
 
-	r = sc_pin_cmd(card, &data, &auth_info->tries_left);
+	r = sc_pin_cmd(card, &data);
+	auth_info->tries_left = data.pin1.tries_left;
 	if (r == SC_SUCCESS)
 		sc_pkcs15_pincache_add(p15card, pin_obj, newpin, newpinlen);
 
@@ -716,11 +719,10 @@ int sc_pkcs15_get_pin_info(struct sc_pkcs15_card *p15card,
 	data.pin_type = pin_info->auth_method;
 	data.pin_reference = pin_info->attrs.pin.reference;
 
-	r = sc_pin_cmd(card, &data, NULL);
+	r = sc_pin_cmd(card, &data);
 	if (r == SC_SUCCESS) {
 		if (data.pin1.max_tries > 0)
 			pin_info->max_tries = data.pin1.max_tries;
-		/* tries_left must be supported or sc_pin_cmd should not return SC_SUCCESS */
 		pin_info->tries_left = data.pin1.tries_left;
 		pin_info->logged_in = data.pin1.logged_in;
 	}

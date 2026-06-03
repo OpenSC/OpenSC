@@ -436,16 +436,15 @@ sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 	/* Query PIN tries_left via card driver's pin_cmd. */
 	{
 		struct sc_pin_cmd_data pin_data = {0};
-		int pin_tries_left = -1;
 
 		pin_data.cmd = SC_PIN_CMD_GET_INFO;
 		pin_data.pin_type = SC_AC_CHV;
 		pin_data.pin_reference = CE_PIN_REFERENCE;
+		pin_data.pin1.tries_left = -1;
 
 		/* Best-effort: failure to query PIN status is not fatal. */
-		if (sc_pin_cmd(card, &pin_data, &pin_tries_left) >= 0 && pin_tries_left < 0)
-			pin_tries_left = pin_data.pin1.tries_left;
-		sc_log(card->ctx, "srbeid: PIN tries_left=%d", pin_tries_left);
+		sc_pin_cmd(card, &pin_data);
+		sc_log(card->ctx, "srbeid: PIN tries_left=%d", pin_data.pin1.tries_left);
 
 		/* ---- PIN auth object ----
 		 * Must be registered before private keys so auth_id links work. */
@@ -455,7 +454,7 @@ sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 
 			auth_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 			auth_info.auth_method = SC_AC_CHV;
-			auth_info.tries_left = pin_tries_left;
+			auth_info.tries_left = pin_data.pin1.tries_left;
 			auth_info.attrs.pin.reference = CE_PIN_REFERENCE;
 			auth_info.attrs.pin.min_length = 4;
 			auth_info.attrs.pin.max_length = CE_PIN_MAX_LENGTH;

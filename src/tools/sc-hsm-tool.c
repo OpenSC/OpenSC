@@ -480,7 +480,7 @@ static void print_dkek_info(sc_cardctl_sc_hsm_dkek_t *dkekinfo)
 
 static void print_info(sc_card_t *card, sc_file_t *file)
 {
-	int r, tries_left;
+	int r;
 	struct sc_pin_cmd_data data;
 	sc_cardctl_sc_hsm_dkek_t dkekinfo;
 
@@ -508,14 +508,14 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 		data.pin_type = SC_AC_CHV;
 		data.pin_reference = ID_SO_PIN;
 
-		r = sc_pin_cmd(card, &data, &tries_left);
+		r = sc_pin_cmd(card, &data);
 		if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND) {
 			printf("SmartCard-HSM has never been initialized. Please use --initialize to set SO-PIN and user PIN.\n");
 		} else {
-			if (tries_left == 0) {
+			if (data.pin1.tries_left == 0) {
 				printf("SO-PIN locked\n");
 			} else {
-				printf("SO-PIN tries left    : %d\n", tries_left);
+				printf("SO-PIN tries left    : %d\n", data.pin1.tries_left);
 			}
 			/* Try to update PIN info from card */
 			memset(&data, 0, sizeof(data));
@@ -523,16 +523,16 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 			data.pin_type = SC_AC_CHV;
 			data.pin_reference = ID_USER_PIN;
 
-			r = sc_pin_cmd(card, &data, &tries_left);
+			r = sc_pin_cmd(card, &data);
 			if (r == SC_ERROR_CARD_CMD_FAILED) {
 				printf("Public key authentication active.\n");
 			} else if (r == SC_ERROR_REF_DATA_NOT_USABLE) {
 				printf("Transport-PIN active. Please change to user selected PIN first.\n");
 			} else {
-				if (tries_left == 0) {
+				if (data.pin1.tries_left == 0) {
 					printf("User PIN locked\n");
 				} else {
-					printf("User PIN tries left  : %d\n", tries_left);
+					printf("User PIN tries left  : %d\n", data.pin1.tries_left);
 				}
 			}
 		}
@@ -543,15 +543,15 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 		data.pin_type = SC_AC_CHV;
 		data.pin_reference = ID_USER_PIN;
 
-		r = sc_pin_cmd(card, &data, &tries_left);
+		r = sc_pin_cmd(card, &data);
 
 		if (r == SC_ERROR_REF_DATA_NOT_USABLE) {
 			printf("SmartCard-HSM has never been initialized. Please use --initialize to set SO-PIN and user PIN.\n");
 		} else {
-			if (tries_left == 0) {
+			if (data.pin1.tries_left == 0) {
 				printf("User PIN locked\n");
 			} else {
-				printf("User PIN tries left  : %d\n", tries_left);
+				printf("User PIN tries left  : %d\n", data.pin1.tries_left);
 			}
 		}
 	}
@@ -1364,7 +1364,7 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 	data.pin1.data = (unsigned char *)lpin;
 	data.pin1.len = strlen(lpin);
 
-	r = sc_pin_cmd(card, &data, NULL);
+	r = sc_pin_cmd(card, &data);
 
 	if (r < 0) {
 		fprintf(stderr, "PIN verification failed with %s\n", sc_strerror(r));
@@ -1653,7 +1653,7 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 	data.pin1.data = (u8 *)lpin;
 	data.pin1.len = strlen(lpin);
 
-	r = sc_pin_cmd(card, &data, NULL);
+	r = sc_pin_cmd(card, &data);
 
 	if (r < 0) {
 		fprintf(stderr, "PIN verification failed with %s\n", sc_strerror(r));

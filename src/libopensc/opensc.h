@@ -800,8 +800,7 @@ struct sc_card_operations {
 	/* pin_cmd: verify/change/unblock command; optionally using the
 	 * card's pin pad if supported.
 	 */
-	int (*pin_cmd)(struct sc_card *, struct sc_pin_cmd_data *,
-				int *tries_left);
+	int (*pin_cmd)(struct sc_card *, struct sc_pin_cmd_data *);
 
 	int (*get_data)(struct sc_card *, unsigned int, u8 *, size_t);
 	int (*put_data)(struct sc_card *, unsigned int, const u8 *, size_t);
@@ -1389,7 +1388,7 @@ int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *pin,
  *         doesn't support a logout command and an error code otherwise
  */
 int sc_logout(struct sc_card *card);
-int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *, int *tries_left);
+int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *);
 int sc_change_reference_data(struct sc_card *card, unsigned int type,
 			     int ref, const u8 *old, size_t oldlen,
 			     const u8 *newref, size_t newlen,

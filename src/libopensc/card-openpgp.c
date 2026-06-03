@@ -2300,7 +2300,7 @@ out:
 }
 
 static int
-pgp_kdf_do_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+pgp_kdf_do_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	int r = SC_ERROR_INVALID_ARGUMENTS;
 	struct pgp_priv_data *priv = DRVDATA(card);
@@ -2322,7 +2322,7 @@ pgp_kdf_do_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_lef
 	case SC_PIN_CMD_UNBLOCK:
 		break;
 	default:
-		LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
+		LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data));
 	}
 	if (!info) {
 		return r;
@@ -2365,7 +2365,7 @@ pgp_kdf_do_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_lef
 	}
 
 	if (r == SC_SUCCESS) {
-		r = iso_ops->pin_cmd(card, data, tries_left);
+		r = iso_ops->pin_cmd(card, data);
 	}
 	if (pin1_derived) {
 		data->pin1.data = pin1;
@@ -2385,7 +2385,7 @@ pgp_kdf_do_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_lef
  * ABI: ISO 7816-9 PIN CMD - verify/change/unblock a PIN.
  */
 static int
-pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct sc_card_operations ops = {.pin_cmd = iso_ops->pin_cmd};
@@ -2482,10 +2482,8 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		data->pin1.tries_left = c4data[3 + (data->pin_reference & 0x0F)];
 		data->pin1.max_tries = 3;
 		data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
-		if (tries_left != NULL)
-			*tries_left = data->pin1.tries_left;
 
-                LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
 #ifdef ENABLE_OPENSSL
@@ -2494,7 +2492,7 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	}
 #endif /* ENABLE_OPENSSL */
 
-	LOG_FUNC_RETURN(card->ctx, ops.pin_cmd(card, data, tries_left));
+	LOG_FUNC_RETURN(card->ctx, ops.pin_cmd(card, data));
 }
 
 
