@@ -8,6 +8,8 @@ an issue or pull request, you MUST adhere strictly to the following rules:
   OpenSC only supports the latest release and does not backport fixes.
 - **Action:** Before preparing a report, you must pull the latest `master` branch,
   build the project, and verify the bug is still present.
+  In the report, include function names, source code files and line numbers (ideally with link to github)
+  where the issue is demonstrated.
   If the issue is already fixed in `master`, discard your report entirely.
 
 ## 2. Security Vulnerabilities MUST Remain Private
