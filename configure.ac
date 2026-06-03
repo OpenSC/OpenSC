@@ -13,8 +13,6 @@ m4_esyscmd([awk -F= '
   }
 ' "VERSION.mk"])
 
-m4_sinclude(m4/version.m4.ci)
-
 # Hint: MacOSX/build contains minimum OpenSSL reference
 m4_define([openssl_minimum_version], [1.1.1])
 
@@ -887,13 +885,6 @@ fi
 
 if test "${enable_pcsc}" = "yes"; then
 	if test "${WIN32}" != "yes"; then
-		PKG_CHECK_EXISTS(
-			[libpcsclite],
-			[PKG_CHECK_MODULES([PCSC], [libpcsclite >= 1.8.22],
-				[AC_DEFINE([PCSCLITE_GOOD], [1], [Sufficient version of PCSC-Lite with all the required features])],
-				[:]
-			)]
-		)
 		if test -z "${PCSC_CFLAGS}"; then
 			case "${host}" in
 				*-*-darwin*)

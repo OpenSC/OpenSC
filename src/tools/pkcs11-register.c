@@ -230,8 +230,10 @@ add_module_firefox(const char *module_path, const char *module_name, const char 
 #elif defined(_WIN32)
 		{"APPDATA", "Mozilla\\Firefox"},
 #else
-		{"HOME", ".mozilla/firefox"},
-		{"HOME", ".mozilla/firefox-esr"},
+			{"XDG_CONFIG_HOME", "mozilla/firefox"}, /* Firefox >= 147 XDG profile */
+			{"HOME", ".config/mozilla/firefox"},	/* XDG default when XDG_CONFIG_HOME unset */
+			{"HOME", ".mozilla/firefox"},
+			{"HOME", ".mozilla/firefox-esr"},
 #endif
 	};
 
@@ -292,6 +294,16 @@ add_module_chrome(const char *module_path, const char *module_name, const char *
 
 	if (home && 0 <= snprintf(profile_path, sizeof profile_path,
 				"%s%c%s", home, path_sep, ".pki/nssdb")) {
+		add_module_pkcs11_txt(profile_path, module_path, module_name, exclude_module_path);
+	}
+
+	/* Chrome M146+ uses XDG_DATA_HOME/pki/nssdb when ~/.pki doesn't exist */
+	const char *xdg_data_home = getenv("XDG_DATA_HOME");
+	if (xdg_data_home && 0 <= snprintf(profile_path, sizeof profile_path,
+						  "%s%c%s", xdg_data_home, path_sep, "pki/nssdb")) {
+		add_module_pkcs11_txt(profile_path, module_path, module_name, exclude_module_path);
+	} else if (home && 0 <= snprintf(profile_path, sizeof profile_path,
+						"%s%c%s", home, path_sep, ".local/share/pki/nssdb")) {
 		add_module_pkcs11_txt(profile_path, module_path, module_name, exclude_module_path);
 	}
 #endif

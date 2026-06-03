@@ -465,7 +465,7 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	decrypted_len -= decrypted_len % 8;
 
 	decrypted = malloc(decrypted_len);
-	if (!(decrypted))
+	if (!decrypted)
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "SM decrypt_des_cbc3: allocation error");
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L

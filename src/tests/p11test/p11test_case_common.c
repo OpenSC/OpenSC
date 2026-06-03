@@ -776,34 +776,34 @@ int callback_public_keys(test_certs_t *objects,
 			switch (o->key_type) {
 #ifdef EVP_PKEY_ED25519
 			case CKK_EC_EDWARDS:
-				if (strcmp((char *)curve->data, "edwards25519") == 0) {
+				if (strcmp((char *)ASN1_STRING_get0_data(curve), "edwards25519") == 0) {
 					evp_type = EVP_PKEY_ED25519;
 					break;
 #ifdef EVP_PKEY_ED448
-				} else if (strcmp((char *)curve->data, "edwards448") == 0) {
+				} else if (strcmp((char *)ASN1_STRING_get0_data(curve), "edwards448") == 0) {
 					evp_type = EVP_PKEY_ED448;
 					break;
 #endif /* EVP_PKEY_ED448 */
 				}
 				debug_print(" [WARN %s ] Unknown curve name. "
 					    " expected edwards25519 or edwards448, got %s",
-						o->id_str, curve->data);
+						o->id_str, ASN1_STRING_get0_data(curve));
 				break;
 #endif
 #ifdef EVP_PKEY_X25519
 			case CKK_EC_MONTGOMERY:
-				if (strcmp((char *)curve->data, "curve25519") == 0) {
+				if (strcmp((char *)ASN1_STRING_get0_data(curve), "curve25519") == 0) {
 					evp_type = EVP_PKEY_X25519;
 					break;
 #ifdef EVP_PKEY_X448
-				} else if (strcmp((char *)curve->data, "curve448") == 0) {
+				} else if (strcmp((char *)ASN1_STRING_get0_data(curve), "curve448") == 0) {
 					evp_type = EVP_PKEY_X448;
 					break;
 #endif /* EVP_PKEY_X448 */
 				}
 				debug_print(" [WARN %s ] Unknown curve name. "
 					    " expected curve25519 or curve448, got %s",
-						o->id_str, curve->data);
+						o->id_str, ASN1_STRING_get0_data(curve));
 				break;
 #endif
 			default:
@@ -893,14 +893,14 @@ int callback_public_keys(test_certs_t *objects,
 			break;
 #endif
 		}
-		if (os->length != exp_length) {
+		if (ASN1_STRING_length(os) != exp_length) {
 			debug_print(" [WARN %s ] Invalid length of EC_POINT value. Got %d, expected %d",
-					o->id_str, os->length, exp_length);
+					o->id_str, ASN1_STRING_length(os), exp_length);
 			return -1;
 		}
 		key = EVP_PKEY_new_raw_public_key(evp_type, NULL,
-			(const uint8_t *)os->data,
-			os->length);
+				(const uint8_t *)ASN1_STRING_get0_data(os),
+				ASN1_STRING_length(os));
 		if (key == NULL) {
 			debug_print(" [WARN %s ] Out of memory", o->id_str);
 			ASN1_STRING_free(os);
@@ -925,8 +925,8 @@ int callback_public_keys(test_certs_t *objects,
 			}
 
 			if (EVP_PKEY_get_raw_public_key(o->key, pub, &publen) != 1 ||
-				publen != (size_t)os->length ||
-				memcmp(pub, os->data, publen) != 0) {
+					publen != (size_t)ASN1_STRING_length(os) ||
+					memcmp(pub, ASN1_STRING_get0_data(os), publen) != 0) {
 				debug_print(" [WARN %s ] Got different public"
 					"key then from the certificate",
 					o->id_str);

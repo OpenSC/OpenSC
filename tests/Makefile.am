@@ -1,6 +1,6 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
-EXTRA_DIST = softhsm_2.6.1_ref.json softhsm_2.7.0_ref.json softhsm_fips_ref.json
+EXTRA_DIST = softhsm_2.6.1_ref.json softhsm_2.7.0_ref.json softhsm_fips_ref.json softhsm_libressl_ref.json
 
 TEST_EXTENSIONS = .sh
 # This pushes the valgrind command to the test environment
@@ -24,6 +24,9 @@ AM_TESTS_ENVIRONMENT += \
 endif
 
 dist_noinst_SCRIPTS = common.sh \
+                      init-softhsm.sh \
+                      init-softokn.sh \
+                      init-kryoptic.sh \
                       test-manpage.sh \
                       test-duplicate-symbols.sh \
                       test-fuzzing.sh \
@@ -53,7 +56,9 @@ TESTS += \
         test-pkcs11-tool-uri-with-slot-id.sh
 if ENABLE_TESTS
 if ENABLE_SHARED
+if ENABLE_CMOCKA
 TESTS += test-p11test.sh
+endif
 endif
 endif
 endif

@@ -119,6 +119,9 @@ enum {
 	SC_CARD_TYPE_PIV_II_PIVKEY,
 	SC_CARD_TYPE_PIV_II_SWISSBIT,
 	SC_CARD_TYPE_PIV_II_800_73_4,
+	SC_CARD_TYPE_PIV_II_NITROKEY,
+	SC_CARD_TYPE_PIV_II_TOKEN2,
+	SC_CARD_TYPE_PIV_II_PIVAPPLET,
 
 	/* MuscleApplet */
 	SC_CARD_TYPE_MUSCLE_BASE = 15000,
@@ -278,6 +281,12 @@ enum {
 	SC_CARD_TYPE_DTRUST_V5_1_M100,
 	SC_CARD_TYPE_DTRUST_V5_4_STD,
 	SC_CARD_TYPE_DTRUST_V5_4_MULTI,
+
+	/* Lithuanian eID cards */
+	SC_CARD_TYPE_LTEID = 43000,
+
+	/* Serbian cards (CardEdge PKI applet) */
+	SC_CARD_TYPE_SRBEID_BASE = 44000,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -322,6 +331,8 @@ extern sc_card_driver_t *sc_get_nqApplet_driver(void);
 extern sc_card_driver_t *sc_get_skeid_driver(void);
 extern sc_card_driver_t *sc_get_eoi_driver(void);
 extern sc_card_driver_t *sc_get_dtrust_driver(void);
+extern sc_card_driver_t *sc_get_lteid_driver(void);
+extern sc_card_driver_t *sc_get_srbeid_driver(void);
 
 #ifdef __cplusplus
 }

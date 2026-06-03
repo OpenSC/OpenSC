@@ -777,6 +777,44 @@
 	</refsect1>
 
 	<refsect1>
+		<title>Environment</title>
+		<variablelist>
+			<varlistentry>
+				<term>
+					<envar>OPENSC_DEEPBIND</envar>
+				</term>
+				<listitem><para>
+						The OpenSC and its tools are dynamically loading various
+						libraries (pcsclite, dynamic drivers and other pkcs11
+						modules) using
+						<citerefentry>
+							<refentrytitle>dlopen</refentrytitle>
+							<manvolnum>3</manvolnum>
+						</citerefentry>.
+					</para>
+					<para>
+						When this environment variable is set to
+						<literal>1</literal>
+						for the process running OpenSC, the calls will include
+						<literal>RTLD_DEEPBIND</literal> flag, which should
+						cause better symbol isolation between OpenSC and
+						loaded libraries. On the other hand, this is incompatible
+						with various static analysis tools as well as some
+						browser builds.
+					</para>
+					<para>
+						This option may be useful, if OpenSC needs to load a library
+						that pollutes the processes' global namespace and thereby
+						causes the unintended use of a different function with the
+						same name. In particular, this may happen when
+						<literal>pkcs11-spy</literal>
+						is used for logging between application and PKCS#11 library.
+				</para></listitem>
+			</varlistentry>
+		</variablelist>
+	</refsect1>
+
+	<refsect1>
 		<title>Examples</title>
 		<para>
 			Perform a basic functionality test of the card:

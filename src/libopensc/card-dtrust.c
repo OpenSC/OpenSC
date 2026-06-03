@@ -65,12 +65,12 @@ static struct sc_card_driver dtrust_drv = {
 
 struct dtrust_drv_data_t {
 	/* track PACE state */
-	unsigned char pace : 1;
-	unsigned char can : 1;
+	unsigned int pace : 1;
+	unsigned int can : 1;
 	/* global CAN from configuration file */
 	char *can_value;
 	/* use CAN cache */
-	unsigned char can_cache : 1;
+	unsigned int can_cache : 1;
 	/* PKCS#15 context for CAN caching */
 	struct sc_pkcs15_card *p15card;
 	/* save the current security environment */
@@ -596,8 +596,7 @@ dtrust_perform_pace(struct sc_card *card,
 
 static int
 dtrust_pin_cmd_get_info(struct sc_card *card,
-		struct sc_pin_cmd_data *data,
-		int *tries_left)
+		struct sc_pin_cmd_data *data)
 {
 	struct dtrust_drv_data_t *drv_data;
 	int r;
@@ -609,7 +608,6 @@ dtrust_pin_cmd_get_info(struct sc_card *card,
 	switch (data->pin_reference) {
 	case PACE_PIN_ID_CAN:
 		/* unlimited number of retries */
-		*tries_left = -1;
 		data->pin1.max_tries = -1;
 		data->pin1.tries_left = -1;
 		r = SC_SUCCESS;
@@ -625,9 +623,6 @@ dtrust_pin_cmd_get_info(struct sc_card *card,
 		/* FIXME: Doesn't work. Returns SW1=69 SW2=85 (Conditions of use not satisfied) instead. */
 		data->pin1.max_tries = 3;
 		r = eac_pace_get_tries_left(card, data->pin_reference, &data->pin1.tries_left);
-		if (tries_left != NULL) {
-			*tries_left = data->pin1.tries_left;
-		}
 		break;
 
 	default:
@@ -643,7 +638,7 @@ dtrust_pin_cmd_get_info(struct sc_card *card,
 		}
 
 		/* Now query PIN information */
-		r = iso_ops->pin_cmd(card, data, tries_left);
+		r = iso_ops->pin_cmd(card, data);
 		break;
 	}
 
@@ -652,8 +647,7 @@ dtrust_pin_cmd_get_info(struct sc_card *card,
 
 static int
 dtrust_pin_cmd_verify(struct sc_card *card,
-		struct sc_pin_cmd_data *data,
-		int *tries_left)
+		struct sc_pin_cmd_data *data)
 {
 	struct dtrust_drv_data_t *drv_data;
 	int r;
@@ -674,7 +668,7 @@ dtrust_pin_cmd_verify(struct sc_card *card,
 	case DTRUST5_PIN_ID_PIN_T:
 	case DTRUST5_PIN_ID_PIN_T_AUT:
 		/* Establish secure channel via PACE */
-		r = dtrust_perform_pace(card, data->pin_reference, data->pin1.data, data->pin1.len, tries_left);
+		r = dtrust_perform_pace(card, data->pin_reference, data->pin1.data, data->pin1.len, &data->pin1.tries_left);
 		break;
 
 	default:
@@ -690,7 +684,7 @@ dtrust_pin_cmd_verify(struct sc_card *card,
 		}
 
 		/* Now verify the PIN */
-		r = iso_ops->pin_cmd(card, data, tries_left);
+		r = iso_ops->pin_cmd(card, data);
 
 		break;
 	}
@@ -700,8 +694,7 @@ dtrust_pin_cmd_verify(struct sc_card *card,
 
 static int
 dtrust_pin_cmd(struct sc_card *card,
-		struct sc_pin_cmd_data *data,
-		int *tries_left)
+		struct sc_pin_cmd_data *data)
 {
 	struct dtrust_drv_data_t *drv_data;
 	int r;
@@ -732,7 +725,7 @@ dtrust_pin_cmd(struct sc_card *card,
 		/* Check verification state */
 		data2.cmd = SC_PIN_CMD_GET_INFO;
 		data2.pin_type = data->pin_type;
-		r = dtrust_pin_cmd(card, &data2, tries_left);
+		r = dtrust_pin_cmd(card, &data2);
 
 		if (data2.pin1.logged_in & SC_PIN_STATE_LOGGED_IN) {
 			/* Return if we are already authenticated */
@@ -747,17 +740,17 @@ dtrust_pin_cmd(struct sc_card *card,
 
 	/* No special handling for D-Trust Card 4.1/4.4 */
 	if (card->type >= SC_CARD_TYPE_DTRUST_V4_1_STD && card->type <= SC_CARD_TYPE_DTRUST_V4_4_MULTI) {
-		r = iso_ops->pin_cmd(card, data, tries_left);
+		r = iso_ops->pin_cmd(card, data);
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
 	switch (data->cmd) {
 	case SC_PIN_CMD_GET_INFO:
-		r = dtrust_pin_cmd_get_info(card, data, tries_left);
+		r = dtrust_pin_cmd_get_info(card, data);
 		break;
 
 	case SC_PIN_CMD_VERIFY:
-		r = dtrust_pin_cmd_verify(card, data, tries_left);
+		r = dtrust_pin_cmd_verify(card, data);
 		break;
 
 	case SC_PIN_CMD_CHANGE:
@@ -782,7 +775,7 @@ dtrust_pin_cmd(struct sc_card *card,
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 
-		r = iso_ops->pin_cmd(card, data, tries_left);
+		r = iso_ops->pin_cmd(card, data);
 		break;
 
 	case SC_PIN_CMD_UNBLOCK:
@@ -794,7 +787,7 @@ dtrust_pin_cmd(struct sc_card *card,
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 
-		r = iso_ops->pin_cmd(card, data, tries_left);
+		r = iso_ops->pin_cmd(card, data);
 		break;
 
 	default:

@@ -81,16 +81,24 @@ struct sc_dlhandle {
 void *sc_dlopen(const char *filename)
 {
 	struct sc_dlhandle *dlhandle;
+  int flags = RTLD_LAZY | RTLD_LOCAL;
+  #ifdef RTLD_DEEPBIND
+	/* By default, the pkcs11 modules and pcsclite are opened without RTLD_DEEPBIND.
+	 * Using RTLD_DEEPBIND causes issues for dynamic analysis tools such as ASAN.
+	 * When the OPENSC_DEEPBIND is set to "1", the flag is included in the calls
+	 * that normally do not use RTLD_DEEPBIND.
+	 */
+	char *deep = getenv("OPENSC_DEEPBIND");
+	if (deep != NULL && deep[0] == '1') {
+		flags |= RTLD_DEEPBIND;
+	}
+  #endif
 
 	dlhandle = calloc(1, sizeof(struct sc_dlhandle));
 	if (!dlhandle)
 		return NULL;
 
-	dlhandle->handle = dlopen(filename, RTLD_LAZY | RTLD_LOCAL
-#ifdef RTLD_DEEPBIND
-							    | RTLD_DEEPBIND
-#endif
-	);
+	dlhandle->handle = dlopen(filename, flags);
 	if (!dlhandle->handle) {
 		free(dlhandle);
 		return NULL;

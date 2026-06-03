@@ -25,7 +25,7 @@ noinst_HEADERS = util.h fread_to_eof.h \
 bin_PROGRAMS = opensc-tool opensc-explorer opensc-asn1 \
 	pkcs15-tool pkcs15-crypt pkcs11-tool pkcs11-register \
 	cardos-tool eidenv openpgp-tool iasecc-tool egk-tool goid-tool \
-	dtrust-tool
+	dtrust-tool lteid-tool
 if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 	westcos-tool sc-hsm-tool dnie-tool gids-tool
@@ -104,6 +104,10 @@ endif
 if HAVE_SHORTEN_WARNING_OPTION
 npa_tool_CFLAGS += -Wno-shorten-64-to-32
 endif
+
+lteid_tool_SOURCES = lteid-tool.c util.c
+lteid_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(OPENPACE_LIBS)
+lteid_tool_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPENPACE_CFLAGS)
 
 opensc_notify_SOURCES = opensc-notify.c opensc-notify-cmdline.c
 opensc_notify_CFLAGS = $(PTHREAD_CFLAGS)

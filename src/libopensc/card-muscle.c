@@ -136,7 +136,8 @@ static unsigned short muscle_parse_singleAcl(const sc_acl_entry_t* acl)
 
 static void muscle_parse_acls(const sc_file_t* file, unsigned short* read_perm, unsigned short* write_perm, unsigned short* delete_perm)
 {
-	assert(read_perm && write_perm && delete_perm);
+	if (read_perm == NULL || write_perm == NULL || delete_perm == NULL)
+		return;
 	*read_perm =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_READ));
 	*write_perm =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_UPDATE));
 	*delete_perm =  muscle_parse_singleAcl(sc_file_get_acl_entry(file, SC_AC_OP_DELETE));
@@ -433,7 +434,8 @@ static int muscle_select_file(sc_card_t *card, const sc_path_t *path_in,
 {
 	int r;
 
-	assert(card != NULL && path_in != NULL);
+	if (card == NULL || path_in == NULL)
+		return SC_ERROR_INTERNAL;
 
 	switch (path_in->type) {
 	case SC_PATH_TYPE_FILE_ID:
@@ -547,8 +549,7 @@ static int muscle_list_files(sc_card_t *card, u8 *buf, size_t bufLen)
 	return count;
 }
 
-static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
-				int *tries_left)
+static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd)
 {
 	muscle_private_t* priv = MUSCLE_DATA(card);
 	const int bufferLength = MSC_MAX_PIN_COMMAND_LENGTH;
@@ -564,7 +565,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 				return r;
 			cmd->apdu = &apdu;
 			cmd->pin1.offset = 5;
-			r = iso_ops->pin_cmd(card, cmd, tries_left);
+			r = iso_ops->pin_cmd(card, cmd);
 			if(r >= 0)
 				priv->verifiedPins |= (1 << cmd->pin_reference);
 			return r;
@@ -586,7 +587,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 			if (r < 0)
 				return r;
 			cmd->apdu = &apdu;
-			return iso_ops->pin_cmd(card, cmd, tries_left);
+			return iso_ops->pin_cmd(card, cmd);
 		}
 		case SC_AC_TERM:
 		case SC_AC_PRO:
@@ -605,7 +606,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd,
 			if (r < 0)
 				return r;
 			cmd->apdu = &apdu;
-			return iso_ops->pin_cmd(card, cmd, tries_left);
+			return iso_ops->pin_cmd(card, cmd);
 		}
 		case SC_AC_TERM:
 		case SC_AC_PRO:

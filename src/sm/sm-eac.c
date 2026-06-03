@@ -1186,8 +1186,8 @@ int perform_terminal_authentication(sc_card_t *card,
 		cert = *certs;
 
 		r = eac_mse_set_dst(card,
-				cvc_cert->body->certificate_authority_reference->data,
-				cvc_cert->body->certificate_authority_reference->length);
+				ASN1_STRING_get0_data(cvc_cert->body->certificate_authority_reference),
+				ASN1_STRING_length(cvc_cert->body->certificate_authority_reference));
 		if (r < 0) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not select protocol properties "
 					"(MSE: Set AT failed).");
@@ -1198,8 +1198,8 @@ int perform_terminal_authentication(sc_card_t *card,
 		if (r < 0)
 			goto err;
 
-		chr = cvc_cert->body->certificate_holder_reference->data;
-		chr_len = cvc_cert->body->certificate_holder_reference->length;
+		chr = ASN1_STRING_get0_data(cvc_cert->body->certificate_holder_reference);
+		chr_len = ASN1_STRING_length(cvc_cert->body->certificate_holder_reference);
 
 		certs++;
 		certs_lens++;

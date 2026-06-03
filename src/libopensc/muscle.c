@@ -688,11 +688,15 @@ int msc_compute_crypt_init(sc_card_t *card,
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		short receivedData = outputBuffer[0] << 8 | outputBuffer[1];
-		*outputDataLength = receivedData;
-
+		size_t receivedData = outputBuffer[0] << 8 | outputBuffer[1];
 		if (receivedData > MSC_MAX_APDU)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+		if (receivedData > *outputDataLength) {
+			*outputDataLength = receivedData;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+		}
+		*outputDataLength = receivedData;
+
 		memcpy(outputData, outputBuffer + 2, receivedData);
 		return 0;
 	}
@@ -740,11 +744,15 @@ int msc_compute_crypt_final(
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if(apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		short receivedData = outputBuffer[0] << 8 | outputBuffer[1];
-		*outputDataLength = receivedData;
-
+		size_t receivedData = outputBuffer[0] << 8 | outputBuffer[1];
 		if (receivedData > MSC_MAX_APDU)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+		if (receivedData > *outputDataLength) {
+			*outputDataLength = receivedData;
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+		}
+		*outputDataLength = receivedData;
+
 		memcpy(outputData, outputBuffer + 2, receivedData);
 		return 0;
 	}
@@ -839,13 +847,13 @@ int msc_compute_crypt(sc_card_t *card,
 			size_t dataLength,
 			size_t outputDataLength)
 {
-	size_t left = dataLength;
+	size_t left = dataLength, outLeft = outputDataLength;
 	const u8* inPtr = data;
 	u8* outPtr = outputData;
 	int toSend;
 	int r;
 
-	size_t received = 0;
+	size_t received = outputDataLength;
 
 	if (outputDataLength < dataLength)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -863,6 +871,7 @@ int msc_compute_crypt(sc_card_t *card,
 	if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	left -= toSend;
 	inPtr += toSend;
+	outLeft -= received;
 	outPtr += received;
 
 	toSend = MIN((int)left, MSC_MAX_APDU - 5);
@@ -874,7 +883,7 @@ int msc_compute_crypt(sc_card_t *card,
 			inPtr,
 			outPtr,
 			toSend,
-			&received);
+			&outLeft);
 		if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	} else { /* Data is too big: use objects */
 		r = msc_compute_crypt_final_object(card,
@@ -882,10 +891,10 @@ int msc_compute_crypt(sc_card_t *card,
 			inPtr,
 			outPtr,
 			toSend,
-			&received);
+			&outLeft);
 		if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
 	}
-	outPtr += received;
+	outPtr += outLeft;
 
 	return (int)(outPtr - outputData); /* Amt received */
 }

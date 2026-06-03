@@ -805,11 +805,6 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 		return  CKR_ARGUMENTS_BAD;
 
 	sc_log(context, "C_WaitForSlotEvent(block=%d)", !(flags & CKF_DONT_BLOCK));
-#ifndef PCSCLITE_GOOD
-	/* Not all pcsc-lite versions implement consistently used functions as they are */
-	if (!(flags & CKF_DONT_BLOCK))
-		return CKR_FUNCTION_NOT_SUPPORTED;
-#endif /* PCSCLITE_GOOD */
 	rv = sc_pkcs11_lock();
 	if (rv != CKR_OK)
 		return rv;
