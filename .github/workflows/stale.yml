@@ -1,8 +1,6 @@
 name: 'Close stale issues and PRs'
 
 permissions:
-  actions: write
-  contents: write # only for delete-branch option
   issues: write
   pull-requests: write
 
