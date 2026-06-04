@@ -42,6 +42,8 @@ elif [ "$1" == "cac" ]; then
 	DEPS="$DEPS libglib2.0-dev libnss3-dev gnutls-bin libusb-dev libudev-dev flex libnss3-tools"
 elif [ "$1" == "oseid" ]; then
 	DEPS="$DEPS socat gawk"
+elif [ "$1" == "pico-hsm" ]; then
+	DEPS="$DEPS cmake"
 elif [ "$1" == "piv" -o "$1" == "isoapplet" -o "$1" == "gidsapplet" -o "$1" == "openpgp" ]; then
 	if [ "$1" == "piv" ]; then
 		DEPS="$DEPS cmake"

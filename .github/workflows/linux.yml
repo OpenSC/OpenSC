@@ -185,7 +185,7 @@ jobs:
         dist: ['22.04', '24.04']
         arch: [amd64]
         build: [valgrind]
-        target: [cac, oseid]
+        target: [cac, oseid, pico-hsm]
     runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
     steps:
