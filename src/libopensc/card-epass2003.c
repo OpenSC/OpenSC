@@ -1048,6 +1048,10 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 
 	exdata = (epass2003_exdata *)card->drv_data;
 
+	if (data_tlv_len + le_tlv_len + block_size + 1 > sizeof(mac)) {
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
+
 	if (0 == data_tlv_len && 0 == le_tlv_len) {
 		mac_len = block_size;
 	} else {
@@ -1127,6 +1131,10 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
 
 	exdata = (epass2003_exdata *)card->drv_data;
 
+	if (data_tlv_len + le_tlv_len + block_size + 1 > sizeof(mac)) {
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
+
 	if (0 == data_tlv_len && 0 == le_tlv_len) {
 		mac_len = block_size;
 	} else {
@@ -1200,6 +1208,7 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 	size_t mac_tlv_len = 10;
 	size_t tmp_lc = 0;
 	size_t tmp_le = 0;
+	size_t expected_total_len;
 	unsigned char mac_tlv[256] = {0};
 	epass2003_exdata *exdata = NULL;
 
@@ -1254,6 +1263,13 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 	} else {
 		apdu_buf[4] = (unsigned char)sm->lc;
 		tmp_lc = 1;
+	}
+
+	/* 2 is for Le extension in the worst case */
+	expected_total_len = 4 + tmp_lc + data_tlv_len + le_tlv_len + mac_tlv_len + 2;
+
+	if (expected_total_len > *apdu_buf_len) {
+	    return SC_ERROR_BUFFER_TOO_SMALL;
 	}
 
 	memcpy(apdu_buf + 4 + tmp_lc, dataTLV, data_tlv_len);
