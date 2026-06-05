@@ -33,6 +33,7 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "asn1.h"
 #include "opensc.h"
 #include "cardctl.h"
 #include "internal.h"
@@ -235,8 +236,8 @@ static int cwa_parse_tlv(sc_card_t * card,
 			 cwa_tlv_t tlv_array[]
     )
 {
-	size_t n = 0;
-	size_t next = 0;
+	const u8 *p = buffer;
+	size_t left = datalen;
 	sc_context_t *ctx = NULL;
 
 	/* preliminary checks */
@@ -249,10 +250,24 @@ static int cwa_parse_tlv(sc_card_t * card,
 	if (!tlv_array)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	for (n = 0; n < datalen; n += next) {
-		cwa_tlv_t *tlv = NULL;	/* pointer to TLV structure to store info */
-		size_t j = 2;	/* TLV has at least two bytes */
-		switch (*(buffer + n)) {
+	while (left > 0) {
+		unsigned int cla = 0, tag_val = 0;
+		size_t tag_len = 0, header_len;
+		const u8 *tlv_start = p;
+		cwa_tlv_t *tlv = NULL;
+		u8 raw_tag;
+
+		int r = sc_asn1_read_tag(&p, left, &cla, &tag_val, &tag_len);
+		if (r != SC_SUCCESS) {
+			sc_log(ctx, "Failed to parse ASN.1 tag");
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+		}
+
+		header_len = (p - tlv_start);
+		left -= header_len;
+
+		raw_tag = (cla | tag_val);
+		switch (raw_tag) {
 		case CWA_SM_PLAIN_TAG:
 			tlv = &tlv_array[0];
 			break;	/* 0x81 Plain  */
@@ -266,50 +281,19 @@ static int cwa_parse_tlv(sc_card_t * card,
 			tlv = &tlv_array[3];
 			break;	/* 0x99 Status */
 		default:	/* CWA_SM_LE_TAG (0x97) is not valid here */
-			sc_log(ctx, "Invalid TLV Tag type: '0x%02X'",
-			       *(buffer + n));
+			sc_log(ctx, "Invalid TLV Tag type: '0x%02X'", raw_tag);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 		}
-		tlv->buf = buffer + n;
-		tlv->tag = 0xff & *(buffer + n);
-		tlv->len = 0;	/* temporary */
-		/* evaluate len and start of data */
-		switch (0xff & *(buffer + n + 1)) {
-		case 0x84:
-			tlv->len = (0xff & *(buffer + n + j++));
-			/* fall through */
-		case 0x83:
-			tlv->len =
-			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
-			/* fall through */
-		case 0x82:
-			tlv->len =
-			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
-			/* fall through */
-		case 0x81:
-			tlv->len =
-			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
-			break;
-			/* case 0x80 is not standard, but official code uses it */
-		case 0x80:
-			tlv->len =
-			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
-			break;
-		default:
-			if ((*(buffer + n + 1) & 0xff) < 0x80) {
-				tlv->len = 0xff & *(buffer + n + 1);
-			} else {
-				sc_log(ctx, "Invalid tag length indicator: %d",
-				       *(buffer + n + 1));
-				LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
-			}
-		}
-		tlv->data = buffer + n + j;
-		tlv->buflen = j + tlv->len;
+		tlv->buf = (u8 *)tlv_start;
+		tlv->tag = raw_tag;
+		tlv->len = tag_len;
+		tlv->data = (u8 *)p;
+		tlv->buflen = header_len + tag_len;
 		sc_log(ctx, "Found Tag: '0x%02X': Length: '%"SC_FORMAT_LEN_SIZE_T"u' Value:\n%s",
 		       tlv->tag, tlv->len, sc_dump_hex(tlv->data, tlv->len));
 		/* set index to next Tag to jump to */
-		next = tlv->buflen;
+		p += tag_len;
+		left -= tag_len;
 	}
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);	/* mark no error */
 }
