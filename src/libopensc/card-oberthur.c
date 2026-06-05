@@ -2042,6 +2042,15 @@ write_publickey (struct sc_card *card, unsigned int offset,
 	rsa_der_len = 0;
 	memset(rsa_der, 0, sizeof(rsa_der));
 	LOG_TEST_RET(card->ctx, rv, "cannot decode public key");
+	if (key.modulus.len == 0 || key.exponent.len == 0) {
+		if (key.modulus.len > 0) {
+			free(key.modulus.data);
+		}
+		if (key.exponent.len > 0) {
+			free(key.exponent.data);
+		}
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid key decoded from DER");
+	}
 
 	memset(&args, 0, sizeof(args));
 	args.type = SC_CARDCTL_OBERTHUR_KEY_RSA_PUBLIC;
