@@ -484,6 +484,8 @@ static const struct sc_atr_table piv_atrs[] = {
 	{ "3B:7A:18:00:00:73:66:74:65:20:63:64:31:34:34", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL },
 	/* Giesecke & Devrient (CAC PIV Endpoint) 2019 */
 	{ "3B:F9:18:00:00:00:53:43:45:37:20:03:00:20:46", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL },
+	/* Giesecke & Devrient SCE7 (PIV-only) */
+	{ "3B:F9:96:00:00:80:31:FE:45:53:43:45:37:20:0F:00:20:46:4E", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE, 0, NULL },
 
 	/* IDEMIA (new name for Oberthur) (DoD Alternate Token IDEMIA Cosmo V8.0 2019*/
 	{ "3B:D8:18:00:80:B1:FE:45:1F:07:80:31:C1:64:08:06:92:0F:D5", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
