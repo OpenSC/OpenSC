@@ -451,17 +451,17 @@ static int nqapplet_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 }
 
 static int
-nqapplet_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+nqapplet_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
-	r = iso_operations->pin_cmd(card, data, tries_left);
+	r = iso_operations->pin_cmd(card, data);
 	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
 		/* it is possible that the NQ-Applet is not active, try to activate it */
 		r = select_nqapplet(card, NULL, NULL, NULL, 0, NULL);
 		if (r == SC_SUCCESS) {
-			r = iso_operations->pin_cmd(card, data, tries_left);
+			r = iso_operations->pin_cmd(card, data);
 		}
 	}
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);

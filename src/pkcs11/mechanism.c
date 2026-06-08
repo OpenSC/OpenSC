@@ -203,6 +203,8 @@ sc_pkcs11_find_mechanism(struct sc_pkcs11_card *p11card, CK_MECHANISM_TYPE mech,
 	sc_pkcs11_mechanism_type_t *mt;
 	unsigned int n;
 
+	if (p11card == NULL)
+		return NULL;
 	for (n = 0; n < p11card->nmechanisms; n++) {
 		mt = p11card->mechanisms[n];
 		if (mt && mt->mech == mech && ((mt->mech_info.flags & flags) == flags))
@@ -1786,7 +1788,7 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	CK_RV rv;
 
 	LOG_FUNC_CALLED(p11card->card->ctx);
-	sc_log(p11card->card->ctx, "mech = %lx, hash_mech = %lx", mech, hash_mech);
+	sc_log(p11card->card->ctx, "mech = 0x%lx, hash_mech = 0x%lx", mech, hash_mech);
 
 	if (!sign_type)
 		LOG_FUNC_RETURN(p11card->card->ctx, CKR_MECHANISM_INVALID);

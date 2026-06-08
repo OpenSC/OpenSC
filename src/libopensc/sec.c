@@ -138,7 +138,11 @@ int sc_verify(sc_card_t *card, unsigned int type, int ref,
 	data.pin1.data = pin;
 	data.pin1.len = pinlen;
 
-	return sc_pin_cmd(card, &data, tries_left);
+	int r = sc_pin_cmd(card, &data);
+	if (tries_left)
+		*tries_left = data.pin1.tries_left;
+
+	return r;
 }
 
 int sc_logout(sc_card_t *card)
@@ -164,7 +168,11 @@ int sc_change_reference_data(sc_card_t *card, unsigned int type,
 	data.pin2.data = newref;
 	data.pin2.len = newlen;
 
-	return sc_pin_cmd(card, &data, tries_left);
+	int r = sc_pin_cmd(card, &data);
+	if (tries_left)
+		*tries_left = data.pin1.tries_left;
+
+	return r;
 }
 
 int sc_reset_retry_counter(sc_card_t *card, unsigned int type, int ref,
@@ -182,7 +190,7 @@ int sc_reset_retry_counter(sc_card_t *card, unsigned int type, int ref,
 	data.pin2.data = newref;
 	data.pin2.len = newlen;
 
-	return sc_pin_cmd(card, &data, NULL);
+	return sc_pin_cmd(card, &data);
 }
 
 /*
@@ -192,8 +200,7 @@ int sc_reset_retry_counter(sc_card_t *card, unsigned int type, int ref,
  * send this PIN to the card. If no PIN was given, the driver should
  * ask the reader to obtain the pin(s) via the pin pad
  */
-int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
-		int *tries_left)
+int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	int r, debug;
 
@@ -209,7 +216,7 @@ int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	}
 
 	if (card->ops->pin_cmd) {
-		r = card->ops->pin_cmd(card, data, tries_left);
+		r = card->ops->pin_cmd(card, data);
 	} else if (!(data->flags & SC_PIN_CMD_USE_PINPAD)) {
 		/* Card driver doesn't support new style pin_cmd, fall
 		 * back to old interface */
@@ -223,7 +230,7 @@ int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 					data->pin_reference,
 					data->pin1.data,
 					(size_t) data->pin1.len,
-					tries_left);
+					&data->pin1.tries_left);
 			break;
 		case SC_PIN_CMD_CHANGE:
 			if (card->ops->change_reference_data != NULL)
@@ -234,7 +241,7 @@ int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 					(size_t) data->pin1.len,
 					data->pin2.data,
 					(size_t) data->pin2.len,
-					tries_left);
+					&data->pin1.tries_left);
 			break;
 		case SC_PIN_CMD_UNBLOCK:
 			if (card->ops->reset_retry_counter != NULL)

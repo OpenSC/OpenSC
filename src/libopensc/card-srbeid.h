@@ -1,7 +1,7 @@
 /*
- * char_str_from_wchar.h: Conversion from wide string to string
+ * card-srbeid.h: Shared definitions for Serbian CardEdge card and PKCS#15 drivers.
  *
- * Copyright (C) 2017 Frank Morgner <frankmorgner@gmail.com>
+ * Copyright (C) 2026 LibreSCRS contributors
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,31 +18,18 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifdef _WIN32
-#include <windows.h>
+#ifndef CARD_SRBEID_H
+#define CARD_SRBEID_H
 
-static char *char_str_from_wchar(const WCHAR *in)
-{
-	char *out;
-	int out_len;
+#include "types.h"
 
-	if (!in)
-		return NULL;
+/* CardEdge PKI applet AID  (A0 00 00 00 63 50 4B 43 53 2D 31 35) */
+static const u8 AID_PKCS15[] = {
+		0xA0, 0x00, 0x00, 0x00, 0x63,
+		0x50, 0x4B, 0x43, 0x53, 0x2D, 0x31, 0x35};
+#define AID_PKCS15_LEN (sizeof(AID_PKCS15))
 
-	out_len = WideCharToMultiByte(CP_UTF8, 0, in, -1, NULL, 0, NULL, NULL);
-	if (0 >= out_len)
-		return NULL;
+/* Base address of key files: key FID = CE_KEYS_BASE_FID | container/type bits */
+#define CE_KEYS_BASE_FID 0x6000u
 
-	out = LocalAlloc(0, (sizeof *out) * out_len);
-	if (!out)
-		return NULL;
-
-	out_len = WideCharToMultiByte(CP_UTF8, 0, in, -1, out, out_len, NULL, NULL);
-	if (out_len == 0xFFFD || 0 >= out_len) {
-		LocalFree(out);
-		return NULL;
-	}
-
-	return out;
-}
-#endif
+#endif /* CARD_SRBEID_H */

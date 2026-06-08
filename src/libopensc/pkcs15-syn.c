@@ -64,6 +64,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "eOI",        sc_pkcs15emu_eoi_init_ex },
 	{ "dtrust",     sc_pkcs15emu_dtrust_init_ex },
 	{ "lteid",      sc_pkcs15emu_lteid_init_ex },
+	{ "srbeid",     sc_pkcs15emu_srbeid_init_ex },
 	{ NULL, NULL }
 };
 
@@ -348,7 +349,8 @@ static sc_pkcs15_df_t * sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card,
 			}
 		}
 
-		assert(created == 0);
+		if (created != 0)
+			return NULL;
 
 		file = sc_file_new();
 		if (!file)

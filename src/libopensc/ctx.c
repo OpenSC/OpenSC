@@ -144,6 +144,9 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
  * driver's `match_card()` function. */
 	{ "esteid2018",	(void *(*)(void)) sc_get_esteid2018_driver },
 	{ "esteid2025",	(void *(*)(void)) sc_get_esteid2025_driver },
+	/* srbeid: Serbian cards with CardEdge PKI applet (eID, health, PKS).
+	 * Uses AID selection in match_card() for cards without a distinct ATR. */
+	{ "srbeid",	(void *(*)(void)) sc_get_srbeid_driver },
 	{ "coolkey",	(void *(*)(void)) sc_get_coolkey_driver },
 	/* MUSCLE card applet returns 9000 on whatever AID is selected, see
 	 * https://github.com/JavaCardOS/MuscleCard-Applet/blob/master/musclecard/src/com/musclecard/CardEdge/CardEdge.java#L326

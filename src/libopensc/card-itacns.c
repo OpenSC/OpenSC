@@ -238,7 +238,8 @@ static int itacns_set_security_env(sc_card_t *card,
 	/* Do not complain about se_num; the argument is part of the API. */
 	(void) se_num;
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)
 	 || env->key_ref_len != 1) {
@@ -292,8 +293,7 @@ static int itacns_set_security_env(sc_card_t *card,
  * cards by STIncard.
  */
 static int
-itacns_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
-		 int *tries_left)
+itacns_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 	/* Enable backtracking for STIncard cards. */
@@ -307,7 +307,7 @@ itacns_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		data->pin1.max_length = 8;
 	if (data->pin2.max_length == 0)
 		data->pin2.max_length = 8;
-	return default_ops->pin_cmd(card, data, tries_left);
+	return default_ops->pin_cmd(card, data);
 }
 
 static int itacns_read_binary(sc_card_t *card,

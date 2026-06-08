@@ -201,12 +201,10 @@ static int entersafe_cipher_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	u8 iv[8] = {0};
 	int len;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (card == NULL || apdu == NULL || key == NULL || buff == NULL)
+		return SC_ERROR_INTERNAL;
 
-	assert(card);
-	assert(apdu);
-	assert(key);
-	assert(buff);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* padding as 0x80 0x00 0x00...... */
 	memset(buff, 0, buffsize);
@@ -274,12 +272,10 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	EVP_CIPHER_CTX *ctx = NULL;
 	EVP_CIPHER *alg = NULL;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (card == NULL || apdu == NULL || key == NULL || buff == NULL)
+		return SC_ERROR_INTERNAL;
 
-	assert(card);
-	assert(apdu);
-	assert(key);
-	assert(buff);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (apdu->cse != SC_APDU_CASE_3_SHORT)
 		return SC_ERROR_INTERNAL;
@@ -347,8 +343,13 @@ static int entersafe_mac_apdu(sc_card_t *card, sc_apdu_t *apdu,
 		}
 	}
 
+	if (apdu->lc + 4 > buffsize) {
+		r = SC_ERROR_INVALID_DATA;
+		goto out;
+	}
+
 	memcpy(buff, apdu->data, apdu->lc);
-	/* use first 4 bytes of last block as mac value*/
+	/* use first 4 bytes of last block as mac value */
 	memcpy(buff + apdu->lc, tmp_rounded + tmpsize_rounded - 8, 4);
 	apdu->data = buff;
 	apdu->lc += 4;
@@ -373,10 +374,10 @@ static int entersafe_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu,
 	u8 *sbuf = NULL;
 	size_t ssize = 0;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (card == NULL || apdu == NULL)
+		return SC_ERROR_INTERNAL;
 
-	assert(card);
-	assert(apdu);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if ((cipher || mac) && (!key || (keylen != 8 && keylen != 16)))
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
@@ -430,7 +431,8 @@ static int entersafe_read_binary(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	assert(count <= card->max_recv_size);
+	if (count > card->max_recv_size)
+		return SC_ERROR_INTERNAL;
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, (idx >> 8) & 0xFF, idx & 0xFF);
 
 	apdu.cla = idx > 0x7fff ? 0x80 : 0x00;
@@ -456,7 +458,8 @@ static int entersafe_update_binary(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	assert(count <= card->max_send_size);
+	if (count > card->max_send_size)
+		return SC_ERROR_INTERNAL;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (idx >> 8) & 0xFF, idx & 0xFF);
 	apdu.cla = idx > 0x7fff ? 0x80 : 0x00;
@@ -476,7 +479,8 @@ static int entersafe_process_fci(struct sc_card *card, struct sc_file *file,
 {
 	int r;
 
-	assert(file);
+	if (file == NULL)
+		return SC_ERROR_INTERNAL;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	r = iso_ops->process_fci(card, file, buf, buflen);
@@ -532,7 +536,8 @@ static int entersafe_select_aid(sc_card_t *card,
 
 	if (file_out) {
 		sc_file_t *file = *file_out;
-		assert(file);
+		if (file == NULL)
+			return SC_ERROR_INTERNAL;
 
 		file->type = SC_FILE_TYPE_DF;
 		file->ef_structure = SC_FILE_EF_UNKNOWN;
@@ -583,8 +588,8 @@ static int entersafe_select_file(sc_card_t *card,
 								const sc_path_t *in_path,
 								sc_file_t **file_out)
 {
-	assert(card);
-	assert(in_path);
+	if (card == NULL || in_path == NULL)
+		return SC_ERROR_INTERNAL;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	switch (in_path->type) {
@@ -723,9 +728,10 @@ static int entersafe_internal_set_security_env(sc_card_t *card,
 	u8 *p = sbuf;
 	int r;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 
-	assert(card != NULL && env != NULL);
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	switch (env->operation) {
 		case SC_SEC_OPERATION_DECIPHER:
@@ -776,8 +782,8 @@ static int entersafe_set_security_env(sc_card_t *card,
 									  const sc_security_env_t *env,
 									  int se_num)
 {
-	assert(card);
-	assert(env);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -814,7 +820,7 @@ static int entersafe_compute_with_prkey(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (!data)
+	if (!data || datalen > SC_MAX_APDU_BUFFER_SIZE)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	memcpy(p,data,size);
@@ -870,8 +876,7 @@ static void entersafe_init_pin_info(struct sc_pin_cmd_pin *pin, unsigned int num
 	pin->pad_char   = 0x00;
 }
 
-static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
-							 int *tries_left)
+static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	int r;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -880,12 +885,16 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 
 	if (data->cmd != SC_PIN_CMD_UNBLOCK) {
-		r = iso_ops->pin_cmd(card, data, tries_left);
+		r = iso_ops->pin_cmd(card, data);
 		sc_log(card->ctx, "Verify rv:%i", r);
 	} else {
 		{ /*verify*/
 			sc_apdu_t apdu;
 			u8 sbuf[0x10] = {0};
+
+			if (data->pin1.len > sizeof(sbuf)) {
+				return SC_ERROR_INVALID_DATA;
+			}
 
 			memcpy(sbuf, data->pin1.data, data->pin1.len);
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, data->pin_reference + 1);
@@ -899,6 +908,10 @@ static int entersafe_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		{ /*change*/
 			sc_apdu_t apdu;
 			u8 sbuf[0x12] = {0};
+
+			if (data->pin2.len + 2 > sizeof(sbuf)) {
+				return SC_ERROR_INVALID_DATA;
+			}
 
 			sbuf[0] = 0x33;
 			sbuf[1] = 0x00;
@@ -962,13 +975,21 @@ static int entersafe_erase_card(sc_card_t *card)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
-static void entersafe_encode_bignum(u8 tag, sc_pkcs15_bignum_t bignum, u8 **ptr)
+static int
+entersafe_encode_bignum(u8 tag, sc_pkcs15_bignum_t bignum, u8 **ptr, size_t *ptrlen)
 {
 	u8 *p = *ptr;
 
+	/* lower bound for 1B length encoding */
+	if (*ptrlen < bignum.len + 2) {
+		return SC_ERROR_INVALID_DATA;
+	}
+
 	*p++ = tag;
+	*ptrlen -= 1;
 	if (bignum.len < 128) {
 		*p++ = (u8)bignum.len;
+		*ptrlen -= 1;
 	} else {
 		u8 bytes = 1;
 		size_t len = bignum.len;
@@ -978,15 +999,25 @@ static void entersafe_encode_bignum(u8 tag, sc_pkcs15_bignum_t bignum, u8 **ptr)
 		}
 		bytes &= 0x0F;
 		*p++ = 0x80 | bytes;
+		*ptrlen -= 1;
 		while (bytes) {
 			*p++ = bignum.len >> ((bytes - 1) * 8);
+			*ptrlen -= 1;
 			--bytes;
 		}
 	}
+	/* Tag and length bytes already counted and checked */
+	if (*ptrlen < bignum.len) {
+		return SC_ERROR_INVALID_DATA;
+	}
+
 	memcpy(p, bignum.data, bignum.len);
 	entersafe_reverse_buffer(p, bignum.len);
 	p += bignum.len;
 	*ptr = p;
+	*ptrlen -= bignum.len;
+
+	return SC_SUCCESS;
 }
 
 static int entersafe_write_small_rsa_key(sc_card_t *card, u8 key_id, struct sc_pkcs15_prkey_rsa *rsa)
@@ -995,14 +1026,17 @@ static int entersafe_write_small_rsa_key(sc_card_t *card, u8 key_id, struct sc_p
 	u8 sbuff[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 	u8 *p = sbuff;
+	size_t buflen = sizeof(sbuff);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	{ /* write prkey */
 		*p++ = 0x00;			/* EC */
 		*p++ = 0x00;			/* ver */
-		entersafe_encode_bignum('E', rsa->exponent, &p);
-		entersafe_encode_bignum('D', rsa->d, &p);
+		r = entersafe_encode_bignum('E', rsa->exponent, &p, &buflen);
+		LOG_TEST_RET(card->ctx, r, "Failed to encode bignum. Buffer too small?");
+		r = entersafe_encode_bignum('D', rsa->d, &p, &buflen);
+		LOG_TEST_RET(card->ctx, r, "Failed to encode bignum. Buffer too small?");
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xF4, 0x22, key_id);
 		apdu.cla = 0x84;
@@ -1018,8 +1052,10 @@ static int entersafe_write_small_rsa_key(sc_card_t *card, u8 key_id, struct sc_p
 	{ /* write pukey */
 		*p++ = 0x00;			/* EC */
 		*p++ = 0x00;			/* ver */
-		entersafe_encode_bignum('E', rsa->exponent, &p);
-		entersafe_encode_bignum('N', rsa->modulus, &p);
+		r = entersafe_encode_bignum('E', rsa->exponent, &p, &buflen);
+		LOG_TEST_RET(card->ctx, r, "Failed to encode bignum. Buffer too small?");
+		r = entersafe_encode_bignum('N', rsa->modulus, &p, &buflen);
+		LOG_TEST_RET(card->ctx, r, "Failed to encode bignum. Buffer too small?");
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xF4, 0x2A, key_id);
 		apdu.cla = 0x84;
@@ -1314,7 +1350,8 @@ static int entersafe_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	assert(serial);
+	if (serial == NULL)
+		return SC_ERROR_INTERNAL;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xEA, 0x00, 0x00);
 	apdu.cla = 0x80;

@@ -295,16 +295,19 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 		obj->type = SC_PKCS15_TYPE_PUBKEY_RSA;
 	} else if (asn1_pubkey_choice[1].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410;
-		assert(info->modulus_length == 0);
+		if (info->modulus_length != 0)
+			return SC_ERROR_INTERNAL;
 		info->modulus_length = SC_PKCS15_GOSTR3410_KEYSIZE;
-		assert(info->params.len == 0);
+		if (info->params.len != 0)
+			return SC_ERROR_INTERNAL;
 		info->params.len = sizeof(struct sc_pkcs15_keyinfo_gostparams);
 		info->params.data = malloc(info->params.len);
 		if (info->params.data == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
-		assert(sizeof(*keyinfo_gostparams) == info->params.len);
+		if (sizeof(*keyinfo_gostparams) != info->params.len)
+			return SC_ERROR_INTERNAL;
 		keyinfo_gostparams = info->params.data;
 		keyinfo_gostparams->gostr3410 = (unsigned int)gostr3410_params[0];
 		keyinfo_gostparams->gostr3411 = (unsigned int)gostr3410_params[1];
@@ -988,7 +991,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		LOG_TEST_GOTO_ERR(ctx, r, "Failed to read public key file.");
 
 		if ((algorithm == SC_ALGORITHM_EC || algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA)
-				&& *data == (SC_ASN1_TAG_SEQUENCE | SC_ASN1_TAG_CONSTRUCTED))
+				&& len > 0 && *data == (SC_ASN1_TAG_SEQUENCE | SC_ASN1_TAG_CONSTRUCTED))
 			r = sc_pkcs15_pubkey_from_spki_sequence(ctx, data, len, &pubkey);
 		else
 			r = sc_pkcs15_decode_pubkey(ctx, pubkey, data, len);
@@ -1422,6 +1425,11 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 		LOG_TEST_GOTO_ERR(ctx, r, "failed to fix EC parameters");
 
 		pubkey->u.ec.ecpointQ.value = malloc(pk.len);
+		if (pubkey->u.ec.ecpointQ.value == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, r, "failed to malloc() memory");
+		}
+
 		memcpy(pubkey->u.ec.ecpointQ.value, pk.value, pk.len);
 		pubkey->u.ec.ecpointQ.len = pk.len;
 	} else {

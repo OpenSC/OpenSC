@@ -185,7 +185,7 @@ esteid_get_pin_info(sc_card_t *card, struct sc_pin_cmd_data *data)
 }
 
 static int
-esteid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+esteid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx, "PIN CMD is %d", data->cmd);
@@ -193,7 +193,7 @@ esteid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		sc_log(card->ctx, "SC_PIN_CMD_GET_INFO for %d", data->pin_reference);
 		LOG_FUNC_RETURN(card->ctx, esteid_get_pin_info(card, data));
 	}
-	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
+	LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data));
 }
 
 static int

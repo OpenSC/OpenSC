@@ -371,7 +371,8 @@ static int setcos_pin_index_44(int *pins, int len, int pin)
 			return i;
 		}
 	}
-	assert(i != len); /* Too much PINs, shouldn't happen */
+	if (i == len)
+		return SC_ERROR_INTERNAL;
 	return 0;
 }
 
@@ -429,6 +430,7 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 		/* Get enabled commands + required Keys/Pins  */
 		memset(bCommands_pin, 0, sizeof(bCommands_pin));
 		for (i = 7; i >= 0; i--) {  /* for each AC Setcos operation */
+			int pin_index;
 			bCommands_always <<= 1;
 			bCommands_key <<= 1;
 
@@ -446,7 +448,11 @@ static int setcos_create_file_44(sc_card_t *card, sc_file_t *file)
 					sc_log(card->ctx,  "SetCOS 4.4 PIN refs can only be 1..7\n");
 					return SC_ERROR_INVALID_ARGUMENTS;
 				}
-				bCommands_pin[setcos_pin_index_44(pins, sizeof(pins)/sizeof(pins[0]), (int) bNumber)] |= 1 << i;
+				pin_index = setcos_pin_index_44(pins, sizeof(pins) / sizeof(pins[0]), (int)bNumber);
+				if (pin_index < 0) {
+					return SC_ERROR_INTERNAL;
+				}
+				bCommands_pin[pin_index] |= 1 << i;
 				break;
 			case SC_AC_TERM:			/* key */
 				bKeyNumber = bNumber;	/* There should be only 1 key */
@@ -539,7 +545,8 @@ static int setcos_set_security_env2(sc_card_t *card,
 	u8 *p;
 	int r, locked = 0;
 
-	assert(card != NULL && env != NULL);
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INTERNAL;
 
 	if (card->type == SC_CARD_TYPE_SETCOS_44 ||
 	    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||

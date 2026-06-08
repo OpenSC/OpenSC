@@ -1444,7 +1444,8 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	}
 
 	len = strnlen(devcert.chr, sizeof devcert.chr);		/* Strip last 5 digit sequence number from CHR */
-	assert(len >= 8);
+	if (len < 8)
+		return SC_ERROR_INTERNAL;
 	len -= 5;
 
 	free(p15card->tokeninfo->serial_number);
@@ -1554,7 +1555,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		pindata.pin_type = SC_AC_CHV;
 		pindata.pin_reference = 0x85;
 
-		r = sc_pin_cmd(card, &pindata, NULL);
+		r = sc_pin_cmd(card, &pindata);
 	}
 	if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND) {
 		memset(&pindata, 0, sizeof(pindata));
@@ -1562,7 +1563,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		pindata.pin_type = SC_AC_CHV;
 		pindata.pin_reference = 0x86;
 
-		r = sc_pin_cmd(card, &pindata, NULL);
+		r = sc_pin_cmd(card, &pindata);
 	}
 
 	if ((r != SC_ERROR_DATA_OBJECT_NOT_FOUND) && (r != SC_ERROR_INCORRECT_PARAMETERS) && (r != SC_ERROR_REF_DATA_NOT_USABLE))

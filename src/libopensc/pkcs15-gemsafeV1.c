@@ -472,7 +472,8 @@ sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card, unsigned int type)
 			}
 		}
 
-		assert(created == 0);
+		if (created != 0)
+			return NULL;
 
 		file = sc_file_new();
 		if (!file)
@@ -493,6 +494,9 @@ sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 	int		df_type;
 
 	obj = calloc(1, sizeof(*obj));
+	if (!obj) {
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 
 	obj->type  = type;
 	obj->data  = data;

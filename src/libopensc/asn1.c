@@ -1525,15 +1525,18 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_ENUMERATED:
 		if (parm != NULL) {
 			r = sc_asn1_decode_integer(obj, objlen, (int *) entry->parm, 0);
-			sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*sdecoding '%s' returned %d\n", depth, depth, "",
-					entry->name, *((int *) entry->parm));
+			if (r == SC_SUCCESS) {
+				sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*sdecoding '%s' returned %d\n",
+						depth, depth, "", entry->name, *((int *)entry->parm));
+			}
 		}
 		break;
 	case SC_ASN1_BIT_STRING_NI:
 	case SC_ASN1_BIT_STRING:
 		if (parm != NULL) {
 			int invert = entry->type == SC_ASN1_BIT_STRING ? 1 : 0;
-			assert(len != NULL);
+			if (len == NULL)
+				return SC_ERROR_INTERNAL;
 			if (objlen < 1) {
 				r = SC_ERROR_INVALID_ASN1_OBJECT;
 				break;
@@ -1564,7 +1567,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_OCTET_STRING:
 		if (parm != NULL) {
 			size_t c;
-			assert(len != NULL);
+			if (len == NULL)
+				return SC_ERROR_INTERNAL;
 
 			/* Strip off padding zero */
 			if ((entry->flags & SC_ASN1_UNSIGNED)
@@ -1595,7 +1599,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_GENERALIZEDTIME:
 		if (parm != NULL) {
 			size_t c;
-			assert(len != NULL);
+			if (len == NULL)
+				return SC_ERROR_INTERNAL;
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
 				if (objlen > 0) {
@@ -1621,7 +1626,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_PRINTABLESTRING:
 	case SC_ASN1_UTF8STRING:
 		if (parm != NULL) {
-			assert(len != NULL);
+			if (len == NULL)
+				return SC_ERROR_INTERNAL;
 			if (entry->flags & SC_ASN1_ALLOC) {
 				u8 **buf = (u8 **) parm;
 				*buf = malloc(objlen+1);
@@ -1754,7 +1760,12 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 			r = asn1_decode(ctx,
 				(struct sc_asn1_entry *) entry->parm,
 				p, left, &p, &left, 1, depth + 1);
-			if (r >= 0)
+			/* When the inner call fails it returns before writing
+			 * back to *newp and *len_left, so the caller's p/left are
+			 * unchanged.  Swallowing the error for an optional
+			 * CHOICE is therefore safe: the next field will be
+			 * attempted at the same position. */
+			if (r >= 0 || (entry->flags & SC_ASN1_OPTIONAL))
 				r = 0;
 			goto decode_ok;
 		}

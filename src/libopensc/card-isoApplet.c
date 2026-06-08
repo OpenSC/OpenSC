@@ -1064,16 +1064,21 @@ isoApplet_set_security_env(sc_card_t *card,
 	u8 *p;
 	int r;
 	size_t sz;
-	struct isoApplet_drv_data *drvdata = DRVDATA(card);
+	struct isoApplet_drv_data *drvdata = NULL;
+
+	if (card == NULL || env == NULL) {
+		return SC_ERROR_INTERNAL;
+	}
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	drvdata = DRVDATA(card);
 
 	if(se_num != 0)
 	{
 		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
 		             "IsoApplet does not support storing of security environments.");
 	}
-	assert(card != NULL && env != NULL);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0);
 	switch (env->operation)
 	{
@@ -1127,7 +1132,8 @@ isoApplet_set_security_env(sc_card_t *card,
 	{
 		*p++ = 0x81;
 		*p++ = env->file_ref.len;
-		assert(sizeof(sbuf) - (p - sbuf) >= env->file_ref.len);
+		if (sizeof(sbuf) - (p - sbuf) < env->file_ref.len)
+			return SC_ERROR_INTERNAL;
 		memcpy(p, env->file_ref.value, env->file_ref.len);
 		p += env->file_ref.len;
 	}
@@ -1139,7 +1145,8 @@ isoApplet_set_security_env(sc_card_t *card,
 		else
 			*p++ = 0x84;
 		*p++ = env->key_ref_len;
-		assert(sizeof(sbuf) - (p - sbuf) >= env->key_ref_len);
+		if (sizeof(sbuf) - (p - sbuf) < env->key_ref_len)
+			return SC_ERROR_INTERNAL;
 		memcpy(p, env->key_ref, env->key_ref_len);
 		p += env->key_ref_len;
 	}

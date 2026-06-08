@@ -41,27 +41,16 @@ jobs:
       - name: Package suffix
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            if [[ "${{ github.base_ref }}" == "master" ]]; then
-              SUFFIX="-pr${{ github.event.number }}"
-            else
-              SUFFIX="-${{ github.base_ref }}-pr${{ github.event.number }}"
-            fi
-          elif [[ "${{ github.event_name }}" == "push" ]]; then
-            if [[ "${{ github.ref_type }}" == "tag" ]]; then
-              if [[ "${{ github.ref_name }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-                SUFFIX="" # regular release tag
-              elif [[ "${{ github.ref_name }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(.+)$ ]]; then
-                SUFFIX="${BASH_REMATCH[1]}" # rc release tag
-              else
-                SUFFIX="-${{ github.ref_name }}"
-              fi
-            elif [[ "${{ github.ref_name }}" != "master" ]]; then
-              SUFFIX="-${{ github.ref_name }}"
+          SUFFIX="-${GITHUB_SHA:0:7}"
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            if [[ "${{ github.ref_name }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              SUFFIX="" # regular release tag
+            elif [[ "${{ github.ref_name }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(.+)$ ]]; then
+              SUFFIX="${BASH_REMATCH[1]}" # rc release tag
             fi
           fi
           PACKAGE_SUFFIX="${SUFFIX}${{ matrix.configuration == 'Light' && '-Light' || '' }}"
-          sed -i.bak "s/^PACKAGE_SUFFIX=\([-~]*[0-9a-zA-Z]*\)$/PACKAGE_SUFFIX=$PACKAGE_SUFFIX/g" VERSION.mk
+          sed -i.bak "s|^PACKAGE_SUFFIX=\([-~]*[0-9a-zA-Z]*\)$|PACKAGE_SUFFIX=$PACKAGE_SUFFIX|g" VERSION.mk
           cat VERSION.mk
           while IFS='=' read -r key value; do
               # Skip empty or comment lines
@@ -134,7 +123,7 @@ jobs:
         run: nmake /nologo /f Makefile.mak opensc.msi
       - name: Archive artifacts
         id: upload-unsigned-artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.ARTIFACT_NAME }}
           path: ./win32/*.msi
@@ -149,7 +138,7 @@ jobs:
           github-artifact-id: '${{ steps.upload-unsigned-artifact.outputs.artifact-id }}'
           wait-for-completion: false
       - name: Archive debug artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.ARTIFACT_NAME }}-dbg
           path: |
