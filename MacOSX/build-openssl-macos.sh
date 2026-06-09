@@ -9,11 +9,17 @@ while [ $# -gt 0 ]; do
     case "$1" in
         -b|--buildpath)
             BUILDPATH="$2"
-            shift 2
+            if ! shift 2; then
+	    	echo "Error: Missing argument for $1" >&2
+	    	exit 1
+	    fi
             ;;
         -p|--prefix)
             PREFIX="$2"
-            shift 2
+            if ! shift 2; then
+	    	echo "Error: Missing argument for $1" >&2
+	    	exit 1
+	    fi
             ;;
         *)
             echo "Unknown option: $1" >&2
@@ -29,13 +35,13 @@ if ! test -e openssl; then
 fi
 
 pushd openssl
-./Configure darwin64-x86_64 no-shared no-apps --prefix=$PREFIX enable-ec_nistp_64_gcc_128
+./Configure darwin64-x86_64 no-shared no-module no-apps --prefix=$PREFIX enable-ec_nistp_64_gcc_128
 make clean
 make -j 4
 make DESTDIR=$BUILDPATH/openssl_bin install_sw
 make clean
 
-./Configure darwin64-arm64 no-shared no-apps --prefix=$PREFIX enable-ec_nistp_64_gcc_128
+./Configure darwin64-arm64 no-shared no-module no-apps --prefix=$PREFIX enable-ec_nistp_64_gcc_128
 make -j 4
 make DESTDIR=$BUILDPATH/openssl_arm64 install_sw
 

@@ -403,7 +403,7 @@ typedef struct sc_reader {
 	unsigned long flags, capabilities;
 	unsigned int supported_protocols, active_protocol;
 	size_t max_send_size; /* Max Lc supported by the reader layer */
-	size_t max_recv_size; /* Mac Le supported by the reader layer */
+	size_t max_recv_size; /* Max Le supported by the reader layer */
 
 	struct sc_atr atr;
 	struct sc_uid uid;
@@ -434,10 +434,10 @@ typedef struct sc_reader {
 #define SC_PIN_ENCODING_GLP	2 /* Global Platform - Card Specification v2.0.1 */
 
 /** Values for sc_pin_cmd_pin.logged_in, can be bitmapped together */
-#define SC_PIN_STATE_UNKNOWN	-1
-#define SC_PIN_STATE_LOGGED_OUT 0
-#define SC_PIN_STATE_LOGGED_IN  1
-#define SC_PIN_STATE_NEEDS_CHANGE 2
+#define SC_PIN_STATE_UNKNOWN	0
+#define SC_PIN_STATE_LOGGED_OUT 1
+#define SC_PIN_STATE_LOGGED_IN  2
+#define SC_PIN_STATE_NEEDS_CHANGE 4
 
 /* A card driver receives the sc_pin_cmd_data and sc_pin_cmd_pin structures filled in by the
  * caller, with the exception of the fields returned by the driver for SC_PIN_CMD_GET_INFO.
@@ -800,8 +800,7 @@ struct sc_card_operations {
 	/* pin_cmd: verify/change/unblock command; optionally using the
 	 * card's pin pad if supported.
 	 */
-	int (*pin_cmd)(struct sc_card *, struct sc_pin_cmd_data *,
-				int *tries_left);
+	int (*pin_cmd)(struct sc_card *, struct sc_pin_cmd_data *);
 
 	int (*get_data)(struct sc_card *, unsigned int, u8 *, size_t);
 	int (*put_data)(struct sc_card *, unsigned int, const u8 *, size_t);
@@ -1389,7 +1388,7 @@ int sc_verify(struct sc_card *card, unsigned int type, int ref, const u8 *pin,
  *         doesn't support a logout command and an error code otherwise
  */
 int sc_logout(struct sc_card *card);
-int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *, int *tries_left);
+int sc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *);
 int sc_change_reference_data(struct sc_card *card, unsigned int type,
 			     int ref, const u8 *old, size_t oldlen,
 			     const u8 *newref, size_t newlen,

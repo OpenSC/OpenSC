@@ -46,10 +46,6 @@ java -noverify -cp PivApplet/bin/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar co
 PID=$!
 sleep 5
 
-# enforce the setting of different PIV type to support EC mechanisms
-# which are disabled for the generic ATR mapping to older Yubico devices
-export OPENSC_CONF="${PWD}/.github/opensc-piv.conf"
-
 $VALGRIND opensc-tool --card-driver default --send-apdu 80b80000120ba000000308000010000100050000020F0F7f
 $VALGRIND opensc-tool -n
 
@@ -78,6 +74,6 @@ pushd src/tests/p11test/
 sleep 5
 $VALGRIND ./p11test -v -s 0 -p "$PIN" -o piv.json
 popd
-diff -u3 src/tests/p11test/piv{_ref,}.json
+diff -u3 src/tests/p11test/piv{_ref,}.json 
 
 kill -9 $PID

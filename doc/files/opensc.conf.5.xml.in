@@ -964,6 +964,28 @@ app <replaceable>application</replaceable> {
 			</variablelist>
 		</refsect2>
 
+    <refsect2 id="lteid">
+			<title>Configuration Options for Lithuanian ID Card</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>can = <replaceable>value</replaceable>;</option>
+					</term>
+					<listitem><para>
+							Lithuanian ID card requires the card access
+							number (CAN) to be verified before reading it or
+							performing any operation. It is printed on the
+							front side bottom right corner of the card.
+					</para><para>
+							Note that alternatively it can also be set by
+							<application>lteid-tool</application>. For command
+							line tools it can also be provided via
+							<literal>LTEID_CAN</literal> environment variable.
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
 		<refsect2 id="card_atr">
 			<title>Configuration based on ATR</title>
 			<para>
@@ -1895,6 +1917,38 @@ app <replaceable>application</replaceable> {
 				</term>
 				<listitem><para>
 						See <xref linkend="card_drivers"/>
+				</para></listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>
+					<envar>OPENSC_DEEPBIND</envar>
+				</term>
+				<listitem><para>
+						The OpenSC and its tools are dynamically loading various
+						libraries (pcsclite, dynamic drivers and other pkcs11
+						modules) using
+						<citerefentry>
+							<refentrytitle>dlopen</refentrytitle>
+							<manvolnum>3</manvolnum>
+						</citerefentry>.
+					</para>
+					<para>
+						When this environment variable is set to
+						<literal>1</literal>
+						for the process running OpenSC, the calls will include
+						<literal>RTLD_DEEPBIND</literal> flag, which should
+						cause better symbol isolation between OpenSC and
+						loaded libraries. On the other hand, this is incompatible
+						with various static analysis tools as well as some
+						browser builds.
+					</para>
+					<para>
+						This option may be useful, if OpenSC needs to load a library
+						that pollutes the processes' global namespace and thereby
+						causes the unintended use of a different function with the
+						same name. In particular, this may happen when
+						<literal>pkcs11-spy</literal>
+						is used for logging between application and PKCS#11 library.
 				</para></listitem>
 			</varlistentry>
 			<varlistentry>

@@ -13,13 +13,13 @@ fi
 
 # 64bit or 32bit dependencies
 if [ "$1" == "ix86" ]; then
-	DEPS="$DEPS pcsc-lite-devel*.i686 readline-devel*.i686 openssl-devel*.i686 zlib-ng-devel*.i686 libcmocka-devel*.i686 glibc-devel*i686"
+	DEPS="$DEPS pcsc-lite-devel*.i686 readline-devel*.i686 openssl-devel*.i686 zlib-ng-devel*.i686 libcmocka-devel*.i686 glibc-devel*i686 libgcc.i686 libatomic.i686"
 else
 	DEPS="$DEPS pcsc-lite-devel readline-devel openssl-devel zlib-ng-devel libcmocka-devel"
 fi
 
 if [ "$1" == "kryoptic" ]; then
-	DEPS="$DEPS clang meson cargo expect pkgconf-pkg-config openssl-devel p11-kit-devel gnutls-utils g++ sqlite-devel python3-six git"
+	DEPS="$DEPS kryoptic"
 fi
 
 sudo dnf install -y $DEPS

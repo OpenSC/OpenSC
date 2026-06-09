@@ -102,6 +102,9 @@ static pgp_ec_curves_t ec_curves_openpgp34[] = {
 		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 7, -1}},   256, SC_ALGORITHM_EC}, /* brainpoolP256r1 */
 		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 11, -1}},  384, SC_ALGORITHM_EC}, /* brainpoolP384r1 */
 		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 13, -1}},  512, SC_ALGORITHM_EC}, /* brainpoolP512r1 */
+		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 8, -1}},   256, SC_ALGORITHM_EC}, /* brainpoolP256t1 */
+		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 12, -1}},  384, SC_ALGORITHM_EC}, /* brainpoolP384t1 */
+		{{{1, 3, 36, 3, 3, 2, 8, 1, 1, 14, -1}},  512, SC_ALGORITHM_EC}, /* brainpoolP512t1 */
 		{{{-1}},				  0, 0  }	/* This entry must not be touched. */
 };
 
@@ -2297,7 +2300,7 @@ out:
 }
 
 static int
-pgp_kdf_do_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+pgp_kdf_do_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	int r = SC_ERROR_INVALID_ARGUMENTS;
 	struct pgp_priv_data *priv = DRVDATA(card);
@@ -2319,7 +2322,7 @@ pgp_kdf_do_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_lef
 	case SC_PIN_CMD_UNBLOCK:
 		break;
 	default:
-		LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data, tries_left));
+		LOG_FUNC_RETURN(card->ctx, iso_ops->pin_cmd(card, data));
 	}
 	if (!info) {
 		return r;
@@ -2362,7 +2365,7 @@ pgp_kdf_do_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_lef
 	}
 
 	if (r == SC_SUCCESS) {
-		r = iso_ops->pin_cmd(card, data, tries_left);
+		r = iso_ops->pin_cmd(card, data);
 	}
 	if (pin1_derived) {
 		data->pin1.data = pin1;
@@ -2382,7 +2385,7 @@ pgp_kdf_do_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_lef
  * ABI: ISO 7816-9 PIN CMD - verify/change/unblock a PIN.
  */
 static int
-pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	struct pgp_priv_data *priv = DRVDATA(card);
 	struct sc_card_operations ops = {.pin_cmd = iso_ops->pin_cmd};
@@ -2479,10 +2482,8 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 		data->pin1.tries_left = c4data[3 + (data->pin_reference & 0x0F)];
 		data->pin1.max_tries = 3;
 		data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
-		if (tries_left != NULL)
-			*tries_left = data->pin1.tries_left;
 
-                LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
 #ifdef ENABLE_OPENSSL
@@ -2491,7 +2492,7 @@ pgp_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 	}
 #endif /* ENABLE_OPENSSL */
 
-	LOG_FUNC_RETURN(card->ctx, ops.pin_cmd(card, data, tries_left));
+	LOG_FUNC_RETURN(card->ctx, ops.pin_cmd(card, data));
 }
 
 
@@ -3567,7 +3568,6 @@ set_taglength_tlv(u8 *buffer, unsigned int tag, size_t length)
 {
 	u8 *p = buffer;
 
-	assert(tag <= 0xffff);
 	if (tag > 0xff)
 		*p++ = (tag >> 8) & 0xFF;
 	*p++ = tag;
@@ -3669,7 +3669,8 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 		memset(pritemplate, 0, max_prtem_len);
 
 		/* maximum 32 bit exponent length allowed on OpenPGP Card */
-		assert(key_info->u.rsa.exponent_len <= SC_OPENPGP_MAX_EXP_BITS);
+		if (key_info->u.rsa.exponent_len > SC_OPENPGP_MAX_EXP_BITS)
+			return SC_ERROR_INTERNAL;
 
 		/* We need to right justify the exponent with allowed exponent length,
 		 * e.g. from '01 00 01' to '00 01 00 01' */
@@ -3721,9 +3722,14 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 
 	for (i = 0; i < comp_to_add; i++) {
 		sc_log(ctx, "Set Tag+Length for %s (%X).", componentnames[i], componenttags[i]);
+		if (componenttags[i] > 0xffff) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+		}
 		len = set_taglength_tlv(p, componenttags[i], componentlens[i]);
 		tpl_len += len;
 
+		if (kdata_len + componentlens[i] > sizeof(kdata))
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		/*
 		 *       <-- kdata_len --><--  Copy here  -->
 		 * kdata |===============|___________________

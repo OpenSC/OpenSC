@@ -64,6 +64,7 @@ ChangeLog
 .cache
 compile_commands.json
 .dirstamp
+VERSION.mk.bak
 
 doc/tools/*-tool
 doc/tools/eidenv
@@ -150,7 +151,6 @@ src/tests/fuzzing/fuzz_pkcs15_tool
 src/tests/fuzzing/fuzz_pkcs15init
 src/tests/fuzzing/fuzz_scconf_parse_string
 
-version.m4.ci
 openssl_arm64
 openssl_bin
 openpace_bin

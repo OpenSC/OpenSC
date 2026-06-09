@@ -211,20 +211,19 @@ pin_status(sc_card_t *card, int ref, const char *pin_label, unsigned char transp
 {
 	int r;
 	struct sc_pin_cmd_data data;
-	int tries_left = 0;
 
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_GET_INFO;
 	data.pin_type = SC_AC_CHV;
 	data.pin_reference = ref;
 
-	r = sc_pin_cmd(card, &data, &tries_left);
+	r = sc_pin_cmd(card, &data);
 
 	if (r == SC_SUCCESS) {
-		if (tries_left < 0)
+		if (data.pin1.tries_left < 0)
 			printf("%s: usable\n", pin_label);
 		else
-			printf("%s: usable (%d tries left)\n", pin_label, tries_left);
+			printf("%s: usable (%d tries left)\n", pin_label, data.pin1.tries_left);
 	} else if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
 		printf("%s: not usable (transport protection still in force)\n", pin_label);
 	else if (r == SC_ERROR_AUTH_METHOD_BLOCKED)
@@ -292,7 +291,6 @@ unlock_transport_protection4(sc_card_t *card)
 	int r;
 	char *tpin = NULL;
 	char *qespin = NULL;
-	int tries_left;
 
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_CHANGE;
@@ -323,12 +321,12 @@ unlock_transport_protection4(sc_card_t *card)
 		data.pin2.len = strlen(qespin);
 	}
 
-	r = sc_pin_cmd(card, &data, &tries_left);
+	r = sc_pin_cmd(card, &data);
 
 	if (r == SC_SUCCESS)
 		printf("Transport protection removed. You can now use your Signature PIN.\n");
 	else if (r == SC_ERROR_PIN_CODE_INCORRECT)
-		printf("Wrong pin. %d attempts left.\n", tries_left);
+		printf("Wrong pin. %d attempts left.\n", data.pin1.tries_left);
 	else
 		printf("Can't change pin: %s\n", sc_strerror(r));
 
@@ -352,7 +350,6 @@ unlock_transport_protection5(sc_card_t *card, int ref_pace, int ref_pin, const c
 	struct sc_pin_cmd_data data;
 	char *tpin = NULL;
 	char *newpin = NULL;
-	int tries_left;
 
 	printf("Unlocking %s\n", pin_label);
 
@@ -387,11 +384,11 @@ unlock_transport_protection5(sc_card_t *card, int ref_pace, int ref_pin, const c
 		data.pin1.len = strlen(tpin);
 	}
 
-	r = sc_pin_cmd(card, &data, &tries_left);
+	r = sc_pin_cmd(card, &data);
 	if (r) {
 		fprintf(stderr, "Error verifying Transport PIN: %s\n", sc_strerror(r));
-		if (tries_left >= 0)
-			fprintf(stderr, "%d attempts left.\n", tries_left);
+		if (data.pin1.tries_left >= 0)
+			fprintf(stderr, "%d attempts left.\n", data.pin1.tries_left);
 		goto fail;
 	}
 
@@ -424,7 +421,7 @@ unlock_transport_protection5(sc_card_t *card, int ref_pace, int ref_pin, const c
 	 * continue as long as the new PIN is set successfully or the user
 	 * aborts the program and renders its card unusable as a consequence. */
 	do {
-		r = sc_pin_cmd(card, &data, NULL);
+		r = sc_pin_cmd(card, &data);
 		if (r == SC_SUCCESS) {
 			printf("Transport protection removed. You can now use your %s.\n", pin_label);
 			break;
@@ -457,7 +454,6 @@ change_pin(sc_card_t *card, int ref_verify, int ref_change)
 	char *newpin = NULL;
 	sc_path_t path;
 	int r;
-	int tries_left;
 
 	memset(&data_verify, 0, sizeof(struct sc_pin_cmd_data));
 	memset(&data_change, 0, sizeof(struct sc_pin_cmd_data));
@@ -573,11 +569,11 @@ change_pin(sc_card_t *card, int ref_verify, int ref_change)
 		goto fail;
 	}
 
-	r = sc_pin_cmd(card, &data_verify, &tries_left);
+	r = sc_pin_cmd(card, &data_verify);
 	if (r) {
 		fprintf(stderr, "Error verifying PIN: %s\n", sc_strerror(r));
-		if (tries_left >= 0)
-			fprintf(stderr, "%d attempts left.\n", tries_left);
+		if (data_verify.pin1.tries_left >= 0)
+			fprintf(stderr, "%d attempts left.\n", data_verify.pin1.tries_left);
 		goto fail;
 	}
 
@@ -589,7 +585,7 @@ change_pin(sc_card_t *card, int ref_verify, int ref_change)
 		}
 	}
 
-	r = sc_pin_cmd(card, &data_change, NULL);
+	r = sc_pin_cmd(card, &data_change);
 	if (r) {
 		fprintf(stderr, "Error changing PIN: %s\n", sc_strerror(r));
 		goto fail;
@@ -658,7 +654,7 @@ resume_pin(sc_card_t *card, int ref_pin)
 		goto fail;
 	}
 
-	r = sc_pin_cmd(card, &data, NULL);
+	r = sc_pin_cmd(card, &data);
 	if (r) {
 		fprintf(stderr, "Error resuming PIN: %s\n", sc_strerror(r));
 		goto fail;
@@ -677,7 +673,6 @@ unblock_pin(sc_card_t *card, int ref_pin)
 	char *puk = NULL;
 	sc_path_t path;
 	int r;
-	int tries_left;
 
 	memset(&data_verify, 0, sizeof(struct sc_pin_cmd_data));
 	memset(&data_unblock, 0, sizeof(struct sc_pin_cmd_data));
@@ -759,11 +754,11 @@ unblock_pin(sc_card_t *card, int ref_pin)
 		goto fail;
 	}
 
-	r = sc_pin_cmd(card, &data_verify, &tries_left);
+	r = sc_pin_cmd(card, &data_verify);
 	if (r) {
 		fprintf(stderr, "Error verifying PUK: %s\n", sc_strerror(r));
-		if (tries_left >= 0)
-			fprintf(stderr, "%d attempts left.\n", tries_left);
+		if (data_verify.pin1.tries_left >= 0)
+			fprintf(stderr, "%d attempts left.\n", data_verify.pin1.tries_left);
 		goto fail;
 	}
 
@@ -775,7 +770,7 @@ unblock_pin(sc_card_t *card, int ref_pin)
 		}
 	}
 
-	r = sc_pin_cmd(card, &data_unblock, NULL);
+	r = sc_pin_cmd(card, &data_unblock);
 	if (r) {
 		fprintf(stderr, "Error unblocking PIN: %s\n", sc_strerror(r));
 		goto fail;
@@ -939,7 +934,7 @@ main(int argc, char *argv[])
 		if (r)
 			goto out;
 
-		r = sc_pin_cmd(card, &data, NULL);
+		r = sc_pin_cmd(card, &data);
 		if (r) {
 			fprintf(stderr, "Error verifying CAN.\n");
 			goto out;

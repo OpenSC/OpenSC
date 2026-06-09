@@ -182,7 +182,7 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 	pin_cmd_data.pin_type = SC_AC_CHV;
 	pin_cmd_data.pin_reference = pin_info.attrs.pin.reference;
 
-	r = sc_pin_cmd(card, &pin_cmd_data, NULL);
+	r = sc_pin_cmd(card, &pin_cmd_data);
 	if (r == SC_SUCCESS) {
 		pin_info.max_tries = pin_cmd_data.pin1.max_tries;
 		pin_info.tries_left = pin_cmd_data.pin1.tries_left;
@@ -196,7 +196,7 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 	 * link PIN with PUK.
 	 */
 	pin_cmd_data.pin_reference = 0x81;
-	has_puk = sc_pin_cmd(card, &pin_cmd_data, NULL) == SC_SUCCESS;
+	has_puk = sc_pin_cmd(card, &pin_cmd_data) == SC_SUCCESS;
 	if (has_puk) {
 		pin_obj.auth_id.len = 1;
 		pin_obj.auth_id.value[0] = 0x81;

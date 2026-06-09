@@ -599,9 +599,199 @@ static void torture_asn1_encode_simple(void **state)
 	free(outptr);
 }
 
+/*
+ * Tests for SC_ASN1_OPTIONAL on SC_ASN1_CHOICE entries.
+ *
+ * Schema used in the first four tests (outer has three entries):
+ *   before  INTEGER          mandatory
+ *   choice  CHOICE(NULL|OID) optional in tests 1,2,4; mandatory in test 3
+ *   after   INTEGER          mandatory
+ *
+ * The end-of-stream test (test 5) omits the "after" field.
+ */
+static void
+torture_asn1_decode_optional_choice_absent(void **state)
+{
+	sc_context_t *ctx = *state;
+	// clang-format off
+	struct sc_asn1_entry choice_alts[3] = {
+		{ "null_alt",   SC_ASN1_NULL,   SC_ASN1_TAG_NULL,   0, NULL, NULL },
+		{ "object_alt", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	struct sc_asn1_entry outer[4] = {
+		{ "before", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0,                NULL, NULL },
+		{ "choice", SC_ASN1_CHOICE,  0,                   SC_ASN1_OPTIONAL, NULL, NULL },
+		{ "after",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0,                NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	// clang-format on
+	/* INTEGER(1), no CHOICE tag, INTEGER(2) */
+	const u8 data[] = {0x02, 0x01, 0x01, 0x02, 0x01, 0x02};
+	int before = 0, after = 0;
+	int rv;
+
+	sc_format_asn1_entry(&outer[0], &before, NULL, 0);
+	sc_format_asn1_entry(&outer[1], choice_alts, NULL, 0);
+	sc_format_asn1_entry(&outer[2], &after, NULL, 0);
+
+	rv = sc_asn1_decode(ctx, outer, data, sizeof(data), NULL, NULL);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(before, 1);
+	assert_int_equal(after, 2);
+	assert_false(choice_alts[0].flags & SC_ASN1_PRESENT);
+	assert_false(choice_alts[1].flags & SC_ASN1_PRESENT);
+}
+
+static void
+torture_asn1_decode_optional_choice_present(void **state)
+{
+	sc_context_t *ctx = *state;
+	struct sc_object_id oid_val;
+	// clang-format off
+	struct sc_asn1_entry choice_alts[3] = {
+		{ "null_alt",   SC_ASN1_NULL,   SC_ASN1_TAG_NULL,   0, NULL, NULL },
+		{ "object_alt", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	struct sc_asn1_entry outer[4] = {
+		{ "before", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0,                NULL, NULL },
+		{ "choice", SC_ASN1_CHOICE,  0,                   SC_ASN1_OPTIONAL, NULL, NULL },
+		{ "after",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0,                NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	// clang-format on
+	/* INTEGER(1), OID {1.2} (0x06 0x01 0x2a — matches second CHOICE alternative), INTEGER(2) */
+	const u8 data[] = {0x02, 0x01, 0x01, 0x06, 0x01, 0x2a, 0x02, 0x01, 0x02};
+	int before = 0, after = 0;
+	int rv;
+
+	sc_format_asn1_entry(&choice_alts[1], &oid_val, NULL, 0);
+	sc_format_asn1_entry(&outer[0], &before, NULL, 0);
+	sc_format_asn1_entry(&outer[1], choice_alts, NULL, 0);
+	sc_format_asn1_entry(&outer[2], &after, NULL, 0);
+
+	rv = sc_asn1_decode(ctx, outer, data, sizeof(data), NULL, NULL);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(before, 1);
+	assert_int_equal(after, 2);
+	assert_false(choice_alts[0].flags & SC_ASN1_PRESENT);
+	assert_true(choice_alts[1].flags & SC_ASN1_PRESENT);
+	assert_int_equal(oid_val.value[0], 1);
+	assert_int_equal(oid_val.value[1], 2);
+}
+
+static void
+torture_asn1_decode_mandatory_choice_absent(void **state)
+{
+	sc_context_t *ctx = *state;
+	// clang-format off
+	struct sc_asn1_entry choice_alts[3] = {
+		{ "null_alt",   SC_ASN1_NULL,   SC_ASN1_TAG_NULL,   0, NULL, NULL },
+		{ "object_alt", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	struct sc_asn1_entry outer[4] = {
+		{ "before", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
+		{ "choice", SC_ASN1_CHOICE,  0,                   0, NULL, NULL }, /* NOT optional */
+		{ "after",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	// clang-format on
+	/* INTEGER(1), no CHOICE tag, INTEGER(2) — CHOICE is mandatory so this must fail */
+	const u8 data[] = {0x02, 0x01, 0x01, 0x02, 0x01, 0x02};
+	int before = 0, after = 0;
+	int rv;
+
+	sc_format_asn1_entry(&outer[0], &before, NULL, 0);
+	sc_format_asn1_entry(&outer[1], choice_alts, NULL, 0);
+	sc_format_asn1_entry(&outer[2], &after, NULL, 0);
+
+	rv = sc_asn1_decode(ctx, outer, data, sizeof(data), NULL, NULL);
+	assert_int_equal(rv, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
+	assert_int_equal(before, 1);
+	assert_int_equal(after, 0);
+	assert_false(choice_alts[0].flags & SC_ASN1_PRESENT);
+	assert_false(choice_alts[1].flags & SC_ASN1_PRESENT);
+}
+
+static void
+torture_asn1_decode_optional_choice_malformed(void **state)
+{
+	sc_context_t *ctx = *state;
+	struct sc_object_id oid_val;
+	// clang-format off
+	struct sc_asn1_entry choice_alts[3] = {
+		{ "null_alt",   SC_ASN1_NULL,   SC_ASN1_TAG_NULL,   0, NULL, NULL },
+		{ "object_alt", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	struct sc_asn1_entry outer[4] = {
+		{ "before", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0,                NULL, NULL },
+		{ "choice", SC_ASN1_CHOICE,  0,                   SC_ASN1_OPTIONAL, NULL, NULL },
+		{ "after",  SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0,                NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	// clang-format on
+	/* INTEGER(1), OID tag with malformed content (0x81 has the multi-byte continuation
+	 * bit set but no following byte), INTEGER(2).  A real storage pointer is required on
+	 * the OID alternative: with parm=NULL asn1_decode_entry skips content validation and
+	 * the TLV is silently consumed.  With parm set, sc_asn1_decode_object_id returns an
+	 * error; the inner decoder exits before writing back p/left, so the optional CHOICE
+	 * swallows the error and the position is unchanged.  "after" then sees 0x06 (OID tag)
+	 * where INTEGER (0x02) was expected → SC_ERROR_ASN1_OBJECT_NOT_FOUND. */
+	const u8 data[] = {0x02, 0x01, 0x01, 0x06, 0x01, 0x81, 0x02, 0x01, 0x02};
+	int before = 0, after = 0;
+	int rv;
+
+	sc_format_asn1_entry(&choice_alts[1], &oid_val, NULL, 0);
+	sc_format_asn1_entry(&outer[0], &before, NULL, 0);
+	sc_format_asn1_entry(&outer[1], choice_alts, NULL, 0);
+	sc_format_asn1_entry(&outer[2], &after, NULL, 0);
+
+	rv = sc_asn1_decode(ctx, outer, data, sizeof(data), NULL, NULL);
+	assert_int_equal(rv, SC_ERROR_ASN1_OBJECT_NOT_FOUND);
+	assert_int_equal(before, 1);
+	assert_int_equal(after, 0);
+	assert_false(choice_alts[0].flags & SC_ASN1_PRESENT);
+	assert_false(choice_alts[1].flags & SC_ASN1_PRESENT);
+}
+
+static void
+torture_asn1_decode_optional_choice_end_of_stream(void **state)
+{
+	sc_context_t *ctx = *state;
+	// clang-format off
+	struct sc_asn1_entry choice_alts[3] = {
+		{ "null_alt",   SC_ASN1_NULL,   SC_ASN1_TAG_NULL,   0, NULL, NULL },
+		{ "object_alt", SC_ASN1_OBJECT, SC_ASN1_TAG_OBJECT, 0, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	struct sc_asn1_entry outer[3] = {
+		{ "before", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0,                NULL, NULL },
+		{ "choice", SC_ASN1_CHOICE,  0,                   SC_ASN1_OPTIONAL, NULL, NULL },
+		{ NULL, 0, 0, 0, NULL, NULL }
+	};
+	// clang-format on
+	/* INTEGER(1) only — stream ends before the optional CHOICE */
+	const u8 data[] = {0x02, 0x01, 0x01};
+	int before = 0;
+	int rv;
+
+	sc_format_asn1_entry(&outer[0], &before, NULL, 0);
+	sc_format_asn1_entry(&outer[1], choice_alts, NULL, 0);
+
+	rv = sc_asn1_decode(ctx, outer, data, sizeof(data), NULL, NULL);
+	assert_int_equal(rv, SC_SUCCESS);
+	assert_int_equal(before, 1);
+	assert_false(choice_alts[0].flags & SC_ASN1_PRESENT);
+	assert_false(choice_alts[1].flags & SC_ASN1_PRESENT);
+}
+
 int main(void)
 {
 	int rc;
+	// clang-format off
 	struct CMUnitTest tests[] = {
 		/* INTEGER */
 		cmocka_unit_test(torture_asn1_integer_zero),
@@ -669,7 +859,19 @@ int main(void)
 		/* encode() */
 		cmocka_unit_test_setup_teardown(torture_asn1_encode_simple,
 			setup_sc_context, teardown_sc_context),
+		/* decode(): optional CHOICE */
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_optional_choice_absent,
+			setup_sc_context, teardown_sc_context),
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_optional_choice_present,
+			setup_sc_context, teardown_sc_context),
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_mandatory_choice_absent,
+			setup_sc_context, teardown_sc_context),
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_optional_choice_malformed,
+			setup_sc_context, teardown_sc_context),
+		cmocka_unit_test_setup_teardown(torture_asn1_decode_optional_choice_end_of_stream,
+			setup_sc_context, teardown_sc_context),
 	};
+	// clang-format on
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);
 	return rc;

@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest an enhancement or new feature for OpenSC
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to improve OpenSC? We'd love to hear it.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem does this feature solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the solution you'd like to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any alternative solutions or workarounds you've considered.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: |
+        Related standards, card types, use cases, or references.
+        For new smart cards, include the output of `opensc-tool --atr --name -vvv`

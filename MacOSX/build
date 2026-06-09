@@ -14,13 +14,15 @@ set -ex
 test -x ./configure || ./bootstrap
 BUILDPATH=${PWD}
 
+# keep in sync with MacOSX/notarize
 while IFS='=' read -r key value; do
     # Skip empty or comment lines
     [[ -z "$key" || "$key" =~ ^# ]] && continue
     export "$key=$value"
 done < $BUILDPATH/VERSION.mk
 
-export PACKAGE_VERSION=${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}.${PACKAGE_VERSION_FIX}
+# keep in sync with MacOSX/notarize
+export PACKAGE_VERSION=${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}.${PACKAGE_VERSION_FIX}${PACKAGE_SUFFIX}
 PREFIX=/Library/OpenSC
 export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig
 
@@ -43,7 +45,7 @@ export OBJCFLAGS=$CFLAGS
 
 if ! test -e $BUILDPATH/openpace_bin/$PREFIX/lib/pkgconfig; then
 	if ! test -e openpace; then
-		git clone --depth=1 https://github.com/frankmorgner/openpace.git -b 1.1.3
+		git clone --depth=1 https://github.com/frankmorgner/openpace.git -b 1.1.4
 	fi
 	cd openpace
 	autoreconf -vis
@@ -189,8 +191,3 @@ do
 	fi
 done
 rm -rf ${imagedir}
-
-if test -n "${NOTARIZATION_PASSWORD}"; then
-	xcrun notarytool submit --team-id ${DEVELOPMENT_TEAM} --apple-id ${APPLE_ID} --password ${NOTARIZATION_PASSWORD} --wait OpenSC-${PACKAGE_VERSION}.dmg
-	xcrun stapler staple OpenSC-${PACKAGE_VERSION}.dmg
-fi

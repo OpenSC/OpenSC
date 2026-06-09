@@ -18,7 +18,7 @@ MINIDRIVER_DEF = /DENABLE_MINIDRIVER
 WIXFLAGS = -d ENABLE_MINIDRIVER $(WIXFLAGS)
 
 #Build MSI with the Windows Installer XML (WIX) toolkit
-MSI_NAME = $(PRODUCT_NAME)-$(PACKAGE_VERSION_MAJOR).$(PACKAGE_VERSION_MINOR).$(PACKAGE_VERSION_FIX)_$(PLATFORM)$(DIST_SUFFIX).msi
+MSI_NAME = $(PRODUCT_NAME)-$(PACKAGE_VERSION_MAJOR).$(PACKAGE_VERSION_MINOR).$(PACKAGE_VERSION_FIX)$(PACKAGE_SUFFIX)_$(PLATFORM).msi
 !IF "$(WIX_PACKAGES)" == ""
 WIX_PACKAGES = $(TOPDIR)\win32\packages
 WIX_VERSION = 6.0.2
@@ -36,6 +36,8 @@ SM_DEF = /DENABLE_SM
 
 #Build with debugging support
 #DEBUG_DEF = /DDEBUG
+#Release build, disable asserts
+#DEBUG_DEF = /DNDEBUG
 
 !IF "$(BUILD_TYPE)" == ""
 !IF "$(DEBUG_DEF)" == "/DDEBUG"
@@ -75,7 +77,7 @@ OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(PLATFORM)\$(BUILD_TYPE)\libcrypto_static.l
 OPENSSL_LIB = $(OPENSSL_LIB) user32.lib advapi32.lib crypt32.lib ws2_32.lib
 
 PROGRAMS_OPENSSL = cryptoflex-tool.exe pkcs15-init.exe netkey-tool.exe piv-tool.exe \
-	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe gids-tool.exe
+	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe gids-tool.exe lteid-tool.exe
 OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
 WIXFLAGS = -d OpenSSL="$(OPENSSL_DIR)" $(WIXFLAGS)
 !ENDIF

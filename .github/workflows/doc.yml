@@ -16,7 +16,7 @@ jobs:
     steps:
       # Do this before checkout otherwise we will not have a git repository
       - run: dnf install -y git
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: .github/setup-fedora.sh
       # git checkout to revert changes to tests/Makefile.am done by the setup
       - run: |

@@ -253,26 +253,26 @@ typedef struct coolkey_attribute_header {
  * Definitions:
  *
 struct coolkey_fixed_attributes_values {
-	uint32_t  cka_id:4;
-	uint32_t  cka_class:3;
-	uint32_t  cka_token:1;
-	uint32_t  cka_private:1;
-	uint32_t  cka_modifiable:1;
-	uint32_t  cka_derive:1;
-	uint32_t  cka_local:1;
-	uint32_t  cka_encrypt:1;
-	uint32_t  cka_decrypt:1;
-	uint32_t  cka_wrap:1;
-	uint32_t  cka_unwrap:1;
-	uint32_t  cka_sign:1;
-	uint32_t  cka_sign_recover:1;
-	uint32_t  cka_verify:1;
-	uint32_t  cka_verify_recover:1;
-	uint32_t  cka_sensitive:1;
-	uint32_t  cka_always_sensitive:1;
-	uint32_t  cka_extractable:1;
-	uint32_t  cka_never_extractable:1;
-	uint32_t  reserved:8;
+	unsigned int  cka_id:4;
+	unsigned int  cka_class:3;
+	unsigned int  cka_token:1;
+	unsigned int  cka_private:1;
+	unsigned int  cka_modifiable:1;
+	unsigned int  cka_derive:1;
+	unsigned int  cka_local:1;
+	unsigned int  cka_encrypt:1;
+	unsigned int  cka_decrypt:1;
+	unsigned int  cka_wrap:1;
+	unsigned int  cka_unwrap:1;
+	unsigned int  cka_sign:1;
+	unsigned int  cka_sign_recover:1;
+	unsigned int  cka_verify:1;
+	unsigned int  cka_verify_recover:1;
+	unsigned int  cka_sensitive:1;
+	unsigned int  cka_always_sensitive:1;
+	unsigned int  cka_extractable:1;
+	unsigned int  cka_never_extractable:1;
+	unsigned int  reserved:8;
 };
 
  *  cka_class is used to determine which booleans are valid. Any attributes in the full attribute list
@@ -476,7 +476,8 @@ coolkey_v0_get_attribute_count(const u8 *obj, size_t buf_len)
 		 * 	If the assert is true, you can easily see that the loop
 		 * 	will eventually break with len == 0, even if attribute_data_len
 		 * 	was invalid */
-		assert(len <= buf_len);
+		if (len > buf_len)
+			return SC_ERROR_INTERNAL;
 		count++;
 		attr += len;
 		buf_len -= len;
@@ -1447,7 +1448,7 @@ coolkey_find_attribute(sc_card_t *card, sc_cardctl_coolkey_attribute_t *attribut
 	}
 
 	/* should be a static assert so we catch this at compile time */
-	assert(sizeof(coolkey_object_header_t) >= sizeof(coolkey_v0_object_header_t));
+	static_assert(sizeof(coolkey_object_header_t) >= sizeof(coolkey_v0_object_header_t), "internal error");
 	/* make sure we have enough of the object to read the record_type */
 	if (buf_len <= sizeof(coolkey_v0_object_header_t)) {
 		return SC_ERROR_CORRUPTED_DATA;
@@ -1696,6 +1697,11 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 	sc_log(card->ctx, "datalen=%"SC_FORMAT_LEN_SIZE_T"u outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		datalen, max_out_len);
 
+	if (datalen > 0xFFFF) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto done;
+	}
+
 	if (priv->key_id > 0xff) {
 		r = SC_ERROR_NO_DEFAULT_KEY;
 		goto done;
@@ -1774,7 +1780,7 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 			goto done;
 		}
 		out_length = bebytes2ushort(buf);
-		if (out_length > sizeof buf - 2) {
+		if (out_length > (buf_len - 2)) {
 			r = SC_ERROR_WRONG_LENGTH;
 			goto done;
 		}
@@ -1805,6 +1811,11 @@ static int coolkey_ecc_op(sc_card_t *card,
 	sc_log(card->ctx,
 		 "datalen=%"SC_FORMAT_LEN_SIZE_T"u outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
 		 datalen, outlen);
+
+	if (datalen > sizeof(params.buf)) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto done;
+	}
 
 	crypt_in = data;
 	crypt_in_len = datalen;
@@ -1902,12 +1913,15 @@ static int coolkey_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 {
 	int r;
 	struct sc_file *file = NULL;
-	coolkey_private_data_t * priv = COOLKEY_DATA(card);
+	coolkey_private_data_t *priv;
 	unsigned long object_id;
 
-	assert(card != NULL && in_path != NULL);
+	if (card == NULL || in_path == NULL)
+		return SC_ERROR_INTERNAL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	priv = COOLKEY_DATA(card);
 
 	if (in_path->len != 4) {
 		return SC_ERROR_OBJECT_NOT_FOUND;
@@ -2340,7 +2354,7 @@ static int coolkey_init(sc_card_t *card)
 
 
 static int
-coolkey_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
+coolkey_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	int r;
 	coolkey_private_data_t * priv = COOLKEY_DATA(card);
@@ -2362,9 +2376,6 @@ coolkey_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left)
 			 * instead, coolkey slows down the login command exponentially
 			 */
 			data->pin1.tries_left = 0xf;
-		}
-		if (tries_left) {
-			*tries_left = data->pin1.tries_left;
 		}
 		r = SC_SUCCESS;
 		break;

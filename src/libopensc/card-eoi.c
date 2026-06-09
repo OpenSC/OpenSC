@@ -377,7 +377,7 @@ static int eoi_logout(struct sc_card *card)
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-static int eoi_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+static int eoi_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	int r;
 
@@ -396,7 +396,7 @@ static int eoi_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *
 		/* Verify PUK, establish SM if necessary */
 		data->cmd = SC_PIN_CMD_VERIFY;
 		data->pin_reference = data->puk_reference;
-		r = eoi_pin_cmd(card, data, tries_left);
+		r = eoi_pin_cmd(card, data);
 		if (r != SC_SUCCESS)
 			LOG_FUNC_RETURN(card->ctx, r);
 		/* RESET RETRY COUNTER */
@@ -404,7 +404,7 @@ static int eoi_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *
 		data->pin_reference = 0x80|pin_reference;
 		data->pin1.len = 0;
 		data->pin2.len = 0;
-		r = sc_get_iso7816_driver()->ops->pin_cmd(card, data, tries_left);
+		r = sc_get_iso7816_driver()->ops->pin_cmd(card, data);
 		if (r != SC_SUCCESS)
 			LOG_FUNC_RETURN(card->ctx, r);
 		/* Continue as CHANGE PIN */
@@ -416,7 +416,7 @@ static int eoi_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *
 	if (data->cmd == SC_PIN_CMD_CHANGE)
 		data->pin1.len = 0;
 
-	LOG_FUNC_RETURN(card->ctx, sc_get_iso7816_driver()->ops->pin_cmd(card, data, tries_left));
+	LOG_FUNC_RETURN(card->ctx, sc_get_iso7816_driver()->ops->pin_cmd(card, data));
 }
 
 static int

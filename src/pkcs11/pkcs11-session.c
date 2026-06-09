@@ -286,7 +286,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 	/* Check whether the user is logged in the card */
-	logged_out = (slot_get_logged_in_state(slot) == SC_PIN_STATE_LOGGED_OUT);
+	logged_out = (slot_get_logged_in_state(slot) & SC_PIN_STATE_LOGGED_OUT);
 	if (slot->login_user == CKU_SO && !logged_out) {
 		pInfo->state = CKS_RW_SO_FUNCTIONS;
 	} else if ((slot->login_user == CKU_USER && !logged_out) || !(slot->token_info.flags & CKF_LOGIN_REQUIRED)) {

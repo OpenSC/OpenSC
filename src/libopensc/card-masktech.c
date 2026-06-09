@@ -136,7 +136,8 @@ static int masktech_compute_signature(sc_card_t *card,
 		0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65,
 		0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20
 	};
-	assert(card != NULL && data != NULL && out != NULL);
+	if (card == NULL || data == NULL || out == NULL)
+		return SC_ERROR_INTERNAL;
 	sc_log(card->ctx,  "masktech_compute_signature()\n");
 
 	/* retrieve the key reference */
@@ -175,7 +176,8 @@ static int masktech_decipher(sc_card_t *card,
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 
-	assert(card != NULL && crgram != NULL && out != NULL);
+	if (card == NULL || crgram == NULL || out == NULL)
+		return SC_ERROR_INTERNAL;
 	sc_log(card->ctx,  "masktech_decipher()\n");
 
 	if (crgram_len > SC_MAX_EXT_APDU_BUFFER_SIZE) {
@@ -205,8 +207,7 @@ static int masktech_decipher(sc_card_t *card,
 
 /* unblock pin cmd */
 static int masktech_pin_unblock(sc_card_t *card,
-                            struct sc_pin_cmd_data *data,
-                            int *tries_left)
+                            struct sc_pin_cmd_data *data)
 {
 	int rv = 0;
 	struct sc_pin_cmd_data verify_data;
@@ -221,7 +222,7 @@ static int masktech_pin_unblock(sc_card_t *card,
 	verify_data.flags = data->flags;
 	verify_data.pin1.prompt = data->pin1.prompt;
 
-	rv = iso_ops->pin_cmd(card, &verify_data, tries_left);
+	rv = iso_ops->pin_cmd(card, &verify_data);
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed - verify unblock PIN");
 
 	/* Build a SC_PIN_CMD_UNBLOCK APDU */
@@ -235,15 +236,14 @@ static int masktech_pin_unblock(sc_card_t *card,
 	reset_data.flags = data->flags | SC_PIN_CMD_IMPLICIT_CHANGE;
 	reset_data.pin2.prompt = data->pin2.prompt;
 
-	rv = iso_ops->pin_cmd(card, &reset_data, tries_left);
+	rv = iso_ops->pin_cmd(card, &reset_data);
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed - reset unblock PIN");
 
 	return 0;
 }
 
 static int masktech_pin_change(sc_card_t *card,
-                            struct sc_pin_cmd_data *data,
-                            int *tries_left)
+                            struct sc_pin_cmd_data *data)
 {
 	int rv = 0;
 	struct sc_pin_cmd_data verify_data;
@@ -258,7 +258,7 @@ static int masktech_pin_change(sc_card_t *card,
 	verify_data.flags = data->flags;
 	verify_data.pin1.prompt = data->pin1.prompt;
 
-	rv = iso_ops->pin_cmd(card, &verify_data, tries_left);
+	rv = iso_ops->pin_cmd(card, &verify_data);
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed - verify change PIN");
 
 	/* Build a SC_PIN_CMD_CHANGE APDU */
@@ -272,15 +272,14 @@ static int masktech_pin_change(sc_card_t *card,
 	change_data.flags = data->flags | SC_PIN_CMD_IMPLICIT_CHANGE;
 	change_data.pin2.prompt = data->pin2.prompt;
 
-	rv = iso_ops->pin_cmd(card, &change_data, tries_left);
+	rv = iso_ops->pin_cmd(card, &change_data);
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed - change PIN");
 
 	return 0;
 }
 
 static int masktech_pin_cmd(sc_card_t *card,
-                            struct sc_pin_cmd_data *data,
-                            int *tries_left)
+                            struct sc_pin_cmd_data *data)
 {
 	int       rv;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -288,13 +287,13 @@ static int masktech_pin_cmd(sc_card_t *card,
 	switch(data->cmd)
 	{
 	case SC_PIN_CMD_UNBLOCK:
-		rv = masktech_pin_unblock(card, data, tries_left);
+		rv = masktech_pin_unblock(card, data);
 		break;
 	case SC_PIN_CMD_CHANGE:
-		rv = masktech_pin_change(card, data, tries_left);
+		rv = masktech_pin_change(card, data);
 		break;
 	default:
-		rv = iso_ops->pin_cmd(card, data, tries_left);
+		rv = iso_ops->pin_cmd(card, data);
 		break;
 	}
 	return rv;

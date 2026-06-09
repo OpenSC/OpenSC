@@ -8,17 +8,14 @@ if [ -x "/bin/sudo" ]; then
 	SUDO="sudo"
 fi
 
-if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
-	PR_NUMBER=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
-	if [ "$GITHUB_BASE_REF" == "master" ]; then
-		SUFFIX="-pr$PR_NUMBER"
-	else
-		SUFFIX="$GITHUB_BASE_REF-pr$PR_NUMBER"
-	fi
-else
-	BRANCH=$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')
-	if [ "$BRANCH" != "master" ]; then
-		SUFFIX="$BRANCH"
+SUFFIX="-${GITHUB_SHA:0:7}"
+if [ "$GITHUB_REF_TYPE" == "tag" ]; then
+	if [[ "$GITHUB_REF_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+		# Tag matches the version scheme without suffix -- no suffix needed
+		SUFFIX=""
+	elif [[ "$GITHUB_REF_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+(.+)$ ]]; then
+		# rc suffix after version. Use the suffix part only
+		SUFFIX="${BASH_REMATCH[1]}"
 	fi
 fi
 if [ -n "$SUFFIX" ]; then

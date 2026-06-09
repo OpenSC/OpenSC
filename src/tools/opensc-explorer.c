@@ -1175,7 +1175,7 @@ static int do_pininfo(int argc, char **argv)
 		{ SC_AC_PRO,	"PRO"	},
 		{ SC_AC_NONE,	NULL, 	}
 	};
-	int r, tries_left = -1;
+	int r;
 	size_t i;
 	struct sc_pin_cmd_data data;
 	size_t prefix_len = 0;
@@ -1205,26 +1205,30 @@ static int do_pininfo(int argc, char **argv)
 
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
-		r = sc_pin_cmd(card, &data, &tries_left);
+		r = sc_pin_cmd(card, &data);
 	sc_unlock(card);
 
 	if (r) {
 		fprintf(stderr, "Unable to get PIN info: %s\n", sc_strerror(r));
 		return -1;
 	}
-	switch (data.pin1.logged_in) {
-		case SC_PIN_STATE_LOGGED_IN:
-			printf("Logged in.\n");
-			break;
-		case SC_PIN_STATE_LOGGED_OUT:
-			printf("Logged out.\n");
-			break;
-		case SC_PIN_STATE_UNKNOWN:
-		default:
-			printf("Login status unknown.\n");
+	printf("State:\n\t");
+	if (data.pin1.logged_in == SC_PIN_STATE_UNKNOWN) {
+		printf("Login status unknown.");
+	} else {
+		if (data.pin1.logged_in & SC_PIN_STATE_LOGGED_IN) {
+			printf("Logged in ");
+		}
+		if (data.pin1.logged_in & SC_PIN_STATE_LOGGED_OUT) {
+			printf("Logged out ");
+		}
+		if (data.pin1.logged_in & SC_PIN_STATE_NEEDS_CHANGE) {
+			printf("Needs change ");
+		}
+		printf("\n");
 	}
-	if (tries_left >= 0)
-		printf("%d tries left.\n", tries_left);
+	if (data.pin1.tries_left >= 0)
+		printf("%d tries left.\n", data.pin1.tries_left);
 	return 0;
 }
 
@@ -1237,7 +1241,7 @@ static int do_verify(int argc, char **argv)
 		{ SC_AC_PRO,	"PRO"	},
 		{ SC_AC_NONE,	NULL, 	}
 	};
-	int r, tries_left = -1;
+	int r;
 	u8 buf[SC_MAX_PIN_SIZE];
 	size_t buflen = sizeof(buf), i;
 	struct sc_pin_cmd_data data;
@@ -1303,13 +1307,13 @@ static int do_verify(int argc, char **argv)
 	}
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
-		r = sc_pin_cmd(card, &data, &tries_left);
+		r = sc_pin_cmd(card, &data);
 	sc_unlock(card);
 
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
-			if (tries_left >= 0)
-				printf("Incorrect code, %d tries left.\n", tries_left);
+			if (data.pin1.tries_left >= 0)
+				printf("Incorrect code, %d tries left.\n", data.pin1.tries_left);
 			else
 				printf("Incorrect code.\n");
 		} else
@@ -1322,7 +1326,7 @@ static int do_verify(int argc, char **argv)
 
 static int do_change(int argc, char **argv)
 {
-	int ref, r, tries_left = -1;
+	int ref, r;
 	u8 oldpin[SC_MAX_PIN_SIZE];
 	u8 newpin[SC_MAX_PIN_SIZE];
 	size_t oldpinlen = 0;
@@ -1368,12 +1372,12 @@ static int do_change(int argc, char **argv)
 
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
-		r = sc_pin_cmd(card, &data, &tries_left);
+		r = sc_pin_cmd(card, &data);
 	sc_unlock(card);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
-			if (tries_left >= 0)
-				printf("Incorrect code, %d tries left.\n", tries_left);
+			if (data.pin1.tries_left >= 0)
+				printf("Incorrect code, %d tries left.\n", data.pin1.tries_left);
 			else
 				printf("Incorrect code.\n");
 		}
@@ -1433,7 +1437,7 @@ static int do_unblock(int argc, char **argv)
 
 	r = sc_lock(card);
 	if (r == SC_SUCCESS)
-		r = sc_pin_cmd(card, &data, NULL);
+		r = sc_pin_cmd(card, &data);
 	sc_unlock(card);
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT)
