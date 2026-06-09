@@ -267,6 +267,9 @@ jacartapki_init(struct sc_card *card)
 	card->caps |= SC_CARD_CAP_RNG;
 	card->caps |= SC_CARD_CAP_APDU_EXT;
 
+	card->max_send_size = 0xFFU;
+	card->max_recv_size = 0x100U;
+
 	rv = jacartapki_load_options(card);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to read card driver configuration");
 
@@ -279,36 +282,6 @@ jacartapki_init(struct sc_card *card)
 	rv = SC_SUCCESS;
 err:
 	LOG_FUNC_RETURN(ctx, rv);
-}
-
-static int
-jacartapki_read_binary(struct sc_card *card, unsigned int offs,
-		u8 *buf, size_t count, unsigned long *flags)
-{
-	struct sc_context *ctx = card->ctx;
-	struct sc_apdu apdu;
-	int rv;
-	const size_t leMax = 0x100U;
-
-	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "jacartapki_read_binary(card:%p) offs %i; count %" SC_FORMAT_LEN_SIZE_T "u", card, offs, count);
-	if (offs > 0x7fff) {
-		sc_log(ctx, "invalid EF offset: 0x%X > 0x7FFF", offs);
-		return SC_ERROR_OFFSET_TOO_LARGE;
-	}
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xB0, (offs >> 8) & 0x7F, offs & 0xFF);
-	apdu.le = MIN(count, leMax);
-	apdu.resplen = count;
-	apdu.resp = buf;
-
-	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
-	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "jacartapki_read_binary() failed");
-	sc_log(ctx, "jacartapki_read_binary() apdu.resplen %" SC_FORMAT_LEN_SIZE_T "u", apdu.resplen);
-
-	LOG_FUNC_RETURN(ctx, (int)apdu.resplen);
 }
 
 static int
@@ -1840,7 +1813,7 @@ sc_get_driver(void)
 	jacartapki_ops.match_card = jacartapki_match_card;
 	jacartapki_ops.init = jacartapki_init;
 	jacartapki_ops.finish = jacartapki_finish;
-	jacartapki_ops.read_binary = jacartapki_read_binary;
+	/*	read_binary: ISO7816 implementation works	*/
 	/*	write_binary: ISO7816 implementation works	*/
 	/*	update_binary: ISO7816 implementation works	*/
 	jacartapki_ops.erase_binary = jacartapki_erase_binary;

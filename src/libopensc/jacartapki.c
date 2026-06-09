@@ -223,6 +223,17 @@ _cka_get_unsigned(const struct jacartapki_cka *attr, unsigned *out)
 }
 
 static int
+_cka_get_byte(const struct jacartapki_cka* attr, unsigned char* ch)
+{
+	if (attr == NULL || ch == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (attr->val == NULL || attr->len != sizeof(unsigned char))
+		return SC_ERROR_INVALID_DATA;
+	*ch = *attr->val;
+	return SC_SUCCESS;
+}
+
+static int
 _cka_get_label(const struct jacartapki_cka *attr, struct sc_pkcs15_object *obj)
 {
 	size_t len;
@@ -352,6 +363,7 @@ jacartapki_attrs_cert_decode(struct sc_context *ctx,
 	for (next = offs = 0; offs < data_len; offs = next) {
 		struct jacartapki_cka attr;
 		unsigned uval;
+		unsigned char uchval;
 
 		_get_attr(data, data_len, &next, &attr);
 		if (next == offs)
@@ -366,11 +378,15 @@ jacartapki_attrs_cert_decode(struct sc_context *ctx,
 				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid CKA_CLASS");
 			break;
 		case CKA_TOKEN:
-			if (*attr.val == CK_FALSE)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_TOKEN");
+			if (uchval == CK_FALSE)
 				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
 			break;
 		case CKA_PRIVATE:
-			if (*attr.val == CK_TRUE)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_PRIVATE");
+			if (uchval == CK_TRUE)
 				object->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 			break;
 		case CKA_LABEL:
@@ -392,14 +408,18 @@ jacartapki_attrs_cert_decode(struct sc_context *ctx,
 		case CKA_SERIAL_NUMBER:
 			break;
 		case CKA_TRUSTED:
-			info->authority = (*attr.val != 0);
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_TRUSTED");
+			info->authority = (uchval != 0);
 			break;
 		case CKA_ID:
 			rv = _cka_get_id(&attr, &info->id);
 			LOG_TEST_RET(ctx, rv, "Cannot get CKA_ID");
 			break;
 		case CKA_MODIFIABLE:
-			if (*attr.val)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_MODIFIABLE");
+			if (uchval)
 				object->flags |= SC_PKCS15_CO_FLAG_MODIFIABLE;
 			break;
 		}
@@ -440,6 +460,7 @@ jacartapki_attrs_pubkey_decode(struct sc_context *ctx,
 	for (next = offs = 0; offs < data_len; offs = next) {
 		struct jacartapki_cka attr;
 		unsigned uval;
+		unsigned char uchval;
 
 		_get_attr(data, data_len, &next, &attr);
 		if (next == offs)
@@ -455,11 +476,15 @@ jacartapki_attrs_pubkey_decode(struct sc_context *ctx,
 				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Need to be CKO_PUBLIC_KEY CKA_CLASS");
 			break;
 		case CKA_TOKEN:
-			if (*attr.val == 0)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_TOKEN");
+			if (uchval == 0)
 				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
 			break;
 		case CKA_PRIVATE:
-			if (*attr.val)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_PRIVATE");
+			if (uchval)
 				object->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 			break;
 		case CKA_LABEL:
@@ -487,27 +512,39 @@ jacartapki_attrs_pubkey_decode(struct sc_context *ctx,
 			LOG_TEST_RET(ctx, rv, "Cannot get CKA_ID");
 			break;
 		case CKA_MODIFIABLE:
-			if (*attr.val)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_MODIFIABLE");
+			if (uchval)
 				object->flags |= SC_PKCS15_CO_FLAG_MODIFIABLE;
 			break;
 		case CKA_ENCRYPT:
-			if (*attr.val)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_ENCRYPT");
+			if (uchval)
 				info->usage |= SC_PKCS15_PRKEY_USAGE_ENCRYPT;
 			break;
 		case CKA_WRAP:
-			if (*attr.val)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_WRAP");
+			if (uchval)
 				info->usage |= SC_PKCS15_PRKEY_USAGE_WRAP;
 			break;
 		case CKA_VERIFY:
-			if (*attr.val)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_VERIFY");
+			if (uchval)
 				info->usage |= SC_PKCS15_PRKEY_USAGE_VERIFY;
 			break;
 		case CKA_VERIFY_RECOVER:
-			if (*attr.val)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_VERIFY_RECOVER");
+			if (uchval)
 				info->usage |= SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER;
 			break;
 		case CKA_DERIVE:
-			if (*attr.val)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_DERIVE");
+			if (uchval)
 				info->usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
 			break;
 		case CKA_START_DATE:
@@ -575,6 +612,7 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 	for (next = offs = 0; offs < data_len; offs = next) {
 		struct jacartapki_cka attr;
 		unsigned uval;
+		unsigned char uchval;
 
 		_get_attr(data, data_len, &next, &attr);
 		if (next == offs)
@@ -590,11 +628,15 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Need to be CKO_PRIVATE_KEY CKA_CLASS");
 			break;
 		case CKA_TOKEN:
-			if (*attr.val == 0)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_TOKEN");
+			if (uchval == 0)
 				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
 			break;
 		case CKA_PRIVATE:
-			if (*attr.val)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_PRIVATE");
+			if (uchval)
 				object->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 			break;
 		case CKA_LABEL:
@@ -625,23 +667,35 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 			LOG_TEST_RET(ctx, rv, "Cannot get CKA_ID");
 			break;
 		case CKA_SENSITIVE:
-			sc_log(ctx, "CKA_SENSITIVE: %s", (*attr.val) ? "yes" : "no");
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_SENSITIVE");
+			sc_log(ctx, "CKA_SENSITIVE: %s", (uchval) ? "yes" : "no");
 			info->access_flags |= (*attr.val) ? SC_PKCS15_PRKEY_ACCESS_SENSITIVE : 0;
 			break;
 		case CKA_DECRYPT:
-			info->usage |= (*attr.val) ? SC_PKCS15_PRKEY_USAGE_DECRYPT : 0;
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_DECRYPT");
+			info->usage |= (uchval) ? SC_PKCS15_PRKEY_USAGE_DECRYPT : 0;
 			break;
 		case CKA_UNWRAP:
-			info->usage |= (*attr.val) ? SC_PKCS15_PRKEY_USAGE_UNWRAP : 0;
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_UNWRAP");
+			info->usage |= (uchval) ? SC_PKCS15_PRKEY_USAGE_UNWRAP : 0;
 			break;
 		case CKA_SIGN:
-			info->usage |= (*attr.val) ? SC_PKCS15_PRKEY_USAGE_SIGN : 0;
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_SIGN");
+			info->usage |= (uchval) ? SC_PKCS15_PRKEY_USAGE_SIGN : 0;
 			break;
 		case CKA_SIGN_RECOVER:
-			info->usage |= (*attr.val) ? SC_PKCS15_PRKEY_USAGE_SIGNRECOVER : 0;
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_SIGN_RECOVER");
+			info->usage |= (uchval) ? SC_PKCS15_PRKEY_USAGE_SIGNRECOVER : 0;
 			break;
 		case CKA_DERIVE:
-			info->usage |= (*attr.val) ? SC_PKCS15_PRKEY_USAGE_DERIVE : 0;
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_DERIVE");
+			info->usage |= (uchval) ? SC_PKCS15_PRKEY_USAGE_DERIVE : 0;
 			break;
 		case CKA_START_DATE:
 		case CKA_END_DATE:
@@ -656,21 +710,29 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 			private_key.u.rsa.exponent.len = der.len;
 			break;
 		case CKA_EXTRACTABLE:
-			sc_log(ctx, "CKA_EXTRACTABLE: %s", (*attr.val) ? "yes" : "no");
-			info->access_flags |= (*attr.val) ? SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE : 0;
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_EXTRACTABLE");
+			sc_log(ctx, "CKA_EXTRACTABLE: %s", (uchval) ? "yes" : "no");
+			info->access_flags |= (uchval) ? SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE : 0;
 			break;
 		case CKA_LOCAL:
-			sc_log(ctx, "CKA_LOCAL: %s", (*attr.val) ? "yes" : "no");
-			info->access_flags |= (*attr.val) ? SC_PKCS15_PRKEY_ACCESS_LOCAL : 0;
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_LOCAL");
+			sc_log(ctx, "CKA_LOCAL: %s", (uchval) ? "yes" : "no");
+			info->access_flags |= (uchval) ? SC_PKCS15_PRKEY_ACCESS_LOCAL : 0;
 			break;
 		case CKA_NEVER_EXTRACTABLE:
-			sc_log(ctx, "CKA_NEVER_EXTRACTABLE: %s", (*attr.val) ? "yes" : "no");
-			info->access_flags |= (*attr.val) ? SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE : 0;
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_NEVER_EXTRACTABLE");
+			sc_log(ctx, "CKA_NEVER_EXTRACTABLE: %s", (uchval) ? "yes" : "no");
+			info->access_flags |= (uchval) ? SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE : 0;
 			break;
 		case CKA_ALWAYS_SENSITIVE:
-			sc_log(ctx, "CKA_ALWAYS_SENSITIVE: %s", (*attr.val) ? "yes" : "no");
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_ALWAYS_SENSITIVE");
+			sc_log(ctx, "CKA_ALWAYS_SENSITIVE: %s", (uchval) ? "yes" : "no");
 
-			info->access_flags |= (*attr.val) ? SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE : 0;
+			info->access_flags |= (uchval) ? SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE : 0;
 			break;
 		case CKA_KEY_GEN_MECHANISM:
 			rv = _cka_get_unsigned(&attr, &uval);
@@ -678,8 +740,10 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 			sc_log(ctx, "CKA_KEY_GEN_MECHANISM: %X", uval);
 			break;
 		case CKA_MODIFIABLE:
-			object->flags |= (*attr.val) ? SC_PKCS15_CO_FLAG_MODIFIABLE : 0;
-			sc_log(ctx, "CKA_MODIFIABLE: %X", *attr.val);
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_MODIFIABLE");
+			object->flags |= (uchval) ? SC_PKCS15_CO_FLAG_MODIFIABLE : 0;
+			sc_log(ctx, "CKA_MODIFIABLE: %X", uchval);
 			break;
 		default:
 			sc_log(ctx, "Unknown CKA attribute: %lX", attr.cka);
@@ -709,6 +773,7 @@ jacartapki_attrs_data_object_decode(struct sc_context *ctx,
 	for (next = offs = 0; offs < data_len; offs = next) {
 		struct jacartapki_cka attr;
 		unsigned uval;
+		unsigned char uchval;
 		int rv;
 
 		_get_attr(data, data_len, &next, &attr);
@@ -728,11 +793,15 @@ jacartapki_attrs_data_object_decode(struct sc_context *ctx,
 				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid CKA_CLASS");
 			break;
 		case CKA_TOKEN:
-			if (*attr.val == 0)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_TOKEN");
+			if (uchval == 0)
 				LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "Has to be token object");
 			break;
 		case CKA_PRIVATE:
-			if (*attr.val)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_PRIVATE");
+			if (uchval)
 				object->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 			break;
 		case CKA_LABEL:
@@ -752,7 +821,9 @@ jacartapki_attrs_data_object_decode(struct sc_context *ctx,
 			LOG_TEST_RET(ctx, rv, "Cannot get data object ID");
 			break;
 		case CKA_MODIFIABLE:
-			if (*attr.val)
+			rv = _cka_get_byte(&attr, &uchval);
+			LOG_TEST_RET(ctx, rv, "Invalid encoding of CKA_MODIFIABLE");
+			if (uchval)
 				object->flags |= SC_PKCS15_CO_FLAG_MODIFIABLE;
 			break;
 		}
@@ -1407,7 +1478,7 @@ err:
 int
 jacartapki_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info *info, int *is_converted)
 {
-	unsigned char guid[CMAP_GUID_INFO_SIZE / 2];
+	unsigned char guid[CMAP_GUID_INFO_SIZE];
 	unsigned char bits[5];
 	unsigned offs;
 	int MSBset = 0;
@@ -1417,6 +1488,9 @@ jacartapki_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info
 	if (info == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
+	if (info->id.len > sizeof(guid) - sizeof(bits) - 1)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+
 	if (is_converted != NULL)
 		*is_converted = 0;
 
@@ -1425,7 +1499,7 @@ jacartapki_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info
 	memset(bits, 0, sizeof(bits));
 	memset(guid, 0, sizeof(guid));
 
-	for (offs = 0; offs < info->id.len; offs++) {
+	for (offs = 0; offs < info->id.len && offs < sizeof(guid) - sizeof(bits) - 1; ++offs) {
 		unsigned char guid_ch, id_ch = info->id.value[offs];
 
 		switch (id_ch) {
@@ -1446,20 +1520,17 @@ jacartapki_cmap_set_key_guid(struct sc_context *ctx, struct sc_pkcs15_prkey_info
 				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
 			MSBset = 1;
-			guid[offs] = guid_ch & 0x7F;
+			guid_ch &= 0x7F;
 			bits[offs / 7] |= 0x01 << (6 - (offs % 7));
-		} else {
-			guid[offs] = guid_ch;
 		}
+		guid[offs] = guid_ch;
 	}
 
 	if (MSBset) {
 		if (is_converted)
 			*is_converted = 1;
-		if (offs > sizeof(guid) - 5)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
-		memcpy(guid + offs, bits, 5);
-		offs += 5;
+		memcpy(guid + offs, bits, sizeof(bits));
+		offs += sizeof(bits);
 	}
 
 	if (info->aux_data != NULL && (info->aux_data->type != SC_AUX_DATA_TYPE_MD_CMAP_RECORD && info->aux_data->type != SC_AUX_DATA_TYPE_NO_DATA))

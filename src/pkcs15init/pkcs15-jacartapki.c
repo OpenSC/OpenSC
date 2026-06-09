@@ -658,6 +658,8 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 
 	if (pin != NULL && pin_len != 0) {
 		pin_file->encoded_content = realloc(pin_file->encoded_content, 2 + pin_len);
+		if (pin_file->encoded_content == NULL)
+		    LOG_ERROR_GOTO(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate encoded PIN content");
 		pin_file->encoded_content[0] = JACARTAPKI_KO_DATA_TAG_PIN;
 		pin_file->encoded_content[1] = pin_len;
 		memcpy(pin_file->encoded_content + 2, pin, pin_len);
@@ -853,7 +855,9 @@ jacartapki_create_key_file(struct sc_profile *profile, struct sc_pkcs15_card *p1
 		LOG_TEST_GOTO_ERR(ctx, rv, "Select key file error");
 	}
 
-	file->encoded_content = malloc(2);
+	file->encoded_content = malloc(sizeof(null_content));
+	if (file->encoded_content == NULL)
+		LOG_ERROR_GOTO(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate null content KO data");
 	memcpy(file->encoded_content, null_content, sizeof(null_content));
 	file->encoded_content_len = sizeof(null_content);
 
@@ -1066,20 +1070,26 @@ jacartapki_cardid_create(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_serial_number sn;
-	unsigned char data[0x12];
+	const char sn_pref[] = "ALDNSN";
+	unsigned char data[2 + 0x10] = {0};
 	int rv;
+	unsigned char *pch;
 
 	LOG_FUNC_CALLED(ctx);
 
 	rv = sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &sn);
 	LOG_TEST_RET(ctx, rv, "Cannot get serial number");
 
-	sn.len = MIN(sn.len, 0x10);
+	sn.len = MIN(sn.len, sizeof(data) - 2);
 
 	data[0] = 0x00;
-	data[1] = 0x10;
-	strcpy((char *)(data + 2), "ALDNSN");
-	memcpy(data + 2 + 0x10 - sn.len, sn.value, sn.len);
+	data[1] = (unsigned char)(sizeof(data) - 2);
+	memcpy(data + 2, sn_pref, sizeof(sn_pref) - 1);
+	if (sn.len <= sizeof(data) - (2 + sizeof(sn_pref) - 1))
+		pch = data + 2 + sizeof(sn_pref) - 1;
+	else
+		pch = data + sizeof(data) - sn.len;
+	memcpy(pch, sn.value, sn.len);
 
 	rv = sc_pkcs15init_update_file(profile, p15card, file, data, sizeof(data));
 	if ((int)sizeof(data) > rv) {
