@@ -395,7 +395,7 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 		LOG_FUNC_RETURN(context, (int) rv);
 
 	if (pMechanism->pParameter &&
-	    pMechanism->ulParameterLen > sizeof(operation->mechanism_params))
+			pMechanism->ulParameterLen > sizeof(operation->mechanism_params))
 		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_SIGN, mt, &operation);
@@ -405,7 +405,7 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
 	if (pMechanism->pParameter) {
 		memcpy(&operation->mechanism_params, pMechanism->pParameter,
-		       pMechanism->ulParameterLen);
+				pMechanism->ulParameterLen);
 		operation->mechanism.pParameter = &operation->mechanism_params;
 	}
 	rv = mt->sign_init(operation, key);
@@ -693,6 +693,10 @@ sc_pkcs11_verif_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechan
 	if (rv != CKR_OK)
 		LOG_FUNC_RETURN(context, (int) rv);
 
+	if (pMechanism->pParameter &&
+			pMechanism->ulParameterLen > sizeof(operation->mechanism_params))
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_VERIFY, mt, &operation);
 	if (rv != CKR_OK)
 		return rv;
@@ -700,7 +704,7 @@ sc_pkcs11_verif_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechan
 	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
 	if (pMechanism->pParameter) {
 		memcpy(&operation->mechanism_params, pMechanism->pParameter,
-			pMechanism->ulParameterLen);
+				pMechanism->ulParameterLen);
 		operation->mechanism.pParameter = &operation->mechanism_params;
 	}
 
@@ -926,6 +930,10 @@ sc_pkcs11_encr_init(struct sc_pkcs11_session *session,
 	if (rv != CKR_OK)
 		LOG_FUNC_RETURN(context, (int)rv);
 
+	if (pMechanism->pParameter &&
+			pMechanism->ulParameterLen > sizeof(operation->mechanism_params))
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_ENCRYPT, mt, &operation);
 	if (rv != CKR_OK)
 		return rv;
@@ -1054,6 +1062,10 @@ sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 	if (rv != CKR_OK)
 		LOG_FUNC_RETURN(context, (int) rv);
 
+	if (pMechanism->pParameter &&
+			pMechanism->ulParameterLen > sizeof(operation->mechanism_params))
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_DECRYPT, mt, &operation);
 	if (rv != CKR_OK)
 		return rv;
@@ -1061,7 +1073,7 @@ sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
 	if (pMechanism->pParameter) {
 		memcpy(&operation->mechanism_params, pMechanism->pParameter,
-		       pMechanism->ulParameterLen);
+				pMechanism->ulParameterLen);
 		operation->mechanism.pParameter = &operation->mechanism_params;
 	}
 	rv = mt->decrypt_init(operation, key);
