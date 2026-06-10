@@ -60,7 +60,7 @@ libopensc_la_SOURCES_BASE = \
 	pkcs15-coolkey.c pkcs15-din-66291.c pkcs15-idprime.c pkcs15-nqApplet.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-jpki.c pkcs15-esteid2018.c \
 	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-eoi.c pkcs15-dtrust.c pkcs15-lteid.c \
-	pkcs15-srbeid.c compression.c sm.c aux-data.c pkcs15-jacartapki.c \
+	pkcs15-srbeid.c compression.c sm.c aux-data.c pkcs15-jacartapki.c
 
 if ENABLE_CRYPTOTOKENKIT
 # most platforms don't support objective C the way we needed.
