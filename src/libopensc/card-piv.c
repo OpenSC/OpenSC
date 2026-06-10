@@ -484,8 +484,10 @@ static const struct sc_atr_table piv_atrs[] = {
 	{ "3B:7A:18:00:00:73:66:74:65:20:63:64:31:34:34", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL },
 	/* Giesecke & Devrient (CAC PIV Endpoint) 2019 */
 	{ "3B:F9:18:00:00:00:53:43:45:37:20:03:00:20:46", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL },
+	/* Giesecke & Devrient SCE7 (PIV-only) (DoD Alternate Token G+D Sm@rtCafe Expert v7.0 144K DI 2025) */
+	{ "3B:F9:96:00:00:80:31:FE:45:53:43:45:37:20:0F:00:20:46:4E", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE, 0, NULL },
 
-	/* IDEMIA (new name for Oberthur) (DoD Alternate Token IDEMIA Cosmo V8.0 2019*/
+	/* IDEMIA (new name for Oberthur) (DoD Alternate Token IDEMIA Cosmo V8.0 2025 */
 	{ "3B:D8:18:00:80:B1:FE:45:1F:07:80:31:C1:64:08:06:92:0F:D5", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
 	{ "3b:86:80:01:80:31:c1:52:41:1a:7e", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL }, /* contactless */
 
@@ -561,10 +563,12 @@ static struct piv_supported_ec_curves {
 		{{{-1}},			    0,   0		     }  /* This entry must not be touched. */
 };
 
-/* all have same AID */
+/* all cards must respond to entry 0, some may return different PIX which will accept */
 static struct piv_aid piv_aids[] = {
 	{SC_CARD_TYPE_PIV_II_GENERIC, /* Not really card type but what PIV AID is supported */
 		 9, 9, (u8 *) "\xA0\x00\x00\x03\x08\x00\x00\x10\x00" },
+	{SC_CARD_TYPE_PIV_II_GI_DE, /* bug in some G&D cards in response to select aid */
+		 9, 9, (u8 *) "\xA0\x00\x00\x03\x08\x00\x10\x00\x01" },
 	{0,  9, 0, NULL }
 };
 
@@ -2982,7 +2986,8 @@ piv_find_aid(sc_card_t *card)
 
 				/* early cards returned full AID, rather then just the pix */
 				for (i = 0; piv_aids[i].len_long != 0; i++) {
-					if ((pixlen >= 6 && memcmp(pix, piv_aids[i].value + 5, piv_aids[i].len_long - 5) == 0) ||
+					if ((pixlen >= piv_aids[i].len_long - 5 &&
+							    memcmp(pix, piv_aids[i].value + 5, piv_aids[i].len_long - 5) == 0) ||
 							((pixlen >= piv_aids[i].len_short && memcmp(pix, piv_aids[i].value,
 													     piv_aids[i].len_short) == 0))) {
 						free(priv->aid_der.value); /* free previous value if any */
