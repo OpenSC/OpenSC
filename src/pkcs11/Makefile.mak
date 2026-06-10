@@ -15,8 +15,12 @@ LIBS = $(TOPDIR)\src\libopensc\opensc_a.lib \
 	   $(TOPDIR)\src\common\libscdl.lib \
 	   $(TOPDIR)\src\ui\strings.lib \
 	   $(TOPDIR)\src\ui\notify.lib \
+!IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
+	   $(TOPDIR)\src\sm\libsm.lib \
+!ENDIF
 	   $(TOPDIR)\src\sm\libsmiso.lib \
 	   $(TOPDIR)\src\sm\libsmeac.lib \
+	   $(TOPDIR)\src\sm\libsmjacartapki.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib
 LIBS3 = $(TOPDIR)\src\common\libpkcs11.lib $(TOPDIR)\src\common\libscdl.lib $(TOPDIR)\src\common\common.lib
 
