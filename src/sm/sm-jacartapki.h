@@ -26,8 +26,7 @@ extern "C" {
 
 #if defined(ENABLE_SM)
 
-int jacartapki_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, unsigned chv_ref,
-		int *tries_left, unsigned op_acl);
+int jacartapki_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, unsigned chv_ref, unsigned op_acl);
 int jacartapki_sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 		unsigned char *in, size_t in_len,
 		unsigned char **out, size_t *out_len, int not_force_pad);

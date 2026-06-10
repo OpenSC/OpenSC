@@ -1031,8 +1031,7 @@ jacartapki_set_security_env(struct sc_card *card,
 }
 
 static int
-jacartapki_chv_secure_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd,
-		int *tries_left)
+jacartapki_chv_secure_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -1068,8 +1067,8 @@ jacartapki_chv_secure_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_c
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_GOTO_ERR(ctx, rv, "APDU transmit failed");
 
-	if (tries_left && apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0)
-		*tries_left = apdu.sw2 & 0x0F;
+	/*if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) tries left: apdu.sw2 & 0x0F*/
+		
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 err:
 	free(encrypted);
@@ -1077,8 +1076,7 @@ err:
 }
 
 static int
-jacartapki_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int secure_verify,
-		int *tries_left)
+jacartapki_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int secure_verify)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -1091,7 +1089,7 @@ jacartapki_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, pin_cmd->pin_reference);
 	} else if (pin_cmd->pin1.data != NULL && pin_cmd->pin1.len > 0) {
 		if (secure_verify) {
-			rv = jacartapki_chv_secure_verify(card, pin_cmd, tries_left);
+			rv = jacartapki_chv_secure_verify(card, pin_cmd);
 			LOG_FUNC_RETURN(ctx, rv);
 		} else {
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0, 0x00);
@@ -1106,16 +1104,15 @@ jacartapki_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 
-	if (tries_left && apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0)
-		*tries_left = apdu.sw2 & 0x0F;
+	/*if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) tries left: apdu.sw2 & 0x0F*/
+
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
-jacartapki_pin_is_verified(struct sc_card *card, const struct sc_pin_cmd_data *pin_cmd_data,
-		int *tries_left)
+jacartapki_pin_is_verified(struct sc_card *card, const struct sc_pin_cmd_data *pin_cmd_data)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_pin_cmd_data pin_cmd;
@@ -1131,7 +1128,7 @@ jacartapki_pin_is_verified(struct sc_card *card, const struct sc_pin_cmd_data *p
 	pin_cmd = *pin_cmd_data;
 	pin_cmd.pin1.data = (unsigned char *)"";
 	pin_cmd.pin1.len = 0;
-	rv = jacartapki_chv_verify(card, &pin_cmd, 0, tries_left);
+	rv = jacartapki_chv_verify(card, &pin_cmd, 0);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -1190,7 +1187,7 @@ err:
 
 static int
 jacartapki_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
-		const unsigned char *data, size_t data_len, int *tries_left)
+		const unsigned char *data, size_t data_len)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_pin_cmd_data pin_cmd;
@@ -1228,13 +1225,13 @@ jacartapki_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 	pin_cmd.pin1.len = data_len;
 
 	if (data && !data_len) {
-		rv = jacartapki_pin_is_verified(card, &pin_cmd, tries_left);
+		rv = jacartapki_pin_is_verified(card, &pin_cmd);
 		LOG_FUNC_RETURN(ctx, rv);
 	}
 	/* plain VERIFY for Transport PIN #1,#2 */
 	secure_verify = (reference != 0x01 && reference != 0x02 ? private_data->secure_verify : 0);
 
-	rv = jacartapki_chv_verify(card, &pin_cmd, secure_verify, tries_left);
+	rv = jacartapki_chv_verify(card, &pin_cmd, secure_verify);
 	LOG_TEST_RET(ctx, rv, "PIN CHV verification error");
 
 	/* TEMP P15 DF RELOAD PRIVATE */
@@ -1249,7 +1246,7 @@ jacartapki_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 }
 
 static int
-jacartapki_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+jacartapki_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	unsigned chv_ref = data->pin_reference;
@@ -1262,7 +1259,7 @@ jacartapki_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *t
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 
 	if (data->pin1.len > 0) {
-		rv = jacartapki_pin_verify(card, data->pin_type, data->pin_reference, data->pin1.data, data->pin1.len, tries_left);
+		rv = jacartapki_pin_verify(card, data->pin_type, data->pin_reference, data->pin1.data, data->pin1.len);
 		LOG_TEST_RET(ctx, rv, "Cannot verify old PIN");
 	}
 
@@ -1283,7 +1280,7 @@ jacartapki_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *t
 	entry = sc_file_get_acl_entry(pin_file, SC_AC_OP_PIN_CHANGE);
 	if (entry != NULL) {
 #if defined(ENABLE_SM)
-		rv = jacartapki_sm_chv_change(card, data, chv_ref, tries_left, entry->key_ref);
+		rv = jacartapki_sm_chv_change(card, data, chv_ref, entry->key_ref);
 		LOG_FUNC_RETURN(ctx, rv);
 #else
 		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "UPDATE CHV/SCB present. PIN change is not supported w/o SM");
@@ -1294,7 +1291,7 @@ jacartapki_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data, int *t
 }
 
 static int
-jacartapki_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+jacartapki_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -1322,7 +1319,7 @@ jacartapki_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 				} else if ((entry->key_ref & 0xC000) != 0) {
 					LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "Reset PIN protected by SM: not supported (TODO)");
 				} else if ((entry->key_ref & 0x00FF) != 0) {
-					rv = jacartapki_pin_verify(card, SC_AC_CHV, entry->key_ref & 0x00FF, data->pin1.data, data->pin1.len, tries_left);
+					rv = jacartapki_pin_verify(card, SC_AC_CHV, entry->key_ref & 0x00FF, data->pin1.data, data->pin1.len);
 					LOG_TEST_GOTO_ERR(ctx, rv, "Verify PUK failed");
 
 					sc_file_free(pin_file);
@@ -1347,7 +1344,7 @@ jacartapki_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data, int *tr
 		size_t save_len = data->pin1.len;
 
 		data->pin1.len = 0;
-		rv = jacartapki_pin_change(card, data, tries_left);
+		rv = jacartapki_pin_change(card, data);
 		data->pin1.len = save_len;
 		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot set new PIN value");
 	}
@@ -1373,7 +1370,7 @@ jacartapki_pin_getinfo(struct sc_card *card, struct sc_pin_cmd_data *data)
 }
 
 static int
-jacartapki_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *tries_left)
+jacartapki_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
 	int rv;
@@ -1384,13 +1381,13 @@ jacartapki_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data, int *trie
 			data->pin1.data, data->pin1.len, data->pin2.data, data->pin2.len);
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
-		rv = jacartapki_pin_verify(card, data->pin_type, data->pin_reference, data->pin1.data, data->pin1.len, tries_left);
+		rv = jacartapki_pin_verify(card, data->pin_type, data->pin_reference, data->pin1.data, data->pin1.len);
 		LOG_FUNC_RETURN(ctx, rv);
 	case SC_PIN_CMD_CHANGE:
-		rv = jacartapki_pin_change(card, data, tries_left);
+		rv = jacartapki_pin_change(card, data);
 		LOG_FUNC_RETURN(ctx, rv);
 	case SC_PIN_CMD_UNBLOCK:
-		rv = jacartapki_pin_reset(card, data, tries_left);
+		rv = jacartapki_pin_reset(card, data);
 		LOG_FUNC_RETURN(ctx, rv);
 	case SC_PIN_CMD_GET_INFO:
 		rv = jacartapki_pin_getinfo(card, data);

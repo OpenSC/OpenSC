@@ -330,8 +330,7 @@ err:
 #endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER) */
 
 int
-jacartapki_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, unsigned chv_ref,
-		int *tries_left, unsigned op_acl)
+jacartapki_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, unsigned chv_ref, unsigned op_acl)
 {
 	struct sc_context *ctx;
 	struct sc_apdu apdu;
