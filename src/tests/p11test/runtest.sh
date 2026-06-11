@@ -22,9 +22,31 @@
 SOPIN="12345678"
 PIN="123456"
 GENERATE_KEYS=1
-PKCS11_TOOL="../../tools/pkcs11-tool";
-PKCS15_INIT="env OPENSC_CONF=p11test_opensc.conf ../../tools/pkcs15-init"
-SC_HSM_TOOL="../../tools/sc-hsm-tool";
+
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	export OPENSC_CONF="p11test_opensc.conf"
+	PKCS11_TOOL="../../tools/pkcs11-tool";
+	PKCS15_INIT="../../tools/pkcs15-init"
+	SC_HSM_TOOL="../../tools/sc-hsm-tool";
+	P11TEST="./p11test"
+	PKCS11_MODULE="../../pkcs11/.libs/opensc-pkcs11.so"
+	PKCS11SPY_MODULE="../../pkcs11/.libs/pkcs11-spy.so"
+	CERT_TEMPLATE="cert.cfg"
+
+	make p11test || exit
+else
+	export OPENSC_CONF="$MESON_SOURCE_ROOT/src/tests/p11test/p11test_opensc.conf"
+	PKCS11_TOOL="$MESON_BUILD_ROOT/src/tools/pkcs11-tool";
+	PKCS15_INIT="$MESON_BUILD_ROOT/src/tools/pkcs15-init"
+	SC_HSM_TOOL="$MESON_BUILD_ROOT/src/tools/sc-hsm-tool";
+	P11TEST="$MESON_BUILD_ROOT/src/tests/p11test/p11test"
+	PKCS11_MODULE="$MESON_BUILD_ROOT/src/pkcs11/libopensc-pkcs11.so"
+	PKCS11SPY_MODULE="$MESON_BUILD_ROOT/src/pkcs11/libpkcs11-spy.so"
+	CERT_TEMPLATE="$MESON_SOURCE_ROOT/src/tests/p11test/cert.cfg"
+
+	meson -C "$MESON_BUILD_ROOT" compile src/tests/p11test/p11test || exit
+fi
+
 
 function generate_sym() {
 	TYPE="$1"
@@ -70,18 +92,16 @@ function generate_cert() {
 			TYPE_KEY="object-type"
 
 		# Generate certificate
-		certtool --generate-self-signed --outfile="$TYPE.cert" --template=cert.cfg \
+		certtool --generate-self-signed --outder --outfile="$TYPE.cert" --template="$CERT_TEMPLATE" \
 			--provider="$P11LIB" --load-privkey "pkcs11:object=$LABEL;$TYPE_KEY=private" \
 			--load-pubkey "pkcs11:object=$LABEL;$TYPE_KEY=public"
-		# convert to DER:
-		openssl x509 -inform PEM -outform DER -in "$TYPE.cert" -out "$TYPE.cert.der"
 		# Write certificate
 		#p11tool --login --write --load-certificate="$TYPE.cert" --label="$LABEL" \
 		#	--provider="$P11LIB"
-		$PKCS11_TOOL --write-object "$TYPE.cert.der" --type=cert --id=$ID \
+		$PKCS11_TOOL --write-object "$TYPE.cert" --type=cert --id=$ID \
 			--label="$LABEL" --module="$P11LIB"
 
-		rm "$TYPE.cert" "$TYPE.cert.der"
+		rm "$TYPE.cert"
 	fi
 
 	p11tool --login --provider="$P11LIB" --list-all
@@ -135,13 +155,12 @@ function card_setup() {
 			if [[ ! -z "$2" && -f "$2" ]]; then
 				P11LIB="$2"
 			else
-				P11LIB="/usr/lib64/pkcs11/opensc-pkcs11.so"
-				P11LIB="../pkcs11/.libs/opensc-pkcs11.so"
+				P11LIB="$PKCS11_MODULE"
 			fi
 			;;
 		"myeid")
 			GENERATE_KEYS=0 # we generate them directly here
-			P11LIB="../../pkcs11/.libs/opensc-pkcs11.so"
+			P11LIB="$PKCS11_MODULE"
 			$PKCS15_INIT --erase-card
 			$PKCS15_INIT -C --pin $PIN --puk $SOPIN --so-pin $SOPIN --so-puk $SOPIN
 			$PKCS15_INIT -P -a 1 -l "Basic PIN" --pin $PIN --puk $PIN
@@ -156,14 +175,14 @@ function card_setup() {
 			GENERATE_KEYS=0 # we generate them directly here
 			SOPIN="3537363231383830"
 			PIN="648219"
-			P11LIB="../../pkcs11/.libs/opensc-pkcs11.so"
+			P11LIB="$PKCS11_MODULE"
 			$SC_HSM_TOOL --initialize --so-pin $SOPIN --pin $PIN
-			$PKCS11_TOOL --module $P11LIB -l --pin $PIN --keypairgen --key-type rsa:2048 --id 10 --label="RSA key"
-			$PKCS11_TOOL --module $P11LIB -l --pin $PIN --keypairgen --key-type EC:prime256v1 --label "EC key"
+			$PKCS11_TOOL --module "$P11LIB" -l --pin $PIN --keypairgen --key-type rsa:2048 --id 10 --label="RSA key"
+			$PKCS11_TOOL --module "$P11LIB" -l --pin $PIN --keypairgen --key-type EC:prime256v1 --label "EC key"
 			;;
 		"epass2003")
 			GENERATE_KEYS=0 # we generate them directly here
-			P11LIB="../../pkcs11/.libs/opensc-pkcs11.so"
+			P11LIB="$PKCS11_MODULE"
 			PIN="987654"
 			SOPIN="1234567890"
 			$PKCS15_INIT --erase-card -T
@@ -225,13 +244,13 @@ function card_cleanup() {
 }
 
 card_setup "$@"
-make p11test || exit
+
 if [[ "$PKCS11SPY" != "" ]]; then
 	export PKCS11SPY="$P11LIB"
-	$VALGRIND ./p11test -v -m ../../pkcs11/.libs/pkcs11-spy.so -p $PIN &> /tmp/spy.log
+	$VALGRIND "$P11TEST" -v -m "$PKCS11SPY_MODULE" -p $PIN &> /tmp/spy.log
 	echo "Output stored in /tmp/spy.log"
 else
-	$VALGRIND ./p11test -v -m "$P11LIB" -o test.json -p $PIN
+	$VALGRIND "$P11TEST" -v -m "$P11LIB" -o test.json -p $PIN
 fi
 
 card_cleanup "$@"
