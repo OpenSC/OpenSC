@@ -1812,9 +1812,9 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 		if (dwret != SCARD_S_SUCCESS)
 			return dwret;
 
-		logprintf(pCardData, 7, "Container[%i] is '%.*s' guid=%.*s\n", ii,
+		logprintf(pCardData, 7, "Container[%i] is '%.*s' guid=%.*s flags:%02X \n", ii,
 			  (int) sizeof key_obj->label, key_obj->label,
-			  (int) sizeof cont->guid, cont->guid);
+			  (int) sizeof cont->guid, cont->guid, cont->flags);
 
 		if (cont->flags & CONTAINER_MAP_VALID_CONTAINER &&
 		    key_obj->auth_id.len > 0) {
@@ -1927,23 +1927,50 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 		}
 
 		if (cont->flags & CONTAINER_MAP_VALID_CONTAINER &&
-		    cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER)
+		    cont->flags & CONTAINER_MAP_DEFAULT_CONTAINER) {
 			found_default = 1;
+			logprintf(pCardData, 7, "Both CONTAINER_MAP_VALID_CONTAINER and CONTAINER_MAP_DEFAULT_CONTAINER already set\n");
+		}
 
 		/* AT_KEYEXCHANGE is more general key usage,
 		 *	it allows 'decryption' as well as 'signature' key usage.
 		 * AT_SIGNATURE allows only 'signature' usage.
+		 * TODO TESTING if both can be set at same time  
 		 */
 		cont->size_key_exchange = cont->size_sign = 0;
+		logprintf(pCardData, 7, "prkey_info->usage: %02X\n", prkey_info->usage);
+
 		if (key_obj->type == SC_PKCS15_TYPE_PRKEY_RSA) {
-			if (prkey_info->usage & USAGE_ANY_DECIPHER)
+			if (md_get_config_bool(pCardData, "md_force_sign_and_exchange", FALSE) == TRUE) {
+				cont->size_sign = prkey_info->modulus_length;
+				cont->size_key_exchange = prkey_info->modulus_length;
+			} else if (md_get_config_bool(pCardData, "md_sign_and_exchange", FALSE) == TRUE) {
+				if (prkey_info->usage & USAGE_ANY_SIGN)
+					cont->size_sign = prkey_info->modulus_length;
+				if (prkey_info->usage & USAGE_ANY_DECIPHER)
+					cont->size_key_exchange = prkey_info->modulus_length;
+			} else if (prkey_info->usage & USAGE_ANY_DECIPHER)
 				cont->size_key_exchange = prkey_info->modulus_length;
 			else if (prkey_info->usage & USAGE_ANY_SIGN)
 				cont->size_sign = prkey_info->modulus_length;
 			else
 				cont->size_key_exchange = prkey_info->modulus_length;
+
 		} else if (key_obj->type == SC_PKCS15_TYPE_PRKEY_EC) {
-			if (prkey_info->usage & USAGE_ANY_AGREEMENT)
+			unsigned int ec_usage = USAGE_ANY_AGREEMENT;
+			/* TODO TESTING if usage as decipher on EC is meant to be KEYAGREEMENT */
+			if (md_get_config_bool(pCardData, "md_ec_usage_accept_decrypt", FALSE) == TRUE)
+				ec_usage |= USAGE_ANY_DECIPHER;
+
+			if (md_get_config_bool(pCardData, "md_force_sign_and_exchange", FALSE) == TRUE) {
+				cont->size_sign = prkey_info->field_length;
+				cont->size_key_exchange = prkey_info->field_length;
+			} else if (md_get_config_bool(pCardData, "md_sign_and_exchange", FALSE) == TRUE) {
+				if (prkey_info->usage & USAGE_ANY_SIGN)
+					cont->size_sign = prkey_info->field_length;
+				if (prkey_info->usage & ec_usage)
+					cont->size_key_exchange = prkey_info->field_length;
+			} else if (prkey_info->usage & ec_usage)
 				cont->size_key_exchange = prkey_info->field_length;
 			else if (prkey_info->usage & USAGE_ANY_SIGN)
 				cont->size_sign = prkey_info->field_length;
@@ -3570,12 +3597,20 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		ret = SCARD_E_NO_KEY_CONTAINER;
 		goto err;
 	}
+	if (md_get_config_bool(pCardData, "md_container_version_must_match", FALSE) == TRUE) {
+		if (pContainerInfo->dwVersion != CONTAINER_INFO_CURRENT_VERSION) {
+			logprintf(pCardData, 7, "pContainerInfo->dwVersion not CONTAINER_INFO_CURRENT_VERSION\n");
+			ret = SCARD_E_NO_KEY_CONTAINER;
+			goto err;
+		}
+	}
 	if (pContainerInfo->dwVersion > CONTAINER_INFO_CURRENT_VERSION) {
 		ret = ERROR_REVISION_MISMATCH;
 		goto err;
 	}
-
-	pContainerInfo->dwVersion = CONTAINER_INFO_CURRENT_VERSION;
+	/*  7.06 says: The dwVersion member must be set by the caller. */
+	if (md_get_config_bool(pCardData, "md_container dont_change_dwversion", FALSE) == TRUE)
+		pContainerInfo->dwVersion = CONTAINER_INFO_CURRENT_VERSION;
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 	if (!vs) {
