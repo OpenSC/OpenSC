@@ -139,10 +139,10 @@ static int read_transp(sc_card_t *card, const char *pathstring, unsigned char *b
 
 /* Hex-encode the buf, 2*len+1 bytes must be reserved. E.g. {'1','2'} -> {'3','1','3','2','\0'} */
 static const char hextable[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'E'};
-static void bintohex(char *buf, int len)
+static void bintohex(char *buf, size_t len)
 {
-	int i;
-	for (i = len - 1; i >= 0; i--) {
+	size_t i;
+	for (i = 0; i < len; i++) {
 		buf[2 * i + 1] = hextable[((unsigned char) buf[i]) % 16];
 		buf[2 * i] = hextable[((unsigned char) buf[i]) / 16];
 	}
@@ -186,22 +186,22 @@ static void do_belpic(sc_card_t *card)
 		char documenttype[5 + 1];
 		char specialstatus[5 + 1];
 	} id_data;
-	int cardnumberlen = sizeof(id_data.cardnumber);
-	int chipnumberlen = sizeof(id_data.chipnumber);
-	int validfromlen = sizeof(id_data.validfrom);
-	int validtilllen = sizeof(id_data.validtill);
-	int deliveringmunicipalitylen = sizeof(id_data.deliveringmunicipality);
-	int nationalnumberlen = sizeof(id_data.nationalnumber);
-	int namelen = sizeof(id_data.name);
-	int firstnameslen = sizeof(id_data.firstnames);
-	int initiallen = sizeof(id_data.initial);
-	int nationalitylen = sizeof(id_data.nationality);
-	int birthlocationlen = sizeof(id_data.birthlocation);
-	int birthdatelen = sizeof(id_data.birthdate);
-	int sexlen = sizeof(id_data.sex);
-	int nobleconditionlen = sizeof(id_data.noblecondition);
-	int documenttypelen = sizeof(id_data.documenttype);
-	int specialstatuslen = sizeof(id_data.specialstatus);
+	size_t cardnumberlen = sizeof(id_data.cardnumber);
+	size_t chipnumberlen = sizeof(id_data.chipnumber);
+	size_t validfromlen = sizeof(id_data.validfrom);
+	size_t validtilllen = sizeof(id_data.validtill);
+	size_t deliveringmunicipalitylen = sizeof(id_data.deliveringmunicipality);
+	size_t nationalnumberlen = sizeof(id_data.nationalnumber);
+	size_t namelen = sizeof(id_data.name);
+	size_t firstnameslen = sizeof(id_data.firstnames);
+	size_t initiallen = sizeof(id_data.initial);
+	size_t nationalitylen = sizeof(id_data.nationality);
+	size_t birthlocationlen = sizeof(id_data.birthlocation);
+	size_t birthdatelen = sizeof(id_data.birthdate);
+	size_t sexlen = sizeof(id_data.sex);
+	size_t nobleconditionlen = sizeof(id_data.noblecondition);
+	size_t documenttypelen = sizeof(id_data.documenttype);
+	size_t specialstatuslen = sizeof(id_data.specialstatus);
 
 	struct sc_asn1_entry id[] = {
 		{"cardnumber", SC_ASN1_UTF8STRING, 1, 0, id_data.cardnumber, &cardnumberlen},
@@ -229,9 +229,9 @@ static void do_belpic(sc_card_t *card)
 		char zipcode[4 + 1];
 		char municipality[40 + 1]; /* UTF8 */
 	} address_data;
-	int streetandnumberlen = sizeof(address_data.streetandnumber);
-	int zipcodelen = sizeof(address_data.zipcode);
-	int municipalitylen = sizeof(address_data.municipality);
+	size_t streetandnumberlen = sizeof(address_data.streetandnumber);
+	size_t zipcodelen = sizeof(address_data.zipcode);
+	size_t municipalitylen = sizeof(address_data.municipality);
 	struct sc_asn1_entry address[] = {
 		{"streetandnumber", SC_ASN1_UTF8STRING, 1, 0, address_data.streetandnumber, &streetandnumberlen},
 		{"zipcode", SC_ASN1_UTF8STRING, 2, 0, address_data.zipcode, &zipcodelen},

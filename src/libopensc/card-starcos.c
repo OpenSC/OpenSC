@@ -2075,8 +2075,7 @@ static int starcos_logout(sc_card_t *card)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-static int starcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
-			    int *tries_left)
+static int starcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	int r;
 
@@ -2086,7 +2085,7 @@ static int starcos_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data,
 		data->flags |= SC_PIN_CMD_NEED_PADDING;
 		data->pin1.encoding = ex_data->pin_encoding;
 	}
-	r = iso_ops->pin_cmd(card, data, tries_left);
+	r = iso_ops->pin_cmd(card, data);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
