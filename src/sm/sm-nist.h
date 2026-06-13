@@ -58,14 +58,13 @@ extern "C" {
 /* Default is use if card supports it */
 /* will use VCI if card supports it for contactless */
 #define NIST_SM_FLAGS_ALWAYS			0x00000200lu /* Use SM or quit, VCI requires SM */
-#define NIST_SM_FLAGS_DEFER_OPEN		0x00001000lu /* call sm_open from reader_lock_obtained */
+#define NIST_SM_FLAGS_DEFER_OPEN		0x00001000lu /* call sm_open from next reader_lock_obtained */
 #define NIST_SM_VCI_ACTIVE			0x00002000lu /* VCI is active */
-#define NIST_SM_GET_DATA_IN_CLEAR		0x00004000lu /* OK to do this GET DATA in the clear */
+#define NIST_SM_FLAGS_FORCE_IN_CLEAR		0x00004000lu /* force this apdu in the clear */
 #define NIST_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED 0x00008000lu /* compressed */
 #define NIST_SM_CONTACTLESS			0x00010000lu /* contacless */
-#define NIST_SM_FLAGS_FORCE_SM_ON		0x00020000lu /* override sm_nist_pre and use SM */
-#define NIST_SM_FLAGS_FORCE_SM_OFF		0x00040000lu /* override sm-nist_pre and not use SM */
-#define NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS	0x00080000lu /* Don't close on errors */
+#define NIST_SM_FLAGS_FORCE_SM_ON		0x00020000lu /* override any sm_nist_pre_transmit and use SM */
+#define NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS	0x00040000lu /* Don't close on errors may be testing if SM need to be reestablished */
 // clang-format on
 
 /* 800-73-4  4.1.5 Card Verifiable Certificates */
@@ -103,6 +102,9 @@ typedef struct sm_nist_params {
 	u8 csID; /* 0x27 or 0x2E */
 	u8 last_sw1;
 	u8 last_sw2;
+	/** @brief Call back function for fine control of what is in the clear */
+	/* return 0 to use SM, or SC_ERROR_SM_NOT_APPLIED to send in the clear */
+	int (*sm_nist_pre_transmit_callback)(sc_card_t *card, sc_apdu_t *apdu);
 } sm_nist_params_t;
 
 int
