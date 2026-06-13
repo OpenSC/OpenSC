@@ -1389,6 +1389,8 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 	struct sm_nist_private_data *priv = NULL;
 	//	u8 *p = 0;
 
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
 	if (!params) {
 		sc_log(card->ctx, "sm_nist_params required parameter is NULL");
 		r = SC_ERROR_INVALID_ARGUMENTS;
@@ -1859,43 +1861,33 @@ sm_nist_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	priv = (sm_nist_private_data_t *)ctx->priv_data;
 
-	/* Force the use of SM this apdu only
+	/* 
+	 * Force the use of SM for this apdu only.
 	 * used in reader_lock_obtained and card driver_init
 	 * can be used on any APDU by card driver for fine control
 	 */
-	/* SC_ERROR_SM_NOT_APPLIED tells sm_nist_encode to not use SM */
 	if (priv->params->flags & NIST_SM_FLAGS_FORCE_SM_ON) {
 		sc_log(card->ctx, "forcing the use of SM ON");
 		priv->params->flags &= ~NIST_SM_FLAGS_FORCE_SM_ON;
-		r = 0;
-	} else if (priv->params->flags & NIST_SM_FLAGS_FORCE_SM_OFF) {
-		sc_log(card->ctx, "forcing the use of SM OFF");
-		priv->params->flags &= ~NIST_SM_FLAGS_FORCE_SM_OFF;
+		r = SC_SUCCESS; /* Use SM */
+
+		/* Force send without SM in the clear */
+	} else if (priv->params->flags & NIST_SM_FLAGS_FORCE_IN_CLEAR) {
+		sc_log(card->ctx, "forcing the use of NIST_SM_FLAGS_FORCE_IN_CLEAR");
+		priv->params->flags &= ~NIST_SM_FLAGS_FORCE_IN_CLEAR;
 		r = SC_ERROR_SM_NOT_APPLIED;
+	
+		/*
+		 * Above only work if apdu was directly from the driver
+		 * with no interveing apdus. for example APDUs created by pkcs15
+		 * The following lets card driver decide to use SM or in the clear.
+		 */
+	} else if (priv->params->sm_nist_pre_transmit_callback) {
+		r = (priv->params->sm_nist_pre_transmit_callback)(card, apdu);
 	} else {
-		/* May need additional cases */
-		switch (apdu->ins) {
-		case 0xCA: /* GET_DATA */
-		case 0xCB: /* GET_DATA */
-			if (priv->params->flags & NIST_SM_GET_DATA_IN_CLEAR) {
-				priv->params->flags &= ~NIST_SM_GET_DATA_IN_CLEAR;
-				r = SC_ERROR_SM_NOT_APPLIED;
-			}
-			break;
-		case 0x20: /* VERIFY */
-			break;
-		case 0x24: /* CHANGE REFERENCE DATA */
-			break;
-		case 0x86: /* GENERAL AUTHENTICATE */
-		case 0x87: /* GENERAL AUTHENTICATE */
-			break;
-		case 0xC0: /* GET RESPONSE */
-			r = SC_ERROR_SM_NOT_APPLIED;
-			break;
-		default: /* just issue the plain apdu */
-			r = SC_ERROR_SM_NOT_APPLIED;
-		}
+		r = SC_SUCCESS; /* default is to use SM */
 	}
+
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
 
