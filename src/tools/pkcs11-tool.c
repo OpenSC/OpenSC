@@ -4136,9 +4136,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 	int n_attr = 2;
 	CK_RV rv;
 	int fd;
-	unsigned char* in_buffer = NULL;
-	size_t in_buffer_size = 512;
-	size_t bytes_read = 0;
+	unsigned char in_buffer[16384];
 	CK_ULONG wrapped_key_length;
 	CK_BYTE_PTR pWrappedKey;
 	params_t params = {0};
@@ -4147,15 +4145,11 @@ unwrap_key(CK_SESSION_HANDLE session)
 	CK_OBJECT_HANDLE hUnwrappingKey;
 	ssize_t sz;
 
-	in_buffer = malloc(in_buffer_size);
-	if (in_buffer == NULL)
-		util_fatal("Cannot allocate enough memory for input buffer\n");
-
 	if (!find_object(session, CKO_PRIVATE_KEY, &hUnwrappingKey,
-			 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
+			    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
 		if (!find_object(session, CKO_SECRET_KEY, &hUnwrappingKey,
-				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
-			util_fatal("Private/secret key not found\n");
+				    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
+			util_fatal("Private/secret key not found");
 
 	if (!opt_mechanism_used)
 		util_fatal("Unable to unwrap, no mechanism specified\n");
@@ -4167,28 +4161,12 @@ unwrap_key(CK_SESSION_HANDLE session)
 	if (opt_input == NULL)
 		fd = 0;
 	else if ((fd = open(opt_input, O_RDONLY | O_BINARY)) < 0)
-		util_fatal("Cannot open %s: %m\n", opt_input);
+		util_fatal("Cannot open %s: %m", opt_input);
 
-	do {
-		size_t space = in_buffer_size - bytes_read;
-		if (space == 0) {
-			unsigned char *tmp;
-			in_buffer_size *= 2;
-			tmp = realloc(in_buffer, in_buffer_size);
-			if (tmp == NULL) {
-				free(in_buffer);
-				util_fatal("Cannot reallocate input buffer\n");
-			}
-			in_buffer = tmp;
-			space = in_buffer_size - bytes_read;
-		}
-		sz = read(fd, in_buffer + bytes_read, space);
-		if (sz < 0)
-			util_fatal("Cannot read from %s: %m\n", opt_input);
-		bytes_read += (size_t)sz;
-	} while (sz > 0);
-
-	wrapped_key_length = (CK_ULONG)bytes_read;
+	sz = read(fd, in_buffer, sizeof(in_buffer));
+	if (sz < 0)
+		util_fatal("Cannot read from %s: %m", opt_input);
+	wrapped_key_length = sz;
 	if (fd != 0)
 		close(fd);
 	pWrappedKey = in_buffer;
@@ -4285,17 +4263,16 @@ unwrap_key(CK_SESSION_HANDLE session)
 
 	if (opt_allowed_mechanisms_len > 0) {
 		FILL_ATTR(keyTemplate[n_attr], CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
-			  sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+				sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
 		n_attr++;
 	}
 	rv = p11->C_UnwrapKey(session, &mechanism, hUnwrappingKey,
-			      pWrappedKey, wrapped_key_length, keyTemplate, n_attr, &hSecretKey);
+			pWrappedKey, wrapped_key_length, keyTemplate, n_attr, &hSecretKey);
 	if (rv != CKR_OK)
 		p11_fatal("C_UnwrapKey", rv);
 
 	free(iv);
 	free(aad);
-	free(in_buffer);
 	printf("Key unwrapped\n");
 	show_object(session, hSecretKey);
 	return 1;
