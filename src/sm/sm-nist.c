@@ -88,7 +88,7 @@ typedef struct cipher_suite {
 	const EVP_CIPHER *(*cipher_ecb)(void);
 	char *cipher_cbc_name;
 	char *cipher_ecb_name;
-	char *curve_group; /* curve name TODO or is this just p-256 or p-384?*/
+	char *curve_group; /* curve name or is this just p-256 or p-384?*/
 } cipher_suite_t;
 
 // clang-fromat off
@@ -218,7 +218,6 @@ typedef struct sm_nist_private_data {
 	nist_sm_session_t sm_session;
 } sm_nist_private_data_t;
 
-// TODO fix to look at iso_sm_ctx  priv data
 #define ISO_CTX_FROM_CARD    ((struct iso_sm_ctx *)card->sm_ctx.info.cmd_data)
 #define SM_NIST_PRIV_CARD    ((sm_nist_private_data_t *)((struct iso_sm_ctx *)card->sm_ctx.info.cmd_data)->priv_data)
 #define SM_NIST_PRIV(isoctx) ((sm_nist_private_data_t *)((struct iso_sm_ctx *)isoctx)->priv_data)
@@ -696,10 +695,9 @@ sm_nist_open(struct sc_card *card)
 
 	/*
 	 * The SM routines try and call this on their own.
-	 * This routine should only be called by the card driver.
-	 * which has set NIST_SM_FLAGS_DEFER_OPEN and unset in
-	 * in reader_lock_obtained
-	 * after testing PIC applet is active so SM is setup in same transaction
+	 * This routine should only be called by the card driver
+	 * or reader_lock_obtained
+	 * after testing PIV applet is active so SM is setup in same transaction
 	 * as the command we are trying to run with SM.
 	 * this avoids situation where the SM is established, and then reset by
 	 * some other application without getting anything done or in
@@ -707,6 +705,7 @@ sm_nist_open(struct sc_card *card)
 	 */
 
 	if (!(priv->params->flags & NIST_SM_FLAGS_DEFER_OPEN)) {
+		sc_debug(card->ctx, SC_LOG_DEBUG_SM, "Calling sm_nist_open from wrong place");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 	}
 
@@ -1501,7 +1500,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 
-	/*
+	/* TODO delete 
 	 * sm-iso does not set an operation for sm_open which in our case
 	 * is sm_nist_open. which we will control from calling driver.
 	 * so unset sm_mode
@@ -1918,6 +1917,11 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	for (i = 0; nist_sm_errors[i].SWs != 0; i++) {
 		if (nist_sm_errors[i].SWs == ((sm_apdu->sw1 << 8) | sm_apdu->sw2)) {
 			sc_log(card->ctx, "%s", nist_sm_errors[i].errorstr);
+			if (priv->params->flags & NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS) {
+				/* Caller can see error from last_sw1 and last_sw2 */
+				sm_apdu->sw1 = 0x90;
+				sm_apdu->sw2 = 0x00;
+			}
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, nist_sm_errors[i].errorno);
 		}
 	}
@@ -1944,12 +1948,12 @@ sm_nist_close(sc_card_t *card)
 		 * a SM failure while using SM 00 20 00 xx lc=0
 		 * from reader_lock_obtained maybe caused
 		 * by interference of other process that started its own 
-		 * SM session. In this case do not close and let reader_lock_obtained
-		 * continue.
+		 * SM session. In this case do not close but reader_lock_obtained
+		 * continue. sm_nist_post_transmit will have saved the actual
+		 * SW1 and SW2 and set the SW1 to 09 and SW2 to 00
 		 */
 		if (priv->params->flags & NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS) {
 			sc_log(card->ctx, "called with NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS");
-			priv->params->flags &= ~NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS;
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
 		}
 	}
