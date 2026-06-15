@@ -223,7 +223,7 @@ _cka_get_unsigned(const struct jacartapki_cka *attr, unsigned *out)
 }
 
 static int
-_cka_get_byte(const struct jacartapki_cka* attr, unsigned char* ch)
+_cka_get_byte(const struct jacartapki_cka *attr, unsigned char *ch)
 {
 	if (attr == NULL || ch == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;

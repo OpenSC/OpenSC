@@ -1068,7 +1068,7 @@ jacartapki_chv_secure_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_c
 	LOG_TEST_GOTO_ERR(ctx, rv, "APDU transmit failed");
 
 	/*if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xF0) == 0xC0) tries left: apdu.sw2 & 0x0F*/
-		
+
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 err:
 	free(encrypted);

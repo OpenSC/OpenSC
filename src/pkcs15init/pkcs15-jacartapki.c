@@ -659,7 +659,7 @@ jacartapki_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 	if (pin != NULL && pin_len != 0) {
 		pin_file->encoded_content = realloc(pin_file->encoded_content, 2 + pin_len);
 		if (pin_file->encoded_content == NULL)
-		    LOG_ERROR_GOTO(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate encoded PIN content");
+			LOG_ERROR_GOTO(ctx, SC_ERROR_OUT_OF_MEMORY, "Failed to allocate encoded PIN content");
 		pin_file->encoded_content[0] = JACARTAPKI_KO_DATA_TAG_PIN;
 		pin_file->encoded_content[1] = pin_len;
 		memcpy(pin_file->encoded_content + 2, pin, pin_len);

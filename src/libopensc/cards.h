@@ -287,7 +287,7 @@ enum {
 
 	/* Serbian cards (CardEdge PKI applet) */
 	SC_CARD_TYPE_SRBEID_BASE = 44000,
-  
+
 	/* JaCarta PKI */
 	SC_CARD_TYPE_JACARTA_PKI = 45000,
 };
