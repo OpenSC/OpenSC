@@ -764,6 +764,7 @@ static int piv_match_card_continued(sc_card_t *card);
 static int piv_obj_cache_free_entry(sc_card_t *card, int enumtag, int flags);
 static int piv_ai_map_find_by_id(sc_card_t *card, u8);
 
+#ifdef PIV_SM_NIST
 static int
 piv_parse_pairing_code(sc_card_t *card, const char *option)
 {
