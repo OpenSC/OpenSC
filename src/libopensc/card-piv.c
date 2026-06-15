@@ -4372,7 +4372,6 @@ piv_init(sc_card_t *card)
 		/*
 		 * Main point in SM and VCI is to allow contactless access
 		 */
-		/* Only piv_init and piv_reader_lock_obtained should call sm-nist_open */
 
 		/* If user said PIV_SM_FLAGS_NEVER, dont start SM; implies limited contatless access */
 		if (priv->sm_params.flags & NIST_SM_FLAGS_NEVER) {
@@ -4432,14 +4431,16 @@ piv_init(sc_card_t *card)
 	}
 #endif /* PIV_SM_NIST */
 
+	priv->pstate = PIV_STATE_NORMAL;
+
 	/*
 	 * 800-73-3 cards may have a history object
 	 * We want to process it now as this has information on what
 	 * keys and certs. "piv like" cards may or may not have history
 	 */
+
 	piv_process_history(card);
 
-	priv->pstate = PIV_STATE_NORMAL;
 	sc_unlock(card);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -4496,10 +4497,9 @@ piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 	/* Note 6982 is map to SC_ERROR_SM_NO_SESSION_KEYS but iso maps it to SC_ERROR_SECURITY_STATUS_NOT_SATISFIED */
 	/* we do this because 6982 could also mean a verify is not allowed over contactless without VCI */
 	/* we stashed the sw1 and sw2 above for verify */
-	/* Check specific NIST sp800-73-4 SM  errors */
 	for (i = 0; piv_sm_errors[i].SWs != 0; i++) {
 		if (piv_sm_errors[i].SWs == ((sw1 << 8) | sw2)) {
-			sc_log(card->ctx, "%s", piv_sm_errors[i].errorstr);
+			sc_log(card->ctx, " SM NIST ERROR FOUND: %2.2x %s", piv_sm_errors[i].SWs, piv_sm_errors[i].errorstr);
 			return piv_sm_errors[i].errorno;
 		}
 	}
@@ -4748,6 +4748,7 @@ piv_logout(sc_card_t *card)
  * There may have been one or more resets, by other card drivers in different
  * processes, and they may have taken action already
  * and changed the AID and or may have sent a VERIFY with PIN
+ * or started their own NIST SM session
  * so select AID and reauthenticate SM as needed.
  */
 
@@ -4786,15 +4787,15 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 
 	/* first see if AID is active AID by reading discovery object '7E' */
 	/* If not try selecting AID */
-
 	/* but if card does not support DISCOVERY object we can not use it */
 	if (priv->card_issues & CI_DISCOVERY_USELESS) {
 		r = SC_ERROR_NO_CARD_SUPPORT;
 	} else {
+		priv->sm_params.flags |= NIST_SM_FLAGS_FORCE_IN_CLEAR;
 		r = piv_find_discovery(card);
 	}
-	sc_log(card->ctx, "(was_reset: %d priv->sm_parms.flags: 0x%08lX", was_reset, priv->sm_params.flags);
-	if (was_reset == 0 && priv->sm_params.flags & NIST_SM_FLAGS_SM_IS_ACTIVE) {
+
+	if (r >= 0 && was_reset == 0 && priv->sm_params.flags & NIST_SM_FLAGS_SM_IS_ACTIVE) {
 		/* If SM was active, test if SM connection is still valid to card using VERIFY 00 20 00 XX
 		 * If reply is 90 00  or 63 Cx Our SM connection must still be valid to PIV applet.
 		 * and we get tries left too.
@@ -4807,29 +4808,45 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		priv->sm_params.flags |= NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS;
 		priv->sm_params.flags |= NIST_SM_FLAGS_FORCE_SM_ON;
 		r = sc_transmit_apdu(card, &apdu);
-		priv->sm_params.flags |= saved_flags & NIST_SM_FLAGS_FORCE_SM_ON; /* restore state just in case */
+		priv->sm_params.flags = saved_flags; /* restore state just in case */
+
 		if (r >= 0) {
-			if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
+			/*  NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS saved the real error codes */
+			if (apdu.sw1 != priv->sm_params.last_sw1 || apdu.sw2 != priv->sm_params.last_sw2) {
+				apdu.sw1 = priv->sm_params.last_sw1;
+				apdu.sw2 = priv->sm_params.last_sw2;
+				r = piv_check_sw(card, apdu.sw1, apdu.sw2); /*set so later will restart SM */
+
+			} else if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 				priv->logged_in = SC_PIN_STATE_LOGGED_IN;
-			else if (apdu.sw1 == 0x63) {
+
+			} else if (apdu.sw1 == 0x63) {
 				priv->logged_in = SC_PIN_STATE_LOGGED_OUT;
 				priv->tries_left = apdu.sw1 & 0x0F;
+
 			} else {
 				priv->logged_in = SC_PIN_STATE_UNKNOWN;
 			}
 		}
 	}
+	sc_debug(card->ctx, SC_LOG_DEBUG_SM, "SM r: %d  SM SW = %2.2x%2.2x was_reset: %d priv->sm_parms.flags: 0x%08lX",
+			r, priv->sm_params.last_sw1, priv->sm_params.last_sw2, was_reset, priv->sm_params.flags);
+
 	if ((r < 0 || was_reset > 0) && priv->sm_params.flags & NIST_SM_FLAGS_SM_IS_ACTIVE) {
+		priv->sm_params.flags |= NIST_SM_FLAGS_FORCE_IN_CLEAR;
 		r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
-		if (r < 0)
-			goto err;
+		if (r < 0) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_SM, "SM r: %d", r);
+			if (priv->sm_params.last_sw1 != 0x69 && priv->sm_params.last_sw2 != 0x88)
+				goto err;
+		}
 
 		priv->sm_params.flags |= NIST_SM_FLAGS_DEFER_OPEN;
 		r = sm_nist_open(card);
 		if (r < 0) {
-			/* TODO is it ok to run with out SM */
-			/* If uses said use SM always, and can not - Error */
+			/* TODO is it ok to run without SM */
 			sc_log(card->ctx, "Attempt to restart or skip sm-nist");
+			/* If user said use SM always and unable to restart */
 			if (priv->sm_params.flags & NIST_SM_FLAGS_ALWAYS) {
 				r = SC_ERROR_SM_NOT_INITIALIZED;
 				goto err;
