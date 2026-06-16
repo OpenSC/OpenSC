@@ -41,6 +41,7 @@
 #include <eac/cv_cert.h>
 #include <eac/eac.h>
 #include <eac/ta.h>
+#include <eac/ca.h>
 #include <openssl/evp.h>
 #endif
 
@@ -559,6 +560,9 @@ static int sc_hsm_perform_chip_authentication(sc_card_t *card)
 		goto err;
 	}
 
+	/* FIXME set flags with opensc.conf */
+	TA_disable_checks(ctx);
+	CA_disable_passive_authentication(ctx);
 
 	/* check all CVCs given of the document's pki */
 	if (!TA_STEP2_import_certificate(ctx, issuer_cert, issuer_cert_len)
