@@ -73,6 +73,7 @@
 #include "pkcs11/pkcs11-opensc.h"
 #include "pkcs11/pkcs11.h"
 #include "pkcs11_uri.h"
+#include "fread_to_eof.h"
 #include "util.h"
 
 /* pkcs11-tool uses libopensc routines that do not use an sc_context
@@ -6431,10 +6432,8 @@ uint32_to_le(CK_BYTE_PTR buffer, uint32_t value)
 static void
 read_binary_file(const char *filename, CK_BYTE **out_buf, ssize_t *out_len)
 {
-	FILE *f;
-	ssize_t len;
-	CK_BYTE *buf = NULL;
-	size_t ret;
+	unsigned char *buf = NULL;
+	size_t buflen = 0;
 
 	if (out_buf == NULL || out_len == NULL)
 		util_fatal("read_binary_file: invalid arguments");
@@ -6444,40 +6443,11 @@ read_binary_file(const char *filename, CK_BYTE **out_buf, ssize_t *out_len)
 		return;
 	}
 
-	f = fopen(filename, "rb");
-	if (f == NULL)
-		util_fatal("Cannot open %s: %m", filename);
-	if (fseek(f, 0L, SEEK_END) != 0) {
-		fclose(f);
-		util_fatal("Couldn't set file position to the end of the file \"%s\"", filename);
-	}
-	len = ftell(f);
-	if (len < 0) {
-		fclose(f);
-		util_fatal("Couldn't get file position \"%s\"", filename);
-	}
-	if (len > 0) {
-		buf = malloc((size_t)len);
-		if (buf == NULL) {
-			fclose(f);
-			util_fatal("malloc() failure");
-		}
-		if (fseek(f, 0L, SEEK_SET) != 0) {
-			free(buf);
-			fclose(f);
-			util_fatal("Couldn't set file position to the beginning of the file \"%s\"", filename);
-		}
-		ret = fread(buf, 1, (size_t)len, f);
-		if (ret != (size_t)len) {
-			free(buf);
-			fclose(f);
-			util_fatal("Couldn't read from file \"%s\"", filename);
-		}
-	}
-	fclose(f);
+	if (!fread_to_eof(filename, &buf, &buflen))
+		util_fatal("Cannot read %s", filename);
 
-	*out_buf = buf;
-	*out_len = len;
+	*out_buf = (CK_BYTE *)buf;
+	*out_len = (ssize_t)buflen;
 }
 
 /*
