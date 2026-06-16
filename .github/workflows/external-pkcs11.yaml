@@ -53,7 +53,7 @@ jobs:
       BUILD_PATH: ./
     steps:
       - uses: actions/checkout@v6
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-20-base
@@ -74,7 +74,7 @@ jobs:
       BUILD_PATH: ./
     steps:
       - uses: actions/checkout@v6
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-20-base
