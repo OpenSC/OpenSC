@@ -38,10 +38,10 @@
 
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 #include "sm/sm-eac.h"
+#include <eac/ca.h>
 #include <eac/cv_cert.h>
 #include <eac/eac.h>
 #include <eac/ta.h>
-#include <eac/ca.h>
 #include <openssl/evp.h>
 #endif
 
