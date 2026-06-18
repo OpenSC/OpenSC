@@ -143,6 +143,9 @@ rm -rf %{buildroot}%{_mandir}/man1/pkcs11-register.1*
 rm %{buildroot}%{_datadir}/applications/org.opensc.notify.desktop
 rm %{buildroot}%{_mandir}/man1/opensc-notify.1*
 
+# ctk-tool is only available on macOS
+rm %{buildroot}%{_mandir}/man1/ctk-tool.1*
+
 
 %files
 %doc COPYING NEWS README*
