@@ -2186,6 +2186,7 @@ int main(int argc, char *argv[])
 fail:
 	err = 1;
 end:
+	sc_file_free(file);
 	sc_disconnect_card(card);
 	sc_release_context(ctx);
 
