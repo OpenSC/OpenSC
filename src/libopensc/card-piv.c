@@ -3748,7 +3748,14 @@ piv_finish(sc_card_t *card)
 	int i;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	
 	if (priv) {
+#ifdef PIV_SM_NIST
+		free(priv->sm_params.signer_cert_der);
+		if (card->sm_ctx.ops.close)
+			card->sm_ctx.ops.close(card);
+#endif /* PIV_SM_NIST */
+
 		if (priv->context_specific) {
 			sc_log(card->ctx, "Clearing CONTEXT_SPECIFIC lock");
 			priv->context_specific = 0;
