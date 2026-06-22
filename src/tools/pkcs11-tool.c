@@ -4136,7 +4136,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 	int n_attr = 2;
 	CK_RV rv;
 	int fd;
-	unsigned char in_buffer[2048];
+	unsigned char in_buffer[16384];
 	CK_ULONG wrapped_key_length;
 	CK_BYTE_PTR pWrappedKey;
 	params_t params = {0};
@@ -4146,9 +4146,9 @@ unwrap_key(CK_SESSION_HANDLE session)
 	ssize_t sz;
 
 	if (!find_object(session, CKO_PRIVATE_KEY, &hUnwrappingKey,
-			 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
+			    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
 		if (!find_object(session, CKO_SECRET_KEY, &hUnwrappingKey,
-				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
+				    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
 			util_fatal("Private/secret key not found");
 
 	if (!opt_mechanism_used)
@@ -4263,11 +4263,11 @@ unwrap_key(CK_SESSION_HANDLE session)
 
 	if (opt_allowed_mechanisms_len > 0) {
 		FILL_ATTR(keyTemplate[n_attr], CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
-			  sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+				sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
 		n_attr++;
 	}
 	rv = p11->C_UnwrapKey(session, &mechanism, hUnwrappingKey,
-			      pWrappedKey, wrapped_key_length, keyTemplate, n_attr, &hSecretKey);
+			pWrappedKey, wrapped_key_length, keyTemplate, n_attr, &hSecretKey);
 	if (rv != CKR_OK)
 		p11_fatal("C_UnwrapKey", rv);
 
