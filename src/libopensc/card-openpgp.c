@@ -3634,7 +3634,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 		components[0] = key_info->u.rsa.exponent;
 		components[1] = key_info->u.rsa.p;
 		components[2] = key_info->u.rsa.q;
-		componentlens[0] = key_info->u.rsa.exponent_len;
+		componentlens[0] = BYTES4BITS(key_info->u.rsa.exponent_len);
 		componentlens[1] = key_info->u.rsa.p_len;
 		componentlens[2] = key_info->u.rsa.q_len;
 		componenttags[0] = 0x91;
