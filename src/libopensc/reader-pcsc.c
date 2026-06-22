@@ -2182,16 +2182,14 @@ static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, siz
 /* Find a given PCSC v2 part 10 property */
 static int
 part10_find_property_by_tag(unsigned char buffer[], DWORD length,
-	int tag_searched)
+		int tag_searched)
 {
 	unsigned char *p;
 	int found = 0, len, value = -1;
 
 	p = buffer;
-	while (p-buffer < (long)length)
-	{
-		if (*p++ == tag_searched)
-		{
+	while (p - buffer < (long)length) {
+		if (*p++ == tag_searched) {
 			found = 1;
 			break;
 		}
@@ -2201,12 +2199,11 @@ part10_find_property_by_tag(unsigned char buffer[], DWORD length,
 		p += len;
 	}
 
-	if (found)
-	{
+	if (found && p - buffer < (long)length) {
 		len = *p++;
 
-		switch(len)
-		{
+		if (p - buffer + len <= (long)length) {
+			switch (len) {
 			case 1:
 				value = *p;
 				break;
@@ -2218,11 +2215,12 @@ part10_find_property_by_tag(unsigned char buffer[], DWORD length,
 				break;
 			default:
 				value = -1;
+			}
 		}
 	}
 
 	return value;
-} /* part10_find_property_by_tag */
+}
 
 /* Make sure the pin min and max are supported by the reader
  * and fix the values if needed */
@@ -2526,7 +2524,7 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
 		parsed += ui8;
 
 		/* length_CARprev */
-		if (parsed+1 > rbuflen)
+		if (parsed + 1 > rbuflen)
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		ui8 = rbuf[parsed];
 		/* do not just yet copy ui8 to pace_output->previous_car_length */
