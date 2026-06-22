@@ -3057,7 +3057,7 @@ piv_read_obj_from_file(sc_card_t *card, char *filename,
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
-	memcpy(*buf, tagbuf, len); /* copy first or only part */
+	memcpy(*buf, tagbuf, MIN(len, rbuflen)); /* copy first or only part */
 	/* read rest of file */
 	if (rbuflen > len + sizeof(tagbuf)) {
 		len = read(f, *buf + sizeof(tagbuf), rbuflen - sizeof(tagbuf)); /* read rest */
