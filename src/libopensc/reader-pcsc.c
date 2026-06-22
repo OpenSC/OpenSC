@@ -2526,6 +2526,8 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
 		parsed += ui8;
 
 		/* length_CARprev */
+		if (parsed+1 > rbuflen)
+			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		ui8 = rbuf[parsed];
 		/* do not just yet copy ui8 to pace_output->previous_car_length */
 		parsed += 1;
