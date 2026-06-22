@@ -1293,7 +1293,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto out;
 	}
-	memcpy(rbuf, tagbuf, len); /* copy first or only part */
+	memcpy(rbuf, tagbuf, MIN(len, rbuflen)); /* copy first or only part */
 	if (rbuflen > len) {
 		/* read rest of file */
 		sz = read(f, rbuf + len, rbuflen - len);
