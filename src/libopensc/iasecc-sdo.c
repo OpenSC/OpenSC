@@ -844,10 +844,7 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (*data != IASECC_SDO_TAG_HEADER)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
-
-	if (data_len < 3)
+	if (data_len < 3 || !data || *data != IASECC_SDO_TAG_HEADER)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
 	sdo = calloc(1, sizeof(struct iasecc_sdo));
