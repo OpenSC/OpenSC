@@ -1719,6 +1719,8 @@ iasecc_set_security_env(struct sc_card *card,
 	rv = iasecc_sdo_get_data(card, &sdo);
 	LOG_TEST_RET(ctx, rv, "Cannot get RSA PRIVATE SDO data");
 
+	if (sdo.docp.size.size < 2)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 	/* To made by iasecc_sdo_convert_to_file() */
 	prv->key_size = *(sdo.docp.size.value + 0) * 0x100 + *(sdo.docp.size.value + 1);
 	sc_log(ctx, "prv->key_size 0x%"SC_FORMAT_LEN_SIZE_T"X", prv->key_size);
@@ -3562,6 +3564,8 @@ iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_refer
 			LOG_FUNC_RETURN(ctx, rv);
 		}
 
+		if (sdo->docp.size.size < 2)
+			continue;
 		sz = *(sdo->docp.size.value + 0) * 0x100 + *(sdo->docp.size.value + 1);
 		sc_log(ctx,
 		       "SDO(idx:%i) size %"SC_FORMAT_LEN_SIZE_T"u; key_size %"SC_FORMAT_LEN_SIZE_T"u",
