@@ -9797,7 +9797,7 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		printf("ERR: newly generated private key has no (or an empty) CKA_ID\n");
 		return;
 	}
-	opt_object_id_len = (size_t) i;
+	opt_object_id_len = (size_t)i;
 	if (opt_object_id_len > sizeof(opt_object_id)) {
 		fprintf(stderr, "ERR: object ID too long\n");
 		return;
