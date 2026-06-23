@@ -145,6 +145,60 @@ cardos_pkcs15emu_detect_card(sc_pkcs15_card_t *p15card)
 	return SC_SUCCESS;
 }
 
+/*
+ * CardOS V5.x cards often omit SupportedAlgorithms on private key objects
+ * (Algo_refs: 0). OpenSC's pkcs15_prkey_can_do() then returns
+ * CKR_FUNCTION_NOT_SUPPORTED and signing fails in browsers.
+ */
+static int
+cardos_fixup_prkey_algo_refs(struct sc_pkcs15_card *p15card)
+{
+	struct sc_supported_algo_info *token_algos;
+	struct sc_pkcs15_object *objs[32];
+	int i, j, count;
+
+	LOG_FUNC_CALLED(p15card->card->ctx);
+
+	token_algos = p15card->tokeninfo->supported_algos;
+	count = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY, objs,
+			sizeof(objs) / sizeof(objs[0]));
+	if (count < 0)
+		LOG_FUNC_RETURN(p15card->card->ctx, count);
+
+	for (i = 0; i < count; i++) {
+		struct sc_pkcs15_prkey_info *pkinfo = (struct sc_pkcs15_prkey_info *) objs[i]->data;
+		unsigned int sign_usage = SC_PKCS15_PRKEY_USAGE_SIGN
+			| SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
+			| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
+		unsigned int decipher_usage = SC_PKCS15_PRKEY_USAGE_DECRYPT
+			| SC_PKCS15_PRKEY_USAGE_UNWRAP;
+
+		if (pkinfo->algo_refs[0] != 0)
+			continue;
+
+		for (j = 0; j < SC_MAX_SUPPORTED_ALGORITHMS && token_algos[j].reference; j++) {
+			if ((pkinfo->usage & sign_usage)
+					&& (token_algos[j].operations & SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE)) {
+				pkinfo->algo_refs[0] = token_algos[j].reference;
+				sc_log(p15card->card->ctx,
+					"cardos: set algo_ref %u for signing key '%s'",
+					token_algos[j].reference, objs[i]->label);
+				break;
+			}
+			if ((pkinfo->usage & decipher_usage)
+					&& (token_algos[j].operations & SC_PKCS15_ALGO_OP_DECIPHER)) {
+				pkinfo->algo_refs[0] = token_algos[j].reference;
+				sc_log(p15card->card->ctx,
+					"cardos: set algo_ref %u for decipher key '%s'",
+					token_algos[j].reference, objs[i]->label);
+				break;
+			}
+		}
+	}
+
+	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
+}
+
 
 static int
 sc_pkcs15emu_cardos_init(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
@@ -157,11 +211,15 @@ sc_pkcs15emu_cardos_init(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	r = sc_pkcs15_bind_internal(p15card, aid);
 	LOG_TEST_RET(card->ctx, r, "sc_pkcs15_bind_internal failed");
 
-	/* If card has created algorithms, return  */
+	/* CardOS V5.x defers algorithm setup until tokenInfo is available */
 	sc_log(card->ctx, " card->algorithms:%p card->algorithm_count:%d", card->algorithms, card->algorithm_count);
 	if (!card->algorithms && card->algorithm_count == 0) {
 		r = cardos_fix_token_info(p15card);
+		LOG_TEST_RET(card->ctx, r, "cardos_fix_token_info failed");
 	}
+
+	r = cardos_fixup_prkey_algo_refs(p15card);
+	LOG_TEST_RET(card->ctx, r, "cardos_fixup_prkey_algo_refs failed");
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }

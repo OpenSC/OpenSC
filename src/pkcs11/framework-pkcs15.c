@@ -4807,9 +4807,6 @@ pkcs15_prkey_can_do(struct sc_pkcs11_session *session, void *obj,
 		LOG_FUNC_RETURN(context, CKR_KEY_FUNCTION_NOT_PERMITTED);
 
 	pkinfo = prkey->prv_info;
-	/* Return if there are no usage algorithms specified for this key. */
-	if (!pkinfo->algo_refs[0])
-		LOG_FUNC_RETURN(context, CKR_FUNCTION_NOT_SUPPORTED);
 
 	if (!p11card)
 		LOG_FUNC_RETURN(context, CKR_FUNCTION_NOT_SUPPORTED);
@@ -4824,24 +4821,41 @@ pkcs15_prkey_can_do(struct sc_pkcs11_session *session, void *obj,
 			if (pkinfo->algo_refs[ii] == (token_algos + jj)->reference)
 				break;
 		if ((jj == SC_MAX_SUPPORTED_ALGORITHMS) || !(token_algos + jj)->reference)
-			LOG_FUNC_RETURN(context, CKR_GENERAL_ERROR);
-
-		if ((token_algos + jj)->mechanism != mech_type)
 			continue;
 
-		if (flags == CKF_SIGN)
-			if ((token_algos + jj)->operations & SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE)
-				break;
-
-		if (flags == CKF_DECRYPT)
-			if ((token_algos + jj)->operations & SC_PKCS15_ALGO_OP_DECIPHER)
-				break;
+		if ((token_algos + jj)->mechanism == mech_type) {
+			if (flags == CKF_SIGN
+					&& ((token_algos + jj)->operations & SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE))
+				LOG_FUNC_RETURN(context, CKR_OK);
+			if (flags == CKF_DECRYPT
+					&& ((token_algos + jj)->operations & SC_PKCS15_ALGO_OP_DECIPHER))
+				LOG_FUNC_RETURN(context, CKR_OK);
+		}
 	}
 
-	if (ii == SC_MAX_SUPPORTED_ALGORITHMS || !pkinfo->algo_refs[ii])
-		LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
+	/*
+	 * CardOS V5.x tokens often expose CKM_RSA_X_509 only. Composite
+	 * hash-and-sign mechanisms must be done in software (hash) + card (raw RSA).
+	 * Return CKR_FUNCTION_NOT_SUPPORTED so the PKCS#11 layer initializes a
+	 * software digest — NOT CKR_OK (card would get unhashed data) and NOT
+	 * CKR_MECHANISM_INVALID (aborts C_SignInit).
+	 */
+	if (flags == CKF_SIGN
+			&& (mech_type == CKM_RSA_PKCS
+				|| mech_type == CKM_MD5_RSA_PKCS
+				|| mech_type == CKM_SHA1_RSA_PKCS
+				|| mech_type == CKM_SHA224_RSA_PKCS
+				|| mech_type == CKM_SHA256_RSA_PKCS
+				|| mech_type == CKM_SHA384_RSA_PKCS
+				|| mech_type == CKM_SHA512_RSA_PKCS
+				|| mech_type == CKM_RIPEMD160_RSA_PKCS)) {
+		for (jj = 0; jj < SC_MAX_SUPPORTED_ALGORITHMS && (token_algos + jj)->reference; jj++) {
+			if ((token_algos + jj)->operations & SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE)
+				LOG_FUNC_RETURN(context, CKR_FUNCTION_NOT_SUPPORTED);
+		}
+	}
 
-	LOG_FUNC_RETURN(context, CKR_OK);
+	LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
 }
 
 
