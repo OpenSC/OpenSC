@@ -2023,7 +2023,7 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 		else
 			apdu_datalen = len;
 
-		if (cbc)
+		if (cbc && len > apdu_datalen)
 			apdu.cla = 0x10;
 
 		len -= apdu_datalen;
