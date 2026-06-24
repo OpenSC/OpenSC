@@ -1386,7 +1386,8 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 	int i;
 	struct iso_sm_ctx *sctx = NULL;
 	struct sm_nist_private_data *priv = NULL;
-	//	u8 *p = 0;
+	u8 *cert_blob = NULL;
+	size_t cert_blob_len = 0;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1426,15 +1427,11 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 	}
 
 	if (params->signer_cert_der && params->signer_cert_der_len) {
-		u8 *cert_blob = params->signer_cert_der;
-		size_t cert_blob_len = params->signer_cert_der_len;
 		const u8 *p = params->signer_cert_der;
-		int len;
+		int len = params->signer_cert_der_len;
 
 		if (params->flags & NIST_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED) {
 #ifdef ENABLE_ZLIB
-			cert_blob = NULL;
-			cert_blob_len = 0;
 			if (SC_SUCCESS != sc_decompress_alloc(&cert_blob, &cert_blob_len,
 					params->signer_cert_der, params->signer_cert_der_len, COMPRESSION_AUTO)) {
 				sc_log(card->ctx, "PIV decompression of SM CERT_SIGNER failed");
@@ -1446,10 +1443,11 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 #endif /* ENABLE_ZLIB */
+
+			len = (int)cert_blob_len;
+			p = cert_blob;
 		}
 
-		len = (int)cert_blob_len;
-		p = cert_blob;
 		if ((priv->signer_cert = d2i_X509(NULL, &p, len)) == NULL) {
 			sc_log(card->ctx, "OpenSSL failed to parse CERTIFICATE SIGNER");
 			sc_log_openssl(card->ctx);
@@ -1508,8 +1506,11 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 	//	card->sm_ctx.sm_mode = SM_MODE_NONE;
 
 err:
-	if (r < 0)
+	free(cert_blob);
+	if (r < 0) {
+		sm_nist_clear_free(sctx);
 		iso_sm_ctx_clear_free(sctx);
+	}
 
 	return r;
 }
@@ -1659,6 +1660,9 @@ sm_nist_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	r = (int)enclen;
 
 err:
+	
+	EVP_CIPHER_CTX_free(ed_ctx);
+
 	free(out);
 	return r;
 }
@@ -1840,6 +1844,13 @@ sm_nist_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	r = SC_SUCCESS;
 
 err:
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	CMAC_CTX_free(cmac_ctx);
+#else
+	EVP_MAC_CTX_free(cmac_ctx);
+	EVP_MAC_free(mac);
+#endif
 
 	return r;
 }
