@@ -289,10 +289,6 @@ typedef struct piv_private_data {
 	unsigned int init_flags;
 	u8 csID; /* 800-73-4 Cipher Suite ID 0x27 or 0x2E */
 	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
-	u8 *signer_cert_der;
-	size_t cert_signer_len;
-	u8 *sm_in_cvc_der;
-	size_t sm_in_cvc_len;
 #ifdef PIV_SM_NIST
 	sm_nist_params_t sm_params;
 #endif /* PIV_SM_NIST */
@@ -3750,17 +3746,16 @@ piv_finish(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	
 	if (priv) {
-#ifdef PIV_SM_NIST
-		free(priv->sm_params.signer_cert_der);
-		if (card->sm_ctx.ops.close)
-			card->sm_ctx.ops.close(card);
-#endif /* PIV_SM_NIST */
-
 		if (priv->context_specific) {
 			sc_log(card->ctx, "Clearing CONTEXT_SPECIFIC lock");
 			priv->context_specific = 0;
 			sc_unlock(card);
 		}
+#ifdef PIV_SM_NIST
+		if (card->sm_ctx.ops.close)
+			card->sm_ctx.ops.close(card);
+		sm_nist_params_cleanup(&priv->sm_params);
+#endif /* PIV_SM_NIST */
 		free(priv->aid_der.value);
 		free(priv->al_label);
 		if (priv->w_buf)
@@ -3771,9 +3766,6 @@ piv_finish(sc_card_t *card)
 			piv_obj_cache_free_entry(card, i, 0);
 		}
 
-#ifdef PIV_SM_NIST
-		free(priv->sm_params.signer_cert_der);
-#endif /* PIV_SM_NIST */
 		free(priv);
 		card->drv_data = NULL; /* priv */
 	}
