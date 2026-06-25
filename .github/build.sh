@@ -78,6 +78,9 @@ else
 	if [ "$1" == "no-openssl" ]; then
 		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --disable-openssl"
 	fi
+	if [ "$1" == "no-readers" ]; then
+		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --disable-pcsc --disable-cryptotokenkit --disable-openct --disable-ctapi --disable-integration-tests"
+	fi
 	export CFLAGS="-DDEBUG_PROFILE=1 $CFLAGS"
 	./configure $CONFIGURE_FLAGS
 	make -j 4 V=1
