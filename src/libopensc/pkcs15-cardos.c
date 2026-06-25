@@ -166,31 +166,26 @@ cardos_fixup_prkey_algo_refs(struct sc_pkcs15_card *p15card)
 		LOG_FUNC_RETURN(p15card->card->ctx, count);
 
 	for (i = 0; i < count; i++) {
-		struct sc_pkcs15_prkey_info *pkinfo = (struct sc_pkcs15_prkey_info *) objs[i]->data;
-		unsigned int sign_usage = SC_PKCS15_PRKEY_USAGE_SIGN
-			| SC_PKCS15_PRKEY_USAGE_NONREPUDIATION
-			| SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
-		unsigned int decipher_usage = SC_PKCS15_PRKEY_USAGE_DECRYPT
-			| SC_PKCS15_PRKEY_USAGE_UNWRAP;
+		struct sc_pkcs15_prkey_info *pkinfo = (struct sc_pkcs15_prkey_info *)objs[i]->data;
+		unsigned int sign_usage = SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_NONREPUDIATION | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
+		unsigned int decipher_usage = SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_UNWRAP;
 
 		if (pkinfo->algo_refs[0] != 0)
 			continue;
 
 		for (j = 0; j < SC_MAX_SUPPORTED_ALGORITHMS && token_algos[j].reference; j++) {
-			if ((pkinfo->usage & sign_usage)
-					&& (token_algos[j].operations & SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE)) {
+			if ((pkinfo->usage & sign_usage) && (token_algos[j].operations & SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE)) {
 				pkinfo->algo_refs[0] = token_algos[j].reference;
 				sc_log(p15card->card->ctx,
-					"cardos: set algo_ref %u for signing key '%s'",
-					token_algos[j].reference, objs[i]->label);
+						"cardos: set algo_ref %u for signing key '%s'",
+						token_algos[j].reference, objs[i]->label);
 				break;
 			}
-			if ((pkinfo->usage & decipher_usage)
-					&& (token_algos[j].operations & SC_PKCS15_ALGO_OP_DECIPHER)) {
+			if ((pkinfo->usage & decipher_usage) && (token_algos[j].operations & SC_PKCS15_ALGO_OP_DECIPHER)) {
 				pkinfo->algo_refs[0] = token_algos[j].reference;
 				sc_log(p15card->card->ctx,
-					"cardos: set algo_ref %u for decipher key '%s'",
-					token_algos[j].reference, objs[i]->label);
+						"cardos: set algo_ref %u for decipher key '%s'",
+						token_algos[j].reference, objs[i]->label);
 				break;
 			}
 		}
@@ -198,7 +193,6 @@ cardos_fixup_prkey_algo_refs(struct sc_pkcs15_card *p15card)
 
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
-
 
 static int
 sc_pkcs15emu_cardos_init(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
