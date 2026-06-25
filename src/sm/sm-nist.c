@@ -1515,6 +1515,86 @@ err:
 	return r;
 }
 
+/* reader_lock_obtained routine can check if NIST SM is still active and restart it */
+int
+sm_nist_check_sm_working(sc_card_t *card, sm_nist_params_t *sm_params,
+		int was_reset, u8 *aid, int aid_len, u8 pin_ref, int *logged_in, int *tries_left)
+{
+	int r;
+	//struct sm_nist_private_data *priv = SM_NIST_PRIV_CARD;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	sm_params->flags |= NIST_SM_FLAGS_FORCE_IN_CLEAR;
+	r = iso7816_select_aid(card, aid, aid_len, NULL, NULL);
+	sm_params->flags &= ~NIST_SM_FLAGS_FORCE_IN_CLEAR;
+
+
+	if (r >= 0 && was_reset == 0 && sm_params->flags & NIST_SM_FLAGS_SM_IS_ACTIVE) {
+		/* If SM was active, test if SM connection is still valid to card using VERIFY 00 20 00 XX
+		 * If reply is 90 00  or 63 Cx Our SM connection must still be valid to PIV applet.
+		 * and we get tries left too.
+		 * if not select aid reauthenticate as other process may be using SM too
+		 */
+		sc_apdu_t apdu;
+		unsigned long saved_flags = sm_params->flags;
+
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, pin_ref);
+		sm_params->flags |= NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS;
+		sm_params->flags |= NIST_SM_FLAGS_FORCE_SM_ON;
+		r = sc_transmit_apdu(card, &apdu);
+		sm_params->flags = saved_flags; /* restore state just in case */
+
+		if (r >= 0) {
+			/*  NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS saved the real error codes */
+			if (apdu.sw1 != sm_params->last_sw1 || apdu.sw2 != sm_params->last_sw2) {
+				apdu.sw1 = sm_params->last_sw1;
+				apdu.sw2 = sm_params->last_sw2;
+				r = sc_check_sw(card, apdu.sw1, apdu.sw2); /*set so later will restart SM */
+
+			} else if (logged_in && apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
+				*logged_in = SC_PIN_STATE_LOGGED_IN;
+
+			} else if (apdu.sw1 == 0x63) {
+				if (logged_in)
+					*logged_in = SC_PIN_STATE_LOGGED_OUT;
+				if (tries_left)
+					*tries_left = apdu.sw1 & 0x0F;
+			} else if (logged_in) {
+				*logged_in = SC_PIN_STATE_UNKNOWN;
+			}
+		}
+	}
+	sc_debug(card->ctx, SC_LOG_DEBUG_SM, "SM r: %d  SW1:0x%2.2x SW2:0x%2.2x was_reset: %d sm_parms->flags: 0x%08lX",
+			r, sm_params->last_sw1, sm_params->last_sw2, was_reset, sm_params->flags);
+
+	if ((r < 0 || was_reset > 0) && sm_params->flags & NIST_SM_FLAGS_SM_IS_ACTIVE) {
+		sm_params->flags |= NIST_SM_FLAGS_FORCE_IN_CLEAR;
+		r = iso7816_select_aid(card, aid, aid_len, NULL, NULL);
+		sm_params->flags &= ~NIST_SM_FLAGS_FORCE_IN_CLEAR;
+		if (r < 0) {
+			sc_debug(card->ctx, SC_LOG_DEBUG_SM, "SM r: %d", r);
+			if (sm_params->last_sw1 != 0x69 && sm_params->last_sw2 != 0x88)
+				goto err;
+		}
+
+		sm_params->flags |= NIST_SM_FLAGS_DEFER_OPEN;
+		r = sm_nist_open(card);
+		if (r < 0) {
+			sc_log(card->ctx, "Attempt to restart or skip sm-nist");
+			/* If user said use SM always and unable to restart */
+			if (sm_params->flags & NIST_SM_FLAGS_ALWAYS) {
+				r = SC_ERROR_SM_NOT_INITIALIZED;
+				goto err;
+			}
+		}
+	}
+
+err:
+
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+}
+
 static int
 sm_nist_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *data, size_t datalen, u8 **enc)
@@ -1924,7 +2004,7 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	priv->params->last_sw1 = sm_apdu->sw1;
 	priv->params->last_sw2 = sm_apdu->sw2;
 
-	sc_log(card->ctx, "nist_post_transmit - sw1:0x%X sw2:0x%X", sm_apdu->sw1, sm_apdu->sw2);
+	sc_log(card->ctx, "nist_post_transmit - sw1:0x%2.2X sw2:0x%2.2X", sm_apdu->sw1, sm_apdu->sw2);
 	for (i = 0; nist_sm_errors[i].SWs != 0; i++) {
 		if (nist_sm_errors[i].SWs == ((sm_apdu->sw1 << 8) | sm_apdu->sw2)) {
 			sc_log(card->ctx, "%s", nist_sm_errors[i].errorstr);

@@ -114,6 +114,10 @@ int
 sm_nist_open(sc_card_t *card);
 
 int
+sm_nist_check_sm_working(sc_card_t *card, sm_nist_params_t *params,
+		int was_reset, u8 *aid, int aid_len, u8 pin_ref, int *logied_in,  int *tries_left);
+
+int
 sm_nist_params_cleanup(sm_nist_params_t *params);
 
 int
