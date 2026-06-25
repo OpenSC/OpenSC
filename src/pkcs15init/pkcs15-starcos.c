@@ -500,11 +500,13 @@ static int starcos_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15car
 	return SC_SUCCESS;
 }
 
+/* FIXME This buffer does not fit the 2k nor 3k RSA key components. For them to work,
+ * this constant needs to be bumped to 1024 but we do not have a way to test it */
 #define STARCOS_MAX_PR_KEYSIZE	370
 
 static int starcos_encode_prkey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf)
 {
-	size_t	i = 0;
+	size_t	i = 0, len;
 	u8	*p = buf;
 
 	/* clear key buffer */
@@ -513,9 +515,12 @@ static int starcos_encode_prkey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf)
 	if (rsa->p.len && rsa->q.len && rsa->dmp1.len &&
 		rsa->dmq1.len && rsa->iqmp.len) {
 		/* CRT RSA key     */
+		len = 13 + rsa->q.len + rsa->p.len + 16 + rsa->dmq1.len + 16 + rsa->dmp1.len + rsa->p.len;
+		if (len > STARCOS_MAX_PR_KEYSIZE) {
+			return SC_ERROR_INTERNAL;
+		}
 		/* get number of 0x00 bytes */
-		i = STARCOS_MAX_PR_KEYSIZE - rsa->p.len - rsa->q.len -
-		    rsa->dmp1.len - rsa->dmq1.len - 45 - rsa->p.len;
+		i = STARCOS_MAX_PR_KEYSIZE - len;
 
 		/* key format list */
 		*p++ = 0x0c;
@@ -538,11 +543,11 @@ static int starcos_encode_prkey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf)
 			*p++ = rsa->p.data[i - 1];
 		for (i = 16; i != 0; i--)
 			*p++ = 0x00;
-		for (i = rsa->dmp1.len; i != 0; i--)
+		for (i = rsa->dmq1.len; i != 0; i--)
 			*p++ = rsa->dmq1.data[i - 1];
 		for (i = 16; i != 0; i--)
 			*p++ = 0x00;
-		for (i = rsa->dmq1.len; i != 0; i--)
+		for (i = rsa->dmp1.len; i != 0; i--)
 			*p++ = rsa->dmp1.data[i - 1];
 		for (i = rsa->iqmp.len; i != 0; i--)
 			*p++ = rsa->iqmp.data[i - 1];
@@ -550,8 +555,12 @@ static int starcos_encode_prkey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf)
 			*p++ = 0x00;
 	} else if (rsa->modulus.len && rsa->d.len) {
 		/* normal RSA key  */
-		i = STARCOS_MAX_PR_KEYSIZE - 7 - rsa->modulus.len
-                    - rsa->d.len - 16;
+		len = 7 + rsa->modulus.len + 16 + rsa->d.len;
+		if (len > STARCOS_MAX_PR_KEYSIZE) {
+			return SC_ERROR_INTERNAL;
+		}
+		/* get number of 0x00 bytes */
+		i = STARCOS_MAX_PR_KEYSIZE - len;
 		/* key format list */
 		*p++ = 6;
 		*p++ = 0x90;
@@ -652,7 +661,7 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 {
 	int		r;
 	size_t		len, keylen, endpos;
-	u8		*buf, key[280], *p, num_keys;
+	u8		*buf, key[512], *p, num_keys;
 	sc_file_t	*tfile = NULL;
 	sc_path_t	tpath;
 
@@ -688,6 +697,11 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 	/* encode public key */
 	keylen = starcos_encode_pukey(rsa, NULL, kinfo);
 	if (!keylen) {
+		free(buf);
+		return SC_ERROR_INTERNAL;
+	}
+	/* The fixed buffer `key` should fit 3k RSA key + the header and footer added in this function */
+	if (keylen + 12 > sizeof(key)) {
 		free(buf);
 		return SC_ERROR_INTERNAL;
 	}

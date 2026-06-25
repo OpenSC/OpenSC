@@ -1220,11 +1220,13 @@ int myeid_ecdh_derive(struct sc_card *card, const u8* pubkey, size_t pubkey_len,
 	/* MyEID uses GENERAL AUTHENTICATE ISO command for ECDH */
 
 	struct sc_apdu apdu;
+	u8 pbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 
 	int r;
-	size_t ext_len_bytes;
+	size_t pbuf_len = sizeof(pbuf);
+	u8 *ptr;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x86, 0x00, 0x00);
 
@@ -1233,33 +1235,19 @@ int myeid_ecdh_derive(struct sc_card *card, const u8* pubkey, size_t pubkey_len,
 
 	/* Fill in "Data objects in dynamic authentication template" (tag 0x7C) structure
 	*
-	* TODO: encode the structure using OpenSC's ASN1-functions.
-	*
 	*  Size of the structure depends on key length. With 521 bit keys two bytes are needed for defining length of a point.
 	*/
 
-	sbuf[0] = 0x7C;
-	ext_len_bytes = 0;
+	/* Inner TLV 0x85 | LEN | pubkey */
+	r = sc_asn1_put_tag(0x85, pubkey, pubkey_len, pbuf, sizeof(pbuf), &ptr);
+	LOG_TEST_RET(card->ctx, r, "Failed to encode inner tlv");
+	pbuf_len = (ptr - pbuf);
 
-	if (pubkey_len > 127)
-	{
-		sbuf[1] = 0x81;
-		sbuf[2] = (u8) (pubkey_len + 3);
-		sbuf[3] = 0x85;
-		sbuf[4] = 0x81;
-		sbuf[5] = (u8) (pubkey_len);
-		ext_len_bytes = 2;
-	}
-	else
-	{
-		sbuf[1] = pubkey_len + 2;
-		sbuf[2] = 0x85;
-		sbuf[3] = pubkey_len;
-	}
+	/* Outer TLV 0x7C | LEN | Inner TLV */
+	r = sc_asn1_put_tag(0x7C, pbuf, pbuf_len, sbuf, sizeof(sbuf), &ptr);
+	LOG_TEST_RET(card->ctx, r, "Failed to encode outer tlv");
 
-	memcpy(&sbuf[4 + ext_len_bytes], pubkey, pubkey_len);
-
-	apdu.lc = pubkey_len + 4 + ext_len_bytes;
+	apdu.lc = (ptr - sbuf);
 	apdu.le = pubkey_len / 2;
 	apdu.datalen = apdu.lc;
 	apdu.data = sbuf;
