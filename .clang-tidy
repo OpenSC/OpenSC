@@ -1,0 +1,4 @@
+Checks:             '-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling'
+WarningsAsErrors:   '-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling'
+HeaderFilterRegex:  '.*'
+UseColor:           'true'

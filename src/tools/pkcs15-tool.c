@@ -28,12 +28,11 @@
 #include <assert.h>
 #include <ctype.h>
 #ifdef _WIN32
-#ifdef __MINGW32__
-// work around for https://sourceforge.net/p/mingw-w64/bugs/476/
+// clang-format off
 #include <windows.h>
-#endif
 #include <shellapi.h>
 #include <tchar.h>
+// clang-format on
 #else
 #include <ftw.h>
 #endif
