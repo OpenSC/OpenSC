@@ -1244,9 +1244,14 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	*res_obj = NULL;
 
 	if ((usage = keyargs->usage) == 0) {
-		usage = SC_PKCS15_PRKEY_USAGE_SIGN;
-		if (keyargs->x509_usage)
-			usage = sc_pkcs15init_map_usage(keyargs->x509_usage, 1);
+		if (keyargs->key.algorithm == SC_ALGORITHM_XEDDSA) {
+			/* Can not sign. To created a cert, see: openssl x509 -force_pubkey */
+			usage = SC_PKCS15_PRKEY_USAGE_DERIVE;
+		} else {
+			usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+			if (keyargs->x509_usage)
+				usage = sc_pkcs15init_map_usage(keyargs->x509_usage, 1);
+		}
 	}
 
 	if ((label = keyargs->label) == NULL)
