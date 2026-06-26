@@ -6547,7 +6547,7 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	CK_ULONG ec_min_key_size, ec_max_key_size,
 		aes_min_key_size, aes_max_key_size;
 	unsigned long ec_ext_flags;
-	sc_pkcs11_mechanism_type_t *mt, *registered_mt;
+	sc_pkcs11_mechanism_type_t *mt = NULL, *registered_mt = NULL;
 	unsigned int num;
 	int rsa_flags = 0, ec_flags = 0, eddsa_flags = 0, xeddsa_flags = 0;
 	int ec_found = 0, gostr_flags = 0, aes_flags = 0;
