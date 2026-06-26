@@ -3245,6 +3245,7 @@ get_usage_pubk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x509_us
 		case CKA_VERIFY_RECOVER:
 			/* FIXME x509_usage */
 			*usage      |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER);
+			break;
 		case CKA_WRAP:
 			*x509_usage |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15INIT_X509_KEY_ENCIPHERMENT);
 			*usage      |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15_PRKEY_USAGE_WRAP);
