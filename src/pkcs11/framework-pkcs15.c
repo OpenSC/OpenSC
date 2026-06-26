@@ -2453,9 +2453,9 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 		case CKA_DECRYPT:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_DECRYPT);
 			break;
-			/* FIXME
 		case CKA_DERIVE:
-		*/
+			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_DERIVE);
+			break;
 		case CKA_UNWRAP:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_UNWRAP);
 			break;
@@ -2817,9 +2817,9 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		case CKA_WRAP:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_WRAP);
 			break;
-			/* FIXME
 		case CKA_DERIVE:
-		*/
+			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_DERIVE);
+			break;
 		case CKA_EC_POINT:
 			switch (key_type) {
 			case CKK_EC:
