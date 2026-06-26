@@ -1582,7 +1582,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	 * Auth.ID of the public key object is left empty. */
 	pubkey_args.id = keygen_args->prkey_args.id;
 	pubkey_args.label = keygen_args->pubkey_label ? keygen_args->pubkey_label : object->label;
-	pubkey_args.usage = keygen_args->prkey_args.usage;
+	pubkey_args.usage = keygen_args->pubkey_usage;
 	pubkey_args.x509_usage = keygen_args->prkey_args.x509_usage;
 	pubkey_args.key.algorithm = algorithm;
 
