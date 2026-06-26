@@ -971,7 +971,8 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>
 							Change the PIN specified by <em class="replaceable"><code>pin-ref</code></em>
 							from the value given by <em class="replaceable"><code>old-pin</code></em> and
-							change its value to <em class="replaceable"><code>new-pin</code></em>.
+							change its value to <em class="replaceable"><code>new-pin</code></em>. References
+							should be given in decimal notation.
 						</p><p>
 							<em class="replaceable"><code>old-pin</code></em> and
 							<em class="replaceable"><code>new-pin</code></em> can be
@@ -1156,7 +1157,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 							<code class="literal">CHV</code>, <code class="literal">KEY</code>,
 							<code class="literal">AUT</code> or <code class="literal">PRO</code>.
 							<em class="replaceable"><code>key-id</code></em> is a number
-							representing the key or PIN reference.
+							representing the key or PIN reference (decimal notation).
 						</p></dd><dt><span class="term">
 						<span class="command"><strong>put</strong></span>
 						<em class="replaceable"><code>file-id</code></em>
@@ -1193,6 +1194,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						]
 					</span></dt><dd><p>
 							Unblock the PIN denoted by <em class="replaceable"><code>pin-ref</code></em>
+							(decimal notation)
 							using the PUK <em class="replaceable"><code>puk</code></em>, and potentially
 							change its value to <em class="replaceable"><code>new-pin</code></em>.
 						</p><p>
@@ -1265,7 +1267,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 							<code class="literal">CHV</code>,	<code class="literal">KEY</code>,
 							<code class="literal">AUT</code> or <code class="literal">PRO</code>.
 							<em class="replaceable"><code>key-id</code></em> is a number representing
-							the key or PIN reference.
+							the key or PIN reference (decimal notation).
 							<em class="replaceable"><code>key</code></em> is the key or PIN to be verified,
 							formatted as a colon-separated sequence of hexadecimal values
 							or a string enclosed in double quotes (<code class="literal">"..."</code>).

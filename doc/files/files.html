@@ -867,6 +867,12 @@ app <em class="replaceable"><code>application</code></em> {
 							cached information. Note that the cached files
 							may contain personal data such as name and mail
 							address.
+						</p><p>
+                            The file cache may need to be wiped in order to
+                            detect changes, e.g. after renewal of an on-card
+                            certificate. This is the reason why caching is only
+                            activated for tokens which are known to have a
+                            static profile.
 					</p></dd><dt><span class="term">
 						<code class="option">file_cache_dir = <em class="replaceable"><code>filename</code></em>;</code>
 					</span></dt><dd><p>
