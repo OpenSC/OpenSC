@@ -2453,6 +2453,9 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 		case CKA_DECRYPT:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_DECRYPT);
 			break;
+			/* FIXME
+		case CKA_DERIVE:
+		*/
 		case CKA_UNWRAP:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_UNWRAP);
 			break;
@@ -2814,6 +2817,9 @@ pkcs15_create_public_key(struct sc_pkcs11_slot *slot, struct sc_profile *profile
 		case CKA_WRAP:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_WRAP);
 			break;
+			/* FIXME
+		case CKA_DERIVE:
+		*/
 		case CKA_EC_POINT:
 			switch (key_type) {
 			case CKK_EC:
@@ -3185,28 +3191,40 @@ pkcs15_create_object(struct sc_pkcs11_slot *slot, CK_ATTRIBUTE_PTR pTemplate, CK
 
 
 static CK_RV
-get_X509_usage_privk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x509_usage)
+get_usage_privk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x509_usage, unsigned int *usage)
 {
 	CK_ULONG i;
 	for (i = 0; i < ulCount; i++) {
-		CK_ATTRIBUTE_TYPE typ = pTempl[i].type;
-		CK_BBOOL *val = (CK_BBOOL *) pTempl[i].pValue;
-		if (val == NULL)
-			continue;
-		if (typ == CKA_SIGN && *val)
-			*x509_usage |= SC_PKCS15INIT_X509_DIGITAL_SIGNATURE;
-		if (typ == CKA_UNWRAP && *val)
-			*x509_usage |= SC_PKCS15INIT_X509_KEY_ENCIPHERMENT;
-		if (typ == CKA_DECRYPT && *val)
-			*x509_usage |= SC_PKCS15INIT_X509_DATA_ENCIPHERMENT;
-		if (typ == CKA_DERIVE && *val)
-			*x509_usage |= SC_PKCS15INIT_X509_KEY_AGREEMENT;
-		if (typ == CKA_OPENSC_NON_REPUDIATION && *val)
-			*x509_usage |= SC_PKCS15INIT_X509_NON_REPUDIATION;
-		if (typ == CKA_VERIFY || typ == CKA_WRAP || typ == CKA_ENCRYPT) {
+		switch (pTempl[i].type) {
+		case CKA_SIGN:
+			*x509_usage |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15INIT_X509_DIGITAL_SIGNATURE);
+			*usage      |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15_PRKEY_USAGE_SIGN);
+			break;
+		case CKA_SIGN_RECOVER:
+			/* FIXME x509_usage */
+			*usage      |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15_PRKEY_USAGE_SIGNRECOVER);
+			break;
+		case CKA_UNWRAP:
+			*x509_usage |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15INIT_X509_KEY_ENCIPHERMENT);
+			*usage      |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15_PRKEY_USAGE_UNWRAP);
+			break;
+		case CKA_DECRYPT:
+			*x509_usage |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15INIT_X509_DATA_ENCIPHERMENT);
+			*usage      |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15_PRKEY_USAGE_DECRYPT);
+			break;
+		case CKA_DERIVE:
+			*x509_usage |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15INIT_X509_KEY_AGREEMENT);
+			break;
+		case CKA_OPENSC_NON_REPUDIATION:
+			*x509_usage |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15INIT_X509_NON_REPUDIATION);
+			*usage      |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15_PRKEY_USAGE_NONREPUDIATION);
+			break;
+		case CKA_VERIFY:
+		case CKA_WRAP:
+		case CKA_ENCRYPT:
 			sc_log(context,
-				"get_X509_usage_privk(): invalid typ = 0x%0lx",
-				typ);
+				"get_usage_privk(): invalid typ = 0x%0lx",
+				pTempl[i].type);
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
 	}
@@ -3215,26 +3233,36 @@ get_X509_usage_privk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x
 
 
 static CK_RV
-get_X509_usage_pubk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x509_usage)
+get_usage_pubk(CK_ATTRIBUTE_PTR pTempl, CK_ULONG ulCount, unsigned long *x509_usage, unsigned int *usage)
 {
 	CK_ULONG i;
 	for (i = 0; i < ulCount; i++) {
-		CK_ATTRIBUTE_TYPE typ = pTempl[i].type;
-		CK_BBOOL *val = (CK_BBOOL *) pTempl[i].pValue;
-		if (val == NULL)
-			continue;
-		if (typ == CKA_VERIFY && *val)
-			*x509_usage |= SC_PKCS15INIT_X509_DIGITAL_SIGNATURE;
-		if (typ == CKA_WRAP && *val)
-			*x509_usage |= SC_PKCS15INIT_X509_KEY_ENCIPHERMENT;
-		if (typ == CKA_ENCRYPT && *val)
-			*x509_usage |= SC_PKCS15INIT_X509_DATA_ENCIPHERMENT;
-		if (typ == CKA_DERIVE && *val)
-			*x509_usage |= SC_PKCS15INIT_X509_KEY_AGREEMENT;
-		if (typ == CKA_SIGN || typ == CKA_UNWRAP || typ == CKA_DECRYPT) {
+		switch (pTempl[i].type) {
+		case CKA_VERIFY:
+			*x509_usage |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15INIT_X509_DIGITAL_SIGNATURE);
+			*usage      |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15_PRKEY_USAGE_VERIFY);
+			break;
+		case CKA_VERIFY_RECOVER:
+			/* FIXME x509_usage */
+			*usage      |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER);
+		case CKA_WRAP:
+			*x509_usage |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15INIT_X509_KEY_ENCIPHERMENT);
+			*usage      |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15_PRKEY_USAGE_WRAP);
+			break;
+		case CKA_ENCRYPT:
+			*x509_usage |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15INIT_X509_DATA_ENCIPHERMENT);
+			*usage      |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15_PRKEY_USAGE_ENCRYPT);
+			break;
+		case CKA_DERIVE:
+			/* FIXME x509_usage */
+			*usage      |= pkcs15_check_bool_cka(pTempl + i, SC_PKCS15INIT_X509_KEY_AGREEMENT);
+			break;
+		case CKA_SIGN:
+		case CKA_UNWRAP:
+		case CKA_DECRYPT:
 			sc_log(context,
-				"get_X509_usage_pubk(): invalid typ = 0x%0lx",
-				typ);
+				"get_sage_pubk(): invalid typ = 0x%0lx",
+				pTempl[i].type);
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
 	}
@@ -3347,7 +3375,6 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	struct sc_aid *aid = NULL;
 	struct pkcs15_fw_data *fw_data = NULL;
 	struct sc_pkcs15init_keygen_args keygen_args;
-	struct sc_pkcs15init_pubkeyargs pub_args;
 	struct sc_pkcs15_object	 *priv_key_obj = NULL, *pub_key_obj = NULL;
 	struct pkcs15_any_object *priv_any_obj = NULL, *pub_any_obj = NULL;
 	struct pkcs15_prkey_object *priv_prk_obj = NULL;
@@ -3401,12 +3428,11 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	}
 
 	memset(&keygen_args, 0, sizeof(keygen_args));
-	memset(&pub_args, 0, sizeof(pub_args));
 
 	/* 1. Convert the pkcs11 attributes to pkcs15init args */
 
 	if ((pin = slot_data_auth_info(slot->fw_data)) != NULL)
-		keygen_args.prkey_args.auth_id = pub_args.auth_id = pin->auth_id;
+		keygen_args.prkey_args.auth_id = pin->auth_id;
 
 	rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt, CKA_KEY_TYPE,
 		&keytype, NULL);
@@ -3425,8 +3451,7 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 
 	if (keytype == CKK_GOSTR3410)   {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_GOSTR3410;
-		pub_args.key.algorithm               = SC_ALGORITHM_GOSTR3410;
-		rv = set_gost3410_params(&keygen_args.prkey_args, &pub_args,
+		rv = set_gost3410_params(&keygen_args.prkey_args, NULL,
 				pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt);
 		if (rv != CKR_OK)
 			goto kpgen_done;
@@ -3435,7 +3460,6 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	else if (keytype == CKK_RSA)   {
 		/* default value (CKA_KEY_TYPE isn't set) or CKK_RSA is set */
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_RSA;
-		pub_args.key.algorithm               = SC_ALGORITHM_RSA;
 
 		rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt,	CKA_MODULUS_BITS, &keybits, NULL);
 		if (rv != CKR_OK)
@@ -3463,22 +3487,16 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 
 	if (keytype == CKK_EC) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EC;
-		pub_args.key.algorithm               = SC_ALGORITHM_EC;
 	} else if (keytype == CKK_EC_EDWARDS) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EDDSA;
-		keygen_args.prkey_args.usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
-		pub_args.key.algorithm = SC_ALGORITHM_EDDSA;
 	} else if (keytype == CKK_EC_MONTGOMERY) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_XEDDSA;
-		/* Can not sign. To created a cert, see: openssl x509 -force_pubkey */
-		keygen_args.prkey_args.usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
-		pub_args.key.algorithm = SC_ALGORITHM_XEDDSA;
 	}
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
 	rv = attr_find2(pPubTpl, ulPubCnt, pPrivTpl, ulPrivCnt,	CKA_ID, &id.value, &id.len);
 	if (rv == CKR_OK)
-		keygen_args.prkey_args.id = pub_args.id = id;
+		keygen_args.prkey_args.id = id;
 
 	len = sizeof(priv_label) - 1;
 	rv = attr_find(pPrivTpl, ulPrivCnt, CKA_LABEL, priv_label, &len);
@@ -3491,15 +3509,13 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 	if (rv == CKR_OK) {
 		pub_label[len] = '\0';
 		keygen_args.pubkey_label = pub_label;
-		pub_args.label = pub_label;
 	}
 
-	rv = get_X509_usage_privk(pPrivTpl, ulPrivCnt, &keygen_args.prkey_args.x509_usage);
+	rv = get_usage_privk(pPrivTpl, ulPrivCnt, &keygen_args.prkey_args.x509_usage, &keygen_args.prkey_args.usage);
 	if (rv == CKR_OK)
-		rv = get_X509_usage_pubk(pPubTpl, ulPubCnt, &keygen_args.prkey_args.x509_usage);
+		rv = get_usage_pubk(pPubTpl, ulPubCnt, &keygen_args.prkey_args.x509_usage, &keygen_args.pubkey_usage);
 	if (rv != CKR_OK)
 		goto kpgen_done;
-	pub_args.x509_usage = keygen_args.prkey_args.x509_usage;
 
 	len = sizeof(always_auth);
 	rv = attr_find(pPrivTpl, ulPrivCnt, CKA_ALWAYS_AUTHENTICATE, &always_auth, &len);
