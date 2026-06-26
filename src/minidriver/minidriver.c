@@ -2891,17 +2891,17 @@ md_query_key_sizes(PCARD_DATA pCardData, DWORD dwKeySpec, CARD_KEY_SIZES *pKeySi
 					break;
 				}
 			}
-			if (keysize) {
-				pKeySizes->dwMinimumBitlen = keysize;
-				pKeySizes->dwDefaultBitlen = keysize;
-				pKeySizes->dwMaximumBitlen = keysize;
-				pKeySizes->dwIncrementalBitlen = 1;
-			} else {
-				logprintf(pCardData, 0,
-					  "No ECC key found (keyspec=%lu)\n",
-					  (unsigned long)dwKeySpec);
-				return SCARD_E_INVALID_PARAMETER;
-			}
+		}
+		if (keysize) {
+			pKeySizes->dwMinimumBitlen = keysize;
+			pKeySizes->dwDefaultBitlen = keysize;
+			pKeySizes->dwMaximumBitlen = keysize;
+			pKeySizes->dwIncrementalBitlen = 1;
+		} else {
+			logprintf(pCardData, 0,
+					"No ECC key found (keyspec=%lu)\n",
+					(unsigned long)dwKeySpec);
+			return SCARD_E_INVALID_PARAMETER;
 		}
 	}
 
