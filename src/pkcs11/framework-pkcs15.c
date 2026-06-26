@@ -3489,8 +3489,11 @@ pkcs15_gen_keypair(struct sc_pkcs11_slot *slot, CK_MECHANISM_PTR pMechanism,
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EC;
 	} else if (keytype == CKK_EC_EDWARDS) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_EDDSA;
+		keygen_args.prkey_args.usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
 	} else if (keytype == CKK_EC_MONTGOMERY) {
 		keygen_args.prkey_args.key.algorithm = SC_ALGORITHM_XEDDSA;
+		/* Can not sign. To created a cert, see: openssl x509 -force_pubkey */
+		keygen_args.prkey_args.usage |= SC_PKCS15_PRKEY_USAGE_DERIVE;
 	}
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
