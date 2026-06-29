@@ -135,6 +135,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "masktech",	(void *(*)(void)) sc_get_masktech_driver },
 	{ "idprime",	(void *(*)(void)) sc_get_idprime_driver },
+	{ "cedulauy",	(void *(*)(void)) sc_get_cedulauy_driver },
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 	{ "edo",        (void *(*)(void)) sc_get_edo_driver },
 	{ "lteid", (void *(*)(void)) sc_get_lteid_driver },
