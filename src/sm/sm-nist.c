@@ -1428,7 +1428,9 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 
 	if (params->signer_cert_der && params->signer_cert_der_len) {
 		const u8 *p = params->signer_cert_der;
-		int len = params->signer_cert_der_len;
+		int len;
+
+		len = (int)params->signer_cert_der_len;
 
 		if (params->flags & NIST_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED) {
 #ifdef ENABLE_ZLIB
