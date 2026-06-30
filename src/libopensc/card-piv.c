@@ -219,7 +219,7 @@ typedef struct piv_cvc {
  * Override APDU response error codes from iso7816.c to allow
  * handling of SM specific error
  */
-static const struct sc_card_error piv_sm_errors[] = {
+static const struct sc_card_error sm_nist_errors[] = {
 	{0x6882, SC_ERROR_SM, "SM not supported"},
 	{0x6982, SC_ERROR_SM_NO_SESSION_KEYS, "SM Security status not satisfied"}, /* no session established */
 	{0x6987, SC_ERROR_SM, "Expected SM Data Object missing"},
@@ -4418,6 +4418,8 @@ piv_init(sc_card_t *card)
 
 			priv->sm_params.csID = priv->csID;
 
+			/* set our call back */
+			priv->sm_params.sm_nist_pre_transmit_callback = piv_sm_nist_pre_transmit_callback;
 			r = sm_nist_start(card, &priv->sm_params);
 			sc_log(card->ctx, "sm_nist_start returned:%d", r);
 		}
@@ -4492,14 +4494,15 @@ piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 			}
 		}
 	}
+
 #ifdef PIV_SM_NIST
 	/* Note 6982 is map to SC_ERROR_SM_NO_SESSION_KEYS but iso maps it to SC_ERROR_SECURITY_STATUS_NOT_SATISFIED */
 	/* we do this because 6982 could also mean a verify is not allowed over contactless without VCI */
 	/* we stashed the sw1 and sw2 above for verify */
-	for (i = 0; piv_sm_errors[i].SWs != 0; i++) {
-		if (piv_sm_errors[i].SWs == ((sw1 << 8) | sw2)) {
-			sc_log(card->ctx, " SM NIST ERROR FOUND: %2.2x %s", piv_sm_errors[i].SWs, piv_sm_errors[i].errorstr);
-			return piv_sm_errors[i].errorno;
+	for (i = 0; sm_nist_errors[i].SWs != 0; i++) {
+		if (sm_nist_errors[i].SWs == ((sw1 << 8) | sw2)) {
+			sc_log(card->ctx, " SM NIST ERROR FOUND: %2.2x %s", sm_nist_errors[i].SWs, sm_nist_errors[i].errorstr);
+			return sm_nist_errors[i].errorno;
 		}
 	}
 #endif /* PIV_SM_NIST */
@@ -4765,10 +4768,10 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* We have a PCSC transaction and sc_lock */
-	if (priv == NULL || priv->pstate == PIV_STATE_MATCH) {
+	if (priv == NULL || priv->pstate != PIV_STATE_NORMAL) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
 				priv ? "PIV_STATE_MATCH" : "priv==NULL");
-		r = 0; /* do nothing, piv_match will take care of it */
+		r = 0; /* do nothing, piv_match or piv_init will take care of it */
 		goto err;
 	}
 
