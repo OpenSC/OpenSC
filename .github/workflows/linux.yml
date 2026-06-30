@@ -55,7 +55,7 @@ jobs:
             tests/*.log
             src/tests/unittests/*.log
       - &use_cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         id: cache-build
         with:
           path: ./*
@@ -139,7 +139,7 @@ jobs:
           packages: ${{ env.BASE_DEPS }}
           version: apt-24.04-amd64-base
           execute_install_scripts: true
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         id: cache-build
         with:
           path: ./*
@@ -209,7 +209,7 @@ jobs:
           version: apt-latest-base
           execute_install_scripts: true
       - name: Restore LibreSSL build
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         id: libressl-cache
         with:
           path: |
@@ -225,7 +225,7 @@ jobs:
             config.log
             tests/*.log
             src/tests/unittests/*.log
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         id: cache-build
         if: ${{ success() }}
         with:
@@ -233,7 +233,7 @@ jobs:
           key: ${{ runner.os }}-libressl-${{ github.sha }}
       - if: ${{ steps.libressl-cache.outputs.cache-hit != 'true' }}
         name: Cache LibreSSL build
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: |
             libressl-${{ env.LIBRESSL_VERSION }}/
@@ -253,7 +253,7 @@ jobs:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
           execute_install_scripts: true
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         id: cache-build
         with:
           path: ./*
@@ -269,7 +269,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, build-mingw]
     steps:
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         id: cache-build
         with:
           path: ./*

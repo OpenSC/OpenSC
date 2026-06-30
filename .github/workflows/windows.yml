@@ -60,7 +60,7 @@ jobs:
         run: choco install windows-cryptographic-provider-development-kit -y > $null
       - name: Cache vcpkg
         if: matrix.configuration == 'Release'
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/vcpkg_cache
           key: vcpkg-${{ matrix.configuration }}-${{ matrix.platform }}-${{ hashFiles('.github/vcpkg.json', '.github/ports/**') }}
