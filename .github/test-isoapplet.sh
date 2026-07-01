@@ -70,9 +70,20 @@ $VALGRIND opensc-tool -n
 $VALGRIND pkcs15-init --create-pkcs15 --so-pin 123456 --so-puk 0123456789abcdef
 $VALGRIND pkcs15-tool --change-pin --pin 123456 --new-pin 654321
 $VALGRIND pkcs15-tool --unblock-pin --puk 0123456789abcdef --new-pin 123456
-$VALGRIND pkcs15-init --generate-key rsa/2048     --id 1 --key-usage decrypt,sign --auth-id FF --pin 123456
-$VALGRIND pkcs15-init --generate-key rsa/2048     --id 2 --key-usage decrypt      --auth-id FF --pin 123456
-$VALGRIND pkcs15-init --generate-key ec/secp256r1 --id 3 --key-usage sign         --auth-id FF --pin 123456
+if [ "$isoapplet_version" = "v0" ]; then
+	$VALGRIND pkcs15-init --generate-key rsa/2048     --id 1 --key-usage decrypt,sign --auth-id FF --pin 123456
+	$VALGRIND pkcs15-init --generate-key rsa/2048     --id 2 --key-usage decrypt      --auth-id FF --pin 123456
+	$VALGRIND pkcs15-init --generate-key ec/secp256r1 --id 3 --key-usage sign         --auth-id FF --pin 123456
+elif [ "$isoapplet_version" = "v1" ]; then
+	$VALGRIND pkcs15-init --generate-key rsa/2048     --id 1 --key-usage decrypt,sign --auth-id FF --pin 123456
+	$VALGRIND pkcs15-init --generate-key rsa/2048     --id 2 --key-usage decrypt      --auth-id FF --pin 123456
+	$VALGRIND pkcs15-init --generate-key rsa/4096     --id 3 --key-usage decrypt,sign --auth-id FF --pin 123456
+	$VALGRIND pkcs15-init --generate-key rsa/4096     --id 4 --key-usage decrypt      --auth-id FF --pin 123456
+	$VALGRIND pkcs15-init --generate-key ec/secp256r1 --id 5 --key-usage sign         --auth-id FF --pin 123456
+else
+	echo "Unknown IsoApplet version: $isoapplet_version"
+	exit 1
+fi
 $VALGRIND pkcs15-tool -D
 $VALGRIND pkcs11-tool -l -t -p 123456
 
@@ -84,16 +95,33 @@ popd
 
 # random data to be signed
 dd if=/dev/random of=/tmp/data.bin bs=300 count=1
-# sign & verify using secp256r1 key
-$VALGRIND pkcs11-tool -l -p 123456 -s -m ECDSA-SHA1 -d 3 -i /tmp/data.bin -o /tmp/data.sig
-$VALGRIND pkcs11-tool --verify -m ECDSA-SHA1 -d 3 -i /tmp/data.bin --signature-file /tmp/data.sig
-# import, sign & verify using another secp256r1 key
-openssl ecparam -name secp256r1 -genkey -noout -out /tmp/ECprivKey.pem
-openssl ec -in /tmp/ECprivKey.pem -pubout -out /tmp/ECpubKey.pem
-$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECprivKey.pem -y privkey -d 4
-$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECpubKey.pem -y pubkey -d 4
-$VALGRIND pkcs11-tool -l -p 123456 -s -m ECDSA-SHA1 -d 4 -i /tmp/data.bin -o /tmp/data.sig
-$VALGRIND pkcs11-tool --verify -m ECDSA-SHA1 -d 4 -i /tmp/data.bin --signature-file /tmp/data.sig
+if [ "$isoapplet_version" = "v0" ]; then
+	# sign & verify using secp256r1 key
+	$VALGRIND pkcs11-tool -l -p 123456 -s -m ECDSA-SHA1 -d 3 -i /tmp/data.bin -o /tmp/data.sig
+	$VALGRIND pkcs11-tool --verify -m ECDSA-SHA1 -d 3 -i /tmp/data.bin --signature-file /tmp/data.sig
+	# import, sign & verify using another secp256r1 key
+	openssl ecparam -name secp256r1 -genkey -noout -out /tmp/ECprivKey.pem
+	openssl ec -in /tmp/ECprivKey.pem -pubout -out /tmp/ECpubKey.pem
+	$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECprivKey.pem -y privkey -d 4
+	$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECpubKey.pem -y pubkey -d 4
+	$VALGRIND pkcs11-tool -l -p 123456 -s -m ECDSA-SHA1 -d 4 -i /tmp/data.bin -o /tmp/data.sig
+	$VALGRIND pkcs11-tool --verify -m ECDSA-SHA1 -d 4 -i /tmp/data.bin --signature-file /tmp/data.sig
+elif [ "$isoapplet_version" = "v1" ]; then
+	# sign & verify using secp256r1 key
+	$VALGRIND pkcs11-tool -l -p 123456 -s -m ECDSA -d 5 -i /tmp/data.bin -o /tmp/data.sig
+	$VALGRIND pkcs11-tool --verify -m ECDSA -d 5 -i /tmp/data.bin --signature-file /tmp/data.sig
+	# import, sign & verify using another secp256r1 key
+	openssl ecparam -name secp256r1 -genkey -noout -out /tmp/ECprivKey.pem
+	openssl ec -in /tmp/ECprivKey.pem -pubout -out /tmp/ECpubKey.pem
+	$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECprivKey.pem -y privkey -d 6
+	$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECpubKey.pem -y pubkey -d 6
+	$VALGRIND pkcs11-tool -l -p 123456 -s -m ECDSA -d 6 -i /tmp/data.bin -o /tmp/data.sig
+	$VALGRIND pkcs11-tool --verify -m ECDSA -d 6 -i /tmp/data.bin --signature-file /tmp/data.sig
+else
+	echo "Unknown IsoApplet version: $isoapplet_version"
+	exit 1
+fi
+
 # cleanup
 rm /tmp/ECprivKey.pem /tmp/ECpubKey.pem /tmp/data.bin /tmp/data.sig
 
