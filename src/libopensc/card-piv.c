@@ -1044,7 +1044,7 @@ piv_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu)
 		T87len = 0;
 		padlen = 0;
 	} else {
-		enc_datalen = (int)(((plain->datalen + 15) / 16) * 16); /* may add extra 16 bytes */
+		enc_datalen = (int)(((plain->datalen + 16) / 16) * 16); /* may add extra 16 bytes */
 		padlen = enc_datalen - (int)plain->datalen;
 		r = T87len = sc_asn1_put_tag(0x87, NULL, 1 + enc_datalen, NULL, 0, NULL);
 		if (r < 0)
