@@ -48,6 +48,7 @@ int sc_pkcs15emu_sc_hsm_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_dnie_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_gids_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_iasecc_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
+int sc_pkcs15emu_cedulauy_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_jpki_init_ex(sc_pkcs15_card_t *,	struct sc_aid *);
 int sc_pkcs15emu_coolkey_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);
 int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card,	struct sc_aid *);
