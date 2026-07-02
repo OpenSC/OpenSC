@@ -80,6 +80,13 @@ jobs:
       - run: .github/setup-linux.sh
       - run: .github/build.sh no-shared valgrind
 
+  build-no-readers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: .github/setup-linux.sh
+      - run: .github/build.sh no-readers
+
   build-no-openssl:
     runs-on: ubuntu-latest
     steps:
