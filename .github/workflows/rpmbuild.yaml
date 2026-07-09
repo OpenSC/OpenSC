@@ -58,10 +58,9 @@ jobs:
 
       - name: RPM Build
         run: |
-          git config --global --add safe.directory /__w/opensc/opensc
-          ./bootstrap
-          ./configure
-          make dist
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+          meson setup build/
+          meson dist -C build/ --formats xztar
           mkdir -p rpmbuild/SOURCES
-          cp opensc-*.tar.gz src/pkcs11/opensc.module rpmbuild/SOURCES/
+          cp build/meson-dist/opensc-*.tar.xz rpmbuild/SOURCES/
           rpmbuild --define "_topdir $PWD/rpmbuild" -ba packaging/opensc.spec
