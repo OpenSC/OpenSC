@@ -4194,9 +4194,9 @@ unwrap_key(CK_SESSION_HANDLE session)
 		key_type = CKK_EC;
 		class = CKO_PRIVATE_KEY;
 	} else if (strncasecmp(opt_key_type, "ML-DSA:", strlen("ML-DSA:")) == 0) {
-        	length = "0";
-                key_type = CKK_ML_DSA;
-                class = CKO_PRIVATE_KEY;
+		length = "0";
+		key_type = CKK_ML_DSA;
+		class = CKO_PRIVATE_KEY;
 	} else {
 		util_fatal("Unsupported key type %s", opt_key_type);
 	}
