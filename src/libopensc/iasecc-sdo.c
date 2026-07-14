@@ -148,6 +148,10 @@ iasecc_sdo_convert_acl(struct sc_card *card, struct iasecc_sdo *sdo,
 void
 iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 {
+	if (sdo == NULL) {
+		return;
+	}
+
 	free(sdo->docp.tries_maximum.value);
 	free(sdo->docp.tries_remaining.value);
 	free(sdo->docp.usage_remaining.value);
