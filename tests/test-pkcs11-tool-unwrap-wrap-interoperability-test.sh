@@ -107,7 +107,7 @@ for MECH in AES-CBC AES-KEY-WRAP RSA-PKCS; do
     if [ "$MECH" == "RSA-PKCS" ]; then
         ID_WRAP=$ID_RSA_WRAP
     fi
-    for WRAPPER in SoftHSM Kryoptic Softokn; do
+    for WRAPPER in Kryoptic Softokn; do # SoftHSM removed temporarily as it crashes
         for UNWRAPPER in SoftHSM Kryoptic Softokn; do
             if [ "$WRAPPER" == "$UNWRAPPER" ]; then
                 continue;
