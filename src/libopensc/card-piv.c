@@ -5829,7 +5829,7 @@ piv_match_card_continued(sc_card_t *card)
 		if (priv->yubico_version < 0x00040302)
 			priv->card_issues |= CI_VERIFY_LC0_FAIL;
 		if (priv->yubico_version >= 0x00050700) /* Also used by Token2 */
-			priv->alg_ids |= AI_RSA_4096 | AI_25519;
+			priv->alg_ids |= AI_RSA_4096 | AI_25519 | AI_X25519;
 		break;
 
 	case SC_CARD_TYPE_PIV_II_NITROKEY:
@@ -5982,7 +5982,7 @@ piv_init(sc_card_t *card)
 		flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
 		flags_eddsa = SC_ALGORITHM_EDDSA_RAW;
-		flags_xeddsa = SC_ALGORITHM_XEDDSA_RAW;
+		flags_xeddsa = SC_ALGORITHM_XEDDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW;
 
 		for (i = 0; ec_curves[i].oid.value[0] >= 0; i++) {
 			if (ec_curves[i].key_type == SC_ALGORITHM_EC) {
