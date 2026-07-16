@@ -12,7 +12,7 @@ export LD_LIBRARY_PATH=/usr/local/lib
 ./.github/setup-vsmartcard.sh
 
 if [ ! -d pico-hsm ]; then
-	git clone https://github.com/polhenarejos/pico-hsm.git
+	git clone --depth 1 --branch v6.6 https://github.com/polhenarejos/pico-hsm.git
 	git -C pico-hsm submodule update --init --recursive
 fi
 if [ ! -d pico-hsm/build ]; then
