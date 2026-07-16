@@ -6,7 +6,7 @@ on:
       - '**.c'
       - '**.h'
       - '**.sh'
-      - .github/workflows/fedora.yml
+      - .github/workflows/external-pkcs11.yaml
       - '**.am'
       - doc/**
       - configure.ac
