@@ -1029,6 +1029,8 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	ctx->reader_driver = sc_get_ctapi_driver();
 #elif defined(ENABLE_OPENCT)
 	ctx->reader_driver = sc_get_openct_driver();
+#else
+	ctx->reader_driver = sc_get_empty_driver();
 #endif
 
 	r = ctx->reader_driver->ops->init(ctx);

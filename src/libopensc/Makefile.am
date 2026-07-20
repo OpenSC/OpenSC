@@ -35,7 +35,7 @@ libopensc_la_SOURCES_BASE = \
 	\
 	muscle.c muscle-filesystem.c \
 	\
-	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c reader-tr03119.c \
+	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c reader-tr03119.c reader-empty.c \
 	\
 	card-setcos.c card-flex.c \
 	card-cardos.c card-cardos-common.c card-tcos.c card-default.c \
@@ -117,7 +117,7 @@ TIDY_FILES = \
 	\
 	muscle.c muscle-filesystem.c \
 	\
-	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c reader-tr03119.c \
+	ctbcs.c reader-ctapi.c reader-pcsc.c reader-openct.c reader-tr03119.c reader-empty.c \
 	\
 	card-setcos.c card-flex.c \
 	card-cardos.c card-tcos.c card-default.c \
