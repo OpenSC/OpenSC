@@ -2625,8 +2625,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 		sc_file_free(file);
 
-		if (len && p15card->opts.use_file_cache
-		    && ((p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES) || !private_data)) {
+		if (p15card->opts.use_file_cache && ((p15card->opts.use_file_cache & SC_PKCS15_OPTS_CACHE_ALL_FILES) || !private_data)) {
 			sc_pkcs15_cache_file(p15card, in_path, data, len);
 		}
 		if (len == 0) {
