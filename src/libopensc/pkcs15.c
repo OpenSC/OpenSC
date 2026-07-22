@@ -1235,6 +1235,7 @@ const char *pkcs15_get_default_use_file_cache(struct sc_card *card)
 			"belpic",
 			"cac1",
 			"cac",
+			"cedulauy",
 			"coolkey",
 			"edo",
 			"esteid2018",
