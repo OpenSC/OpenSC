@@ -51,6 +51,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "sc-hsm",	sc_pkcs15emu_sc_hsm_init_ex	},
 	{ "dnie",       sc_pkcs15emu_dnie_init_ex	},
 	{ "gids",       sc_pkcs15emu_gids_init_ex	},
+	{ "cedulauy",	sc_pkcs15emu_cedulauy_init_ex	},
 	{ "iasecc",	sc_pkcs15emu_iasecc_init_ex	},
 	{ "jpki",	sc_pkcs15emu_jpki_init_ex	},
 	{ "coolkey",    sc_pkcs15emu_coolkey_init_ex	},
@@ -129,6 +130,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_DTRUST_V5_1_M100:
 		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
 		case SC_CARD_TYPE_LTEID:
+		case SC_CARD_TYPE_CEDULAUY:
 			return 1;
 		default:
 			return 0;
