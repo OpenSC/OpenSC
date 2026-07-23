@@ -1717,19 +1717,31 @@ iasecc_set_security_env(struct sc_card *card,
 	sdo.sdo_class = IASECC_SDO_CLASS_RSA_PRIVATE;
 	sdo.sdo_ref  = env->key_ref[0] & ~IASECC_OBJECT_REF_LOCAL;
 	rv = iasecc_sdo_get_data(card, &sdo);
-	LOG_TEST_RET(ctx, rv, "Cannot get RSA PRIVATE SDO data");
+	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND) {
+		sc_log(ctx, "RSA private SDO DOCP not found, using fallback security env");
+		if (env->key_size_bits && !(env->key_size_bits % 8))
+			prv->key_size = env->key_size_bits / 8;
+		else
+			prv->key_size = 0x100;
+		sign_meth = SC_AC_NONE;
+		sign_ref = SC_AC_KEY_REF_NONE;
+		auth_meth = SC_AC_NONE;
+		auth_ref = SC_AC_KEY_REF_NONE;
+	} else {
+		LOG_TEST_RET(ctx, rv, "Cannot get RSA PRIVATE SDO data");
 
-	if (sdo.docp.size.size < 2)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
-	/* To made by iasecc_sdo_convert_to_file() */
-	prv->key_size = *(sdo.docp.size.value + 0) * 0x100 + *(sdo.docp.size.value + 1);
-	sc_log(ctx, "prv->key_size 0x%"SC_FORMAT_LEN_SIZE_T"X", prv->key_size);
+		if (sdo.docp.size.size < 2)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+		/* To made by iasecc_sdo_convert_to_file() */
+		prv->key_size = *(sdo.docp.size.value + 0) * 0x100 + *(sdo.docp.size.value + 1);
+		sc_log(ctx, "prv->key_size 0x%"SC_FORMAT_LEN_SIZE_T"X", prv->key_size);
 
-	rv = iasecc_sdo_convert_acl(card, &sdo, SC_AC_OP_PSO_COMPUTE_SIGNATURE, &sign_meth, &sign_ref);
-	LOG_TEST_RET(ctx, rv, "Cannot convert SC_AC_OP_SIGN acl");
+		rv = iasecc_sdo_convert_acl(card, &sdo, SC_AC_OP_PSO_COMPUTE_SIGNATURE, &sign_meth, &sign_ref);
+		LOG_TEST_RET(ctx, rv, "Cannot convert SC_AC_OP_SIGN acl");
 
-	rv = iasecc_sdo_convert_acl(card, &sdo, SC_AC_OP_INTERNAL_AUTHENTICATE, &auth_meth, &auth_ref);
-	LOG_TEST_RET(ctx, rv, "Cannot convert SC_AC_OP_INT_AUTH acl");
+		rv = iasecc_sdo_convert_acl(card, &sdo, SC_AC_OP_INTERNAL_AUTHENTICATE, &auth_meth, &auth_ref);
+		LOG_TEST_RET(ctx, rv, "Cannot convert SC_AC_OP_INT_AUTH acl");
+	}
 
 	aflags = env->algorithm_flags;
 
@@ -2088,6 +2100,17 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 	sc_log(ctx, "iasecc_pin_get_policy() reference %i", sdo.sdo_ref);
 
 	rv = iasecc_sdo_get_data(card, &sdo);
+	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND) {
+		sc_log(ctx, "PIN policy SDO not found, using fallback policy");
+		pin->min_length = data->pin1.min_length;
+		pin->max_length = data->pin1.max_length;
+		pin->stored_length = data->pin1.len;
+		pin->tries_maximum = -1;
+		pin->tries_remaining = -1;
+		memset(pin->scbs, 0, sizeof(pin->scbs));
+		rv = SC_SUCCESS;
+		goto err;
+	}
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get SDO PIN data");
 
 	if (sdo.docp.acls_contact.size == 0) {
