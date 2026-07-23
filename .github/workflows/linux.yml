@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -91,7 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -103,7 +103,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-24.04-amd64-base
@@ -141,7 +141,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [build]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-24.04-amd64-base
@@ -210,7 +210,7 @@ jobs:
       LIBRESSL_VERSION: 4.2.1
     steps:
       - uses: actions/checkout@v7
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -255,7 +255,7 @@ jobs:
         target: [cac, oseid]
     needs: [build-libressl]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.1
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
