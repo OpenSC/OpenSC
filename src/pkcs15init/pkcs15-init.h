@@ -239,7 +239,8 @@ struct sc_pkcs15init_prkeyargs {
 
 struct sc_pkcs15init_keygen_args {
 	struct sc_pkcs15init_prkeyargs prkey_args;
-	const char *                   pubkey_label;
+	const char *pubkey_label;
+	unsigned int pubkey_usage;
 };
 
 struct sc_pkcs15init_pubkeyargs {
