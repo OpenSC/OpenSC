@@ -10,6 +10,7 @@
  *   - signing certificate  EF B001
  *   - signing key          reference 0x01 (RSA 2048)
  *   - Global PIN           reference 0x11 (VERIFY 00 20 00 11)
+ *   - identity data        EFs 7001/7002/7004/700B under DF 7000
  * References: AGESIC "Documentación técnica de la cédula de identidad con chip"
  * and the AGESIC reference code at https://github.com/eIDuy/apdu-services .
  *
@@ -50,12 +51,27 @@ static const unsigned char cedulauy_aid[] = {
 #define CEDULAUY_PIN_REF  0x11	 /* Global PIN reference */
 #define CEDULAUY_OBJ_ID	  0x01	 /* links cert <-> prkey */
 
+/* Public identity data files under DF 7000 (AGESIC layout), all readable
+ * without PIN.  They are exposed as raw PKCS#15 data objects carrying the
+ * BER-TLV content documented by AGESIC; callers parse the tags themselves.
+ * EF 711D (the ICAO SOD) is not exposed: it is absent on earlier batches. */
+static const struct {
+	const char *path; /* absolute path; the MF is emulated by the driver */
+	const char *label;
+} cedulauy_data_files[] = {
+		{"3F0070007001", "Numero de documento"},
+		{"3F0070007002", "Datos biograficos"  },
+		{"3F0070007004", "Fotografia"	     },
+		{"3F007000700B", "MRZ"		      },
+};
+
 static int
 sc_pkcs15emu_cedulauy_init(struct sc_pkcs15_card *p15card)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_aid aid;
 	int r;
+	size_t i;
 
 	struct sc_pkcs15_auth_info pin_info = {0};
 	struct sc_pkcs15_object pin_obj = {0};
@@ -159,6 +175,18 @@ sc_pkcs15emu_cedulauy_init(struct sc_pkcs15_card *p15card)
 	strlcpy(prkey_obj.label, "Clave de Firma", sizeof prkey_obj.label);
 	r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 	LOG_TEST_RET(ctx, r, "Cannot add signing private key object");
+
+	/* Public identity data objects (DF 7000), readable without PIN. */
+	for (i = 0; i < sizeof cedulauy_data_files / sizeof cedulauy_data_files[0]; i++) {
+		struct sc_pkcs15_data_info dinfo = {0};
+		struct sc_pkcs15_object dobj = {0};
+
+		sc_format_path(cedulauy_data_files[i].path, &dinfo.path);
+		strlcpy(dinfo.app_label, cedulauy_data_files[i].label, sizeof dinfo.app_label);
+		strlcpy(dobj.label, cedulauy_data_files[i].label, sizeof dobj.label);
+		r = sc_pkcs15emu_add_data_object(p15card, &dobj, &dinfo);
+		LOG_TEST_RET(ctx, r, "Cannot add identity data object");
+	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
