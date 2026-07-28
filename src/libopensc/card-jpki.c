@@ -83,9 +83,7 @@ jpki_finish(sc_card_t * card)
 
 	LOG_FUNC_CALLED(card->ctx);
 	if (drvdata) {
-		if (drvdata->mf) {
-			free(drvdata->mf);
-		}
+		sc_file_free(drvdata->mf);
 		free(drvdata);
 		card->drv_data = NULL;
 	}
