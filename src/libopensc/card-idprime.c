@@ -1056,6 +1056,7 @@ idprime_set_security_env(struct sc_card *card,
 		} else { /* RSA-PKCS without hashing */
 			new_env.algorithm_ref = 0x1A;
 		}
+		priv->current_op = SC_ALGORITHM_RSA;
 		break;
 	case SC_SEC_OPERATION_SIGN:
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS) {
