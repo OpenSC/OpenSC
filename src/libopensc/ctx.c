@@ -157,6 +157,10 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 	{ "cac",	(void *(*)(void)) sc_get_cac_driver },
+#if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
+	/* Match before itacns: this ChipDoc CNS also matches the generic itacns. */
+	{ "chipdoc-it",	(void *(*)(void)) sc_get_chipdocit_driver },
+#endif
 	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
 	{ "isoApplet",	(void *(*)(void)) sc_get_isoApplet_driver },
 #ifdef ENABLE_ZLIB

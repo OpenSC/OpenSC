@@ -270,6 +270,9 @@ enum {
 	SC_CARD_TYPE_EOI = 41000,
 	SC_CARD_TYPE_EOI_CONTACTLESS,
 
+	/* Bit4id Digital-DNA (NXP ChipDoc, Italian CNS/eID) */
+	SC_CARD_TYPE_CHIPDOC_IT = 41100,
+
 	/* D-Trust Signature cards */
 	SC_CARD_TYPE_DTRUST_V4_1_STD = 42000,
 	SC_CARD_TYPE_DTRUST_V4_1_MULTI,
@@ -333,6 +336,7 @@ extern sc_card_driver_t *sc_get_edo_driver(void);
 extern sc_card_driver_t *sc_get_nqApplet_driver(void);
 extern sc_card_driver_t *sc_get_skeid_driver(void);
 extern sc_card_driver_t *sc_get_eoi_driver(void);
+extern sc_card_driver_t *sc_get_chipdocit_driver(void);
 extern sc_card_driver_t *sc_get_dtrust_driver(void);
 extern sc_card_driver_t *sc_get_lteid_driver(void);
 extern sc_card_driver_t *sc_get_srbeid_driver(void);
