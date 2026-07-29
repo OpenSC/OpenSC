@@ -32,58 +32,57 @@
 
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 
-#include <openssl/aes.h>
+#include "card-eoi.h"
+#include "common/compat_strlcpy.h"
 #include "internal.h"
 #include "sm/sm-eac.h"
-#include "common/compat_strlcpy.h"
-#include "card-eoi.h"
+#include <openssl/aes.h>
 
-#define CHIPDOCIT_ENC_CAN_EF "3F00E000"   /* encrypted CAN (24 B: 16 enc || 8 SN) */
+#define CHIPDOCIT_ENC_CAN_EF "3F00E000" /* encrypted CAN (24 B: 16 enc || 8 SN) */
 
 /* Signature-side application AID (SELECT 00 A4 04 04). */
 static const u8 CHIPDOCIT_SSCD_AID[] = {
-	0xE8, 0x28, 0xBD, 0x08, 0x0F, 0x01, 0x4E, 0x58, 0x50, 0x31 };
+		0xE8, 0x28, 0xBD, 0x08, 0x0F, 0x01, 0x4E, 0x58, 0x50, 0x31};
 
 /* Card application AID (IAS-ECC). Selecting it activates the file system that
  * carries the encrypted CAN (EF E000) and the PKCS#15 EFs; on a card that has
  * not been opened by other software these are not reachable until it is
  * selected. */
 static const u8 CHIPDOCIT_IAS_AID[] = {
-	0xA0, 0x00, 0x00, 0x02, 0x47, 0x10, 0x01 };
+		0xA0, 0x00, 0x00, 0x02, 0x47, 0x10, 0x01};
 
-#define CHIPDOCIT_DS_KEY_REF   0x11   /* DS3, nonRepudiation (from PrKD 7002) */
-#define CHIPDOCIT_PUK_REF      0x86   /* user PUK, BSO 0x06 | 0x80 */
+#define CHIPDOCIT_DS_KEY_REF 0x11 /* DS3, nonRepudiation (from PrKD 7002) */
+#define CHIPDOCIT_PUK_REF    0x86 /* user PUK, BSO 0x06 | 0x80 */
 
 /* Classic CNS applet: a second PIN object kept in sync with the IAS PIN and
  * accessed in clear. Change/unblock must be mirrored onto it. */
 static const u8 CHIPDOCIT_CNS_AID[] = {
-	0xA0, 0x00, 0x00, 0x05, 0x30, 0x00, 0x0B, 0x10, 0x40, 0x01, 0x01, 0x1B };
-#define CHIPDOCIT_CNS_PIN_BSO  0x10
-#define CHIPDOCIT_CNS_PUK_BSO  0x11
+		0xA0, 0x00, 0x00, 0x05, 0x30, 0x00, 0x0B, 0x10, 0x40, 0x01, 0x01, 0x1B};
+#define CHIPDOCIT_CNS_PIN_BSO 0x10
+#define CHIPDOCIT_CNS_PUK_BSO 0x11
 
 static struct sc_card_operations chipdocit_ops;
 static int chipdocit_select_aid(sc_card_t *card, const u8 *aid, size_t aid_len);
 
 static struct sc_card_driver chipdocit_drv = {
-	"Bit4id Digital-DNA (NXP ChipDoc, Italian CNS)",
-	"chipdoc-it",
-	&chipdocit_ops,
-	NULL, 0, NULL
-};
+		"Bit4id Digital-DNA (NXP ChipDoc, Italian CNS)",
+		"chipdoc-it",
+		&chipdocit_ops,
+		NULL, 0, NULL};
 
 static const struct sc_atr_table chipdocit_atrs[] = {
-	/* Bit4id Digital-DNA Key (NXP ChipDoc Lite CNS). Discriminator vs COSMO
-	 * (00 6B 05): sub-bytes 00 6B 15 0C. */
-	{ "3B:FF:18:00:00:81:31:FE:45:00:6B:15:0C:03:02:01:01:01:43:4E:53:10:31:80:61",
-	  NULL, NULL, SC_CARD_TYPE_CHIPDOC_IT, 0, NULL },
-	{ NULL, NULL, NULL, 0, 0, NULL }
+		/* Bit4id Digital-DNA Key (NXP ChipDoc Lite CNS). Discriminator vs COSMO
+		 * (00 6B 05): sub-bytes 00 6B 15 0C. */
+		{"3B:FF:18:00:00:81:31:FE:45:00:6B:15:0C:03:02:01:01:01:43:4E:53:10:31:80:61",
+			NULL,									       NULL, SC_CARD_TYPE_CHIPDOC_IT, 0, NULL},
+		{NULL,									 NULL, NULL, 0,			      0, NULL}
 };
 
 struct chipdocit_privdata {
-	char can[17];		/* up to 16 ASCII chars + NUL */
+	char can[17]; /* up to 16 ASCII chars + NUL */
 	u8 enc_can[24];
 	size_t enc_can_len;
-	struct sc_security_env sec_env;	/* stashed until compute_signature */
+	struct sc_security_env sec_env; /* stashed until compute_signature */
 	int se_num;
 };
 
@@ -91,7 +90,8 @@ struct chipdocit_privdata {
  * keep its printable bytes. Unlike the Slovenian eOI (a NUL-terminated 6-digit
  * CAN in the leading bytes) the Italian ChipDoc stores a full-block CAN with no
  * NUL, so keep every printable byte and NUL-terminate after it. */
-static int chipdocit_decrypt_can(const u8 *enc_can, size_t len, char *can)
+static int
+chipdocit_decrypt_can(const u8 *enc_can, size_t len, char *can)
 {
 	u8 dec[AES_BLOCK_SIZE];
 	size_t n;
@@ -101,14 +101,15 @@ static int chipdocit_decrypt_can(const u8 *enc_can, size_t len, char *can)
 	if (r != SC_SUCCESS)
 		return r;
 	for (n = 0; n < AES_BLOCK_SIZE && dec[n] >= 0x20 && dec[n] < 0x7f; n++)
-		can[n] = (char) dec[n];
+		can[n] = (char)dec[n];
 	can[n] = '\0';
 	return SC_SUCCESS;
 }
 
 /* --- PACE channel (CAN-based) via OpenPACE --- */
 
-static int chipdocit_sm_open(struct sc_card *card)
+static int
+chipdocit_sm_open(struct sc_card *card)
 {
 	struct chipdocit_privdata *priv = card->drv_data;
 	struct establish_pace_channel_input pace_input;
@@ -118,7 +119,7 @@ static int chipdocit_sm_open(struct sc_card *card)
 	if (!priv)
 		return SC_ERROR_INTERNAL;
 	if (card->sm_ctx.sm_mode != SM_MODE_NONE)
-		return SC_SUCCESS;	/* channel already open */
+		return SC_SUCCESS; /* channel already open */
 	if (!priv->can[0]) {
 		r = chipdocit_decrypt_can(priv->enc_can, priv->enc_can_len, priv->can);
 		sc_log_openssl(card->ctx);
@@ -130,7 +131,7 @@ static int chipdocit_sm_open(struct sc_card *card)
 	memset(&pace_input, 0, sizeof pace_input);
 	memset(&pace_output, 0, sizeof pace_output);
 	pace_input.pin_id = PACE_PIN_ID_CAN;
-	pace_input.pin = (u8 *) priv->can;
+	pace_input.pin = (u8 *)priv->can;
 	pace_input.pin_length = strlen(priv->can);
 
 	/* EF.CardAccess is read from the MF during PACE. */
@@ -144,7 +145,8 @@ static int chipdocit_sm_open(struct sc_card *card)
 	return SC_SUCCESS;
 }
 
-static int chipdocit_match_card(sc_card_t *card)
+static int
+chipdocit_match_card(sc_card_t *card)
 {
 	LOG_FUNC_CALLED(card->ctx);
 	if (_sc_match_atr(card, chipdocit_atrs, &card->type) < 0)
@@ -157,7 +159,8 @@ static int chipdocit_match_card(sc_card_t *card)
 	LOG_FUNC_RETURN(card->ctx, 1);
 }
 
-static int chipdocit_read_enc_can(sc_card_t *card, struct chipdocit_privdata *priv)
+static int
+chipdocit_read_enc_can(sc_card_t *card, struct chipdocit_privdata *priv)
 {
 	sc_path_t path;
 	int r;
@@ -175,11 +178,12 @@ static int chipdocit_read_enc_can(sc_card_t *card, struct chipdocit_privdata *pr
 	LOG_TEST_RET(card->ctx, r, "SELECT enc-CAN EF failed");
 	r = sc_read_binary(card, 0, priv->enc_can, sizeof(priv->enc_can), 0);
 	LOG_TEST_RET(card->ctx, r, "read enc-CAN failed");
-	priv->enc_can_len = (size_t) r;
+	priv->enc_can_len = (size_t)r;
 	return SC_SUCCESS;
 }
 
-static int chipdocit_init(sc_card_t *card)
+static int
+chipdocit_init(sc_card_t *card)
 {
 	struct chipdocit_privdata *priv;
 	unsigned long flags;
@@ -203,8 +207,7 @@ static int chipdocit_init(sc_card_t *card)
 	 * sc_get_encoding_flags would then leave padding to the card (pad_flags=0)
 	 * and send the bare DigestInfo, which the card's raw DECIPHER primitive
 	 * rejects with 6700 (verified on hardware). */
-	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_NONE
-		| SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_NEED_USAGE;
+	flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_NONE | SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_NEED_USAGE;
 	_sc_card_add_rsa_alg(card, 2048, flags, 0);
 
 	memset(&card->sm_ctx, 0, sizeof card->sm_ctx);
@@ -222,7 +225,8 @@ err:
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
-static int chipdocit_finish(sc_card_t *card)
+static int
+chipdocit_finish(sc_card_t *card)
 {
 	free(card->drv_data);
 	card->drv_data = NULL;
@@ -230,7 +234,8 @@ static int chipdocit_finish(sc_card_t *card)
 }
 
 /* SELECT an application by full AID (00 A4 04 04 <len> <aid> 00). */
-static int chipdocit_select_aid(sc_card_t *card, const u8 *aid, size_t aid_len)
+static int
+chipdocit_select_aid(sc_card_t *card, const u8 *aid, size_t aid_len)
 {
 	struct sc_apdu apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -248,7 +253,8 @@ static int chipdocit_select_aid(sc_card_t *card, const u8 *aid, size_t aid_len)
 }
 
 /* Pad an ASCII PIN/PUK to 8 bytes with 0xFF, as the CNS applet expects. */
-static void chipdocit_pad8(const u8 *in, size_t len, u8 out[8])
+static void
+chipdocit_pad8(const u8 *in, size_t len, u8 out[8])
 {
 	memset(out, 0xFF, 8);
 	if (len > 8)
@@ -258,8 +264,9 @@ static void chipdocit_pad8(const u8 *in, size_t len, u8 out[8])
 }
 
 /* Send one clear (non-SM) case-3 APDU and check the status word. */
-static int chipdocit_send_clear(struct sc_card *card, int ins, int p1, int p2,
-	const u8 *body, size_t len)
+static int
+chipdocit_send_clear(struct sc_card *card, int ins, int p1, int p2,
+		const u8 *body, size_t len)
 {
 	struct sc_apdu apdu;
 	int r;
@@ -274,7 +281,8 @@ static int chipdocit_send_clear(struct sc_card *card, int ins, int p1, int p2,
 
 /* Select the CNS applet in the clear. Switching to it ends any PACE session,
  * so SM is turned off; the caller re-opens PACE for the IAS side afterwards. */
-static int chipdocit_select_cns(struct sc_card *card)
+static int
+chipdocit_select_cns(struct sc_card *card)
 {
 	struct sc_apdu apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
@@ -297,7 +305,8 @@ static int chipdocit_select_cns(struct sc_card *card)
  * is kept in sync with the IAS PIN and accessed in the clear. PIN and PUK are
  * 0xFF-padded to 8 bytes here (the IAS side sends them unpadded).
  */
-static int chipdocit_cns_sync(struct sc_card *card, struct sc_pin_cmd_data *data)
+static int
+chipdocit_cns_sync(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	u8 body[16];
 	int r;
@@ -312,7 +321,7 @@ static int chipdocit_cns_sync(struct sc_card *card, struct sc_pin_cmd_data *data
 		chipdocit_pad8(data->pin1.data, data->pin1.len, body);
 		chipdocit_pad8(data->pin2.data, data->pin2.len, body + 8);
 		r = chipdocit_send_clear(card, 0x2C, 0x00, CHIPDOCIT_CNS_PIN_BSO, body, 16);
-	} else {	/* SC_PIN_CMD_CHANGE */
+	} else { /* SC_PIN_CMD_CHANGE */
 		chipdocit_pad8(data->pin1.data, data->pin1.len, body);
 		chipdocit_pad8(data->pin2.data, data->pin2.len, body + 8);
 		r = chipdocit_send_clear(card, 0x24, 0x00, CHIPDOCIT_CNS_PIN_BSO, body, 16);
@@ -323,13 +332,13 @@ static int chipdocit_cns_sync(struct sc_card *card, struct sc_pin_cmd_data *data
 
 /* True when the ATR advertises the classic CNS applet ("CNS" in the historical
  * bytes). Variants without it carry only the IAS PIN. */
-static int chipdocit_has_cns(struct sc_card *card)
+static int
+chipdocit_has_cns(struct sc_card *card)
 {
 	size_t i;
 
 	for (i = 0; i + 3 <= card->atr.len; i++)
-		if (card->atr.value[i] == 'C' && card->atr.value[i + 1] == 'N'
-		    && card->atr.value[i + 2] == 'S')
+		if (card->atr.value[i] == 'C' && card->atr.value[i + 1] == 'N' && card->atr.value[i + 2] == 'S')
 			return 1;
 	return 0;
 }
@@ -343,7 +352,8 @@ static int chipdocit_has_cns(struct sc_card *card)
  * old is proven by the preceding VERIFY); UNBLOCK = VERIFY PUK + RESET RETRY
  * COUNTER + set new PIN.
  */
-static int chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
+static int
+chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	int cmd = data->cmd;
 	u8 old8[8], new8[8];
@@ -353,8 +363,7 @@ static int chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 
 	/* Mirror the CNS-applet PIN first, while SM is still off (only when the
 	 * card actually carries the CNS applet). */
-	if ((cmd == SC_PIN_CMD_CHANGE || cmd == SC_PIN_CMD_UNBLOCK)
-	    && chipdocit_has_cns(card)) {
+	if ((cmd == SC_PIN_CMD_CHANGE || cmd == SC_PIN_CMD_UNBLOCK) && chipdocit_has_cns(card)) {
 		chipdocit_pad8(data->pin1.data, data->pin1.len, old8);
 		chipdocit_pad8(data->pin2.data, data->pin2.len, new8);
 		r = chipdocit_cns_sync(card, data);
@@ -372,8 +381,7 @@ static int chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 	}
 	/* The user PIN/PUK live at the MF; a prior signature may have left the
 	 * SSCD applet selected, so re-select the MF before touching them. */
-	if (data->cmd == SC_PIN_CMD_VERIFY || data->cmd == SC_PIN_CMD_CHANGE
-	    || data->cmd == SC_PIN_CMD_UNBLOCK)
+	if (data->cmd == SC_PIN_CMD_VERIFY || data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK)
 		sc_select_file(card, sc_get_mf_path(), NULL);
 
 	if (data->cmd == SC_PIN_CMD_UNBLOCK) {
@@ -383,8 +391,7 @@ static int chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 		 * exposes no separate PUK object, so pkcs15-pin.c leaves
 		 * puk_reference at 0: fall back to the default value. */
 		data->cmd = SC_PIN_CMD_VERIFY;
-		data->pin_reference = data->puk_reference ?
-			data->puk_reference : CHIPDOCIT_PUK_REF;
+		data->pin_reference = data->puk_reference ? data->puk_reference : CHIPDOCIT_PUK_REF;
 		r = chipdocit_pin_cmd(card, data);
 		if (r != SC_SUCCESS)
 			LOG_FUNC_RETURN(card->ctx, r);
@@ -426,8 +433,8 @@ static int chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 		memcpy(rb, new8, 8);
 		memcpy(rb + 8, old8, 8);
 		if (chipdocit_select_cns(card) == SC_SUCCESS)
-			(void) chipdocit_send_clear(card, 0x24, 0x00,
-				CHIPDOCIT_CNS_PIN_BSO, rb, 16);
+			(void)chipdocit_send_clear(card, 0x24, 0x00,
+					CHIPDOCIT_CNS_PIN_BSO, rb, 16);
 		sc_mem_clear(rb, sizeof rb);
 	}
 	sc_mem_clear(old8, sizeof old8);
@@ -436,8 +443,9 @@ static int chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 }
 
 /* We don't know the hash type until compute_signature, so just stash the env. */
-static int chipdocit_set_security_env(struct sc_card *card,
-	const struct sc_security_env *env, int se_num)
+static int
+chipdocit_set_security_env(struct sc_card *card,
+		const struct sc_security_env *env, int se_num)
 {
 	struct chipdocit_privdata *priv = card->drv_data;
 
@@ -455,8 +463,9 @@ static int chipdocit_set_security_env(struct sc_card *card,
  * advertise RSA_RAW), so we hand that block to the card's private-key
  * operation and return the raw signature.
  */
-static int chipdocit_compute_signature(struct sc_card *card, const u8 *data,
-	size_t data_len, u8 *out, size_t outlen)
+static int
+chipdocit_compute_signature(struct sc_card *card, const u8 *data,
+		size_t data_len, u8 *out, size_t outlen)
 {
 	struct chipdocit_privdata *priv = card->drv_data;
 	struct sc_apdu apdu;
@@ -472,8 +481,7 @@ static int chipdocit_compute_signature(struct sc_card *card, const u8 *data,
 		r = chipdocit_sm_open(card);
 		LOG_TEST_RET(card->ctx, r, "PACE open failed");
 	}
-	if ((priv->sec_env.flags & SC_SEC_ENV_KEY_REF_PRESENT)
-	    && priv->sec_env.key_ref_len == 1)
+	if ((priv->sec_env.flags & SC_SEC_ENV_KEY_REF_PRESENT) && priv->sec_env.key_ref_len == 1)
 		keyref = priv->sec_env.key_ref[0];
 
 	/* Move to the signature applet. */
@@ -484,7 +492,7 @@ static int chipdocit_compute_signature(struct sc_card *card, const u8 *data,
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB8);
 	mse[0] = 0x83;
 	mse[1] = 0x01;
-	mse[2] = (u8) keyref;
+	mse[2] = (u8)keyref;
 	apdu.lc = apdu.datalen = sizeof mse;
 	apdu.data = mse;
 	r = sc_transmit_apdu(card, &apdu);
@@ -505,11 +513,12 @@ static int chipdocit_compute_signature(struct sc_card *card, const u8 *data,
 	LOG_TEST_RET(card->ctx, r, "PSO:DECIPHER failed");
 
 	sc_log(card->ctx, "ChipDoc-IT: DS signature produced (%lu bytes)",
-		(unsigned long) apdu.resplen);
-	LOG_FUNC_RETURN(card->ctx, (int) apdu.resplen);
+			(unsigned long)apdu.resplen);
+	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
-struct sc_card_driver *sc_get_chipdocit_driver(void)
+struct sc_card_driver *
+sc_get_chipdocit_driver(void)
 {
 	struct sc_card_driver *iso = sc_get_iso7816_driver();
 	chipdocit_ops = *iso->ops;
@@ -525,7 +534,8 @@ struct sc_card_driver *sc_get_chipdocit_driver(void)
 #else /* ENABLE_SM && ENABLE_OPENPACE */
 
 #include "internal.h"
-struct sc_card_driver *sc_get_chipdocit_driver(void)
+struct sc_card_driver *
+sc_get_chipdocit_driver(void)
 {
 	return NULL;
 }
