@@ -38,6 +38,7 @@
 
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE) && defined(ENABLE_ZLIB)
 
+#include "asn1.h"
 #include "bit4id-cert-dict.h"
 #include "cards.h"
 #include "common/compat_strlcpy.h"
@@ -61,7 +62,8 @@ read_ds_cert(sc_pkcs15_card_t *p15card, unsigned fid,
 	u8 fidbuf[2] = {(u8)(fid >> 8), (u8)(fid & 0xff)};
 	int rawlen, i, r;
 	size_t hdr, bodylen, dlen;
-	const u8 *dict;
+	unsigned int cla, tag;
+	const u8 *dict, *body;
 	z_stream z;
 	sc_pkcs15_cert_info_t cinfo;
 	sc_pkcs15_object_t cobj;
@@ -88,21 +90,18 @@ read_ds_cert(sc_pkcs15_card_t *p15card, unsigned fid,
 		return SC_SUCCESS; /* no such cert: skip quietly */
 
 	rawlen = sc_read_binary(card, 0, raw, sizeof raw, 0);
-	if (rawlen < 4)
+	if (rawlen < 2)
 		return SC_SUCCESS;
 	if (raw[0] != 0x5a && raw[0] != 0x7a && raw[0] != 0x30) {
 		sc_log(card->ctx, "ChipDoc cert %04x: unexpected tag %02x", fid, raw[0]);
 		return SC_SUCCESS;
 	}
-	if (raw[1] & 0x80) {
-		int n = raw[1] & 0x7f;
-		hdr = 2 + n;
-		for (bodylen = 0, i = 0; i < n; i++)
-			bodylen = (bodylen << 8) | raw[2 + i];
-	} else {
-		hdr = 2;
-		bodylen = raw[1];
-	}
+	/* Parse the container tag and length with the ASN.1 helper (it does the
+	 * bounds and format checking); body then points at the value. */
+	body = raw;
+	if (sc_asn1_read_tag(&body, (size_t)rawlen, &cla, &tag, &bodylen) != SC_SUCCESS || !body)
+		return SC_SUCCESS;
+	hdr = (size_t)(body - raw);
 	if (hdr + bodylen > (size_t)rawlen)
 		return SC_SUCCESS;
 
