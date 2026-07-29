@@ -96,6 +96,8 @@ static const struct sc_atr_table iasecc_known_atrs[] = {
 		"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL },
 	{ "3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:01:0B:03:52:00:05:38", NULL,
 		"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL },
+	{ "3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:05:03:63:51:00:02:50", NULL,
+		"IAS/ECC Monaco eID", SC_CARD_TYPE_IASECC_MONACO, 0, NULL },
 	{
 		.atr     = "3B:AC:00:40:2A:00:12:25:00:64:80:00:03:10:00:90:00",
 		.atrmask = "FF:00:00:00:00:FF:FF:FF:FF:FF:FF:00:00:00:FF:FF:FF",
@@ -377,42 +379,61 @@ static int iasecc_parse_ef_atr(struct sc_card *card)
 	rv = sc_parse_ef_atr(card);
 	LOG_TEST_RET(ctx, rv, "MF selection error");
 
-	if (card->ef_atr->pre_issuing_len < 4)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid pre-issuing data");
+	/* Pre-issuing data (chip/OS/IAS-ECC version) feeds nothing but the log line
+	 * below.  Some IAS/ECC cards do not publish it in EF.ATR, so parse it when
+	 * present and leave the version fields untouched when it is absent. */
+	if (card->ef_atr->pre_issuing_len >= 4)   {
+		version->ic_manufacturer =	card->ef_atr->pre_issuing[0];
+		version->ic_type =		card->ef_atr->pre_issuing[1];
+		version->os_version =		card->ef_atr->pre_issuing[2];
+		version->iasecc_version =	card->ef_atr->pre_issuing[3];
+		sc_log(ctx, "EF.ATR: IC manufacturer/type %X/%X, OS/IasEcc versions %X/%X",
+			version->ic_manufacturer, version->ic_type, version->os_version, version->iasecc_version);
+	}
+	else   {
+		sc_log(ctx, "EF.ATR: no pre-issuing data, skipping version info");
+	}
 
-	version->ic_manufacturer =	card->ef_atr->pre_issuing[0];
-	version->ic_type =		card->ef_atr->pre_issuing[1];
-	version->os_version =		card->ef_atr->pre_issuing[2];
-	version->iasecc_version =	card->ef_atr->pre_issuing[3];
-	sc_log(ctx, "EF.ATR: IC manufacturer/type %X/%X, OS/IasEcc versions %X/%X",
-		version->ic_manufacturer, version->ic_type, version->os_version, version->iasecc_version);
+	/* Issuer data carries the negotiated IO buffer sizes.  When it is absent the
+	 * sizes stay as the framework left them, except for cards known to need a
+	 * concrete value: see the SC_CARD_TYPE_IASECC_MONACO branch below. */
+	if (card->ef_atr->issuer_data_len >= 16)   {
+		sizes->send =	 card->ef_atr->issuer_data[2] * 0x100 + card->ef_atr->issuer_data[3];
+		sizes->send_sc = card->ef_atr->issuer_data[6] * 0x100 + card->ef_atr->issuer_data[7];
+		sizes->recv =	 card->ef_atr->issuer_data[10] * 0x100 + card->ef_atr->issuer_data[11];
+		sizes->recv_sc = card->ef_atr->issuer_data[14] * 0x100 + card->ef_atr->issuer_data[15];
 
-	if (card->ef_atr->issuer_data_len < 16)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid issuer data");
+		sc_log(ctx,
+			"EF.ATR: IO Buffer Size send/sc %"SC_FORMAT_LEN_SIZE_T"d/%"SC_FORMAT_LEN_SIZE_T"d "
+			"recv/sc %"SC_FORMAT_LEN_SIZE_T"d/%"SC_FORMAT_LEN_SIZE_T"d",
+			sizes->send, sizes->send_sc, sizes->recv, sizes->recv_sc);
 
-	sizes->send =	 card->ef_atr->issuer_data[2] * 0x100 + card->ef_atr->issuer_data[3];
-	sizes->send_sc = card->ef_atr->issuer_data[6] * 0x100 + card->ef_atr->issuer_data[7];
-	sizes->recv =	 card->ef_atr->issuer_data[10] * 0x100 + card->ef_atr->issuer_data[11];
-	sizes->recv_sc = card->ef_atr->issuer_data[14] * 0x100 + card->ef_atr->issuer_data[15];
+		card->max_send_size = sizes->send;
+		card->max_recv_size = sizes->recv;
 
-	sc_log(ctx,
-		"EF.ATR: IO Buffer Size send/sc %"SC_FORMAT_LEN_SIZE_T"d/%"SC_FORMAT_LEN_SIZE_T"d "
-		"recv/sc %"SC_FORMAT_LEN_SIZE_T"d/%"SC_FORMAT_LEN_SIZE_T"d",
-		sizes->send, sizes->send_sc, sizes->recv, sizes->recv_sc);
+		/* Most of the card producers interpret 'send' values as "maximum APDU data size".
+		 * Oberthur strictly follows specification and interpret these values as "maximum APDU command size".
+		 * Here we need 'data size'.
+		 */
+		if (card->max_send_size > 0xFF)
+			card->max_send_size -= 5;
 
-	card->max_send_size = sizes->send;
-	card->max_recv_size = sizes->recv;
-
-	/* Most of the card producers interpret 'send' values as "maximum APDU data size".
-	 * Oberthur strictly follows specification and interpret these values as "maximum APDU command size".
-	 * Here we need 'data size'.
-	 */
-	if (card->max_send_size > 0xFF)
-		card->max_send_size -= 5;
-
-	sc_log(ctx,
-	       "EF.ATR: max send/recv sizes %"SC_FORMAT_LEN_SIZE_T"X/%"SC_FORMAT_LEN_SIZE_T"X",
-	       card->max_send_size, card->max_recv_size);
+		sc_log(ctx,
+		       "EF.ATR: max send/recv sizes %"SC_FORMAT_LEN_SIZE_T"X/%"SC_FORMAT_LEN_SIZE_T"X",
+		       card->max_send_size, card->max_recv_size);
+	}
+	else if (card->type == SC_CARD_TYPE_IASECC_MONACO)   {
+		/* The Monaco eID publishes no issuer data, and IASECC_CARD_DEFAULT_CAPS
+		 * advertises SC_CARD_CAP_APDU_EXT: left at zero, sc_get_max_send_size()
+		 * would offer this card 65535/65536.  Pin it to short APDUs, which is
+		 * what it was verified against. */
+		card->max_send_size = 0xFF;
+		card->max_recv_size = 0x100;
+		sc_log(ctx, "EF.ATR: no issuer data, using short-APDU IO buffer sizes");
+	}
+	else   {
+		sc_log(ctx, "EF.ATR: no issuer data, keeping the IO buffer sizes as they are");
+	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -647,6 +668,13 @@ iasecc_init(struct sc_card *card)
 		rv = iasecc_init_amos_or_sagem(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_AMOS)
 		rv = iasecc_init_amos_or_sagem(card);
+	else if (card->type == SC_CARD_TYPE_IASECC_MONACO)   {
+		rv = iasecc_init_amos_or_sagem(card);
+		/* The card answers 6D 00 to the ISO PIN status query (VERIFY with no
+		 * data), so it does not support it. Drop the capability rather than
+		 * issue a command the card rejects. */
+		card->caps &= ~((unsigned long) SC_CARD_CAP_ISO7816_PIN_INFO);
+	}
 	else if (card->type == SC_CARD_TYPE_IASECC_MI)
 		rv = iasecc_init_amos_or_sagem(card);
 	else if (iasecc_is_cpx(card))
@@ -954,6 +982,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 				&& card->type != SC_CARD_TYPE_IASECC_OBERTHUR
 				&& card->type != SC_CARD_TYPE_IASECC_SAGEM
 				&& card->type != SC_CARD_TYPE_IASECC_AMOS
+				&& card->type != SC_CARD_TYPE_IASECC_MONACO
 				&& card->type != SC_CARD_TYPE_IASECC_MI
 				&& card->type != SC_CARD_TYPE_IASECC_MI2
 				&& !iasecc_is_cpx(card)) {
@@ -967,6 +996,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 				apdu.p1 = 0x01;
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
+			    card->type == SC_CARD_TYPE_IASECC_MONACO ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
 			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
@@ -979,6 +1009,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			apdu.p1 = 0x09;
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
+			    card->type == SC_CARD_TYPE_IASECC_MONACO ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
 			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
@@ -994,6 +1025,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		else if (lpath.type == SC_PATH_TYPE_DF_NAME)   {
 			apdu.p1 = 0x04;
 			if (card->type == SC_CARD_TYPE_IASECC_AMOS ||
+			    card->type == SC_CARD_TYPE_IASECC_MONACO ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
 			    card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
 			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
@@ -1279,7 +1311,8 @@ iasecc_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *out
 
 	/* TODO: Encode contactless ACLs and life cycle status for all IAS/ECC cards */
 	if (card->type == SC_CARD_TYPE_IASECC_SAGEM ||
-			card->type == SC_CARD_TYPE_IASECC_AMOS )  {
+			card->type == SC_CARD_TYPE_IASECC_AMOS ||
+			card->type == SC_CARD_TYPE_IASECC_MONACO )  {
 		unsigned char status = 0;
 
 		buf[offs++] = IASECC_FCP_TAG_ACLS;
@@ -1544,6 +1577,25 @@ iasecc_get_algorithm(struct sc_context *ctx, const struct sc_security_env *env,
 }
 
 
+/* The Monaco eID leaves supportedAlgorithms empty in its PKCS#15 objects, so
+ * there is nothing for iasecc_get_algorithm() to find.  Fall back to this
+ * driver's own IAS/ECC references -- the same values the MSE:SET templates are
+ * initialised with -- for that card only.  Every other card keeps the
+ * "not supported" error. */
+static int
+iasecc_get_algorithm_or_default(struct sc_card *card, const struct sc_security_env *env,
+		unsigned operation, unsigned mechanism, unsigned char dflt, unsigned *out)
+{
+	unsigned algo_ref = iasecc_get_algorithm(card->ctx, env, operation, mechanism);
+
+	if (!algo_ref && card->type == SC_CARD_TYPE_IASECC_MONACO)
+		algo_ref = dflt;
+
+	*out = algo_ref;
+	return algo_ref ? SC_SUCCESS : SC_ERROR_NOT_SUPPORTED;
+}
+
+
 static int
 iasecc_se_cache_info(struct sc_card *card, struct iasecc_se_info *se)
 {
@@ -1769,29 +1821,29 @@ iasecc_set_security_env(struct sc_card *card,
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Need RSA_PKCS1 specified");
 
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256)   {
-			algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_HASH, CKM_SHA256);
-			if (!algo_ref)
-				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Card application do not supports HASH:SHA256");
+			rv = iasecc_get_algorithm_or_default(card, env, SC_PKCS15_ALGO_OP_HASH, CKM_SHA256,
+					IASECC_ALGORITHM_SHA2, &algo_ref);
+			LOG_TEST_RET(ctx, rv, "Card application do not supports HASH:SHA256");
 
 			cse_crt_ht[2] = algo_ref; /* IASECC_ALGORITHM_SHA2 */
 
-			algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE,  CKM_SHA256_RSA_PKCS);
-			if (!algo_ref)
-				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Card application do not supports SIGNATURE:SHA1_RSA_PKCS");
+			rv = iasecc_get_algorithm_or_default(card, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_SHA256_RSA_PKCS,
+					IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA2, &algo_ref);
+			LOG_TEST_RET(ctx, rv, "Card application do not supports SIGNATURE:SHA256_RSA_PKCS");
 
 			cse_crt_dst[2] = env->key_ref[0] | IASECC_OBJECT_REF_LOCAL;
 			cse_crt_dst[5] = algo_ref;   /* IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA2 */
 		}
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)   {
-			algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_HASH,  CKM_SHA_1);
-			if (!algo_ref)
-				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Card application do not supports HASH:SHA1");
+			rv = iasecc_get_algorithm_or_default(card, env, SC_PKCS15_ALGO_OP_HASH, CKM_SHA_1,
+					IASECC_ALGORITHM_SHA1, &algo_ref);
+			LOG_TEST_RET(ctx, rv, "Card application do not supports HASH:SHA1");
 
 			cse_crt_ht[2] = algo_ref;	/* IASECC_ALGORITHM_SHA1 */
 
-			algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE,  CKM_SHA1_RSA_PKCS);
-			if (!algo_ref)
-				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Card application do not supports SIGNATURE:SHA1_RSA_PKCS");
+			rv = iasecc_get_algorithm_or_default(card, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_SHA1_RSA_PKCS,
+					IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA1, &algo_ref);
+			LOG_TEST_RET(ctx, rv, "Card application do not supports SIGNATURE:SHA1_RSA_PKCS");
 
 			cse_crt_dst[2] = env->key_ref[0] | IASECC_OBJECT_REF_LOCAL;
 			cse_crt_dst[5] = algo_ref;   /* IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA1 */
@@ -1816,9 +1868,9 @@ iasecc_set_security_env(struct sc_card *card,
 		apdu.lc = sizeof(cse_crt_dst);
 		break;
 	case SC_SEC_OPERATION_AUTHENTICATE:
-		algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE,  CKM_RSA_PKCS);
-		if (!algo_ref)
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Application do not supports SIGNATURE:RSA_PKCS");
+		rv = iasecc_get_algorithm_or_default(card, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_RSA_PKCS,
+				IASECC_ALGORITHM_RSA_PKCS, &algo_ref);
+		LOG_TEST_RET(ctx, rv, "Application do not supports SIGNATURE:RSA_PKCS");
 
 		cse_crt_at[2] = env->key_ref[0] | IASECC_OBJECT_REF_LOCAL;
 		cse_crt_at[5] = algo_ref;	/* IASECC_ALGORITHM_RSA_PKCS */
@@ -1998,6 +2050,13 @@ iasecc_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data)
 			if (iasecc_chv_cache_is_verified(card, &pin_cmd))
 				LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
+	else if (rv == SC_ERROR_NOT_SUPPORTED)   {
+		/* The card cannot report PIN status. That leaves the login state
+		 * unknown, which is a reason to present the PIN rather than a reason to
+		 * give up: without this, no card lacking SC_CARD_CAP_ISO7816_PIN_INFO
+		 * can verify a PIN through this driver at all. */
+		sc_log(ctx, "PIN status unavailable on this card; verifying anyway");
+	}
 	else if (rv != SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)   {
 		LOG_FUNC_RETURN(ctx, rv);
 	}
@@ -2088,37 +2147,54 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 	sc_log(ctx, "iasecc_pin_get_policy() reference %i", sdo.sdo_ref);
 
 	rv = iasecc_sdo_get_data(card, &sdo);
-	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get SDO PIN data");
-
-	if (sdo.docp.acls_contact.size == 0) {
-		rv = SC_ERROR_INVALID_DATA;
-		sc_log(ctx, "Extremely strange ... there is no ACLs");
-		goto err;
-	}
-
-	sc_log(ctx,
-	       "iasecc_pin_get_policy() sdo.docp.size.size %"SC_FORMAT_LEN_SIZE_T"u",
-	       sdo.docp.size.size);
-
-	memcpy(pin->scbs, sdo.docp.scbs, sizeof(pin->scbs));
-
-	pin->min_length = (sdo.data.chv.size_min.value ? *sdo.data.chv.size_min.value : -1);
-	pin->max_length = (sdo.data.chv.size_max.value ? *sdo.data.chv.size_max.value : -1);
-	pin->tries_maximum = (sdo.docp.tries_maximum.value ? *sdo.docp.tries_maximum.value : -1);
-	pin->tries_remaining = (sdo.docp.tries_remaining.value ? *sdo.docp.tries_remaining.value : -1);
-	if (sdo.docp.size.value && sdo.docp.size.size <= sizeof(int)) {
-		unsigned int n = 0;
-		unsigned int i;
-		for (i=0; i<sdo.docp.size.size; i++)
-			n = (n << 8) + *(sdo.docp.size.value + i);
-		pin->stored_length = n;
-	} else {
+	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND && card->type == SC_CARD_TYPE_IASECC_MONACO) {
+		/* The Monaco eID does not expose the CHV SDO.  Its only role here is the
+		 * secure-messaging SCBs and the advisory PIN length/tries; a plain
+		 * (non-SM) verify with "unknown" for the rest is what this card wants.
+		 * The PIN value and padding come from the PKCS#15 AODF, so verification
+		 * still works. */
+		sc_log(ctx, "Monaco eID: no CHV SDO on card, plain verify without SM");
+		memset(pin->scbs, 0, sizeof(pin->scbs));
+		pin->min_length = -1;
+		pin->max_length = -1;
+		pin->tries_maximum = -1;
+		pin->tries_remaining = -1;
 		pin->stored_length = -1;
+		rv = SC_SUCCESS;
 	}
+	else {
+		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get SDO PIN data");
 
-	sc_log(ctx, "PIN policy: size max/min %i/%i, tries max/left %i/%i",
-	       pin->max_length, pin->min_length, pin->tries_maximum, pin->tries_remaining);
-	iasecc_sdo_free_fields(card, &sdo);
+		if (sdo.docp.acls_contact.size == 0) {
+			rv = SC_ERROR_INVALID_DATA;
+			sc_log(ctx, "Extremely strange ... there is no ACLs");
+			goto err;
+		}
+
+		sc_log(ctx,
+		       "iasecc_pin_get_policy() sdo.docp.size.size %"SC_FORMAT_LEN_SIZE_T"u",
+		       sdo.docp.size.size);
+
+		memcpy(pin->scbs, sdo.docp.scbs, sizeof(pin->scbs));
+
+		pin->min_length = (sdo.data.chv.size_min.value ? *sdo.data.chv.size_min.value : -1);
+		pin->max_length = (sdo.data.chv.size_max.value ? *sdo.data.chv.size_max.value : -1);
+		pin->tries_maximum = (sdo.docp.tries_maximum.value ? *sdo.docp.tries_maximum.value : -1);
+		pin->tries_remaining = (sdo.docp.tries_remaining.value ? *sdo.docp.tries_remaining.value : -1);
+		if (sdo.docp.size.value && sdo.docp.size.size <= sizeof(int)) {
+			unsigned int n = 0;
+			unsigned int i;
+			for (i=0; i<sdo.docp.size.size; i++)
+				n = (n << 8) + *(sdo.docp.size.value + i);
+			pin->stored_length = n;
+		} else {
+			pin->stored_length = -1;
+		}
+
+		sc_log(ctx, "PIN policy: size max/min %i/%i, tries max/left %i/%i",
+		       pin->max_length, pin->min_length, pin->tries_maximum, pin->tries_remaining);
+		iasecc_sdo_free_fields(card, &sdo);
+	}
 
 	if (save_current_df)   {
 		sc_log(ctx, "iasecc_pin_get_policy() restore current DF");
@@ -2157,7 +2233,17 @@ iasecc_pin_get_info(struct sc_card *card, struct sc_pin_cmd_data *data)
 	 * policy takes precedence.
 	 */
 	rv = iasecc_pin_get_status(card, data);
-	LOG_TEST_RET(ctx, rv, "Failed to get PIN status");
+	if (rv == SC_ERROR_NOT_SUPPORTED)   {
+		/* No status from the card. Say "unknown" explicitly: leaving the
+		 * caller's zeroed fields alone would report a perfectly good PIN as
+		 * having no tries left. */
+		sc_log(ctx, "PIN status unavailable on this card; reporting the policy alone");
+		data->pin1.tries_left = -1;
+		data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
+	}
+	else   {
+		LOG_TEST_RET(ctx, rv, "Failed to get PIN status");
+	}
 
 	rv = iasecc_pin_get_policy(card, data, &policy);
 	LOG_TEST_RET(ctx, rv, "Failed to get PIN policy");
@@ -2874,7 +2960,7 @@ iasecc_sdo_get_tagged_data(struct sc_card *card, int sdo_tag, struct iasecc_sdo 
 
 
 static int
-iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo)
+iasecc_sdo_read_from_card(struct sc_card *card, struct iasecc_sdo *sdo)
 {
 	struct sc_context *ctx = card->ctx;
 	int rv, sdo_tag;
@@ -2892,6 +2978,55 @@ iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo)
 	LOG_TEST_RET(ctx, rv, "cannot parse ECC DOCP data");
 
 	LOG_FUNC_RETURN(ctx, rv);
+}
+
+
+/* The Monaco eID answers 6A88 to 'GET DATA' for its RSA private keys: the card
+ * holds the keys but publishes no SDO describing them.  Rather than teach every
+ * consumer of iasecc_sdo_get_data() to cope with a missing SDO, describe the
+ * configuration the card does have.  Both of its keys are 2048-bit -- that is
+ * what its own PKCS#15 PrKDF and its certificates say -- and both are used
+ * without secure messaging.  Deciphering is not asserted here: the card has not
+ * been observed to do it, so that ACL is left at its "never" default. */
+static int
+iasecc_sdo_virtual_monaco(struct sc_card *card, struct iasecc_sdo *sdo, unsigned char sdo_class)
+{
+	if (sdo_class != IASECC_SDO_CLASS_RSA_PRIVATE)
+		return SC_ERROR_DATA_OBJECT_NOT_FOUND;
+
+	sdo->docp.size.value = calloc(1, 2);
+	if (sdo->docp.size.value == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+	sdo->docp.size.value[0] = 0x01;		/* 0x0100 bytes == 2048-bit modulus */
+	sdo->docp.size.size = 2;
+
+	sdo->docp.amb = IASECC_ACL_PSO_SIGNATURE | IASECC_ACL_INTERNAL_AUTHENTICATE;
+	sdo->docp.scbs[0] = 0x00;		/* PSO compute signature: no condition */
+	sdo->docp.scbs[1] = 0x00;		/* internal authenticate: no condition */
+
+	sc_log(card->ctx, "Monaco eID: no RSA private SDO on card, using the card's known configuration");
+	return SC_SUCCESS;
+}
+
+
+static int
+iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo)
+{
+	/* Parsing the card's answer overwrites the SDO header, so remember what was
+	 * asked for before the request goes out. */
+	unsigned char sdo_class = sdo->sdo_class;
+	unsigned char sdo_ref = sdo->sdo_ref;
+	int rv = iasecc_sdo_read_from_card(card, sdo);
+
+	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND && card->type == SC_CARD_TYPE_IASECC_MONACO)   {
+		rv = iasecc_sdo_virtual_monaco(card, sdo, sdo_class);
+		if (rv == SC_SUCCESS)   {
+			sdo->sdo_class = sdo_class;
+			sdo->sdo_ref = sdo_ref;
+		}
+	}
+
+	return rv;
 }
 
 
