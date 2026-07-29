@@ -158,23 +158,34 @@ static int get_can_key(const u8 *key, const u8 round, const u8 *input, u8 *outpu
 
 #define AES256_KEY_LEN 32
 
-static int eoi_decrypt_can(struct sc_pkcs15_u8 *enc_can, char *can) {
+/* Decrypt the 24-byte encrypted CAN blob (16 enc || 8 SN) into its 16-byte
+ * plaintext block. Exposed for card-chipdocit: same chip, same key. */
+int eoi_decrypt_can_block(const u8 *enc_can, size_t enc_can_len, u8 out[AES_BLOCK_SIZE])
+{
 	/* Magic key that is used to decrypt CAN */
 	const u8 magic_key[AES256_KEY_LEN] = {0xC8, 0x12, 0x0F, 0xD8, 0x21, 0x20, 0x1F, 0x77, 0xF1, 0x83, 0x9D, 0xD8, 0x86, 0xB0, 0x5C, 0xF2, 0x4F, 0x7E, 0x52, 0x66, 0xE5, 0x87, 0x89, 0x2B, 0xF4, 0xC5, 0xE5, 0x4C, 0x54, 0xA1, 0x55, 0x30};
 	u8 can_key[AES256_KEY_LEN] = { 0 };
 
-	if (!can || !enc_can || !enc_can->value || enc_can->len != 24)
+	if (!enc_can || !out || enc_can_len != 24)
 		return SC_ERROR_INVALID_ARGUMENTS;
+	if (!get_can_key(magic_key, 0x01, enc_can, &can_key[0]))
+		return SC_ERROR_INTERNAL;
+	if (!get_can_key(magic_key, 0x02, enc_can, &can_key[AES_BLOCK_SIZE]))
+		return SC_ERROR_INTERNAL;
+	if (!aes256_ecb_decrypt(can_key, enc_can, out))
+		return SC_ERROR_INTERNAL;
+	return SC_SUCCESS;
+}
 
-	if (!get_can_key(magic_key, 0x01, enc_can->value, &can_key[0]))
-		return SC_ERROR_INTERNAL;
-	if (!get_can_key(magic_key, 0x02, enc_can->value, &can_key[AES_BLOCK_SIZE]))
-		return SC_ERROR_INTERNAL;
+static int eoi_decrypt_can(struct sc_pkcs15_u8 *enc_can, char *can) {
+	int r;
 
-	if (!aes256_ecb_decrypt(can_key, enc_can->value, (u8 *)can))
-		return SC_ERROR_INTERNAL;
+	if (!can || !enc_can || !enc_can->value)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	r = eoi_decrypt_can_block(enc_can->value, enc_can->len, (u8 *) can);
+	if (r != SC_SUCCESS)
+		return r;
 	can[AES_BLOCK_SIZE - 1] = 0;
-
 	return SC_SUCCESS;
 }
 

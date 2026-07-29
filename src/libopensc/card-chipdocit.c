@@ -36,8 +36,8 @@
 #include "internal.h"
 #include "sm/sm-eac.h"
 #include "common/compat_strlcpy.h"
+#include "card-eoi.h"
 
-#define AES256_KEY_LEN 32
 #define CHIPDOCIT_ENC_CAN_EF "3F00E000"   /* encrypted CAN (24 B: 16 enc || 8 SN) */
 
 /* Signature-side application AID (SELECT 00 A4 04 04). */
@@ -87,84 +87,19 @@ struct chipdocit_privdata {
 	int se_num;
 };
 
-/* --- CAN unwrap (identical scheme to card-eoi: AES-CMAC subkeys + AES-ECB) --- */
-
-static void rol(u8 *to, const u8 *from)
-{
-	int i;
-	u8 b = from[0] & 0x80;
-	for (i = 15; i >= 0; i--) {
-		u8 bo = b;
-		b = from[i] & 0x80;
-		to[i] = (from[i] << 1) | (bo ? 1 : 0);
-		if ((i == 15) && bo)
-			to[i] = (to[i] ^ 0x87) | 1;
-	}
-}
-
-static int aes256_ecb(int enc, const u8 *key, const u8 in[AES_BLOCK_SIZE], u8 out[AES_BLOCK_SIZE])
-{
-	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-	int r = 0, pos, len = pos = AES_BLOCK_SIZE;
-	if (!ctx)
-		return 0;
-	if (EVP_CipherInit(ctx, EVP_aes_256_ecb(), key, NULL, enc)
-	    && EVP_CIPHER_CTX_set_padding(ctx, 0)
-	    && EVP_CipherUpdate(ctx, out, &pos, in, len)
-	    && (len -= pos, EVP_CipherFinal(ctx, out + pos, &len)))
-		r = 1;
-	EVP_CIPHER_CTX_free(ctx);
-	return r;
-}
-
-static int get_can_key(const u8 *key, const u8 round, const u8 *input, u8 *output)
-{
-	size_t i;
-	u8 tmp[3][AES_BLOCK_SIZE];
-	memset(tmp[0], 0, AES_BLOCK_SIZE);
-	if (!aes256_ecb(1, key, tmp[0], tmp[0]))
-		return 0;
-	rol(tmp[1], tmp[0]);
-	rol(tmp[0], tmp[1]);
-	memset(tmp[1], 0, AES_BLOCK_SIZE);
-	tmp[1][11] = 4;
-	tmp[1][13] = 1;
-	tmp[1][15] = round;
-	if (!aes256_ecb(1, key, tmp[1], tmp[2]))
-		return 0;
-	memset(tmp[1], 0, AES_BLOCK_SIZE);
-	memcpy(tmp[1], &input[AES_BLOCK_SIZE], 8);
-	tmp[1][8] = 0x80;
-	for (i = 0; i < AES_BLOCK_SIZE; i++)
-		tmp[0][i] = tmp[0][i] ^ tmp[1][i] ^ tmp[2][i];
-	if (!aes256_ecb(1, key, tmp[0], output))
-		return 0;
-	return 1;
-}
-
+/* Decrypt the encrypted CAN (shared unwrap scheme and key with card-eoi) and
+ * keep its printable bytes. Unlike the Slovenian eOI (a NUL-terminated 6-digit
+ * CAN in the leading bytes) the Italian ChipDoc stores a full-block CAN with no
+ * NUL, so keep every printable byte and NUL-terminate after it. */
 static int chipdocit_decrypt_can(const u8 *enc_can, size_t len, char *can)
 {
-	/* Magic key (byte-exact, same as card-eoi's ChipDoc Lite). */
-	static const u8 magic_key[AES256_KEY_LEN] = {
-		0xC8, 0x12, 0x0F, 0xD8, 0x21, 0x20, 0x1F, 0x77,
-		0xF1, 0x83, 0x9D, 0xD8, 0x86, 0xB0, 0x5C, 0xF2,
-		0x4F, 0x7E, 0x52, 0x66, 0xE5, 0x87, 0x89, 0x2B,
-		0xF4, 0xC5, 0xE5, 0x4C, 0x54, 0xA1, 0x55, 0x30 };
-	u8 can_key[AES256_KEY_LEN] = { 0 };
 	u8 dec[AES_BLOCK_SIZE];
 	size_t n;
+	int r;
 
-	if (!can || !enc_can || len != 24)
-		return SC_ERROR_INVALID_ARGUMENTS;
-	if (!get_can_key(magic_key, 0x01, enc_can, &can_key[0]))
-		return SC_ERROR_INTERNAL;
-	if (!get_can_key(magic_key, 0x02, enc_can, &can_key[AES_BLOCK_SIZE]))
-		return SC_ERROR_INTERNAL;
-	if (!aes256_ecb(0, can_key, enc_can, dec))
-		return SC_ERROR_INTERNAL;
-	/* Unlike the Slovenian eOI (a NUL-terminated 6-digit CAN in the leading
-	 * bytes), the Italian ChipDoc stores a full-block CAN with no NUL: keep
-	 * every printable byte and NUL-terminate after it. */
+	r = eoi_decrypt_can_block(enc_can, len, dec);
+	if (r != SC_SUCCESS)
+		return r;
 	for (n = 0; n < AES_BLOCK_SIZE && dec[n] >= 0x20 && dec[n] < 0x7f; n++)
 		can[n] = (char) dec[n];
 	can[n] = '\0';
