@@ -330,7 +330,9 @@ add_supported_mechs(test_cert_t *o)
 		break;
 #endif /* EVP_PKEY_SLH_DSA_SHA2_128S */
 	/* Nothing in the above enum can be used for secret keys */
-	case CKK_AES:
+	default:
+		if (o->key_type != CKK_AES)
+			break;
 		if (token.num_aes_mechs > 0 ) {
 			o->num_mechs = token.num_aes_mechs;
 			for (i = 0; i < token.num_aes_mechs; i++) {
