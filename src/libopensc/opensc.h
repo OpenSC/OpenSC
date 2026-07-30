@@ -71,6 +71,9 @@ extern "C" {
 #define SC_ALGORITHM_GOSTR3410		3
 #define SC_ALGORITHM_EDDSA		4
 #define SC_ALGORITHM_XEDDSA		5
+#define SC_ALGORITHM_MLDSA		6
+#define SC_ALGORITHM_MLKEM		7
+#define SC_ALGORITHM_SLHDSA		8
 
 /* Symmetric algorithms */
 #define SC_ALGORITHM_DES		64
@@ -187,6 +190,28 @@ extern "C" {
 /* EdDSA algorithms */
 #define SC_ALGORITHM_EDDSA_RAW		0x00400000
 #define SC_ALGORITHM_XEDDSA_RAW		0x00800000
+
+
+#define SC_ALGORITHM_MLDSA_44		0x00100000
+#define SC_ALGORITHM_MLDSA_65		0x00200000
+#define SC_ALGORITHM_MLDSA_87		0x00400000
+
+#define SC_ALGORITHM_MLKEM_512		0x00100000
+#define SC_ALGORITHM_MLKEM_768		0x00200000
+#define SC_ALGORITHM_MLKEM_1024		0x00400000
+
+#define SC_ALGORITHM_SLHDSA_SHA2_128S	0x00100000
+#define SC_ALGORITHM_SLHDSA_SHAKE_128S	0x00200000
+#define SC_ALGORITHM_SLHDSA_SHA2_128F	0x00400000
+#define SC_ALGORITHM_SLHDSA_SHAKE_128F	0x00800000
+#define SC_ALGORITHM_SLHDSA_SHA2_192S	0x01000000
+#define SC_ALGORITHM_SLHDSA_SHAKE_192S	0x02000000
+#define SC_ALGORITHM_SLHDSA_SHA2_192F	0x04000000
+#define SC_ALGORITHM_SLHDSA_SHAKE_192F	0x08000000
+#define SC_ALGORITHM_SLHDSA_SHA2_256S	0x10000000
+#define SC_ALGORITHM_SLHDSA_SHAKE_256S	0x20000000
+#define SC_ALGORITHM_SLHDSA_SHA2_256F	0x40000000
+#define SC_ALGORITHM_SLHDSA_SHAKE_256F	0x80000000
 
 /* define mask of all algorithms that can do raw */
 #define SC_ALGORITHM_RAW_MASK (SC_ALGORITHM_RSA_RAW | \
@@ -1606,6 +1631,12 @@ struct sc_algorithm_info * sc_card_find_xeddsa_alg(struct sc_card *card,
 		size_t field_length, struct sc_object_id *curve_oid);
 struct sc_algorithm_info * sc_card_find_gostr3410_alg(struct sc_card *card,
 		size_t key_length);
+struct sc_algorithm_info *sc_card_find_mldsa_alg(struct sc_card *card,
+		size_t key_length, unsigned long flags);
+struct sc_algorithm_info *sc_card_find_mlkem_alg(struct sc_card *card,
+		size_t key_length, unsigned long flags);
+struct sc_algorithm_info *sc_card_find_slhdsa_alg(struct sc_card *card,
+		size_t key_length, unsigned long flags);
 struct sc_algorithm_info * sc_card_find_alg(sc_card_t *card,
 		unsigned int algorithm, size_t key_length, void *param);
 
