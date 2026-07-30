@@ -248,7 +248,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--session-rw</option>,
+						<option>--session-rw</option>
 					</term>
 					<listitem><para>Forces to open the PKCS#11 session with CKF_RW_SESSION.</para></listitem>
 				</varlistentry>
@@ -410,39 +410,39 @@
 
 				<varlistentry>
 					<term>
-						<option>--decrypt</option>,
+						<option>--decrypt</option>
 					</term>
 					<listitem><para>Decrypt some data.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term>
-						<option>--encrypt</option>,
+						<option>--encrypt</option>
 					</term>
 					<listitem><para>Encrypt some data.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--unwrap</option>,
+						<option>--unwrap</option>
 					</term>
 					<listitem><para>Unwrap key.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--wrap</option>,
+						<option>--wrap</option>
 					</term>
 					<listitem><para>Wrap key.</para></listitem>
 				</varlistentry>
 				<varlistentry>
 					<term>
-						<option>--derive</option>,
+						<option>--derive</option>
 					</term>
 					<listitem><para>Derive a secret key using another key and some data.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
 					<term>
-						<option>--derive-pass-der</option>,
+						<option>--derive-pass-der</option>
 					</term>
 					<listitem><para>Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations</para></listitem>
 				</varlistentry>
@@ -612,7 +612,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--verify</option>,
+						<option>--verify</option>
 					</term>
 					<listitem><para>Verify signature of some data.</para></listitem>
 				</varlistentry>
