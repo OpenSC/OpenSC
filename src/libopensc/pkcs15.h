@@ -219,6 +219,15 @@ struct sc_pkcs15_prkey_gostr3410 {
 	sc_pkcs15_bignum_t d;
 };
 
+struct sc_pkcs15_pubkey_pqc {
+	struct sc_pkcs15_u8 value;
+};
+
+struct sc_pkcs15_prkey_pqc {
+	struct sc_pkcs15_u8 value;
+	struct sc_pkcs15_u8 seed;
+};
+
 struct sc_pkcs15_pubkey {
 	unsigned long algorithm;
 	struct sc_algorithm_id * alg_id;
@@ -228,6 +237,7 @@ struct sc_pkcs15_pubkey {
 		struct sc_pkcs15_pubkey_rsa rsa;
 		struct sc_pkcs15_pubkey_ec ec;
 		struct sc_pkcs15_pubkey_gostr3410 gostr3410;
+		struct sc_pkcs15_pubkey_pqc pqc;
 	} u;
 };
 typedef struct sc_pkcs15_pubkey sc_pkcs15_pubkey_t;
@@ -241,6 +251,7 @@ struct sc_pkcs15_prkey {
 		struct sc_pkcs15_prkey_ec ec;
 		struct sc_pkcs15_prkey_gostr3410 gostr3410;
 		struct sc_pkcs15_skey secret;
+		struct sc_pkcs15_prkey_pqc pqc;
 	} u;
 };
 typedef struct sc_pkcs15_prkey sc_pkcs15_prkey_t;
@@ -312,6 +323,8 @@ typedef struct sc_pkcs15_data_info sc_pkcs15_data_info_t;
 #define SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER	0x80
 #define SC_PKCS15_PRKEY_USAGE_DERIVE		0x100
 #define SC_PKCS15_PRKEY_USAGE_NONREPUDIATION	0x200
+#define SC_PKCS15_PRKEY_USAGE_ENCAPSULATE	0x400
+#define SC_PKCS15_PRKEY_USAGE_DECAPSULATE	0x800
 
 #define SC_PKCS15_PRKEY_ACCESS_SENSITIVE	0x01
 #define SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE	0x02
@@ -364,6 +377,7 @@ struct sc_pkcs15_prkey_info {
 	/* convert to union if other types are supported */
 	size_t modulus_length; /* RSA, in bits */
 	size_t field_length;   /* EC in bits */
+	unsigned long parameter_set; /* For PQC keys */
 
 	unsigned int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
 
@@ -385,6 +399,7 @@ struct sc_pkcs15_pubkey_info {
 	/* convert to union if other types are supported */
 	size_t modulus_length; /* RSA */
 	size_t field_length;   /* EC in bits */
+	unsigned long parameter_set; /* For PQC keys */
 
 	unsigned int algo_refs[SC_MAX_SUPPORTED_ALGORITHMS];
 
@@ -421,6 +436,9 @@ typedef struct sc_pkcs15_skey_info sc_pkcs15_skey_info_t;
 #define SC_PKCS15_TYPE_PRKEY_EC		0x104
 #define SC_PKCS15_TYPE_PRKEY_EDDSA		0x105
 #define SC_PKCS15_TYPE_PRKEY_XEDDSA		0x106
+#define SC_PKCS15_TYPE_PRKEY_ML_DSA		0x107
+#define SC_PKCS15_TYPE_PRKEY_ML_KEM		0x108
+#define SC_PKCS15_TYPE_PRKEY_SLH_DSA		0x109
 
 #define SC_PKCS15_TYPE_PUBKEY			0x200
 #define SC_PKCS15_TYPE_PUBKEY_RSA		0x201
@@ -428,6 +446,9 @@ typedef struct sc_pkcs15_skey_info sc_pkcs15_skey_info_t;
 #define SC_PKCS15_TYPE_PUBKEY_EC		0x204
 #define SC_PKCS15_TYPE_PUBKEY_EDDSA		0x205
 #define SC_PKCS15_TYPE_PUBKEY_XEDDSA		0x206
+#define SC_PKCS15_TYPE_PUBKEY_ML_DSA		0x207
+#define SC_PKCS15_TYPE_PUBKEY_ML_KEM		0x208
+#define SC_PKCS15_TYPE_PUBKEY_SLH_DSA		0x209
 
 #define SC_PKCS15_TYPE_SKEY			0x300
 #define SC_PKCS15_TYPE_SKEY_GENERIC		0x301
@@ -1027,6 +1048,18 @@ int sc_pkcs15emu_add_xeddsa_prkey(struct sc_pkcs15_card *,
 	const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
 int sc_pkcs15emu_add_xeddsa_pubkey(struct sc_pkcs15_card *,
 	const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
+int sc_pkcs15emu_add_mldsa_prkey(struct sc_pkcs15_card *,
+		const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
+int sc_pkcs15emu_add_mldsa_pubkey(struct sc_pkcs15_card *,
+		const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
+int sc_pkcs15emu_add_mlkem_prkey(struct sc_pkcs15_card *,
+		const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
+int sc_pkcs15emu_add_mlkem_pubkey(struct sc_pkcs15_card *,
+		const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
+int sc_pkcs15emu_add_slhdsa_prkey(struct sc_pkcs15_card *,
+		const struct sc_pkcs15_object *, const sc_pkcs15_prkey_info_t *);
+int sc_pkcs15emu_add_slhdsa_pubkey(struct sc_pkcs15_card *,
+		const struct sc_pkcs15_object *, const sc_pkcs15_pubkey_info_t *);
 int sc_pkcs15emu_add_x509_cert(struct sc_pkcs15_card *,
 	const struct sc_pkcs15_object *, const sc_pkcs15_cert_info_t *);
 int sc_pkcs15emu_add_data_object(struct sc_pkcs15_card *,
