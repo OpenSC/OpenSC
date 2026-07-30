@@ -722,6 +722,9 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 	case CKM_ECDSA_SHA256:
 	case CKM_ECDSA_SHA384:
 	case CKM_ECDSA_SHA512:
+	case CKM_EDDSA:
+	case CKM_ML_DSA:
+	case CKM_SLH_DSA:
 		sc_log(context, "Trying to verify using EVP (md==NULL)");
 
 		/* If needed, hash input first */
@@ -799,8 +802,45 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 			EVP_MD_CTX_free(md_ctx);
 			break;
 #endif /* defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_ED448) */
-		default:
-			sc_log(context, "Unknown base type %u.", EVP_PKEY_base_id(pkey));
+#ifdef EVP_PKEY_ML_DSA_44
+		default: {
+			const char *name = NULL;
+			sc_log(context, "Unknown base type %u. Try provider-backed matching",
+					EVP_PKEY_base_id(pkey));
+			if (EVP_PKEY_is_a(pkey, "ML-DSA-44")) {
+				name = "ML-DSA-44";
+			} else if (EVP_PKEY_is_a(pkey, "ML-DSA-65")) {
+				name = "ML-DSA-65";
+			} else if (EVP_PKEY_is_a(pkey, "ML-DSA-87")) {
+				name = "ML-DSA-87";
+			}
+			if (name != NULL) {
+				EVP_SIGNATURE *sig = NULL;
+
+				ctx = EVP_PKEY_CTX_new_from_pkey(NULL, pkey, NULL);
+				if (ctx == NULL) {
+					EVP_PKEY_free(pkey);
+					return CKR_GENERAL_ERROR;
+				}
+
+				sig = EVP_SIGNATURE_fetch(NULL, name, NULL);
+				if (sig == NULL) {
+					EVP_PKEY_free(pkey);
+					EVP_PKEY_CTX_free(ctx);
+					return CKR_GENERAL_ERROR;
+				}
+
+				rv = EVP_PKEY_verify_message_init(ctx, sig, NULL);
+				if (rv == 1) {
+					res = EVP_PKEY_verify(ctx, signat, signat_len, data, data_len);
+				}
+				EVP_PKEY_CTX_free(ctx);
+				ctx = NULL;
+				EVP_SIGNATURE_free(sig);
+			}
+			break;
+		}
+#endif /* EVP_PKEY_ML_DSA_44 */
 		}
 
 		EVP_PKEY_free(pkey);

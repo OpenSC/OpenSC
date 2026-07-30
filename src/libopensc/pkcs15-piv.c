@@ -244,6 +244,50 @@ static int piv_detect_card(sc_pkcs15_card_t *p15card)
 	return SC_SUCCESS;
 }
 
+unsigned long
+get_mldsa_parameter_set(sc_card_t *card, int ref)
+{
+	sc_cardctl_piv_pubkey_info_t info = {0};
+	int r;
+
+	info.slot = ref;
+	r = sc_card_ctl(card, SC_CARDCTL_PIV_YK_GET_PUBKEY_INFO, &info);
+	if (r)
+		return 0;
+
+	switch (info.algorithm) {
+	case 0xE2:
+		return SC_ALGORITHM_MLDSA_44;
+	case 0xE3:
+		return SC_ALGORITHM_MLDSA_65;
+	case 0xE4:
+		return SC_ALGORITHM_MLDSA_87;
+	}
+	return 0;
+}
+
+unsigned long
+get_mlkem_parameter_set(sc_card_t *card, int ref)
+{
+	sc_cardctl_piv_pubkey_info_t info = {0};
+	int r;
+
+	info.slot = ref;
+	r = sc_card_ctl(card, SC_CARDCTL_PIV_YK_GET_PUBKEY_INFO, &info);
+	if (r)
+		return 0;
+
+	switch (info.algorithm) {
+	case 0xE5:
+		return SC_ALGORITHM_MLKEM_512;
+	case 0xE6:
+		return SC_ALGORITHM_MLKEM_768;
+	case 0xE7:
+		return SC_ALGORITHM_MLKEM_1024;
+	}
+	return 0;
+}
+
 static int
 yk_copy_pubkey_from_tag(sc_cardctl_piv_pubkey_info_t *info, struct sc_pkcs15_u8 *dst, unsigned int tag_exp)
 {
@@ -926,7 +970,12 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			case SC_ALGORITHM_EC:
 			case SC_ALGORITHM_EDDSA:
 			case SC_ALGORITHM_XEDDSA:
-				ckis[i].pubkey_len = cert_out->key->u.ec.params.field_length;
+			case SC_ALGORITHM_MLDSA:
+				if (cert_out->key->algorithm == SC_ALGORITHM_MLDSA) {
+					ckis[i].pubkey_len = cert_out->key->u.pqc.value.len;
+				} else {
+					ckis[i].pubkey_len = cert_out->key->u.ec.params.field_length;
+				}
 				if (ckis[i].cert_keyUsage_present) {
 					if (ckis[i].cert_keyUsage & SC_X509_DIGITAL_SIGNATURE) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY;
@@ -965,6 +1014,9 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 						ckis[i].priv_usage |= 0;
 					}
 				}
+				break;
+			case SC_ALGORITHM_MLKEM:
+				// TODO encapsulate/decapsulate key usage
 				break;
 
 			default:
@@ -1151,6 +1203,70 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					}
 					pubkey.algorithm = SC_ALGORITHM_XEDDSA;
 					break;
+				case 0xE2: // Yubico extension: ML-DSA
+				case 0xE3:
+				case 0xE4:
+					r = yk_copy_pubkey_from_tag(&info, &pubkey.u.pqc.value, 0x87);
+					if (r != SC_SUCCESS) {
+						sc_log(card->ctx, "Failed to parse ML-DSA public key. %d", r);
+						continue;
+					}
+					pubkey.algorithm = SC_ALGORITHM_MLDSA;
+					/* Prepare algorithm information for proper SPKI creation */
+					pubkey.alg_id = calloc(1, sizeof(struct sc_algorithm_id));
+					if (pubkey.alg_id == NULL) {
+						sc_log(card->ctx, "Failed to allocate pubkey alg_id");
+						continue;
+					}
+					switch (info.algorithm) {
+					case 0xE2:
+						r = sc_format_oid(&pubkey.alg_id->oid, "2.16.840.1.101.3.4.3.17");
+						break;
+					case 0xE3:
+						r = sc_format_oid(&pubkey.alg_id->oid, "2.16.840.1.101.3.4.3.18");
+						break;
+					case 0xE4:
+						r = sc_format_oid(&pubkey.alg_id->oid, "2.16.840.1.101.3.4.3.19");
+						break;
+					}
+					if (r != SC_SUCCESS) {
+						sc_log(card->ctx, "Failed to format ML-DSA OID");
+						continue;
+					}
+					pubkey.alg_id->algorithm = pubkey.algorithm;
+					break;
+				case 0xE5: // Yubico extension: ML-KEM
+				case 0xE6:
+				case 0xE7:
+					r = yk_copy_pubkey_from_tag(&info, &pubkey.u.pqc.value, 0x88);
+					if (r != SC_SUCCESS) {
+						sc_log(card->ctx, "Failed to parse ML-KEM public key. %d", r);
+						continue;
+					}
+					pubkey.algorithm = SC_ALGORITHM_MLKEM;
+					/* Prepare algorithm information for proper SPKI creation */
+					pubkey.alg_id = calloc(1, sizeof(struct sc_algorithm_id));
+					if (pubkey.alg_id == NULL) {
+						sc_log(card->ctx, "Failed to allocate pubkey alg_id");
+						continue;
+					}
+					switch (info.algorithm) {
+					case 0xE5:
+						r = sc_format_oid(&pubkey.alg_id->oid, "2.16.840.1.101.3.4.4.1");
+						break;
+					case 0xE6:
+						r = sc_format_oid(&pubkey.alg_id->oid, "2.16.840.1.101.3.4.4.2");
+						break;
+					case 0xE7:
+						r = sc_format_oid(&pubkey.alg_id->oid, "2.16.840.1.101.3.4.4.3");
+						break;
+					}
+					if (r != SC_SUCCESS) {
+						sc_log(card->ctx, "Failed to format ML-KEM OID");
+						continue;
+					}
+					pubkey.alg_id->algorithm = pubkey.algorithm;
+					break;
 				default:
 					sc_log(card->ctx, "Got unknown algorithm ID %d", info.algorithm);
 					continue;
@@ -1229,6 +1345,11 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				ckis[i].key_alg = p15_key->algorithm;
 				ckis[i].pubkey_len = p15_key->u.ec.params.field_length;
 				break;
+			case SC_ALGORITHM_MLDSA:
+			case SC_ALGORITHM_MLKEM:
+				ckis[i].pubkey_len = p15_key->u.pqc.value.len;
+				ckis[i].key_alg = p15_key->algorithm;
+				break;
 			default:
 				sc_log(card->ctx, "Unsupported key_alg %lu", p15_key->algorithm);
 				continue;
@@ -1286,6 +1407,46 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 
 			LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add EC pubkey");
+
+			ckis[i].pubkey_found = 1;
+			break;
+		case SC_ALGORITHM_MLDSA:
+			if (ckis[i].cert_keyUsage_present) {
+				pubkey_info.usage = ckis[i].pub_usage;
+			} else {
+				pubkey_info.usage = SC_PKCS15_PRKEY_USAGE_VERIFY;
+			}
+			pubkey_info.field_length = ckis[i].pubkey_len;
+			pubkey_info.parameter_set = get_mldsa_parameter_set(card, pubkeys[i].ref);
+			if (pubkey_info.parameter_set == 0) {
+				sc_log(card->ctx, "Unknown ML-DSA Key size %zu", ckis[i].pubkey_len);
+				continue;
+			}
+			strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+
+			/* should not fail */
+			r = sc_pkcs15emu_add_mldsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add ML-DSA pubkey");
+
+			ckis[i].pubkey_found = 1;
+			break;
+		case SC_ALGORITHM_MLKEM:
+			if (ckis[i].cert_keyUsage_present) {
+				pubkey_info.usage = ckis[i].pub_usage;
+			} else {
+				pubkey_info.usage = SC_PKCS15_PRKEY_USAGE_ENCAPSULATE;
+			}
+			pubkey_info.field_length = ckis[i].pubkey_len;
+			pubkey_info.parameter_set = get_mlkem_parameter_set(card, pubkeys[i].ref);
+			if (pubkey_info.parameter_set == 0) {
+				sc_log(card->ctx, "Unknown ML-KEM Key size %zu", ckis[i].pubkey_len);
+				continue;
+			}
+			strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+
+			/* should not fail */
+			r = sc_pkcs15emu_add_mlkem_pubkey(p15card, &pubkey_obj, &pubkey_info);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add ML-KEM pubkey");
 
 			ckis[i].pubkey_found = 1;
 			break;
@@ -1356,12 +1517,13 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		 * normal usage would not allow it. Set SC_PKCS15_PRKEY_USAGE_SIGN
 		 * TODO if code is added to allow key generation and request
 		 * sign in the same session, similar code will be needed.
-		 * Exclude XEDDSA keys as they are not signing capable
+		 * Exclude XEDDSA and ML-KEM keys as they are not signing capable
 		 */
 
 		if (ckis[i].pubkey_from_file == 1) {
 			switch (ckis[i].key_alg) {
 			case SC_ALGORITHM_XEDDSA:
+			case SC_ALGORITHM_MLKEM:
 				break;
 			default:
 				prkey_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN;
@@ -1402,6 +1564,30 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				r = sc_pkcs15emu_add_xeddsa_prkey(p15card, &prkey_obj, &prkey_info);
 			else
 				r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
+			break;
+		case SC_ALGORITHM_MLDSA:
+			if (!ckis[i].cert_keyUsage_present) {
+				prkey_info.usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
+			}
+			prkey_info.field_length = ckis[i].pubkey_len;
+			prkey_info.parameter_set = get_mldsa_parameter_set(card, prkeys[i].ref);
+			if (prkey_info.parameter_set == 0) {
+				sc_log(card->ctx, "Unknown ML-DSA Key size %zu", ckis[i].pubkey_len);
+				continue;
+			}
+			r = sc_pkcs15emu_add_mldsa_prkey(p15card, &prkey_obj, &prkey_info);
+			break;
+		case SC_ALGORITHM_MLKEM:
+			if (!ckis[i].cert_keyUsage_present) {
+				prkey_info.usage |= SC_PKCS15_PRKEY_USAGE_DECAPSULATE;
+			}
+			prkey_info.field_length = ckis[i].pubkey_len;
+			prkey_info.parameter_set = get_mlkem_parameter_set(card, prkeys[i].ref);
+			if (prkey_info.parameter_set == 0) {
+				sc_log(card->ctx, "Unknown ML-KEM Key size %zu", ckis[i].pubkey_len);
+				continue;
+			}
+			r = sc_pkcs15emu_add_mlkem_prkey(p15card, &prkey_obj, &prkey_info);
 			break;
 		default:
 			sc_log(card->ctx, "Unsupported key_alg %lu", ckis[i].key_alg);
