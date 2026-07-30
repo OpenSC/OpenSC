@@ -6366,9 +6366,7 @@ static CK_RV register_eddsa_mechanisms(struct sc_pkcs11_card *p11card, int flags
 	mech_info.ulMaxKeySize = max_key_size;
 
 #ifdef ENABLE_OPENSSL
-	/* TODO verification using EDDSA
 	mech_info.flags |= CKF_VERIFY;
-	*/
 #endif
 	if (flags & SC_ALGORITHM_EDDSA_RAW) {
 		mt = sc_pkcs11_new_fw_mechanism(CKM_EDDSA, &mech_info, CKK_EC_EDWARDS, NULL, NULL, NULL);

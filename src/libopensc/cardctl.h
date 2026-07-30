@@ -181,6 +181,7 @@ enum {
 	SC_CARDCTL_PIV_PIN_PREFERENCE,
 	SC_CARDCTL_PIV_OBJECT_PRESENT,
 	SC_CARDCTL_PIV_YK_PIN_POLICY,
+	SC_CARDCTL_PIV_YK_GET_PUBKEY_INFO,
 
 	/*
 	 * CAC specific calls
@@ -859,6 +860,12 @@ typedef struct sc_cardctl_piv_genkey_info_st {
 	size_t    ecpoint_len;    /* EC */
 
 } sc_cardctl_piv_genkey_info_t;
+
+typedef struct sc_cardctl_piv_pubkey_info_st {
+	int slot;
+	struct sc_lv_data pubkey;
+	u8 algorithm;
+} sc_cardctl_piv_pubkey_info_t;
 
 /*
  * OpenPGP
