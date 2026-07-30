@@ -2010,7 +2010,7 @@ write_publickey (struct sc_card *card, unsigned int offset,
 				const unsigned char *buf, size_t count)
 {
 	struct auth_update_component_info args;
-	struct sc_pkcs15_pubkey_rsa key;
+	struct sc_pkcs15_pubkey_rsa key = {0};
 	int ii, rv;
 	size_t len = 0, der_size = 0;
 
