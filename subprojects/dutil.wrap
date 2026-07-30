@@ -1,0 +1,7 @@
+[wrap-file]
+source_url = https://www.nuget.org/api/v2/package/WixToolset.DUtil/6.0.2
+source_filename = dutil-6.0.2.zip
+source_hash = 3428929aec192370ae17ac834e05f8b9b423b5346141e277c4f216094830c9de
+lead_directory_missing = true
+
+patch_directory = dutil

@@ -1,4 +1,7 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
+<?ifndef BUILD_DIR ?>
+  <?define BUILD_DIR = "$(var.SOURCE_DIR)" ?>
+<?endif?>
 <?ifndef OpenSSL ?>
   <?define ProductFlavor = " Light" ?>
 <?else?>
@@ -14,11 +17,13 @@
   <?define PlatformUpgradeCode = "{63666c12-c4b5-4e55-87af-3babcd563c28}" ?>
   <?define BUILD_ARCH = "ARM64" ?>
   <?define SUFFIX = "_arm64" ?>
-<?else?>
+<?elseif $(sys.BUILDARCH) = x86 ?>
   <?define ProductArch = "" ?>
   <?define PlatformUpgradeCode = "{69428F65-B96D-458D-BB87-DBB5FDB35DCE}" ?>
   <?define BUILD_ARCH = "x86" ?>
   <?define SUFFIX = "" ?>
+<?else ?>
+<?error Unsupported architecture: must be x86, x64 or arm64 only ?>
 <?endif?>
 
 <Wix RequiredVersion="5.0"
@@ -36,15 +41,15 @@
     <MajorUpgrade AllowSameVersionUpgrades="yes" Schedule="afterInstallInitialize" DowngradeErrorMessage=
         "A newer version of [ProductName] is already installed. If you are trying to downgrade, please uninstall the newer version first." />
     <!-- Setup background images -->
-    <WixVariable Id="WixUIBannerBmp" Value="bannrbmp.bmp" />
-    <WixVariable Id="WixUIDialogBmp" Value="dlgbmp.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(var.SOURCE_DIR)\win32\bannrbmp.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="$(var.SOURCE_DIR)\win32\dlgbmp.bmp" />
     <!-- Links in info -->
     <Property Id="ARPHELPLINK" Value="$(var.PRODUCT_BUGREPORT)" />
     <Property Id="ARPURLINFOABOUT" Value="$(var.PRODUCT_URL)" />
     <Property Id="ARPURLUPDATEINFO" Value="$(var.VS_FF_PRODUCT_UPDATES)" />
     <Property Id="ARPCONTACT" Value="$(var.VS_FF_LEGAL_COMPANY_URL)" />
 
-    <Icon Id="OpenSC.ico" SourceFile="OpenSC.ico" />
+    <Icon Id="OpenSC.ico" SourceFile="$(var.SOURCE_DIR)\win32\OpenSC.ico" />
     <Property Id="ARPPRODUCTICON" Value="OpenSC.ico" />
 
     <Property Id="NATIVE_ARCH">
@@ -111,27 +116,29 @@
         <?endif?>
       </Feature>
 
+<?ifdef ENABLE_PKCS11 ?>
       <Feature Id="OpenSC_pkcs11" Level="1" Title="PKCS#11 module"
           Description="Security module that can be used by most cross-platform software, for example Firefox, Thunderbird, OpenVPN, etc.">
-        <File Directory="INSTALLDIR_PKCS11" Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" />
-        <File Directory="INSTALLDIR_PKCS11" Name="onepin-opensc-pkcs11.dll" Source="$(var.SOURCE_DIR)\src\pkcs11\opensc-pkcs11.dll" />
+        <File Directory="INSTALLDIR_PKCS11" Source="$(var.BUILD_DIR)\src\pkcs11\opensc-pkcs11.dll" />
+        <File Directory="INSTALLDIR_PKCS11" Name="onepin-opensc-pkcs11.dll" Source="$(var.BUILD_DIR)\src\pkcs11\opensc-pkcs11.dll" />
       </Feature>
 
       <Feature Id="PKCS11_spy" Level="1" Title="PKCS#11 Spy module"
           Description="PKCS#11 module for debugging library invocations.">
         <Component Directory="OpenSC_Project_Dir" Subdirectory="PKCS11-Spy$(var.SUFFIX)">
-          <File Source="$(var.SOURCE_DIR)\src\pkcs11\pkcs11-spy.dll" />
+          <File Source="$(var.BUILD_DIR)\src\pkcs11\pkcs11-spy.dll" />
           <RegistryKey Root="HKLM" Key="Software\[Manufacturer]\PKCS11-Spy$(var.SUFFIX)">
             <RegistryValue Type="string" Name="Module" Value="[INSTALLDIR_PKCS11]opensc-pkcs11.dll" />
             <RegistryValue Type="string" Name="Output" Value="%TEMP%\pkcs11-spy.log" />
           </RegistryKey>
         </Component>
       </Feature>
+<?endif ?>
 
 <?ifdef ENABLE_MINIDRIVER ?>
       <Feature Id="OpenSC_minidriver" Level="1" Title="Smart card minidriver"
           Description="Security module that can be used by native Windows applications, for example Edge, Chrome, Microsoft Office, Acrobat Reader, etc.">
-        <File Directory="INSTALLDIR" Subdirectory="minidriver" Source="$(var.SOURCE_DIR)\src\minidriver\opensc-minidriver.dll" />
+        <File Directory="INSTALLDIR" Subdirectory="minidriver" Source="$(var.BUILD_DIR)\src\minidriver\opensc-minidriver.dll" />
         <!-- install an alias for the Base smart card CSP. Using a different CSP in minidriver installation deactivate the plug and play feature
             but not all other components like the pin change screen available after ctrl+alt+del.
             It is because the "80000001" entry is still returning the minidriver dll.-->
@@ -155,19 +162,21 @@
       </Feature>
 <?endif ?>
 
+<?ifdef ENABLE_TOOLS ?>
       <Feature Id="OpenSC_tools" Level="1" Title="Command line tools"
           Description="OpenSC tools for debugging and smart card personalization.">
         <?ifdef zlib ?>
           <File Directory="INSTALLDIR_TOOLS" Id="zlib1.dll" Source="$(var.zlib)\zlib1.dll" />
         <?endif?>
-        <File Id="opensc.dll" Directory="INSTALLDIR_TOOLS" Source="$(var.SOURCE_DIR)\src\libopensc\opensc.dll" />
-        <Files Directory="INSTALLDIR_TOOLS" Include="$(var.SOURCE_DIR)\src\tools\*.exe" />
+        <File Id="opensc.dll" Directory="INSTALLDIR_TOOLS" Source="$(var.BUILD_DIR)\src\libopensc\opensc.dll" />
+        <Files Directory="INSTALLDIR_TOOLS" Include="$(var.BUILD_DIR)\src\tools\*.exe" />
 
         <?ifdef OpenSSL ?>
-          <File Directory="INSTALLDIR_TOOLS" Id="smm_local.dll" Source="$(var.SOURCE_DIR)\src\smm\smm-local.dll" />
+          <File Directory="INSTALLDIR_TOOLS" Id="smm_local.dll" Source="$(var.BUILD_DIR)\src\smm\smm-local.dll" />
           <Files Directory="INSTALLDIR_PROFILES" Include="$(var.SOURCE_DIR)\src\pkcs15init\*.profile" />
         <?endif?>
 
+<?ifdef ENABLE_NOTIFY ?>
         <Feature Id="OpenSC_autostart" Level="1" Title="Autostart entries"
             Description="After login, start smart card notifications.">
           <Component Condition="BUILD_ARCH = NATIVE_ARCH">
@@ -175,6 +184,7 @@
               Type="string" Name="opensc-notify.exe" Value="[INSTALLDIR_TOOLS]\opensc-notify.exe" />
           </Component>
         </Feature>
+<?endif ?>
       </Feature>
 
       <Feature Id="OpenSC_menu" Level="1" Title="Start menu entries"
@@ -186,10 +196,11 @@
         </Component>
       </Feature>
     </Feature>
+<?endif ?>
 
 <?ifdef ENABLE_MINIDRIVER ?>
     <!--Custom actions-->
-    <Binary Id="customactions" SourceFile="$(var.SOURCE_DIR)\win32\customactions.dll" />
+    <Binary Id="customactions" SourceFile="$(var.BUILD_DIR)\win32\customactions.dll" />
     <CustomAction Id="RemoveSmartCardConfiguration" BinaryRef="customactions" DllEntry="RemoveSmartCardConfiguration" Execute="deferred" Impersonate="no" />
     <CustomAction Id="AddSmartCardConfiguration" BinaryRef="customactions" DllEntry="AddSmartCardConfiguration" Execute="commit" Impersonate="no" />
 

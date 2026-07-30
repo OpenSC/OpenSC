@@ -1,0 +1,10 @@
+[wrap-file]
+directory = openpace-1.1.4
+source_url = https://github.com/frankmorgner/openpace/releases/download/1.1.4/openpace-1.1.4.tar.gz
+source_filename = openpace-1.1.4.tar.gz
+source_hash = 36954f0385a1cb9805a02cffbd0d99f2b3a0598a125edfa160b4cca65b417854
+
+patch_directory = openpace
+
+[provide]
+libeac = depeac

@@ -23,6 +23,9 @@
  */
 
 #include "config.h"
+
+#include <windows.h>
+
 #ifdef ENABLE_MINIDRIVER
 
 #ifdef _MANAGED
@@ -32,7 +35,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <windows.h>
 #include <tchar.h>
 #include <strsafe.h>
 

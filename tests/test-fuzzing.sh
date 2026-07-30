@@ -2,15 +2,21 @@
 
 set -ex
 
+if [ -z "$MESON_BUILD_ROOT" ]; then
+	ROOT=""
+else
+	ROOT="$MESON_BUILD_ROOT/"
+fi
+
 case "$1" in
     "pkcs11-tool")
-        CMD="src/tools/pkcs11-tool --test --login --pin 123456"
+        CMD="${ROOT}src/tools/pkcs11-tool --test --login --pin 123456"
         ;;
     "pkcs15-tool")
-        CMD="src/tools/pkcs15-tool --dump"
+        CMD="${ROOT}src/tools/pkcs15-tool --dump"
         ;;
     "eidenv")
-        CMD="src/tools/eidenv"
+        CMD="${ROOT}src/tools/eidenv"
         ;;
     *)
         echo "Unknown fuzzing target"

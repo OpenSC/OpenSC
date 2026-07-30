@@ -9,34 +9,54 @@ if [ -z "$__p15init__" ]; then
 	p15base=${P15_BASE:-../..}
 	p15temp=${P15_TEMP:-./test-data}
 
-	if [ "$1" == "--installed" ]
-	then
-		osctool=opensc-tool
-		p15crypt=pkcs15-crypt
-		p15tool=pkcs15-tool
-		p15init=pkcs15-init
-		p11tool=pkcs11-tool
-		p11module=/usr/lib/opensc-pkcs11.so
-		p15log=$p15temp/test.log
-		terrlog=$p15temp/terror.log
-		shift
+	p15log="$p15temp/test.log"
+	terrlog="$p15temp/terror.log"
+
+	if [ -z "$MESON_BUILD_ROOT" ]; then
+		if [ "$1" == "--installed" ]
+		then
+			osctool=opensc-tool
+			p15crypt=pkcs15-crypt
+			p15tool=pkcs15-tool
+			p15init=pkcs15-init
+			p11tool=pkcs11-tool
+			p11module=/usr/lib/opensc-pkcs11.so
+			shift
+		else
+			osctool="$p15base/tools/opensc-tool"
+			p15crypt="$p15base/tools/pkcs15-crypt"
+			p15tool="$p15base/tools/pkcs15-tool"
+			p15init="$p15base/tools/pkcs15-init"
+			p15dump="$p15base/tests/p15dump"
+			p11tool="$p15base/tools/pkcs11-tool"
+			p11module="$p15base/pkcs11/.libs/opensc-pkcs11.so"
+		fi
 	else
-		osctool=$p15base/tools/opensc-tool
-		p15crypt=$p15base/tools/pkcs15-crypt
-		p15tool=$p15base/tools/pkcs15-tool
-		p15init=$p15base/tools/pkcs15-init
-		p15dump=$p15base/tests/p15dump
-		p11tool=$p15base/tools/pkcs11-tool
-		p11module=$p15base/pkcs11/.libs/opensc-pkcs11.so
-		p15log=$p15temp/test.log
-		terrlog=$p15temp/terror.log
-	
-		for bin in $osctool $p15tool $p15crypt $p15init $p11tool; do
-			test -x $bin && continue
-			echo "*** Missing binary $bin" >&2
-			exit 1
-		done
+		if [ "$1" == "--installed" ]
+		then
+			osctool=opensc-tool
+			p15crypt=pkcs15-crypt
+			p15tool=pkcs15-tool
+			p15init=pkcs15-init
+			p11tool=pkcs11-tool
+			p11module=/usr/lib/libopensc-pkcs11.so
+			shift
+		else
+			osctool="$MESON_BUILD_ROOT/src/tools/opensc-tool"
+			p15crypt="$MESON_BUILD_ROOT/src/tools/pkcs15-crypt"
+			p15tool="$MESON_BUILD_ROOT/src/tools/pkcs15-tool"
+			p15init="$MESON_BUILD_ROOT/src/tools/pkcs15-init"
+			p15dump="$MESON_BUILD_ROOT/src/tests/p15dump"
+			p11tool="$MESON_BUILD_ROOT/src/tools/pkcs11-tool"
+			p11module="$MESON_BUILD_ROOT/src/pkcs11/libopensc-pkcs11.so"
+		fi
 	fi
+
+	for bin in $osctool $p15tool $p15crypt $p15init $p11tool; do
+		test -x $bin && continue
+		echo "*** Missing binary $bin" >&2
+		exit 1
+	done
 
 	# Eat any arguments given on the command line
 	while [ $# -ne 0 ]; do

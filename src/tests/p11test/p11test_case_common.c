@@ -20,7 +20,7 @@
  */
 
 #include "p11test_case_common.h"
-#include "../../libopensc/sc-ossl-compat.h"
+#include "libopensc/sc-ossl-compat.h"
 
 /* Unsigned long can be up to 16 B long. We print also leading "0x" and we need trailing NULL byte */
 #define FLAG_BUFFER_LEN 19
