@@ -110,10 +110,14 @@ MacOSX/resources/Welcome.html
 build/
 engine_pkcs11/
 libp11/
+openpace/
+kryoptic/
+softokn/
 target/
 target_startup/
 
 src/scconf/test-conf
+src/pkcs11/opensc.module
 
 src/tests/base64
 src/tests/lottery
@@ -127,11 +131,14 @@ tests/*.trs
 src/tests/unittests/*.log
 src/tests/unittests/*.trs
 src/tests/unittests/asn1
+src/tests/unittests/base64
 src/tests/unittests/cachedir
 src/tests/unittests/compression
 src/tests/unittests/openpgp-tool
 src/tests/unittests/pkcs15filter
+src/tests/unittests/parse_pkcs11_uri
 src/tests/unittests/simpletlv
+src/tests/unittests/strip_pkcs1_2_padding
 src/tests/unittests/sm
 src/tests/unittests/check_macro_reference_loop
 src/tests/unittests/decode_ecdsa_signature
