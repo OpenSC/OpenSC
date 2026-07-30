@@ -17,10 +17,21 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  *
- * The card is a Gemalto/Thales "Classic V4" IAS/ECC platform card, but the
- * subset it exposes over the contact interface is plain ISO 7816, so the
+ * The card is a Gemalto/Thales IAS/ECC platform.  AGESIC issues it in
+ * two applet versions: "IAS Classic v4" (2015 chip, contact only) and
+ * "IAS Classic v5" (2022 chip, MultiApp V5.0, a dual-interface card with
+ * a contactless/NFC side).  Both are supported here over the contact
+ * interface, where the subset they expose is plain ISO 7816, so the
  * driver is built on the generic iso7816 operations.  The IAS application
  * must be selected by AID before anything on the card is accessible.
+ *
+ * The driver does not tell the two versions apart: the ATR is matched
+ * with the applet-version and batch bytes masked out, so one table entry
+ * covers every batch.  The way to distinguish them, which will matter for
+ * the planned contactless/NFC support that only the v5 card offers, is the
+ * applet label read with GET DATA (tag 7F30, object C0): the ASCII string
+ * is either "IAS Classic v4" or "IAS Classic v5".  This is documented by
+ * AGESIC and does not depend on the ATR.
  *
  * The card conventions come from the public documentation and reference code
  * published by AGESIC, Uruguay's national e-government agency ("Documentación
