@@ -272,10 +272,10 @@ add_supported_mechs(test_cert_t *o)
 		}
 		break;
 #endif /* EVP_PKEY_ML_DSA_44 */
-#ifdef EVP_PKEY_ML_KEM_512
-	case EVP_PKEY_ML_KEM_512:
-	case EVP_PKEY_ML_KEM_768:
-	case EVP_PKEY_ML_KEM_1024:
+#ifdef NID_ML_KEM_512 /* Note, that the EVP_PKEY_ML_KEM_* aliases made it to OpenSSL after 3.5 */
+	case NID_ML_KEM_512:
+	case NID_ML_KEM_768:
+	case NID_ML_KEM_1024:
 		if (token.num_ml_kem_mechs > 0) {
 			o->num_mechs = token.num_ml_kem_mechs;
 			for (i = 0; i < token.num_ml_kem_mechs; i++) {
@@ -295,7 +295,7 @@ add_supported_mechs(test_cert_t *o)
 			o->mechs[0].usage_flags = CKF_ENCAPSULATE | CKF_DECAPSULATE;
 		}
 		break;
-#endif /* EVP_PKEY_ML_KEM_512 */
+#endif /* NID_ML_KEM_512 */
 #ifdef EVP_PKEY_SLH_DSA_SHA2_128S
 	case EVP_PKEY_SLH_DSA_SHA2_128S:
 	case EVP_PKEY_SLH_DSA_SHAKE_128S:
@@ -943,7 +943,7 @@ int callback_public_keys(test_certs_t *objects,
 			o->bits = exp_length * 8;
 		}
 		ASN1_STRING_free(os);
-#if defined(EVP_PKEY_ML_DSA_44) || defined(EVP_PKEY_ML_KEM_512) || defined(EVP_PKEY_SLH_DSA_SHA2_128S)
+#if defined(EVP_PKEY_ML_DSA_44) || defined(NID_ML_KEM_512) || defined(EVP_PKEY_SLH_DSA_SHA2_128S)
 	} else if (o->key_type == CKK_ML_DSA ||
 			o->key_type == CKK_ML_KEM ||
 			o->key_type == CKK_SLH_DSA) {
@@ -969,17 +969,17 @@ int callback_public_keys(test_certs_t *objects,
 				return -1;
 			}
 			break;
-#ifdef EVP_PKEY_ML_KEM_512
+#ifdef NID_ML_KEM_512
 		case CKK_ML_KEM:
 			switch (o->parameter_set) {
 			case CKP_ML_KEM_512:
-				base_id = EVP_PKEY_ML_KEM_512;
+				base_id = NID_ML_KEM_512;
 				break;
 			case CKP_ML_KEM_768:
-				base_id = EVP_PKEY_ML_KEM_768;
+				base_id = NID_ML_KEM_768;
 				break;
 			case CKP_ML_KEM_1024:
-				base_id = EVP_PKEY_ML_KEM_1024;
+				base_id = NID_ML_KEM_1024;
 				break;
 			default:
 				debug_print(" [WARN %s ] Unknown parameter set (%lu)",

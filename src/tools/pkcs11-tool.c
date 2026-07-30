@@ -4924,10 +4924,10 @@ evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type, struct ec_
 		return CKR_OK;
 #endif
 
-#if defined(EVP_PKEY_ML_KEM_512) && defined(EVP_PKEY_ML_KEM_768) && defined(EVP_PKEY_ML_KEM_1024)
-	case EVP_PKEY_ML_KEM_512:
-	case EVP_PKEY_ML_KEM_768:
-	case EVP_PKEY_ML_KEM_1024:
+#if defined(NID_ML_KEM_512) && defined(NID_ML_KEM_768) && defined(NID_ML_KEM_1024)
+	case NID_ML_KEM_512:
+	case NID_ML_KEM_768:
+	case NID_ML_KEM_1024:
 		*type = CKK_ML_KEM;
 		return CKR_OK;
 #endif
