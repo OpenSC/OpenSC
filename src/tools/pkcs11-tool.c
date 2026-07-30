@@ -6138,6 +6138,8 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = mech_mech;
 
+	if (opt_input == NULL)
+		util_fatal("Derive operation needs --input-file");
 	/*  Use OpenSSL to read the other public key, and get the raw version */
 	bio_in = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio_in, opt_input) <= 0)
