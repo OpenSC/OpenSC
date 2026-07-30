@@ -6665,6 +6665,11 @@ register_mldsa_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	mech_info.ulMinKeySize = min_key_size;
 	mech_info.ulMaxKeySize = max_key_size;
 
+#ifdef ENABLE_OPENSSL
+	mech_info.flags |= CKF_VERIFY;
+#endif
+	// TODO add HASH algorithms
+
 	mt = sc_pkcs11_new_fw_mechanism(CKM_ML_DSA, &mech_info, CKK_ML_DSA, NULL, NULL, NULL);
 	if (!mt)
 		return CKR_HOST_MEMORY;
@@ -6672,13 +6677,6 @@ register_mldsa_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	sc_pkcs11_free_mechanism(&mt);
 	if (rc != CKR_OK)
 		return rc;
-
-#ifdef ENABLE_OPENSSL
-	/* TODO verification using OpenSSL
-	mech_info.flags |= CKF_VERIFY;
-	*/
-#endif
-	// TODO add HASH algorithms
 
 	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
@@ -6749,11 +6747,9 @@ register_slhdsa_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 		return rc;
 
 #ifdef ENABLE_OPENSSL
-	/* TODO verification using OpenSSL
 	mech_info.flags |= CKF_VERIFY;
-	*/
 #endif
-	// TODO add HASH algorithms
+	// TODO add HASH algorithms?
 
 	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
