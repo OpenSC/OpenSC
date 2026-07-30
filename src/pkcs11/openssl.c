@@ -618,6 +618,7 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 	CK_RV rv = CKR_GENERAL_ERROR;
 	EVP_PKEY *pkey = NULL;
 	const unsigned char *pubkey_tmp = NULL;
+	EVP_MD_CTX *md_ctx = NULL;
 	int sLen;
 
 	if (mech->mechanism == CKM_GOSTR3410)
@@ -659,7 +660,7 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 		|| mech->mechanism == CKM_ECDSA_SHA384
 		|| mech->mechanism == CKM_ECDSA_SHA512
 		)) {
-		EVP_MD_CTX *md_ctx = DIGEST_CTX(md);
+		md_ctx = DIGEST_CTX(md);
 
 		/* This does not really use the data argument, but the data
 		 * are already collected in the md_ctx
@@ -778,16 +779,42 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 		}
 
 		res = 0;
-		r = sc_asn1_sig_value_rs_to_sequence(NULL, signat, signat_len,
-						     &signat_tmp, &signat_len_tmp);
-		ctx = sc_evp_pkey_ctx_new(context, pkey);
-		if (r == 0 && EVP_PKEY_base_id(pkey) == EVP_PKEY_EC && ctx && EVP_PKEY_verify_init(ctx) == 1)
-			res = EVP_PKEY_verify(ctx, signat_tmp, signat_len_tmp, data, data_len);
+		switch (EVP_PKEY_base_id(pkey)) {
+		case EVP_PKEY_EC:
+			ctx = sc_evp_pkey_ctx_new(context, pkey);
+			r = sc_asn1_sig_value_rs_to_sequence(NULL, signat, signat_len,
+					&signat_tmp, &signat_len_tmp);
+			if (r == 0 && ctx && EVP_PKEY_verify_init(ctx) == 1) {
+				res = EVP_PKEY_verify(ctx, signat_tmp, signat_len_tmp, data, data_len);
+			}
+			free(signat_tmp);
+			EVP_PKEY_CTX_free(ctx);
+			break;
+#ifdef EVP_PKEY_ED25519
+		case EVP_PKEY_ED25519:
+#endif
+#ifdef EVP_PKEY_ED448
+		case EVP_PKEY_ED448:
+#endif
+#if defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_ED448)
+			md_ctx = EVP_MD_CTX_create();
+			if (md_ctx == NULL) {
+				EVP_PKEY_free(pkey);
+				return CKR_GENERAL_ERROR;
+			}
 
-		EVP_PKEY_CTX_free(ctx);
+			rv = EVP_DigestVerifyInit(md_ctx, NULL, NULL, NULL, pkey);
+			if (rv == 1) {
+				res = EVP_DigestVerify(md_ctx, signat, signat_len, data, data_len);
+			}
+			EVP_MD_CTX_free(md_ctx);
+			break;
+#endif /* defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_ED448) */
+		default:
+			sc_log(context, "Unknown base type %u.", EVP_PKEY_base_id(pkey));
+		}
+
 		EVP_PKEY_free(pkey);
-		free(signat_tmp);
-		free(mdbuf);
 
 		if (res == 1) {
 			return CKR_OK;

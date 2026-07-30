@@ -244,6 +244,31 @@ static int piv_detect_card(sc_pkcs15_card_t *p15card)
 	return SC_SUCCESS;
 }
 
+static int
+yk_copy_pubkey_from_tag(sc_cardctl_piv_pubkey_info_t *info, struct sc_pkcs15_u8 *dst, unsigned int tag_exp)
+{
+	const unsigned char *p;
+	unsigned int cla, tag;
+	size_t tag_len;
+	int r;
+
+	p = info->pubkey.value;
+	r = sc_asn1_read_tag(&p, info->pubkey.len, &cla, &tag, &tag_len);
+	if (r != SC_SUCCESS) {
+		return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
+	}
+	if ((tag | cla) != tag_exp) {
+		return SC_ERROR_INVALID_ASN1_OBJECT;
+	}
+	dst->value = malloc(tag_len);
+	if (dst->value == NULL) {
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
+	memcpy(dst->value, p, tag_len);
+	dst->len = tag_len;
+
+	return SC_SUCCESS;
+}
 
 static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 {
@@ -1045,46 +1070,147 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		 *
 		 */
 		if (ckis[i].cert_found == 0 ) { /*  no cert found */
-			char * filename = NULL;
+			sc_cardctl_piv_pubkey_info_t info = {0};
 
 			sc_log(card->ctx, "No cert for this pub key i=%d",i);
 
-			/*
-			 * If we used the piv-tool to generate a key,
-			 * we would have saved the public key as a file.
-			 * This code is only used while signing a request
-			 * After the certificate is loaded on the card,
-			 * the public key is extracted from the certificate.
-			 */
+			/* First try to use yubikey extension to pull missing public key from metadata */
+			info.slot = pubkeys[i].ref;
+			r = sc_card_ctl(card, SC_CARDCTL_PIV_YK_GET_PUBKEY_INFO, &info);
+			if (r == SC_SUCCESS) {
+				struct sc_pkcs15_pubkey pubkey = {0};
+				const unsigned char *p;
+				unsigned int cla, tag;
+				size_t tag_len;
+				int r;
 
+				switch (info.algorithm) {
+				case 0x06: // RSA
+				case 0x07:
+				case 0x08:
+					p = info.pubkey.value;
+					r = sc_asn1_read_tag(&p, info.pubkey.len, &cla, &tag, &tag_len);
+					if (r != SC_SUCCESS) {
+						sc_log(card->ctx, "Failed to parse RSA modulus: %d", r);
+						continue;
+					}
+					if ((tag | cla) != 0x81) {
+						sc_log(card->ctx, "Unexpected tag %u received, expected 0x81", (tag | cla));
+						continue;
+					}
+					pubkey.u.rsa.modulus.data = malloc(tag_len);
+					if (pubkey.u.rsa.modulus.data == NULL) {
+						sc_log(card->ctx, "Out of memory");
+						continue;
+					}
+					memcpy(pubkey.u.rsa.modulus.data, p, tag_len);
+					pubkey.u.rsa.modulus.len = tag_len;
 
-			sc_log(card->ctx, "DEE look for env %s",
-					pubkeys[i].getenvname?pubkeys[i].getenvname:"NULL");
+					p += tag_len;
+					r = sc_asn1_read_tag(&p, info.pubkey.len - (p - info.pubkey.value), &cla, &tag, &tag_len);
+					if (r != SC_SUCCESS) {
+						sc_log(card->ctx, "Failed to parse RSA exponent: %d", r);
+						continue;
+					}
+					if ((tag | cla) != 0x82) {
+						sc_log(card->ctx, "Unexpected tag %u received, expected 0x82", (tag | cla));
+						continue;
+					}
+					pubkey.u.rsa.exponent.data = malloc(tag_len);
+					if (pubkey.u.rsa.exponent.data == NULL) {
+						sc_log(card->ctx, "Out of memory");
+						continue;
+					}
+					memcpy(pubkey.u.rsa.exponent.data, p, tag_len);
+					pubkey.u.rsa.exponent.len = tag_len;
 
-			if (pubkeys[i].getenvname == NULL)
-				continue;
+					pubkey.algorithm = SC_ALGORITHM_RSA;
+					break;
+				case 0x11: // ECDSA
+				case 0x14:
+					r = yk_copy_pubkey_from_tag(&info, &pubkey.u.ec.ecpointQ, 0x86);
+					if (r != SC_SUCCESS) {
+						sc_log(card->ctx, "Failed to parse ECDSA public key. %d", r);
+						continue;
+					}
+					pubkey.algorithm = SC_ALGORITHM_EC;
+					break;
+				case 0xE0: // Yubico extension: EDDSA
+					r = yk_copy_pubkey_from_tag(&info, &pubkey.u.ec.ecpointQ, 0x86);
+					if (r != SC_SUCCESS) {
+						sc_log(card->ctx, "Failed to parse EDDSA public key. %d", r);
+						continue;
+					}
+					pubkey.algorithm = SC_ALGORITHM_EDDSA;
+					break;
+				case 0xE1: // Yubico extension: XEDDSA
+					r = yk_copy_pubkey_from_tag(&info, &pubkey.u.ec.ecpointQ, 0x86);
+					if (r != SC_SUCCESS) {
+						sc_log(card->ctx, "Failed to parse XEDDSA public key. %d", r);
+						continue;
+					}
+					pubkey.algorithm = SC_ALGORITHM_XEDDSA;
+					break;
+				default:
+					sc_log(card->ctx, "Got unknown algorithm ID %d", info.algorithm);
+					continue;
+				}
 
-			filename = getenv(pubkeys[i].getenvname);
-			sc_log(card->ctx, "DEE look for file %s", filename?filename:"NULL");
-			if (filename == NULL)
-				continue;
+				r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, &pubkey,
+						&pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
+				if (r < 0) {
+					continue;
+				}
+				r = sc_pkcs15_pubkey_from_spki_sequence(card->ctx,
+						pubkey_info.direct.spki.value, pubkey_info.direct.spki.len,
+						&p15_key);
+				if (r < 0) {
+					free(p15_key);
+					continue;
+				}
+			} else {
+				char *filename = NULL;
 
-			sc_log(card->ctx, "Adding pubkey from file %s",filename);
+				sc_log(card->ctx, "Failed to get public key. Not a Yubikey? rc=%d", r);
+				/*
+				 * If we used the piv-tool or ykman to generate a key,
+				 * we would have saved the public key as a file.
+				 * This code is only used while signing a request
+				 * After the certificate is loaded on the card,
+				 * the public key is extracted from the certificate.
+				 */
 
-			r = sc_pkcs15_pubkey_from_spki_file(card->ctx,  filename, &p15_key);
-			if (r < 0) {
-				free(p15_key);
-				continue;
+				sc_log(card->ctx, "DEE look for env %s",
+						pubkeys[i].getenvname ? pubkeys[i].getenvname : "NULL");
+
+				if (pubkeys[i].getenvname == NULL)
+					continue;
+
+				filename = getenv(pubkeys[i].getenvname);
+				sc_log(card->ctx, "DEE look for file %s", filename ? filename : "NULL");
+				if (filename == NULL)
+					continue;
+
+				sc_log(card->ctx, "Adding pubkey from file %s", filename);
+
+				r = sc_pkcs15_pubkey_from_spki_file(card->ctx, filename, &p15_key);
+				if (r < 0) {
+					free(p15_key);
+					continue;
+				}
+
+				/* Lets also try another method. */
+				r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, p15_key,
+						&pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
+				LOG_TEST_GOTO_ERR(card->ctx, r, "SPKI encode public key error");
 			}
-
-			/* Lets also try another method. */
-			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, p15_key, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
-			LOG_TEST_GOTO_ERR(card->ctx, r, "SPKI encode public key error");
 
 			/* Only get here if no cert, and the the above found the
 			 * pub key file (actually the SPKI version). This only
 			 * happens when trying initializing a card and have set
 			 * env PIV_9A_KEY or 9C, 9D, 9E to point at the file.
+			 * Or with Yubikey 5.3+ pulling this information from
+			 * GET METADATA instruction.
 			 *
 			 * We will cache it using the PKCS15 emulation objects
 			 */
@@ -1093,24 +1219,22 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 			ckis[i].key_alg = p15_key->algorithm;
 			switch (p15_key->algorithm) {
-				case SC_ALGORITHM_RSA:
-					/* save pubkey_len in pub and priv */
-					ckis[i].pubkey_len = p15_key->u.rsa.modulus.len * 8;
-					ckis[i].pubkey_found = 1;
-					ckis[i].pubkey_from_file = 1;
-					break;
-				case SC_ALGORITHM_EC:
-				case SC_ALGORITHM_EDDSA:
-				case SC_ALGORITHM_XEDDSA:
-					ckis[i].key_alg = p15_key->algorithm;
-					ckis[i].pubkey_len = p15_key->u.ec.params.field_length;
-					ckis[i].pubkey_found = 1;
-					ckis[i].pubkey_from_file = 1;
-					break;
-				default:
-					sc_log(card->ctx, "Unsupported key_alg %lu", p15_key->algorithm);
-					continue;
+			case SC_ALGORITHM_RSA:
+				/* save pubkey_len in pub and priv */
+				ckis[i].pubkey_len = p15_key->u.rsa.modulus.len * 8;
+				break;
+			case SC_ALGORITHM_EC:
+			case SC_ALGORITHM_EDDSA:
+			case SC_ALGORITHM_XEDDSA:
+				ckis[i].key_alg = p15_key->algorithm;
+				ckis[i].pubkey_len = p15_key->u.ec.params.field_length;
+				break;
+			default:
+				sc_log(card->ctx, "Unsupported key_alg %lu", p15_key->algorithm);
+				continue;
 			}
+			ckis[i].pubkey_found = 1;
+			ckis[i].pubkey_from_file = 1;
 			pubkey_obj.emulated = p15_key;
 			p15_key = NULL;
 		}
@@ -1125,49 +1249,49 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 
 		sc_log(card->ctx, "adding pubkey for %d keyalg=%lu", i, ckis[i].key_alg);
 		switch (ckis[i].key_alg) {
-			case SC_ALGORITHM_RSA:
-				if (ckis[i].cert_keyUsage_present) {
-					pubkey_info.usage =  ckis[i].pub_usage;
-				} else {
-					pubkey_info.usage = pubkeys[i].usage_rsa;
-				}
-				pubkey_info.modulus_length = ckis[i].pubkey_len;
-				strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		case SC_ALGORITHM_RSA:
+			if (ckis[i].cert_keyUsage_present) {
+				pubkey_info.usage = ckis[i].pub_usage;
+			} else {
+				pubkey_info.usage = pubkeys[i].usage_rsa;
+			}
+			pubkey_info.modulus_length = ckis[i].pubkey_len;
+			strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
-				/* should not fail */
-				r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
-				LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add RSA pubkey");
+			/* should not fail */
+			r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add RSA pubkey");
 
-				ckis[i].pubkey_found = 1;
-				break;
-			case SC_ALGORITHM_EC:
-			case SC_ALGORITHM_EDDSA:
-			case SC_ALGORITHM_XEDDSA:
-				if (ckis[i].cert_keyUsage_present) {
-					pubkey_info.usage = ckis[i].pub_usage;
-				} else {
-					pubkey_info.usage = pubkeys[i].usage_ec;
-				}
+			ckis[i].pubkey_found = 1;
+			break;
+		case SC_ALGORITHM_EC:
+		case SC_ALGORITHM_EDDSA:
+		case SC_ALGORITHM_XEDDSA:
+			if (ckis[i].cert_keyUsage_present) {
+				pubkey_info.usage = ckis[i].pub_usage;
+			} else {
+				pubkey_info.usage = pubkeys[i].usage_ec;
+			}
 
-				pubkey_info.field_length = ckis[i].pubkey_len;
-				strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+			pubkey_info.field_length = ckis[i].pubkey_len;
+			strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 
-				/* should not fail */
+			/* should not fail */
 
-				if (ckis[i].key_alg == SC_ALGORITHM_EDDSA)
-					r = sc_pkcs15emu_add_eddsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
-				else if (ckis[i].key_alg == SC_ALGORITHM_XEDDSA)
-					r = sc_pkcs15emu_add_xeddsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
-				else
-					r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
+			if (ckis[i].key_alg == SC_ALGORITHM_EDDSA)
+				r = sc_pkcs15emu_add_eddsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+			else if (ckis[i].key_alg == SC_ALGORITHM_XEDDSA)
+				r = sc_pkcs15emu_add_xeddsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+			else
+				r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 
-				LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add EC pubkey");
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add EC pubkey");
 
-				ckis[i].pubkey_found = 1;
-				break;
-			default:
-				sc_log(card->ctx, "key_alg %lu not supported", ckis[i].key_alg);
-				continue;
+			ckis[i].pubkey_found = 1;
+			break;
+		default:
+			sc_log(card->ctx, "key_alg %lu not supported", ckis[i].key_alg);
+			continue;
 		}
 		sc_log(card->ctx, "USAGE: cert_keyUsage_present:%d usage:0x%8.8x",
 				ckis[i].cert_keyUsage_present, pubkey_info.usage);
@@ -1232,53 +1356,56 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		 * normal usage would not allow it. Set SC_PKCS15_PRKEY_USAGE_SIGN
 		 * TODO if code is added to allow key generation and request
 		 * sign in the same session, similar code will be needed.
+		 * Exclude XEDDSA keys as they are not signing capable
 		 */
 
 		if (ckis[i].pubkey_from_file == 1) {
-			prkey_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN;
-			sc_log(card->ctx,  "Adding SC_PKCS15_PRKEY_USAGE_SIGN");
+			switch (ckis[i].key_alg) {
+			case SC_ALGORITHM_XEDDSA:
+				break;
+			default:
+				prkey_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+				sc_log(card->ctx, "Adding SC_PKCS15_PRKEY_USAGE_SIGN");
+				break;
+			}
+		}
+
+		if (ckis[i].cert_keyUsage_present) {
+			prkey_info.usage |= ckis[i].priv_usage;
+			/* If retired key and non gov cert has NONREPUDIATION, treat as user_consent */
+			if (i >= 4 && (ckis[i].priv_usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)) {
+				prkey_obj.user_consent = 1;
+			}
 		}
 
 		switch (ckis[i].key_alg) {
-			case SC_ALGORITHM_RSA:
-				if(ckis[i].cert_keyUsage_present) {
-					prkey_info.usage |= ckis[i].priv_usage;
-					/* If retired key and non gov cert has NONREPUDIATION, treat as user_consent */
-					if (i >= 4 && (ckis[i].priv_usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)) {
-						prkey_obj.user_consent = 1;
-					}
-				} else {
-					prkey_info.usage |= prkeys[i].usage_rsa;
-				}
-				prkey_info.modulus_length= ckis[i].pubkey_len;
-				r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
-				break;
-			case SC_ALGORITHM_EC:
-			case SC_ALGORITHM_EDDSA:
-			case SC_ALGORITHM_XEDDSA:
-				if (ckis[i].cert_keyUsage_present) {
-					prkey_info.usage  |= ckis[i].priv_usage;
-					/* If retired key and non gov cert has NONREPUDIATION, treat as user_consent */
-					if (i >= 4 && (ckis[i].priv_usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)) {
-						prkey_obj.user_consent = 1;
-					}
-				} else {
-					prkey_info.usage  |= prkeys[i].usage_ec;
-				}
-				prkey_info.field_length = ckis[i].pubkey_len;
-				sc_log(card->ctx, "DEE added key_alg %2.2lx prkey_obj.flags %8.8x",
-					 ckis[i].key_alg, prkey_obj.flags);
+		case SC_ALGORITHM_RSA:
+			if (!ckis[i].cert_keyUsage_present) {
+				prkey_info.usage |= prkeys[i].usage_rsa;
+			}
+			prkey_info.modulus_length = ckis[i].pubkey_len;
+			r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
+			break;
+		case SC_ALGORITHM_EC:
+		case SC_ALGORITHM_EDDSA:
+		case SC_ALGORITHM_XEDDSA:
+			if (!ckis[i].cert_keyUsage_present) {
+				prkey_info.usage |= prkeys[i].usage_ec;
+			}
+			prkey_info.field_length = ckis[i].pubkey_len;
+			sc_log(card->ctx, "DEE added key_alg %2.2lx prkey_obj.flags %8.8x",
+					ckis[i].key_alg, prkey_obj.flags);
 
-				if (ckis[i].key_alg == SC_ALGORITHM_EDDSA)
-					r = sc_pkcs15emu_add_eddsa_prkey(p15card, &prkey_obj, &prkey_info);
-				else if (ckis[i].key_alg == SC_ALGORITHM_XEDDSA)
-					r = sc_pkcs15emu_add_xeddsa_prkey(p15card, &prkey_obj, &prkey_info);
-				else
-					r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
-				break;
-			default:
-				sc_log(card->ctx, "Unsupported key_alg %lu", ckis[i].key_alg);
-				r = 0; /* we just skip this one */
+			if (ckis[i].key_alg == SC_ALGORITHM_EDDSA)
+				r = sc_pkcs15emu_add_eddsa_prkey(p15card, &prkey_obj, &prkey_info);
+			else if (ckis[i].key_alg == SC_ALGORITHM_XEDDSA)
+				r = sc_pkcs15emu_add_xeddsa_prkey(p15card, &prkey_obj, &prkey_info);
+			else
+				r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
+			break;
+		default:
+			sc_log(card->ctx, "Unsupported key_alg %lu", ckis[i].key_alg);
+			r = 0; /* we just skip this one */
 		}
 		sc_log(card->ctx, "USAGE: cert_keyUsage_present:%d usage:0x%8.8x", ckis[i].cert_keyUsage_present, prkey_info.usage);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add Private key");
