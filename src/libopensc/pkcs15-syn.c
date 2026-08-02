@@ -104,6 +104,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_IASECC_GEMALTO:
 		case SC_CARD_TYPE_IASECC_CPX:
 		case SC_CARD_TYPE_IASECC_CPXCL:
+		case SC_CARD_TYPE_IASECC_OBERTHUR:
 		case SC_CARD_TYPE_PIV_II_GENERIC:
 		case SC_CARD_TYPE_PIV_II_HIST:
 		case SC_CARD_TYPE_PIV_II_NEO:
@@ -544,4 +545,3 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
-

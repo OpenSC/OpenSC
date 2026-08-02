@@ -173,6 +173,7 @@ _iasecc_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 		case SC_CARD_TYPE_IASECC_GEMALTO:
 		case SC_CARD_TYPE_IASECC_CPX:
 		case SC_CARD_TYPE_IASECC_CPXCL:
+		case SC_CARD_TYPE_IASECC_OBERTHUR:
 			sc_log(ctx, "Warning: the %d card has an invalid DF, hot patch to be applied",
 				p15card->card->type);
 			break;
