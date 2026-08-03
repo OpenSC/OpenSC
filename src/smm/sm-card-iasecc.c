@@ -619,6 +619,9 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 
 		if (asn1_iasecc_sm_data_object[0].flags & SC_ASN1_PRESENT)   {
 			sc_debug(ctx, SC_LOG_DEBUG_SM, "IAS/ECC decode answer() object present");
+			if (resp_len < 2) {
+				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "IAS/ECC decode answer(s): encrypted data too short");
+			}
 			if (resp_data[0] != 0x01)
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "IAS/ECC decode answer(s): invalid encrypted data format");
 
@@ -631,8 +634,12 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 			       "IAS/ECC decrypted data(%"SC_FORMAT_LEN_SIZE_T"u) %s",
 			       decrypted_len,
 			       sc_dump_hex(decrypted, decrypted_len));
-			while(*(decrypted + decrypted_len - 1) == 0x00)
+			while (decrypted_len > 0 && *(decrypted + decrypted_len - 1) == 0x00) {
 			       decrypted_len--;
+			}
+			if (decrypted_len == 0) {
+				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "IAS/ECC decode answer(s): empty decrypted data");
+			}
 			if (*(decrypted + decrypted_len - 1) != 0x80)
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "IAS/ECC decode answer(s): invalid card data padding ");
 			decrypted_len--;
