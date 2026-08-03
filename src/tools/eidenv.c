@@ -165,12 +165,13 @@ static void exportprint(const char *key, const char *val)
 		printf("%s: %s\n", key, val);
 }
 
+#define MAX_CHIPNUMBER_SIZE 16
 static void do_belpic(sc_card_t *card)
 {
 	/* Contents of the ID file (3F00\DF01\4031) */
 	struct {
 		char cardnumber[12 + 1];
-		char chipnumber[2 * 16 + 1];
+		char chipnumber[2 * MAX_CHIPNUMBER_SIZE + 1]; /* remaining bytes for HEX encoding */
 		char validfrom[10 + 1];
 		char validtill[10 + 1];
 		char deliveringmunicipality[50 + 1];  /* UTF8 */
@@ -187,7 +188,7 @@ static void do_belpic(sc_card_t *card)
 		char specialstatus[5 + 1];
 	} id_data;
 	size_t cardnumberlen = sizeof(id_data.cardnumber);
-	size_t chipnumberlen = sizeof(id_data.chipnumber);
+	size_t chipnumberlen = MAX_CHIPNUMBER_SIZE;
 	size_t validfromlen = sizeof(id_data.validfrom);
 	size_t validtilllen = sizeof(id_data.validtill);
 	size_t deliveringmunicipalitylen = sizeof(id_data.deliveringmunicipality);
