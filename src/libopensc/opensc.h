@@ -228,6 +228,8 @@ extern "C" {
 
 #define MAX_FILE_SIZE 65535
 
+#define SC_MAX_RSA_KEY_SIZE 4096
+
 #define ED448_KEY_SIZE_BYTES 57U
 
 struct sc_supported_algo_info {
