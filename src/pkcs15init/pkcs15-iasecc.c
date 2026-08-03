@@ -1339,7 +1339,18 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 		/* ... other cards not.
 		 * Set to zero the key components . */
 		unsigned char zeros[0x200];
-		int size = *(sdo->docp.size.value + 0) * 0x100 + *(sdo->docp.size.value + 1);
+		int size;
+
+		if (!sdo->docp.size.value || sdo->docp.size.size < 2) {
+			iasecc_sdo_free(card, sdo);
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Missing/invalid SDO key size");
+		}
+
+		size = *(sdo->docp.size.value + 0) * 0x100 + *(sdo->docp.size.value + 1);
+		if (size <= 0 || size > (int)sizeof(zeros)) {
+			iasecc_sdo_free(card, sdo);
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Unsupported SDO key size");
+		}
 
 		sc_log(ctx, "iasecc_pkcs15_delete_sdo() SDO size %i bytes", size);
 		memset(zeros, 0xA5, sizeof(zeros));
