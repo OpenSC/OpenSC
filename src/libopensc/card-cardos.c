@@ -60,6 +60,12 @@ static const struct sc_atr_table cardos_atrs[] = {
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
 
+/*
+ * Cryptographic mechanism reference (TLV tag 0x80) for RSA-PSS in the
+ * MSE SET AT command
+ */
+#define CARDOS_ALGO_RSA_PSS		0x33
+
 /* private data for cardos driver */
 typedef struct cardos_data {
 	/* constructed internally */
@@ -236,10 +242,12 @@ static int cardos_init(sc_card_t *card)
 		/* Set up algorithm info. */
 		flags = 0;
 		if (card->type == SC_CARD_TYPE_CARDOS_V5_0) {
-			flags |= SC_ALGORITHM_RSA_PAD_PKCS1;
+			flags |= SC_ALGORITHM_RSA_PAD_PKCS1
+				| SC_ALGORITHM_RSA_PAD_PSS;
 		} else if(card->type == SC_CARD_TYPE_CARDOS_V5_3) {
 			flags |= SC_ALGORITHM_RSA_RAW
 				| SC_ALGORITHM_RSA_HASH_NONE
+				| SC_ALGORITHM_RSA_PAD_PSS
 				| SC_ALGORITHM_ONBOARD_KEY_GEN;
 		} else {
 			flags |= SC_ALGORITHM_RSA_RAW
@@ -995,6 +1003,12 @@ cardos_set_security_env(sc_card_t *card,
 			data[7] = 0x01;
 			data[8] = 0x10;
 			apdu.lc = apdu.datalen = 9;
+		} else if (env->operation == SC_SEC_OPERATION_SIGN
+				&& priv->sec_env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS) {
+			data[6] = 0x80;
+			data[7] = 0x01;
+			data[8] = CARDOS_ALGO_RSA_PSS;
+			apdu.lc = apdu.datalen = 9;
 		} else if (priv->sec_env->algorithm_flags & SC_ALGORITHM_ECDSA_RAW) {
 			data[6] = 0x80;
 			data[7] = 0x01;
@@ -1097,6 +1111,25 @@ cardos_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	 * use for V5 cards and TODO should for older cards too
 	 */
 	if (card->type == SC_CARD_TYPE_CARDOS_V5_0 || card->type == SC_CARD_TYPE_CARDOS_V5_3) {
+		if (priv->sec_env && (priv->sec_env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS)) {
+			u8 *buf;
+			size_t stripped_len = datalen;
+
+			buf = malloc(datalen);
+			if (!buf)
+				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+			r = sc_pkcs1_strip_digest_info_prefix(NULL, data, datalen, buf, &stripped_len);
+			if (r != SC_SUCCESS) {
+				stripped_len = datalen;
+				memcpy(buf, data, datalen);
+			}
+
+			r = do_compute_signature(card, buf, stripped_len, out, outlen);
+			free(buf);
+
+			LOG_FUNC_RETURN(ctx, r);
+		}
 
 		r = do_compute_signature(card, data, datalen, out, outlen);
 		LOG_FUNC_RETURN(ctx, r);
