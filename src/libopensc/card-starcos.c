@@ -1504,6 +1504,12 @@ static int starcos_gen_key(sc_card_t *card, sc_starcos_gen_key_data *data)
 	if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 		return sc_check_sw(card, apdu.sw1, apdu.sw2);
 
+	if (len > sizeof(rbuf) - 18 || apdu.resplen < 18 + len) {
+		sc_log(card->ctx, "READ PUBLIC KEY response too short/invalid: got %zu need >= %zu",
+				apdu.resplen, 18 + len);
+		return SC_ERROR_INVALID_DATA;
+	}
+
 	data->modulus = malloc(len);
 	if (!data->modulus)
 		return SC_ERROR_OUT_OF_MEMORY;
