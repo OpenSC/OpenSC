@@ -138,7 +138,7 @@ static int read_transp(sc_card_t *card, const char *pathstring, unsigned char *b
 }
 
 /* Hex-encode the buf, 2*len+1 bytes must be reserved. E.g. {'1','2'} -> {'3','1','3','2','\0'} */
-static const char hextable[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'E'};
+static const char hextable[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 static void bintohex(char *buf, size_t len)
 {
 	size_t i;
