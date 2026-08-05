@@ -2194,6 +2194,10 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 0;
 
+		if (datalen > sizeof(sbuf)) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
+
 		memcpy(sbuf, data, datalen);
 		apdu.data = sbuf;
 		apdu.lc = datalen;
@@ -2203,6 +2207,10 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 256;
+
+		if (datalen > sizeof(sbuf)) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
 
 		memcpy(sbuf, data, datalen);
 		apdu.data = sbuf;
