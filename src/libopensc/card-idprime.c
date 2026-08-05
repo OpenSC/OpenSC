@@ -1104,19 +1104,19 @@ idprime_compute_signature(struct sc_card *card,
 	u8 rbuf[4096]; /* needs work. for 3072 keys, needs 384+2 or so */
 	size_t rbuflen = sizeof(rbuf);
 	idprime_private_data_t *priv = card->drv_data;
+	size_t pad = 0;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/* The data for ECDSA should be padded to the length of a multiple of 8 */
+	if (priv->current_op == SC_ALGORITHM_EC && datalen % 8 != 0) {
+		pad = 8 - (datalen % 8);
+		datalen += pad;
+	}
 
 	/* We should be signing hashes only so we should not reach this limit */
 	if (datalen + 2 > sizeof(sbuf)) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
-	}
-
-	/* The data for ECDSA should be padded to the length of a multiple of 8 */
-	size_t pad = 0;
-	if (priv->current_op == SC_ALGORITHM_EC && datalen % 8 != 0) {
-		pad = 8 - (datalen % 8);
-		datalen += pad;
 	}
 
 	p = sbuf;
