@@ -4838,8 +4838,22 @@ pkcs15_prkey_can_do(struct sc_pkcs11_session *session, void *obj,
 				break;
 	}
 
-	if (ii == SC_MAX_SUPPORTED_ALGORITHMS || !pkinfo->algo_refs[ii])
+	if (ii == SC_MAX_SUPPORTED_ALGORITHMS || !pkinfo->algo_refs[ii]) {
+		/*
+		 * CardOS V5.x tokens often expose CKM_RSA_X_509 only. Composite
+		 * hash-and-sign mechanisms must be done in software (hash) + card
+		 * (raw RSA). Return CKR_FUNCTION_NOT_SUPPORTED so the PKCS#11
+		 * layer initializes a software digest — NOT CKR_OK (card would get
+		 * unhashed data) and NOT CKR_MECHANISM_INVALID (aborts C_SignInit).
+		 */
+		if (fw_data->p15_card->card->driver && !strcmp(fw_data->p15_card->card->driver->short_name, "cardos") && flags == CKF_SIGN && (mech_type == CKM_RSA_PKCS || mech_type == CKM_MD5_RSA_PKCS || mech_type == CKM_SHA1_RSA_PKCS || mech_type == CKM_SHA224_RSA_PKCS || mech_type == CKM_SHA256_RSA_PKCS || mech_type == CKM_SHA384_RSA_PKCS || mech_type == CKM_SHA512_RSA_PKCS || mech_type == CKM_RIPEMD160_RSA_PKCS)) {
+			for (jj = 0; jj < SC_MAX_SUPPORTED_ALGORITHMS && (token_algos + jj)->reference; jj++) {
+				if ((token_algos + jj)->operations & SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE)
+					LOG_FUNC_RETURN(context, CKR_FUNCTION_NOT_SUPPORTED);
+			}
+		}
 		LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
+	}
 
 	LOG_FUNC_RETURN(context, CKR_OK);
 }
