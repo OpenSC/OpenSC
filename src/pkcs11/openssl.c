@@ -410,6 +410,7 @@ static CK_RV sc_pkcs11_openssl_md_update(sc_pkcs11_operation_t *op,
 static CK_RV sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
 				CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen)
 {
+	unsigned int tmp_len = 0;
 	EVP_MD_CTX *md_ctx = DIGEST_CTX(op);
 
 	if (!md_ctx)
@@ -420,10 +421,11 @@ static CK_RV sc_pkcs11_openssl_md_final(sc_pkcs11_operation_t *op,
 		*pulDigestLen = EVP_MD_CTX_size(md_ctx);
 		return CKR_BUFFER_TOO_SMALL;
 	}
-	if (!EVP_DigestFinal(md_ctx, pDigest, (unsigned *)pulDigestLen)) {
+	if (!EVP_DigestFinal(md_ctx, pDigest, &tmp_len)) {
 		sc_log_openssl(context);
 		return CKR_GENERAL_ERROR;
 	}
+	*pulDigestLen = (CK_ULONG)tmp_len;
 	return CKR_OK;
 }
 
