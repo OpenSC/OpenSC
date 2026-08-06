@@ -892,7 +892,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	u8 *buf1 = NULL;	/* to decrypt with our private key */
 	u8 *buf2 = NULL;	/* to try SIGNUM==SIG */
 	u8 *buf3 = NULL;	/* to try SIGNUM==N.ICC-SIG */
-	size_t len1 = 128, len2 = 128, len3 = 128;
+	size_t len1 = 128, len2 = 128, len3 = 128, bn_len = 0;
 	BIGNUM *bn = NULL;
 	BIGNUM *sigbn = NULL;
 	sc_context_t *ctx = NULL;
@@ -1010,6 +1010,12 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		sc_log_openssl(ctx);
 		msg = "Verify Signature: evaluation of N.ICC-SIG failed";
 		res = SC_ERROR_INTERNAL;
+		goto verify_internal_done;
+	}
+	bn_len = (size_t)BN_num_bytes(sigbn);
+	if (bn_len == 0 || bn_len > len2) {
+		msg = "Verify Signature: unsupported RSA size";
+		res = SC_ERROR_INVALID_DATA;
 		goto verify_internal_done;
 	}
 	len2 = BN_bn2bin(sigbn, buf2);	/* copy result to buffer */
