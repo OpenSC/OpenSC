@@ -635,7 +635,7 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 			       decrypted_len,
 			       sc_dump_hex(decrypted, decrypted_len));
 			while (decrypted_len > 0 && *(decrypted + decrypted_len - 1) == 0x00) {
-			       decrypted_len--;
+				decrypted_len--;
 			}
 			if (decrypted_len == 0) {
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "IAS/ECC decode answer(s): empty decrypted data");
