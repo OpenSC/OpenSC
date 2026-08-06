@@ -263,14 +263,13 @@ static int starsign_set_security_env(sc_card_t *card, const sc_security_env_t *e
 static int starsign_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	if (data->cmd == SC_PIN_CMD_VERIFY) {
-		u8 pin_buf[15];
+		u8 pin_buf[15] = {0};
 		sc_apdu_t apdu;
 		int r;
 
 		if (data->pin1.len > 15)
 			return SC_ERROR_INVALID_PIN_LENGTH;
 
-		memset(pin_buf, 0x00, sizeof(pin_buf));
 		memcpy(pin_buf, data->pin1.data, data->pin1.len);
 
 		/* Force P2=02, padded to 15 bytes */
