@@ -329,6 +329,7 @@ extern sc_card_driver_t *sc_get_npa_driver(void);
 extern sc_card_driver_t *sc_get_esteid2018_driver(void);
 extern sc_card_driver_t *sc_get_esteid2025_driver(void);
 extern sc_card_driver_t *sc_get_idprime_driver(void);
+extern sc_card_driver_t *sc_get_starsign_driver(void);
 extern sc_card_driver_t *sc_get_edo_driver(void);
 extern sc_card_driver_t *sc_get_nqApplet_driver(void);
 extern sc_card_driver_t *sc_get_skeid_driver(void);
