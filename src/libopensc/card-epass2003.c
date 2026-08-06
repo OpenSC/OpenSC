@@ -2194,6 +2194,10 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 0;
 
+		if (datalen > sizeof(sbuf)) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
+
 		memcpy(sbuf, data, datalen);
 		apdu.data = sbuf;
 		apdu.lc = datalen;
@@ -2203,6 +2207,10 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 256;
+
+		if (datalen > sizeof(sbuf)) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
 
 		memcpy(sbuf, data, datalen);
 		apdu.data = sbuf;
@@ -2502,6 +2510,9 @@ epass2003_construct_fci(struct sc_card *card, const sc_file_t * file,
 		}
 	}
 	if (file->sec_attr_len) {
+		if (file->sec_attr_len > sizeof(buf)) {
+			return SC_ERROR_INVALID_DATA;
+		}
 		memcpy(buf, file->sec_attr, file->sec_attr_len);
 		sc_asn1_put_tag(0x86, buf, file->sec_attr_len, p, *outlen - (p - out), &p);
 

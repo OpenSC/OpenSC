@@ -1230,7 +1230,7 @@ authentic_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 	memset(pin_data, data->pin1.pad_char, sizeof(pin_data));
 	offs = 0;
 	if (data->pin1.data && data->pin1.len)   {
-		if (data->pin1.len > sizeof(pin_data)) {
+		if (data->pin1.pad_length > sizeof(pin_data) || data->pin1.len > sizeof(pin_data)) {
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "PIN length exceeds buffer");
 		}
 		memcpy(pin_data, data->pin1.data, data->pin1.len);
@@ -1407,6 +1407,9 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data)
 	reference = data->pin_reference;
 	if (data->pin2.len)   {
 		unsigned char pin_data[SC_MAX_APDU_BUFFER_SIZE];
+
+		if (data->pin2.len > sizeof(pin_data) || data->pin2.len > pin_cmd.pin1.pad_length)
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_LENGTH, "PIN data too long");
 
 		memset(pin_data, pin_cmd.pin1.pad_char, sizeof(pin_data));
 		memcpy(pin_data, data->pin2.data, data->pin2.len);
