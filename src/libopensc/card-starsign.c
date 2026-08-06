@@ -298,6 +298,6 @@ struct sc_card_driver * sc_get_starsign_driver(void)
 	starsign_ops.select_file = starsign_select_file;
 	starsign_ops.match_card = starsign_match_card;
 	starsign_ops.pin_cmd = starsign_pin_cmd;
-        starsign_ops.set_security_env = starsign_set_security_env;
+	starsign_ops.set_security_env = starsign_set_security_env;
 	return &starsign_drv;
 }
