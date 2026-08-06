@@ -2929,6 +2929,9 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			}
 			free(bytes);
 			rs_len = taglen - 1; // len is length of "04||x||y"
+			if (rs_len > (size_t)sz2) {
+				util_fatal("The signature file is too short");
+			}
 
 			if (sc_asn1_sig_value_sequence_to_rs(NULL, sig_buffer, sz2,
 				rs_buffer, rs_len)) {
@@ -4201,7 +4204,6 @@ unwrap_key(CK_SESSION_HANDLE session)
 		util_fatal("Unsupported key type %s", opt_key_type);
 	}
 	/* TODO: Add PQC algorithms*/
-	 
 
 	FILL_ATTR(keyTemplate[n_attr], CKA_KEY_TYPE, &key_type, sizeof(key_type));
 	n_attr++;
