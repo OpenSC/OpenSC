@@ -1408,8 +1408,7 @@ authentic_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data)
 	if (data->pin2.len)   {
 		unsigned char pin_data[SC_MAX_APDU_BUFFER_SIZE];
 
-		if (data->pin2.len > sizeof(pin_data) ||
-		    data->pin2.len > pin_cmd.pin1.pad_length)
+		if (data->pin2.len > sizeof(pin_data) || data->pin2.len > pin_cmd.pin1.pad_length)
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_PIN_LENGTH, "PIN data too long");
 
 		memset(pin_data, pin_cmd.pin1.pad_char, sizeof(pin_data));
