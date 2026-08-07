@@ -2929,28 +2929,6 @@ iasecc_sdo_get_tagged_data(struct sc_card *card, int sdo_tag, struct iasecc_sdo 
 }
 
 
-static int
-iasecc_sdo_read_from_card(struct sc_card *card, struct iasecc_sdo *sdo)
-{
-	struct sc_context *ctx = card->ctx;
-	int rv, sdo_tag;
-
-	LOG_FUNC_CALLED(ctx);
-
-	sdo_tag = iasecc_sdo_tag_from_class(sdo->sdo_class);
-
-	rv = iasecc_sdo_get_tagged_data(card, sdo_tag, sdo);
-	/* When there is no public data 'GET DATA' returns error */
-	if (rv != SC_ERROR_INCORRECT_PARAMETERS)
-		LOG_TEST_RET(ctx, rv, "cannot parse ECC SDO data");
-
-	rv = iasecc_sdo_get_tagged_data(card, IASECC_DOCP_TAG, sdo);
-	LOG_TEST_RET(ctx, rv, "cannot parse ECC DOCP data");
-
-	LOG_FUNC_RETURN(ctx, rv);
-}
-
-
 /* The Monaco eID answers 6A88 to 'GET DATA' for its RSA private keys: the card
  * holds the keys but publishes no SDO describing them.  Rather than teach every
  * consumer of iasecc_sdo_get_data() to cope with a missing SDO, describe the
@@ -2982,21 +2960,34 @@ iasecc_sdo_virtual_monaco(struct sc_card *card, struct iasecc_sdo *sdo, unsigned
 static int
 iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo)
 {
+	struct sc_context *ctx = card->ctx;
 	/* Parsing the card's answer overwrites the SDO header, so remember what was
 	 * asked for before the request goes out. */
 	unsigned char sdo_class = sdo->sdo_class;
 	unsigned char sdo_ref = sdo->sdo_ref;
-	int rv = iasecc_sdo_read_from_card(card, sdo);
+	int rv, sdo_tag;
 
+	LOG_FUNC_CALLED(ctx);
+
+	sdo_tag = iasecc_sdo_tag_from_class(sdo->sdo_class);
+
+	rv = iasecc_sdo_get_tagged_data(card, sdo_tag, sdo);
+	/* When there is no public data 'GET DATA' returns error */
+	if (rv != SC_ERROR_INCORRECT_PARAMETERS)
+		LOG_TEST_RET(ctx, rv, "cannot parse ECC SDO data");
+
+	rv = iasecc_sdo_get_tagged_data(card, IASECC_DOCP_TAG, sdo);
 	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND && card->type == SC_CARD_TYPE_IASECC_MONACO)   {
 		rv = iasecc_sdo_virtual_monaco(card, sdo, sdo_class);
 		if (rv == SC_SUCCESS)   {
 			sdo->sdo_class = sdo_class;
 			sdo->sdo_ref = sdo_ref;
 		}
+		LOG_FUNC_RETURN(ctx, rv);
 	}
+	LOG_TEST_RET(ctx, rv, "cannot parse ECC DOCP data");
 
-	return rv;
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
