@@ -1364,14 +1364,14 @@ piv_get_data(sc_card_t *card, int enumtag, u8 **buf, size_t *buf_len)
 			!(piv_objects[enumtag].flags & PIV_OBJECT_NEEDS_PIN) &&
 			!(priv->sm_params.flags & (NIST_SM_FLAGS_NEVER | NIST_SM_FLAGS_ALWAYS)) &&
 			!(priv->init_flags & (PIV_INIT_CONTACTLESS | PIV_INIT_IN_READER_LOCK_OBTAINED))) {
-		sc_log(card->ctx, "Set NIST_SM_GET_DATA_IN_CLEAR");
-		priv->sm_params.flags |= NIST_SM_GET_DATA_IN_CLEAR;
+		sc_log(card->ctx, "Set NIST_SM_FLAGS_FORCE_IN_CLEAR");
+		priv->sm_params.flags |= NIST_SM_FLAGS_FORCE_IN_CLEAR;
 	}
 
 #endif /* PIV_SM_NIST */
 	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, *buf, *buf_len);
 #ifdef PIV_SM_NIST
-	priv->sm_params.flags &= ~NIST_SM_GET_DATA_IN_CLEAR; /* reset */
+	priv->sm_params.flags &= ~NIST_SM_FLAGS_FORCE_IN_CLEAR; /* reset */
 #endif /* PIV_SM_NIST */
 	if (r > 0) {
 		int r_tag;
