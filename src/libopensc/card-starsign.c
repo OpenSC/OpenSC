@@ -174,6 +174,23 @@ starsign_init(sc_card_t *card)
 	card->caps |= SC_CARD_CAP_APDU_EXT;
 	card->max_send_size = 2048;
 	card->max_recv_size = 256;
+	/*
+	 * KNOWN HARDWARE LIMITATION (not fixable here): on at least one
+	 * StarSign CUT S unit, the token's built-in CCID reader declares a
+	 * firmware-fixed dwMaxCCIDMsgLen of 271 bytes (~261 usable after the
+	 * CCID header) in its USB descriptor -- see `lsusb -v` -- and does
+	 * not advertise "Extended APDU level exchange" in dwFeatures. A raw
+	 * RSA-2048 operation's 256-byte payload does not fit under that
+	 * ceiling in any standard APDU encoding (even the leanest extended
+	 * Case 3 APDU is 263 bytes), and this card separately rejects ISO
+	 * 7816-4 command chaining as a workaround (SW 6E 00). The result is
+	 * intermittent SCardTransmit failures (SCARD_E_INVALID_PARAMETER) on
+	 * raw sign/decipher through that specific reader, typically
+	 * succeeding on retry. We have no software fix for this: the only
+	 * way to avoid the 256-byte payload is the card hashing and padding
+	 * on-chip with a correct DigestInfo, which this hardware does not do
+	 * (see the SC_ALGORITHM_RSA_HASH_NONE comment above).
+	 */
 	alg_flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 
 	_sc_card_add_rsa_alg(card, 1024, alg_flags, 0);
