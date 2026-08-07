@@ -8,6 +8,11 @@ updates:
     directory: "/.github/" # Location of vcpkg.json file
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
 
   # https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/keeping-your-actions-up-to-date-with-dependabot
   - package-ecosystem: "github-actions"
