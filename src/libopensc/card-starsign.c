@@ -162,9 +162,18 @@ starsign_init(sc_card_t *card)
 	 * software and hand the card an already-padded blob for a raw RSA
 	 * operation (SC_ALGORITHM_RSA_RAW).
 	 */
+	/* max_recv_size is kept at 256 (the real RSA-2048 output size) rather
+	 * than raised alongside max_send_size: iso7816_fixup_transceive_length()
+	 * only clamps apdu.le down to max_recv_size, never up, and some PKCS#11
+	 * framework callers (decipher in particular, which allocates a generic
+	 * 512-byte response buffer regardless of actual key size) request a Le
+	 * far larger than the real output. Left uncapped, that oversized Le
+	 * produces an extended APDU the reader's USB/PC-SC transport cannot
+	 * actually deliver (SCardTransmit fails with SCARD_E_INVALID_PARAMETER)
+	 * instead of the correct, transmittable 256-byte request. */
 	card->caps |= SC_CARD_CAP_APDU_EXT;
 	card->max_send_size = 2048;
-	card->max_recv_size = 2048;
+	card->max_recv_size = 256;
 	alg_flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
 
 	_sc_card_add_rsa_alg(card, 1024, alg_flags, 0);
