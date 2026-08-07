@@ -1526,9 +1526,10 @@ iasecc_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 
 
 static unsigned
-iasecc_get_algorithm(struct sc_context *ctx, const struct sc_security_env *env,
+iasecc_get_algorithm(struct sc_card *card, const struct sc_security_env *env,
 		unsigned operation, unsigned mechanism)
 {
+    struct sc_context *ctx = card->ctx;
     const struct sc_supported_algo_info *info = NULL;
     int ii;
 
@@ -1549,26 +1550,32 @@ iasecc_get_algorithm(struct sc_context *ctx, const struct sc_security_env *env,
         sc_log(ctx, "cannot find IAS/ECC algorithm (operation:%X,mechanism:%X)", operation, mechanism);
     }
 
-    return info ? info->algo_ref : 0;
-}
+    if (info)
+        return info->algo_ref;
 
+    /* The Monaco eID leaves supportedAlgorithms empty in its PKCS#15 objects, so
+     * the lookup above never finds anything for it.  Fall back to this driver's
+     * own IAS/ECC references -- the same values the MSE:SET templates are
+     * initialised with -- for that card only.  Every other card keeps the
+     * "not supported" outcome logged above. */
+    if (card->type == SC_CARD_TYPE_IASECC_MONACO)   {
+        switch (mechanism)   {
+        case CKM_SHA256:
+            return IASECC_ALGORITHM_SHA2;
+        case CKM_SHA256_RSA_PKCS:
+            return IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA2;
+        case CKM_SHA_1:
+            return IASECC_ALGORITHM_SHA1;
+        case CKM_SHA1_RSA_PKCS:
+            return IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA1;
+        case CKM_RSA_PKCS:
+            return IASECC_ALGORITHM_RSA_PKCS;
+        default:
+            break;
+        }
+    }
 
-/* The Monaco eID leaves supportedAlgorithms empty in its PKCS#15 objects, so
- * there is nothing for iasecc_get_algorithm() to find.  Fall back to this
- * driver's own IAS/ECC references -- the same values the MSE:SET templates are
- * initialised with -- for that card only.  Every other card keeps the
- * "not supported" error. */
-static int
-iasecc_get_algorithm_or_default(struct sc_card *card, const struct sc_security_env *env,
-		unsigned operation, unsigned mechanism, unsigned char dflt, unsigned *out)
-{
-	unsigned algo_ref = iasecc_get_algorithm(card->ctx, env, operation, mechanism);
-
-	if (!algo_ref && card->type == SC_CARD_TYPE_IASECC_MONACO)
-		algo_ref = dflt;
-
-	*out = algo_ref;
-	return algo_ref ? SC_SUCCESS : SC_ERROR_NOT_SUPPORTED;
+    return 0;
 }
 
 
@@ -1795,29 +1802,29 @@ iasecc_set_security_env(struct sc_card *card,
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Need RSA_PKCS1 specified");
 
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256)   {
-			rv = iasecc_get_algorithm_or_default(card, env, SC_PKCS15_ALGO_OP_HASH, CKM_SHA256,
-					IASECC_ALGORITHM_SHA2, &algo_ref);
-			LOG_TEST_RET(ctx, rv, "Card application do not supports HASH:SHA256");
+			algo_ref = iasecc_get_algorithm(card, env, SC_PKCS15_ALGO_OP_HASH, CKM_SHA256);
+			if (!algo_ref)
+				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Card application do not supports HASH:SHA256");
 
 			cse_crt_ht[2] = algo_ref; /* IASECC_ALGORITHM_SHA2 */
 
-			rv = iasecc_get_algorithm_or_default(card, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_SHA256_RSA_PKCS,
-					IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA2, &algo_ref);
-			LOG_TEST_RET(ctx, rv, "Card application do not supports SIGNATURE:SHA256_RSA_PKCS");
+			algo_ref = iasecc_get_algorithm(card, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_SHA256_RSA_PKCS);
+			if (!algo_ref)
+				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Card application do not supports SIGNATURE:SHA256_RSA_PKCS");
 
 			cse_crt_dst[2] = env->key_ref[0] | IASECC_OBJECT_REF_LOCAL;
 			cse_crt_dst[5] = algo_ref;   /* IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA2 */
 		}
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)   {
-			rv = iasecc_get_algorithm_or_default(card, env, SC_PKCS15_ALGO_OP_HASH, CKM_SHA_1,
-					IASECC_ALGORITHM_SHA1, &algo_ref);
-			LOG_TEST_RET(ctx, rv, "Card application do not supports HASH:SHA1");
+			algo_ref = iasecc_get_algorithm(card, env, SC_PKCS15_ALGO_OP_HASH, CKM_SHA_1);
+			if (!algo_ref)
+				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Card application do not supports HASH:SHA1");
 
 			cse_crt_ht[2] = algo_ref;	/* IASECC_ALGORITHM_SHA1 */
 
-			rv = iasecc_get_algorithm_or_default(card, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_SHA1_RSA_PKCS,
-					IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA1, &algo_ref);
-			LOG_TEST_RET(ctx, rv, "Card application do not supports SIGNATURE:SHA1_RSA_PKCS");
+			algo_ref = iasecc_get_algorithm(card, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_SHA1_RSA_PKCS);
+			if (!algo_ref)
+				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Card application do not supports SIGNATURE:SHA1_RSA_PKCS");
 
 			cse_crt_dst[2] = env->key_ref[0] | IASECC_OBJECT_REF_LOCAL;
 			cse_crt_dst[5] = algo_ref;   /* IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA1 */
@@ -1842,9 +1849,9 @@ iasecc_set_security_env(struct sc_card *card,
 		apdu.lc = sizeof(cse_crt_dst);
 		break;
 	case SC_SEC_OPERATION_AUTHENTICATE:
-		rv = iasecc_get_algorithm_or_default(card, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_RSA_PKCS,
-				IASECC_ALGORITHM_RSA_PKCS, &algo_ref);
-		LOG_TEST_RET(ctx, rv, "Application do not supports SIGNATURE:RSA_PKCS");
+		algo_ref = iasecc_get_algorithm(card, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE, CKM_RSA_PKCS);
+		if (!algo_ref)
+			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Application do not supports SIGNATURE:RSA_PKCS");
 
 		cse_crt_at[2] = env->key_ref[0] | IASECC_OBJECT_REF_LOCAL;
 		cse_crt_at[5] = algo_ref;	/* IASECC_ALGORITHM_RSA_PKCS */
@@ -1857,7 +1864,7 @@ iasecc_set_security_env(struct sc_card *card,
 	case SC_SEC_OPERATION_DECIPHER:
 		rv = iasecc_sdo_convert_acl(card, &sdo, SC_AC_OP_PSO_DECRYPT, &prv->op_method, &prv->op_ref);
 		LOG_TEST_RET(ctx, rv, "Cannot convert SC_AC_OP_PSO_DECRYPT acl");
-		algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_DECIPHER,  CKM_RSA_PKCS);
+		algo_ref = iasecc_get_algorithm(card, env, SC_PKCS15_ALGO_OP_DECIPHER,  CKM_RSA_PKCS);
 		if (!algo_ref)
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Application do not supports DECIPHER:RSA_PKCS");
 
