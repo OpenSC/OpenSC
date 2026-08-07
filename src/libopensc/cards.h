@@ -290,6 +290,9 @@ enum {
 
 	/* Uruguayan eID card (cedula de identidad) */
 	SC_CARD_TYPE_CEDULAUY = 45000,
+
+	/* G&D StarSign CUT S (ICP-Brasil A3) */
+	SC_CARD_TYPE_STARSIGN = 46000,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);

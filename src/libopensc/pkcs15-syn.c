@@ -66,6 +66,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "dtrust",     sc_pkcs15emu_dtrust_init_ex },
 	{ "lteid",      sc_pkcs15emu_lteid_init_ex },
 	{ "srbeid",     sc_pkcs15emu_srbeid_init_ex },
+	{ "starsign",   sc_pkcs15emu_starsign_init_ex },
 	{ NULL, NULL }
 };
 

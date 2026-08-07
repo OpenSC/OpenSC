@@ -9,29 +9,49 @@
 #include "config.h"
 #endif
 
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "internal.h"
 #include "asn1.h"
+#include "internal.h"
 #include "log.h"
 
 static const struct sc_atr_table starsign_atrs[] = {
-	{ "3B:F9:96:00:00:81:31:FE:45:53:43:45:37:20:0E:00:20:20:28", NULL, NULL, SC_CARD_TYPE_STARSIGN, 0, NULL },
-	{ NULL, NULL, NULL, 0, 0, NULL }
+		{"3B:F9:96:00:00:81:31:FE:45:53:43:45:37:20:0E:00:20:20:28", NULL, NULL, SC_CARD_TYPE_STARSIGN, 0, NULL},
+		{NULL,						       NULL, NULL, 0,		      0, NULL}
 };
 
 static struct sc_card_operations starsign_ops;
 static struct sc_card_driver starsign_drv = {
-	"G&D StarSign CUT S",
-	"starsign",
-	&starsign_ops,
-	NULL, 0, NULL
-};
+		"G&D StarSign CUT S",
+		"starsign",
+		&starsign_ops,
+		NULL, 0, NULL};
 
 static const u8 starsign_drm_string[] = "I am A.E.T. Europe B.V. SafeSign or BlueX approved software.";
 
-static int starsign_match_card(sc_card_t *card)
+/*
+ * Tracks the currently selected working directory so select_file() can
+ * avoid redundant re-navigation:
+ *  - df5031_selected: the PKCS#15 application DF (5031) is active, so an
+ *    EF can be addressed as its direct child instead of re-navigating
+ *    from the MF.
+ *  - mid_fid/mid_fid_valid: certificate/data-object EFs are referenced by
+ *    a path such as "3F00 3FFF 4302 05A0". 0x3FFF is a placeholder the
+ *    card rejects with SW 6A82 if selected. The component right after it
+ *    (e.g. 4302) IS a real directory one level below 5031 and must be
+ *    selected once -- re-selecting it a second time while it is already
+ *    the current DF also fails with 6A82, so it is cached and only
+ *    reselected when it actually changes.
+ */
+struct starsign_drv_data {
+	int df5031_selected;
+	u8 mid_fid[2];
+	int mid_fid_valid;
+};
+
+static int
+starsign_match_card(sc_card_t *card)
 {
 	int i;
 	i = _sc_match_atr(card, starsign_atrs, &card->type);
@@ -40,24 +60,38 @@ static int starsign_match_card(sc_card_t *card)
 	return 1;
 }
 
-static int starsign_init(sc_card_t *card)
+static int
+starsign_init(sc_card_t *card)
 {
+	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	u8 aid[] = {0xA0, 0x00, 0x00, 0x00, 0x63, 0x50, 0x4B, 0x43, 0x53, 0x2D, 0x31, 0x35};
+	unsigned long alg_flags;
 	int r;
+
+	LOG_FUNC_CALLED(ctx);
 
 	card->name = "G&D StarSign CUT S";
 	card->type = SC_CARD_TYPE_STARSIGN;
 
-	/* 1. First DRM Handshake (ignore result, usually 6D 00) */
+	card->drv_data = calloc(1, sizeof(struct starsign_drv_data));
+	if (!card->drv_data)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+
+	/* 1. DRM handshake: the card silently refuses PKCS#15 operations
+	 * unless this exact string is echoed back to it via PUT DATA
+	 * beforehand. The card does not consider the handshake mandatory at
+	 * this point (it typically answers 6D 00, "instruction not
+	 * supported"), so a failure here is not fatal. */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, 0x01, 0x00);
 	apdu.data = starsign_drm_string;
 	apdu.datalen = sizeof(starsign_drm_string) - 1;
 	apdu.lc = apdu.datalen;
 	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed (first DRM handshake)");
 
-	/* 2. Select PKCS#15 AID (ignore result) */
-	u8 aid[] = { 0xA0, 0x00, 0x00, 0x00, 0x63, 0x50, 0x4B, 0x43, 0x53, 0x2D, 0x31, 0x35 };
+	/* 2. Select PKCS#15 AID on the default channel. */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
 	apdu.data = aid;
 	apdu.datalen = sizeof(aid);
@@ -66,238 +100,323 @@ static int starsign_init(sc_card_t *card)
 	apdu.resplen = sizeof(rbuf);
 	apdu.resp = rbuf;
 	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed (AID select)");
 
-	/* 3. Second DRM Handshake (ignore result) */
+	/* 3. Second DRM handshake, now that the applet is selected -- the
+	 * card expects this exact sequence before it will accept anything
+	 * beyond basic GET DATA. */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, 0x01, 0x00);
 	apdu.data = starsign_drm_string;
 	apdu.datalen = sizeof(starsign_drm_string) - 1;
 	apdu.lc = apdu.datalen;
 	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed (second DRM handshake)");
 
-	/* 4. Open Logical Channel 1 */
+	/* 4. The PKCS#15 applet refuses further operations on the default
+	 * logical channel (0); open channel 1 and use it from here on. */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x70, 0x00, 0x00);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
 	apdu.le = 1;
 
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "Failed to transmit MANAGE CHANNEL");
+	LOG_TEST_RET(ctx, r, "APDU transmit failed (MANAGE CHANNEL)");
+
 	if (apdu.sw1 == 0x6A && apdu.sw2 == 0x81) {
-		/* Channel already open, that's fine */
+		/* Channel already open from a previous session, that is fine. */
 		r = SC_SUCCESS;
 	} else {
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		LOG_TEST_RET(card->ctx, r, "Card refused logical channel opening");
+		LOG_TEST_RET(ctx, r, "Card refused logical channel opening");
 	}
 
-	/* 3. Force CLA=0x01 for all subsequent operations */
+	/* 5. Force CLA=0x01 for all subsequent operations. */
 	card->cla = 0x01;
 
-	/* 5. Select PKCS#15 AID again on Channel 1 */
+	/* 6. Re-select the PKCS#15 AID, now on channel 1. */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x00);
 	apdu.data = aid;
 	apdu.datalen = sizeof(aid);
 	apdu.lc = sizeof(aid);
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "Failed to select AID on channel 1");
+	LOG_TEST_RET(ctx, r, "APDU transmit failed (AID select on channel 1)");
+
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r < 0) {
-		sc_log(card->ctx, "Card refused AID selection on channel 1 (SW %02X %02X), ignoring as it might be already selected", apdu.sw1, apdu.sw2);
+	if (r != SC_SUCCESS) {
+		/* Some card firmware revisions answer SW 6A 86 here if the
+		 * applet is already selected on this channel; that is not an
+		 * error condition for us. */
+		sc_log(ctx, "Card refused AID selection on channel 1 (SW %02X %02X), ignoring as it might already be selected", apdu.sw1, apdu.sw2);
 	}
 
-	/* Force RAW RSA (software padding) because G&D StarSign CUT cards 
-           often return 67 00 if sent unpadded hashes during C_Sign.
-           We only set SC_ALGORITHM_RSA_RAW so OpenSC pads the data to 256 bytes itself. */
-        card->caps |= SC_CARD_CAP_APDU_EXT;
-        card->max_send_size = 2048;
-        card->max_recv_size = 2048;
-        unsigned long alg_flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE | SC_ALGORITHM_RSA_HASH_MD5 | SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_HASH_SHA256;
-				  
+	/*
+	 * Signature padding: this card pads a raw hash it is handed with
+	 * PKCS#1 v1.5 (00 01 FF..FF 00 <hash>), but it does NOT prepend the
+	 * DigestInfo ASN.1/OID header a standards-compliant SHA-256 (or
+	 * MD5/SHA-1) signature requires. We verified this by decrypting a
+	 * live signature with the token's own public key: the padded block
+	 * held the bare digest with no DigestInfo prefix, so any compliant
+	 * verifier rejects it even though the card answers SW 90 00.
+	 * Advertising only SC_ALGORITHM_RSA_HASH_NONE makes OpenSC's own
+	 * crypto layer build the complete DigestInfo + PKCS#1 block in
+	 * software and hand the card an already-padded blob for a raw RSA
+	 * operation (SC_ALGORITHM_RSA_RAW).
+	 */
+	card->caps |= SC_CARD_CAP_APDU_EXT;
+	card->max_send_size = 2048;
+	card->max_recv_size = 2048;
+	alg_flags = SC_ALGORITHM_RSA_RAW | SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE;
+
 	_sc_card_add_rsa_alg(card, 1024, alg_flags, 0);
 	_sc_card_add_rsa_alg(card, 2048, alg_flags, 0);
 	_sc_card_add_rsa_alg(card, 4096, alg_flags, 0);
 
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+/* Extract the file size from an FCP response of the form
+ * 6F <len> 80 02 <size-hi> <size-lo> ... (tag 0x80 = number of data bytes).
+ * Returns 0 if the tag is not present or the buffer is too short. */
+static size_t
+starsign_parse_fcp_size(const u8 *buf, size_t len)
+{
+	size_t i;
+
+	if (len < 2 || buf[0] != 0x6F)
+		return 0;
+
+	for (i = 2; i + 3 < len;) {
+		u8 tag = buf[i];
+		u8 taglen = buf[i + 1];
+		if (tag == 0x80 && taglen == 2 && i + 3 < len)
+			return ((size_t)buf[i + 2] << 8) | buf[i + 3];
+		i += 2 + taglen;
+	}
+	return 0;
+}
+
+/* Select a 2-byte FID as a direct child EF of whatever DF is currently
+ * active (P1=0x02), returning the file size reported in the FCP response
+ * (if any) via `file_size`. */
+static int
+starsign_select_ef_child(sc_card_t *card, const u8 *fid, size_t *file_size)
+{
+	sc_context_t *ctx = card->ctx;
+	struct sc_apdu apdu;
+	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
+	int r;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x02, 0x00);
+	apdu.data = fid;
+	apdu.datalen = 2;
+	apdu.lc = 2;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof(rbuf);
+	apdu.le = 256;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed (SELECT child EF)");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(ctx, r, "SELECT child EF returned an error status word");
+
+	if (file_size)
+		*file_size = starsign_parse_fcp_size(apdu.resp, apdu.resplen);
 	return SC_SUCCESS;
 }
 
-static int starsign_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file_out)
+static int
+starsign_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file_out)
 {
+	sc_context_t *ctx = card->ctx;
 	int r = SC_SUCCESS;
 	size_t i;
 	struct sc_apdu apdu;
+	int selected_as_ef = 0;
+	struct starsign_drv_data *priv = card->drv_data;
+	int has_3fff_placeholder = 0;
+	size_t resolved_size = 0;
 
-	if (in_path->type != SC_PATH_TYPE_PATH && in_path->type != SC_PATH_TYPE_FROM_CURRENT && in_path->type != SC_PATH_TYPE_FILE_ID) {
-		sc_log(card->ctx, "STARSIGN SELECT FILE DEFERRING type=%d", in_path->type);
-		return sc_get_iso7816_driver()->ops->select_file(card, in_path, file_out);
-	}
+	LOG_FUNC_CALLED(ctx);
 
-	sc_log(card->ctx, "STARSIGN SELECT FILE EXECUTING type=%d len=%zu", in_path->type, in_path->len);
+	if (in_path->type != SC_PATH_TYPE_PATH && in_path->type != SC_PATH_TYPE_FROM_CURRENT && in_path->type != SC_PATH_TYPE_FILE_ID)
+		LOG_FUNC_RETURN(ctx, sc_get_iso7816_driver()->ops->select_file(card, in_path, file_out));
 
 	if (in_path->len % 2 != 0 || in_path->len == 0)
-		return SC_ERROR_INVALID_ARGUMENTS;
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	/* First, try to select the full path at once if it's a full path from MF */
-	if (in_path->len >= 4 && in_path->value[0] == 0x3F && in_path->value[1] == 0x00) {
-		sc_log(card->ctx, "STARSIGN SELECT FILE: Attempting full path selection from MF");
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x08, 0x0C);
-		apdu.data = in_path->value;
-		apdu.datalen = in_path->len;
-		apdu.lc = in_path->len;
-		r = sc_transmit_apdu(card, &apdu);
-		if (r == 0) r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		if (r == 0) {
-			sc_log(card->ctx, "STARSIGN SELECT FILE: Full path selection successful");
-			return 0;
+	for (i = 0; i + 2 < in_path->len; i += 2) {
+		if (in_path->value[i] == 0x3F && in_path->value[i + 1] == 0xFF) {
+			has_3fff_placeholder = 1;
+			break;
 		}
-		sc_log(card->ctx, "STARSIGN SELECT FILE: Full path selection failed (%d), falling back to component-by-component", r);
 	}
 
-	/* Loop over every 2 bytes of the path */
-	for (i = 0; i < in_path->len; i += 2) {
-		unsigned short fid = (in_path->value[i] << 8) | in_path->value[i + 1];
+	if (has_3fff_placeholder) {
+		/* Certificate/data-object virtual path: "3F00 3FFF <mid> <final>".
+		 * 0x3FFF itself is never selected (confirmed against a genuine
+		 * SafeSign APDU capture: the proprietary driver never sends a
+		 * SELECT for it either). <mid> (e.g. 4302) is a real directory
+		 * and must be selected -- but re-selecting it while it is
+		 * already current also fails, so it is cached. */
+		const u8 *mid, *final;
 
-		/* DO NOT ignore 3F00! We need to select it to reset the current DF to MF.
-		   HOWEVER, G&D StarSign tokens have a bug where some certificates' absolute paths
-		   omit the 5015 DF (e.g. 3F00 3FFF 4302 13AE). If we just select 3F00, the 
-		   subsequent selection of 4302 will fail.
-		   We MUST explicitly select 5015 after 3F00, or we can just ignore 3F00 entirely
-		   AND ignore 5015 entirely, relying on the fact that we are ALREADY in the 5015
-		   applet, BUT we must reset to 5015 to prevent relative selection bugs.
-		   
-		   The safest fix is: when we see 3F00, we select 3F00 AND THEN select 5015 automatically! */
-		if (fid == 0x3F00) {
+		if (in_path->len < 8)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+		mid = &in_path->value[in_path->len - 4];
+		final = &in_path->value[in_path->len - 2];
+
+		if (!priv || !priv->mid_fid_valid || priv->mid_fid[0] != mid[0] || priv->mid_fid[1] != mid[1]) {
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x0C);
-			apdu.data = (const u8 *)"\x3F\x00";
-			apdu.datalen = 2; apdu.lc = 2;
-			sc_transmit_apdu(card, &apdu);
-			
+			apdu.data = mid;
+			apdu.datalen = 2;
+			apdu.lc = 2;
+
+			r = sc_transmit_apdu(card, &apdu);
+			LOG_TEST_RET(ctx, r, "APDU transmit failed (SELECT mid DF)");
+			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+			LOG_TEST_RET(ctx, r, "SELECT mid DF returned an error status word");
+
+			if (priv) {
+				priv->mid_fid[0] = mid[0];
+				priv->mid_fid[1] = mid[1];
+				priv->mid_fid_valid = 1;
+			}
+		}
+
+		r = starsign_select_ef_child(card, final, &resolved_size);
+		LOG_TEST_RET(ctx, r, "SELECT of the final EF failed");
+		selected_as_ef = 1;
+	} else if (in_path->len == 4 && in_path->value[0] == 0x3F && in_path->value[1] == 0x00 &&
+			priv && priv->df5031_selected &&
+			!(in_path->value[2] == 0x50 && in_path->value[3] == 0x31)) {
+		/* Once the PKCS#15 application DF (5031) has been entered, every
+		 * other EF beneath it (TokenInfo, ODF/AODF/PrKDF/CDF/DODF, ...)
+		 * is addressed as a direct child instead of re-navigating from
+		 * the MF on every call -- doing the latter would silently drop
+		 * back to the MF and break the "current DF" assumption the
+		 * virtual-path handling above depends on. */
+		r = starsign_select_ef_child(card, &in_path->value[2], &resolved_size);
+		LOG_TEST_RET(ctx, r, "SELECT of the direct child EF failed");
+		selected_as_ef = 1;
+	} else {
+		/* Genuine hierarchical navigation from the MF: used for the
+		 * initial "3F00 5031" DF transition and for any top-level
+		 * DF/EF reached before that context has been established.
+		 * The card only accepts P1=0x00 (select by file ID) here --
+		 * it answers SW 6A82 for P1=0x01 ("select child DF"). */
+		for (i = 0; i < in_path->len; i += 2) {
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x0C);
-			apdu.data = (const u8 *)"\x50\x15";
-			apdu.datalen = 2; apdu.lc = 2;
-			sc_transmit_apdu(card, &apdu);
-			continue;
-		}
-		/* Ignore virtual/intermediate DFs that are not selectable directly on G&D StarSign */
-		if (fid == 0x3FFF) {
-			sc_log(card->ctx, "STARSIGN SELECT FILE: IGNORING virtual DF %04X", fid);
-			continue;
-		}
-
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x0C); /* P2=0x0C means No response/FCI expected */
-		apdu.data = &in_path->value[i];
-		apdu.datalen = 2;
-		apdu.lc = 2;
-
-		r = sc_transmit_apdu(card, &apdu);
-		if (r < 0) return r;
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		
-		if (r == SC_ERROR_FILE_NOT_FOUND) {
-			sc_log(card->ctx, "STARSIGN SELECT FILE: P1=0x00 failed, retrying with P1=0x01 (Select DF) for FID %04X", fid);
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x01, 0x0C);
 			apdu.data = &in_path->value[i];
 			apdu.datalen = 2;
 			apdu.lc = 2;
 
 			r = sc_transmit_apdu(card, &apdu);
-			if (r < 0) return r;
+			LOG_TEST_RET(ctx, r, "APDU transmit failed (hierarchical SELECT)");
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+			LOG_TEST_RET(ctx, r, "Hierarchical SELECT returned an error status word");
 		}
 
-		if (r == SC_ERROR_FILE_NOT_FOUND) {
-			sc_log(card->ctx, "STARSIGN SELECT FILE: P1=0x01 failed, retrying with P1=0x02 (Select EF) for FID %04X", fid);
-			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x02, 0x0C);
-			apdu.data = &in_path->value[i];
-			apdu.datalen = 2;
-			apdu.lc = 2;
-
-			r = sc_transmit_apdu(card, &apdu);
-			if (r < 0) return r;
-			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		}
-
-		if (r < 0) return r;
+		if (priv && in_path->len == 4 && in_path->value[2] == 0x50 && in_path->value[3] == 0x31)
+			priv->df5031_selected = 1;
+		/* Genuine top-level navigation leaves whatever DF the path
+		 * landed on; the cached "mid DF" is no longer necessarily
+		 * selected, so drop it and let the next virtual-path SELECT
+		 * reselect it explicitly. */
+		if (priv)
+			priv->mid_fid_valid = 0;
 	}
 
 	if (file_out) {
 		sc_file_t *file = sc_file_new();
 		if (!file)
-			return SC_ERROR_OUT_OF_MEMORY;
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		file->id = (in_path->value[in_path->len - 2] << 8) | in_path->value[in_path->len - 1];
-		file->type = SC_FILE_TYPE_WORKING_EF;
+
+		/* This card never returns a usable FCP for plain DF selects, so
+		 * the type can only be inferred from how we reached this file:
+		 * a "genuine hierarchical" multi-component select landed on a
+		 * DF, everything else (an explicit child-EF select) landed on
+		 * an EF. */
+		file->type = (in_path->len > 2 && !selected_as_ef) ? SC_FILE_TYPE_DF : SC_FILE_TYPE_WORKING_EF;
 		file->ef_structure = SC_FILE_EF_TRANSPARENT;
-		file->size = 0x8000; /* Dummy size so OpenSC reads until EOF */
+		/* Use the real size reported by the card's FCP response when we
+		 * have one (needed so sc_pkcs15_read_file's offset+count bounds
+		 * check does not reject legitimately large files, e.g.
+		 * certificates up to ~1.8 KB); fall back to a generous default
+		 * otherwise, since most callers here just read the whole file. */
+		file->size = resolved_size ? resolved_size : 1024;
 		file->magic = SC_FILE_MAGIC;
+		file->path = *in_path;
 		*file_out = file;
 	}
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+static int
+starsign_set_security_env(sc_card_t *card, const sc_security_env_t *env, int res)
+{
+	sc_context_t *ctx = card->ctx;
+	sc_apdu_t apdu;
+	int r;
+	u8 p2;
+	/*
+	 * StarSign CUT S hardware specifically requires the exact MSE: SET
+	 * payload below (Key Reference = 01, Algorithm Reference = 02) --
+	 * standard OpenSC puts the 0x80 tag before 0x84, which this token
+	 * rejects. This was reverse engineered from a genuine capture of the
+	 * proprietary SafeSign driver: swapping the tag order, or omitting
+	 * either reference, is silently rejected by the card.
+	 */
+	u8 sbuf[6] = {0x84, 0x01, 0x01, 0x80, 0x01, 0x02};
+
+	LOG_FUNC_CALLED(ctx);
+
+	if (card == NULL || env == NULL)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	switch (env->operation) {
+	case SC_SEC_OPERATION_AUTHENTICATE:
+		p2 = 0xA4;
+		break;
+	case SC_SEC_OPERATION_DECIPHER:
+	case SC_SEC_OPERATION_DERIVE:
+		p2 = 0xB8;
+		break;
+	case SC_SEC_OPERATION_SIGN:
+		p2 = 0xB6;
+		break;
+	default:
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
+	sc_format_apdu_ex(&apdu, card->cla, 0x22, 0x41, p2, sbuf, sizeof(sbuf), NULL, 0);
+
+	sc_log(ctx, "MSE SET constructed payload=84 01 %02X 80 01 %02X", sbuf[2], sbuf[5]);
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(ctx, r, "APDU transmit failed (MSE SET)");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+static int
+starsign_finish(sc_card_t *card)
+{
+	free(card->drv_data);
+	card->drv_data = NULL;
 	return SC_SUCCESS;
 }
 
-static int starsign_set_security_env(sc_card_t *card, const sc_security_env_t *env, int res)
-{
-        sc_apdu_t apdu;
-        u8 data[6];
-        int r;
-
-        sc_log(card->ctx, "STARSIGN: set_security_env called! Operation: %d", env->operation);
-
-        data[0] = 0x84;
-        data[1] = 0x01;
-        data[2] = 0x01;
-        data[3] = 0x80;
-        data[4] = 0x01;
-        data[5] = 0x02;
-
-        sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xB6);
-        apdu.data = data;
-        apdu.datalen = 6;
-        apdu.lc = 6;
-        apdu.cla = card->cla;
-
-        r = sc_transmit_apdu(card, &apdu);
-        if (r) return r;
-        return sc_check_sw(card, apdu.sw1, apdu.sw2);
-}
-
-
-static int starsign_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
-{
-	if (data->cmd == SC_PIN_CMD_VERIFY) {
-		u8 pin_buf[15] = {0};
-		sc_apdu_t apdu;
-		int r;
-
-		if (data->pin1.len > 15)
-			return SC_ERROR_INVALID_PIN_LENGTH;
-
-		memcpy(pin_buf, data->pin1.data, data->pin1.len);
-
-		/* Force P2=02, padded to 15 bytes */
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, 0x02);
-		apdu.data = pin_buf;
-		apdu.datalen = 15;
-		apdu.lc = 15;
-        /* Inherit card->cla (which we set to 0x01 in init) */
-        apdu.cla = card->cla;
-
-		r = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-		/* Save tries_left if we want to handle it (via data block maybe?), but not needed for basic verify here. */
-		return sc_check_sw(card, apdu.sw1, apdu.sw2);
-	}
-	
-	/* Fallback to default behavior for other PIN commands (unblock, etc.) */
-	return sc_get_iso7816_driver()->ops->pin_cmd(card, data);
-}
-
-struct sc_card_driver * sc_get_starsign_driver(void)
+struct sc_card_driver *
+sc_get_starsign_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 	starsign_ops = *iso_drv->ops;
 	starsign_ops.init = starsign_init;
-	starsign_ops.select_file = starsign_select_file;
+	starsign_ops.finish = starsign_finish;
 	starsign_ops.match_card = starsign_match_card;
-	starsign_ops.pin_cmd = starsign_pin_cmd;
+	starsign_ops.select_file = starsign_select_file;
 	starsign_ops.set_security_env = starsign_set_security_env;
 	return &starsign_drv;
 }
