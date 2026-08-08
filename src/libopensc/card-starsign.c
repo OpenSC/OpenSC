@@ -1,8 +1,24 @@
 /*
- * Support for G&D StarSign CUT S cards (A.E.T. Europe SafeSign)
+ * card-starsign.c: Support for G&D StarSign CUT S cards (A.E.T. Europe SafeSign)
+ *
+ * Copyright (C) 2026 Diego Ribeiro de Souza
  *
  * This driver performs the proprietary DRM handshake and logical
  * channel selection required by the StarSign CUT S token.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifdef HAVE_CONFIG_H
@@ -21,6 +37,7 @@ static const struct sc_atr_table starsign_atrs[] = {
 		{NULL,						       NULL, NULL, 0,		      0, NULL}
 };
 
+static const struct sc_card_operations *iso_ops = NULL;
 static struct sc_card_operations starsign_ops;
 static struct sc_card_driver starsign_drv = {
 		"G&D StarSign CUT S",
@@ -200,32 +217,12 @@ starsign_init(sc_card_t *card)
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-/* Extract the file size from an FCP response of the form
- * 6F <len> 80 02 <size-hi> <size-lo> ... (tag 0x80 = number of data bytes).
- * Returns 0 if the tag is not present or the buffer is too short. */
-static size_t
-starsign_parse_fcp_size(const u8 *buf, size_t len)
-{
-	size_t i;
-
-	if (len < 2 || buf[0] != 0x6F)
-		return 0;
-
-	for (i = 2; i + 3 < len;) {
-		u8 tag = buf[i];
-		u8 taglen = buf[i + 1];
-		if (tag == 0x80 && taglen == 2 && i + 3 < len)
-			return ((size_t)buf[i + 2] << 8) | buf[i + 3];
-		i += 2 + taglen;
-	}
-	return 0;
-}
-
 /* Select a 2-byte FID as a direct child EF of whatever DF is currently
- * active (P1=0x02), returning the file size reported in the FCP response
- * (if any) via `file_size`. */
+ * active (P1=0x02). If `file` is non-NULL, it is populated from the card's
+ * FCP response via the standard ISO 7816 parser (size, type, EF structure,
+ * ...) instead of a hand-rolled tag walk. */
 static int
-starsign_select_ef_child(sc_card_t *card, const u8 *fid, size_t *file_size)
+starsign_select_ef_child(sc_card_t *card, const u8 *fid, sc_file_t *file)
 {
 	sc_context_t *ctx = card->ctx;
 	struct sc_apdu apdu;
@@ -245,8 +242,8 @@ starsign_select_ef_child(sc_card_t *card, const u8 *fid, size_t *file_size)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, r, "SELECT child EF returned an error status word");
 
-	if (file_size)
-		*file_size = starsign_parse_fcp_size(apdu.resp, apdu.resplen);
+	if (file && apdu.resplen)
+		iso_ops->process_fci(card, file, apdu.resp, apdu.resplen);
 	return SC_SUCCESS;
 }
 
@@ -260,15 +257,21 @@ starsign_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file
 	int selected_as_ef = 0;
 	struct starsign_drv_data *priv = card->drv_data;
 	int has_3fff_placeholder = 0;
-	size_t resolved_size = 0;
+	sc_file_t *file = NULL;
 
 	LOG_FUNC_CALLED(ctx);
 
 	if (in_path->type != SC_PATH_TYPE_PATH && in_path->type != SC_PATH_TYPE_FROM_CURRENT && in_path->type != SC_PATH_TYPE_FILE_ID)
-		LOG_FUNC_RETURN(ctx, sc_get_iso7816_driver()->ops->select_file(card, in_path, file_out));
+		LOG_FUNC_RETURN(ctx, iso_ops->select_file(card, in_path, file_out));
 
 	if (in_path->len % 2 != 0 || in_path->len == 0)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	if (file_out) {
+		file = sc_file_new();
+		if (!file)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 
 	for (i = 0; i + 2 < in_path->len; i += 2) {
 		if (in_path->value[i] == 0x3F && in_path->value[i + 1] == 0xFF) {
@@ -286,8 +289,10 @@ starsign_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file
 		 * already current also fails, so it is cached. */
 		const u8 *mid, *final;
 
-		if (in_path->len < 8)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		if (in_path->len < 8) {
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			goto err;
+		}
 
 		mid = &in_path->value[in_path->len - 4];
 		final = &in_path->value[in_path->len - 2];
@@ -299,9 +304,9 @@ starsign_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file
 			apdu.lc = 2;
 
 			r = sc_transmit_apdu(card, &apdu);
-			LOG_TEST_RET(ctx, r, "APDU transmit failed (SELECT mid DF)");
+			LOG_TEST_GOTO_ERR(ctx, r, "APDU transmit failed (SELECT mid DF)");
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-			LOG_TEST_RET(ctx, r, "SELECT mid DF returned an error status word");
+			LOG_TEST_GOTO_ERR(ctx, r, "SELECT mid DF returned an error status word");
 
 			if (priv) {
 				priv->mid_fid[0] = mid[0];
@@ -310,8 +315,8 @@ starsign_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file
 			}
 		}
 
-		r = starsign_select_ef_child(card, final, &resolved_size);
-		LOG_TEST_RET(ctx, r, "SELECT of the final EF failed");
+		r = starsign_select_ef_child(card, final, file);
+		LOG_TEST_GOTO_ERR(ctx, r, "SELECT of the final EF failed");
 		selected_as_ef = 1;
 	} else if (in_path->len == 4 && in_path->value[0] == 0x3F && in_path->value[1] == 0x00 &&
 			priv && priv->df5031_selected &&
@@ -322,8 +327,8 @@ starsign_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file
 		 * the MF on every call -- doing the latter would silently drop
 		 * back to the MF and break the "current DF" assumption the
 		 * virtual-path handling above depends on. */
-		r = starsign_select_ef_child(card, &in_path->value[2], &resolved_size);
-		LOG_TEST_RET(ctx, r, "SELECT of the direct child EF failed");
+		r = starsign_select_ef_child(card, &in_path->value[2], file);
+		LOG_TEST_GOTO_ERR(ctx, r, "SELECT of the direct child EF failed");
 		selected_as_ef = 1;
 	} else {
 		/* Genuine hierarchical navigation from the MF: used for the
@@ -338,9 +343,9 @@ starsign_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file
 			apdu.lc = 2;
 
 			r = sc_transmit_apdu(card, &apdu);
-			LOG_TEST_RET(ctx, r, "APDU transmit failed (hierarchical SELECT)");
+			LOG_TEST_GOTO_ERR(ctx, r, "APDU transmit failed (hierarchical SELECT)");
 			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-			LOG_TEST_RET(ctx, r, "Hierarchical SELECT returned an error status word");
+			LOG_TEST_GOTO_ERR(ctx, r, "Hierarchical SELECT returned an error status word");
 		}
 
 		if (priv && in_path->len == 4 && in_path->value[2] == 0x50 && in_path->value[3] == 0x31)
@@ -353,30 +358,25 @@ starsign_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file
 			priv->mid_fid_valid = 0;
 	}
 
-	if (file_out) {
-		sc_file_t *file = sc_file_new();
-		if (!file)
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (file) {
+		/* For EF selects, iso_ops->process_fci() (called from
+		 * starsign_select_ef_child()) already populated type/size/
+		 * ef_structure from the card's real FCP response. This card
+		 * never returns a usable FCP for plain DF selects, though, so
+		 * that case is filled in by hand. */
+		if (!selected_as_ef)
+			file->type = SC_FILE_TYPE_DF;
+		if (file->size == 0)
+			file->size = 1024;
 		file->id = (in_path->value[in_path->len - 2] << 8) | in_path->value[in_path->len - 1];
-
-		/* This card never returns a usable FCP for plain DF selects, so
-		 * the type can only be inferred from how we reached this file:
-		 * a "genuine hierarchical" multi-component select landed on a
-		 * DF, everything else (an explicit child-EF select) landed on
-		 * an EF. */
-		file->type = (in_path->len > 2 && !selected_as_ef) ? SC_FILE_TYPE_DF : SC_FILE_TYPE_WORKING_EF;
-		file->ef_structure = SC_FILE_EF_TRANSPARENT;
-		/* Use the real size reported by the card's FCP response when we
-		 * have one (needed so sc_pkcs15_read_file's offset+count bounds
-		 * check does not reject legitimately large files, e.g.
-		 * certificates up to ~1.8 KB); fall back to a generous default
-		 * otherwise, since most callers here just read the whole file. */
-		file->size = resolved_size ? resolved_size : 1024;
-		file->magic = SC_FILE_MAGIC;
 		file->path = *in_path;
 		*file_out = file;
 	}
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+err:
+	sc_file_free(file);
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 static int
@@ -392,7 +392,10 @@ starsign_set_security_env(sc_card_t *card, const sc_security_env_t *env, int res
 	 * standard OpenSC puts the 0x80 tag before 0x84, which this token
 	 * rejects. This was reverse engineered from a genuine capture of the
 	 * proprietary SafeSign driver: swapping the tag order, or omitting
-	 * either reference, is silently rejected by the card.
+	 * either reference, is silently rejected by the card. These are the
+	 * defaults for this card's PKCS#15 profile, which never actually
+	 * supplies a different key/algorithm reference; overridden below from
+	 * `env` when the caller does provide one explicitly.
 	 */
 	u8 sbuf[6] = {0x84, 0x01, 0x01, 0x80, 0x01, 0x02};
 
@@ -400,6 +403,11 @@ starsign_set_security_env(sc_card_t *card, const sc_security_env_t *env, int res
 
 	if (card == NULL || env == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	if ((env->flags & SC_SEC_ENV_KEY_REF_PRESENT) && env->key_ref_len >= 1)
+		sbuf[2] = env->key_ref[0];
+	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT)
+		sbuf[5] = env->algorithm_ref & 0xFF;
 
 	switch (env->operation) {
 	case SC_SEC_OPERATION_AUTHENTICATE:
@@ -438,6 +446,8 @@ struct sc_card_driver *
 sc_get_starsign_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+	if (iso_ops == NULL)
+		iso_ops = iso_drv->ops;
 	starsign_ops = *iso_drv->ops;
 	starsign_ops.init = starsign_init;
 	starsign_ops.finish = starsign_finish;
