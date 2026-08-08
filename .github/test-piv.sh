@@ -67,7 +67,8 @@ yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9d -S'/CN=bar/OU=tes
 yubico-piv-tool -v 9999 -r 'Virtual PCD 00 00' -P "$PIN" -s 9d -aimport-certificate < 9d.cert
 
 $VALGRIND pkcs11-tool -l -O -p "$PIN"
-$VALGRIND pkcs11-tool -l -t -p "$PIN"
+
+OPENSC_DEBUG=9 $VALGRIND pkcs11-tool -l -t -p "$PIN"
 
 # run p11test
 pushd src/tests/p11test/
