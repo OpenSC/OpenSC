@@ -2126,8 +2126,8 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 	sc_log(ctx, "iasecc_pin_get_policy() reference %i", sdo.sdo_ref);
 
 	rv = iasecc_sdo_get_data(card, &sdo);
-	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND && card->type == SC_CARD_TYPE_IASECC_MONACO) {
-		/* The Monaco eID does not expose the CHV SDO.  Its only role here is the
+	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND) {
+		/* The card, e.g. Monaco eID, does not expose the CHV SDO.  Its only role here is the
 		 * secure-messaging SCBs and the advisory PIN length/tries; a plain
 		 * (non-SM) verify with "unknown" for the rest is what this card wants.
 		 * The PIN value and padding come from the PKCS#15 AODF, so verification
