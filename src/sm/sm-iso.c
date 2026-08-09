@@ -516,7 +516,7 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	int r;
 	struct sc_asn1_entry sm_rapdu[5];
 	struct sc_asn1_entry my_sm_rapdu[5];
-	u8 sw[2], mac[8], fdata[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	u8 sw[2], mac[MAX_SM_MAC_LEN], fdata[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t sw_len = sizeof sw, mac_len = sizeof mac, fdata_len = sizeof fdata,
 		   buf_len, asn1_len, fdata_offset = 0;
 	const u8 *buf;
