@@ -50,6 +50,11 @@ extern "C" {
 /** @brief Padding indicator: use no padding */
 #define SM_NO_PADDING  0x02
 
+/** @brief maximum length of the Cryptographic Checksum (DO'8E') this module
+ * can receive in a response APDU. Sized for a full AES block (16 bytes,
+ * e.g. AES-CMAC); DES-based 8-byte MAC schemes fit within this too. */
+#define MAX_SM_MAC_LEN 16
+
 /** @brief Secure messaging context
  *
  * This module provides *encoding and decoding* of secure messaging APDUs. The
