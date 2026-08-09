@@ -63,10 +63,10 @@ static const struct {
 	const char *path;
 	const char *label;
 } starsign_certs[4] = {
-		{"3f003fff43020114", "Signature Certificate"},
-		{"3f003fff430205a0", "Intermediate CA Certificate 1"},
-		{"3f003fff430213ae", "Intermediate CA Certificate 2"},
-		{"3f003fff43021371", "Root CA Certificate"},
+		{"3f0043020114", "Signature Certificate"},
+		{"3f00430205a0", "Intermediate CA Certificate 1"},
+		{"3f00430213ae", "Intermediate CA Certificate 2"},
+		{"3f0043021371", "Root CA Certificate"},
 };
 
 static int
