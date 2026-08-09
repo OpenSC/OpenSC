@@ -203,7 +203,20 @@ starsign_add_keys(struct sc_pkcs15_card *p15card)
 
 	/* Legacy key from a previous certificate cycle: no live certificate,
 	 * kept only so it doesn't silently vanish for holders who still have
-	 * one provisioned. Real hardware exposes it at key_reference 0. */
+	 * one provisioned. Real hardware exposes it at key_reference 0.
+	 *
+	 * Deliberately no paired native pubkey object here (unlike the current
+	 * key below). A holder who has renewed their ICP-Brasil certificate and
+	 * cleared the old one via the standard SafeSign/XCA workflow -- normal,
+	 * expected lifecycle, not a corner case -- no longer has any on-card EF
+	 * backing this key's public half. Declaring a native pubkey_info for it
+	 * anyway makes the generic PKCS#11 layer try to read modulus bytes that
+	 * don't exist, which fails with SC_ERROR_INTERNAL (-1400). The private
+	 * key object alone is still useful (matches hardware reality, doesn't
+	 * disappear for holders who haven't cleared the old cycle); it just
+	 * won't be discoverable by PKCS#11 clients that only enumerate via
+	 * public keys (e.g. XCA) -- acceptable, since without a certificate it
+	 * can't be used for anything verifiable anyway. */
 	struct sc_pkcs15_prkey_info legacy_prkey_info = {
 			.id = starsign_id_legacy,
 			.usage = SC_PKCS15_PRKEY_USAGE_DECRYPT | SC_PKCS15_PRKEY_USAGE_SIGN |
@@ -219,20 +232,6 @@ starsign_add_keys(struct sc_pkcs15_card *p15card)
 			.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE,
 	};
 
-	struct sc_pkcs15_pubkey_info pubkey_info = {
-			.id = starsign_id_legacy, /* pairs with the legacy key, per real hardware */
-			.usage = SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_WRAP |
-				 SC_PKCS15_PRKEY_USAGE_VERIFY | SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER,
-			.access_flags = SC_PKCS15_PRKEY_ACCESS_LOCAL,
-			.native = 1,
-			.key_reference = 0,
-			.modulus_length = 2048,
-	};
-	struct sc_pkcs15_object pubkey_obj = {
-			.auth_id = {.value = {0x02}, .len = 1},
-			.flags = SC_PKCS15_CO_FLAG_MODIFIABLE,
-	};
-
 	strlcpy(prkey_obj.label, "Signature Key", sizeof(prkey_obj.label));
 	r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 	LOG_TEST_RET(card->ctx, r, "Could not add current private key object");
@@ -240,10 +239,6 @@ starsign_add_keys(struct sc_pkcs15_card *p15card)
 	strlcpy(legacy_prkey_obj.label, "Legacy Key", sizeof(legacy_prkey_obj.label));
 	r = sc_pkcs15emu_add_rsa_prkey(p15card, &legacy_prkey_obj, &legacy_prkey_info);
 	LOG_TEST_RET(card->ctx, r, "Could not add legacy private key object");
-
-	strlcpy(pubkey_obj.label, "Legacy Public Key", sizeof(pubkey_obj.label));
-	r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
-	LOG_TEST_RET(card->ctx, r, "Could not add public key object");
 
 	return SC_SUCCESS;
 }
