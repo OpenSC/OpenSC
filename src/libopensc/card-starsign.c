@@ -335,10 +335,38 @@ starsign_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file
 		 * initial "3F00 5031" DF transition and for any top-level
 		 * DF/EF reached before that context has been established.
 		 * The card only accepts P1=0x00 (select by file ID) here --
-		 * it answers SW 6A82 for P1=0x01 ("select child DF"). */
-		for (i = 0; i < in_path->len; i += 2) {
+		 * it answers SW 6A82 for P1=0x01 ("select child DF"). Walk
+		 * every component except the last one this way; DF-only
+		 * selects (P2=0x0C) never return an FCI on this card, which
+		 * is fine for intermediate directories. */
+		size_t last = in_path->len - 2;
+
+		for (i = 0; i < last; i += 2) {
 			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x0C);
 			apdu.data = &in_path->value[i];
+			apdu.datalen = 2;
+			apdu.lc = 2;
+
+			r = sc_transmit_apdu(card, &apdu);
+			LOG_TEST_GOTO_ERR(ctx, r, "APDU transmit failed (hierarchical SELECT)");
+			r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+			LOG_TEST_GOTO_ERR(ctx, r, "Hierarchical SELECT returned an error status word");
+		}
+
+		/* The final component: a bare "MF + one FID" path (len == 4,
+		 * e.g. "3F00 5031") is always a DF transition -- select it
+		 * the same way as the rest. Anything deeper always bottoms
+		 * out at a real EF on this card's layout, so select it as a
+		 * child EF instead (P1=0x02) to actually capture its FCI/real
+		 * size via starsign_select_ef_child(), instead of silently
+		 * falling back to the placeholder file->size below. */
+		if (in_path->len > 4) {
+			r = starsign_select_ef_child(card, &in_path->value[last], file);
+			LOG_TEST_GOTO_ERR(ctx, r, "SELECT of the final EF (hierarchical path) failed");
+			selected_as_ef = 1;
+		} else {
+			sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x0C);
+			apdu.data = &in_path->value[last];
 			apdu.datalen = 2;
 			apdu.lc = 2;
 
