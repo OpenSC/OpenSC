@@ -4781,22 +4781,30 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	priv->init_flags |= PIV_INIT_IN_READER_LOCK_OBTAINED;
 
 #ifdef PIV_SM_NIST
-	/* check AID then check if SM session works, and restart if needed */
-	r = sm_nist_check_sm_working(card, &priv->sm_params, was_reset, piv_aids[0].value, piv_aids[0].len_short,
-			priv->pin_preference, &priv->logged_in, &priv->tries_left);
-#else
-	/* first see if AID is active AID by reading discovery object '7E' */
-	/* If not try selecting AID */
-	/* but if card does not support DISCOVERY object we can not use it */
-	if (priv->card_issues & CI_DISCOVERY_USELESS) {
-		r = SC_ERROR_NO_CARD_SUPPORT;
-	} else {
-		r = piv_find_discovery(card);
+	if (priv->sm_params.flags & NIST_SM_FLAGS_SM_IS_ACTIVE) {
+		/* check AID then check if SM session works, and restart if needed */
+		r = sm_nist_check_sm_working(card, &priv->sm_params, was_reset, piv_aids[0].value, piv_aids[0].len_short,
+				priv->pin_preference, &priv->logged_in, &priv->tries_left);
 	}
-
-	if (r < 0 || was_reset > 0)
-		r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, NULL, NULL);
+	else
 #endif /* PIV_SM_NIST */
+	{
+		/* first see if AID is active AID by reading discovery object '7E' */
+		/* If not try selecting AID */
+		/* but if card does not support DISCOVERY object we can not use it */
+		if (priv->card_issues & CI_DISCOVERY_USELESS) {
+			r = SC_ERROR_NO_CARD_SUPPORT;
+		} else {
+			r = piv_find_discovery(card);
+		}
+
+		if (r < 0 || was_reset > 0) {
+			u8 temp[SC_MAX_APDU_BUFFER_SIZE];
+			size_t templen = sizeof(temp);
+
+			r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+		}
+	}
 
 	if (was_reset > 0)
 		priv->logged_in = SC_PIN_STATE_UNKNOWN;
