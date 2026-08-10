@@ -71,6 +71,10 @@ enum {
 	OPT_SO_PIN = 0x100,
 	OPT_PIN,
 	OPT_RETRY,
+	OPT_NO_RRC,
+	OPT_NO_PIN_RESET,
+	OPT_REPLACE_PKA_KEY,
+	OPT_REQUIRE_PKA_AND_PIN,
 	OPT_BIO1,
 	OPT_BIO2,
 	OPT_PASSWORD,
@@ -90,13 +94,17 @@ static const struct option options[] = {
 	{ "unwrap-key",				1, NULL,		'U' },
 	{ "public-key-auth",		1, NULL,		'K' },
 	{ "required-pub-keys",		1, NULL,		'n' },
+	{ "replace-key-allowed",	0, NULL,		OPT_REPLACE_PKA_KEY },
+	{ "require-pka-and-pin",	0, NULL,		OPT_REQUIRE_PKA_AND_PIN },
 	{ "export-for-pub-key-auth",1, NULL,		'e' },
 	{ "register-public-key",	1, NULL,		'g' },
 	{ "public-key-auth-status",	0, NULL,		'S' },
 	{ "dkek-shares",			1, NULL,		's' },
 	{ "so-pin",					1, NULL,		OPT_SO_PIN },
-	{ "pin",					1, NULL,		OPT_PIN },
+	{ "pin",					2, NULL,		OPT_PIN },
 	{ "pin-retry",				1, NULL,		OPT_RETRY },
+	{ "no-rrc",					0, NULL,		OPT_NO_RRC },
+	{ "no-pin-reset",			0, NULL,		OPT_NO_PIN_RESET },
 	{ "bio-server1",			1, NULL,		OPT_BIO1 },
 	{ "bio-server2",			1, NULL,		OPT_BIO2 },
 	{ "password",				1, NULL,		OPT_PASSWORD },
@@ -123,6 +131,8 @@ static const char *option_help[] = {
 	"Unwrap key read from <filename>",
 	"Use public key authentication, set total number of public keys",
 	"Number of public keys required for authentication [1]",
+	"Replacing a public key allowed after authentication",
+	"Require public key authentication and PIN verification",
 	"Export key for public key authentication",
 	"Register public key for public key authentication (PKA file)",
 	"Show status of public key authentication",
@@ -130,6 +140,8 @@ static const char *option_help[] = {
 	"Define security officer PIN (SO-PIN)",
 	"Define user PIN",
 	"Define user PIN retry counter",
+	"Disable RESET RETRY COUNTER support",
+	"No PIN reset in RESET RETRY COUNTER command",
 	"AID of biometric server for template 1 (hex)",
 	"AID of biometric server for template 2 (hex)",
 	"Define password for DKEK share",
@@ -495,10 +507,23 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 		if (opt != 0) {
 			printf("Config options       :\n");
 			if (opt & INIT_RRC_ENABLED) {
-				printf("  User PIN reset with SO-PIN enabled\n");
+				if (opt & INIT_RRC_UNBLOCK) {
+					printf("  User PIN unblock with SO-PIN enabled\n");
+				} else {
+					printf("  User PIN unblock and reset with SO-PIN enabled\n");
+				}
 			}
 			if (opt & INIT_TRANSPORT_PIN) {
 				printf("  Transport-PIN mode enabled\n");
+			}
+			if (opt & INIT_SESSION_PIN) {
+				printf("  Session-PIN with biometric matching enabled\n");
+			}
+			if (opt & INIT_REPLACE_PKA_KEY) {
+				printf("  Public Key Authentication keys can be replaced after authentication\n");
+			}
+			if (opt & INIT_REQ_PKA_AND_PIN) {
+				printf("  Public Key Authentication and PIN verification enforced\n");
 			}
 		}
 
@@ -572,7 +597,7 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 
 
 
-static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, const char *bio1, const char *bio2, int dkek_shares, signed char num_of_pub_keys, u8 required_pub_keys, const char *label)
+static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, const int options, const char *bio1, const char *bio2, int dkek_shares, signed char num_of_pub_keys, u8 required_pub_keys, const char *label)
 {
 	sc_cardctl_sc_hsm_init_param_t param;
 	size_t len;
@@ -615,47 +640,47 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 		return -1;
 	}
 
-	if (user_pin == NULL) {
-		printf("Enter initial User-PIN (6 - 16 characters) : ");
-		if (util_getpass(&_user_pin, NULL, stdin) < 0) {
-			fprintf(stderr, "Error reading User-PIN\n");
+	if (user_pin != NULL) {
+		if (*user_pin == 0) {
+			printf("Enter initial User-PIN (6 - 16 characters) : ");
+			if (util_getpass(&_user_pin, NULL, stdin) < 0) {
+				fprintf(stderr, "Error reading User-PIN\n");
+				return -1;
+			}
+			printf("\n");
+		} else {
+			_user_pin = (char *)user_pin;
+		}
+		param.user_pin_len = strlen(_user_pin);
+
+		if (param.user_pin_len < 6) {
+			fprintf(stderr, "PIN must be at least 6 characters long\n");
 			return -1;
 		}
-		printf("\n");
-	} else {
-		_user_pin = (char *)user_pin;
+
+		if (param.user_pin_len > 16) {
+			fprintf(stderr, "PIN must not be longer than 16 characters\n");
+			return -1;
+		}
+
+		if ((param.user_pin_len == 6) && (retry_counter > 3)) {
+			fprintf(stderr, "Retry counter must not exceed 3 for a 6 digit PIN. Use a longer PIN for a higher retry counter.\n");
+			return -1;
+		}
+
+		if ((param.user_pin_len == 7) && (retry_counter > 5)) {
+			fprintf(stderr, "Retry counter must not exceed 5 for a 7 digit PIN. Use a longer PIN for a higher retry counter.\n");
+			return -1;
+		}
+
+		if (retry_counter > 10) {
+			fprintf(stderr, "Retry counter must not exceed 10\n");
+			return -1;
+		}
+		param.user_pin = (u8 *)_user_pin;
+
+		param.user_pin_retry_counter = (u8)retry_counter;
 	}
-
-	param.user_pin_len = strlen(_user_pin);
-
-	if (param.user_pin_len < 6) {
-		fprintf(stderr, "PIN must be at least 6 characters long\n");
-		return -1;
-	}
-
-	if (param.user_pin_len > 16) {
-		fprintf(stderr, "PIN must not be longer than 16 characters\n");
-		return -1;
-	}
-
-	if ((param.user_pin_len == 6) && (retry_counter > 3)) {
-		fprintf(stderr, "Retry counter must not exceed 3 for a 6 digit PIN. Use a longer PIN for a higher retry counter.\n");
-		return -1;
-	}
-
-	if ((param.user_pin_len == 7) && (retry_counter > 5)) {
-		fprintf(stderr, "Retry counter must not exceed 5 for a 7 digit PIN. Use a longer PIN for a higher retry counter.\n");
-		return -1;
-	}
-
-	if (retry_counter > 10) {
-		fprintf(stderr, "Retry counter must not exceed 10\n");
-		return -1;
-	}
-
-	param.user_pin = (u8 *)_user_pin;
-
-	param.user_pin_retry_counter = (u8)retry_counter;
 
 	if (bio1) {
 		param.bio1.len = sizeof(param.bio1.value);
@@ -678,8 +703,8 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 		param.bio2.len = 0;
 	}
 
-	param.options[0] = 0x00;
-	param.options[1] = 0x01; /* RESET RETRY COUNTER enabled */
+	param.options[0] = (u8)(options >> 8);
+	param.options[1] = (u8)options;
 	if (param.bio1.len || param.bio2.len) {
 		param.options[1] |= 0x04; /* Session-PIN enabled with clear on reset */
 	}
@@ -1977,6 +2002,7 @@ int main(int argc, char *argv[])
 	const char *opt_bio1 = NULL;
 	const char *opt_bio2 = NULL;
 	int opt_retry_counter = 3;
+	int opt_no_rrc = 0;
 	int opt_num_of_pub_keys = -1;
 	int opt_required_pub_keys = 1;
 	int opt_dkek_shares = -1;
@@ -1985,6 +2011,7 @@ int main(int argc, char *argv[])
 	int opt_password_shares_total = -1;
 	int opt_force = 0;
 	int opt_iter = 10000000;
+	int initopts = INIT_RRC_ENABLED;
 	sc_context_param_t ctx_param;
 	sc_context_t *ctx = NULL;
 	sc_card_t *card = NULL;
@@ -2031,6 +2058,12 @@ int main(int argc, char *argv[])
 		case 'n':
 			opt_required_pub_keys = (int)atol(optarg);
 			break;
+		case OPT_REPLACE_PKA_KEY:
+			initopts |= INIT_REPLACE_PKA_KEY;
+			break;
+		case OPT_REQUIRE_PKA_AND_PIN:
+			initopts |= INIT_REQ_PKA_AND_PIN;
+			break;
 		case 'e':
 			do_export_key = 1;
 			opt_filename = optarg;
@@ -2052,10 +2085,21 @@ int main(int argc, char *argv[])
 			util_get_pin(optarg, &opt_so_pin);
 			break;
 		case OPT_PIN:
-			util_get_pin(optarg, &opt_pin);
+			if (!optarg) {
+				opt_pin = "";
+			} else {
+				util_get_pin(optarg, &opt_pin);
+			}
 			break;
 		case OPT_RETRY:
 			opt_retry_counter = (int)atol(optarg);
+			break;
+		case OPT_NO_RRC:
+			opt_no_rrc = 1;
+			initopts &= ~INIT_RRC_ENABLED;
+			break;
+		case OPT_NO_PIN_RESET:
+			initopts |= INIT_RRC_UNBLOCK;
 			break;
 		case OPT_BIO1:
 			opt_bio1 = optarg;
@@ -2099,6 +2143,18 @@ int main(int argc, char *argv[])
 	}
 	if (!do_initialize && opt_required_pub_keys != 1) {
 		fprintf(stderr, "Option -n (--required-pub-keys) requires option -X\n");
+		exit(1);
+	}
+	if (!do_initialize && opt_no_rrc != 0) {
+		fprintf(stderr, "Option --no-rrc requires option -X\n");
+		exit(1);
+	}
+	if (!do_initialize && (initopts & INIT_RRC_UNBLOCK)) {
+		fprintf(stderr, "Option --no-pin-reset requires option -X\n");
+		exit(1);
+	}
+	if (opt_no_rrc && (initopts & INIT_RRC_UNBLOCK)) {
+		fprintf(stderr, "Option --no-pin-reset and --no-rrc are mutually exclusive\n");
 		exit(1);
 	}
 	if (do_initialize && do_export_key) {
@@ -2153,6 +2209,14 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Option -S (--public-key-auth-status) excludes option -g\n");
 		exit(1);
 	}
+	if ((initopts & INIT_REPLACE_PKA_KEY) && opt_num_of_pub_keys == -1) {
+		fprintf(stderr, "Option --replace-pka-keys requires option --public-key-auth\n");
+		exit(1);
+	}
+	if ((initopts & INIT_REQ_PKA_AND_PIN) && opt_num_of_pub_keys == -1) {
+		fprintf(stderr, "Option --require-pka-and-pin option --public-key-auth\n");
+		exit(1);
+	}
 
 	memset(&ctx_param, 0, sizeof(sc_context_param_t));
 	ctx_param.app_name = app_name;
@@ -2182,7 +2246,7 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, opt_bio1, opt_bio2, opt_dkek_shares, opt_num_of_pub_keys, opt_required_pub_keys, opt_label))
+	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, initopts, opt_bio1, opt_bio2, opt_dkek_shares, opt_num_of_pub_keys, opt_required_pub_keys, opt_label))
 		goto fail;
 
 	if (do_create_dkek_share && create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))

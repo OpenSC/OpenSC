@@ -44,6 +44,8 @@
 					          initializations.</para>
 						<para>Use <option>--pin</option> to define the initial user pin value.</para>
 						<para>Use <option>--pin-retry</option> to define the maximum number of wrong user PIN presentations.</para>
+						<para>Use <option>--no-rrc</option> to disable support for resetting the user pin retry counter.</para>
+						<para>Use <option>--no-pin-reset</option> to allow resetting the user pin retry counter, but not setting a new pin.</para>
 						<para>Use with <option>--dkek-shares</option> to enable key wrap / unwrap.</para>
 						<para>Use with <option>--label</option> to define a token label</para>
 						<para>Use with <option>--public-key-auth</option> and <option>--required-pub-keys</option> to require public key authentication for login</para>
@@ -257,6 +259,28 @@
 						<para>Define the required number of public keys to use for public key authentication when using <option>--initialize</option>.
 							  This is the M in M-of-N public key authentication. See <option>--public-key-auth</option> for more information.
 						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--replace-key-allowed</option>
+					</term>
+					<listitem>
+					<para>Used in combination with <option>--public-key-auth</option> to allow replacing a registered public key after
+					      successful authentication.
+					</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--require-pka-and-pin</option>
+					</term>
+					<listitem>
+					<para>Used in combination with <option>--public-key-auth</option> to enforce that both, public key authentication and pin
+					      verification are successfully performed for authentication (Default is or).
+					</para>
 					</listitem>
 				</varlistentry>
 

@@ -62,6 +62,10 @@
 
 #define INIT_RRC_ENABLED		0x01		/* Bit 1 of initialization options */
 #define INIT_TRANSPORT_PIN		0x02		/* Bit 2 of initialization options */
+#define INIT_SESSION_PIN		0x04		/* Bit 3 of initialization options */
+#define INIT_REPLACE_PKA_KEY	0x08		/* Bit 4 of initialization options */
+#define INIT_REQ_PKA_AND_PIN	0x10		/* Bit 5 of initialization options */
+#define INIT_RRC_UNBLOCK		0x20		/* Bit 6 of initialization options */
 
 /* Information the driver maintains between calls */
 typedef struct sc_hsm_private_data {
