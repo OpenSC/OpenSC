@@ -221,7 +221,7 @@ typedef struct piv_cvc {
  */
 static const struct sc_card_error sm_nist_errors[] = {
 	{0x6882, SC_ERROR_SM, "SM not supported"},
-	{0x6982, SC_ERROR_SM_NO_SESSION_KEYS, "SM Security status not satisfied"}, /* no session established */
+//	{0x6982, SC_ERROR_SM_NO_SESSION_KEYS, "SM Security status not satisfied"}, /* no session established */
 	{0x6987, SC_ERROR_SM, "Expected SM Data Object missing"},
 	{0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"}, /* other process interference */
 	{0, 0, NULL}
@@ -4833,17 +4833,7 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		r = sm_nist_check_sm_working(card, &priv->sm_params, was_reset, piv_aids[0].value, piv_aids[0].len_short,
 				priv->pin_preference, &priv->logged_in, &priv->tries_left);
 	}
-//<<<<<<< HEAD
 	else
-//=======
-
-	if (r < 0 || was_reset > 0) {
-		u8 temp[SC_MAX_APDU_BUFFER_SIZE];
-		size_t templen = sizeof(temp);
-
-		r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
-	}
-//>>>>>>> 8d675acfc (card-piv.c sm-nist.c sm-nist.h - use the sm-nist_pre_transmit_callback changes)
 #endif /* PIV_SM_NIST */
 	{
 		/* first see if AID is active AID by reading discovery object '7E' */
