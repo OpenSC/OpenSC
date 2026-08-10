@@ -63,10 +63,10 @@ static const struct {
 	const char *path;
 	const char *label;
 } starsign_certs[4] = {
-		{"3f0043020114", "Signature Certificate"},
+		{"3f0043020114", "Signature Certificate"	},
 		{"3f00430205a0", "Intermediate CA Certificate 1"},
 		{"3f00430213ae", "Intermediate CA Certificate 2"},
-		{"3f0043021371", "Root CA Certificate"},
+		{"3f0043021371", "Root CA Certificate"	      },
 };
 
 static int
@@ -99,17 +99,17 @@ starsign_add_pins(struct sc_pkcs15_card *p15card)
 			.tries_left = -1,
 			.max_tries = -1,
 			.attrs = {.pin = {
-					.reference = 0x01,
-					.flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
-						 SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
-						 SC_PKCS15_PIN_FLAG_SO_PIN | SC_PKCS15_PIN_FLAG_DISABLE_ALLOW |
-						 SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA,
-					.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-					.min_length = 4,
-					.stored_length = 15,
-					.max_length = 15,
-					.pad_char = 0x00}}
-	};
+						  .reference = 0x01,
+						  .flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
+							   SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
+							   SC_PKCS15_PIN_FLAG_SO_PIN | SC_PKCS15_PIN_FLAG_DISABLE_ALLOW |
+							   SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA,
+						  .type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
+						  .min_length = 4,
+						  .stored_length = 15,
+						  .max_length = 15,
+						  .pad_char = 0x00}}
+	    };
 	struct sc_pkcs15_object so_pin_obj = {.flags = SC_PKCS15_CO_FLAG_PRIVATE | SC_PKCS15_CO_FLAG_MODIFIABLE};
 
 	struct sc_pkcs15_auth_info user_pin_info = {
@@ -118,16 +118,16 @@ starsign_add_pins(struct sc_pkcs15_card *p15card)
 			.tries_left = -1,
 			.max_tries = -1,
 			.attrs = {.pin = {
-					.reference = 0x02,
-					.flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
-						 SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
-						 SC_PKCS15_PIN_FLAG_DISABLE_ALLOW | SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA,
-					.type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
-					.min_length = 4,
-					.stored_length = 15,
-					.max_length = 15,
-					.pad_char = 0x00}}
-	};
+						  .reference = 0x02,
+						  .flags = SC_PKCS15_PIN_FLAG_CASE_SENSITIVE | SC_PKCS15_PIN_FLAG_LOCAL |
+							   SC_PKCS15_PIN_FLAG_INITIALIZED | SC_PKCS15_PIN_FLAG_NEEDS_PADDING |
+							   SC_PKCS15_PIN_FLAG_DISABLE_ALLOW | SC_PKCS15_PIN_FLAG_EXCHANGE_REF_DATA,
+						  .type = SC_PKCS15_PIN_TYPE_ASCII_NUMERIC,
+						  .min_length = 4,
+						  .stored_length = 15,
+						  .max_length = 15,
+						  .pad_char = 0x00}}
+	    };
 	/* Points at the SO Pin's own id: the SO Pin can unblock/reset this one. */
 	struct sc_pkcs15_object user_pin_obj = {
 			.auth_id = {.value = {0x01}, .len = 1},
