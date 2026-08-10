@@ -630,7 +630,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 #ifdef ENABLE_OPENSSL
 	EVP_PKEY *pk = (EVP_PKEY *)evp_key;
 	int pk_type;
-	 pk_type = EVP_PKEY_base_id(pk);
+	pk_type = EVP_PKEY_base_id(pk);
 
 	switch (pk_type) {
 	case EVP_PKEY_RSA: {
@@ -824,10 +824,10 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		/* Octetstring may need leading zeros if BN is to short */
 		if (dst->privateD.len < BYTES4BITS(dst->params.field_length)) {
 			size_t d = BYTES4BITS(dst->params.field_length) - dst->privateD.len;
-
-			dst->privateD.data = realloc(dst->privateD.data, dst->privateD.len + d);
-			if (!dst->privateD.data)
+			u8 *p = realloc(dst->privateD.data, dst->privateD.len + d);
+			if (!p)
 				return SC_ERROR_OUT_OF_MEMORY;
+			dst->privateD.data = p;
 
 			memmove(dst->privateD.data + d, dst->privateD.data, dst->privateD.len);
 			memset(dst->privateD.data, 0, d);
