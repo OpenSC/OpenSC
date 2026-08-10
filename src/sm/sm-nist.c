@@ -195,7 +195,7 @@ static const struct sc_asn1_entry c_asn1_nist_cvc[C_ASN1_NIST_CVC_SIZE] = {
 
 static const struct sc_card_error nist_sm_errors[] = {
 		{0x6882, SC_ERROR_SM,			"SM not supported"},
-		{0x6982, SC_ERROR_SM_NO_SESSION_KEYS,	"SM Security status not satisfied"}, /* no session established */
+//		{0x6982, SC_ERROR_SM_NO_SESSION_KEYS,	"SM Security status not satisfied"}, /* no session established */
 		{0x6987, SC_ERROR_SM,			"Expected SM Data Object missing"},
 		{0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"}, /* other process interference */
 		{0x6E00, SC_ERROR_SM_INVALID_SESSION_KEY, "Unexpected 6E00"},
@@ -454,7 +454,7 @@ nist_sm_verify_certs(struct sc_card *card)
 				(in_cvc_eckey = EC_KEY_new_by_curve_name(cs->nid)) == NULL ||
 				(in_cvc_point = EC_POINT_new(in_cvc_group)) == NULL ||
 				EC_POINT_oct2point(in_cvc_group, in_cvc_point, priv->sm_in_cvc.publicPoint,
-					priv->sm_in_cvc.publicPointlen, NULL) <= 0 ||
+						priv->sm_in_cvc.publicPointlen, NULL) <= 0 ||
 				EC_KEY_set_public_key(in_cvc_eckey, in_cvc_point) <= 0 ||
 				EVP_PKEY_set1_EC_KEY(in_cvc_pkey, in_cvc_eckey) != 1) {
 			sc_log(card->ctx, "OpenSSL failed to set EC pubkey, during verify");
@@ -704,11 +704,6 @@ sm_nist_open(struct sc_card *card)
 	 * a loop, each trying to reestablish a SM session and run command.
 	 */
 
-	if (!(priv->params->flags & NIST_SM_FLAGS_DEFER_OPEN)) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_SM, "Calling sm_nist_open from wrong place");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
-	}
-
 	cs = priv->cs;
 	if (cs == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
@@ -734,10 +729,10 @@ sm_nist_open(struct sc_card *card)
 			(eph_eckey = EVP_PKEY_get0_EC_KEY(eph_pkey)) == NULL ||
 			(eph_group = EC_KEY_get0_group(eph_eckey)) == NULL ||
 			(Qehlen = EC_POINT_point2oct(eph_group, EC_KEY_get0_public_key(eph_eckey),
-					POINT_CONVERSION_UNCOMPRESSED, NULL, Qehlen, NULL)) <= 0 || /* get length */
+					 POINT_CONVERSION_UNCOMPRESSED, NULL, Qehlen, NULL)) <= 0 || /* get length */
 			Qehlen > cs->Qlen ||
 			(Qehlen = EC_POINT_point2oct(eph_group, EC_KEY_get0_public_key(eph_eckey),
-					POINT_CONVERSION_UNCOMPRESSED, Qeh, Qehlen, NULL)) <= 0 ||
+					 POINT_CONVERSION_UNCOMPRESSED, Qeh, Qehlen, NULL)) <= 0 ||
 			Qehlen > cs->Qlen) {
 		sc_log(card->ctx, "OpenSSL failed to create ephemeral EC key");
 		sc_log_openssl(card->ctx);
@@ -923,7 +918,7 @@ sm_nist_open(struct sc_card *card)
 			(Cicc_eckey = EC_KEY_new_by_curve_name(cs->nid)) == NULL ||
 			(Cicc_point = EC_POINT_new(Cicc_group)) == NULL ||
 			EC_POINT_oct2point(Cicc_group, Cicc_point, priv->sm_cvc.publicPoint,
-				priv->sm_cvc.publicPointlen, NULL) <= 0 ||
+					priv->sm_cvc.publicPointlen, NULL) <= 0 ||
 			EC_KEY_set_public_key(Cicc_eckey, Cicc_point) <= 0 ||
 			EVP_PKEY_set1_EC_KEY(Cicc_pkey, Cicc_eckey) <= 0) {
 		sc_log(card->ctx, "OpenSSL failed to get card's EC pubkey");
@@ -1104,7 +1099,7 @@ sm_nist_open(struct sc_card *card)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		if ((cmac_ctx = CMAC_CTX_new()) == NULL ||
 				CMAC_Init(cmac_ctx, priv->sm_session.SKcfrm,
-					cs->aeskeylen, (*cs->cipher_cbc)(), NULL) != 1 ||
+						cs->aeskeylen, (*cs->cipher_cbc)(), NULL) != 1 ||
 				CMAC_Update(cmac_ctx, MacData, MacDatalen) != 1 ||
 				CMAC_Final(cmac_ctx, Check_AuthCryptogram, &Check_Alen) != 1) {
 			r = SC_ERROR_INTERNAL;
@@ -1119,7 +1114,7 @@ sm_nist_open(struct sc_card *card)
 		if (mac == NULL ||
 				(cmac_ctx = EVP_MAC_CTX_new(mac)) == NULL ||
 				!EVP_MAC_init(cmac_ctx, priv->sm_session.SKcfrm,
-					priv->sm_session.aes_size, cmac_params) ||
+						priv->sm_session.aes_size, cmac_params) ||
 				!EVP_MAC_update(cmac_ctx, MacData, MacDatalen) ||
 				!EVP_MAC_final(cmac_ctx, Check_AuthCryptogram, &Check_Alen, cs->AuthCryptogramlen)) {
 			sc_log_openssl(card->ctx);
@@ -1437,7 +1432,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 			cert_blob = NULL;
 			cert_blob_len = 0;
 			if (SC_SUCCESS != sc_decompress_alloc(&cert_blob, &cert_blob_len,
-					params->signer_cert_der, params->signer_cert_der_len, COMPRESSION_AUTO)) {
+							  params->signer_cert_der, params->signer_cert_der_len, COMPRESSION_AUTO)) {
 				sc_log(card->ctx, "PIV decompression of SM CERT_SIGNER failed");
 				r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 				goto err;
@@ -1569,7 +1564,7 @@ sm_nist_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 			EVP_CIPHER_CTX_set_padding(ed_ctx, 0) != 1 || /* i.e no padding */
 			EVP_EncryptUpdate(ed_ctx, out, &outl, data, (int)datalen) != 1 ||
 			EVP_EncryptFinal_ex(ed_ctx, discard, &outdl) != 1 ||
-				outdl != 0) {			      /* should not happen */
+			outdl != 0) { /* should not happen */
 		sc_log(card->ctx, "SM _encode failed in OpenSSL");
 		sc_log_openssl(card->ctx);
 		r = SC_ERROR_INTERNAL;
@@ -1725,7 +1720,7 @@ sm_nist_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 #else
 	if (!EVP_MAC_init(cmac_ctx, (const unsigned char *)priv->sm_session.SKmac,
-			priv->sm_session.aes_size, cmac_params) ||
+			    priv->sm_session.aes_size, cmac_params) ||
 			!EVP_MAC_update(cmac_ctx, priv->sm_session.C_MCV, MCVlen) ||
 			!EVP_MAC_update(cmac_ctx, data, datalen) ||
 			!EVP_MAC_final(cmac_ctx, priv->sm_session.C_MCV, &C_MCVlen, MCVlen)) {
@@ -1808,7 +1803,7 @@ sm_nist_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	if (CMAC_Init(cmac_ctx, priv->sm_session.SKrmac,
-				priv->sm_session.aes_size, (*cs->cipher_cbc)(), NULL) != 1 ||
+			    priv->sm_session.aes_size, (*cs->cipher_cbc)(), NULL) != 1 ||
 			CMAC_Update(cmac_ctx, priv->sm_session.R_MCV, MCVlen) != 1 ||
 			CMAC_Update(cmac_ctx, macdata, macdatalen) != 1 ||
 			CMAC_Final(cmac_ctx, priv->sm_session.R_MCV, &R_MCVlen) != 1) {
@@ -1817,7 +1812,7 @@ sm_nist_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	}
 #else
 	if (!EVP_MAC_init(cmac_ctx, (const unsigned char *)priv->sm_session.SKrmac,
-				priv->sm_session.aes_size, cmac_params) ||
+			    priv->sm_session.aes_size, cmac_params) ||
 			!EVP_MAC_update(cmac_ctx, priv->sm_session.R_MCV, MCVlen) ||
 			!EVP_MAC_update(cmac_ctx, macdata, macdatalen) ||
 			!EVP_MAC_final(cmac_ctx, priv->sm_session.R_MCV, &R_MCVlen, MCVlen)) {
@@ -1867,7 +1862,7 @@ sm_nist_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	priv = (sm_nist_private_data_t *)ctx->priv_data;
 
-	/* 
+	/*
 	 * Force the use of SM for this apdu only.
 	 * used in reader_lock_obtained and card driver_init
 	 * can be used on any APDU by card driver for fine control
@@ -1882,7 +1877,7 @@ sm_nist_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_log(card->ctx, "forcing the use of NIST_SM_FLAGS_FORCE_IN_CLEAR");
 		priv->params->flags &= ~NIST_SM_FLAGS_FORCE_IN_CLEAR;
 		r = SC_ERROR_SM_NOT_APPLIED;
-	
+
 		/*
 		 * Above only work if apdu was directly from the driver
 		 * with no interveing apdus. for example APDUs created by pkcs15
@@ -1924,11 +1919,6 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	for (i = 0; nist_sm_errors[i].SWs != 0; i++) {
 		if (nist_sm_errors[i].SWs == ((sm_apdu->sw1 << 8) | sm_apdu->sw2)) {
 			sc_log(card->ctx, "%s", nist_sm_errors[i].errorstr);
-			if (priv->params->flags & NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS) {
-				/* Caller can see error from last_sw1 and last_sw2 */
-				sm_apdu->sw1 = 0x90;
-				sm_apdu->sw2 = 0x00;
-			}
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, nist_sm_errors[i].errorno);
 		}
 	}
@@ -1954,7 +1944,7 @@ sm_nist_close(sc_card_t *card)
 		/*
 		 * a SM failure while using SM 00 20 00 xx lc=0
 		 * from reader_lock_obtained maybe caused
-		 * by interference of other process that started its own 
+		 * by interference of other process that started its own
 		 * SM session. In this case do not close but reader_lock_obtained
 		 * continue. sm_nist_post_transmit will have saved the actual
 		 * SW1 and SW2 and set the SW1 to 09 and SW2 to 00
