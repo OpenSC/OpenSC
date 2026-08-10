@@ -2957,32 +2957,20 @@ int
 sc_pkcs15_serialize_guid(unsigned char *in, size_t in_size, unsigned flags,
 		char *out, size_t out_size)
 {
-	int ii, jj, offs = 0;
-
 	if (in_size < 16)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	if (out_size < 39)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
-	*out = '\0';
-	if (!flags)
-		strlcpy(out, "{", out_size);
-	for (ii=0; ii<4; ii++)
-		sprintf(out + strlen(out), "%02x", *(in + offs++));
-	for (jj=0; jj<3; jj++)   {
-		strlcat(out, "-", out_size);
-		for (ii=0; ii<2; ii++)
-			sprintf(out + strlen(out), "%02x", *(in + offs++));
-	}
-	strlcat(out, "-", out_size);
-	for (ii=0; ii<6; ii++)
-		sprintf(out + strlen(out), "%02x", *(in + offs++));
-	if (!flags)
-		strlcat(out, "}", out_size);
+	snprintf(out, out_size,
+			"%s%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x%s",
+			flags ? "" : "{",
+			in[0], in[1], in[2], in[3], in[4], in[5], in[6], in[7],
+			in[8], in[9], in[10], in[11], in[12], in[13], in[14], in[15],
+			flags ? "" : "}");
 
 	return SC_SUCCESS;
 }
-
 
 int
 sc_pkcs15_get_object_guid(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
