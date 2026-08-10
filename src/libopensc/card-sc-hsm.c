@@ -1226,7 +1226,6 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 {
 	sc_context_t *ctx = card->ctx;
 	sc_pkcs15_tokeninfo_t ti;
-	struct sc_pin_cmd_data pincmd;
 	int r;
 	size_t tilen;
 	sc_apdu_t apdu;
@@ -1308,16 +1307,6 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 
 		r = sc_pkcs15_encode_tokeninfo(ctx, &ti, &p, &tilen);
 		LOG_TEST_RET(ctx, r, "Error encoding tokeninfo");
-
-		memset(&pincmd, 0, sizeof(pincmd));
-		pincmd.cmd = SC_PIN_CMD_VERIFY;
-		pincmd.pin_type = SC_AC_CHV;
-		pincmd.pin_reference = 0x81;
-		pincmd.pin1.data = params->user_pin;
-		pincmd.pin1.len = params->user_pin_len;
-
-		r = (*iso_ops->pin_cmd)(card, &pincmd);
-		LOG_TEST_RET(ctx, r, "Could not verify PIN");
 
 		r = sc_hsm_write_ef(card, 0x2F03, 0, p, tilen);
 		LOG_TEST_RET(ctx, r, "Could not write EF.TokenInfo");
