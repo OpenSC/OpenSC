@@ -280,7 +280,8 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	struct sc_asn1_entry sm_capdu[5];
 	u8 *p, *le = NULL, *sm_data = NULL, *fdata = NULL, *mac_data = NULL,
 	   *asn1 = NULL, *mac = NULL, *resp_data = NULL;
-	size_t sm_data_len, fdata_len, mac_data_len, asn1_len, mac_len, le_len;
+	size_t sm_data_len, fdata_len, mac_data_len, asn1_len, mac_len, le_len,
+			cryptogram_len;
 	int r;
 	sc_apdu_t *sm_apdu = NULL;
 
@@ -466,22 +467,24 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	sm_apdu->data = sm_data;
 	sm_apdu->datalen = sm_data_len;
 	sm_apdu->lc = sm_data_len;
-	sm_apdu->le = 0;
 	/* for encrypted APDUs we usually get authenticated status bytes (4B), a
-	 * MAC (2B without data) and a cryptogram with padding indicator (2B tag
-	 * and indicator, max. 2B/3B ASN.1 length, without data). The cryptogram is
-	 * always padded to the block size. */
+	 * MAC (2B without data) and a cryptogram preceded by the padding-content
+	 * indicator (1B). The cryptogram is always padded to the block size and
+	 * the size of its tag and length is whatever ASN.1 needs to encode that
+	 * much data, independent of the APDU being short or extended. */
+	cryptogram_len = 1 + ((apdu->resplen + 1) / ctx->block_length + 1) * ctx->block_length;
+	r = sc_asn1_put_tag(SC_ASN1_TAG_CONTEXT | 0x07, NULL, cryptogram_len, NULL, 0, NULL);
+	if (r < 0)
+		goto err;
+	sm_apdu->resplen = 4 + 2 + mac_len + (size_t)r;
 	if (apdu->cse & SC_APDU_EXT) {
 		sm_apdu->cse = SC_APDU_CASE_4_EXT;
-		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 3 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
-		if (sm_apdu->resplen > SC_MAX_EXT_APDU_RESP_SIZE)
-			sm_apdu->resplen = SC_MAX_EXT_APDU_RESP_SIZE;
+		sm_apdu->le = SC_MAX_EXT_APDU_RESP_SIZE;
 	} else {
 		sm_apdu->cse = SC_APDU_CASE_4_SHORT;
-		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 2 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
-		if (sm_apdu->resplen > SC_MAX_APDU_RESP_SIZE)
-			sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
+		sm_apdu->le = SC_MAX_APDU_RESP_SIZE;
 	}
+
 	resp_data = calloc(1, sm_apdu->resplen);
 	if (!resp_data) {
 		r = SC_ERROR_OUT_OF_MEMORY;
