@@ -476,10 +476,6 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	r = sc_asn1_put_tag(SC_ASN1_TAG_CONTEXT|0x07, NULL, cryptogram_len, NULL, 0, NULL);
 	if (r < 0)
 		goto err;
-	/* No upper limit is imposed here: this is the size of the buffer we
-	 * allocate ourselves, not something that goes on the wire. What the card
-	 * can actually return is bounded by its own internal restrictions, not by
-	 * the maximum transceive size. */
 	sm_apdu->resplen = 4 + 2 + mac_len + (size_t) r;
 	if (apdu->cse & SC_APDU_EXT) {
 		sm_apdu->cse = SC_APDU_CASE_4_EXT;
