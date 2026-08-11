@@ -331,7 +331,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 				&& key_info->modulus_length
 				!= SC_PKCS15_GOSTR3410_KEYSIZE))
 	{
-		sc_log(ctx, "Unsupported key size %" SC_FORMAT_LEN_SIZE_T "u\n", key_info->modulus_length);
+		sc_log(ctx, "Unsupported key size %zu\n", key_info->modulus_length);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)

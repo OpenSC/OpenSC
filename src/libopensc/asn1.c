@@ -228,7 +228,7 @@ static void sc_asn1_print_integer(const u8 * buf, size_t buflen)
 			a <<= 8;
 			a |= buf[i];
 		}
-		printf("%"SC_FORMAT_LEN_SIZE_T"u", a);
+		printf("%zu", a);
 	}
 }
 
@@ -408,9 +408,7 @@ static void print_tags_recursive(const u8 * buf0, const u8 * buf,
 		}
 		if (!((cla & SC_ASN1_TAG_CLASS) == SC_ASN1_TAG_UNIVERSAL
 					&& tag == SC_ASN1_TAG_NULL && len == 0)) {
-			printf(" (%"SC_FORMAT_LEN_SIZE_T"u byte%s)",
-					len,
-					len != 1 ? "s" : "");
+			printf(" (%zu byte%s)", len, len != 1 ? "s" : "");
 		}
 
 		if (len + hlen > bytesleft) {
@@ -557,9 +555,8 @@ const u8 *sc_asn1_skip_tag(sc_context_t *ctx, const u8 ** buf, size_t *buflen,
 		return NULL;
 	len -= (p - *buf);	/* header size */
 	if (taglen > len) {
-		sc_debug(ctx, SC_LOG_DEBUG_ASN1,
-			 "too long ASN.1 object (size %"SC_FORMAT_LEN_SIZE_T"u while only %"SC_FORMAT_LEN_SIZE_T"u available)\n",
-			 taglen, len);
+		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "too long ASN.1 object (size %zu while only %zu available)",
+				taglen, len);
 		return NULL;
 	}
 	*buflen -= (p - *buf) + taglen;
@@ -1513,9 +1510,7 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 	case SC_ASN1_BOOLEAN:
 		if (parm != NULL) {
 			if (objlen != 1) {
-				sc_debug(ctx, SC_LOG_DEBUG_ASN1,
-					 "invalid ASN.1 object length: %"SC_FORMAT_LEN_SIZE_T"u\n",
-					 objlen);
+				sc_debug(ctx, SC_LOG_DEBUG_ASN1, "invalid ASN.1 object length: %zu", objlen);
 				r = SC_ERROR_INVALID_ASN1_OBJECT;
 			} else
 				*((int *) parm) = obj[0] ? 1 : 0;
@@ -1727,9 +1722,8 @@ static int asn1_decode(sc_context_t *ctx, struct sc_asn1_entry *asn1,
 	struct sc_asn1_entry *entry = asn1;
 	size_t left = len, objlen;
 
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1,
-		 "%*.*s""called, left=%"SC_FORMAT_LEN_SIZE_T"u, depth %d%s\n",
-		 depth, depth, "", left, depth, choice ? ", choice" : "");
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*s""called, left=%zu, depth %d%s",
+			depth, depth, "", left, depth, choice ? ", choice" : "");
 
 	if (!p)
 		return SC_ERROR_ASN1_OBJECT_NOT_FOUND;
@@ -1841,10 +1835,8 @@ static int asn1_encode_entry(sc_context_t *ctx, const struct sc_asn1_entry *entr
 		(entry->flags & SC_ASN1_PRESENT)? "" : " (not present)");
 	if (!(entry->flags & SC_ASN1_PRESENT))
 		goto no_object;
-	sc_debug(ctx, SC_LOG_DEBUG_ASN1,
-		 "%*.*stype=%d, tag=0x%02x, parm=%p, len=%"SC_FORMAT_LEN_SIZE_T"u\n",
-		 depth, depth, "", entry->type, entry->tag, parm,
-		 len ? *len : 0);
+	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*stype=%d, tag=0x%02x, parm=%p, len=%zu",
+			depth, depth, "", entry->type, entry->tag, parm, len ? *len : 0);
 
 	if (entry->type == SC_ASN1_CHOICE) {
 		const struct sc_asn1_entry *list, *choice = NULL;
@@ -2034,9 +2026,7 @@ no_object:
 	if (buf)
 		free(buf);
 	if (r >= 0)
-		sc_debug(ctx, SC_LOG_DEBUG_ASN1,
-			 "%*.*slength of encoded item=%"SC_FORMAT_LEN_SIZE_T"u\n",
-			 depth, depth, "", *objlen);
+		sc_debug(ctx, SC_LOG_DEBUG_ASN1, "%*.*slength of encoded item=%zu", depth, depth, "", *objlen);
 	return r;
 }
 
@@ -2227,10 +2217,8 @@ sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, const unsigned char *in
 	if (s_len > 0)
 		memcpy(buf + (buflen - s_len), s, s_len);
 
-	sc_log(ctx, "r(%"SC_FORMAT_LEN_SIZE_T"u): %s", halflen,
-	       sc_dump_hex(buf, halflen));
-	sc_log(ctx, "s(%"SC_FORMAT_LEN_SIZE_T"u): %s", halflen,
-	       sc_dump_hex(buf + halflen, halflen));
+	sc_log(ctx, "r(%zu): %s", halflen, sc_dump_hex(buf, halflen));
+	sc_log(ctx, "s(%zu): %s", halflen, sc_dump_hex(buf + halflen, halflen));
 
 	rv = SC_SUCCESS;
 err:

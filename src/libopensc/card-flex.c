@@ -557,9 +557,7 @@ static int cryptoflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		if (r)
 			return r;
 		if (apdu.resplen != 4) {
-			sc_log(card->ctx,
-				 "expected 4 bytes, got %"SC_FORMAT_LEN_SIZE_T"u.\n",
-				 apdu.resplen);
+			sc_log(card->ctx, "expected 4 bytes, got %zu.", apdu.resplen);
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 		memcpy(buf, rbuf + 2, 2);
@@ -594,9 +592,7 @@ static int cyberflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 		if (r)
 			return r;
 		if (apdu.resplen != 6) {
-			sc_log(card->ctx,
-				 "expected 6 bytes, got %"SC_FORMAT_LEN_SIZE_T"u.\n",
-				 apdu.resplen);
+			sc_log(card->ctx, "expected 6 bytes, got %zu.", apdu.resplen);
 			return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		}
 		memcpy(buf, rbuf + 4, 2);
@@ -765,13 +761,8 @@ cyberflex_construct_file_attrs(sc_card_t *card, const sc_file_t *file,
 		break;
 	}
 
-	sc_log(card->ctx,
-		 "Creating %02x:%02x, size %"SC_FORMAT_LEN_SIZE_T"u %02"SC_FORMAT_LEN_SIZE_T"x:%02"SC_FORMAT_LEN_SIZE_T"x\n",
-		 file->id >> 8,
-		 file->id & 0xFF,
-		 size,
-		 size >> 8,
-		 size & 0xFF);
+	sc_log(card->ctx, "Creating %02x:%02x, size %zu %02zx:%02zx",
+			file->id >> 8, file->id & 0xFF, size, size >> 8, size & 0xFF);
 
 	p[0] = size >> 8;
 	p[1] = size & 0xFF;
@@ -896,9 +887,7 @@ cryptoflex_compute_signature(sc_card_t *card, const u8 *data,
 	size_t i, i2;
 
 	if (data_len != 64 && data_len != 96 && data_len != 128  && data_len != 256) {
-		sc_log(card->ctx,
-			 "Illegal input length: %"SC_FORMAT_LEN_SIZE_T"u\n",
-			 data_len);
+		sc_log(card->ctx, "Illegal input length: %zu", data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	if (outlen < data_len) {
@@ -957,9 +946,7 @@ cyberflex_compute_signature(sc_card_t *card, const u8 *data,
 	case 96:  alg_id = 0xC6; break;
 	case 128: alg_id = 0xC8; break;
 	default:
-		sc_log(card->ctx,
-			 "Illegal input length: %"SC_FORMAT_LEN_SIZE_T"u\n",
-			 data_len);
+		sc_log(card->ctx, "Illegal input length: %zu", data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	key_id = prv->rsa_key_ref + 1; /* Why? */
@@ -1031,7 +1018,7 @@ static int flex_generate_key(sc_card_t *card, struct sc_cardctl_cryptoflex_genke
 	case 1024:	p2 = 0x80; break;
 	case 2048:	p2 = 0x00; break;
 	default:
-		sc_log(card->ctx,  "Illegal key length: %zu\n", data->key_bits);
+		sc_log(card->ctx, "Illegal key length: %zu", data->key_bits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 

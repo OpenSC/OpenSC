@@ -76,7 +76,7 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 	}
 
 	if (SC_SUCCESS == sc_card_ctl(p15card->card, SC_CARDCTL_GET_CHANGE_COUNTER, &change_counter))
-		snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir), "_%" SC_FORMAT_LEN_SIZE_T "u", change_counter);
+		snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir), "_%zu", change_counter);
 
 	if (path->aid.len &&
 		(path->type == SC_PATH_TYPE_FILE_ID || path->type == SC_PATH_TYPE_PATH))   {
@@ -235,9 +235,7 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 	c = fwrite(buf, 1, bufsize, f);
 	fclose(f);
 	if (c != bufsize) {
-		sc_log(p15card->card->ctx,
-			 "fwrite() wrote only %"SC_FORMAT_LEN_SIZE_T"u bytes",
-			 c);
+		sc_log(p15card->card->ctx, "fwrite() wrote only %zu bytes", c);
 		unlink(fname);
 		return SC_ERROR_INTERNAL;
 	}

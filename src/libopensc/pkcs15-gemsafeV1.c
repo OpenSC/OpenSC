@@ -188,12 +188,10 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	 * (allocated EF space is much greater!)
 	 */
 	objlen = (((size_t) ibuf[0]) << 8) | ibuf[1];
-	sc_log(card->ctx, "Stored object is of size: %"SC_FORMAT_LEN_SIZE_T"u",
-	       objlen);
+	sc_log(card->ctx, "Stored object is of size: %zu", objlen);
 	if (objlen < 1 || objlen > GEMSAFE_MAX_OBJLEN) {
-	    sc_log(card->ctx, "Invalid object size: %"SC_FORMAT_LEN_SIZE_T"u",
-		   objlen);
-	    return SC_ERROR_INTERNAL;
+		sc_log(card->ctx, "Invalid object size: %zu", objlen);
+		return SC_ERROR_INTERNAL;
 	}
 
 	/* It looks like the first thing in the block is a table of

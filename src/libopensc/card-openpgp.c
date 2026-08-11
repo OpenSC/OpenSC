@@ -749,9 +749,8 @@ _pgp_add_algo(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t *key_info
 			SC_ALGORITHM_ONBOARD_KEY_GEN;	/* key gen on card */
 
 		_sc_card_add_rsa_alg(card, key_info->u.rsa.modulus_len, flags, 0);
-		sc_log(card->ctx, "DO %uX: Added RSA algorithm, mod_len = %"
-			SC_FORMAT_LEN_SIZE_T"u",
-			do_num, key_info->u.rsa.modulus_len);
+		sc_log(card->ctx, "DO %uX: Added RSA algorithm, mod_len = %zu",
+				do_num, key_info->u.rsa.modulus_len);
 		break;
 	case SC_OPENPGP_KEYALGO_ECDH:
 		/* The montgomery curve (curve25519) needs to go through
@@ -828,7 +827,7 @@ pgp_decode_kdf_do(sc_card_t *card, struct pgp_priv_data *priv)
 		goto out;
 	}
 	if (tag_len != 1) {
-		sc_log(card->ctx, "Unexpected KDF algorithm byte length, expects 1, got %" SC_FORMAT_LEN_SIZE_T "u", tag_len);
+		sc_log(card->ctx, "Unexpected KDF algorithm byte length, expects 1, got %zu", tag_len);
 		goto out;
 	}
 
@@ -848,7 +847,7 @@ pgp_decode_kdf_do(sc_card_t *card, struct pgp_priv_data *priv)
 		goto out;
 	}
 	if (tag_len != 1) {
-		sc_log(card->ctx, "Unexpected KDF hash algorithm byte length, expects 1, got %" SC_FORMAT_LEN_SIZE_T "u", tag_len);
+		sc_log(card->ctx, "Unexpected KDF hash algorithm byte length, expects 1, got %zu", tag_len);
 		goto out;
 	}
 
@@ -870,7 +869,7 @@ pgp_decode_kdf_do(sc_card_t *card, struct pgp_priv_data *priv)
 		goto out;
 	}
 	if (tag_len != 4) {
-		sc_log(card->ctx, "Unexpected KDF iteration count length, expects 4, got %" SC_FORMAT_LEN_SIZE_T "u", tag_len);
+		sc_log(card->ctx, "Unexpected KDF iteration count length, expects 4, got %zu", tag_len);
 		goto out;
 	}
 	pin_kdf_info->iterations = (uint32_t)bebytes2ulong(p);
@@ -2051,9 +2050,7 @@ gnuk_write_certificate(sc_card_t *card, const u8 *buf, size_t length)
 		size_t plen = MIN(length - i*256, 256);
 		u8 roundbuf[256];	/* space to build APDU data with even length for Gnuk */
 
-		sc_log(card->ctx,
-		       "Write part %"SC_FORMAT_LEN_SIZE_T"u from offset 0x%"SC_FORMAT_LEN_SIZE_T"X, len %"SC_FORMAT_LEN_SIZE_T"u",
-		       i+1, i*256, plen);
+		sc_log(card->ctx, "Write part %zu from offset 0x%zX, len %zu", i + 1, i * 256, plen);
 
 		/* 1st chunk: P1 = 0x85, further chunks: P1 = chunk no */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xD6, (i == 0) ? 0x85 : (int)i, 0);
@@ -2170,9 +2167,7 @@ pgp_put_data(sc_card_t *card, unsigned int tag, const u8 *buf, size_t buf_len)
 	 * If we check here, the driver may be stuck to a limit version number of card.
 	 * 7F21 size is soft-coded, so we can check it. */
 	if (tag == DO_CERT && buf_len > priv->max_cert_size) {
-		sc_log(card->ctx,
-		       "Data size %"SC_FORMAT_LEN_SIZE_T"u exceeds DO size limit %"SC_FORMAT_LEN_SIZE_T"u.",
-		       buf_len, priv->max_cert_size);
+		sc_log(card->ctx, "Data size %zu exceeds DO size limit %zu.", buf_len, priv->max_cert_size);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_LENGTH);
 	}
 
@@ -3062,7 +3057,7 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 		}
 	} else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
-	sc_log(card->ctx, "pk_packet_len is %"SC_FORMAT_LEN_SIZE_T"u", pk_packet_len);
+	sc_log(card->ctx, "pk_packet_len is %zu", pk_packet_len);
 
 	fp_buffer_len = 3 + pk_packet_len;
 	p = fp_buffer = calloc(1, fp_buffer_len);
@@ -3856,8 +3851,7 @@ pgp_store_key(sc_card_t *card, sc_cardctl_openpgp_key_gen_store_info_t *key_info
 
 		/* we only support exponent of maximum 32 bits */
 		if (key_info->u.rsa.exponent_len > SC_OPENPGP_MAX_EXP_BITS) {
-			sc_log(card->ctx,
-					"Exponent %" SC_FORMAT_LEN_SIZE_T "u-bit (>32) is not supported.",
+			sc_log(card->ctx, "Exponent %zu-bit (>32) is not supported.",
 					key_info->u.rsa.exponent_len);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 		}

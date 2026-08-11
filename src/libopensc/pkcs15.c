@@ -2518,7 +2518,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 			if(file->record_length > 0) {
 				if(file->record_length > MAX_FILE_SIZE) {
 					len = MAX_FILE_SIZE;
-					sc_log(ctx, "  record size truncated, encoded length: %"SC_FORMAT_LEN_SIZE_T"u", file->record_length);
+					sc_log(ctx, "  record size truncated, encoded length: %zu", file->record_length);
 				} else {
 					len = file->record_length;
 				}

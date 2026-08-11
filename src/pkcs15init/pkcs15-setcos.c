@@ -517,9 +517,8 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 		keybits = ((raw_pubkey[0] * 256) + raw_pubkey[1]);  /* modulus bit length */
 		if (keybits != key_info->modulus_length)  {
-			sc_log(ctx,
-				 "key-size from card[%"SC_FORMAT_LEN_SIZE_T"u] does not match[%"SC_FORMAT_LEN_SIZE_T"u]\n",
-				 keybits, key_info->modulus_length);
+			sc_log(ctx, "key-size from card[%zu] does not match[%zu]",
+					keybits, key_info->modulus_length);
 			LOG_TEST_RET(ctx, SC_ERROR_PKCS15INIT, "Failed to generate key");
 		}
 		memcpy(pubkey->u.rsa.modulus.data, &raw_pubkey[2], pubkey->u.rsa.modulus.len);

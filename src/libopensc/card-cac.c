@@ -261,10 +261,8 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_log(card->ctx,
-		 "%02x %02x %02x %"SC_FORMAT_LEN_SIZE_T"u : %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u\n",
-		 ins, p1, p2, sendbuflen, card->max_send_size,
-		 card->max_recv_size);
+	sc_log(card->ctx, "%02x %02x %02x %zu : %zu %zu",
+			ins, p1, p2, sendbuflen, card->max_send_size, card->max_recv_size);
 
 	rbuf = rbufinitbuf;
 	rbuflen = sizeof(rbufinitbuf);
@@ -300,16 +298,14 @@ static int cac_apdu_io(sc_card_t *card, int ins, int p1, int p2,
 		 apdu.resplen = 0;
 	}
 
-	sc_log(card->ctx,
-		 "calling sc_transmit_apdu flags=%lx le=%"SC_FORMAT_LEN_SIZE_T"u, resplen=%"SC_FORMAT_LEN_SIZE_T"u, resp=%p",
-		 apdu.flags, apdu.le, apdu.resplen, apdu.resp);
+	sc_log(card->ctx, "calling sc_transmit_apdu flags=%lx le=%zu, resplen=%zu, resp=%p",
+			apdu.flags, apdu.le, apdu.resplen, apdu.resp);
 
 	/* with new adpu.c and chaining, this actually reads the whole object */
 	r = sc_transmit_apdu(card, &apdu);
 
-	sc_log(card->ctx,
-		 "result r=%d apdu.resplen=%"SC_FORMAT_LEN_SIZE_T"u sw1=%02x sw2=%02x",
-		 r, apdu.resplen, apdu.sw1, apdu.sw2);
+	sc_log(card->ctx, "result r=%d apdu.resplen=%zu sw1=%02x sw2=%02x",
+			r, apdu.resplen, apdu.sw1, apdu.sw2);
 	if (r < 0) {
 		sc_log(card->ctx, "Transmit failed");
 		goto err;
@@ -366,8 +362,7 @@ cac_get_acr(sc_card_t *card, int acr_type, u8 **out_buf, size_t *out_len)
 	if (r < 0)
 		goto fail;
 
-	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-	    "got %"SC_FORMAT_LEN_SIZE_T"u bytes out=%p", len, out);
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "got %zu bytes out=%p", len, out);
 
 	*out_len = len;
 	*out_buf = out;
@@ -415,8 +410,8 @@ static int cac_read_file(sc_card_t *card, int file_type, u8 **out_buf, size_t *o
 
 	left = size = lebytes2ushort(count);
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-		 "got %"SC_FORMAT_LEN_SIZE_T"u bytes out_ptr=%p count&=%p count[0]=0x%02x count[1]=0x%02x, len=0x%04"SC_FORMAT_LEN_SIZE_T"x (%"SC_FORMAT_LEN_SIZE_T"u)",
-		 len, out_ptr, &count, count[0], count[1], size, size);
+			"got %zu bytes out_ptr=%p count&=%p count[0]=0x%02x count[1]=0x%02x, len=0x%04zx (%zu)",
+			len, out_ptr, &count, count[0], count[1], size, size);
 	out = out_ptr = malloc(size);
 	if (out == NULL) {
 		r = SC_ERROR_OUT_OF_MEMORY;
@@ -468,9 +463,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 	/* if we didn't return it all last time, return the remainder */
 	if (priv->cached) {
-		sc_log(card->ctx,
-			 "returning cached value idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
-			 idx, count);
+		sc_log(card->ctx, "returning cached value idx=%d count=%zu", idx, count);
 		if (idx > priv->cache_buf_len) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_END_REACHED);
 		}
@@ -479,9 +472,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		LOG_FUNC_RETURN(card->ctx, (int)len);
 	}
 
-	sc_log(card->ctx,
-		 "clearing cache idx=%d count=%"SC_FORMAT_LEN_SIZE_T"u",
-		 idx, count);
+	sc_log(card->ctx, "clearing cache idx=%d count=%zu", idx, count);
 	if (priv->cache_buf) {
 		free(priv->cache_buf);
 		priv->cache_buf = NULL;
@@ -526,8 +517,8 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 			/* don't crash on bad data */
 			if (val_len < len) {
-				sc_log(card->ctx, "Received too long value %"SC_FORMAT_LEN_SIZE_T"u, "
-				    "while only %"SC_FORMAT_LEN_SIZE_T"u left. Truncating", len, val_len);
+				sc_log(card->ctx, "Received too long value %zu, while only %zu left. Truncating",
+						len, val_len);
 				len = val_len;
 			}
 			/* if we run out of return space, truncate */
@@ -542,9 +533,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 	case CAC_OBJECT_TYPE_CERT:
 		/* read file */
-		sc_log(card->ctx,
-			 " obj= cert_file, val_len=%"SC_FORMAT_LEN_SIZE_T"u (0x%04"SC_FORMAT_LEN_SIZE_T"x)",
-			 val_len, val_len);
+		sc_log(card->ctx, " obj= cert_file, val_len=%zu (0x%04zx)", val_len, val_len);
 		cert_len = 0;
 		cert_ptr = NULL;
 		cert_type = 0;
@@ -558,8 +547,8 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 			/* incomplete value */
 			if (val_len < len) {
-				sc_log(card->ctx, "Read incomplete value %"SC_FORMAT_LEN_SIZE_T"u, "
-				    "while only %"SC_FORMAT_LEN_SIZE_T"u left", len, val_len);
+				sc_log(card->ctx, "Read incomplete value %zu, while only %zu left",
+						len, val_len);
 				break;
 			}
 
@@ -739,11 +728,9 @@ static int cac_set_security_env(sc_card_t *card, const sc_security_env_t *env, i
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_log(card->ctx,
-		 "flags=%08lx op=%d alg=%lu algf=%08lx algr=%08lx kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u\n",
-		 env->flags, env->operation, env->algorithm,
-		 env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
-		 env->key_ref_len);
+	sc_log(card->ctx, "flags=%08lx op=%d alg=%lu algf=%08lx algr=%08lx kr0=%02x, krfl=%zu",
+			env->flags, env->operation, env->algorithm, env->algorithm_flags, env->algorithm_ref,
+			env->key_ref[0], env->key_ref_len);
 
 	if (env->algorithm != SC_ALGORITHM_RSA) {
 		 r = SC_ERROR_NO_CARD_SUPPORT;
@@ -771,9 +758,7 @@ static int cac_rsa_op(sc_card_t *card,
 	size_t rbuflen, outplen;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx,
-		 "datalen=%"SC_FORMAT_LEN_SIZE_T"u outlen=%"SC_FORMAT_LEN_SIZE_T"u\n",
-		 datalen, outlen);
+	sc_log(card->ctx, "datalen=%zu outlen=%zu\n", datalen, outlen);
 
 	outp = out;
 	outplen = outlen;
@@ -878,8 +863,7 @@ static int cac_parse_properties_object(sc_card_t *card, u8 type,
 		switch (tag) {
 		case CAC_TAG_OBJECT_ID:
 			if (len != 2) {
-				sc_log(card->ctx, "TAG: Object ID: "
-				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: Object ID: Invalid length %zu", len);
 				break;
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
@@ -890,8 +874,7 @@ static int cac_parse_properties_object(sc_card_t *card, u8 type,
 
 		case CAC_TAG_BUFFER_PROPERTIES:
 			if (len != 5) {
-				sc_log(card->ctx, "TAG: Buffer Properties: "
-				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: Buffer Properties: Invalid length %zu", len);
 				break;
 			}
 			/* First byte is "Type of Tag Supported" */
@@ -905,8 +888,7 @@ static int cac_parse_properties_object(sc_card_t *card, u8 type,
 		case CAC_TAG_PKI_PROPERTIES:
 			/* 4th byte is "Private Key Initialized" */
 			if (len != 4) {
-				sc_log(card->ctx, "TAG: PKI Properties: "
-				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: PKI Properties: Invalid length %zu", len);
 				break;
 			}
 			if (type != CAC_TAG_PKI_OBJECT) {
@@ -960,8 +942,7 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 		switch (tag) {
 		case CAC_TAG_APPLET_INFORMATION:
 			if (len != 5) {
-				sc_log(card->ctx, "TAG: Applet Information: "
-				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: Applet Information: Invalid length %zu", len);
 				break;
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
@@ -973,8 +954,7 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 
 		case CAC_TAG_NUMBER_OF_OBJECTS:
 			if (len != 1) {
-				sc_log(card->ctx, "TAG: Num objects: "
-				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: Num objects: Invalid length %zu", len);
 				break;
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
@@ -985,12 +965,10 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 
 		case CAC_TAG_TV_BUFFER:
 			if (len != 17) {
-				sc_log(card->ctx, "TAG: TV Object: "
-				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: TV Object: Invalid length %zu", len);
 				break;
 			}
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "TAG: TV Object nr. %"SC_FORMAT_LEN_SIZE_T"u", i);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "TAG: TV Object nr. %zu", i);
 			if (i >= CAC_MAX_OBJECTS) {
 				free(rbuf);
 				return SC_SUCCESS;
@@ -1003,12 +981,10 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 
 		case CAC_TAG_PKI_OBJECT:
 			if (len != 17) {
-				sc_log(card->ctx, "TAG: PKI Object: "
-				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: PKI Object: Invalid length %zu", len);
 				break;
 			}
-			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-			    "TAG: PKI Object nr. %"SC_FORMAT_LEN_SIZE_T"u", i);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "TAG: PKI Object nr. %zu", i);
 			if (i >= CAC_MAX_OBJECTS) {
 				free(rbuf);
 				return SC_SUCCESS;
@@ -1021,17 +997,15 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 
 		default:
 			/* ignore tags we don't understand */
-			sc_log(card->ctx, "TAG: Unknown (0x%02x), len=%"
-			    SC_FORMAT_LEN_SIZE_T"u", tag, len);
+			sc_log(card->ctx, "TAG: Unknown (0x%02x), len=%zu", tag, len);
 			break;
 		}
 	}
 	free(rbuf);
 	/* sanity */
 	if (i != prop->num_objects)
-		sc_log(card->ctx, "The announced number of objects (%zu) "
-		    "did not match reality (%"SC_FORMAT_LEN_SIZE_T"u)",
-		    prop->num_objects, i);
+		sc_log(card->ctx, "The announced number of objects (%zu) did not match reality (%zu)",
+				prop->num_objects, i);
 	prop->num_objects = i;
 
 	return SC_SUCCESS;
@@ -1264,17 +1238,15 @@ static int cac_path_from_cardurl(sc_card_t *card, sc_path_t *path, cac_card_url_
 	path->len = sizeof(val->objectID);
 	path->type = SC_PATH_TYPE_FILE_ID;
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-		 "path->aid=%x %x %x %x %x %x %x  len=%"SC_FORMAT_LEN_SIZE_T"u, path->value = %x %x len=%"SC_FORMAT_LEN_SIZE_T"u path->type=%d (%x)",
-		 path->aid.value[0], path->aid.value[1], path->aid.value[2],
-		 path->aid.value[3], path->aid.value[4], path->aid.value[5],
-		 path->aid.value[6], path->aid.len, path->value[0],
-		 path->value[1], path->len, path->type, path->type);
+			"path->aid=%x %x %x %x %x %x %x  len=%zu, path->value = %x %x len=%zu path->type=%d (%x)",
+			path->aid.value[0], path->aid.value[1], path->aid.value[2], path->aid.value[3],
+			path->aid.value[4], path->aid.value[5], path->aid.value[6], path->aid.len,
+			path->value[0], path->value[1], path->len, path->type, path->type);
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-		 "rid=%x %x %x %x %x  len=%"SC_FORMAT_LEN_SIZE_T"u appid= %x %x len=%"SC_FORMAT_LEN_SIZE_T"u objid= %x %x len=%"SC_FORMAT_LEN_SIZE_T"u",
-		 val->rid[0], val->rid[1], val->rid[2], val->rid[3],
-		 val->rid[4], sizeof(val->rid), val->applicationID[0],
-		 val->applicationID[1], sizeof(val->applicationID),
-		 val->objectID[0], val->objectID[1], sizeof(val->objectID));
+			"rid=%x %x %x %x %x  len=%zu appid= %x %x len=%zu objid= %x %x len=%zu",
+			val->rid[0], val->rid[1], val->rid[2], val->rid[3], val->rid[4],
+			sizeof(val->rid), val->applicationID[0], val->applicationID[1],
+			sizeof(val->applicationID), val->objectID[0], val->objectID[1], sizeof(val->objectID));
 
 	return SC_SUCCESS;
 }
@@ -1395,10 +1367,8 @@ static int cac_parse_cuid(sc_card_t *card, cac_private_data_t *priv, cac_cuid_t 
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "manufacture id=%x", val->manufacturer_id);
 	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "cac_type=%d", val->card_type);
 	card_id_len = len - (&val->card_id - (u8 *)val);
-	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-		 "card_id=%s (%"SC_FORMAT_LEN_SIZE_T"u)",
-		 sc_dump_hex(&val->card_id, card_id_len),
-		 card_id_len);
+	sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "card_id=%s (%zu)",
+			sc_dump_hex(&val->card_id, card_id_len), card_id_len);
 	priv->cuid = *val;
 	free(priv->cac_id);
 	priv->cac_id = malloc(card_id_len);
@@ -1430,7 +1400,7 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl
 			break;
 		}
 		if (val + len > val_end) {
-			sc_log(card->ctx, "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+			sc_log(card->ctx, "Invalid length %zu", len);
 			break;
 		}
 		switch (tag) {
@@ -1442,8 +1412,7 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl
 			break;
 		case CAC_TAG_CC_VERSION_NUMBER:
 			if (len != 1) {
-				sc_log(card->ctx, "TAG: CC Version: "
-				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: CC Version: Invalid length %zu", len);
 				break;
 			}
 			/* ignore the version numbers for now */
@@ -1452,8 +1421,7 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl
 			break;
 		case CAC_TAG_GRAMMAR_VERION_NUMBER:
 			if (len != 1) {
-				sc_log(card->ctx, "TAG: Grammar Version: "
-				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: Grammar Version: Invalid length %zu", len);
 				break;
 			}
 			/* ignore the version numbers for now */
@@ -1471,8 +1439,7 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl
 		 */
 		case CAC_TAG_PKCS15:
 			if (len != 1) {
-				sc_log(card->ctx, "TAG: PKCS15: "
-				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: PKCS15: Invalid length %zu", len);
 				break;
 			}
 			/* TODO should verify that this is '0'. If it's not
@@ -1482,8 +1449,7 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl
 			break;
 		case CAC_TAG_DATA_MODEL:
 			if (len != 1) {
-				sc_log(card->ctx, "TAG: Registered Data Model Number: "
-				    "Invalid length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: Registered Data Model Number: Invalid length %zu", len);
 				break;
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,"TAG: Registered Data Model Number (0x%02x)", *val);
@@ -1572,8 +1538,7 @@ static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
 		switch (tag) {
 		case CAC_TAG_APPLET_FAMILY:
 			if (len != 5) {
-				sc_log(card->ctx, "TAG: Applet Information: "
-				    "bad length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: Applet Information: bad length %zu", len);
 				break;
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
@@ -1584,8 +1549,7 @@ static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
 			break;
 		case CAC_TAG_NUMBER_APPLETS:
 			if (len != 1) {
-				sc_log(card->ctx, "TAG: Num applets: "
-				    "bad length %"SC_FORMAT_LEN_SIZE_T"u", len);
+				sc_log(card->ctx, "TAG: Num applets: bad length %zu", len);
 				break;
 			}
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
@@ -1594,9 +1558,7 @@ static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
 		case CAC_TAG_APPLET_ENTRY:
 			/* Make sure we match the outer length */
 			if (len < 3 || val[2] != len - 3) {
-				sc_log(card->ctx, "TAG: Applet Entry: "
-				    "bad length (%"SC_FORMAT_LEN_SIZE_T
-				    "u) or length of internal buffer", len);
+				sc_log(card->ctx, "TAG: Applet Entry: bad length (%zu) or length of internal buffer", len);
 				break;
 			}
 			sc_debug_hex(card->ctx, SC_LOG_DEBUG_VERBOSE,

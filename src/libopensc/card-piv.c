@@ -2502,7 +2502,7 @@ piv_sm_open(struct sc_card *card)
 		goto err;
 	}
 
-	sc_log(card->ctx, "debug Zlen:%" SC_FORMAT_LEN_SIZE_T "u Z[0]:0x%2.2x", Zlen, Z[0]);
+	sc_log(card->ctx, "debug Zlen:%zu Z[0]:0x%2.2x", Zlen, Z[0]);
 
 	/* Step H9 zeroize deh from step H2 */
 	EVP_PKEY_free(eph_pkey); /* OpenSSL  BN_clear_free calls OPENSSL_cleanse */
@@ -3120,9 +3120,7 @@ piv_get_data(sc_card_t *card, int enumtag, u8 **buf, size_t *buf_len)
 		alloc_buf = 1;
 	}
 
-	sc_log(card->ctx,
-			"buffer for #%d *buf=0x%p len=%" SC_FORMAT_LEN_SIZE_T "u",
-			enumtag, *buf, *buf_len);
+	sc_log(card->ctx, "buffer for #%d *buf=0x%p len=%zu", enumtag, *buf, *buf_len);
 	if (*buf == NULL && *buf_len > 0) {
 		if (*buf_len > MAX_FILE_SIZE) {
 			r = SC_ERROR_INTERNAL;
@@ -3216,8 +3214,7 @@ piv_get_cached_data(sc_card_t *card, int enumtag, u8 **buf, size_t *buf_len)
 	/* see if we have it cached */
 	if (priv->obj_cache[enumtag].flags & PIV_OBJ_CACHE_VALID) {
 
-		sc_log(card->ctx,
-				"found #%d %p:%" SC_FORMAT_LEN_SIZE_T "u %p:%" SC_FORMAT_LEN_SIZE_T "u",
+		sc_log(card->ctx, "found #%d %p:%zu %p:%zu",
 				enumtag,
 				priv->obj_cache[enumtag].obj_data,
 				priv->obj_cache[enumtag].obj_len,
@@ -3259,8 +3256,7 @@ piv_get_cached_data(sc_card_t *card, int enumtag, u8 **buf, size_t *buf_len)
 		*buf = rbuf;
 		*buf_len = r;
 
-		sc_log(card->ctx,
-				"added #%d  %p:%" SC_FORMAT_LEN_SIZE_T "u %p:%" SC_FORMAT_LEN_SIZE_T "u",
+		sc_log(card->ctx, "added #%d  %p:%zu %p:%zu",
 				enumtag,
 				priv->obj_cache[enumtag].obj_data,
 				priv->obj_cache[enumtag].obj_len,
@@ -3300,8 +3296,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 
 	/* if already cached */
 	if (priv->obj_cache[enumtag].internal_obj_data && priv->obj_cache[enumtag].internal_obj_len) {
-		sc_log(card->ctx,
-				"#%d found internal %p:%" SC_FORMAT_LEN_SIZE_T "u",
+		sc_log(card->ctx, "#%d found internal %p:%zu",
 				enumtag,
 				priv->obj_cache[enumtag].internal_obj_data,
 				priv->obj_cache[enumtag].internal_obj_len);
@@ -3387,7 +3382,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
-	sc_log(card->ctx, "added #%d internal %p:%" SC_FORMAT_LEN_SIZE_T "u",
+	sc_log(card->ctx, "added #%d internal %p:%zu",
 			enumtag,
 			priv->obj_cache[enumtag].internal_obj_data,
 			priv->obj_cache[enumtag].internal_obj_len);
@@ -3436,8 +3431,7 @@ piv_read_binary(sc_card_t *card, unsigned int idx, unsigned char *buf, size_t co
 				goto err;
 			}
 			if (bodylen > body - rbuf + rbuflen) {
-				sc_log(card->ctx,
-						" ***** tag length > then data: %" SC_FORMAT_LEN_SIZE_T "u>%" SC_FORMAT_LEN_PTRDIFF_T "u+%" SC_FORMAT_LEN_SIZE_T "u",
+				sc_log(card->ctx, " ***** tag length > then data: %zu>%zu+%zu",
 						bodylen, body - rbuf, rbuflen);
 				r = SC_ERROR_INVALID_DATA;
 				goto err;
@@ -3967,7 +3961,7 @@ piv_general_mutual_authenticate(sc_card_t *card,
 
 	if (plain_text_len != witness_len) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-				"Encrypted and decrypted lengths do not match: %" SC_FORMAT_LEN_SIZE_T "u:%" SC_FORMAT_LEN_SIZE_T "u\n",
+				"Encrypted and decrypted lengths do not match: %zu:%zu\n",
 				witness_len, plain_text_len);
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -3982,7 +3976,7 @@ piv_general_mutual_authenticate(sc_card_t *card,
 	nonce = malloc(witness_len);
 	if (!nonce) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-				"OOM allocating nonce (%" SC_FORMAT_LEN_SIZE_T "u : %" SC_FORMAT_LEN_SIZE_T "u)\n",
+				"OOM allocating nonce (%zu : %zu)\n",
 				witness_len, plain_text_len);
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -3993,7 +3987,7 @@ piv_general_mutual_authenticate(sc_card_t *card,
 	if (!r) {
 		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
-				"Generating random for nonce (%" SC_FORMAT_LEN_SIZE_T "u : %" SC_FORMAT_LEN_SIZE_T "u)\n",
+				"Generating random for nonce (%zu : %zu)\n",
 				witness_len, plain_text_len);
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -4117,7 +4111,7 @@ piv_general_mutual_authenticate(sc_card_t *card,
 
 	if (decrypted_reponse_len != nonce_len || memcmp(nonce, decrypted_reponse, nonce_len) != 0) {
 		sc_log(card->ctx,
-				"mutual authentication failed, card returned wrong value %" SC_FORMAT_LEN_SIZE_T "u:%" SC_FORMAT_LEN_SIZE_T "u",
+				"mutual authentication failed, card returned wrong value %zu:%zu",
 				decrypted_reponse_len, nonce_len);
 		r = SC_ERROR_DECRYPT_FAILED;
 		goto err;
@@ -4331,7 +4325,7 @@ piv_general_external_authenticate(sc_card_t *card,
 	tmplen = sc_asn1_put_tag(0x7C, NULL, tmplen, NULL, 0, NULL);
 	if (output_len != (size_t)tmplen) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Allocated and computed lengths do not match! "
-							  "Expected %" SC_FORMAT_LEN_SIZE_T "d, found: %zu\n",
+							  "Expected %zd, found: %zu\n",
 				output_len, tmplen);
 		r = SC_ERROR_INTERNAL;
 		goto err;
@@ -4417,8 +4411,7 @@ piv_get_serial_nr_from_CHUI(sc_card_t *card, sc_serial_number_t *serial)
 					gbits = gbits | guid[i]; /* if all are zero, gbits will be zero */
 				}
 			}
-			sc_log(card->ctx,
-					"fascn=%p,fascnlen=%" SC_FORMAT_LEN_SIZE_T "u,guid=%p,guidlen=%" SC_FORMAT_LEN_SIZE_T "u,gbits=%2.2x",
+			sc_log(card->ctx, "fascn=%p,fascnlen=%zu,guid=%p,guidlen=%zu,gbits=%2.2x",
 					fascn, fascnlen, guid, guidlen, gbits);
 
 			if (fascn && fascnlen == 25 && fbits) {
@@ -4678,8 +4671,7 @@ piv_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_log(card->ctx,
-			"flags=%08lx op=%d alg=%lu algf=%08lx algr=%08lx kr0=%02x, krfl=%" SC_FORMAT_LEN_SIZE_T "u",
+	sc_log(card->ctx, "flags=%08lx op=%d alg=%lu algf=%08lx algr=%08lx kr0=%02x, krfl=%zu",
 			env->flags, env->operation, env->algorithm, env->algorithm_flags,
 			env->algorithm_ref, env->key_ref[0], env->key_ref_len);
 
@@ -4861,8 +4853,7 @@ piv_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	if (priv->alg_id == 0x11 || priv->alg_id == 0x14) {
 		nLen = BYTES4BITS(priv->key_size);
 		if (outlen < 2 * nLen) {
-			sc_log(card->ctx,
-					" output too small for EC signature %" SC_FORMAT_LEN_SIZE_T "u < %" SC_FORMAT_LEN_SIZE_T "u",
+			sc_log(card->ctx, " output too small for EC signature %zu < %zu",
 					outlen, 2 * nLen);
 			r = SC_ERROR_INVALID_DATA;
 			goto err;
@@ -4877,8 +4868,7 @@ piv_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	} else if (priv->alg_id == 0xE0) {
 		nLen = BYTES4BITS(priv->key_size);
 		if (outlen < nLen) {
-			sc_log(card->ctx,
-					" output too small for ED signature %" SC_FORMAT_LEN_SIZE_T "u < %" SC_FORMAT_LEN_SIZE_T "u",
+			sc_log(card->ctx, " output too small for ED signature %zu < %zu",
 					outlen, nLen);
 			r = SC_ERROR_INVALID_DATA;
 			goto err;
@@ -5023,8 +5013,7 @@ piv_parse_discovery(sc_card_t *card, u8 *rbuf, size_t rbuflen, int aid_only)
 			goto err;
 		}
 
-		sc_log(card->ctx,
-				"Discovery 0x%2.2x 0x%2.2x %p:%" SC_FORMAT_LEN_SIZE_T "u",
+		sc_log(card->ctx, "Discovery 0x%2.2x 0x%2.2x %p:%zu",
 				cla_out, tag_out, body, bodylen);
 		aidlen = 0;
 		aid = sc_asn1_find_tag(card->ctx, body, bodylen, 0x4F, &aidlen);
@@ -5445,8 +5434,7 @@ piv_process_history(sc_card_t *card)
 			r = piv_cache_internal_data(card, enumtag);
 			sc_log(card->ctx, "got internal r=%d", r);
 
-			sc_log(card->ctx,
-					"Added from off card file #%d %p:%" SC_FORMAT_LEN_SIZE_T "u 0x%02X",
+			sc_log(card->ctx, "Added from off card file #%d %p:%zu 0x%02X",
 					enumtag,
 					priv->obj_cache[enumtag].obj_data,
 					priv->obj_cache[enumtag].obj_len, *keyref);
@@ -6051,8 +6039,7 @@ piv_init(sc_card_t *card)
 
 	priv->pstate = PIV_STATE_INIT;
 
-	sc_log(card->ctx,
-			"Max send = %" SC_FORMAT_LEN_SIZE_T "u recv = %" SC_FORMAT_LEN_SIZE_T "u card->type:%d, CI:%08x AI:%08x",
+	sc_log(card->ctx, "Max send = %zu recv = %zu card->type:%d, CI:%08x AI:%08x",
 			card->max_send_size, card->max_recv_size, card->type, priv->card_issues, priv->alg_ids);
 	card->cla = 0x00;
 	if (card->name == NULL)

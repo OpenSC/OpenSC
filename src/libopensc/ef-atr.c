@@ -64,10 +64,8 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 		ef_atr.df_selection =  *(tag + 0);
 		ef_atr.unit_size = *(tag + 1);
 		ef_atr.card_capabilities = *(tag + 2);
-		sc_log(ctx,
-		       "EF.ATR: DF selection %X, unit_size %"SC_FORMAT_LEN_SIZE_T"X, card caps %X",
-		       ef_atr.df_selection, ef_atr.unit_size,
-		       ef_atr.card_capabilities);
+		sc_log(ctx, "EF.ATR: DF selection %X, unit_size %zX, card caps %X",
+				ef_atr.df_selection, ef_atr.unit_size, ef_atr.card_capabilities);
 	}
 
 	if (ef_atr.card_capabilities & ISO7816_CAP_EXTENDED_LENGTH_INFO) {
@@ -79,10 +77,8 @@ sc_parse_ef_atr_content(struct sc_card *card, unsigned char *buf, size_t buflen)
 			 * We skip parsing the nested DOs and jump directly to the numbers */
 			ef_atr.max_command_apdu = bebytes2ushort(tag + 2);
 			ef_atr.max_response_apdu = bebytes2ushort(tag + 6);
-			sc_log(ctx,
-			       "EF.ATR: Biggest command APDU %"SC_FORMAT_LEN_SIZE_T"u bytes, response APDU %"SC_FORMAT_LEN_SIZE_T"u",
-			       ef_atr.max_command_apdu,
-			       ef_atr.max_response_apdu);
+			sc_log(ctx, "EF.ATR: Biggest command APDU %zu bytes, response APDU %zu",
+					ef_atr.max_command_apdu, ef_atr.max_response_apdu);
 		}
 	}
 

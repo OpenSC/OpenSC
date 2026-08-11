@@ -394,8 +394,7 @@ static int do_info(sc_card_t *card, const struct ef_name_map *map)
 			return EXIT_FAILURE;
 		}
 		if (r != (signed) count || (size_t) r < map[i].offset + map[i].length) {
-			util_error("%s: expecting %"SC_FORMAT_LEN_SIZE_T"d bytes, got only %d",
-				map[i].ef, count, r);
+			util_error("%s: expecting %zd bytes, got only %d", map[i].ef, count, r);
 			return EXIT_FAILURE;
 		}
 		if (map[i].offset > 0) {

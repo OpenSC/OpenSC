@@ -236,9 +236,8 @@ iasecc_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 	file->path.value[file->path.len - 1] = file->id & 0xFF;
 	file->path.count = -1;
 
-	sc_log(ctx,
-	       "file size %"SC_FORMAT_LEN_SIZE_T"u; ef type %i/%i; id %04X\n",
-	       file->size, file->type, file->ef_structure, file->id);
+	sc_log(ctx, "file size %zu; ef type %i/%i; id %04X",
+			file->size, file->type, file->ef_structure, file->id);
 	sc_log(ctx, "path type %X; path '%s'", file->path.type, sc_print_path(&file->path));
 
 	if (out)
@@ -931,10 +930,8 @@ iasecc_pkcs15_fix_private_key_attributes(struct sc_profile *profile, struct sc_p
 
 	sc_log(ctx, "SDO(class:%X,ref:%X,usage:%X)",
 			sdo_prvkey->sdo_class, sdo_prvkey->sdo_ref, sdo_prvkey->usage);
-	sc_log(ctx, "SDO ACLs(%"SC_FORMAT_LEN_SIZE_T"u):%s",
-	       sdo_prvkey->docp.acls_contact.size,
-	       sc_dump_hex(sdo_prvkey->docp.acls_contact.value,
-			   sdo_prvkey->docp.acls_contact.size));
+	sc_log(ctx, "SDO ACLs(%zu):%s", sdo_prvkey->docp.acls_contact.size,
+			sc_dump_hex(sdo_prvkey->docp.acls_contact.value, sdo_prvkey->docp.acls_contact.size));
 	sc_log(ctx, "SDO AMB:%X, SCBS:%s", sdo_prvkey->docp.amb,
 			sc_dump_hex(sdo_prvkey->docp.scbs, IASECC_MAX_SCBS));
 
@@ -1071,13 +1068,10 @@ iasecc_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 	int	 rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx,
-	       "create private key(keybits:%"SC_FORMAT_LEN_SIZE_T"u,usage:%X,access:%X,ref:%X)",
-	       keybits, key_info->usage, key_info->access_flags,
-	       key_info->key_reference);
+	sc_log(ctx, "create private key(keybits:%zu,usage:%X,access:%X,ref:%X)",
+			keybits, key_info->usage, key_info->access_flags, key_info->key_reference);
 	if (keybits < 1024 || keybits > 2048 || (keybits % 256))   {
-		sc_log(ctx, "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u",
-		       keybits);
+		sc_log(ctx, "Unsupported key size %zu", keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -1135,10 +1129,8 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx,
-	       "generate key(bits:%"SC_FORMAT_LEN_SIZE_T"u,path:%s,AuthID:%s\n",
-	       keybits, sc_print_path(&key_info->path),
-	       sc_pkcs15_print_id(&object->auth_id));
+	sc_log(ctx, "generate key(bits:%zu,path:%s,AuthID:%s",
+			keybits, sc_print_path(&key_info->path), sc_pkcs15_print_id(&object->auth_id));
 
 	if (!object->content.value || object->content.len != sizeof(struct iasecc_sdo))
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid PrKey SDO data");
@@ -1148,8 +1140,7 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "'Magic' control failed for SDO PrvKey");
 
 	if (keybits < 1024 || keybits > 2048 || (keybits%0x100))   {
-		sc_log(ctx, "Unsupported key size %"SC_FORMAT_LEN_SIZE_T"u\n",
-		       keybits);
+		sc_log(ctx, "Unsupported key size %zu\n", keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -1231,10 +1222,8 @@ iasecc_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15ca
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx,
-	       "Store IAS/ECC key(keybits:%"SC_FORMAT_LEN_SIZE_T"u,AuthID:%s,path:%s)",
-	       keybits, sc_pkcs15_print_id(&object->auth_id),
-	       sc_print_path(&key_info->path));
+	sc_log(ctx, "Store IAS/ECC key(keybits:%zu,AuthID:%s,path:%s)",
+			keybits, sc_pkcs15_print_id(&object->auth_id), sc_print_path(&key_info->path));
 
 	if (!object->content.value || object->content.len != sizeof(struct iasecc_sdo))
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid PrKey SDO data");
@@ -1245,10 +1234,8 @@ iasecc_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15ca
 	if (sdo_prvkey->magic != SC_CARDCTL_IASECC_SDO_MAGIC)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "'Magic' control failed for SDO PrvKey");
 
-	sc_log(ctx,
-	       "key compulsory attr(size:%"SC_FORMAT_LEN_SIZE_T"u,on_card:%i)",
-	       sdo_prvkey->data.prv_key.compulsory.size,
-	       sdo_prvkey->data.prv_key.compulsory.on_card);
+	sc_log(ctx, "key compulsory attr(size:%zu,on_card:%i)", sdo_prvkey->data.prv_key.compulsory.size,
+			sdo_prvkey->data.prv_key.compulsory.on_card);
 
 	rv = sc_profile_get_parent(profile, "private-key", &file);
 	LOG_TEST_RET(ctx, rv, "cannot instantiate parent DF of the private key");

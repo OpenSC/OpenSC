@@ -1541,9 +1541,7 @@ epass2003_sm_unwrap_apdu(struct sc_card *card, struct sc_apdu *sm, struct sc_apd
 	plain->sw1 = sm->sw1;
 	plain->sw2 = sm->sw2;
 
-	sc_log(card->ctx,
-	       "unwrapped APDU: resplen %"SC_FORMAT_LEN_SIZE_T"u, SW %02X%02X",
-	       plain->resplen, plain->sw1, plain->sw2);
+	sc_log(card->ctx, "unwrapped APDU: resplen %zu, SW %02X%02X", plain->resplen, plain->sw1, plain->sw2);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -2313,8 +2311,7 @@ epass2003_process_fci(struct sc_card *card, sc_file_t * file, const u8 * buf, si
 		file->size = tag[0];
 		if (taglen == 2)
 			file->size = (file->size << 8) + tag[1];
-		sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u",
-			   file->size);
+		sc_log(ctx, "  bytes in file: %zu", file->size);
 	}
 
 	if (tag == NULL) {

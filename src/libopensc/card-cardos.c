@@ -299,9 +299,9 @@ static int cardos_init(sc_card_t *card)
 	/* Use Min card sizes and reader too. for V5_3 at least*/
 
 	if (card->type == SC_CARD_TYPE_CARDOS_V5_0 || card->type == SC_CARD_TYPE_CARDOS_V5_3) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "data_field_length:%"SC_FORMAT_LEN_SIZE_T"u "
-				"card->reader->max_send_size:%"SC_FORMAT_LEN_SIZE_T"u "
-				"card->reader->max_recv_size:%"SC_FORMAT_LEN_SIZE_T"u %s",
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL,
+				"data_field_length:%zu card->reader->max_send_size:%zu "
+				"card->reader->max_recv_size:%zu %s",
 				data_field_length, card->reader->max_send_size, card->reader->max_recv_size,
 				(card->caps & SC_CARD_CAP_APDU_EXT) ? "SC_CARD_CAP_APDU_EXT" : " ");
 
@@ -1489,12 +1489,8 @@ cardos_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 	data->pin_reference |= 0x80;
 
 	sc_log(ctx, "PIN_CMD(cmd:%i, ref:%i)", data->cmd, data->pin_reference);
-	sc_log(ctx,
-	       "PIN1(max:%"SC_FORMAT_LEN_SIZE_T"u, min:%"SC_FORMAT_LEN_SIZE_T"u)",
-	       data->pin1.max_length, data->pin1.min_length);
-	sc_log(ctx,
-	       "PIN2(max:%"SC_FORMAT_LEN_SIZE_T"u, min:%"SC_FORMAT_LEN_SIZE_T"u)",
-	       data->pin2.max_length, data->pin2.min_length);
+	sc_log(ctx, "PIN1(max:%zu, min:%zu)", data->pin1.max_length, data->pin1.min_length);
+	sc_log(ctx, "PIN2(max:%zu, min:%zu)", data->pin2.max_length, data->pin2.min_length);
 
 	/* FIXME: the following values depend on what pin length was
 	 * used when creating the BS objects */
