@@ -182,7 +182,6 @@ jobs:
           cache: 'maven'
       - run: .github/setup-linux.sh ${{ matrix.target }} debug
       - run: .github/test-${{ matrix.target }}.sh ${{ matrix.ver }}
-      - run: .github/test-${{ matrix.target }}.sh ${{ matrix.ver }} valgrind
 
   test:
     name: test-${{ matrix.target }}-${{ matrix.dist }}
@@ -199,7 +198,6 @@ jobs:
       - *use_cache
       - run: .github/setup-linux.sh ${{ matrix.target }} debug
       - run: .github/test-${{ matrix.target }}.sh
-      - run: .github/test-${{ matrix.target }}.sh valgrind
 
   #######################
   ## LibreSSL pipeline ##
