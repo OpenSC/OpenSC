@@ -1266,6 +1266,12 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 		*p++ = (u8)params->dkek_shares;
 	}
 
+	if (params->key_domains > 0) {
+		*p++ = 0x97;	// Number of key domains
+		*p++ = 0x01;
+		*p++ = params->key_domains;
+	}
+
 	if (params->num_of_pub_keys > 0) {
 		*p++ = 0x93;	// Use public key authentication
 		*p++ = 0x02;

@@ -48,6 +48,7 @@
 						<para>Use <option>--no-rrc</option> to disable support for resetting the user pin retry counter.</para>
 						<para>Use <option>--no-pin-reset</option> to allow resetting the user pin retry counter, but not setting a new pin.</para>
 						<para>Use with <option>--dkek-shares</option> to enable key wrap / unwrap.</para>
+						<para>Use with <option>--key-domains</option> to define the number of key domains that should be allocated.</para>
 						<para>Use with <option>--label</option> to define a token label</para>
 						<para>Use with <option>--public-key-auth</option> and <option>--required-pub-keys</option> to require public key authentication for login</para>
 					</listitem>
@@ -119,6 +120,21 @@
 						<para>After using <option>--initialize</option> with one or more DKEK shares, the
 						      SmartCard-HSM will remain in the initialized state until all DKEK shares have
 						      been imported. During this phase no new keys can be generated or imported.</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--key-domains</option> <replaceable>number-of-key-domains</replaceable>,
+						<option>-d</option> <replaceable>number-of-key-domains</replaceable>
+					</term>
+					<listitem>
+						<para>Define the number of key domains slots to be allocated.</para>
+						<para>This is an optional parameter. Using <option>--initialize</option> without
+						      <option>--key-domains</option> will disable key domains completely, unless a single
+							  default key domain is created using the <option>--dkek-shares</option>.</para>
+						<para>Key domains slots can later be used to create DKEK key domains using the
+							  <option>--create-dkek-key-domain</option> function.</para>
 					</listitem>
 				</varlistentry>
 

@@ -101,6 +101,7 @@ static const struct option options[] = {
 	{ "register-public-key",	1, NULL,		'g' },
 	{ "public-key-auth-status",	0, NULL,		'S' },
 	{ "dkek-shares",			1, NULL,		's' },
+	{ "key-domains",			1, NULL,		'd' },
 	{ "so-pin",					1, NULL,		OPT_SO_PIN },
 	{ "pin",					1, NULL,		OPT_PIN },
 	{ "transport-pin",			1, NULL,		OPT_TRANSPORT_PIN },
@@ -139,6 +140,7 @@ static const char *option_help[] = {
 	"Register public key for public key authentication (PKA file)",
 	"Show status of public key authentication",
 	"Number of DKEK shares [No DKEK]",
+	"Number of key domain slots",
 	"Define security officer PIN (SO-PIN)",
 	"Define user PIN",
 	"Define transport PIN",
@@ -600,7 +602,9 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 
 
 
-static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, const int options, const char *bio1, const char *bio2, int dkek_shares, signed char num_of_pub_keys, u8 required_pub_keys, const char *label)
+static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, const int options,
+		const char *bio1, const char *bio2, int dkek_shares, const int key_domains,
+		signed char num_of_pub_keys, u8 required_pub_keys, const char *label)
 {
 	sc_cardctl_sc_hsm_init_param_t param;
 	size_t len;
@@ -713,6 +717,7 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	}
 
 	param.dkek_shares = (char)dkek_shares;
+	param.key_domains = (u8)key_domains;
 	param.num_of_pub_keys = (signed char)num_of_pub_keys; /* guaranteed in [-1,90] */
 	param.required_pub_keys = (u8)required_pub_keys; /* guaranteed in [1,90] */
 	param.label = (char *)label;
@@ -2009,6 +2014,7 @@ int main(int argc, char *argv[])
 	int opt_num_of_pub_keys = -1;
 	int opt_required_pub_keys = 1;
 	int opt_dkek_shares = -1;
+	int opt_key_domains = 0;
 	int opt_key_reference = -1;
 	int opt_password_shares_threshold = -1;
 	int opt_password_shares_total = -1;
@@ -2020,7 +2026,7 @@ int main(int argc, char *argv[])
 	sc_card_t *card = NULL;
 
 	while (1) {
-		c = getopt_long(argc, argv, "XC:I:P:W:U:K:n:e:g:Ss:i:fr:wv", options, &long_optind);
+		c = getopt_long(argc, argv, "XC:I:P:W:U:K:n:e:g:Ss:d:i:fr:wv", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -2119,6 +2125,9 @@ int main(int argc, char *argv[])
 		case 's':
 			opt_dkek_shares = (int)atol(optarg);
 			break;
+		case 'd':
+			opt_key_domains = (int)atol(optarg);
+			break;
 		case 'f':
 			opt_force = 1;
 			break;
@@ -2148,7 +2157,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Option -n (--required-pub-keys) requires option -X\n");
 		exit(1);
 	}
-	if (!do_initialize && opt_no_rrc != 0) {
+	if (!do_initialize && !(initopts & INIT_RRC_ENABLED)) {
 		fprintf(stderr, "Option --no-rrc requires option -X\n");
 		exit(1);
 	}
@@ -2156,8 +2165,16 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Option --no-pin-reset requires option -X\n");
 		exit(1);
 	}
+	if (!do_initialize && opt_key_domains > 0) {
+		fprintf(stderr, "Option -d (--key-domains) requires option -X\n");
+		exit(1);
+	}
+	if (opt_dkek_shares > -1 && opt_key_domains > 0) {
+		fprintf(stderr, "Options -d (--key-domains) and -s (--dkek-shares) are mutually exclusive\n");
+		exit(1);
+	}
 	if (opt_no_rrc && (initopts & INIT_RRC_UNBLOCK)) {
-		fprintf(stderr, "Option --no-pin-reset and --no-rrc are mutually exclusive\n");
+		fprintf(stderr, "Options --no-pin-reset and --no-rrc are mutually exclusive\n");
 		exit(1);
 	}
 	if (do_initialize && do_export_key) {
@@ -2249,7 +2266,7 @@ int main(int argc, char *argv[])
 		goto fail;
 	}
 
-	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, initopts, opt_bio1, opt_bio2, opt_dkek_shares, opt_num_of_pub_keys, opt_required_pub_keys, opt_label))
+	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, initopts, opt_bio1, opt_bio2, opt_dkek_shares, opt_key_domains, opt_num_of_pub_keys, opt_required_pub_keys, opt_label))
 		goto fail;
 
 	if (do_create_dkek_share && create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))
