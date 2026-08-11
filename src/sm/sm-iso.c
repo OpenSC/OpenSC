@@ -281,7 +281,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	u8 *p, *le = NULL, *sm_data = NULL, *fdata = NULL, *mac_data = NULL,
 	   *asn1 = NULL, *mac = NULL, *resp_data = NULL;
 	size_t sm_data_len, fdata_len, mac_data_len, asn1_len, mac_len, le_len,
-	       cryptogram_len;
+			cryptogram_len;
 	int r;
 	sc_apdu_t *sm_apdu = NULL;
 
@@ -472,11 +472,11 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	 * indicator (1B). The cryptogram is always padded to the block size and
 	 * the size of its tag and length is whatever ASN.1 needs to encode that
 	 * much data, independent of the APDU being short or extended. */
-	cryptogram_len = 1 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
-	r = sc_asn1_put_tag(SC_ASN1_TAG_CONTEXT|0x07, NULL, cryptogram_len, NULL, 0, NULL);
+	cryptogram_len = 1 + ((apdu->resplen + 1) / ctx->block_length + 1) * ctx->block_length;
+	r = sc_asn1_put_tag(SC_ASN1_TAG_CONTEXT | 0x07, NULL, cryptogram_len, NULL, 0, NULL);
 	if (r < 0)
 		goto err;
-	sm_apdu->resplen = 4 + 2 + mac_len + (size_t) r;
+	sm_apdu->resplen = 4 + 2 + mac_len + (size_t)r;
 	if (apdu->cse & SC_APDU_EXT) {
 		sm_apdu->cse = SC_APDU_CASE_4_EXT;
 		sm_apdu->le = SC_MAX_EXT_APDU_RESP_SIZE;
