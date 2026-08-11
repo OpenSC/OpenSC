@@ -128,6 +128,7 @@ sc_sm_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 {
 	struct sc_context *ctx  = card->ctx;
 	struct sc_apdu *sm_apdu = NULL;
+	int retries = 1;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -135,6 +136,7 @@ sc_sm_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	if (!card->sm_ctx.ops.get_sm_apdu || !card->sm_ctx.ops.free_sm_apdu)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 
+retry:
 	/* get SM encoded APDU */
 	rv = card->sm_ctx.ops.get_sm_apdu(card, apdu, &sm_apdu);
 	if (rv == SC_ERROR_SM_NOT_APPLIED)   {
@@ -167,6 +169,20 @@ sc_sm_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 
 	/* decode SM answer and free temporary SM related data */
 	rv = card->sm_ctx.ops.free_sm_apdu(card, apdu, &sm_apdu);
+
+	/*
+	 * Multiple processes may have reset our SM session.
+	 * sm_ctx.ops.free_sm_apdu can detect SM failure
+	 * try again with new SM session using current pcsc lock
+	 */
+	if (rv == SC_ERROR_SM_RETRY_WITH_NEW_OPEN && retries > 0) {
+		sc_log(ctx, "Retry apdu with new SM session");
+		retries--;
+		if (card->sm_ctx.ops.open)
+			card->sm_ctx.ops.open(card);
+		goto retry;
+	}
+
 	if (rv < 0)
 		sc_sm_stop(card);
 
