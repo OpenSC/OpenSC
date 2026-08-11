@@ -42,7 +42,8 @@
 						<para>Initialize token, removing all existing keys, certificates and files.</para>
 						<para>Use <option>--so-pin</option> to define SO-PIN for first initialization or to verify in subsequent
 					          initializations.</para>
-						<para>Use <option>--pin</option> to define the initial user pin value.</para>
+						<para>Use <option>--pin</option> to define the initial user pin value (use "ask:" to prompt the user to enter the PIN).</para>
+						<para>Use <option>--transport-pin</option> to define the initial transport pin value (use "ask:" to prompt the user to enter the PIN).</para>
 						<para>Use <option>--pin-retry</option> to define the maximum number of wrong user PIN presentations.</para>
 						<para>Use <option>--no-rrc</option> to disable support for resetting the user pin retry counter.</para>
 						<para>Use <option>--no-pin-reset</option> to allow resetting the user pin retry counter, but not setting a new pin.</para>
@@ -125,6 +126,7 @@
 					<term>
 						<option>--pin</option> <replaceable>pin</replaceable>,
 						<option>--so-pin</option> <replaceable>sopin</replaceable>,
+						<option>--transport-pin</option> <replaceable>tpin</replaceable>,
 					</term>
 					<listitem>
 						<para>
@@ -151,6 +153,24 @@
 					</term>
 					<listitem>
 						<para>Define number of PIN retries for user PIN during initialization. Default is 3.</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--no-rrc</option>
+					</term>
+					<listitem>
+						<para>Disable the RESET RETRY COUNTER command used to unblock and reset the user PIN (Default is to allow unblock and reset using the SO-PIN).</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--no-pin-reset</option>
+					</term>
+					<listitem>
+						<para>Enable the RESET RETRY COUNTER command, but disallow resetting the user PIN value (Unblock only).</para>
 					</listitem>
 				</varlistentry>
 

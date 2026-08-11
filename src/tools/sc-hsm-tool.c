@@ -70,6 +70,7 @@ static int	verbose = 0;
 enum {
 	OPT_SO_PIN = 0x100,
 	OPT_PIN,
+	OPT_TRANSPORT_PIN,
 	OPT_RETRY,
 	OPT_NO_RRC,
 	OPT_NO_PIN_RESET,
@@ -101,7 +102,8 @@ static const struct option options[] = {
 	{ "public-key-auth-status",	0, NULL,		'S' },
 	{ "dkek-shares",			1, NULL,		's' },
 	{ "so-pin",					1, NULL,		OPT_SO_PIN },
-	{ "pin",					2, NULL,		OPT_PIN },
+	{ "pin",					1, NULL,		OPT_PIN },
+	{ "transport-pin",			1, NULL,		OPT_TRANSPORT_PIN },
 	{ "pin-retry",				1, NULL,		OPT_RETRY },
 	{ "no-rrc",					0, NULL,		OPT_NO_RRC },
 	{ "no-pin-reset",			0, NULL,		OPT_NO_PIN_RESET },
@@ -139,6 +141,7 @@ static const char *option_help[] = {
 	"Number of DKEK shares [No DKEK]",
 	"Define security officer PIN (SO-PIN)",
 	"Define user PIN",
+	"Define transport PIN",
 	"Define user PIN retry counter",
 	"Disable RESET RETRY COUNTER support",
 	"No PIN reset in RESET RETRY COUNTER command",
@@ -641,7 +644,7 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	}
 
 	if (user_pin != NULL) {
-		if (*user_pin == 0) {
+		if (strlen(user_pin) >= 4 && strncasecmp(user_pin, "ask:", 4) == 0) {
 			printf("Enter initial User-PIN (6 - 16 characters) : ");
 			if (util_getpass(&_user_pin, NULL, stdin) < 0) {
 				fprintf(stderr, "Error reading User-PIN\n");
@@ -2084,12 +2087,12 @@ int main(int argc, char *argv[])
 		case OPT_SO_PIN:
 			util_get_pin(optarg, &opt_so_pin);
 			break;
+		case OPT_TRANSPORT_PIN:
+			initopts |= INIT_TRANSPORT_PIN;
+			util_get_pin(optarg, &opt_pin);
+			break;
 		case OPT_PIN:
-			if (!optarg) {
-				opt_pin = "";
-			} else {
-				util_get_pin(optarg, &opt_pin);
-			}
+			util_get_pin(optarg, &opt_pin);
 			break;
 		case OPT_RETRY:
 			opt_retry_counter = (int)atol(optarg);
