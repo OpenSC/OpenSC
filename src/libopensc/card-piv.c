@@ -218,6 +218,9 @@ typedef struct piv_cvc {
  *
  * Override APDU response error codes from iso7816.c to allow
  * handling of SM specific error
+ * 6982 for a SM apdu means SM is not set up
+ * 6982 for non SM  apdu is pin login state
+ * 6988 for SM is caught on sm_nist and new SM session started and apdu is retried
  */
 static const struct sc_card_error sm_nist_errors[] = {
 	{0x6882, SC_ERROR_SM, "SM not supported"},
@@ -4788,8 +4791,10 @@ piv_logout(sc_card_t *card)
  * There may have been one or more resets, by other card drivers in different
  * processes, and they may have taken action already
  * and changed the AID and or may have sent a VERIFY with PIN
- * or started their own NIST SM session
- * so select AID and reauthenticate SM as needed.
+ * or started their own NIST SM session or  selected a different AID.
+ * An SM protected apdu will cause a retry of the apdu
+ * after sm_open is done again.
+ *
  */
 
 /* card.c also calls piv_sm_open before this if a reset was done, but
@@ -4827,30 +4832,21 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 
 	priv->init_flags |= PIV_INIT_IN_READER_LOCK_OBTAINED;
 
-#ifdef PIV_SM_NIST
-	if (priv->sm_params.flags & NIST_SM_FLAGS_SM_IS_ACTIVE) {
-		/* check AID then check if SM session works, and restart if needed */
-		r = sm_nist_check_sm_working(card, &priv->sm_params, was_reset, piv_aids[0].value, piv_aids[0].len_short,
-				priv->pin_preference, &priv->logged_in, &priv->tries_left);
+	
+	/* first see if AID is active AID by reading discovery object '7E' */
+	/* If not try selecting AID */
+	/* but if card does not support DISCOVERY object we can not use it */
+	if (priv->card_issues & CI_DISCOVERY_USELESS) {
+		r = SC_ERROR_NO_CARD_SUPPORT;
+	} else {
+		r = piv_find_discovery(card);
 	}
-	else
-#endif /* PIV_SM_NIST */
-	{
-		/* first see if AID is active AID by reading discovery object '7E' */
-		/* If not try selecting AID */
-		/* but if card does not support DISCOVERY object we can not use it */
-		if (priv->card_issues & CI_DISCOVERY_USELESS) {
-			r = SC_ERROR_NO_CARD_SUPPORT;
-		} else {
-			r = piv_find_discovery(card);
-		}
 
-		if (r < 0 || was_reset > 0) {
-			u8 temp[SC_MAX_APDU_BUFFER_SIZE];
-			size_t templen = sizeof(temp);
+	if (r < 0 || was_reset > 0) {
+		u8 temp[SC_MAX_APDU_BUFFER_SIZE];
+		size_t templen = sizeof(temp);
 
-			r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
-		}
+		r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
 	}
 
 	if (was_reset > 0)
