@@ -2591,6 +2591,9 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen, size_t expected)
                 perror("read");
                 return SC_ERROR_FILE_NOT_FOUND;
         }
+        if ((size_t)sz < filesize) {
+                return SC_ERROR_FILE_TOO_SMALL;
+        }
 
 	*outlen = filesize;
 	return SC_SUCCESS;
