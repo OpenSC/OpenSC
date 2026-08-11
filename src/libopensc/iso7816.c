@@ -920,6 +920,19 @@ iso7816_get_response(struct sc_card *card, size_t *count, u8 *buf)
 	apdu.resp    = buf;
 	/* don't call GET RESPONSE recursively */
 	apdu.flags  |= SC_APDU_FLAGS_NO_GET_RESP;
+	/* GET RESPONSE fetches the leftover tail bytes of a response that's
+	 * already in flight (e.g. after SW=61xx) -- it isn't a new logical
+	 * command and must not get its own SM envelope on top of whatever
+	 * command it's completing, matching how real SM-capable cards expect
+	 * it (confirmed against a captured proprietary Gemalto/IDPrime driver
+	 * session, which always sends GET RESPONSE unprotected even mid an
+	 * active SM session). Without this, once SM is active any response
+	 * too big for a single short-form transfer (e.g. an RSA-2048
+	 * signature) fails: the GET RESPONSE APDU built here would otherwise
+	 * get SM-wrapped by sc_transmit_apdu(), the card would reject/not
+	 * understand that framing, and the SM layer would then fail trying to
+	 * decrypt a reply that was never SM-protected to begin with. */
+	apdu.flags |= SC_APDU_FLAGS_NO_SM;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");

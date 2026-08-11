@@ -466,21 +466,62 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	sm_apdu->data = sm_data;
 	sm_apdu->datalen = sm_data_len;
 	sm_apdu->lc = sm_data_len;
-	sm_apdu->le = 0;
 	/* for encrypted APDUs we usually get authenticated status bytes (4B), a
 	 * MAC (2B without data) and a cryptogram with padding indicator (2B tag
 	 * and indicator, max. 2B/3B ASN.1 length, without data). The cryptogram is
 	 * always padded to the block size. */
 	if (apdu->cse & SC_APDU_EXT) {
 		sm_apdu->cse = SC_APDU_CASE_4_EXT;
-		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 3 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
+		/* apdu.c's sc_get_response() bails out immediately ("no data
+		 * expected") whenever apdu->le == 0, which used to unconditionally
+		 * discard the SW=61xx continuation data of any response that
+		 * didn't fit in a single transfer -- confirmed against a real
+		 * card: a 256-byte RSA-2048 signature comes back SM-wrapped as a
+		 * first 256-byte transfer (SW=61xx) plus a GET RESPONSE for the
+		 * rest, and with le hardcoded to 0 that second part was silently
+		 * dropped even after the resplen buffer fix below. apdu->resplen
+		 * itself isn't a valid Le (it's a buffer *capacity*, e.g. 4096 for
+		 * a generously-sized caller buffer, which sc_check_apdu() would
+		 * reject as Le), so clamp to the largest Le this cse can encode --
+		 * the actual wire Le byte(s) only ever need to ask for "as much as
+		 * this transfer can carry"; anything beyond that is what GET
+		 * RESPONSE chaining is for. */
+		sm_apdu->le = apdu->resplen == 0 ? 0 : 65536;
+		/* +1: DO'87's content is the 1-byte padding-content indicator
+		 * followed by the padded cryptogram, not the padded cryptogram
+		 * alone (see the "Padding-content indicator followed by
+		 * cryptogram" DO built in sm_encrypt() above) -- this formula only
+		 * counted the latter, under-allocating the response buffer by
+		 * exactly 1 byte. Harmless for responses that fit in a single
+		 * transfer (the missing byte is simply never written into,
+		 * unnoticed), but fatal once GET RESPONSE chaining is needed: the
+		 * reassembled buffer ends up 1 byte short of a complete DO'8E',
+		 * which then parses as "MAC absent" plus leftover trailing data,
+		 * i.e. SC_ERROR_UNKNOWN_DATA_RECEIVED (confirmed against a real
+		 * card while completing the RSA-2048 signature fix above). */
+		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 3 + 1 + ((apdu->resplen + 1) / ctx->block_length + 1) * ctx->block_length;
 		if (sm_apdu->resplen > SC_MAX_EXT_APDU_RESP_SIZE)
 			sm_apdu->resplen = SC_MAX_EXT_APDU_RESP_SIZE;
 	} else {
 		sm_apdu->cse = SC_APDU_CASE_4_SHORT;
-		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 2 + ((apdu->resplen+1)/ctx->block_length+1)*ctx->block_length;
-		if (sm_apdu->resplen > SC_MAX_APDU_RESP_SIZE)
-			sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
+		sm_apdu->le = apdu->resplen == 0 ? 0 : 256;
+		/* +1: see the identical comment in the extended-APDU branch above. */
+		sm_apdu->resplen = 4 + 2 + mac_len + 2 + 2 + 1 + ((apdu->resplen + 1) / ctx->block_length + 1) * ctx->block_length;
+		/* SC_MAX_APDU_RESP_SIZE (256) is the limit for a *single* short-form
+		 * transfer, not for the fully reassembled response -- a short-form
+		 * APDU whose wrapped/padded size exceeds that is expected to still
+		 * work via the standard T=0 GET RESPONSE chaining that apdu.c
+		 * already performs transparently on SW=61xx (sc_get_response()).
+		 * Capping the buffer here to SC_MAX_APDU_RESP_SIZE silently
+		 * truncated the reassembled data (confirmed against a real card:
+		 * a 256-byte RSA-2048 signature response needs ~277 SM-wrapped
+		 * bytes, comes back chained as a 256-byte initial transfer plus a
+		 * GET RESPONSE for the remaining SW2 bytes, and the second chunk
+		 * was being silently dropped because this buffer was already full
+		 * from the first chunk alone) -- use the same generous extended
+		 * bound as the SC_APDU_EXT branch above instead. */
+		if (sm_apdu->resplen > SC_MAX_EXT_APDU_RESP_SIZE)
+			sm_apdu->resplen = SC_MAX_EXT_APDU_RESP_SIZE;
 	}
 	resp_data = calloc(1, sm_apdu->resplen);
 	if (!resp_data) {
@@ -513,7 +554,7 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	int r;
 	struct sc_asn1_entry sm_rapdu[5];
 	struct sc_asn1_entry my_sm_rapdu[5];
-	u8 sw[2], mac[8], fdata[SC_MAX_EXT_APDU_BUFFER_SIZE];
+	u8 sw[2], mac[MAX_SM_MAC_LEN], fdata[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t sw_len = sizeof sw, mac_len = sizeof mac, fdata_len = sizeof fdata,
 		   buf_len, asn1_len, fdata_offset = 0;
 	const u8 *buf;
