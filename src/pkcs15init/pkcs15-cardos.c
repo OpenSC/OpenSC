@@ -490,9 +490,7 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	 * "no padding required". */
 	maxlen = MIN(profile->pin_maxlen, sizeof(pinpadded));
 	if (pin_len > maxlen) {
-		sc_log(card->ctx,
-			 "invalid pin length: %"SC_FORMAT_LEN_SIZE_T"u (max %u)\n",
-			 pin_len, maxlen);
+		sc_log(card->ctx, "invalid pin length: %zu (max %u)", pin_len, maxlen);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	memcpy(pinpadded, pin, pin_len);

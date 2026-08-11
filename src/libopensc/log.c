@@ -349,13 +349,10 @@ void _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line,
 	sc_hex_dump(data, len, buf, blen);
 
 	if (label)
-		sc_do_log(ctx, type, file, line, func,
-			"\n%s (%"SC_FORMAT_LEN_SIZE_T"u byte%s):\n%s",
-			label, len, len==1?"":"s", buf);
+		sc_do_log(ctx, type, file, line, func, "\n%s (%zu byte%s):\n%s", label, len,
+				len == 1 ? "" : "s", buf);
 	else
-		sc_do_log(ctx, type, file, line, func,
-			"%"SC_FORMAT_LEN_SIZE_T"u byte%s:\n%s",
-			len, len==1?"":"s", buf);
+		sc_do_log(ctx, type, file, line, func, "%zu byte%s:\n%s", len, len == 1 ? "" : "s", buf);
 
 	free(buf);
 }

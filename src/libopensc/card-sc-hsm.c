@@ -1072,9 +1072,7 @@ static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 	int r;
 	size_t fieldsizebytes = (key_size + 7) >> 3;
 
-	sc_log(card->ctx,
-	       "Field size %"SC_FORMAT_LEN_SIZE_T"u, signature buffer size %"SC_FORMAT_LEN_SIZE_T"u",
-	       fieldsizebytes, outlen);
+	sc_log(card->ctx, "Field size %zu, signature buffer size %zu", fieldsizebytes, outlen);
 
 	r = sc_asn1_decode_ecdsa_signature(card->ctx, data, datalen, fieldsizebytes, &out, outlen);
 	LOG_FUNC_RETURN(card->ctx, r);

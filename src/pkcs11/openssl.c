@@ -677,7 +677,7 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 					res = EVP_VerifyFinal(md_ctx, signat_tmp, (unsigned int) signat_len_tmp, pkey);
 				} else {
 					sc_log(context, "sc_asn1_sig_value_rs_to_sequence failed r:%d "
-							"or output too long signat_len_tmp:%"SC_FORMAT_LEN_SIZE_T"u",
+							"or output too long signat_len_tmp:%zu",
 							r, signat_len_tmp);
 					res = -1;
 				}

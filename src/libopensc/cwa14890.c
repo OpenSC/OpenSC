@@ -91,20 +91,26 @@ static void cwa_trace_apdu(sc_card_t * card, sc_apdu_t * apdu, int flag)
 		if (apdu->datalen > 0) {	/* apdu data to show */
 			sc_hex_dump(apdu->data, apdu->datalen, buf, sizeof(buf));
 			sc_log(card->ctx,
-			       "\nAPDU before encode: ==================================================\nCLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02"SC_FORMAT_LEN_SIZE_T"X Le: %02"SC_FORMAT_LEN_SIZE_T"X DATA: [%5"SC_FORMAT_LEN_SIZE_T"u bytes]\n%s======================================================================\n",
-			       apdu->cla, apdu->ins, apdu->p1, apdu->p2,
-			       apdu->lc, apdu->le, apdu->datalen, buf);
+					"\nAPDU before encode: ==================================================\n"
+					"CLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02zX Le: %02zX DATA: [%5zu bytes]\n"
+					"%s======================================================================\n",
+					apdu->cla, apdu->ins, apdu->p1, apdu->p2,
+					apdu->lc, apdu->le, apdu->datalen, buf);
 		} else {	/* apdu data field is empty */
 			sc_log(card->ctx,
-			       "\nAPDU before encode: ==================================================\nCLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02"SC_FORMAT_LEN_SIZE_T"X Le: %02"SC_FORMAT_LEN_SIZE_T"X (NO DATA)\n======================================================================\n",
-			       apdu->cla, apdu->ins, apdu->p1, apdu->p2,
-			       apdu->lc, apdu->le);
+					"\nAPDU before encode: ==================================================\n"
+					"CLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02zX Le: %02zX (NO DATA)\n"
+					"======================================================================\n",
+					apdu->cla, apdu->ins, apdu->p1, apdu->p2,
+					apdu->lc, apdu->le);
 		}
 	} else {		/* apdu response */
 		sc_hex_dump(apdu->resp, apdu->resplen, buf, sizeof(buf));
 		sc_log(card->ctx,
-		       "\nAPDU response after decode: ==========================================\nSW1: %02X SW2: %02X RESP: [%5"SC_FORMAT_LEN_SIZE_T"u bytes]\n%s======================================================================\n",
-		       apdu->sw1, apdu->sw2, apdu->resplen, buf);
+				"\nAPDU response after decode: ==========================================\n"
+				"SW1: %02X SW2: %02X RESP: [%5zu bytes]\n"
+				"%s======================================================================\n",
+				apdu->sw1, apdu->sw2, apdu->resplen, buf);
 	}
 }
 
@@ -289,8 +295,8 @@ static int cwa_parse_tlv(sc_card_t * card,
 		tlv->len = tag_len;
 		tlv->data = (u8 *)p;
 		tlv->buflen = header_len + tag_len;
-		sc_log(ctx, "Found Tag: '0x%02X': Length: '%"SC_FORMAT_LEN_SIZE_T"u' Value:\n%s",
-		       tlv->tag, tlv->len, sc_dump_hex(tlv->data, tlv->len));
+		sc_log(ctx, "Found Tag: '0x%02X': Length: '%zu' Value:\n%s",
+				tlv->tag, tlv->len, sc_dump_hex(tlv->data, tlv->len));
 		/* set index to next Tag to jump to */
 		p += tag_len;
 		left -= tag_len;
@@ -1677,7 +1683,7 @@ int cwa_encode_apdu(sc_card_t * card,
 
 	/* compose and add computed MAC TLV to result buffer */
 	tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
-	sc_log(ctx, "Using TLV length: %"SC_FORMAT_LEN_SIZE_T"u", tlv_len);
+	sc_log(ctx, "Using TLV length: %zu", tlv_len);
 	res = cwa_compose_tlv(card, 0x8E, tlv_len, macbuf, &apdubuf, &apdulen);
 	if (res != SC_SUCCESS) {
 		msg = "Encode APDU compose_tlv(0x87) failed";

@@ -667,11 +667,11 @@ sc_pkcs15_decode_pubkey_ec(sc_context_t *ctx,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
 	}
 
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ecpoint_len:%" SC_FORMAT_LEN_SIZE_T "u", ecpoint_len);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ecpoint_len:%zu", ecpoint_len);
 	/* if from bit string */
 	if (asn1_ec_pointQ[1].flags & SC_ASN1_PRESENT)
 		ecpoint_len = BYTES4BITS(ecpoint_len);
-	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ecpoint_len:%" SC_FORMAT_LEN_SIZE_T "u", ecpoint_len);
+	sc_debug(ctx, SC_LOG_DEBUG_NORMAL, "ecpoint_len:%zu", ecpoint_len);
 
 	if (*ecpoint_data != 0x04) {
 		free(ecpoint_data);
@@ -1332,9 +1332,8 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	unsigned char *tmp_buf = NULL;
 	int r;
 
-	sc_log(ctx,
-	       "sc_pkcs15_pubkey_from_spki_fields() called: %p:%"SC_FORMAT_LEN_SIZE_T"u\n%s",
-	       buf, buflen, sc_dump_hex(buf, buflen));
+	sc_log(ctx, "sc_pkcs15_pubkey_from_spki_fields() called: %p:%zu\n%s",
+			buf, buflen, sc_dump_hex(buf, buflen));
 
 	if (buflen < 1) {
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "subjectPublicKeyInfo can not be empty");
@@ -1635,8 +1634,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 
 		ecparams->field_length = ec_curve_infos[ii].size;
 		ecparams->key_type = ec_curve_infos[ii].key_type;
-		sc_log(ctx, "Curve length %" SC_FORMAT_LEN_SIZE_T "u key_type %d",
-				ecparams->field_length, ecparams->key_type);
+		sc_log(ctx, "Curve length %zu key_type %d", ecparams->field_length, ecparams->key_type);
 		if (mapped_string) {
 			/* replace the printable string version with the oid */
 			if (ecparams->der.value)
@@ -1666,8 +1664,7 @@ sc_pkcs15_fix_ec_parameters(struct sc_context *ctx, struct sc_ec_parameters *ecp
 
 		ecparams->field_length = ec_curve_infos[ii].size;
 		ecparams->key_type = ec_curve_infos[ii].key_type;
-		sc_log(ctx, "Curve length %" SC_FORMAT_LEN_SIZE_T "u key_type %d",
-				ecparams->field_length, ecparams->key_type);
+		sc_log(ctx, "Curve length %zu key_type %d", ecparams->field_length, ecparams->key_type);
 
 		if (ecparams->der.value == NULL || ecparams->der.len == 0) {
 			free(ecparams->der.value); /* just in case */

@@ -571,8 +571,7 @@ static int process_fci_v3_4(sc_context_t *ctx, sc_file_t *file,
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
 
-	sc_log(ctx,
-		 "processing %"SC_FORMAT_LEN_SIZE_T"u FCI bytes\n", buflen);
+	sc_log(ctx, "processing %zu FCI bytes\n", buflen);
 
 	if (buflen < 2)
 		return SC_ERROR_INTERNAL;
@@ -607,8 +606,7 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 	size_t taglen, len = buflen;
 	const u8 *tag = NULL, *p;
 
-	sc_log(ctx,
-		 "processing %"SC_FORMAT_LEN_SIZE_T"u FCP bytes\n", buflen);
+	sc_log(ctx, "processing %zu FCP bytes\n", buflen);
 
 	if (buflen < 2)
 		return SC_ERROR_INTERNAL;
@@ -695,9 +693,7 @@ static int process_fcp_v3_4(sc_context_t *ctx, sc_file_t *file,
 			/* formatted EF */
 			file->record_length = (tag[2] << 8) + tag[3];
 			file->record_count = tag[4];
-			sc_log(ctx,
-				"  rec_len: %"SC_FORMAT_LEN_SIZE_T"u  rec_cnt: %"SC_FORMAT_LEN_SIZE_T"u\n\n",
-				file->record_length, file->record_count);
+			sc_log(ctx, "  rec_len: %zu  rec_cnt: %zu", file->record_length, file->record_count);
 		}
 	}
 

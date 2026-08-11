@@ -503,8 +503,7 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	if (!card || !card->ctx || !newref)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	sc_log(card->ctx,
-		 "newlen = %"SC_FORMAT_LEN_SIZE_T"u\n", newlen);
+	sc_log(card->ctx, "newlen = %zu\n", newlen);
 	if (newlen > 0xFFFF)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (type == SC_AC_CHV && old && oldlen != 0)

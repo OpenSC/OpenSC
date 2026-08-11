@@ -1274,8 +1274,7 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 				}
 			}
 			else {
-				sc_log(ctx,
-						"Returned PIN properties structure has bad length (%lu/%"SC_FORMAT_LEN_SIZE_T"u)",
+				sc_log(ctx, "Returned PIN properties structure has bad length (%lu/%zu)",
 						(unsigned long)rcount,
 						sizeof(PIN_PROPERTIES_STRUCTURE));
 			}
@@ -1318,26 +1317,24 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 	}
 
 	if (max_send_size > 0) {
-		sc_log(ctx, "Reader supports sending %"SC_FORMAT_LEN_SIZE_T"u bytes of data",
-				max_send_size);
+		sc_log(ctx, "Reader supports sending %zu bytes of data", max_send_size);
 		if (!priv->gpriv->force_max_send_size)
 			reader->max_send_size = max_send_size;
 		else
-			sc_log(ctx, "Sending is limited to %"SC_FORMAT_LEN_SIZE_T"u bytes of data"
-					" in configuration file", reader->max_send_size);
+			sc_log(ctx, "Sending is limited to %zu bytes of data  in configuration file",
+					reader->max_send_size);
 	} else {
 		sc_log(ctx, "Assuming that the reader supports sending "
 				"short length APDUs only");
 	}
 
 	if (max_recv_size > 0) {
-		sc_log(ctx, "Reader supports receiving %"SC_FORMAT_LEN_SIZE_T"u bytes of data",
-				max_recv_size);
+		sc_log(ctx, "Reader supports receiving %zu bytes of data", max_recv_size);
 		if (!priv->gpriv->force_max_recv_size)
 			reader->max_recv_size = max_recv_size;
 		else
-			sc_log(ctx, "Receiving is limited to %"SC_FORMAT_LEN_SIZE_T"u bytes of data"
-					" in configuration file", reader->max_recv_size);
+			sc_log(ctx, "Receiving is limited to %zu bytes of data in configuration file",
+					reader->max_recv_size);
 	} else {
 		sc_log(ctx, "Assuming that the reader supports receiving "
 				"short length APDUs only");
@@ -1685,7 +1682,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 			r = SC_ERROR_INTERNAL;
 			goto out;
 		} else {
-			sc_log(ctx, "PC/SC event listener %" SC_FORMAT_LEN_SIZE_T "d", states->pcsc_wait_ctx_index);
+			sc_log(ctx, "PC/SC event listener %zd", states->pcsc_wait_ctx_index);
 		}
 
 		count = sc_ctx_get_reader_count(ctx);
@@ -1741,7 +1738,7 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 		states = *reader_states;
 
 		if (states->pcsc_wait_ctx_index >= ARRAY_SIZE(gpriv->pcsc_wait_ctx)) {
-			sc_log(ctx, "PC/SC event listener %" SC_FORMAT_LEN_SIZE_T "d not available", states->pcsc_wait_ctx_index);
+			sc_log(ctx, "PC/SC event listener %zd not available", states->pcsc_wait_ctx_index);
 			r = SC_ERROR_INTERNAL;
 			goto out;
 		}

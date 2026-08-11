@@ -241,8 +241,7 @@ static char *path_to_filename(const sc_path_t *path, const char sep, size_t rec)
 	}
 	/* single record: append record-number */
 	if (rec > 0)
-		j += sprintf(buf+j, "%c%"SC_FORMAT_LEN_SIZE_T"u",
-				(sep == '-') ? '_' : '-', rec);
+		j += sprintf(buf + j, "%c%zu", (sep == '-') ? '_' : '-', rec);
 	buf[j] = '\0';
 
 	return buf;
@@ -966,7 +965,7 @@ static int do_info(int argc, char **argv)
 	if (file->sid)
 		printf(", SFI %02X", file->sid);
 	printf("\n\n%-25s%s\n", "File path:", path_to_filename(&path, '/', 0));
-	printf("%-25s%"SC_FORMAT_LEN_SIZE_T"u bytes\n", "File size:", file->size);
+	printf("%-25s%zu bytes\n", "File size:", file->size);
 
 	if (file->type == SC_FILE_TYPE_DF) {
 		static const id2str_t ac_ops_df[] = {
@@ -1019,12 +1018,10 @@ static int do_info(int argc, char **argv)
 		printf("%-25s%s\n", "EF structure:", ef_type);
 
 		if (file->record_count > 0)
-			printf("%-25s%"SC_FORMAT_LEN_SIZE_T"u\n",
-				"Number of records:", file->record_count);
+			printf("%-25s%zu\n", "Number of records:", file->record_count);
 
 		if (file->record_length > 0)
-			printf("%-25s%"SC_FORMAT_LEN_SIZE_T"u bytes\n",
-				"Max. record size:", file->record_length);
+			printf("%-25s%zu bytes\n", "Max. record size:", file->record_length);
 
 		ac_ops = ac_ops_ef;
 	}
@@ -1599,8 +1596,8 @@ static int do_get_record(int argc, char **argv)
 		size_t written = fwrite(buf, 1, (size_t) r, outf);
 
 		if (written != count) {
-			fprintf(stderr, "Cannot write to file %s (only %"SC_FORMAT_LEN_SIZE_T"u of %"SC_FORMAT_LEN_SIZE_T"u bytes written)",
-				filename, written, count);
+			fprintf(stderr, "Cannot write to file %s (only %zu of %zu bytes written)",
+					filename, written, count);
 			goto err;
 		}
 	}
@@ -1609,8 +1606,7 @@ static int do_get_record(int argc, char **argv)
 		fwrite("\n", 1, 1, outf);
 	}
 	else {
-		printf("Total of %"SC_FORMAT_LEN_SIZE_T"u bytes read from %s and saved to %s.\n",
-		       count, argv[0], filename);
+		printf("Total of %zu bytes read from %s and saved to %s.\n", count, argv[0], filename);
 	}
 
 	err = 0;
@@ -1711,14 +1707,14 @@ static int do_update_record(int argc, char **argv)
 	}
 
 	if (rec < 1 || rec > file->record_count) {
-		fprintf(stderr, "Invalid record number %"SC_FORMAT_LEN_SIZE_T"u\n", rec);
+		fprintf(stderr, "Invalid record number %zu\n", rec);
 		goto err;
 	}
 
 	r = sc_read_record(card, (unsigned)rec, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 	if (r < 0) {
-		fprintf(stderr, "Cannot read record %"SC_FORMAT_LEN_SIZE_T"u of %04X: %s\n",
-			rec, file->id, sc_strerror(r));
+		fprintf(stderr, "Cannot read record %zu of %04X: %s\n",
+				rec, file->id, sc_strerror(r));
 		goto err;
 	}
 
@@ -1740,14 +1736,11 @@ static int do_update_record(int argc, char **argv)
 		r = sc_update_record(card, (unsigned)rec, 0, buf, buflen, SC_RECORD_BY_REC_NR);
 	sc_unlock(card);
 	if (r < 0) {
-		fprintf(stderr, "Cannot update record %"SC_FORMAT_LEN_SIZE_T"u of %04X: %s\n.",
-			rec, file->id, sc_strerror(r));
+		fprintf(stderr, "Cannot update record %zu of %04X: %s\n.", rec, file->id, sc_strerror(r));
 		goto err;
 	}
 
-	printf("Total of %d bytes written to %04X's record %"SC_FORMAT_LEN_SIZE_T"u "
-		"at offset %"SC_FORMAT_LEN_SIZE_T"u.\n",
-		r, file->id, rec, offs);
+	printf("Total of %d bytes written to %04X's record %zu at offset %zu.\n", r, file->id, rec, offs);
 
 	err = 0;
 err:
@@ -1874,8 +1867,7 @@ static int do_random(int argc, char **argv)
 	count = atoi(argv[0]);
 
 	if (count < 0 || (size_t) count > sizeof(buffer)) {
-		fprintf(stderr, "Number must be in range 0..%"SC_FORMAT_LEN_SIZE_T"u\n",
-			sizeof(buffer));
+		fprintf(stderr, "Number must be in range 0..%zu\n", sizeof(buffer));
 		return -1;
 	}
 
@@ -1925,11 +1917,10 @@ static int do_random(int argc, char **argv)
 #ifdef _WIN32
 			_setmode(fileno(stdout), _O_TEXT);
 #endif
-			printf("\nTotal of %"SC_FORMAT_LEN_SIZE_T"u random bytes written\n", written);
+			printf("\nTotal of %zu random bytes written\n", written);
 		}
 		else
-			printf("Total of %"SC_FORMAT_LEN_SIZE_T"u random bytes written to %s\n",
-				written, filename);
+			printf("Total of %zu random bytes written to %s\n", written, filename);
 
 		fclose(outf);
 
@@ -2152,8 +2143,7 @@ static int do_asn1(int argc, char **argv)
 			goto err;
 		}
 		if ((size_t) r != file->size) {
-			fprintf(stderr, "WARNING: expecting %"SC_FORMAT_LEN_SIZE_T"u, got %d bytes.\n",
-				 file->size, r);
+			fprintf(stderr, "WARNING: expecting %zu, got %d bytes.\n", file->size, r);
 			/* some cards return a bogus value for file length.
 			 * As long as the actual length is not higher
 			 * than the expected length, continue */

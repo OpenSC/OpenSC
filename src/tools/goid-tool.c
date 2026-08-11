@@ -568,8 +568,7 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
                         card->max_recv_size = max_command_size;
                         card->max_send_size = max_command_size;
                         sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
-                                "Maximum data length in command message %"SC_FORMAT_LEN_SIZE_T"u bytes",
-                                max_command_size);
+                                "Maximum data length in command message %zu bytes", max_command_size);
                     }
                     break;
             }

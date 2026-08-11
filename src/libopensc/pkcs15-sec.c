@@ -194,9 +194,8 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_PRKEY_RSA:
 			*alg_info_out = sc_card_find_rsa_alg(p15card->card, prkey->modulus_length);
 			if (*alg_info_out == NULL) {
-				sc_log(ctx,
-				       "Card does not support RSA with key length %"SC_FORMAT_LEN_SIZE_T"u",
-				       prkey->modulus_length);
+				sc_log(ctx, "Card does not support RSA with key length %zu",
+						prkey->modulus_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_RSA;
@@ -206,9 +205,8 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
 			*alg_info_out = sc_card_find_gostr3410_alg(p15card->card, prkey->modulus_length);
 			if (*alg_info_out == NULL) {
-				sc_log(ctx,
-				       "Card does not support GOSTR3410 with key length %"SC_FORMAT_LEN_SIZE_T"u",
-				       prkey->modulus_length);
+				sc_log(ctx, "Card does not support GOSTR3410 with key length %zu",
+						prkey->modulus_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_GOSTR3410;
@@ -218,9 +216,8 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_PRKEY_EDDSA:
 			*alg_info_out = sc_card_find_eddsa_alg(p15card->card, prkey->field_length, NULL);
 			if (*alg_info_out == NULL) {
-				sc_log(ctx,
-				       "Card does not support EDDSA with field_size %"SC_FORMAT_LEN_SIZE_T"u",
-				       prkey->field_length);
+				sc_log(ctx, "Card does not support EDDSA with field_size %zu",
+						prkey->field_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_EDDSA;
@@ -230,9 +227,8 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_PRKEY_XEDDSA:
 			*alg_info_out = sc_card_find_xeddsa_alg(p15card->card, prkey->field_length, NULL);
 			if (*alg_info_out == NULL) {
-				sc_log(ctx,
-				       "Card does not support XEDDSA with field_size %"SC_FORMAT_LEN_SIZE_T"u",
-				       prkey->field_length);
+				sc_log(ctx, "Card does not support XEDDSA with field_size %zu",
+						prkey->field_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_XEDDSA;
@@ -242,9 +238,8 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 		case SC_PKCS15_TYPE_PRKEY_EC:
 			*alg_info_out = sc_card_find_ec_alg(p15card->card, prkey->field_length, NULL);
 			if (*alg_info_out == NULL) {
-				sc_log(ctx,
-				       "Card does not support EC with field_size %"SC_FORMAT_LEN_SIZE_T"u",
-				       prkey->field_length);
+				sc_log(ctx, "Card does not support EC with field_size %zu",
+						prkey->field_length);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_EC;
@@ -259,9 +254,7 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 			*alg_info_out = sc_card_find_alg(p15card->card, SC_ALGORITHM_AES,
 					skey->value_len, NULL);
 			if (*alg_info_out == NULL) {
-				sc_log(ctx,
-				"Card does not support AES with key length %"SC_FORMAT_LEN_SIZE_T"u",
-				skey->value_len);
+				sc_log(ctx, "Card does not support AES with key length %zu", skey->value_len);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 			}
 			senv_out->algorithm = SC_ALGORITHM_AES;

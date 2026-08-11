@@ -280,9 +280,7 @@ cosm_create_reference_data(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	};
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(ctx,
-		 "pin lens %"SC_FORMAT_LEN_SIZE_T"u/%"SC_FORMAT_LEN_SIZE_T"u",
-		 pin_len, puk_len);
+	sc_log(ctx, "pin lens %zu/%zu", pin_len, puk_len);
 	if (!pin || pin_len>0x40)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (puk && !puk_len)
@@ -538,9 +536,8 @@ cosm_new_file(struct sc_profile *profile, struct sc_card *card,
 		file->ef_structure = structure;
 	}
 
-	sc_log(card->ctx,
-		 "cosm_new_file() file size %"SC_FORMAT_LEN_SIZE_T"u; ef type %i/%i; id %04X",
-		 file->size, file->type, file->ef_structure, file->id);
+	sc_log(card->ctx, "cosm_new_file() file size %zu; ef type %i/%i; id %04X",
+			file->size, file->type, file->ef_structure, file->id);
 	*out = file;
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);

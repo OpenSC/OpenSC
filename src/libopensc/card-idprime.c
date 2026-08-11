@@ -593,9 +593,8 @@ static int idprime_init(sc_card_t *card)
 			break;
 		}
 	} else {
-		sc_log(card->ctx, "Failed to get CPLC data or invalid length returned, "
-			"err=%d, len=%"SC_FORMAT_LEN_SIZE_T"u",
-			r, apdu.resplen);
+		sc_log(card->ctx, "Failed to get CPLC data or invalid length returned, err=%d, len=%zu",
+				r, apdu.resplen);
 	}
 
 	/* Proprietary data -- Applet version */
@@ -967,8 +966,7 @@ static int idprime_read_binary(sc_card_t *card, unsigned int offset,
 	int size;
 	size_t sz;
 
-	sc_log(card->ctx, "called; %"SC_FORMAT_LEN_SIZE_T"u bytes at offset %d",
-		count, offset);
+	sc_log(card->ctx, "called; %zu bytes at offset %d", count, offset);
 
 	if (!priv->cached && offset == 0) {
 		/* Read what was reported by FCI from select command */
@@ -1186,9 +1184,7 @@ idprime_decipher(struct sc_card *card,
 	}
 	LOG_FUNC_CALLED(card->ctx);
 	priv = card->drv_data;
-	sc_log(card->ctx,
-		"IDPrime decipher: in-len %"SC_FORMAT_LEN_SIZE_T"u, out-len %"SC_FORMAT_LEN_SIZE_T"u",
-		crgram_len, outlen);
+	sc_log(card->ctx, "IDPrime decipher: in-len %zu, out-len %zu", crgram_len, outlen);
 
 	sbuf = malloc(crgram_len + 1);
 	if (sbuf == NULL)

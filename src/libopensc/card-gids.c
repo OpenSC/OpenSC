@@ -217,10 +217,8 @@ static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	size_t buffer_len = sizeof(buffer);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx,
-		 "Got args: fileIdentifier=%x, dataObjectIdentifier=%x, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u\n",
-		 fileIdentifier, dataObjectIdentifier, response,
-		 responselen ? *responselen : 0);
+	sc_log(card->ctx, "Got args: fileIdentifier=%x, dataObjectIdentifier=%x, response=%p, responselen=%zu",
+			fileIdentifier, dataObjectIdentifier, response, responselen ? *responselen : 0);
 
 	sc_format_apdu(card, &apdu,
 		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, INS_GET_DATA, (fileIdentifier&0xFF00)>>8, (fileIdentifier&0xFF));
@@ -257,9 +255,8 @@ static int gids_put_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	u8 buffer[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	u8* p = buffer;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx,
-		 "Got args: fileIdentifier=%x, dataObjectIdentifier=%x, data=%p, datalen=%"SC_FORMAT_LEN_SIZE_T"u\n",
-		 fileIdentifier, dataObjectIdentifier, data, datalen);
+	sc_log(card->ctx, "Got args: fileIdentifier=%x, dataObjectIdentifier=%x, data=%p, datalen=%zu",
+			fileIdentifier, dataObjectIdentifier, data, datalen);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, INS_PUT_DATA, (fileIdentifier&0xFF00)>>8, (fileIdentifier&0xFF));
 
@@ -285,9 +282,8 @@ static int gids_select_aid(sc_card_t* card, u8* aid, size_t aidlen, u8* response
 	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx,
-		 "Got args: aid=%p, aidlen=%"SC_FORMAT_LEN_SIZE_T"u, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u\n",
-		 aid, aidlen, response, responselen ? *responselen : 0);
+	sc_log(card->ctx, "Got args: aid=%p, aidlen=%zu, response=%p, responselen=%zu",
+			aid, aidlen, response, responselen ? *responselen : 0);
 
 	sc_format_apdu(card, &apdu,
 		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, INS_SELECT, P1_SELECT_DF_BY_NAME, P2_SELECT_FIRST_OR_ONLY_OCCURENCE);
@@ -845,9 +841,7 @@ gids_decipher(struct sc_card *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx,
-	       "Gids decipher: in-len %"SC_FORMAT_LEN_SIZE_T"u, out-len %"SC_FORMAT_LEN_SIZE_T"u",
-	       crgram_len, outlen);
+	sc_log(card->ctx, "Gids decipher: in-len %zu, out-len %zu", crgram_len, outlen);
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x80  Resp: Plain value
@@ -912,9 +906,8 @@ static int gids_read_public_key (struct sc_card *card , unsigned int algorithm,
 	size_t buffersize = sizeof(buffer);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	sc_log(card->ctx,
-		 "Got args: key_reference=%x, response=%p, responselen=%"SC_FORMAT_LEN_SIZE_T"u\n",
-		 key_reference, response, responselen ? *responselen : 0);
+	sc_log(card->ctx, "Got args: key_reference=%x, response=%p, responselen=%zu",
+			key_reference, response, responselen ? *responselen : 0);
 
 	sc_format_apdu(card, &apdu,
 		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, INS_GET_DATA, 0x3F, 0xFF);
@@ -1176,9 +1169,7 @@ gids_select_key_reference(sc_card_t *card, sc_pkcs15_prkey_info_t* key_info) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		if (i > recordsnum) {
-			sc_log(card->ctx,
-				 "container num is not allowed %"SC_FORMAT_LEN_SIZE_T"u %"SC_FORMAT_LEN_SIZE_T"u",
-				 i, recordsnum);
+			sc_log(card->ctx, "container num is not allowed %zu %zu", i, recordsnum);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 	}
@@ -1316,10 +1307,8 @@ static int gids_create_keyfile(sc_card_t *card, sc_pkcs15_object_t *object) {
 	} else {
 		keymaprecordnum = (keymapbuffersize - 1) / sizeof(struct gids_keymap_record);
 		if (keymaprecordnum != recordnum) {
-			sc_log(card->ctx , "Error: Unable to create the key file because the keymap and cmapfile are inconsistent");
-			sc_log(card->ctx ,
-				 "keymaprecordnum = %"SC_FORMAT_LEN_SIZE_T"u recordnum = %"SC_FORMAT_LEN_SIZE_T"u",
-				 keymaprecordnum, recordnum);
+			sc_log(card->ctx, "Error: Unable to create the key file because the keymap and cmapfile are inconsistent");
+			sc_log(card->ctx, "keymaprecordnum = %zu recordnum = %zu", keymaprecordnum, recordnum);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
 	}

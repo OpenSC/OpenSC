@@ -41,7 +41,7 @@ cardos_ec_compute_shared_value(struct sc_card *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx, "CardOS compute shared value: in-len %" SC_FORMAT_LEN_SIZE_T "u, out-len %" SC_FORMAT_LEN_SIZE_T "u", crgram_len, outlen);
+	sc_log(card->ctx, "CardOS compute shared value: in-len %zu, out-len %zu", crgram_len, outlen);
 
 	/* Ensure public key is provided in uncompressed format (indicator byte
 	 * 0x04 followed by X and Y coordinate. */

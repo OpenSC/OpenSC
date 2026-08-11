@@ -767,9 +767,7 @@ static int dnie_sm_free_wrapped_apdu(struct sc_card *card,
 					memcpy(plain->resp, (*sm_apdu)->resp, (*sm_apdu)->resplen);
 					plain->resplen = (*sm_apdu)->resplen;
 				} else {
-					sc_log(card->ctx, "Invalid initial length,"
-							" needed %"SC_FORMAT_LEN_SIZE_T"u bytes"
-							" but has %"SC_FORMAT_LEN_SIZE_T"u",
+					sc_log(card->ctx, "Invalid initial length, needed %zu bytes but has %zu",
 							(*sm_apdu)->resplen, plain->resplen);
 					rv = SC_ERROR_BUFFER_TOO_SMALL;
 				}
@@ -1070,9 +1068,7 @@ static int dnie_fill_cache(sc_card_t * card,unsigned long *flags)
 	/* ok: as final step, set correct cache data into dnie_priv structures */
 	GET_DNIE_PRIV_DATA(card)->cache = buffer;
 	GET_DNIE_PRIV_DATA(card)->cachelen = len;
-	sc_log(ctx,
-	       "fill_cache() done. length '%"SC_FORMAT_LEN_SIZE_T"u' bytes",
-	       len);
+	sc_log(ctx, "fill_cache() done. length '%zu' bytes", len);
 	LOG_FUNC_RETURN(ctx, (int)len);
 }
 

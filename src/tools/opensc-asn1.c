@@ -40,8 +40,7 @@ main (int argc, char **argv)
 		if (!fread_to_eof(cmdline.inputs[i], &buf, &buflen))
 			continue;
 
-		printf("Parsing '%s' (%"SC_FORMAT_LEN_SIZE_T"u byte%s)\n",
-				cmdline.inputs[i], buflen, buflen == 1 ? "" : "s");
+		printf("Parsing '%s' (%zu byte%s)\n", cmdline.inputs[i], buflen, buflen == 1 ? "" : "s");
 		sc_asn1_print_tags(buf, buflen);
 	}
 
