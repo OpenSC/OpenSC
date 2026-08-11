@@ -3,7 +3,10 @@ include $(top_srcdir)/win32/ltrc.inc
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in $(srcdir)/OpenSC.iss
 EXTRA_DIST = ltrc.inc Makefile.mak Make.rules.mak versioninfo.rc winconfig.h \
 		OpenSC.iss.in OpenSC.wxs versioninfo-customactions.rc \
-		OpenSC.ico dlgbmp.bmp bannrbmp.bmp DDORes.dll_14_2302.ico
+		OpenSC.ico dlgbmp.bmp bannrbmp.bmp DDORes.dll_14_2302.ico \
+		setup-wix.ps1 vcpkg.json \
+		ports/openpace/CMakeLists.txt ports/openpace/portfile.cmake \
+		ports/openpace/vcpkg.json
 dist_noinst_HEADERS = versioninfo.rc winconfig.h OpenSC.iss OpenSC.wxs
 
 if ENABLE_MINIDRIVER_SETUP_CUSTOMACTION
