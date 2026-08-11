@@ -126,19 +126,20 @@ const char *sc_strerror(int error)
 	const unsigned int p15i_base = -SC_ERROR_PKCS15INIT;
 
 	const char *sm_errors[] = {
-		"Generic Secure Messaging error",
-		"Data enciphering error",
-		"Invalid secure messaging level",
-		"No session keys",
-		"Invalid session keys",
-		"Secure Messaging not initialized",
-		"Cannot authenticate card",
-		"Random generation error",
-		"Secure messaging keyset not found",
-		"IFD data missing",
-		"SM not applied",
-		"SM session already active",
-		"Invalid checksum"
+			"Generic Secure Messaging error",
+			"Data enciphering error",
+			"Invalid secure messaging level",
+			"No session keys",
+			"Invalid session keys",
+			"Secure Messaging not initialized",
+			"Cannot authenticate card",
+			"Random generation error",
+			"Secure messaging keyset not found",
+			"IFD data missing",
+			"SM not applied",
+			"SM session already active",
+			"Invalid checksum",
+			"Retry apdu with new sm_open",
 	};
 	const unsigned int sm_base = -SC_ERROR_SM;
 
