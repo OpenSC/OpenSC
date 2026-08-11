@@ -5,11 +5,11 @@ on:
     paths:
       - '**.c'
       - '**.h'
-      - '**.sh'
-      - .github/workflows/windows.yml
-      - '**.am'
+      - '**.ps1'
       - '**.mak'
-      - configure.ac
+      - .github/workflows/windows.yml
+      - 'win32/**'
+      - VERSION.mk
   push:
 
 permissions:
@@ -63,7 +63,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/vcpkg_cache
-          key: vcpkg-${{ matrix.configuration }}-${{ matrix.platform }}-${{ hashFiles('.github/vcpkg.json', '.github/ports/**') }}
+          key: vcpkg-${{ matrix.configuration }}-${{ matrix.platform }}-${{ hashFiles('win32/vcpkg.json', 'win32/ports/**') }}
       - name: Prepare vcpkg
         if: matrix.configuration == 'Release'
         env:
@@ -72,13 +72,13 @@ jobs:
           $installed = "${{ github.workspace }}\vcpkg_installed"
           echo "VCPKG_INSTALLED=$installed" >> $env:GITHUB_ENV
           C:\vcpkg\vcpkg install `
-            --overlay-ports=${{ github.workspace }}/.github/ports `
+            --overlay-ports=${{ github.workspace }}/win32/ports `
             --x-feature=zlib `
             --x-feature=openpace `
-            --x-manifest-root ${{ github.workspace }}/.github `
+            --x-manifest-root ${{ github.workspace }}/win32 `
             --x-install-root $installed
       - name: Install WIX
-        run: powershell -ExecutionPolicy Bypass -File .github/setup-wix.ps1
+        run: powershell -ExecutionPolicy Bypass -File win32/setup-wix.ps1
       - name: Build OpenSC
         run: |
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
