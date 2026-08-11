@@ -197,7 +197,7 @@ static const struct sc_card_error nist_sm_errors[] = {
 		{0x6882, SC_ERROR_SM,			"SM not supported"},
 //		{0x6982, SC_ERROR_SM_NO_SESSION_KEYS,	"SM Security status not satisfied"}, /* no session established */
 		{0x6987, SC_ERROR_SM,			"Expected SM Data Object missing"},
-		{0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"}, /* other process interference */
+		{0x6988, SC_ERROR_SM_RETRY_WITH_NEW_OPEN, "SM Data Object incorrect"}, /* other process interference */
 		{0x6E00, SC_ERROR_SM_INVALID_SESSION_KEY, "Unexpected 6E00"},
 		{0,	0,				 NULL}
 };
@@ -1398,6 +1398,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 		goto err;
 	}
 	card->sm_ctx.ops.close = sm_nist_close;
+	card->sm_ctx.ops.open = sm_nist_open;
 
 	/* *params is saved in priv_data */
 	sctx->priv_data = sm_nist_private_data_create(params);
