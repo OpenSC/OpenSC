@@ -629,6 +629,52 @@ err:
 	return r;
 }
 
+/** Don't apply SM to GET RESPONSE
+ *
+ * allow receiving oversized SM R-APDUs without nesting GET RESPONSE
+ * TPDUs into SM.
+ *
+ * keep me in sync with `iso7816_get_response()` */
+static int
+iso_sm_get_response(struct sc_card *card, size_t *count, u8 *buf)
+{
+	struct sc_apdu apdu = {0};
+	int r;
+	size_t rlen;
+
+	/* request at most max_recv_size bytes */
+	if (*count > sc_get_max_recv_size(card))
+		rlen = sc_get_max_recv_size(card);
+	else
+		rlen = *count;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xC0, 0x00, 0x00);
+	apdu.le      = rlen;
+	apdu.resplen = rlen;
+	apdu.resp    = buf;
+	apdu.flags  |= SC_APDU_FLAGS_NO_SM;
+	/* don't call GET RESPONSE recursively */
+	apdu.flags  |= SC_APDU_FLAGS_NO_GET_RESP;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	*count = apdu.resplen;
+
+	if (apdu.resplen == 0) {
+		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	}
+	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
+		r = 0;					/* no more data to read */
+	else if (apdu.sw1 == 0x61)
+		r = apdu.sw2 == 0 ? 256 : apdu.sw2;	/* more data to read    */
+	else if (apdu.sw1 == 0x62 && apdu.sw2 == 0x82)
+		r = 0; /* Le not reached but file/record ended */
+	else
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+	return r;
+}
 static int iso_add_sm(struct iso_sm_ctx *sctx, sc_card_t *card,
 		sc_apdu_t *apdu, sc_apdu_t **sm_apdu)
 {
@@ -747,6 +793,7 @@ int iso_sm_start(struct sc_card *card, struct iso_sm_ctx *sctx)
 	card->sm_ctx.ops.close = iso_sm_close;
 	card->sm_ctx.ops.free_sm_apdu = iso_free_sm_apdu;
 	card->sm_ctx.ops.get_sm_apdu = iso_get_sm_apdu;
+	card->sm_ctx.ops.get_response = iso_sm_get_response;
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 
 	return SC_SUCCESS;

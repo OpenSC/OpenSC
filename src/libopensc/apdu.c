@@ -424,6 +424,7 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 	size_t le, minlen, buflen;
 	unsigned char *buf;
 	int rv;
+	int (*get_response)(struct sc_card *, size_t *count, u8 *) = card->ops->get_response;
 
 	LOG_FUNC_CALLED(ctx);
 	if (apdu->le == 0) {
@@ -433,8 +434,14 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 		return SC_SUCCESS;
 	}
 
+#ifdef ENABLE_SM
+	if (card->sm_ctx.ops.get_response) {
+		get_response = card->sm_ctx.ops.get_response;
+	}
+#endif
+
 	/* this should _never_ happen */
-	if (!card->ops->get_response)
+	if (!get_response)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "no GET RESPONSE command");
 
 	/* call GET RESPONSE until we have read all data requested or until the card returns 0x9000,
@@ -462,7 +469,9 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 		/* call GET RESPONSE to get more date from the card;
 		 * note: GET RESPONSE returns the left amount of data (== SW2) */
 		memset(resp, 0, sizeof(resp));
-		rv = card->ops->get_response(card, &resp_len, resp);
+
+		rv = get_response(card, &resp_len, resp);
+
 		if (rv < 0)   {
 #ifdef ENABLE_SM
 			if (resp_len)   {
