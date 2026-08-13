@@ -242,7 +242,7 @@ enum {
 	SC_CARDCTL_SC_HSMP_BASE = _CTL_PREFIX('S', 'C', 'H'),
 	SC_CARDCTL_SC_HSM_GENERATE_KEY,
 	SC_CARDCTL_SC_HSM_INITIALIZE,
-	SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE,
+	SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN,
 	SC_CARDCTL_SC_HSM_WRAP_KEY,
 	SC_CARDCTL_SC_HSM_UNWRAP_KEY,
 	SC_CARDCTL_SC_HSM_REGISTER_PUBLIC_KEY,
@@ -946,13 +946,16 @@ typedef struct sc_cardctl_sc_hsm_init_param {
 	char *label;				/* Token label to be set in EF.TokenInfo (2F03) */
 } sc_cardctl_sc_hsm_init_param_t;
 
-typedef struct sc_cardctl_sc_hsm_dkek {
-	int importShare;			/* True to import share, false to just query status */
+typedef struct sc_cardctl_sc_hsm_key_domain {
+	u8 key_domain_idx;			/* Key domain slot index */
+	int operation;				/* 0 to just query status or one of SC_MANAGE_KEY_DOMAIN_IMPORT*. */
+	u8 type;					/* 0 DKEK, 1 XKEK */
 	u8 dkek_share[32];			/* AES-256 DKEK share */
 	u8 dkek_shares;				/* Total number of shares */
 	u8 outstanding_shares;		/* Number of shares to be presented */
 	u8 key_check_value[8];		/* Key check value for DKEK */
-} sc_cardctl_sc_hsm_dkek_t;
+	u8 key_domain_uid[32];		/* XKEK Key domain UID */
+} sc_cardctl_sc_hsm_key_domain_t;
 
 typedef struct sc_cardctl_sc_hsm_wrapped_key {
 	u8 key_id;					/* Key identifier */
@@ -972,6 +975,13 @@ typedef struct sc_cardctl_sc_hsm_pka_register {
     size_t buflen;
     sc_cardctl_sc_hsm_pka_status_t new_status;
 } sc_cardctl_sc_hsm_pka_register_t;
+
+#define SC_MANAGE_KEY_DOMAIN_IMPORT_DKEK_SHARE		1
+#define SC_MANAGE_KEY_DOMAIN_CREATE_DKEK_KEY_DOMAIN	2
+#define SC_MANAGE_KEY_DOMAIN_CREATE_XKEK_KEY_DOMAIN	3
+#define SC_MANAGE_KEY_DOMAIN_DELETE_KEY_DOMAIN		4
+#define SC_MANAGE_KEY_DOMAIN_CLEAR_KEK				5
+#define SC_MANAGE_KEY_DOMAIN_ASSOCIATE_KEY_DOMAIN	6
 
 /*
  * isoApplet

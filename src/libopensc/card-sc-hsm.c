@@ -1327,7 +1327,7 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 
 
 
-static int sc_hsm_import_dkek_share(sc_card_t *card, sc_cardctl_sc_hsm_dkek_t *params)
+static int sc_hsm_manage_key_domain(sc_card_t *card, sc_cardctl_sc_hsm_key_domain_t *params)
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
@@ -1336,15 +1336,32 @@ static int sc_hsm_import_dkek_share(sc_card_t *card, sc_cardctl_sc_hsm_dkek_t *p
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	if (params->importShare) {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x52, 0x00, 0x00);
-		apdu.cla = 0x80;
+	switch(params->operation) {
+	case 0:
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x52, 0x00, params->key_domain_idx);
+		break;
+	case SC_MANAGE_KEY_DOMAIN_IMPORT_DKEK_SHARE:
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x52, params->operation - 1, params->key_domain_idx);
 		apdu.data = params->dkek_share;
 		apdu.datalen = sizeof(params->dkek_share);
 		apdu.lc = apdu.datalen;
-	} else {
-		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x52, 0x00, 0x00);
+		break;
+	case SC_MANAGE_KEY_DOMAIN_CREATE_DKEK_KEY_DOMAIN:
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x52, params->operation - 1, params->key_domain_idx);
+		apdu.data = &params->dkek_shares;
+		apdu.datalen = sizeof(params->dkek_shares);
+		apdu.lc = apdu.datalen;
+		break;
+//	case SC_MANAGE_KEY_DOMAIN_CREATE_XKEK_KEY_DOMAIN:
+	case SC_MANAGE_KEY_DOMAIN_DELETE_KEY_DOMAIN:
+	case SC_MANAGE_KEY_DOMAIN_CLEAR_KEK:
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x52, (params->operation - 1), params->key_domain_idx);
+		break;
+//	case SC_MANAGE_KEY_DOMAIN_ASSOCIATE_KEY_DOMAIN:
+	default:
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
+
 	apdu.cla = 0x80;
 	apdu.le = 0;
 	apdu.resp = status;
@@ -1357,12 +1374,24 @@ static int sc_hsm_import_dkek_share(sc_card_t *card, sc_cardctl_sc_hsm_dkek_t *p
 
 	LOG_TEST_RET(ctx, r, "Check SW error");
 
+	if (params->operation == SC_MANAGE_KEY_DOMAIN_DELETE_KEY_DOMAIN) {
+		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	}
+
 	if (apdu.resplen < (sizeof(params->key_check_value) + 2))
 		return SC_ERROR_INTERNAL;
 
+	params->type = 0;
 	params->dkek_shares = status[0];
 	params->outstanding_shares = status[1];
 	memcpy(params->key_check_value, status + 2, sizeof(params->key_check_value));
+
+	if (apdu.resplen > (sizeof(params->key_check_value) + 2)) {
+		if (apdu.resplen < (sizeof(params->key_check_value) + sizeof(params->key_domain_uid) + 2))
+			return SC_ERROR_INTERNAL;
+		memcpy(params->key_domain_uid, status + 2 + sizeof(params->key_check_value), sizeof(params->key_domain_uid));
+		params->type = 1;
+	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -1756,8 +1785,8 @@ static int sc_hsm_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		return sc_hsm_generate_keypair(card, (sc_cardctl_sc_hsm_keygen_info_t *)ptr);
 	case SC_CARDCTL_SC_HSM_INITIALIZE:
 		return sc_hsm_initialize(card, (sc_cardctl_sc_hsm_init_param_t *)ptr);
-	case SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE:
-		return sc_hsm_import_dkek_share(card, (sc_cardctl_sc_hsm_dkek_t *)ptr);
+	case SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN:
+		return sc_hsm_manage_key_domain(card, (sc_cardctl_sc_hsm_key_domain_t *)ptr);
 	case SC_CARDCTL_SC_HSM_WRAP_KEY:
 		return sc_hsm_wrap_key(card, (sc_cardctl_sc_hsm_wrapped_key_t *)ptr);
 	case SC_CARDCTL_SC_HSM_UNWRAP_KEY:

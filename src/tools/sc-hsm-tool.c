@@ -76,6 +76,9 @@ enum {
 	OPT_NO_PIN_RESET,
 	OPT_REPLACE_PKA_KEY,
 	OPT_REQUIRE_PKA_AND_PIN,
+	OPT_CREATE_DKEK_KEY_DOMAIN,
+	OPT_DELETE_KEY_DOMAIN,
+	OPT_CLEAR_KEK,
 	OPT_BIO1,
 	OPT_BIO2,
 	OPT_PASSWORD,
@@ -101,7 +104,10 @@ static const struct option options[] = {
 	{ "register-public-key",	1, NULL,		'g' },
 	{ "public-key-auth-status",	0, NULL,		'S' },
 	{ "dkek-shares",			1, NULL,		's' },
-	{ "key-domains",			1, NULL,		'd' },
+	{ "key-domain",				1, NULL,		'd' },
+	{ "create-dkek-key-domain",	1, NULL,		OPT_CREATE_DKEK_KEY_DOMAIN },
+	{ "delete-key-domain",		0, NULL,		OPT_DELETE_KEY_DOMAIN },
+	{ "clear-kek",				0, NULL,		OPT_CLEAR_KEK },
 	{ "so-pin",					1, NULL,		OPT_SO_PIN },
 	{ "pin",					1, NULL,		OPT_PIN },
 	{ "transport-pin",			1, NULL,		OPT_TRANSPORT_PIN },
@@ -140,7 +146,10 @@ static const char *option_help[] = {
 	"Register public key for public key authentication (PKA file)",
 	"Show status of public key authentication",
 	"Number of DKEK shares [No DKEK]",
-	"Number of key domain slots",
+	"Number of key domain slots or key domain index",
+	"Create DKEK key domain",
+	"Delete key domain",
+	"Delete key encryption key in key domain",
 	"Define security officer PIN (SO-PIN)",
 	"Define user PIN",
 	"Define transport PIN",
@@ -481,27 +490,46 @@ void waitForEnterKeyPressed()
 
 
 
-static void print_dkek_info(sc_cardctl_sc_hsm_dkek_t *dkekinfo)
+static void print_dkek_info(sc_cardctl_sc_hsm_key_domain_t *kdinfo)
 {
-	printf("DKEK shares          : %d\n", dkekinfo->dkek_shares);
-	if (dkekinfo->outstanding_shares > 0) {
-		printf("DKEK import pending, %d share(s) still missing\n",dkekinfo->outstanding_shares);
+	if (kdinfo->type == 0) {
+		printf("%3i: DKEK shares     : %d\n", (int)kdinfo->key_domain_idx + 1, kdinfo->dkek_shares);
+		if (kdinfo->outstanding_shares > 0) {
+			printf("     DKEK import pending, %d share(s) still missing\n",kdinfo->outstanding_shares);
+		} else {
+			printf("     Key Check Value : ");
+			util_hex_dump(stdout, kdinfo->key_check_value, 8, NULL);
+			printf("\n");
+		}
 	} else {
-		printf("DKEK key check value : ");
-		util_hex_dump(stdout, dkekinfo->key_check_value, 8, NULL);
+		printf("%3i: XKEK Domain UID : ", (int)kdinfo->key_domain_idx + 1);
+		util_hex_dump(stdout, kdinfo->key_domain_uid, sizeof(kdinfo->key_domain_uid), NULL);
+		printf("\n");
+		printf("     Key Check Value : ");
+		util_hex_dump(stdout, kdinfo->key_check_value, sizeof(kdinfo->key_check_value), NULL);
 		printf("\n");
 	}
 }
 
 
 
-static void print_info(sc_card_t *card, sc_file_t *file)
+static void print_info(sc_card_t *card)
 {
 	int r;
 	struct sc_pin_cmd_data data;
-	sc_cardctl_sc_hsm_dkek_t dkekinfo;
+	sc_cardctl_sc_hsm_key_domain_t dkekinfo;
+	sc_path_t path;
+	sc_file_t *file;
 
 	u8 major, minor, opt;
+
+	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
+	r = sc_select_file(card, &path, &file);
+
+	if (r != SC_SUCCESS) {
+		fprintf(stderr, "Failed to select application: %s\n", sc_strerror(r));
+		return;
+	}
 
 	major = file->prop_attr[file->prop_attr_len - 2];
 	minor = file->prop_attr[file->prop_attr_len - 1];
@@ -585,19 +613,34 @@ static void print_info(sc_card_t *card, sc_file_t *file)
 			}
 		}
 	}
+	sc_file_free(file);
 
-	memset(&dkekinfo, 0, sizeof(dkekinfo));
+	int header = 0;
+	for (int i = 0; i < 256; i++) {
+		memset(&dkekinfo, 0, sizeof(dkekinfo));
+		dkekinfo.key_domain_idx = (u8)i;
 
-	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE, (void *)&dkekinfo);
+		r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, (void *)&dkekinfo);
 
-	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
-		return;
+		if (r == SC_ERROR_INS_NOT_SUPPORTED || r == SC_ERROR_INCORRECT_PARAMETERS) {			// Not supported or not initialized for key shares
+			break;
+		}
+		if (header == 0) {
+			printf("Key domain(s):\n");
+			header++;
+		}
+
+		if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND) {			// Not supported or not initialized for key shares
+			printf("%3i: Empty\n", i + 1);
+		} else if (r < 0) {
+			fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, *) failed with %s\n", sc_strerror(r));
+		}
+
+		if (r == SC_SUCCESS) {
+			print_dkek_info(&dkekinfo);
+		}
 	}
 
-	if (r < 0) {
-		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE, *) failed with %s\n", sc_strerror(r));
-	}
-	print_dkek_info(&dkekinfo);
 }
 
 
@@ -842,14 +885,179 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 
 
-static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const char *password, int num_of_password_shares)
+static int ensure_login(sc_card_t *card, const char *pin)
 {
-	sc_cardctl_sc_hsm_dkek_t dkekinfo;
+	struct sc_pin_cmd_data data;
+	char *lpin;
+	int r;
+
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_GET_INFO;
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = ID_USER_PIN;
+
+	r = sc_pin_cmd(card, &data);
+
+	if (data.pin1.logged_in == SC_PIN_STATE_LOGGED_IN) {
+		return 0;
+	}
+
+	if (pin == NULL) {
+		printf("Enter User PIN : ");
+		util_getpass(&lpin, NULL, stdin);
+		printf("\n");
+	} else {
+		lpin = (char *)pin;
+	}
+
+	memset(&data, 0, sizeof(data));
+	data.cmd = SC_PIN_CMD_VERIFY;
+	data.pin_type = SC_AC_CHV;
+	data.pin_reference = ID_USER_PIN;
+	data.pin1.data = (unsigned char *)lpin;
+	data.pin1.len = strlen(lpin);
+
+	r = sc_pin_cmd(card, &data);
+
+	if (pin == NULL) {
+		free(lpin);
+	}
+
+	if (r < 0) {
+		fprintf(stderr, "PIN verification failed with %s\n", sc_strerror(r));
+		return -1;
+	}
+
+	return 0;
+}
+
+
+
+static int create_dkek_key_domain(sc_card_t *card, const char *pin, const int kdidx, const int shares)
+{
+	sc_cardctl_sc_hsm_key_domain_t dkekinfo;
+	int r;
+
+	if (kdidx < 1) {
+		fprintf(stderr, "Must define the key domain with --key-domain <no>\n");
+		return -1;
+	}
+
+	r = ensure_login(card, pin);
+	if (r < 0) {
+		return -1;
+	}
+
+	memset(&dkekinfo, 0, sizeof(dkekinfo));
+	dkekinfo.operation = SC_MANAGE_KEY_DOMAIN_CREATE_DKEK_KEY_DOMAIN;
+	dkekinfo.dkek_shares = (u8)shares;
+	dkekinfo.key_domain_idx = (u8)(kdidx - 1);
+
+	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, (void *)&dkekinfo);
+
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
+		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
+		return -1;
+	}
+
+	if (r < 0) {
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, *) failed with %s\n", sc_strerror(r));
+		return -1;
+	}
+	printf("DKEK Key Domain created\n");
+	print_dkek_info(&dkekinfo);
+	return 0;
+}
+
+
+
+static int delete_key_domain(sc_card_t *card, const char *pin, const int kdidx)
+{
+	sc_cardctl_sc_hsm_key_domain_t dkekinfo;
+	int r;
+
+	r = ensure_login(card, pin);
+	if (r < 0) {
+		return -1;
+	}
+
+	memset(&dkekinfo, 0, sizeof(dkekinfo));
+	dkekinfo.operation = SC_MANAGE_KEY_DOMAIN_DELETE_KEY_DOMAIN;
+	dkekinfo.key_domain_idx = (u8)(kdidx - 1);
+
+	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, (void *)&dkekinfo);
+
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
+		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
+		return -1;
+	}
+
+	if (r < 0) {
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, *) failed with %s\n", sc_strerror(r));
+		return -1;
+	}
+	printf("DKEK Key Domain deleted\n");
+	return 0;
+}
+
+
+
+static int clear_key_encryption_key(sc_card_t *card, const char *pin, const int kdidx)
+{
+	sc_cardctl_sc_hsm_key_domain_t dkekinfo;
+	int r;
+
+	if (kdidx < 1) {
+		fprintf(stderr, "Must define the key domain with --key-domain <no>\n");
+		return -1;
+	}
+
+	r = ensure_login(card, pin);
+	if (r < 0) {
+		return -1;
+	}
+
+	memset(&dkekinfo, 0, sizeof(dkekinfo));
+	dkekinfo.operation = SC_MANAGE_KEY_DOMAIN_CLEAR_KEK;
+	dkekinfo.key_domain_idx = (u8)(kdidx - 1);
+
+	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, (void *)&dkekinfo);
+
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
+		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
+		return -1;
+	}
+
+	if (r < 0) {
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, *) failed with %s\n", sc_strerror(r));
+		return -1;
+	}
+	printf("Key Encryption Key cleared\n");
+	print_dkek_info(&dkekinfo);
+	return 0;
+}
+
+
+
+static int import_dkek_share(sc_card_t *card, const char *pin, int kdidx, const char *inf, int iter, const char *password, int num_of_password_shares)
+{
+	sc_cardctl_sc_hsm_key_domain_t dkekinfo;
 	EVP_CIPHER_CTX *bn_ctx = NULL;
 	FILE *in = NULL;
 	u8 filebuff[64],key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH],outbuff[64];
 	char *pwd = NULL;
 	int r, outlen, pwdlen;
+
+	// login not required when importing the DKEK share into the default key domain
+	if (kdidx > 0) {
+		if (pin != NULL) {
+			r = ensure_login(card, pin);
+			if (r < 0) {
+				return -1;
+			}
+		}
+		kdidx--;
+	}
 
 	if (inf == NULL) {
 		fprintf(stderr, "No file name specified for DKEK share\n");
@@ -921,11 +1129,12 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 
 	memset(&dkekinfo, 0, sizeof(dkekinfo));
 	memcpy(dkekinfo.dkek_share, outbuff, sizeof(dkekinfo.dkek_share));
-	dkekinfo.importShare = 1;
+	dkekinfo.operation = SC_MANAGE_KEY_DOMAIN_IMPORT_DKEK_SHARE;
+	dkekinfo.key_domain_idx = (u8)kdidx;
 
 	OPENSSL_cleanse(outbuff, sizeof(outbuff));
 
-	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE, (void *)&dkekinfo);
+	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, (void *)&dkekinfo);
 
 	OPENSSL_cleanse(&dkekinfo.dkek_share, sizeof(dkekinfo.dkek_share));
 
@@ -935,7 +1144,7 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 	}
 
 	if (r < 0) {
-		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE, *) failed with %s\n", sc_strerror(r));
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, *) failed with %s\n", sc_strerror(r));
 		return -1;
 	}
 	printf("DKEK share imported\n");
@@ -943,11 +1152,13 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 	return 0;
 }
 
+
+
 static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const char *password, int num_of_password_shares)
 {
 	// hex output can be used in the SCSH shell with the
 	// decrypt_keyblob.js file
-	sc_cardctl_sc_hsm_dkek_t dkekinfo;
+	sc_cardctl_sc_hsm_key_domain_t dkekinfo;
 	EVP_CIPHER_CTX *bn_ctx = NULL;
 	FILE *in = NULL;
 	u8 filebuff[64],key[EVP_MAX_KEY_LENGTH], iv[EVP_MAX_IV_LENGTH],outbuff[64];
@@ -1024,7 +1235,7 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 
 	memset(&dkekinfo, 0, sizeof(dkekinfo));
 	memcpy(dkekinfo.dkek_share, outbuff, sizeof(dkekinfo.dkek_share));
-	dkekinfo.importShare = 1;
+	dkekinfo.operation = 1;
 
 	OPENSSL_cleanse(outbuff, sizeof(outbuff));
 
@@ -1044,7 +1255,7 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 	}
 
 	if (r < 0) {
-		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_IMPORT_DKEK_SHARE, *) failed with %s\n", sc_strerror(r));
+		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, *) failed with %s\n", sc_strerror(r));
 		return -1;
 	}
 	//printf("DKEK share imported\n");
@@ -1996,13 +2207,14 @@ int main(int argc, char *argv[])
 	int do_import_dkek_share = 0;
 	int do_print_dkek_share = 0;
 	int do_create_dkek_share = 0;
+	int do_create_dkek_key_domain = 0;
+	int do_delete_key_domain = 0;
+	int do_clear_kek = 0;
 	int do_wrap_key = 0;
 	int do_unwrap_key = 0;
 	int do_export_key = 0;
 	int do_register_public_key = 0;
 	int do_public_key_auth_status = 0;
-	sc_path_t path;
-	sc_file_t *file = NULL;
 	const char *opt_so_pin = NULL;
 	const char *opt_pin = NULL;
 	const char *opt_filename = NULL;
@@ -2014,7 +2226,7 @@ int main(int argc, char *argv[])
 	int opt_num_of_pub_keys = -1;
 	int opt_required_pub_keys = 1;
 	int opt_dkek_shares = -1;
-	int opt_key_domains = 0;
+	int opt_key_domain = 0;
 	int opt_key_reference = -1;
 	int opt_password_shares_threshold = -1;
 	int opt_password_shares_total = -1;
@@ -2024,6 +2236,8 @@ int main(int argc, char *argv[])
 	sc_context_param_t ctx_param;
 	sc_context_t *ctx = NULL;
 	sc_card_t *card = NULL;
+	struct sc_pkcs15_card *p15card = NULL;
+
 
 	while (1) {
 		c = getopt_long(argc, argv, "XC:I:P:W:U:K:n:e:g:Ss:d:i:fr:wv", options, &long_optind);
@@ -2126,7 +2340,20 @@ int main(int argc, char *argv[])
 			opt_dkek_shares = (int)atol(optarg);
 			break;
 		case 'd':
-			opt_key_domains = (int)atol(optarg);
+			opt_key_domain = (int)atol(optarg);
+			break;
+		case OPT_CREATE_DKEK_KEY_DOMAIN:
+			do_create_dkek_key_domain = 1;
+			action_count++;
+			opt_dkek_shares = (int)atol(optarg);
+			break;
+		case OPT_DELETE_KEY_DOMAIN:
+			do_delete_key_domain = 1;
+			action_count++;
+			break;
+		case OPT_CLEAR_KEK:
+			do_clear_kek = 1;
+			action_count++;
 			break;
 		case 'f':
 			opt_force = 1;
@@ -2149,6 +2376,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (opt_key_domain < 0 || opt_key_domain > 255) {
+		fprintf(stderr, "Option -d (--key-domains) must be in the range 0 to 255\n");
+		exit(1);
+	}
 	if (!do_initialize && opt_num_of_pub_keys != -1) {
 		fprintf(stderr, "Option -K (--public-key-auth) requires option -X\n");
 		exit(1);
@@ -2163,14 +2394,6 @@ int main(int argc, char *argv[])
 	}
 	if (!do_initialize && (initopts & INIT_RRC_UNBLOCK)) {
 		fprintf(stderr, "Option --no-pin-reset requires option -X\n");
-		exit(1);
-	}
-	if (!do_initialize && opt_key_domains > 0) {
-		fprintf(stderr, "Option -d (--key-domains) requires option -X\n");
-		exit(1);
-	}
-	if (opt_dkek_shares > -1 && opt_key_domains > 0) {
-		fprintf(stderr, "Options -d (--key-domains) and -s (--dkek-shares) are mutually exclusive\n");
 		exit(1);
 	}
 	if (opt_no_rrc && (initopts & INIT_RRC_UNBLOCK)) {
@@ -2258,21 +2481,25 @@ int main(int argc, char *argv[])
 		goto end;
 	}
 
-	sc_path_set(&path, SC_PATH_TYPE_DF_NAME, sc_hsm_aid.value, sc_hsm_aid.len, 0, 0);
-	r = sc_select_file(card, &path, &file);
+	r = sc_pkcs15_bind(card, NULL, &p15card);
 
-	if (r != SC_SUCCESS) {
-		fprintf(stderr, "Failed to select application: %s\n", sc_strerror(r));
-		goto fail;
+	if (r) {
+		fprintf(stderr, "PKCS#15 binding failed: %s\n", sc_strerror(r));
+		if (!do_initialize) {
+			goto end;
+		}
 	}
 
-	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, initopts, opt_bio1, opt_bio2, opt_dkek_shares, opt_key_domains, opt_num_of_pub_keys, opt_required_pub_keys, opt_label))
+	if (do_initialize && initialize(card, opt_so_pin, opt_pin, opt_retry_counter, initopts, opt_bio1, opt_bio2, opt_dkek_shares, opt_key_domain, opt_num_of_pub_keys, opt_required_pub_keys, opt_label))
 		goto fail;
 
 	if (do_create_dkek_share && create_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_threshold, opt_password_shares_total))
 		goto fail;
 
-	if (do_import_dkek_share && import_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total))
+	if (do_create_dkek_key_domain && create_dkek_key_domain(card, opt_pin, opt_key_domain, opt_dkek_shares))
+		goto fail;
+
+	if (do_import_dkek_share && import_dkek_share(card, opt_pin, opt_key_domain, opt_filename, opt_iter, opt_password, opt_password_shares_total))
 		goto fail;
 
 	if (do_print_dkek_share && print_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total))
@@ -2293,8 +2520,14 @@ int main(int argc, char *argv[])
 	if (do_public_key_auth_status && public_key_auth_status(ctx, card))
 		goto fail;
 
+	if (do_clear_kek && clear_key_encryption_key(card, opt_pin, opt_key_domain))
+		goto fail;
+
+	if (do_delete_key_domain && delete_key_domain(card, opt_pin, opt_key_domain))
+		goto fail;
+
 	if (action_count == 0) {
-		print_info(card, file);
+		print_info(card);
 	}
 
 	err = 0;
@@ -2302,7 +2535,7 @@ int main(int argc, char *argv[])
 fail:
 	err = 1;
 end:
-	sc_file_free(file);
+	sc_pkcs15_unbind(p15card);
 	sc_disconnect_card(card);
 	sc_release_context(ctx);
 
