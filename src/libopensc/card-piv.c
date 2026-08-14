@@ -223,11 +223,11 @@ typedef struct piv_cvc {
  * 6988 for SM is caught on sm_nist and new SM session started and apdu is retried
  */
 static const struct sc_card_error sm_nist_errors[] = {
-	{0x6882, SC_ERROR_SM, "SM not supported"},
-//	{0x6982, SC_ERROR_SM_NO_SESSION_KEYS, "SM Security status not satisfied"}, /* no session established */
-	{0x6987, SC_ERROR_SM, "Expected SM Data Object missing"},
-	{0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"}, /* other process interference */
-	{0, 0, NULL}
+		{0x6882, SC_ERROR_SM,		      "SM not supported"		},
+		//	{0x6982, SC_ERROR_SM_NO_SESSION_KEYS, "SM Security status not satisfied"}, /* no session established */
+		{0x6987, SC_ERROR_SM,		      "Expected SM Data Object missing"},
+		{0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"	    }, /* other process interference */
+		{0,	    0,			       NULL			     }
 };
 #endif /* PIV_SM_NIST */
 
@@ -290,7 +290,7 @@ typedef struct piv_private_data {
 	unsigned int ccc_flags;	    /* From  CCC indicate if CAC card */
 	unsigned int pin_policy; /* from discovery */
 	unsigned int init_flags;
-	u8 csID; /* 800-73-4 Cipher Suite ID 0x27 or 0x2E */
+	u8 csID;					  /* 800-73-4 Cipher Suite ID 0x27 or 0x2E */
 	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
 #ifdef PIV_SM_NIST
 	sm_nist_params_t sm_params;
@@ -348,75 +348,75 @@ static const struct sc_atr_table piv_atrs[] = {
 		/* Oberthur Card System  with LCS 0F - Some VA cards have Terminated state */
 		{"3B:DB:96:00:80:1F:03:00:31:C0:64:B0:F3:10:00:0F:90:00:88",	     NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR,       0, NULL},
 
-	/* Giesecke & Devrient (PIV Endpoint)  2 entries 2016, 2019 */
-	{ "3B:7A:18:00:00:73:66:74:65:20:63:64:31:34:34", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL },
-	/* Giesecke & Devrient (CAC PIV Endpoint) 2019 */
-	{ "3B:F9:18:00:00:00:53:43:45:37:20:03:00:20:46", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL },
-	/* Giesecke & Devrient SCE7 (PIV-only) (DoD Alternate Token G+D Sm@rtCafe Expert v7.0 144K DI 2025) */
-	{ "3B:F9:96:00:00:80:31:FE:45:53:43:45:37:20:0F:00:20:46:4E", NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE, 0, NULL },
+		/* Giesecke & Devrient (PIV Endpoint)  2 entries 2016, 2019 */
+		{"3B:7A:18:00:00:73:66:74:65:20:63:64:31:34:34",			 NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL},
+		/* Giesecke & Devrient (CAC PIV Endpoint) 2019 */
+		{"3B:F9:18:00:00:00:53:43:45:37:20:03:00:20:46",			 NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE_DUAL_CAC, 0, NULL},
+		/* Giesecke & Devrient SCE7 (PIV-only) (DoD Alternate Token G+D Sm@rtCafe Expert v7.0 144K DI 2025) */
+		{"3B:F9:96:00:00:80:31:FE:45:53:43:45:37:20:0F:00:20:46:4E",	     NULL, NULL, SC_CARD_TYPE_PIV_II_GI_DE,	    0, NULL},
 
-	/* IDEMIA (new name for Oberthur) (DoD Alternate Token IDEMIA Cosmo V8.0 2025 */
-	{ "3B:D8:18:00:80:B1:FE:45:1F:07:80:31:C1:64:08:06:92:0F:D5", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL },
-	{ "3b:86:80:01:80:31:c1:52:41:1a:7e", NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR, 0, NULL }, /* contactless */
+		/* IDEMIA (new name for Oberthur) (DoD Alternate Token IDEMIA Cosmo V8.0 2025 */
+		{"3B:D8:18:00:80:B1:FE:45:1F:07:80:31:C1:64:08:06:92:0F:D5",	     NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR,       0, NULL},
+		{"3b:86:80:01:80:31:c1:52:41:1a:7e",				     NULL, NULL, SC_CARD_TYPE_PIV_II_OBERTHUR,       0, NULL}, /* contactless */
 
-	/* Following PIVKEY entries are from Windows registry provided by gw@taglio.com 2022-09-05 */
-	/* PIVKEY PIVKey Feitian (02) */
-	{ "3b:9f:95:81:31:fe:9f:00:66:46:53:05:10:00:11:71:df:00:00:00:00:00:02", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey Feitian (7C)  aka C910 contactless */
-	{ "3b:8c:80:01:90:67:46:4a:00:64:16:06:f2:72:7e:00:7c", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/*PIVKey Feitian (E0)  aka C910 */
-	{ "3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:16:06:f2:72:7e:00:e0", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey Feitian (FE)  aka PIVKEY T600 token and T800  on Feitian eJAVA */
-	{ "3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:2d:70:c1:72:fe:e0:fe", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP241 (AD) */
-	{ "3b:f9:13:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:ad", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP242R2 (16) */
-	{ "3b:88:80:01:50:49:56:4b:45:59:37:30:16", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP242R2 (5E) */
-	{ "3b:88:80:01:4a:43:4f:50:76:32:34:31:5e", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP242R2 (B7) */
-	{  "3b:f8:13:00:00:81:31:fe:45:4a:43:4f:50:76:32:34:31:b7", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP3 (67) */
-	{  "3b:88:80:01:46:49:44:45:53:4d:4f:31:67", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP3 (8E) */
-	{  "3b:f8:13:00:00:81:31:fe:45:46:49:44:45:53:4d:4f:31:8e", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey JCOP31 (57) */
-	{  "3b:f9:18:00:ff:81:31:fe:45:4a:43:4f:50:33:31:56:32:32:57", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey NXP JCOP (03) */
-	{  "3b:8a:80:01:01:50:49:56:4b:45:59:37:30:16:03", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey NXP JCOP (FF)  aka CP70 */
-	{  "3b:f8:13:00:00:81:31:fe:45:50:49:56:4b:45:59:37:30:ff", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey SLE78 (3B) */
-	{  "3b:8d:80:01:53:4c:4a:35:32:47:44:4c:31:32:38:43:52:3b", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey SLE78 (6D) */
-	{  "3b:88:80:01:00:00:00:11:77:81:83:00:6d", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey SLE78 (28) aka C980 */
-	{  "3b:f9:96:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:28", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey SLE78 (44) aka C980 contactless */
-	{  "3b:89:80:01:53:50:49:56:4b:45:59:37:30:44", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey SLE78 (57B) */
-	{  "3b:fd:96:00:00:81:31:fe:45:53:4c:4a:35:32:47:44:4c:31:32:38:43:52:57", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* This ATR is too generic. It will be accepted if Application Label in AID response matches */
-	/* Which looks like there is no Application Label in AID response of these cards */
-	/* PivApplet (at least when run in virtual machine) uses the same ATR */
-	/* PIVKey uTrust (01) ISO 14443 Type B without historical bytes */
-	/* { "3b:80:80:01:01", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL }, */
+		/* Following PIVKEY entries are from Windows registry provided by gw@taglio.com 2022-09-05 */
+		/* PIVKEY PIVKey Feitian (02) */
+		{"3b:9f:95:81:31:fe:9f:00:66:46:53:05:10:00:11:71:df:00:00:00:00:00:02", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	 0, NULL},
+		/* PIVKey Feitian (7C)  aka C910 contactless */
+		{"3b:8c:80:01:90:67:46:4a:00:64:16:06:f2:72:7e:00:7c",		       NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	       0, NULL},
+		/*PIVKey Feitian (E0)  aka C910 */
+		{"3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:16:06:f2:72:7e:00:e0",    NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	      0, NULL},
+		/* PIVKey Feitian (FE)  aka PIVKEY T600 token and T800  on Feitian eJAVA */
+		{"3b:fc:18:00:00:81:31:80:45:90:67:46:4a:00:64:2d:70:c1:72:fe:e0:fe",    NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	      0, NULL},
+		/* PIVKey JCOP241 (AD) */
+		{"3b:f9:13:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:ad",	     NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	     0, NULL},
+		/* PIVKey JCOP242R2 (16) */
+		{"3b:88:80:01:50:49:56:4b:45:59:37:30:16",				   NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
+		/* PIVKey JCOP242R2 (5E) */
+		{"3b:88:80:01:4a:43:4f:50:76:32:34:31:5e",				   NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
+		/* PIVKey JCOP242R2 (B7) */
+		{"3b:f8:13:00:00:81:31:fe:45:4a:43:4f:50:76:32:34:31:b7",		  NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	  0, NULL},
+		/* PIVKey JCOP3 (67) */
+		{"3b:88:80:01:46:49:44:45:53:4d:4f:31:67",				   NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
+		/* PIVKey JCOP3 (8E) */
+		{"3b:f8:13:00:00:81:31:fe:45:46:49:44:45:53:4d:4f:31:8e",		  NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	  0, NULL},
+		/* PIVKey JCOP31 (57) */
+		{"3b:f9:18:00:ff:81:31:fe:45:4a:43:4f:50:33:31:56:32:32:57",	     NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	     0, NULL},
+		/* PIVKey NXP JCOP (03) */
+		{"3b:8a:80:01:01:50:49:56:4b:45:59:37:30:16:03",			 NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	 0, NULL},
+		/* PIVKey NXP JCOP (FF)  aka CP70 */
+		{"3b:f8:13:00:00:81:31:fe:45:50:49:56:4b:45:59:37:30:ff",		  NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	  0, NULL},
+		/* PIVKey SLE78 (3B) */
+		{"3b:8d:80:01:53:4c:4a:35:32:47:44:4c:31:32:38:43:52:3b",		  NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	  0, NULL},
+		/* PIVKey SLE78 (6D) */
+		{"3b:88:80:01:00:00:00:11:77:81:83:00:6d",				   NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
+		/* PIVKey SLE78 (28) aka C980 */
+		{"3b:f9:96:00:00:81:31:fe:45:53:50:49:56:4b:45:59:37:30:28",	     NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	     0, NULL},
+		/* PIVKey SLE78 (44) aka C980 contactless */
+		{"3b:89:80:01:53:50:49:56:4b:45:59:37:30:44",			      NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	      0, NULL},
+		/* PIVKey SLE78 (57B) */
+		{"3b:fd:96:00:00:81:31:fe:45:53:4c:4a:35:32:47:44:4c:31:32:38:43:52:57", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	 0, NULL},
+		/* This ATR is too generic. It will be accepted if Application Label in AID response matches */
+		/* Which looks like there is no Application Label in AID response of these cards */
+		/* PivApplet (at least when run in virtual machine) uses the same ATR */
+		/* PIVKey uTrust (01) ISO 14443 Type B without historical bytes */
+		/* { "3b:80:80:01:01", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL }, */
 
-	/* PIVKey uTrust (73) */
-	{ "3b:96:11:81:21:75:75:54:72:75:73:74:73", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
-	/* PIVKey uTrust FIDO2 (73) */
-	{ "3b:96:11:81:21:75:75:54:72:75:73:74:73", NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY, 0, NULL },
+		/* PIVKey uTrust (73) */
+		{"3b:96:11:81:21:75:75:54:72:75:73:74:73",				   NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
+		/* PIVKey uTrust FIDO2 (73) */
+		{"3b:96:11:81:21:75:75:54:72:75:73:74:73",				   NULL, NULL, SC_CARD_TYPE_PIV_II_PIVKEY,	   0, NULL},
 
-	/* Swissbit iShield Key Pro with PIV endpoint applet */
-	{ "3b:97:11:81:21:75:69:53:68:69:65:6c:64:05", NULL, NULL, SC_CARD_TYPE_PIV_II_SWISSBIT, 0, NULL },
+		/* Swissbit iShield Key Pro with PIV endpoint applet */
+		{"3b:97:11:81:21:75:69:53:68:69:65:6c:64:05",			      NULL, NULL, SC_CARD_TYPE_PIV_II_SWISSBIT,	0, NULL},
 
-	/* ID-One PIV 2.4.1 on Cosmo V8.1 NIST sp800-73-4 with Secure Messaging and VCI  2020 */
-	{ "3b:d6:96:00:81:b1:fe:45:1f:87:80:31:c1:52:41:1a:2a", NULL, NULL, SC_CARD_TYPE_PIV_II_800_73_4, 0, NULL },
-	{ "3b:d6:97:00:81:b1:fe:45:1f:87:80:31:c1:52:41:12:23",
-			"ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00", NULL, SC_CARD_TYPE_PIV_II_800_73_4, 0, NULL },
-	{ "3b:86:80:01:80:31:c1:52:41:12:76", NULL, NULL, SC_CARD_TYPE_PIV_II_800_73_4,0, NULL }, /* contactless */
+		/* ID-One PIV 2.4.1 on Cosmo V8.1 NIST sp800-73-4 with Secure Messaging and VCI  2020 */
+		{"3b:d6:96:00:81:b1:fe:45:1f:87:80:31:c1:52:41:1a:2a",		       NULL, NULL, SC_CARD_TYPE_PIV_II_800_73_4,	 0, NULL},
+		{"3b:d6:97:00:81:b1:fe:45:1f:87:80:31:c1:52:41:12:23",
+			"ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:ff:00:00",			      NULL, SC_CARD_TYPE_PIV_II_800_73_4,	  0, NULL},
+		{"3b:86:80:01:80:31:c1:52:41:12:76",				     NULL, NULL, SC_CARD_TYPE_PIV_II_800_73_4,       0, NULL}, /* contactless */
 
-		{NULL, NULL, NULL, 0, 0, NULL}
+		{NULL,								   NULL, NULL, 0,				      0, NULL}
 };
 
 static struct piv_supported_ec_curves {
@@ -1221,7 +1221,7 @@ piv_find_aid(sc_card_t *card)
 							priv->alg_ids |= ai_map[j].ai_flag;
 							continue;
 						}
-						sc_log(card->ctx,"found csID=0x%2.2x",*csai);
+						sc_log(card->ctx, "found csID=0x%2.2x", *csai);
 #ifdef PIV_SM_NIST
 						if (*csai == 0x27 || *csai == 0x2E) {
 							priv->csID = *csai;
@@ -1408,10 +1408,10 @@ piv_get_data(sc_card_t *card, int enumtag, u8 **buf, size_t *buf_len)
 	}
 
 #endif /* PIV_SM_NIST */
-	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf,  p - tagbuf, *buf, *buf_len);
+	r = piv_general_io(card, 0xCB, 0x3F, 0xFF, tagbuf, p - tagbuf, *buf, *buf_len);
 #ifdef PIV_SM_NIST
 	priv->sm_params.flags &= ~NIST_SM_FLAGS_FORCE_IN_CLEAR; /* reset */
-#endif /* PIV_SM_NIST */
+#endif								/* PIV_SM_NIST */
 	if (r > 0) {
 		int r_tag;
 		unsigned int cla_out, tag_out;
@@ -1556,7 +1556,7 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 	int compressed = 0;
 	int r = SC_SUCCESS;
 #ifdef PIV_SM_NIST
-	u8* cvc_start = NULL;
+	u8 *cvc_start = NULL;
 	size_t cvc_len = 0;
 #endif /* PIV_SM_NIST */
 
@@ -3783,7 +3783,7 @@ piv_finish(sc_card_t *card)
 	int i;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	
+
 	if (priv) {
 		if (priv->context_specific) {
 			sc_log(card->ctx, "Clearing CONTEXT_SPECIFIC lock");
@@ -4187,7 +4187,7 @@ piv_match_card_continued(sc_card_t *card)
 		card->type = SC_CARD_TYPE_PIV_II_800_73_4;
 	}
 #endif /* PIV_SM_NIST */
-	sc_debug(card->ctx,SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
+	sc_debug(card->ctx, SC_LOG_DEBUG_MATCH, "PIV_MATCH card->type:%d r2:%d CI:%08x r:%d\n", card->type, r2, priv->card_issues, r);
 
 	/*
 	 * Set card_issues flags based card->type and version numbers if available.
@@ -4416,15 +4416,15 @@ piv_init(sc_card_t *card)
 
 		/* If user said PIV_SM_FLAGS_NEVER, dont start SM; implies limited contatless access */
 		if (priv->sm_params.flags & NIST_SM_FLAGS_NEVER) {
-			sc_log(card->ctx,"User has requested PIV_SM_FLAGS_NEVER");
+			sc_log(card->ctx, "User has requested PIV_SM_FLAGS_NEVER");
 			r = SC_SUCCESS; /* Users choice */
 
 		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS) && !(priv->pin_policy & PIV_PP_VCI_IMPL)) {
-			sc_log(card->ctx,"Contactless and no card support for VCI");
+			sc_log(card->ctx, "Contactless and no card support for VCI");
 			r = SC_SUCCESS; /* User should know VCI is not possible with their card; use like 800-73-3 contactless  */
 
 		} else if ((priv->init_flags & PIV_INIT_CONTACTLESS) && !(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC) && (priv->sm_params.pairing_code[0] == 0x00)) {
-			sc_log(card->ctx,"Contactless, pairing_code required and no pairing code");
+			sc_log(card->ctx, "Contactless, pairing_code required and no pairing code");
 			r = SC_ERROR_PIN_CODE_INCORRECT; /* User should know they need to set pairing code */
 
 		} else {
@@ -4467,7 +4467,7 @@ piv_init(sc_card_t *card)
 
 		/* If failed, and user said NIST_SM_FLAGS_ALWAYS quit */
 		if (priv->sm_params.flags & NIST_SM_FLAGS_ALWAYS && r < 0) {
-			sc_log(card->ctx,"User has requested PIV_SM_FLAGS_ALWAYS, SM has failed to start, don't use the card");
+			sc_log(card->ctx, "User has requested PIV_SM_FLAGS_ALWAYS, SM has failed to start, don't use the card");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
 		}
 	}
@@ -4535,7 +4535,7 @@ piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 			}
 		}
 	}
-	
+
 #ifdef PIV_SM_NIST
 	/* Note 6982 is map to SC_ERROR_SM_NO_SESSION_KEYS but iso maps it to SC_ERROR_SECURITY_STATUS_NOT_SATISFIED */
 	/* we do this because 6982 could also mean a verify is not allowed over contactless without VCI */
@@ -4832,7 +4832,6 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 
 	priv->init_flags |= PIV_INIT_IN_READER_LOCK_OBTAINED;
 
-	
 	/* first see if AID is active AID by reading discovery object '7E' */
 	/* If not try selecting AID */
 	/* but if card does not support DISCOVERY object we can not use it */
