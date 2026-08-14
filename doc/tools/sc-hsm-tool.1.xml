@@ -48,7 +48,7 @@
 						<para>Use <option>--no-rrc</option> to disable support for resetting the user pin retry counter.</para>
 						<para>Use <option>--no-pin-reset</option> to allow resetting the user pin retry counter, but not setting a new pin.</para>
 						<para>Use with <option>--dkek-shares</option> to enable key wrap / unwrap.</para>
-						<para>Use with <option>-d</option> <option>--key-domain</option> to define the number of key domains that should be allocated (available with version 3 and later).</para>
+						<para>Use with <option>-d</option> (<option>--key-domain</option>) to define the number of key domains that should be allocated (available with version 3 and later).</para>
 						<para>Use with <option>--label</option> to define a token label</para>
 						<para>Use with <option>--public-key-auth</option> and <option>--required-pub-keys</option> to require public key authentication for login</para>
 					</listitem>
@@ -73,7 +73,6 @@
 					</term>
 					<listitem>
 						<para>Create a DKEK key domain in the key domain slot identified by <option>-d</option> (<option>--key-domain</option>).</para>
-						<para>Use <option>-d</option> <option>--key-domain</option> to identify the key domain slot in which the DKEK key domain shall be created.</para>
 						<para>Use <option>--pin</option> to provide the user PIN on the command line.</para>
 					</listitem>
 				</varlistentry>
@@ -85,7 +84,7 @@
 					</term>
 					<listitem>
 						<para>Prompt for user password, read and decrypt DKEK share and import into SmartCard-HSM.</para>
-						<para>Use <option>-d</option> <option>--key-domain</option> to identify the key domain into which the DKEK share shall be imported.</para>
+						<para>Use <option>-d</option> (<option>--key-domain</option>) to identify the key domain into which the DKEK share shall be imported.</para>
 						<para>Use <option>--pin</option> to provide the user PIN on the command line.</para>
 						<para>Use <option>--password</option> to provide a password for decryption rather than prompting for one.</para>
 						<para>Use <option>--pwd-shares-total</option> to specify the number of shares that should be entered to reconstruct the password.</para>
@@ -98,7 +97,6 @@
 					</term>
 					<listitem>
 						<para>Clear the key encryption key established in the key domain slot identified by <option>-d</option> (<option>--key-domain</option>).</para>
-						<para>Use <option>-d</option> <option>--key-domain</option> to identify the key domain in which the key encryption key shall be cleared.</para>
 						<para>Use <option>--pin</option> to provide the user PIN on the command line.</para>
 					</listitem>
 				</varlistentry>
@@ -109,7 +107,24 @@
 					</term>
 					<listitem>
 						<para>Delete the empty key domain identified by <option>-d</option> (<option>--key-domain</option>).</para>
-						<para>Use <option>-d</option> <option>--key-domain</option> to identify the key domain that should be deleted.</para>
+						<para>Use <option>--pin</option> to provide the user PIN on the command line.</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--generate-key</option> <replaceable>keyspec</replaceable>,
+						<option>-G</option> <replaceable>keyspec</replaceable>
+					</term>
+					<listitem>
+						<para>Generate a new key where <replaceable>keyspec</replaceable> describes the algorithm and the parameters
+							of the key to be created. For example, <literal>rsa:2048</literal> generates a RSA key
+							with 2048-bit modulus, default is 3072. If you are generating an EC key, the curve designation must
+							be specified, for example <literal>ec:prime256v1</literal>.</para>
+						<para>Use <option>--label</option> to define the key label</para>
+						<para>Use <option>--key-use-counter</option> to optionally define the initial value or a key use counter in the range 1 to 2^32-1.</para>
+						<para>Use <option>-d</option> (<option>--key-domain</option>) to identify the key domain in which the key could be generated. If the
+							parameter is missing, the key is generated in the default key domain.</para>
 						<para>Use <option>--pin</option> to provide the user PIN on the command line.</para>
 					</listitem>
 				</varlistentry>

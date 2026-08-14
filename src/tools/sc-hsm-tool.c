@@ -49,6 +49,7 @@
 #include "libopensc/asn1.h"
 #include "libopensc/log.h"
 #include "libopensc/card-sc-hsm.h"
+#include "pkcs15init/pkcs15-init.h"
 #include "util.h"
 
 static const char *app_name = "sc-hsm-tool";
@@ -76,6 +77,7 @@ enum {
 	OPT_NO_PIN_RESET,
 	OPT_REPLACE_PKA_KEY,
 	OPT_REQUIRE_PKA_AND_PIN,
+	OPT_KEY_USE_COUNTER,
 	OPT_CREATE_DKEK_KEY_DOMAIN,
 	OPT_DELETE_KEY_DOMAIN,
 	OPT_CLEAR_KEK,
@@ -96,6 +98,7 @@ static const struct option options[] = {
 #endif
 	{ "wrap-key",				1, NULL,		'W' },
 	{ "unwrap-key",				1, NULL,		'U' },
+	{ "generate-key",			1, NULL,		'G' },
 	{ "public-key-auth",		1, NULL,		'K' },
 	{ "required-pub-keys",		1, NULL,		'n' },
 	{ "replace-key-allowed",	0, NULL,		OPT_REPLACE_PKA_KEY },
@@ -105,6 +108,7 @@ static const struct option options[] = {
 	{ "public-key-auth-status",	0, NULL,		'S' },
 	{ "dkek-shares",			1, NULL,		's' },
 	{ "key-domain",				1, NULL,		'd' },
+	{ "key-use-counter",		1, NULL,		OPT_KEY_USE_COUNTER },
 	{ "create-dkek-key-domain",	1, NULL,		OPT_CREATE_DKEK_KEY_DOMAIN },
 	{ "delete-key-domain",		0, NULL,		OPT_DELETE_KEY_DOMAIN },
 	{ "clear-kek",				0, NULL,		OPT_CLEAR_KEK },
@@ -146,7 +150,8 @@ static const char *option_help[] = {
 	"Register public key for public key authentication (PKA file)",
 	"Show status of public key authentication",
 	"Number of DKEK shares [No DKEK]",
-	"Number of key domain slots or key domain index",
+	"Key domain index or number of key domain slots",
+	"Key use counter initial value",
 	"Create DKEK key domain",
 	"Delete key domain",
 	"Delete key encryption key in key domain",
@@ -1545,6 +1550,172 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 
 
 
+struct alg_spec {
+	const char *spec;
+	int algorithm;
+	unsigned int keybits;
+};
+
+/* RSA can have a number , default is 2048 */
+/* EC require a curve name */
+static const struct alg_spec alg_types_asym[] = {
+	{ "rsa",	SC_ALGORITHM_RSA,	3072 }, /* new default */
+	{ "ec",		SC_ALGORITHM_EC,	0 }, /* keybits derived from curve */
+	{ NULL, -1, 0 }
+};
+
+static int parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *keybits, struct sc_pkcs15_prkey *prkey)
+{
+	int i, types_idx = -1, algorithm = -1;
+	unsigned int user_keybits = 0;
+	char *end;
+
+	for (i = 0; types[i].spec; i++) {
+		if (!strncasecmp(spec, types[i].spec, strlen(types[i].spec))) {
+			types_idx = i; /* save index of types array */
+			algorithm = types[i].algorithm;
+			*keybits = types[i].keybits;
+			spec += strlen(types[i].spec);
+			break;
+		}
+	}
+	if (algorithm < 0) {
+		util_error("Unknown algorithm \"%s\"", spec);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	if (*spec == '/' || *spec == '-' || *spec == ':')
+		spec++;
+
+	/*  prkey is required for keys that use ecparms */
+	if (*spec == '\0' && (algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA) && prkey) {
+		if ((prkey->u.ec.params.named_curve = strdup(types[types_idx].spec)) == NULL) /* correct case */
+			return SC_ERROR_OUT_OF_MEMORY;
+		return algorithm;
+	}
+
+	if (*spec != '\0') {
+		if (isalpha((unsigned char)*spec) && algorithm == SC_ALGORITHM_EC && prkey) {
+			if ((prkey->u.ec.params.named_curve = strdup(spec)) == NULL) /* pass EC curve name */
+				return SC_ERROR_OUT_OF_MEMORY;
+		} else if ((algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA) && prkey) {
+			if ((prkey->u.ec.params.named_curve = strdup(types[types_idx].spec)) == NULL) /* copy correct case */
+				return SC_ERROR_OUT_OF_MEMORY;
+			user_keybits = (unsigned)strtoul(spec, &end, 10);
+			if (*end) {
+				util_error("Invalid number of key bits \"%s\"", spec);
+				return SC_ERROR_INVALID_ARGUMENTS;
+			}
+			if (user_keybits != *keybits) {
+				util_error("If specified, number of key bits must be \"%d\" for \"%s\"", *keybits, types[types_idx].spec);
+				return SC_ERROR_INVALID_ARGUMENTS;
+			}
+		} else { /* rsa or symmetric key */
+			*keybits = (unsigned)strtoul(spec, &end, 10);
+			if (*end) {
+				util_error("Invalid number of key bits \"%s\"", spec);
+				return SC_ERROR_INVALID_ARGUMENTS;
+			}
+		}
+	}
+
+	return algorithm;
+}
+
+
+
+static int init_prkeyargs(struct sc_pkcs15init_prkeyargs *args)
+{
+	memset(args, 0, sizeof(*args));
+	/*
+	if (opt_objectid)
+		sc_pkcs15_format_id(opt_objectid, &args->id);
+	if (opt_authid) {
+		sc_pkcs15_format_id(opt_authid, &args->auth_id);
+	} else if (!opt_insecure) {
+		util_error("no PIN given for key - either use --insecure or \n"
+				"specify a PIN using --auth-id");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	if (opt_extractable) {
+		args->access_flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+	}
+	args->label = opt_label;
+	args->x509_usage = opt_x509_usage;
+
+	if (opt_md_container_guid)   {
+		args->guid = (unsigned char *)opt_md_container_guid;
+		args->guid_len = strlen(opt_md_container_guid);
+	}
+	args->user_consent = opt_user_consent;
+*/
+	return 0;
+}
+
+
+
+/*
+ * Generate a new private key
+ */
+static int generate_key(struct sc_pkcs15_card *p15card, const char *pin, const char *spec, char *label, int kdidx, unsigned long kuc)
+{
+	struct sc_profile *profile;
+	struct sc_pkcs15init_keygen_args keygen_args;
+	sc_hsm_keygen_data_t sc_hsm_keygen;
+	struct sc_auxiliary_data aux_data;
+	unsigned int keybits = 0;
+	int r, algorithm = -1;
+
+	memset(&keygen_args, 0, sizeof(keygen_args));
+	memset(&sc_hsm_keygen, 0, sizeof(sc_hsm_keygen));
+
+	sc_hsm_keygen.key_domain = kdidx;
+	sc_hsm_keygen.key_use_counter = kuc;
+
+	if ((r = init_prkeyargs(&keygen_args.prkey_args)) < 0)
+		return r;
+
+	algorithm = parse_alg_spec(alg_types_asym, spec, &keybits, &keygen_args.prkey_args.key);
+	if (algorithm < 0) {
+		util_error("Invalid key spec: \"%s\"", spec);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	keygen_args.prkey_args.label = label;
+	keygen_args.prkey_args.key.algorithm = algorithm;
+	keygen_args.prkey_args.access_flags |=
+		  SC_PKCS15_PRKEY_ACCESS_SENSITIVE
+		| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
+		| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+		| SC_PKCS15_PRKEY_ACCESS_LOCAL;
+
+	aux_data.type = SC_AUX_DATA_TYPE_PROP_KEY_GEN_PARAM;
+	aux_data.data.proprietary_key_gen_params = &sc_hsm_keygen;
+	keygen_args.prkey_args.aux_data = &aux_data;
+
+	r = ensure_login(p15card->card, pin);
+	if (r < 0) {
+		return -1;
+	}
+
+	r = sc_pkcs15init_bind(p15card->card, "pkcs15", NULL, NULL, &profile);
+	if (r < 0) {
+		return -1;
+	}
+
+	r = sc_pkcs15init_generate_key(p15card, profile, &keygen_args, keybits, NULL);
+
+	if (r < 0) {
+		fprintf(stderr, "Key generation failed with %s\n", sc_strerror(r));
+	}
+
+	sc_pkcs15init_unbind(profile);
+	sc_pkcs15_erase_prkey(&keygen_args.prkey_args.key);
+	return r;
+}
+
+
+
 static size_t determineLength(const u8 *tlv, size_t buflen)
 {
 	const u8 *ptr = tlv;
@@ -2212,6 +2383,7 @@ int main(int argc, char *argv[])
 	int do_clear_kek = 0;
 	int do_wrap_key = 0;
 	int do_unwrap_key = 0;
+	int do_generate_key = 0;
 	int do_export_key = 0;
 	int do_register_public_key = 0;
 	int do_public_key_auth_status = 0;
@@ -2221,12 +2393,14 @@ int main(int argc, char *argv[])
 	const char *opt_password = NULL;
 	const char *opt_bio1 = NULL;
 	const char *opt_bio2 = NULL;
+	const char *opt_keyspec = NULL;
 	int opt_retry_counter = 3;
 	int opt_no_rrc = 0;
 	int opt_num_of_pub_keys = -1;
 	int opt_required_pub_keys = 1;
 	int opt_dkek_shares = -1;
 	int opt_key_domain = 0;
+	unsigned long opt_key_use_counter = 0;
 	int opt_key_reference = -1;
 	int opt_password_shares_threshold = -1;
 	int opt_password_shares_total = -1;
@@ -2240,7 +2414,7 @@ int main(int argc, char *argv[])
 
 
 	while (1) {
-		c = getopt_long(argc, argv, "XC:I:P:W:U:K:n:e:g:Ss:d:i:fr:wv", options, &long_optind);
+		c = getopt_long(argc, argv, "XC:I:P:W:U:G:K:n:e:g:Ss:d:i:fr:wv", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -2273,6 +2447,11 @@ int main(int argc, char *argv[])
 		case 'U':
 			do_unwrap_key = 1;
 			opt_filename = optarg;
+			action_count++;
+			break;
+		case 'G':
+			do_generate_key = 1;
+			opt_keyspec = optarg;
 			action_count++;
 			break;
 		case 'K':
@@ -2341,6 +2520,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'd':
 			opt_key_domain = (int)atol(optarg);
+			break;
+		case OPT_KEY_USE_COUNTER:
+			opt_key_use_counter = strtoul(optarg, NULL, 10);
 			break;
 		case OPT_CREATE_DKEK_KEY_DOMAIN:
 			do_create_dkek_key_domain = 1;
@@ -2509,6 +2691,9 @@ int main(int argc, char *argv[])
 		goto fail;
 
 	if (do_unwrap_key && unwrap_key(card, opt_key_reference, opt_filename, opt_pin, opt_force))
+		goto fail;
+
+	if (do_generate_key && generate_key(p15card, opt_pin, opt_keyspec, opt_label, opt_key_domain, opt_key_use_counter))
 		goto fail;
 
 	if (do_export_key && export_key(card, opt_key_reference, opt_filename))

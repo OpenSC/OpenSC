@@ -130,17 +130,32 @@ struct ec_curve {
 	const struct sc_lv_data coFactor;
 };
 
+
+
 typedef struct sc_cvc_pka_component {
 	sc_cvc_t cvc;
 	const u8 *ptr; /* don't free, this points to the middle of a buffer */
 	size_t len;
 } sc_cvc_pka_component_t;
 
+
+
 typedef struct sc_cvc_pka {
 	sc_cvc_pka_component_t public_key_req;	/* CVC request with public key */
 	sc_cvc_pka_component_t device;			/* device CVC*/
 	sc_cvc_pka_component_t dica;			/* device issuer CA CVC */
 } sc_cvc_pka_t;
+
+
+
+typedef struct sc_hsm_keygen_data {
+	unsigned long key_use_counter;			/* Key use counter */
+	int key_domain;							/* Key domain, 0  for default */
+	u8 *key_algorithms;						/* List of supported algorithms */
+	size_t key_algorithms_len;				/* Size of list */
+} sc_hsm_keygen_data_t;
+
+
 
 int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
 											const u8 ** buf, size_t *buflen,

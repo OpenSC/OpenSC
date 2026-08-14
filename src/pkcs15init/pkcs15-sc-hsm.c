@@ -251,10 +251,12 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
 	sc_cardctl_sc_hsm_keygen_info_t sc_hsm_keyinfo;
+	sc_hsm_keygen_data_t *keygen_data;
 	sc_cvc_t cvc;
 	u8 *cvcbin, *cvcpo;
 	unsigned int cla,tag;
 	size_t taglen, cvclen;
+	u8 gakp[512];
 	int r;
 
 	LOG_FUNC_CALLED(p15card->card->ctx);
@@ -291,14 +293,58 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 	sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
 	LOG_TEST_RET(p15card->card->ctx, r, "Could not encode GAKP cdata");
 
-
 	cvcpo = cvcbin;
 	sc_asn1_read_tag((const u8 **)&cvcpo, cvclen, &cla, &tag, &taglen);
 	sc_asn1_read_tag((const u8 **)&cvcpo, cvclen, &cla, &tag, &taglen);
 
+	memcpy(gakp, cvcpo, taglen);
+	cvcpo = gakp + taglen;
+
+	if (key_info->aux_data && key_info->aux_data->type == SC_AUX_DATA_TYPE_PROP_KEY_GEN_PARAM) {
+		keygen_data = (sc_hsm_keygen_data_t *)key_info->aux_data->data.proprietary_key_gen_params;
+
+		if (keygen_data->key_use_counter) {
+			if (taglen + 6 > sizeof(gakp)) {
+				r = SC_ERROR_BUFFER_TOO_SMALL;
+				goto out;
+			}
+			*cvcpo++ = 0x90;
+			*cvcpo++ = 0x04;
+
+			*cvcpo++ = (u8)(keygen_data->key_use_counter >> 24);
+			*cvcpo++ = (u8)(keygen_data->key_use_counter >> 16);
+			*cvcpo++ = (u8)(keygen_data->key_use_counter >>  8);
+			*cvcpo++ = (u8)keygen_data->key_use_counter;
+			taglen += 6;
+		}
+
+		if (keygen_data->key_algorithms) {
+			if (taglen + 2 + keygen_data->key_algorithms_len > sizeof(gakp)) {
+				r = SC_ERROR_BUFFER_TOO_SMALL;
+				goto out;
+			}
+			*cvcpo++ = 0x91;
+			*cvcpo++ = (u8)keygen_data->key_algorithms_len;
+			memcpy(cvcpo, keygen_data->key_algorithms, keygen_data->key_algorithms_len);
+			cvcpo += keygen_data->key_algorithms_len;
+			taglen += 2 + keygen_data->key_algorithms_len;
+		}
+
+		if (keygen_data->key_domain) {
+			if (taglen + 3 > sizeof(gakp)) {
+				r = SC_ERROR_BUFFER_TOO_SMALL;
+				goto out;
+			}
+			*cvcpo++ = 0x92;
+			*cvcpo++ = 0x01;
+			*cvcpo++ = (u8)(keygen_data->key_domain - 1);
+			taglen += 3;
+		}
+	}
+
 	sc_hsm_keyinfo.key_id = key_info->key_reference;
 	sc_hsm_keyinfo.auth_key_id = 0;
-	sc_hsm_keyinfo.gakprequest = cvcpo;
+	sc_hsm_keyinfo.gakprequest = gakp;
 	sc_hsm_keyinfo.gakprequest_len = taglen;
 	sc_hsm_keyinfo.gakpresponse = NULL;
 	sc_hsm_keyinfo.gakpresponse_len = 0;
