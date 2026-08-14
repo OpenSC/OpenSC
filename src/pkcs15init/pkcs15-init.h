@@ -217,6 +217,7 @@ struct sc_pkcs15init_keyarg_gost_params {
 	unsigned char gostr3410, gostr3411, gost28147;
 };
 
+
 struct sc_pkcs15init_prkeyargs {
 	/* TODO: member for private key algorithm: currently is used algorithm from 'key' member */
 	struct sc_pkcs15_id	id;
@@ -233,6 +234,8 @@ struct sc_pkcs15init_prkeyargs {
 	union {
 		struct sc_pkcs15init_keyarg_gost_params gost;
 	} params;
+
+	struct sc_auxiliary_data *aux_data;
 
 	struct sc_pkcs15_prkey	key;
 };
