@@ -80,6 +80,7 @@ void logfile_init(token_info_t *info)
 
 	if ((info->log.fd = fopen(token.log.outfile, "w")) == NULL) {
 		fail_msg("Couldn't open file for test results.");
+		finalize_token(info);
 		exit(1);
 	}
 	fprintf(info->log.fd, "{\n\"time\": 0,\n\"results\": [");
@@ -180,6 +181,7 @@ int user_login_setup(void **state)
 
 	if (prepare_token(info)) {
 		fail_msg("Could not prepare token.\n");
+		finalize_token(info);
 		exit(1);
 	}
 
@@ -189,6 +191,7 @@ int user_login_setup(void **state)
 
 	if (rv != CKR_OK) {
 		fail_msg("Could not login to token with user PIN '%s'\n", token.pin);
+		finalize_token(info);
 		exit(1);
 	}
 
@@ -213,6 +216,7 @@ int token_setup(void **state)
 
 	if (prepare_token(info)) {
 		fail_msg("Could not prepare token.\n");
+		finalize_token(info);
 		exit(1);
 	}
 
