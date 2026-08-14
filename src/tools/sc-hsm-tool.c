@@ -907,6 +907,7 @@ static int ensure_login(sc_card_t *card, const char *pin)
 		return 0;
 	}
 
+	lpin = NULL;
 	if (pin == NULL) {
 		printf("Enter User PIN : ");
 		util_getpass(&lpin, NULL, stdin);
