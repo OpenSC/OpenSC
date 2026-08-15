@@ -4428,8 +4428,6 @@ piv_init(sc_card_t *card)
 			r = SC_ERROR_PIN_CODE_INCORRECT; /* User should know they need to set pairing code */
 
 		} else {
-			priv->sm_params.flags |= NIST_SM_FLAGS_DEFER_OPEN; /* tell priv_sm_open, OK to open */
-
 			if (priv->init_flags & PIV_INIT_CONTACTLESS)
 				priv->sm_params.flags |= NIST_SM_CONTACTLESS;
 
