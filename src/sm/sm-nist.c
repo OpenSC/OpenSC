@@ -967,7 +967,7 @@ sm_nist_open(struct sc_card *card)
 		goto err;
 	}
 
-	sc_log(card->ctx, "debug Zlen:%" SC_FORMAT_LEN_SIZE_T "u Z[0]:0x%2.2x", Zlen, Z[0]);
+	sc_log(card->ctx, "debug Zlen:%zu Z[0]:0x%2.2x", Zlen, Z[0]);
 
 	/* Step H9 zeroize deh from step H2 */
 	EVP_PKEY_free(eph_pkey); /* OpenSSL  BN_clear_free calls OPENSSL_cleanse */
@@ -1152,7 +1152,6 @@ sm_nist_open(struct sc_card *card)
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 
 err:
-	priv->params->flags &= ~NIST_SM_FLAGS_DEFER_OPEN;
 	if (r != 0)
 		memset(&priv->sm_session, 0, sizeof(nist_sm_session_t));
 	sc_log_openssl(card->ctx); /* catch any not logged above */
@@ -1933,28 +1932,11 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 static int
 sm_nist_close(sc_card_t *card)
 {
-	struct iso_sm_ctx *sm_ctx;
-	sm_nist_private_data_t *priv;
-
 	if (!card)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_SM);
 
-	if (((sm_ctx = ISO_CTX_FROM_CARD)) && ((priv = SM_NIST_PRIV(sm_ctx)))) {
-		/*
-		 * a SM failure while using SM 00 20 00 xx lc=0
-		 * from reader_lock_obtained maybe caused
-		 * by interference of other process that started its own
-		 * SM session. In this case do not close but reader_lock_obtained
-		 * continue. sm_nist_post_transmit will have saved the actual
-		 * SW1 and SW2 and set the SW1 to 09 and SW2 to 00
-		 */
-		if (priv->params->flags & NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS) {
-			sc_log(card->ctx, "called with NIST_SM_FLAGS_SM_CLOSE_ACCEPT_ERRORS");
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_SUCCESS);
-		}
-	}
 	sc_log(card->ctx, "calling iso_sm_close");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, iso_sm_close(card));
 }
