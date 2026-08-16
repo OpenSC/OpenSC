@@ -1072,77 +1072,17 @@ end:
 }
 
 int
-sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
+sc_pkcs15_bind_internal_tokeninfo(struct sc_pkcs15_card *p15card)
 {
 	struct sc_path tmppath;
 	struct sc_card *card = p15card->card;
 	struct sc_context *ctx = card->ctx;
 	struct sc_pkcs15_tokeninfo tokeninfo;
-	const struct sc_app_info *info = NULL;
 	unsigned char *buf = NULL;
 	size_t len;
 	int err, ok = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	/* Enumerate apps now */
-	if (card->app_count < 0) {
-		err = sc_enum_apps(card);
-		if (err != SC_SUCCESS)
-			sc_log(ctx, "unable to enumerate apps: %s", sc_strerror(err));
-	}
-	sc_file_free(p15card->file_app);
-	p15card->file_app = sc_file_new();
-	if (p15card->file_app == NULL) {
-		err = SC_ERROR_OUT_OF_MEMORY;
-		goto end;
-	}
-
-	sc_format_path("3F005015", &p15card->file_app->path);
-
-	info = sc_find_app(card, aid);
-	if (info) {
-		sc_log(ctx, "bind to application('%s',aid:'%s')", info->label, sc_dump_hex(info->aid.value, info->aid.len));
-		sc_pkcs15_free_app(p15card);
-		p15card->app = sc_dup_app_info(info);
-		if (!p15card->app) {
-			err = SC_ERROR_OUT_OF_MEMORY;
-			goto end;
-		}
-
-		if (info->path.len)
-			p15card->file_app->path = info->path;
-
-		if (info->ddo.value && info->ddo.len)
-			parse_ddo(p15card, info->ddo.value, info->ddo.len);
-
-	} else if (aid) {
-		sc_log(ctx, "Application '%s' not found", sc_dump_hex(aid->value, aid->len));
-		err = SC_ERROR_INVALID_ARGUMENTS;
-		goto end;
-	}
-	sc_log(ctx, "application path '%s'", sc_print_path(&p15card->file_app->path));
-
-	/* Check if pkcs15 directory exists */
-	err = sc_select_file(card, &p15card->file_app->path, NULL);
-
-	/* If the above test failed on cards without EF(DIR),
-	 * try to continue read ODF from 3F005031. -aet
-	 */
-	if ((err != SC_SUCCESS) && (card->app_count < 1)) {
-		sc_format_path("3F00", &p15card->file_app->path);
-		err = SC_SUCCESS;
-	}
-
-	if (err < 0) {
-		sc_log(ctx, "Cannot select application path");
-		goto end;
-	}
-
-	err = sc_pkcs15_bind_internal_odf(p15card);
-	if (err < 0) {
-		sc_log(ctx, "Cannot bind ODF");
-		goto end;
-	}
 
 	if (p15card->file_tokeninfo == NULL) {
 		sc_format_path("5032", &tmppath);
@@ -1232,6 +1172,94 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 
 		p15card->tokeninfo->serial_number = serial;
 		sc_log(ctx, "p15card->tokeninfo->serial_number %s", p15card->tokeninfo->serial_number);
+	}
+
+	ok = 1;
+end:
+	if (buf != NULL)
+		free(buf);
+	if (!ok) {
+		LOG_FUNC_RETURN(ctx, err);
+	}
+
+	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+}
+
+int
+sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
+{
+	struct sc_card *card = p15card->card;
+	struct sc_context *ctx = card->ctx;
+	const struct sc_app_info *info = NULL;
+	unsigned char *buf = NULL;
+	int err, ok = 0;
+
+	LOG_FUNC_CALLED(ctx);
+	/* Enumerate apps now */
+	if (card->app_count < 0) {
+		err = sc_enum_apps(card);
+		if (err != SC_SUCCESS)
+			sc_log(ctx, "unable to enumerate apps: %s", sc_strerror(err));
+	}
+	sc_file_free(p15card->file_app);
+	p15card->file_app = sc_file_new();
+	if (p15card->file_app == NULL) {
+		err = SC_ERROR_OUT_OF_MEMORY;
+		goto end;
+	}
+
+	sc_format_path("3F005015", &p15card->file_app->path);
+
+	info = sc_find_app(card, aid);
+	if (info) {
+		sc_log(ctx, "bind to application('%s',aid:'%s')", info->label, sc_dump_hex(info->aid.value, info->aid.len));
+		sc_pkcs15_free_app(p15card);
+		p15card->app = sc_dup_app_info(info);
+		if (!p15card->app) {
+			err = SC_ERROR_OUT_OF_MEMORY;
+			goto end;
+		}
+
+		if (info->path.len)
+			p15card->file_app->path = info->path;
+
+		if (info->ddo.value && info->ddo.len)
+			parse_ddo(p15card, info->ddo.value, info->ddo.len);
+
+	} else if (aid) {
+		sc_log(ctx, "Application '%s' not found", sc_dump_hex(aid->value, aid->len));
+		err = SC_ERROR_INVALID_ARGUMENTS;
+		goto end;
+	}
+	sc_log(ctx, "application path '%s'", sc_print_path(&p15card->file_app->path));
+
+	/* Check if pkcs15 directory exists */
+	err = sc_select_file(card, &p15card->file_app->path, NULL);
+
+	/* If the above test failed on cards without EF(DIR),
+	 * try to continue read ODF from 3F005031. -aet
+	 */
+	if ((err != SC_SUCCESS) && (card->app_count < 1)) {
+		sc_format_path("3F00", &p15card->file_app->path);
+		err = SC_SUCCESS;
+	}
+
+	if (err < 0) {
+		sc_log(ctx, "Cannot select application path");
+		goto end;
+	}
+
+	err = sc_pkcs15_bind_internal_odf(p15card);
+	if (err < 0) {
+		sc_log(ctx, "Cannot bind ODF");
+		goto end;
+	}
+
+	/* tokeninfo contains serialnumber, needed for filecache */
+	err = sc_pkcs15_bind_internal_tokeninfo(p15card);
+	if (err < 0) {
+		sc_log(ctx, "Cannot bind tokeninfo");
+		goto end;
 	}
 
 	ok = 1;
