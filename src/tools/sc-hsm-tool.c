@@ -181,7 +181,6 @@ typedef struct {
 
 
 
-
 /**
  * Generate a prime number
  *
@@ -910,7 +909,10 @@ static int ensure_login(sc_card_t *card, const char *pin)
 	lpin = NULL;
 	if (pin == NULL) {
 		printf("Enter User PIN : ");
-		util_getpass(&lpin, NULL, stdin);
+		if (util_getpass(&lpin, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading password\n");
+			return -1;
+		}
 		printf("\n");
 	} else {
 		lpin = (char *)pin;
@@ -1255,19 +1257,10 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 
 	OPENSSL_cleanse(&dkekinfo.dkek_share, sizeof(dkekinfo.dkek_share));
 
-	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
-		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
-		return -1;
-	}
-
-	if (r < 0) {
-		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, *) failed with %s\n", sc_strerror(r));
-		return -1;
-	}
-	//printf("DKEK share imported\n");
-	//print_dkek_info(&dkekinfo);
 	return 0;
 }
+
+
 
 static int ask_for_password(char **pwd, int *pwdlen)
 {
@@ -1557,11 +1550,9 @@ struct alg_spec {
 	unsigned int keybits;
 };
 
-/* RSA can have a number , default is 2048 */
-/* EC require a curve name */
 static const struct alg_spec alg_types_asym[] = {
-	{ "rsa",	SC_ALGORITHM_RSA,	3072 }, /* new default */
-	{ "ec",		SC_ALGORITHM_EC,	0 }, /* keybits derived from curve */
+	{ "rsa",	SC_ALGORITHM_RSA,	3072 },
+	{ "ec",		SC_ALGORITHM_EC,	0 },
 	{ NULL, -1, 0 }
 };
 
@@ -1625,36 +1616,6 @@ static int parse_alg_spec(const struct alg_spec *types, const char *spec, unsign
 
 
 
-static int init_prkeyargs(struct sc_pkcs15init_prkeyargs *args)
-{
-	memset(args, 0, sizeof(*args));
-	/*
-	if (opt_objectid)
-		sc_pkcs15_format_id(opt_objectid, &args->id);
-	if (opt_authid) {
-		sc_pkcs15_format_id(opt_authid, &args->auth_id);
-	} else if (!opt_insecure) {
-		util_error("no PIN given for key - either use --insecure or \n"
-				"specify a PIN using --auth-id");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	if (opt_extractable) {
-		args->access_flags |= SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
-	}
-	args->label = opt_label;
-	args->x509_usage = opt_x509_usage;
-
-	if (opt_md_container_guid)   {
-		args->guid = (unsigned char *)opt_md_container_guid;
-		args->guid_len = strlen(opt_md_container_guid);
-	}
-	args->user_consent = opt_user_consent;
-*/
-	return 0;
-}
-
-
-
 /*
  * Generate a new private key
  */
@@ -1672,9 +1633,6 @@ static int generate_key(struct sc_pkcs15_card *p15card, const char *pin, const c
 
 	sc_hsm_keygen.key_domain = kdidx;
 	sc_hsm_keygen.key_use_counter = kuc;
-
-	if ((r = init_prkeyargs(&keygen_args.prkey_args)) < 0)
-		return r;
 
 	algorithm = parse_alg_spec(alg_types_asym, spec, &keybits, &keygen_args.prkey_args.key);
 	if (algorithm < 0) {
@@ -1701,6 +1659,7 @@ static int generate_key(struct sc_pkcs15_card *p15card, const char *pin, const c
 
 	r = sc_pkcs15init_bind(p15card->card, "pkcs15", NULL, NULL, &profile);
 	if (r < 0) {
+		fprintf(stderr, "Could not bind to PKCS#15 for initialization: %s\n", sc_strerror(r));
 		return -1;
 	}
 
@@ -1765,7 +1724,6 @@ static int wrap_with_tag(u8 tag, u8 *indata, size_t inlen, u8 **outdata, size_t 
 static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *outf, const char *pin)
 {
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
-	struct sc_pin_cmd_data data;
 	sc_path_t path;
 	sc_file_t *file = NULL;
 	FILE *out = NULL;
@@ -1776,7 +1734,6 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 	u8 *keyblob = NULL;
 	u8 *key = NULL;
 	u8 *ptr = NULL;
-	char *lpin = NULL;
 	size_t key_len = 0, keyblob_len = MAX_KEY;
 	int r, ef_prkd_len = 0, ef_cert_len = 0;
 
@@ -1790,33 +1747,9 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 		return -1;
 	}
 
-	if (pin == NULL) {
-		printf("Enter User PIN : ");
-		if (util_getpass(&lpin, NULL, stdin) < 0) {
-			fprintf(stderr, "Error reading User PIN\n");
-			return -1;
-		}
-		printf("\n");
-	} else {
-		lpin = (char *)pin;
-	}
-
-	memset(&data, 0, sizeof(data));
-	data.cmd = SC_PIN_CMD_VERIFY;
-	data.pin_type = SC_AC_CHV;
-	data.pin_reference = ID_USER_PIN;
-	data.pin1.data = (unsigned char *)lpin;
-	data.pin1.len = strlen(lpin);
-
-	r = sc_pin_cmd(card, &data);
-
+	r = ensure_login(card, pin);
 	if (r < 0) {
-		fprintf(stderr, "PIN verification failed with %s\n", sc_strerror(r));
 		return -1;
-	}
-
-	if (pin == NULL) {
-		free(lpin);
 	}
 
 	wrapped_key.key_id = keyid;
@@ -1981,7 +1914,36 @@ static int update_ef(sc_card_t *card, u8 prefix, u8 id, int erase, const u8 *buf
 	}
 
 	r = sc_update_binary(card, 0, buf, buflen, 0);
-	return r;
+
+	if (r < 0) {
+		return r;
+	}
+	return 0;
+}
+
+
+
+static int determine_free_id(sc_card_t *card, u8 range)
+{
+	u8 filelist[MAX_EXT_APDU_LENGTH];
+	int filelistlength, i, j;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	filelistlength = sc_list_files(card, filelist, sizeof(filelist));
+	LOG_TEST_RET(card->ctx, filelistlength, "Could not enumerate file and key identifier");
+
+	for (j = 0; j < 256; j++) {
+		for (i = 0; i + 1 < filelistlength; i += 2) {
+			if ((filelist[i] == range) && (filelist[i + 1] == j)) {
+				break;
+			}
+		}
+		if (i >= filelistlength) {
+			LOG_FUNC_RETURN(card->ctx, j);
+		}
+	}
+	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 }
 
 
@@ -1989,17 +1951,22 @@ static int update_ef(sc_card_t *card, u8 prefix, u8 id, int erase, const u8 *buf
 static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *pin, int force)
 {
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
-	struct sc_pin_cmd_data data;
 	u8 *keyblob = NULL;
 	const u8 *ptr, *prkd, *cert;
 	sc_path_t path;
 	u8 fid[2];
-	char *lpin = NULL;
 	unsigned int cla, tag;
 	int r;
 	size_t keybloblen, len, olen, prkd_len, cert_len;
 
-	if ((keyid < 1) || (keyid > 255)) {
+	if (keyid == -1) {
+		r = determine_free_id(card, KEY_PREFIX);
+		if (r < 0) {
+			fprintf(stderr, "Could not determine a free key reference\n");
+			return -1;
+		}
+		keyid = r;
+	} else if ((keyid < 1) || (keyid > 255)) {
 		fprintf(stderr, "Invalid key reference (must be 0 < keyid <= 255)\n");
 		return -1;
 	}
@@ -2082,34 +2049,9 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 		}
 	}
 
-	if (pin == NULL) {
-		printf("Enter User PIN : ");
-		if (util_getpass(&lpin, NULL, stdin) < 0) {
-			fprintf(stderr, "Error reading User PIN\n");
-			r = -1;
-			goto err;
-		}
-		printf("\n");
-	} else {
-		lpin = (char *)pin;
-	}
-
-	memset(&data, 0, sizeof(data));
-	data.cmd = SC_PIN_CMD_VERIFY;
-	data.pin_type = SC_AC_CHV;
-	data.pin_reference = ID_USER_PIN;
-	data.pin1.data = (u8 *)lpin;
-	data.pin1.len = strlen(lpin);
-
-	r = sc_pin_cmd(card, &data);
-
+	r = ensure_login(card, pin);
 	if (r < 0) {
-		fprintf(stderr, "PIN verification failed with %s\n", sc_strerror(r));
-		goto err;
-	}
-
-	if (pin == NULL) {
-		free(lpin);
+		return -1;
 	}
 
 	if (force) {
@@ -2163,6 +2105,7 @@ err:
 	free(keyblob);
 	return r;
 }
+
 
 
 static int export_key(sc_card_t *card, int keyid, const char *outf)
@@ -2305,6 +2248,8 @@ err:
 	return r;
 }
 
+
+
 static void print_pka_status(const sc_cardctl_sc_hsm_pka_status_t *status)
 {
 	printf("Number of public keys:     %d\n", status->num_total);
@@ -2312,6 +2257,8 @@ static void print_pka_status(const sc_cardctl_sc_hsm_pka_status_t *status)
 	printf("Required pubkeys for auth: %d\n", status->num_required);
 	printf("Authenticated public keys: %d\n", status->num_authenticated);
 }
+
+
 
 static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *inf)
 {
@@ -2369,6 +2316,7 @@ static int public_key_auth_status(sc_context_t *ctx, sc_card_t *card)
 
 	return 0;
 }
+
 
 
 int main(int argc, char *argv[])
