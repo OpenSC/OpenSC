@@ -394,9 +394,6 @@ static int iasecc_parse_ef_atr(struct sc_card *card)
 		sc_log(ctx, "EF.ATR: no pre-issuing data, skipping version info");
 	}
 
-	/* Issuer data carries the negotiated IO buffer sizes.  When it is absent the
-	 * sizes stay as the framework left them, except for cards known to need a
-	 * concrete value: see the SC_CARD_TYPE_IASECC_MONACO branch below. */
 	if (card->ef_atr->issuer_data_len >= 16)   {
 		sizes->send =	 card->ef_atr->issuer_data[2] * 0x100 + card->ef_atr->issuer_data[3];
 		sizes->send_sc = card->ef_atr->issuer_data[6] * 0x100 + card->ef_atr->issuer_data[7];
@@ -419,10 +416,6 @@ static int iasecc_parse_ef_atr(struct sc_card *card)
 		sc_log(ctx, "EF.ATR: max send/recv sizes %zX/%zX", card->max_send_size, card->max_recv_size);
 	}
 	else if (card->type == SC_CARD_TYPE_IASECC_MONACO)   {
-		/* The Monaco eID publishes no issuer data, and IASECC_CARD_DEFAULT_CAPS
-		 * advertises SC_CARD_CAP_APDU_EXT: left at zero, sc_get_max_send_size()
-		 * would offer this card 65535/65536.  Pin it to short APDUs, which is
-		 * what it was verified against. */
 		card->max_send_size = 0xFF;
 		card->max_recv_size = 0x100;
 		sc_log(ctx, "EF.ATR: no issuer data, using short-APDU IO buffer sizes");
@@ -666,9 +659,6 @@ iasecc_init(struct sc_card *card)
 		rv = iasecc_init_amos_or_sagem(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_MONACO)   {
 		rv = iasecc_init_amos_or_sagem(card);
-		/* The card answers 6D 00 to the ISO PIN status query (VERIFY with no
-		 * data), so it does not support it. Drop the capability rather than
-		 * issue a command the card rejects. */
 		card->caps &= ~((unsigned long) SC_CARD_CAP_ISO7816_PIN_INFO);
 	}
 	else if (card->type == SC_CARD_TYPE_IASECC_MI)
@@ -2030,10 +2020,6 @@ iasecc_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data)
 				LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 	else if (rv == SC_ERROR_NOT_SUPPORTED)   {
-		/* The card cannot report PIN status. That leaves the login state
-		 * unknown, which is a reason to present the PIN rather than a reason to
-		 * give up: without this, no card lacking SC_CARD_CAP_ISO7816_PIN_INFO
-		 * can verify a PIN through this driver at all. */
 		sc_log(ctx, "PIN status unavailable on this card; verifying anyway");
 	}
 	else if (rv != SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)   {
@@ -2211,9 +2197,6 @@ iasecc_pin_get_info(struct sc_card *card, struct sc_pin_cmd_data *data)
 	 */
 	rv = iasecc_pin_get_status(card, data);
 	if (rv == SC_ERROR_NOT_SUPPORTED)   {
-		/* No status from the card. Say "unknown" explicitly: leaving the
-		 * caller's zeroed fields alone would report a perfectly good PIN as
-		 * having no tries left. */
 		sc_log(ctx, "PIN status unavailable on this card; reporting the policy alone");
 		data->pin1.tries_left = -1;
 		data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
