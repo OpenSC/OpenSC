@@ -1249,22 +1249,21 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		goto end;
 	}
 
-	err = sc_pkcs15_bind_internal_odf(p15card);
-	if (err < 0) {
-		sc_log(ctx, "Cannot bind ODF");
-		goto end;
-	}
-
-	/* tokeninfo contains serialnumber, needed for filecache */
 	err = sc_pkcs15_bind_internal_tokeninfo(p15card);
 	if (err < 0) {
 		sc_log(ctx, "Cannot bind tokeninfo");
 		goto end;
 	}
 
+	err = sc_pkcs15_bind_internal_odf(p15card);
+	if (err < 0) {
+		sc_log(ctx, "Cannot bind ODF");
+		goto end;
+	}
+
 	ok = 1;
 end:
-	if(buf != NULL)
+	if (buf != NULL)
 		free(buf);
 	if (!ok) {
 		sc_pkcs15_card_clear(p15card);
