@@ -193,15 +193,6 @@ static const struct sc_asn1_entry c_asn1_nist_cvc[C_ASN1_NIST_CVC_SIZE] = {
 		{NULL, 0, 0, 0, NULL, NULL}
 };
 
-static const struct sc_card_error nist_sm_errors[] = {
-		{0x6882, SC_ERROR_SM,			"SM not supported"},
-//		{0x6982, SC_ERROR_SM_NO_SESSION_KEYS,	"SM Security status not satisfied"}, /* no session established */
-		{0x6987, SC_ERROR_SM,			"Expected SM Data Object missing"},
-		{0x6988, SC_ERROR_SM_RETRY_WITH_NEW_OPEN, "SM Data Object incorrect"}, /* other process interference */
-		{0x6E00, SC_ERROR_SM_INVALID_SESSION_KEY, "Unexpected 6E00"},
-		{0,	0,				 NULL}
-};
-
 // clang-format on
 
 typedef struct sm_nist_private_data {
@@ -1870,6 +1861,7 @@ sm_nist_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if (priv->params->flags & NIST_SM_FLAGS_FORCE_SM_ON) {
 		sc_log(card->ctx, "forcing the use of SM ON");
 		priv->params->flags &= ~NIST_SM_FLAGS_FORCE_SM_ON;
+		apdu->flags |= SC_APDU_FLAGS_RETRY_WITH_SM_OPEN;
 		r = SC_SUCCESS; /* Use SM */
 
 		/* Force send without SM in the clear */
@@ -1885,7 +1877,10 @@ sm_nist_pre_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		 */
 	} else if (priv->params->sm_nist_pre_transmit_callback) {
 		r = (priv->params->sm_nist_pre_transmit_callback)(card, apdu);
+		if (r == SC_SUCCESS)
+			apdu->flags |= SC_APDU_FLAGS_RETRY_WITH_SM_OPEN;
 	} else {
+		apdu->flags |= SC_APDU_FLAGS_RETRY_WITH_SM_OPEN;
 		r = SC_SUCCESS; /* default is to use SM */
 	}
 
@@ -1897,8 +1892,7 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		sc_apdu_t *sm_apdu)
 {
 	int r = 0;
-	int i;
-	sm_nist_private_data_t *priv;
+	sm_nist_private_data_t *priv = NULL;
 
 	if (!card)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -1911,21 +1905,20 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	/*
 	 * Interference from other processes is indicated by 6988
 	 * which will need to reauthenticate and reissue the failing command
+	 * in sw.c
 	 */
 	priv->params->last_sw1 = sm_apdu->sw1;
 	priv->params->last_sw2 = sm_apdu->sw2;
 
 	sc_log(card->ctx, "nist_post_transmit - sw1:0x%X sw2:0x%X", sm_apdu->sw1, sm_apdu->sw2);
-	for (i = 0; nist_sm_errors[i].SWs != 0; i++) {
-		if (nist_sm_errors[i].SWs == ((sm_apdu->sw1 << 8) | sm_apdu->sw2)) {
-			sc_log(card->ctx, "%s", nist_sm_errors[i].errorstr);
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_NORMAL, nist_sm_errors[i].errorno);
-		}
-	}
+	r = sc_check_sw(card, sm_apdu->sw1, sm_apdu->sw2);
+	if (r < 0)
+		goto err;
 
 	memcpy(priv->sm_session.enc_counter_last, priv->sm_session.enc_counter, sizeof(priv->sm_session.enc_counter));
 	nist_inc(priv->sm_session.enc_counter, sizeof(priv->sm_session.enc_counter));
 
+err:
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
 
