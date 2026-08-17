@@ -135,8 +135,10 @@
 						<option>-W</option> <replaceable>filename</replaceable>
 					</term>
 					<listitem>
-						<para>Wrap the key referenced in <option>--key-reference</option> and save with it together with the key description
+						<para>Wrap the key referenced in <option>--label</option> or
+						<option>--key-reference</option> and save with it together with the key description
 						and certificate to the given file.</para>
+						<para>Determine the key reference or label using the output of <command>pkcs15-tool -D</command>.</para>
 						<para>Use <option>--pin</option> to provide the user PIN on the command line.</para>
 					</listitem>
 				</varlistentry>
@@ -149,7 +151,6 @@
 					<listitem>
 						<para>Read wrapped key, description and certificate from file and import into SmartCard-HSM.</para>
 						<para>Unless the key reference is defined in <option>--key-reference</option>, it is automatically determined.</para>
-						<para>Determine the key reference using the output of <command>pkcs15-tool -D</command>.</para>
 						<para>Use <option>--pin</option> to provide a user PIN on the command line.</para>
 						<para>Use <option>--force</option> to remove any key, key description or certificate in the way.</para>
 					</listitem>

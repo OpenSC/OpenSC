@@ -1721,7 +1721,7 @@ static int wrap_with_tag(u8 tag, u8 *indata, size_t inlen, u8 **outdata, size_t 
 
 
 
-static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *outf, const char *pin)
+static int wrap_key(sc_context_t *ctx, struct sc_pkcs15_card *p15card, int keyid, const char *label, const char *outf, const char *pin)
 {
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
 	sc_path_t path;
@@ -1737,6 +1737,23 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 	size_t key_len = 0, keyblob_len = MAX_KEY;
 	int r, ef_prkd_len = 0, ef_cert_len = 0;
 
+	if (label != NULL) {
+		struct sc_pkcs15_search_key search_key;
+		struct sc_pkcs15_object *found[1];
+
+		memset(&search_key, 0, sizeof(search_key));
+		search_key.class_mask = SC_PKCS15_SEARCH_CLASS_PRKEY;
+		search_key.label = label;
+
+		r = sc_pkcs15_search_objects(p15card, &search_key, found, 1);
+
+		if (r != 1) {
+			fprintf(stderr, "A key with label %s could not be found\n", label);
+			return -1;
+		}
+		keyid = ((struct sc_pkcs15_prkey_info *)found[0]->data)->key_reference;
+	}
+
 	if ((keyid < 1) || (keyid > 255)) {
 		fprintf(stderr, "Invalid key reference (must be 0 < keyid <= 255)\n");
 		return -1;
@@ -1747,7 +1764,7 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 		return -1;
 	}
 
-	r = ensure_login(card, pin);
+	r = ensure_login(p15card->card, pin);
 	if (r < 0) {
 		return -1;
 	}
@@ -1756,7 +1773,7 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 	wrapped_key.wrapped_key = wrapped_key_buff;
 	wrapped_key.wrapped_key_length = sizeof(wrapped_key_buff);
 
-	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_WRAP_KEY, (void *)&wrapped_key);
+	r = sc_card_ctl(p15card->card, SC_CARDCTL_SC_HSM_WRAP_KEY, (void *)&wrapped_key);
 
 	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
 		fprintf(stderr, "Card not initialized for key wrap\n");
@@ -1775,14 +1792,14 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 
 	/* Try to select a related EF containing the PKCS#15 description of the key */
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(p15card->card, &path, &file);
 	if (r == SC_SUCCESS) {
 		if (!(ef_prkd = malloc(file->size))) {
 			r = -1;
 			goto err;
 		}
 
-		ef_prkd_len = sc_read_binary(card, 0, ef_prkd, file->size, 0);
+		ef_prkd_len = sc_read_binary(p15card->card, 0, ef_prkd, file->size, 0);
 		sc_file_free(file);
 		file = NULL;
 
@@ -1801,14 +1818,14 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 
 	/* Try to select a related EF containing the certificate for the key */
 	sc_path_set(&path, SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 0, 0);
-	r = sc_select_file(card, &path, &file);
+	r = sc_select_file(p15card->card, &path, &file);
 
 	if (r == SC_SUCCESS) {
 		if (!(ef_cert = malloc(file->size))) {
 			r = -1;
 			goto err;
 		}
-		ef_cert_len = sc_read_binary(card, 0, ef_cert, file->size, 0);
+		ef_cert_len = sc_read_binary(p15card->card, 0, ef_cert, file->size, 0);
 
 		if (ef_cert_len < 0) {
 			fprintf(stderr, "Error reading certificate %s. Skipping\n", sc_strerror(ef_cert_len));
@@ -2636,7 +2653,7 @@ int main(int argc, char *argv[])
 	if (do_print_dkek_share && print_dkek_share(card, opt_filename, opt_iter, opt_password, opt_password_shares_total))
 		goto fail;
 
-	if (do_wrap_key && wrap_key(ctx, card, opt_key_reference, opt_filename, opt_pin))
+	if (do_wrap_key && wrap_key(ctx, p15card, opt_key_reference, opt_label, opt_filename, opt_pin))
 		goto fail;
 
 	if (do_unwrap_key && unwrap_key(card, opt_key_reference, opt_filename, opt_pin, opt_force))
