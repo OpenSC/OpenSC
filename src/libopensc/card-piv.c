@@ -212,25 +212,6 @@ typedef struct piv_cvc {
 #define PIV_SM_MAX_FIELD_LENGTH  384
 #define PIV_SM_MAX_MD_LENGTH	SHA384_DIGEST_LENGTH
 
-#ifdef PIV_SM_NIST
-/*
- * SW internal apdu response table.
- *
- * Override APDU response error codes from iso7816.c to allow
- * handling of SM specific error
- * 6982 for a SM apdu means SM is not set up
- * 6982 for non SM  apdu is pin login state
- * 6988 for SM is caught on sm_nist and new SM session started and apdu is retried
- */
-static const struct sc_card_error sm_nist_errors[] = {
-		{0x6882, SC_ERROR_SM,		      "SM not supported"		},
-		//	{0x6982, SC_ERROR_SM_NO_SESSION_KEYS, "SM Security status not satisfied"}, /* no session established */
-		{0x6987, SC_ERROR_SM,		      "Expected SM Data Object missing"},
-		{0x6988, SC_ERROR_SM_INVALID_SESSION_KEY, "SM Data Object incorrect"	    }, /* other process interference */
-		{0,	    0,			       NULL			     }
-};
-#endif /* PIV_SM_NIST */
-
 /* 800-73-4 3.3.2 Discovery Object - PIN Usage Policy */
 #define PIV_PP_PIN		0x00004000u
 #define PIV_PP_GLOBAL		0x00002000u
@@ -4534,17 +4515,6 @@ piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 		}
 	}
 
-#ifdef PIV_SM_NIST
-	/* Note 6982 is map to SC_ERROR_SM_NO_SESSION_KEYS but iso maps it to SC_ERROR_SECURITY_STATUS_NOT_SATISFIED */
-	/* we do this because 6982 could also mean a verify is not allowed over contactless without VCI */
-	/* we stashed the sw1 and sw2 above for verify */
-	for (i = 0; sm_nist_errors[i].SWs != 0; i++) {
-		if (sm_nist_errors[i].SWs == ((sw1 << 8) | sw2)) {
-			sc_log(card->ctx, " SM NIST ERROR FOUND: %2.2x %s", sm_nist_errors[i].SWs, sm_nist_errors[i].errorstr);
-			return sm_nist_errors[i].errorno;
-		}
-	}
-#endif /* PIV_SM_NIST */
 	r = iso_drv->ops->check_sw(card, sw1, sw2);
 	return r;
 }
