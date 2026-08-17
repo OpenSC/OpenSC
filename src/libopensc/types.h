@@ -314,6 +314,7 @@ typedef struct sc_file {
 #define SC_APDU_FLAGS_NO_SM		0x00000008UL
 /* let SM do the command chaining  */
 #define SC_APDU_FLAGS_SM_CHAINING	0x00000010UL
+#define SC_APDU_FLAGS_RETRY_WITH_SM_OPEN 0x00000020UL
 
 #define SC_APDU_ALLOCATE_FLAG		0x01
 #define SC_APDU_ALLOCATE_FLAG_DATA	0x02
