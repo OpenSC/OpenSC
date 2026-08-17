@@ -125,7 +125,7 @@ extern "C" {
 #define SC_ERROR_SM_NOT_APPLIED			-1610
 #define SC_ERROR_SM_SESSION_ALREADY_ACTIVE	-1611
 #define SC_ERROR_SM_INVALID_CHECKSUM		-1612
-#define SC_ERROR_SM_RETRY_WITH_NEW_OPEN		-1613
+#define SC_ERROR_INCORRECT_SM_OBJECTS		-1613
 
 /* Errors that do not fit the categories above */
 #define SC_ERROR_UNKNOWN			-1900
