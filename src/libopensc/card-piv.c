@@ -4281,9 +4281,11 @@ piv_match_card_continued(sc_card_t *card)
 		if (priv->yubico_version < 0x00040302)
 			priv->card_issues |= CI_VERIFY_LC0_FAIL;
 		break;
+	
+	case SC_CARD_TYPE_PIV_II_PIVAPPLET:
+		break;
 
 	case SC_CARD_TYPE_PIV_II_YUBIKEY4:
-	case SC_CARD_TYPE_PIV_II_PIVAPPLET:
 	case SC_CARD_TYPE_PIV_II_TOKEN2:
 		priv->card_issues |= CI_OTHER_AID_LOSE_STATE |
 				     CI_LEAKS_FILE_NOT_FOUND;
@@ -4556,9 +4558,6 @@ piv_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
 	int r;
-#ifdef PIV_SM_NIST
-	int i;
-#endif /* PIV_SM_NIST */
 	piv_private_data_t *priv = PIV_DATA(card);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -4701,8 +4700,14 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 	priv->pin_cmd_verify_sw1 = 0x00U;
 
 	if (data->cmd == SC_PIN_CMD_GET_INFO) { /* fill in what we think it should be */
-		data->pin1.logged_in = priv->logged_in;
-		data->pin1.tries_left = priv->tries_left;
+		priv->pin_cmd_verify = 1;	/* tell piv_check_sw its a verify to save sw1, sw2 */
+		r = iso_drv->ops->pin_cmd(card, data);
+		priv->pin_cmd_verify = 0;
+		sc_log(card->ctx, "piv_pin_cmd get info r:%d", r);
+		if (r >= 0)
+			priv->logged_in = SC_PIN_STATE_LOGGED_IN;
+		else
+			priv->logged_in = SC_PIN_STATE_LOGGED_OUT;
 
 		/*
 		 * If called to check on the login state for a context specific login
@@ -4859,6 +4864,8 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 {
 	int r = SC_ERROR_UNKNOWN;
 	piv_private_data_t *priv = PIV_DATA(card); /* may be null */
+	u8 temp[SC_MAX_APDU_BUFFER_SIZE];
+	size_t templen = sizeof(temp);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -4876,15 +4883,9 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		goto err;
 	}
 
-	if (priv->init_flags & PIV_INIT_IN_READER_LOCK_OBTAINED) {
-		sc_log(card->ctx, "Recursive call, return");
-		r = 0;
-		goto err;
-	}
-
 	priv->init_flags |= PIV_INIT_IN_READER_LOCK_OBTAINED;
-
-	/* first see if AID is active AID by reading discovery object '7E' */
+	
+	/* first see if PIV applet is active AID by reading discovery object '7E' */
 	/* If not try selecting AID */
 	/* but if card does not support DISCOVERY object we can not use it */
 	if (priv->card_issues & CI_DISCOVERY_USELESS) {
@@ -4893,11 +4894,14 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 		r = piv_find_discovery(card);
 	}
 
-	if (r < 0 || was_reset > 0) {
-		u8 temp[SC_MAX_APDU_BUFFER_SIZE];
-		size_t templen = sizeof(temp);
-
-		r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+	if (r < 0) {
+		if (was_reset > 0 || !(priv->card_issues & CI_PIV_AID_LOSE_STATE)) {
+			r = iso7816_select_aid(card, piv_aids[0].value, piv_aids[0].len_short, temp, &templen);
+			sc_debug(card->ctx, SC_LOG_DEBUG_MATCH, "iso7816_select_aid card->type:%d r:%d\n",
+					card->type, r);
+		} else {
+			r = 0; /* can't do anything with this card, hope there was no interference */
+		}
 	}
 
 	if (was_reset > 0)
