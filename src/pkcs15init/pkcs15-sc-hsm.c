@@ -325,6 +325,8 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 	}
 
 	if (pubkey != NULL) {
+		sc_pkcs15_erase_pubkey(pubkey);
+		memset(pubkey, 0, sizeof *pubkey);
 		r = sc_pkcs15emu_sc_hsm_get_public_key(p15card->card->ctx, &cvc, pubkey);
 	}
 
