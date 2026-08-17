@@ -175,7 +175,8 @@ retry:
 	 * sm_ctx.ops.free_sm_apdu can detect SM failure
 	 * try again with new SM session using current pcsc lock
 	 */
-	if (rv == SC_ERROR_SM_RETRY_WITH_NEW_OPEN && retries > 0) {
+	if (rv == SC_ERROR_INCORRECT_SM_OBJECTS && retries > 0 &&
+			apdu->flags & SC_APDU_FLAGS_RETRY_WITH_SM_OPEN) {
 		sc_log(ctx, "Retry apdu with new SM session");
 		retries--;
 		if (card->sm_ctx.ops.open)
