@@ -256,12 +256,9 @@ init_spy(void)
 
 #ifdef _WIN32
 	if (!spy_output) {
-		/* try for the machine version first, as we may be running
-		 * without a user during login
-		 */
-		rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX, 0, KEY_QUERY_VALUE, &hKey);
+		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX, 0, KEY_QUERY_VALUE, &hKey);
 		if (rc != ERROR_SUCCESS )
-			rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX, 0, KEY_QUERY_VALUE, &hKey);
+			rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX, 0, KEY_QUERY_VALUE, &hKey);
 
 		if( rc == ERROR_SUCCESS ) {
 			temp_len = PATH_MAX;
@@ -291,13 +288,10 @@ init_spy(void)
 	module = getenv("PKCS11SPY");
 #ifdef _WIN32
 	if (!module) {
-		/* try for the machine version first, as we may be running
-		 * without a user during login
-		 */
-		rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX,
+		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX,
 				0, KEY_QUERY_VALUE, &hKey);
 		if (rc != ERROR_SUCCESS)
-			rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX,
+			rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX,
 					0, KEY_QUERY_VALUE, &hKey);
 
 		if (rc == ERROR_SUCCESS) {
