@@ -274,7 +274,7 @@ Q2OS(int fsize, u8 *Q, size_t Qlen, u8 *OS, size_t *OSlen)
 
 	i = (Qlen - 1) / 2;
 
-	if (!OS || *OSlen < f * 2 || !Q || i > f)
+	if (!OS || !OSlen || *OSlen < f * 2 || !Q || i > f)
 		return SC_ERROR_INTERNAL;
 
 	memset(OS, 0, f * 2);
