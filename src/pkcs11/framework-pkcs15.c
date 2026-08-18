@@ -235,50 +235,6 @@ static CK_RV	set_gost3410_params(struct sc_pkcs15init_prkeyargs *,
 static CK_RV	pkcs15_create_slot(struct sc_pkcs11_card *p11card, struct pkcs15_fw_data *fw_data,
 			struct sc_pkcs15_object *auth, struct sc_app_info *app,
 			struct sc_pkcs11_slot **out);
-static int pkcs11_get_pin_callback(struct sc_profile *profile, int id,
-		const struct sc_pkcs15_auth_info *info, const char *label,
-		unsigned char *pinbuf, size_t *pinsize);
-
-static struct sc_pkcs15init_callbacks pkcs15init_callbacks = {
-	pkcs11_get_pin_callback,       /* get_pin() */
-	NULL
-};
-static char *pkcs15init_sopin = NULL;
-static size_t pkcs15init_sopin_len = 0;
-
-static int pkcs11_get_pin_callback(struct sc_profile *profile, int id,
-		const struct sc_pkcs15_auth_info *info, const char *label,
-		unsigned char *pinbuf, size_t *pinsize)
-{
-	char	*secret = NULL;
-	size_t	len = 0;
-
-	if (info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
-		return SC_ERROR_NOT_SUPPORTED;
-
-	sc_log(context, "pkcs11_get_pin_callback() auth-method %X", info->auth_method);
-	if (info->auth_method == SC_AC_CHV)   {
-		unsigned int flags = info->attrs.pin.flags;
-
-		sc_log(context, "pkcs11_get_pin_callback() PIN flags %X", flags);
-		if ((flags & SC_PKCS15_PIN_FLAG_SO_PIN) && !(flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
-			if (pkcs15init_sopin_len)
-				secret = pkcs15init_sopin;
-		}
-	}
-	if (secret)
-		len = strlen(secret);
-
-	sc_log(context, "pkcs11_get_pin_callback() secret '%s'", secret ? secret : "<null>");
-
-	if (!secret)
-		return SC_ERROR_OBJECT_NOT_FOUND;
-	if (len > *pinsize)
-		return SC_ERROR_BUFFER_TOO_SMALL;
-	memcpy(pinbuf, secret, len + 1);
-	*pinsize = len;
-	return 0;
-}
 #endif
 
 /* Returns FW data corresponding to the given application or,
@@ -2151,11 +2107,6 @@ pkcs15_initialize(struct sc_pkcs11_slot *slot, void *ptr,
 			return sc_to_cryptoki_error(rc, "C_InitToken");
 		}
 
-		sc_log(context, "set pkcs15init callbacks");
-		pkcs15init_sopin = (char *)pPin;
-		pkcs15init_sopin_len = ulPinLen;
-		sc_pkcs15init_set_callbacks(&pkcs15init_callbacks);
-
 		if (p15card)   {
 			sc_log(context, "pkcs15init erase card");
 			sc_pkcs15init_erase_card(p15card, profile, NULL);
@@ -2166,14 +2117,12 @@ pkcs15_initialize(struct sc_pkcs11_slot *slot, void *ptr,
 			rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, NULL, &profile);
 			if (rc < 0) {
 				sc_log(context, "pkcs15init bind error %i", rc);
-				sc_pkcs15init_set_callbacks(NULL);
 				sc_unlock(p11card->card);
 				return sc_to_cryptoki_error(rc, "C_InitToken");
 			}
 
 			rc = sc_pkcs15init_finalize_profile(p11card->card, profile, NULL);
 			if (rc) {
-				sc_pkcs15init_set_callbacks(NULL);
 				sc_log(context, "Cannot finalize profile: %i", rc);
 				return sc_to_cryptoki_error(rc, "C_InitToken");
 			}
@@ -2194,12 +2143,6 @@ pkcs15_initialize(struct sc_pkcs11_slot *slot, void *ptr,
 			rc = sc_pkcs15init_add_app(p11card->card, profile, &init_args);
 			sc_log(context, "pkcs15init: create application returns %i", rc);
 		}
-
-		pkcs15init_sopin = NULL;
-		pkcs15init_sopin_len = 0;
-
-		sc_log(context, "pkcs15init: unset callbacks");
-		sc_pkcs15init_set_callbacks(NULL);
 
 		sc_log(context, "pkcs15init: unbind");
 		sc_pkcs15init_unbind(profile);
