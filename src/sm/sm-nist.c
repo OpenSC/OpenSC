@@ -136,7 +136,6 @@ typedef struct nist_sm_session {
 	u8 SKenc[32]; /* keys are either AES 128 or AES 256 */
 	u8 SKrmac[32];
 	u8 enc_counter[16];
-	u8 enc_counter_last[16];
 
 	u8 resp_enc_counter[16];
 	u8 C_MCV[16];
@@ -1915,7 +1914,6 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if (r < 0)
 		goto err;
 
-	memcpy(priv->sm_session.enc_counter_last, priv->sm_session.enc_counter, sizeof(priv->sm_session.enc_counter));
 	nist_inc(priv->sm_session.enc_counter, sizeof(priv->sm_session.enc_counter));
 
 err:
