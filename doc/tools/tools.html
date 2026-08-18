@@ -2725,26 +2725,26 @@ pkcs11-tool --login --login-type so --init-pin
 						<code class="option">--initialize</code>,
 						<code class="option">-X</code>
 					</span></dt><dd><p>Initialize token, removing all existing keys, certificates and files.</p><p>Use <code class="option">--so-pin</code> to define SO-PIN for first initialization or to verify in subsequent
-					          initializations.</p><p>Use <code class="option">--pin</code> to define the initial user pin value (use "ask:" to prompt the user to enter the PIN).</p><p>Use <code class="option">--transport-pin</code> to define the initial transport pin value (use "ask:" to prompt the user to enter the PIN).</p><p>Use <code class="option">--pin-retry</code> to define the maximum number of wrong user PIN presentations.</p><p>Use <code class="option">--no-rrc</code> to disable support for resetting the user pin retry counter.</p><p>Use <code class="option">--no-pin-reset</code> to allow resetting the user pin retry counter, but not setting a new pin.</p><p>Use with <code class="option">--dkek-shares</code> to enable key wrap / unwrap.</p><p>Use with <code class="option">-d</code> (<code class="option">--key-domain</code>) to define the number of key domains that should be allocated (available with version 3 and later).</p><p>Use with <code class="option">--label</code> to define a token label</p><p>Use with <code class="option">--public-key-auth</code> and <code class="option">--required-pub-keys</code> to require public key authentication for login</p></dd><dt><span class="term">
+					          initializations.</p><p>Use <code class="option">--pin</code> to define the initial user pin value (use "ask:" to prompt the user to enter the PIN).</p><p>Use <code class="option">--transport-pin</code> to define the initial transport pin value (use "ask:" to prompt the user to enter the PIN).</p><p>Use <code class="option">--pin-retry</code> to define the maximum number of wrong user PIN presentations.</p><p>Use <code class="option">--no-rrc</code> to disable support for resetting the user pin retry counter.</p><p>Use <code class="option">--no-pin-reset</code> to allow resetting the user pin retry counter, but not setting a new pin.</p><p>Use with <code class="option">--dkek-shares</code> to enable key wrap / unwrap.</p><p>Use with <code class="option">-d</code> (<code class="option">--key-domain</code>) to define the number of key domains that should be allocated (available with version 3 and later).</p><p>Use with <code class="option">--label</code> to define a token label.</p><p>Use with <code class="option">--public-key-auth</code> and <code class="option">--required-pub-keys</code> to require public key authentication for login.</p></dd><dt><span class="term">
 						<code class="option">--create-dkek-share</code> <em class="replaceable"><code>filename</code></em>,
 						<code class="option">-C</code> <em class="replaceable"><code>filename</code></em>
 					</span></dt><dd><p>Create a DKEK share encrypted under a password and save it to the file
 						      given as parameter.</p><p>Use <code class="option">--password</code> to provide a password for encryption rather than prompting for one.</p><p>Use <code class="option">--pwd-shares-threshold</code> and <code class="option">--pwd-shares-total</code> to randomly generate a password and split is using a (t, n) threshold scheme.</p></dd><dt><span class="term">
-						<code class="option">--create-dkek-key-domain</code> <em class="replaceable"><code>number-of-shares</code></em>,
+						<code class="option">--create-dkek-key-domain</code> <em class="replaceable"><code>number-of-shares</code></em>
 					</span></dt><dd><p>Create a DKEK key domain in the key domain slot identified by <code class="option">-d</code> (<code class="option">--key-domain</code>).</p><p>Use <code class="option">--pin</code> to provide the user PIN on the command line.</p></dd><dt><span class="term">
 						<code class="option">--import-dkek-share</code> <em class="replaceable"><code>filename</code></em>,
 						<code class="option">-I</code> <em class="replaceable"><code>filename</code></em>
 					</span></dt><dd><p>Prompt for user password, read and decrypt DKEK share and import into SmartCard-HSM.</p><p>Use <code class="option">-d</code> (<code class="option">--key-domain</code>) to identify the key domain into which the DKEK share shall be imported.</p><p>Use <code class="option">--pin</code> to provide the user PIN on the command line.</p><p>Use <code class="option">--password</code> to provide a password for decryption rather than prompting for one.</p><p>Use <code class="option">--pwd-shares-total</code> to specify the number of shares that should be entered to reconstruct the password.</p></dd><dt><span class="term">
-						<code class="option">--clear-kek</code>.
+						<code class="option">--clear-kek</code>
 					</span></dt><dd><p>Clear the key encryption key established in the key domain slot identified by <code class="option">-d</code> (<code class="option">--key-domain</code>).</p><p>Use <code class="option">--pin</code> to provide the user PIN on the command line.</p></dd><dt><span class="term">
-						<code class="option">--delete-key-domain</code>.
+						<code class="option">--delete-key-domain</code>
 					</span></dt><dd><p>Delete the empty key domain identified by <code class="option">-d</code> (<code class="option">--key-domain</code>).</p><p>Use <code class="option">--pin</code> to provide the user PIN on the command line.</p></dd><dt><span class="term">
 						<code class="option">--generate-key</code> <em class="replaceable"><code>keyspec</code></em>,
 						<code class="option">-G</code> <em class="replaceable"><code>keyspec</code></em>
 					</span></dt><dd><p>Generate a new key where <em class="replaceable"><code>keyspec</code></em> describes the algorithm and the parameters
 							of the key to be created. For example, <code class="literal">rsa:2048</code> generates a RSA key
 							with 2048-bit modulus, default is 3072. If you are generating an EC key, the curve designation must
-							be specified, for example <code class="literal">ec:prime256v1</code>.</p><p>Use <code class="option">--label</code> to define the key label</p><p>Use <code class="option">--key-use-counter</code> to optionally define the initial value or a key use counter in the range 1 to 2^32-1.</p><p>Use <code class="option">-d</code> (<code class="option">--key-domain</code>) to identify the key domain in which the key could be generated. If the
+							be specified, for example <code class="literal">ec:prime256v1</code>.</p><p>Use <code class="option">--label</code> to define the key label.</p><p>Use <code class="option">--key-use-counter</code> to optionally define the initial value or a key use counter in the range 1 to 2^32-1.</p><p>Use <code class="option">-d</code> (<code class="option">--key-domain</code>) to identify the key domain in which the key could be generated. If the
 							parameter is missing, the key is generated in the default key domain.</p><p>Use <code class="option">--pin</code> to provide the user PIN on the command line.</p></dd><dt><span class="term">
 						<code class="option">--wrap-key</code> <em class="replaceable"><code>filename</code></em>,
 						<code class="option">-W</code> <em class="replaceable"><code>filename</code></em>
@@ -2811,7 +2811,7 @@ pkcs11-tool --login --login-type so --init-pin
 					</span></dt><dd><p>Force removal of existing key, description and certificate.</p></dd><dt><span class="term">
 						<code class="option">--label</code> <em class="replaceable"><code>label</code></em>,
 						<code class="option">-l</code> <em class="replaceable"><code>label</code></em>
-					</span></dt><dd><p>Define the token label to be used in --initialize.</p></dd><dt><span class="term">
+					</span></dt><dd><p>Define the token label to be used in <code class="option">--initialize</code>.</p></dd><dt><span class="term">
 						<code class="option">--reader</code> <em class="replaceable"><code>arg</code></em>,
 						<code class="option">-r</code> <em class="replaceable"><code>arg</code></em>
 					</span></dt><dd><p>
@@ -2862,7 +2862,7 @@ pkcs11-tool --login --login-type so --init-pin
 						</p></dd><dt><span class="term">
 						<code class="option">--wait</code>,
 						<code class="option">-w</code>
-					</span></dt><dd><p>Wait for a card to be inserted</p></dd><dt><span class="term">
+					</span></dt><dd><p>Wait for a card to be inserted.</p></dd><dt><span class="term">
 						<code class="option">--verbose</code>,
 						<code class="option">-v</code>
 					</span></dt><dd><p>Causes <span class="command"><strong>sc-hsm-tool</strong></span> to be more verbose.
