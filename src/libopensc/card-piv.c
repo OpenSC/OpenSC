@@ -4775,7 +4775,6 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	u8 temp[SC_MAX_APDU_BUFFER_SIZE];
 	size_t templen = sizeof(temp);
 
-
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* We have a PCSC transaction and sc_lock */
