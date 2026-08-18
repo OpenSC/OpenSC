@@ -154,8 +154,8 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	u8 last_update[32], profile_indication[SC_PKCS15_MAX_LABEL_SIZE];
 	size_t lupdate_len = sizeof(last_update) - 1, pi_len = sizeof(profile_indication) - 1;
 	size_t flags_len   = sizeof(ti->flags);
-	u8 preferred_language[3];
-	size_t lang_length = sizeof(preferred_language);
+	u8 preferred_language[64];
+	size_t lang_length = sizeof(preferred_language) - 1;
 	struct sc_asn1_entry asn1_supported_algorithms[SC_MAX_SUPPORTED_ALGORITHMS + 1],
 			asn1_algo_infos[SC_MAX_SUPPORTED_ALGORITHMS][7],
 			asn1_algo_infos_parameters[SC_MAX_SUPPORTED_ALGORITHMS][3];
@@ -270,7 +270,7 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 		}
 	}
 	if (asn1_toki_attrs[12].flags & SC_ASN1_PRESENT) {
-		preferred_language[2] = 0;
+		preferred_language[lang_length] = 0;
 		ti->preferred_language = strdup((char *)preferred_language);
 		if (ti->preferred_language == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
@@ -300,7 +300,7 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 		u8 **buf, size_t *buflen)
 {
 	int r, ii;
-	size_t serial_len, mnfid_len, label_len, flags_len, last_upd_len, pi_len;
+	size_t serial_len, mnfid_len, label_len, flags_len, last_upd_len, pi_len, lang_len;
 
 	struct sc_asn1_entry asn1_toki_attrs[C_ASN1_TOKI_ATTRS_SIZE];
 	struct sc_asn1_entry asn1_tokeninfo[2];
@@ -412,7 +412,14 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 	else   {
 		sc_format_asn1_entry(asn1_toki_attrs + 11, NULL, NULL, 0);
 	}
-	sc_format_asn1_entry(asn1_toki_attrs + 12, NULL, NULL, 0);
+
+	if (ti->preferred_language != NULL) {
+		lang_len = strlen(ti->preferred_language);
+		sc_format_asn1_entry(asn1_toki_attrs + 12, ti->preferred_language, &lang_len, 1);
+	}
+	else   {
+		sc_format_asn1_entry(asn1_toki_attrs + 12, NULL, NULL, 0);
+	}
 
 	if (sc_valid_oid(&ti->profile_indication.oid))   {
 		sc_format_asn1_entry(asn1_profile_indication + 0, &ti->profile_indication.oid, NULL, 1);
