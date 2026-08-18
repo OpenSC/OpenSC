@@ -945,18 +945,15 @@ sc_pkcs11_encr_init(struct sc_pkcs11_session *session,
 		operation->mechanism.pParameter = &operation->mechanism_params;
 	}
 	rv = mt->encrypt_init(operation, key);
-	if (rv != CKR_OK)
-		goto out;
 
 	/* Validate the mechanism parameters */
-	if (key->ops->init_params) {
+	if (rv == CKR_OK && key->ops->init_params) {
 		rv = key->ops->init_params(operation->session, &operation->mechanism);
-		if (rv != CKR_OK)
-			goto out;
 	}
-	LOG_FUNC_RETURN(context, (int)rv);
-out:
-	session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+
+	if (rv != CKR_OK)
+		session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+
 	LOG_FUNC_RETURN(context, (int)rv);
 }
 
@@ -1079,14 +1076,14 @@ sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 	rv = mt->decrypt_init(operation, key);
 
 	/* Validate the mechanism parameters */
-	if (key->ops->init_params) {
+	if (rv == CKR_OK && key->ops->init_params) {
 		rv = key->ops->init_params(operation->session, &operation->mechanism);
 	}
 
 	if (rv != CKR_OK)
 		session_stop_operation(session, SC_PKCS11_OPERATION_DECRYPT);
 
-	return rv;
+	LOG_FUNC_RETURN(context, (int)rv);
 }
 
 CK_RV
