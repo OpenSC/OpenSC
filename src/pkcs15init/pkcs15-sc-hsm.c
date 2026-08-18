@@ -244,8 +244,8 @@ static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, 
 
 
 static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-															struct sc_pkcs15_object *object,
-															struct sc_pkcs15_pubkey *pubkey)
+		struct sc_pkcs15_object *object,
+		struct sc_pkcs15_pubkey *pubkey)
 {
 	struct sc_card *card = p15card->card;
 	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
@@ -296,6 +296,11 @@ static int sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card
 	cvcpo = cvcbin;
 	sc_asn1_read_tag((const u8 **)&cvcpo, cvclen, &cla, &tag, &taglen);
 	sc_asn1_read_tag((const u8 **)&cvcpo, cvclen, &cla, &tag, &taglen);
+
+	if (taglen > sizeof(gakp)) {
+		r = SC_ERROR_BUFFER_TOO_SMALL;
+		goto out;
+	}
 
 	memcpy(gakp, cvcpo, taglen);
 	cvcpo = gakp + taglen;
@@ -664,26 +669,26 @@ static int sc_hsm_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15
 
 static struct sc_pkcs15init_operations
 sc_pkcs15init_sc_hsm_operations = {
-	NULL, 						/* erase_card */
-	NULL,						/* init_card  */
-	NULL,						/* create_dir */
-	NULL,						/* create_domain */
-	NULL,						/* select_pin_reference */
-	NULL,						/* create_pin */
-	NULL,						/* select key reference */
+	NULL, 				/* erase_card */
+	NULL,				/* init_card  */
+	NULL,				/* create_dir */
+	NULL,				/* create_domain */
+	NULL,				/* select_pin_reference */
+	NULL,				/* create_pin */
+	NULL,				/* select key reference */
 	sc_hsm_create_key,
 	sc_hsm_store_key,
 	sc_hsm_generate_key,
-	NULL,						/* encode private key */
-	NULL,						/* encode public key */
-	NULL,						/* finalize_card */
+	NULL,				/* encode private key */
+	NULL,				/* encode public key */
+	NULL,				/* finalize_card */
 	sc_hsm_emu_delete_object,	/* delete object */
-	NULL,						/* pkcs15init emulation update_dir */
+	NULL,				/* pkcs15init emulation update_dir */
 	sc_hsm_emu_update_any_df,	/* pkcs15init emulation update_any_df */
-	NULL,						/* pkcs15init emulation update_tokeninfo */
-	NULL,						/* pkcs15init emulation write_info */
+	NULL,				/* pkcs15init emulation update_tokeninfo */
+	NULL,				/* pkcs15init emulation write_info */
 	sc_hsm_emu_store_data,
-	NULL,						/* sanity_check */
+	NULL,				/* sanity_check */
 };
 
 
