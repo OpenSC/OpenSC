@@ -90,45 +90,45 @@ enum {
 
 // clang-format off
 static const struct option options[] = {
-	{ "initialize",				0, NULL,		'X' },
+	{ "initialize",			0, NULL,		'X' },
 	{ "create-dkek-share",		1, NULL,		'C' },
 	{ "import-dkek-share",		1, NULL,		'I' },
 #ifdef PRINT_DKEK_SHARE
 	{ "print-dkek-share",		1, NULL,		'P' },
 #endif
-	{ "wrap-key",				1, NULL,		'W' },
-	{ "unwrap-key",				1, NULL,		'U' },
-	{ "generate-key",			1, NULL,		'G' },
+	{ "wrap-key",			1, NULL,		'W' },
+	{ "unwrap-key",			1, NULL,		'U' },
+	{ "generate-key",		1, NULL,		'G' },
 	{ "public-key-auth",		1, NULL,		'K' },
 	{ "required-pub-keys",		1, NULL,		'n' },
 	{ "replace-key-allowed",	0, NULL,		OPT_REPLACE_PKA_KEY },
 	{ "require-pka-and-pin",	0, NULL,		OPT_REQUIRE_PKA_AND_PIN },
-	{ "export-for-pub-key-auth",1, NULL,		'e' },
+	{ "export-for-pub-key-auth",	1, NULL,		'e' },
 	{ "register-public-key",	1, NULL,		'g' },
 	{ "public-key-auth-status",	0, NULL,		'S' },
-	{ "dkek-shares",			1, NULL,		's' },
-	{ "key-domain",				1, NULL,		'd' },
+	{ "dkek-shares",		1, NULL,		's' },
+	{ "key-domain",			1, NULL,		'd' },
 	{ "key-use-counter",		1, NULL,		OPT_KEY_USE_COUNTER },
 	{ "create-dkek-key-domain",	1, NULL,		OPT_CREATE_DKEK_KEY_DOMAIN },
 	{ "delete-key-domain",		0, NULL,		OPT_DELETE_KEY_DOMAIN },
-	{ "clear-kek",				0, NULL,		OPT_CLEAR_KEK },
-	{ "so-pin",					1, NULL,		OPT_SO_PIN },
-	{ "pin",					1, NULL,		OPT_PIN },
-	{ "transport-pin",			1, NULL,		OPT_TRANSPORT_PIN },
-	{ "pin-retry",				1, NULL,		OPT_RETRY },
-	{ "no-rrc",					0, NULL,		OPT_NO_RRC },
-	{ "no-pin-reset",			0, NULL,		OPT_NO_PIN_RESET },
-	{ "bio-server1",			1, NULL,		OPT_BIO1 },
-	{ "bio-server2",			1, NULL,		OPT_BIO2 },
-	{ "password",				1, NULL,		OPT_PASSWORD },
+	{ "clear-kek",			0, NULL,		OPT_CLEAR_KEK },
+	{ "so-pin",			1, NULL,		OPT_SO_PIN },
+	{ "pin",			1, NULL,		OPT_PIN },
+	{ "transport-pin",		1, NULL,		OPT_TRANSPORT_PIN },
+	{ "pin-retry",			1, NULL,		OPT_RETRY },
+	{ "no-rrc",			0, NULL,		OPT_NO_RRC },
+	{ "no-pin-reset",		0, NULL,		OPT_NO_PIN_RESET },
+	{ "bio-server1",		1, NULL,		OPT_BIO1 },
+	{ "bio-server2",		1, NULL,		OPT_BIO2 },
+	{ "password",			1, NULL,		OPT_PASSWORD },
 	{ "pwd-shares-threshold",	1, NULL,		OPT_PASSWORD_SHARES_THRESHOLD },
 	{ "pwd-shares-total",		1, NULL,		OPT_PASSWORD_SHARES_TOTAL },
-	{ "key-reference",			1, NULL,		'i' },
-	{ "label",					1, NULL,		'l' },
-	{ "force",					0, NULL,		'f' },
-	{ "reader",					1, NULL,		'r' },
-	{ "wait",					0, NULL,		'w' },
-	{ "verbose",				0, NULL,		'v' },
+	{ "key-reference",		1, NULL,		'i' },
+	{ "label",			1, NULL,		'l' },
+	{ "force",			0, NULL,		'f' },
+	{ "reader",			1, NULL,		'r' },
+	{ "wait",			0, NULL,		'w' },
+	{ "verbose",			0, NULL,		'v' },
 	{ NULL, 0, NULL, 0 }
 };
 // clang-format on
@@ -891,7 +891,7 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 
 static int ensure_login(sc_card_t *card, const char *pin)
 {
-	struct sc_pin_cmd_data data;
+	struct sc_pin_cmd_data data = {0};
 	char *lpin;
 	int r;
 
