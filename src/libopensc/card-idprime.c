@@ -332,11 +332,16 @@ static int idprime_process_containermap(sc_card_t *card, idprime_private_data_t 
 		}
 		const int got = iso_ops->read_binary(card, r, buf + r, read_length, 0);
 		if (got < 1) {
-			r = SC_ERROR_WRONG_LENGTH;
+			if (got < 0) {
+				r = got;
+			} else {
+				r = SC_ERROR_WRONG_LENGTH;
+			}
 			goto done;
 		}
 
 		r += got;
+
 		/* Try to read chunks of container size and stop when last container looks empty */
 		container_index = r > CONTAINER_OBJ_LEN ? (r / CONTAINER_OBJ_LEN - 1) * CONTAINER_OBJ_LEN : 0;
 	} while(length - r > 0 && buf[container_index] != 0);
