@@ -75,6 +75,7 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 			0,
 			0,
 		};
+		static int jpki_cert_auth_id[4] = { 0, 2, 0, 0 };
 		static int jpki_cert_authority[4] = {0, 0, 1, 1};
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object cert_obj;
@@ -89,6 +90,10 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		strlcpy(cert_obj.label, jpki_cert_names[i], sizeof(cert_obj.label));
 		cert_info.authority = jpki_cert_authority[i];
 		cert_obj.flags = jpki_cert_flags[i];
+		if (jpki_cert_auth_id[i]) {
+			cert_obj.auth_id.len = 1;
+			cert_obj.auth_id.value[0] = jpki_cert_auth_id[i];
+		}
 		rc = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (rc < 0) {
 			sc_pkcs15_card_clear(p15card);
