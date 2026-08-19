@@ -99,8 +99,6 @@ typedef struct sm_nist_params {
 	unsigned long pin_policy;
 	u8 pairing_code[PIV_PAIRING_CODE_LEN];
 	u8 csID; /* 0x27 or 0x2E */
-	u8 last_sw1;
-	u8 last_sw2;
 	/** @brief Call back function for fine control of what is in the clear */
 	/* return 0 to use SM, or SC_ERROR_SM_NOT_APPLIED to send in the clear */
 	int (*sm_nist_pre_transmit_callback)(sc_card_t *card, sc_apdu_t *apdu);

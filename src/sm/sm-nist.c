@@ -1903,13 +1903,9 @@ sm_nist_post_transmit(sc_card_t *card, const struct iso_sm_ctx *ctx,
 
 	/*
 	 * Interference from other processes is indicated by 6988
-	 * which will need to reauthenticate and reissue the failing command
-	 * in sw.c
+	 * which will be handled in sm.c
 	 */
-	priv->params->last_sw1 = sm_apdu->sw1;
-	priv->params->last_sw2 = sm_apdu->sw2;
 
-	sc_log(card->ctx, "nist_post_transmit - sw1:0x%X sw2:0x%X", sm_apdu->sw1, sm_apdu->sw2);
 	r = sc_check_sw(card, sm_apdu->sw1, sm_apdu->sw2);
 	if (r < 0)
 		goto err;
