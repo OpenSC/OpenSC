@@ -4614,8 +4614,14 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 	priv->pin_cmd_verify_sw1 = 0x00U;
 
 	if (data->cmd == SC_PIN_CMD_GET_INFO) { /* fill in what we think it should be */
-		data->pin1.logged_in = priv->logged_in;
-		data->pin1.tries_left = priv->tries_left;
+		priv->pin_cmd_verify = 1;	/* tell piv_check_sw its a verify to save sw1, sw2 */
+		r = iso_drv->ops->pin_cmd(card, data);
+		priv->pin_cmd_verify = 0;
+		sc_log(card->ctx, "piv_pin_cmd get info r:%d", r);
+		if (r >= 0)
+			priv->logged_in = SC_PIN_STATE_LOGGED_IN;
+		else
+			priv->logged_in = SC_PIN_STATE_LOGGED_OUT;
 
 		/*
 		 * If called to check on the login state for a context specific login
