@@ -228,8 +228,10 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		sc_format_path(jpki_pubkey_paths[i], &pubkey_info.path);
 		pubkey_info.path.type = SC_PATH_TYPE_FILE_ID;
 		pubkey_obj.flags = jpki_pubkey_flags[i];
-		pubkey_obj.auth_id.len = 1;
-		pubkey_obj.auth_id.value[0] = jpki_pubkey_auth_id[i];
+		if (jpki_pubkey_auth_id[i]) {
+			pubkey_obj.auth_id.len = 1;
+			pubkey_obj.auth_id.value[0] = jpki_pubkey_auth_id[i];
+		}
 
 		rc = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 		if (rc < 0) {
