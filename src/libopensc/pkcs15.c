@@ -416,8 +416,7 @@ sc_pkcs15_encode_tokeninfo(sc_context_t *ctx, sc_pkcs15_tokeninfo_t *ti,
 	if (ti->preferred_language != NULL) {
 		lang_len = strlen(ti->preferred_language);
 		sc_format_asn1_entry(asn1_toki_attrs + 12, ti->preferred_language, &lang_len, 1);
-	}
-	else   {
+	} else {
 		sc_format_asn1_entry(asn1_toki_attrs + 12, NULL, NULL, 0);
 	}
 
