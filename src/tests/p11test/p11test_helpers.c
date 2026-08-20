@@ -62,6 +62,18 @@ initialize_cryptoki(token_info_t *info)
 	return 0;
 }
 
+int finalize_token(token_info_t *info)
+{
+	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
+
+	info->session_handle = 0;
+	debug_print("Closing all sessions");
+	function_pointer->C_CloseAllSessions(info->slot_id);
+	debug_print("Finalize CRYPTOKI");
+	function_pointer->C_Finalize(NULL_PTR);
+	return 0;
+}
+
 int token_initialize(void **state)
 {
 	token_info_t *info = (token_info_t *) *state;
@@ -161,18 +173,6 @@ int prepare_token(token_info_t *info)
 	return 0;
 }
 
-int finalize_token(token_info_t *info)
-{
-	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
-
-	info->session_handle = 0;
-	debug_print("Closing all sessions");
-	function_pointer->C_CloseAllSessions(info->slot_id);
-	debug_print("Finalize CRYPTOKI");
-	function_pointer->C_Finalize(NULL_PTR);
-	return 0;
-}
-
 int user_login_setup(void **state)
 {
 	token_info_t *info = (token_info_t *) *state;
@@ -230,4 +230,3 @@ int token_cleanup(void **state)
 	finalize_token(info);
 	return 0;
 }
-
