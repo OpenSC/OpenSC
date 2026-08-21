@@ -1544,6 +1544,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 						r = SC_ERROR_OUT_OF_MEMORY;
 						break;
 					}
+				} else {
+					*buf = NULL;
 				}
 				*len = objlen-1;
 				parm = *buf;
@@ -1581,6 +1583,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 						r = SC_ERROR_OUT_OF_MEMORY;
 						break;
 					}
+				} else {
+					*buf = NULL;
 				}
 				c = *len = objlen;
 				parm = *buf;
@@ -1604,6 +1608,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 						r = SC_ERROR_OUT_OF_MEMORY;
 						break;
 					}
+				} else {
+					*buf = NULL;
 				}
 				c = *len = objlen;
 				parm = *buf;
