@@ -172,8 +172,9 @@ void do_store_data_object(struct sc_profile *profile, struct sc_pkcs15_card *p15
     struct sc_pkcs15init_dataargs args;
     char value[SC_MAX_OBJECT_ID_OCTETS];
 
-    memcpy(value, buf, SC_MAX_OBJECT_ID_OCTETS);
-    value[len < SC_MAX_OBJECT_ID_OCTETS ? len : SC_MAX_OBJECT_ID_OCTETS - 1] = '\0';
+    size_t copy_len = len < SC_MAX_OBJECT_ID_OCTETS ? len : SC_MAX_OBJECT_ID_OCTETS - 1;
+    memcpy(value, buf, copy_len);
+    value[copy_len] = '\0';
 
     memset(&args, 0, sizeof(args));
     sc_init_oid(&args.app_oid);
