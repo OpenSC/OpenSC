@@ -9619,11 +9619,11 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 		fprintf(stderr, "ERR: newly generated private key has no (or an empty) CKA_ID\n");
 		return session;
 	}
-	opt_object_id_len = (size_t) i;
-	if (opt_object_id_len > sizeof(opt_object_id)) {
+	if ((size_t)i > sizeof(opt_object_id)) {
 		fprintf(stderr, "ERR: object ID too long\n");
 		return session;
 	}
+	opt_object_id_len = (size_t)i;
 	memcpy(opt_object_id, tmp, opt_object_id_len);
 
 	/* This is done in NSS */
@@ -9807,11 +9807,11 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		printf("ERR: newly generated private key has no (or an empty) CKA_ID\n");
 		return;
 	}
-	opt_object_id_len = (size_t)i;
-	if (opt_object_id_len > sizeof(opt_object_id)) {
+	if ((size_t)i > sizeof(opt_object_id)) {
 		fprintf(stderr, "ERR: object ID too long\n");
 		return;
 	}
+	opt_object_id_len = (size_t)i;
 	memcpy(opt_object_id, tmp, opt_object_id_len);
 
 	/* This is done in NSS */
