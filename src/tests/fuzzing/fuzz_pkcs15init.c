@@ -232,7 +232,7 @@ void do_generate_skey(struct sc_profile *profile, struct sc_pkcs15_card *p15card
 }
 
 void do_store_secret_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-                         sc_card_t *card, uint8_t *buf)
+                         sc_card_t *card, uint8_t *buf, size_t len)
 {
     struct sc_pkcs15init_skeyargs args;
     int algorithms[] = { SC_ALGORITHM_AES, SC_ALGORITHM_DES, SC_ALGORITHM_3DES };
@@ -245,8 +245,9 @@ void do_store_secret_key(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 
     for (int i = 0; i < 3; i++) {
 	size_t keybytes = BYTES4BITS(keybits[i]);
-	args.key.data = malloc(keybytes);
-	memcpy(args.key.data, buf, keybytes);
+	args.key.data = calloc(1, keybytes);
+	if (args.key.data && buf)
+		memcpy(args.key.data, buf, len < keybytes ? len : keybytes);
 	args.key.data_len = keybytes;
 	args.algorithm = algorithms[i];
 	args.value_len = keybits[i];
@@ -338,7 +339,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     do_store_data_object(profile, p15card, card, buf, len);
     do_generate_key(profile, p15card, card);
     do_generate_skey(profile, p15card, card);
-    do_store_secret_key(profile, p15card, card, buf);
+    do_store_secret_key(profile, p15card, card, buf, len);
 
     sc_pkcs15init_finalize_card(card, profile);
     sc_pkcs15init_sanity_check(p15card, profile);
