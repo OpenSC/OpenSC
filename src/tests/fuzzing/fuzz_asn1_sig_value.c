@@ -38,6 +38,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
         if (p) {
             out = p;
             outlen = Size*2;
+        } else {
+            return 0;
         }
     }
 
@@ -45,6 +47,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
         unsigned char *p = realloc(in, Size);
         if (p) {
             in = p;
+            inlen = Size;
+        } else {
+            return 0;
         }
     }
     memcpy(in, Data, Size);
