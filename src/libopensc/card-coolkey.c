@@ -2002,7 +2002,7 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 	unsigned short compressed_offset;
 	unsigned short compressed_length;
 	unsigned short compressed_type;
-	unsigned short object_offset;
+	size_t object_offset;
 	unsigned short object_count;
 	coolkey_decompressed_header_t *decompressed_header;
 	u8 *decompressed_object = NULL;
