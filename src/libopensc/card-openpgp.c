@@ -380,6 +380,10 @@ pgp_match_card(sc_card_t *card)
 int populate_blobs_to_mf(sc_card_t *card, struct pgp_priv_data *priv)
 {
 	pgp_do_info_t	*info;
+
+	if (priv->mf == NULL)
+		return SC_ERROR_INTERNAL;
+
 	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
 		if (((info->access & READ_MASK) != READ_NEVER) && (info->get_fn != NULL)) {
 			pgp_blob_t *child = NULL;
