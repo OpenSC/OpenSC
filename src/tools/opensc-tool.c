@@ -416,11 +416,12 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		}
 
 		r = sc_lock(card);
-		if (r == SC_SUCCESS)
+		if (r == SC_SUCCESS) {
 			r = sc_read_binary(in_card, 0, buf, file->size, 0);
+			if (r > 0)
+				util_hex_dump_asc(stdout, buf, r, 0);
+		}
 		sc_unlock(card);
-		if (r > 0)
-			util_hex_dump_asc(stdout, buf, r, 0);
 		free(buf);
 	} else {
 		unsigned char buf[256];
@@ -429,11 +430,12 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		for (rec_nr = 1; rec_nr <= file->record_count; rec_nr++) {
 			printf("Record %u\n", rec_nr);
 			r = sc_lock(card);
-			if (r == SC_SUCCESS)
+			if (r == SC_SUCCESS) {
 				r = sc_read_record(in_card, rec_nr, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+				if (r > 0)
+					util_hex_dump_asc(stdout, buf, r, 0);
+			}
 			sc_unlock(card);
-			if (r > 0)
-				util_hex_dump_asc(stdout, buf, r, 0);
 		}
 	}
 	return 0;
