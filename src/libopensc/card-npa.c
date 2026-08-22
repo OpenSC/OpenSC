@@ -540,11 +540,13 @@ static int npa_pace_verify(struct sc_card *card,
 
 	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 
-	if (pace_output.mse_set_at_sw1 == 0x63
-			&& (pace_output.mse_set_at_sw2 & 0xc0) == 0xc0) {
-		pin->tries_left = pace_output.mse_set_at_sw2 & 0x0f;
-	} else {
-		pin->tries_left = -1;
+	if (pin) {
+		if (pace_output.mse_set_at_sw1 == 0x63
+				&& (pace_output.mse_set_at_sw2 & 0xc0) == 0xc0) {
+			pin->tries_left = pace_output.mse_set_at_sw2 & 0x0f;
+		} else {
+			pin->tries_left = -1;
+		}
 	}
 
 	/* resume the PIN if needed */
@@ -574,19 +576,23 @@ static int npa_pace_verify(struct sc_card *card,
 
 			if (r == SC_SUCCESS) {
 				sc_log(card->ctx, "%s resumed.\n", eac_secret_name(pin_reference));
-				pin->tries_left = EAC_MAX_PIN_TRIES;
+				if (pin) {
+					pin->tries_left = EAC_MAX_PIN_TRIES;
+				}
 			} else {
-				if (pace_output.mse_set_at_sw1 == 0x63
-						&& (pace_output.mse_set_at_sw2 & 0xc0) == 0xc0) {
-					pin->tries_left = pace_output.mse_set_at_sw2 & 0x0f;
-				} else {
-					pin->tries_left = -1;
+				if (pin) {
+					if (pace_output.mse_set_at_sw1 == 0x63
+							&& (pace_output.mse_set_at_sw2 & 0xc0) == 0xc0) {
+						pin->tries_left = pace_output.mse_set_at_sw2 & 0x0f;
+					} else {
+						pin->tries_left = -1;
+					}
 				}
 			}
 		}
 	}
 
-	if (pin_reference == PACE_PIN_ID_PIN) {
+	if (pin && pin_reference == PACE_PIN_ID_PIN) {
 	   if (pin->tries_left == 0) {
 		   sc_log(card->ctx, "%s is suspended and must be resumed.\n",
 				   eac_secret_name(pin_reference));
