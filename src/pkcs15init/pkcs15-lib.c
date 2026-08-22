@@ -3951,10 +3951,11 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		struct sc_path tmp_path = *path;
 		int iter;
 		r = SC_ERROR_OBJECT_NOT_FOUND;
-		for (iter = (int)tmp_path.len/2; iter >= 0 && r == SC_ERROR_OBJECT_NOT_FOUND; iter--, tmp_path.len -= 2) {
+		for (iter = (int)tmp_path.len/2; iter >= 0 && r == SC_ERROR_OBJECT_NOT_FOUND; iter--) {
 			r = sc_pkcs15_find_pin_by_type_and_reference(p15card,
 					tmp_path.len ? &tmp_path : NULL,
 					type, reference, &pin_obj);
+			tmp_path.len = tmp_path.len >= 2 ? tmp_path.len - 2 : 0;
 		}
 	}
 	else {
