@@ -25,3 +25,7 @@ an issue or pull request, you MUST adhere strictly to the following rules:
 - **Action:** If you find a verified, non-security bug on the `master` branch, analyze the root cause.
   Your output must include a functional solution, ideally provided as a unified diff (patch) or submitted
   directly as a Pull Request.
+
+## 4. Commit Messages
+- **Rule:** When drafting commit messages, they MUST be extremely short and concise.
+- **Action:** Get straight to the point. State what was fixed (e.g., "Fixes Coverity CID 12345") and how it was fixed in one or two short sentences. Do not include verbose explanations, long background stories, or redundant details.
