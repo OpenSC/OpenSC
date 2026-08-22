@@ -542,6 +542,26 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	obj->df = sc_pkcs15emu_get_df(p15card, df_type);
 	sc_pkcs15_add_object(p15card, obj);
 
+	/* release memory ownership of buffers that are now contained in `p15card` */
+	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
+	default:
+		/* `data`'s members copied by value, no buffer to release */
+		 break;
+	case SC_PKCS15_TYPE_PRKEY:
+		((struct sc_pkcs15_prkey_info *)data)->subject.value = NULL;
+		break;
+	case SC_PKCS15_TYPE_PUBKEY:
+		((struct sc_pkcs15_pubkey_info *)data)->subject.value = NULL;
+		((struct sc_pkcs15_pubkey_info *)data)->direct.raw.value = NULL;
+		((struct sc_pkcs15_pubkey_info *)data)->direct.spki.value = NULL;
+		break;
+	case SC_PKCS15_TYPE_CERT:
+		((struct sc_pkcs15_cert_info *)data)->value.value = NULL;
+		break;
+	case SC_PKCS15_TYPE_DATA_OBJECT:
+		((struct sc_pkcs15_data_info *)data)->data.value = NULL;
+		break;
+	}
+
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
-
