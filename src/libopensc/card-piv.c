@@ -2308,9 +2308,10 @@ piv_sm_open(struct sc_card *card)
 	r = len2b = sc_asn1_put_tag(0x80, NULL, 0, NULL, 0, NULL);
 	if (r < 0)
 		goto err;
-	sbuflen = r = sc_asn1_put_tag(0x7C, NULL, len2a + len2b, NULL, 0, NULL);
+	r = sc_asn1_put_tag(0x7C, NULL, len2a + len2b, NULL, 0, NULL);
 	if (r < 0)
 		goto err;
+	sbuflen = r;
 
 	sbuf = malloc(sbuflen);
 	if (sbuf == NULL) {
