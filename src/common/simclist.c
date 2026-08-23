@@ -209,14 +209,19 @@ static simclist_inline struct list_entry_s *list_findpos(const list_t *simclist_
  * Default to local RNG for user's ease of use.
  */
 
-#ifdef SIMCLIST_SYSTEM_RNG
+#ifndef SIMCLIST_SYSTEM_RNG
 /* keep track whether we initialized already (non-0) or not (0) */
 static unsigned random_seed = 0;
 
 /* use local RNG */
 static simclist_inline void seed_random() {
-    if (random_seed == 0)
+    if (random_seed == 0) {
+#ifndef _WIN32
         random_seed = (unsigned)getpid() ^ (unsigned)time(NULL);
+#else
+        random_seed = (unsigned)GetCurrentProcessId() ^ (unsigned)time(NULL);
+#endif
+    }
 }
 
 static simclist_inline long get_random() {
