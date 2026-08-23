@@ -341,8 +341,15 @@ int sc_color_fprintf_va(int colors, struct sc_context *ctx, FILE * stream, const
 void _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line,
 		const char *func, const char *label, const u8 *data, size_t len)
 {
-	size_t blen = len * 5 + 128;
-	char *buf = malloc(blen);
+	size_t blen;
+	char *buf;
+
+	if (len > SC_MAX_EXT_APDU_BUFFER_SIZE) {
+		len = SC_MAX_EXT_APDU_BUFFER_SIZE;
+	}
+	blen = len * 5 + 128;
+
+	buf = malloc(blen);
 	if (buf == NULL)
 		return;
 
