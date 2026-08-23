@@ -1260,6 +1260,11 @@ static int cac_parse_aid(sc_card_t *card, cac_private_data_t *priv, const u8 *ai
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (aid_len < 0 || aid_len > SC_MAX_AID_SIZE) {
+		sc_log(card->ctx, "AID length too large (%d)", aid_len);
+		return SC_ERROR_INVALID_DATA;
+	}
+
 	/* Search for PKI applets (7 B). Ignore generic objects for now */
 	if (aid_len != 7 || (memcmp(aid, CAC_1_RID "\x01", 6) != 0
 	    && memcmp(aid, CAC_1_RID "\x00", 6) != 0))
