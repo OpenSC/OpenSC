@@ -3332,8 +3332,11 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "DF missing");
 
 	r = sc_profile_get_file_by_path(profile, &df->path, &file);
-	if (r < 0 || file == NULL)
-		sc_select_file(card, &df->path, &file);
+	if (r < 0 || file == NULL) {
+		r = sc_select_file(card, &df->path, &file);
+		if (r < 0)
+			sc_log(ctx, "Failed to select DF: %s", sc_strerror(r));
+	}
 
 	r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
 	if (r >= 0) {
