@@ -718,6 +718,8 @@ C_Initialize(CK_VOID_PTR pInitArgs)
 		if (rv != CKR_OK)
 			return rv;
 	}
+	if (po == NULL)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	enter("C_Initialize");
 	print_ptr_in("pInitArgs", pInitArgs);
