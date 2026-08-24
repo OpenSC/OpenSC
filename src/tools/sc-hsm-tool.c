@@ -957,7 +957,7 @@ static int create_dkek_key_domain(sc_card_t *card, const char *pin, const int kd
 	}
 
 	memset(&dkekinfo, 0, sizeof(dkekinfo));
-	dkekinfo.operation = SC_MANAGE_KEY_DOMAIN_CREATE_DKEK_KEY_DOMAIN;
+	dkekinfo.operation = SC_HSM_MANAGE_KEY_DOMAIN_CREATE_DKEK_KEY_DOMAIN;
 	dkekinfo.dkek_shares = (u8)shares;
 	dkekinfo.key_domain_idx = (u8)(kdidx - 1);
 
@@ -990,7 +990,7 @@ static int delete_key_domain(sc_card_t *card, const char *pin, const int kdidx)
 	}
 
 	memset(&dkekinfo, 0, sizeof(dkekinfo));
-	dkekinfo.operation = SC_MANAGE_KEY_DOMAIN_DELETE_KEY_DOMAIN;
+	dkekinfo.operation = SC_HSM_MANAGE_KEY_DOMAIN_DELETE_KEY_DOMAIN;
 	dkekinfo.key_domain_idx = (u8)(kdidx - 1);
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, (void *)&dkekinfo);
@@ -1026,7 +1026,7 @@ static int clear_key_encryption_key(sc_card_t *card, const char *pin, const int 
 	}
 
 	memset(&dkekinfo, 0, sizeof(dkekinfo));
-	dkekinfo.operation = SC_MANAGE_KEY_DOMAIN_CLEAR_KEK;
+	dkekinfo.operation = SC_HSM_MANAGE_KEY_DOMAIN_CLEAR_KEK;
 	dkekinfo.key_domain_idx = (u8)(kdidx - 1);
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, (void *)&dkekinfo);
@@ -1137,7 +1137,7 @@ static int import_dkek_share(sc_card_t *card, const char *pin, int kdidx, const 
 
 	memset(&dkekinfo, 0, sizeof(dkekinfo));
 	memcpy(dkekinfo.dkek_share, outbuff, sizeof(dkekinfo.dkek_share));
-	dkekinfo.operation = SC_MANAGE_KEY_DOMAIN_IMPORT_DKEK_SHARE;
+	dkekinfo.operation = SC_HSM_MANAGE_KEY_DOMAIN_IMPORT_DKEK_SHARE;
 	dkekinfo.key_domain_idx = (u8)kdidx;
 
 	OPENSSL_cleanse(outbuff, sizeof(outbuff));
