@@ -124,8 +124,11 @@ function card_setup() {
 		"kryoptic")
 			PIN="$SOPIN"
 			P11LIB="/home/jjelen/devel/kryoptic/target/debug/libkryoptic_pkcs11.so"
-			KRYOPTIC_DB="kryoptic.sql"
-			export KRYOPTIC_CONF="$KRYOPTIC_DB:1"
+			echo "[[slots]]" > "$PWD/kryoptic.conf"
+			echo "slot = 2" >> "$PWD/kryoptic.conf"
+			echo "dbtype = \"sqlite\"" >> "$PWD/kryoptic.conf"
+			echo "dbargs = \"$PWD/kryoptic.sql\"" >> "$PWD/kryoptic.conf"
+			export KRYOPTIC_CONF="$PWD/kryoptic.conf"
 			# Init token
 			$PKCS11_TOOL --init-token --so-pin="$SOPIN" --label="Kryoptic token" --module="$P11LIB"
 			$PKCS11_TOOL --init-pin --pin="$PIN" --so-pin="$SOPIN" --label="Kryoptic token" --module="$P11LIB"
@@ -219,7 +222,7 @@ function card_cleanup() {
 			rm -rf ".tokens"
 			;;
 		"kryoptic")
-			rm kryoptic.sql
+			rm kryoptic.sql kryoptic.conf
 			;;
 	esac
 }
