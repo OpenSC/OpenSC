@@ -343,9 +343,11 @@ void _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line,
 {
 	size_t blen;
 	char *buf;
+	const char *truncated = "";
 
 	if (len > SC_MAX_EXT_APDU_BUFFER_SIZE) {
 		len = SC_MAX_EXT_APDU_BUFFER_SIZE;
+		truncated = "truncated to ";
 	}
 	blen = len * 5 + 128;
 
@@ -356,10 +358,11 @@ void _sc_debug_hex(sc_context_t *ctx, int type, const char *file, int line,
 	sc_hex_dump(data, len, buf, blen);
 
 	if (label)
-		sc_do_log(ctx, type, file, line, func, "\n%s (%zu byte%s):\n%s", label, len,
-				len == 1 ? "" : "s", buf);
+		sc_do_log(ctx, type, file, line, func, "\n%s (%s%zu byte%s):\n%s",
+				label, truncated, len, len == 1 ? "" : "s", buf);
 	else
-		sc_do_log(ctx, type, file, line, func, "%zu byte%s:\n%s", len, len == 1 ? "" : "s", buf);
+		sc_do_log(ctx, type, file, line, func, "%s%zu byte%s:\n%s",
+				truncated, len, len == 1 ? "" : "s", buf);
 
 	free(buf);
 }
