@@ -591,6 +591,11 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		/* need to be created even though we do not do any MD */
 		EVP_MD_CTX *ctx = EVP_MD_CTX_create();
 
+		if (ctx == NULL) {
+			fprintf(stderr, " [FAIL %s ] Faled to allocate MD CTX\n", o->id_str);
+			return -1;
+		}
+
 		rv = EVP_DigestVerifyInit(ctx, NULL, NULL, NULL, o->key);
 		if (rv != 1) {
 			fprintf(stderr, " [FAIL %s ] EVP_DigestVerifyInit: rv = %d: %s\n", o->id_str,
@@ -656,6 +661,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 
 		rv = EVP_PKEY_verify(ctx, sign, sign_length, message, message_length);
 		EVP_PKEY_CTX_free(ctx);
+		EVP_SIGNATURE_free(sig);
 		if (rv == 1) {
 			debug_print(" [  OK %s ] ML-DSA Signature of length %lu is valid.",
 					o->id_str, message_length);
