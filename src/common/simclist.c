@@ -215,8 +215,13 @@ static unsigned random_seed = 0;
 
 /* use local RNG */
 static simclist_inline void seed_random() {
-    if (random_seed == 0)
-        random_seed = 123456789 ^ (unsigned)time(NULL);
+    if (random_seed == 0) {
+#ifndef _WIN32
+        random_seed = (unsigned)getpid() ^ (unsigned)time(NULL);
+#else
+        random_seed = (unsigned)GetCurrentProcessId() ^ (unsigned)time(NULL);
+#endif
+    }
 }
 
 static simclist_inline long get_random() {
