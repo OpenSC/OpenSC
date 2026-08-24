@@ -364,6 +364,8 @@ test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mec
 			fprintf(stderr, " [ ERROR %s ] Decrypted message does not match\n", o->id_str);
 			return 1;
 		}
+	} else {
+		free(plain);
 	}
 
 out:
