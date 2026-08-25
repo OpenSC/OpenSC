@@ -232,31 +232,31 @@ chipdocit_finish(sc_card_t *card)
 	return SC_SUCCESS;
 }
 
-/* Pad an ASCII PIN/PUK to 8 bytes with 0xFF, as the CNS applet expects. */
-static void
-chipdocit_pad8(const u8 *in, size_t len, u8 out[8])
-{
-	memset(out, 0xFF, 8);
-	if (len > 8)
-		len = 8;
-	if (in && len)
-		memcpy(out, in, len);
-}
-
-/* Send one clear (non-SM) case-3 APDU and check the status word. */
+/* Run one PIN command on the in-clear CNS applet through the iso7816 driver,
+ * 0xFF-padded to 8 bytes. p1/p2 are the current/new secrets (either may be
+ * NULL when unused). */
 static int
-chipdocit_send_clear(struct sc_card *card, int ins, int p1, int p2,
-		const u8 *body, size_t len)
+chipdocit_cns_pin_op(struct sc_card *card, int cmd, int reference,
+		const struct sc_pin_cmd_pin *p1, const struct sc_pin_cmd_pin *p2)
 {
-	struct sc_apdu apdu;
-	int r;
+	struct sc_pin_cmd_data d;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, ins, p1, p2);
-	apdu.lc = apdu.datalen = len;
-	apdu.data = body;
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "CNS APDU transmit failed");
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+	memset(&d, 0, sizeof d);
+	d.cmd = cmd;
+	d.pin_type = SC_AC_CHV;
+	d.flags = SC_PIN_CMD_NEED_PADDING;
+	d.pin_reference = reference;
+	if (p1) {
+		d.pin1 = *p1;
+		d.pin1.pad_char = 0xFF;
+		d.pin1.pad_length = 8;
+	}
+	if (p2) {
+		d.pin2 = *p2;
+		d.pin2.pad_char = 0xFF;
+		d.pin2.pad_length = 8;
+	}
+	return sc_get_iso7816_driver()->ops->pin_cmd(card, &d);
 }
 
 /* Select the CNS applet in the clear. Switching to it ends any PACE session,
@@ -279,25 +279,22 @@ chipdocit_select_cns(struct sc_card *card)
 static int
 chipdocit_cns_sync(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
-	u8 body[16];
 	int r;
 
 	r = chipdocit_select_cns(card);
 	LOG_TEST_RET(card->ctx, r, "SELECT CNS AID failed");
 
 	if (data->cmd == SC_PIN_CMD_UNBLOCK) {
-		chipdocit_pad8(data->pin1.data, data->pin1.len, body);
-		r = chipdocit_send_clear(card, 0x20, 0x00, CHIPDOCIT_CNS_PUK_BSO, body, 8);
+		/* Verify the PUK, then reset the retry counter and set the new PIN. */
+		r = chipdocit_cns_pin_op(card, SC_PIN_CMD_VERIFY,
+				CHIPDOCIT_CNS_PUK_BSO, &data->pin1, NULL);
 		LOG_TEST_RET(card->ctx, r, "CNS VERIFY PUK failed");
-		chipdocit_pad8(data->pin1.data, data->pin1.len, body);
-		chipdocit_pad8(data->pin2.data, data->pin2.len, body + 8);
-		r = chipdocit_send_clear(card, 0x2C, 0x00, CHIPDOCIT_CNS_PIN_BSO, body, 16);
+		r = chipdocit_cns_pin_op(card, SC_PIN_CMD_UNBLOCK,
+				CHIPDOCIT_CNS_PIN_BSO, &data->pin1, &data->pin2);
 	} else { /* SC_PIN_CMD_CHANGE */
-		chipdocit_pad8(data->pin1.data, data->pin1.len, body);
-		chipdocit_pad8(data->pin2.data, data->pin2.len, body + 8);
-		r = chipdocit_send_clear(card, 0x24, 0x00, CHIPDOCIT_CNS_PIN_BSO, body, 16);
+		r = chipdocit_cns_pin_op(card, SC_PIN_CMD_CHANGE,
+				CHIPDOCIT_CNS_PIN_BSO, &data->pin1, &data->pin2);
 	}
-	sc_mem_clear(body, sizeof body);
 	return r;
 }
 
@@ -326,8 +323,8 @@ chipdocit_has_cns(struct sc_card *card)
 static int
 chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
+	struct sc_pin_cmd_pin p1_save = {0}, p2_save = {0};
 	int cmd = data->cmd;
-	u8 old8[8], new8[8];
 	int synced = 0, r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -335,8 +332,8 @@ chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 	/* Mirror the CNS-applet PIN first, while SM is still off (only when the
 	 * card actually carries the CNS applet). */
 	if ((cmd == SC_PIN_CMD_CHANGE || cmd == SC_PIN_CMD_UNBLOCK) && chipdocit_has_cns(card)) {
-		chipdocit_pad8(data->pin1.data, data->pin1.len, old8);
-		chipdocit_pad8(data->pin2.data, data->pin2.len, new8);
+		p1_save = data->pin1;
+		p2_save = data->pin2;
 		r = chipdocit_cns_sync(card, data);
 		LOG_TEST_RET(card->ctx, r, "CNS-applet PIN sync failed");
 		synced = 1;
@@ -400,16 +397,11 @@ chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 	/* If the IAS side failed after the CNS PIN was changed, roll the CNS PIN
 	 * back so the two objects do not diverge (CHANGE only). */
 	if (r != SC_SUCCESS && synced && cmd == SC_PIN_CMD_CHANGE) {
-		u8 rb[16];
-		memcpy(rb, new8, 8);
-		memcpy(rb + 8, old8, 8);
+		/* Revert the CNS PIN (new -> old) so the two objects stay in sync. */
 		if (chipdocit_select_cns(card) == SC_SUCCESS)
-			(void)chipdocit_send_clear(card, 0x24, 0x00,
-					CHIPDOCIT_CNS_PIN_BSO, rb, 16);
-		sc_mem_clear(rb, sizeof rb);
+			(void)chipdocit_cns_pin_op(card, SC_PIN_CMD_CHANGE,
+					CHIPDOCIT_CNS_PIN_BSO, &p2_save, &p1_save);
 	}
-	sc_mem_clear(old8, sizeof old8);
-	sc_mem_clear(new8, sizeof new8);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
