@@ -863,7 +863,7 @@ static void list_sort_quicksort(list_t *simclist_restrict l, int versus,
     /* base of iteration: one element list */
     if (! (last > first)) return;
 
-    pivotid = (get_random() % (last - first + 1));
+    pivotid = (unsigned int)(get_random() % (last - first + 1));
     /* pivotid = (last - first + 1) / 2; */
 
     /* find pivot */
