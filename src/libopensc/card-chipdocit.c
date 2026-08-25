@@ -62,7 +62,6 @@ static const u8 CHIPDOCIT_CNS_AID[] = {
 #define CHIPDOCIT_CNS_PUK_BSO 0x11
 
 static struct sc_card_operations chipdocit_ops;
-static int chipdocit_select_aid(sc_card_t *card, const u8 *aid, size_t aid_len);
 
 static struct sc_card_driver chipdocit_drv = {
 		"Bit4id Digital-DNA (NXP ChipDoc, Italian CNS)",
@@ -97,7 +96,7 @@ chipdocit_decrypt_can(const u8 *enc_can, size_t len, char *can)
 	size_t n;
 	int r;
 
-	r = eoi_decrypt_can_block(enc_can, len, dec);
+	r = chipdoc_decrypt_can_block(enc_can, len, dec);
 	if (r != SC_SUCCESS)
 		return r;
 	for (n = 0; n < AES_BLOCK_SIZE && dec[n] >= 0x20 && dec[n] < 0x7f; n++)
@@ -154,7 +153,7 @@ chipdocit_match_card(sc_card_t *card)
 	/* The ATR is shared with other Italian CNS cards; confirm this is the
 	 * NXP ChipDoc by selecting its card application, so the others fall
 	 * through to the generic CNS driver. */
-	if (chipdocit_select_aid(card, CHIPDOCIT_IAS_AID, sizeof CHIPDOCIT_IAS_AID) != SC_SUCCESS)
+	if (iso7816_select_aid(card, CHIPDOCIT_IAS_AID, sizeof CHIPDOCIT_IAS_AID, NULL, NULL) != SC_SUCCESS)
 		LOG_FUNC_RETURN(card->ctx, 0);
 	LOG_FUNC_RETURN(card->ctx, 1);
 }
@@ -168,7 +167,7 @@ chipdocit_read_enc_can(sc_card_t *card, struct chipdocit_privdata *priv)
 	/* Activate the card application first: on a card that has not been
 	 * opened by other software, the MF and EF E000 are only reachable once
 	 * the IAS-ECC application is selected. */
-	r = chipdocit_select_aid(card, CHIPDOCIT_IAS_AID, sizeof CHIPDOCIT_IAS_AID);
+	r = iso7816_select_aid(card, CHIPDOCIT_IAS_AID, sizeof CHIPDOCIT_IAS_AID, NULL, NULL);
 	LOG_TEST_RET(card->ctx, r, "SELECT IAS-ECC AID failed");
 	r = sc_select_file(card, sc_get_mf_path(), NULL);
 	LOG_TEST_RET(card->ctx, r, "SELECT MF failed");
@@ -233,25 +232,6 @@ chipdocit_finish(sc_card_t *card)
 	return SC_SUCCESS;
 }
 
-/* SELECT an application by full AID (00 A4 04 04 <len> <aid> 00). */
-static int
-chipdocit_select_aid(sc_card_t *card, const u8 *aid, size_t aid_len)
-{
-	struct sc_apdu apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x04);
-	apdu.lc = apdu.datalen = aid_len;
-	apdu.data = aid;
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof rbuf;
-	apdu.le = 256;
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "SELECT AID transmit failed");
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
-}
-
 /* Pad an ASCII PIN/PUK to 8 bytes with 0xFF, as the CNS applet expects. */
 static void
 chipdocit_pad8(const u8 *in, size_t len, u8 out[8])
@@ -284,20 +264,11 @@ chipdocit_send_clear(struct sc_card *card, int ins, int p1, int p2,
 static int
 chipdocit_select_cns(struct sc_card *card)
 {
-	struct sc_apdu apdu;
-	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
-	int r;
-
-	card->sm_ctx.sm_mode = SM_MODE_NONE;
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x00);
-	apdu.lc = apdu.datalen = sizeof CHIPDOCIT_CNS_AID;
-	apdu.data = CHIPDOCIT_CNS_AID;
-	apdu.resp = rbuf;
-	apdu.resplen = sizeof rbuf;
-	apdu.le = 256;
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "SELECT CNS AID transmit failed");
-	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+	/* Tear down the PACE channel first: the CNS applet is accessed in the
+	 * clear, and selecting it ends any secure-messaging session anyway. */
+	sc_sm_stop(card);
+	return iso7816_select_aid(card, CHIPDOCIT_CNS_AID, sizeof CHIPDOCIT_CNS_AID,
+			NULL, NULL);
 }
 
 /*
@@ -370,7 +341,7 @@ chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 		LOG_TEST_RET(card->ctx, r, "CNS-applet PIN sync failed");
 		synced = 1;
 		/* The CNS SELECT dropped PACE: go back to the IAS application. */
-		r = chipdocit_select_aid(card, CHIPDOCIT_IAS_AID, sizeof CHIPDOCIT_IAS_AID);
+		r = iso7816_select_aid(card, CHIPDOCIT_IAS_AID, sizeof CHIPDOCIT_IAS_AID, NULL, NULL);
 		LOG_TEST_RET(card->ctx, r, "re-SELECT IAS AID failed");
 	}
 
@@ -485,7 +456,7 @@ chipdocit_compute_signature(struct sc_card *card, const u8 *data,
 		keyref = priv->sec_env.key_ref[0];
 
 	/* Move to the signature applet. */
-	r = chipdocit_select_aid(card, CHIPDOCIT_SSCD_AID, sizeof CHIPDOCIT_SSCD_AID);
+	r = iso7816_select_aid(card, CHIPDOCIT_SSCD_AID, sizeof CHIPDOCIT_SSCD_AID, NULL, NULL);
 	LOG_TEST_RET(card->ctx, r, "SELECT SSCD AID failed");
 
 	/* MSE:SET for the RAW private-key op: 00 22 41 B8  83 01 <keyref>. */

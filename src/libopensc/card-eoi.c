@@ -161,7 +161,7 @@ static int get_can_key(const u8 *key, const u8 round, const u8 *input, u8 *outpu
 /* Decrypt the 24-byte encrypted CAN blob (16 enc || 8 SN) into its 16-byte
  * plaintext block. Exposed for card-chipdocit: same chip, same key. */
 int
-eoi_decrypt_can_block(const u8 *enc_can, size_t enc_can_len, u8 out[AES_BLOCK_SIZE])
+chipdoc_decrypt_can_block(const u8 *enc_can, size_t enc_can_len, u8 out[AES_BLOCK_SIZE])
 {
 	/* Magic key that is used to decrypt CAN */
 	const u8 magic_key[AES256_KEY_LEN] = {0xC8, 0x12, 0x0F, 0xD8, 0x21, 0x20, 0x1F, 0x77, 0xF1, 0x83, 0x9D, 0xD8, 0x86, 0xB0, 0x5C, 0xF2, 0x4F, 0x7E, 0x52, 0x66, 0xE5, 0x87, 0x89, 0x2B, 0xF4, 0xC5, 0xE5, 0x4C, 0x54, 0xA1, 0x55, 0x30};
@@ -185,7 +185,7 @@ eoi_decrypt_can(struct sc_pkcs15_u8 *enc_can, char *can)
 
 	if (!can || !enc_can || !enc_can->value)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	r = eoi_decrypt_can_block(enc_can->value, enc_can->len, (u8 *)can);
+	r = chipdoc_decrypt_can_block(enc_can->value, enc_can->len, (u8 *)can);
 	if (r != SC_SUCCESS)
 		return r;
 	can[AES_BLOCK_SIZE - 1] = 0;
