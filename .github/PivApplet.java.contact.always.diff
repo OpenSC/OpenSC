@@ -1,0 +1,13 @@
+diff --git a/src/net/cooperi/pivapplet/PivApplet.java b/src/net/cooperi/pivapplet/PivApplet.java
+index 9abbfeb..b7fa581 100644
+--- a/src/net/cooperi/pivapplet/PivApplet.java
++++ b/src/net/cooperi/pivapplet/PivApplet.java
+@@ -592,7 +592,7 @@ public class PivApplet extends Applet
+ 			return (true);
+ 		if (media == APDU.PROTOCOL_MEDIA_USB)
+ 			return (true);
+-		return (false);
++		return (true);
+ 	}
+ 
+ /*#if !APPLET_EXTLEN
