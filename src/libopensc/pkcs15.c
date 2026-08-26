@@ -1197,7 +1197,6 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	struct sc_card *card = p15card->card;
 	struct sc_context *ctx = card->ctx;
 	const struct sc_app_info *info = NULL;
-	unsigned char *buf = NULL;
 	int err, ok = 0;
 
 	LOG_FUNC_CALLED(ctx);
@@ -1269,8 +1268,6 @@ sc_pkcs15_bind_internal(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 
 	ok = 1;
 end:
-	if (buf != NULL)
-		free(buf);
 	if (!ok) {
 		sc_pkcs15_card_clear(p15card);
 		if (err == SC_ERROR_FILE_NOT_FOUND)
