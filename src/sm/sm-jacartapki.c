@@ -48,7 +48,7 @@
 #include <openssl/rand.h>
 
 /*
- * Presently JaCarta PKI Secure Messaging does not fully comply to ISO/IEC 7816-4 (OpenPGP Application on ISO Smart Card Operating Systems).
+ * Presently JaCarta PKI Secure Messaging does not fully comply to ISO/IEC 7816-4.
  * For commands we must wrap APDU data into 87 tag with 01 padding indicator indiscriminately of even/odd INS code.
  *
  * To overcome this we change APDU INS code several times for odd commands: get capabilities CBh, generate key pair 47h.
@@ -418,7 +418,12 @@ jacartapki_sm_open(struct sc_card *card)
 	BIGNUM *bn_ifd_y = NULL;
 	int rd, dh_check;
 	DH *dh = NULL;
+	int pubKeyBN_length = 0;
 	const BIGNUM *pub_key = NULL;
+	int dhsize = 0;
+#if !defined(LIBRESSL_VERSION_NUMBER)
+	int sharedSecretLen = 0;
+#endif
 #endif
 	LOG_FUNC_CALLED(ctx);
 	memset(&card->sm_ctx.info, 0, sizeof(card->sm_ctx.info));
@@ -525,21 +530,38 @@ jacartapki_sm_open(struct sc_card *card)
 
 	DH_get0_key(dh, &pub_key, NULL);
 
-	dh_session->ifd_p.value = (unsigned char *)OPENSSL_malloc(BN_num_bytes(pub_key));
+	pubKeyBN_length = BN_num_bytes(pub_key);
+	if (pubKeyBN_length <= 0) {
+		rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "OpenSSL incorrect 'DH' public key generated");
+	}
+
+	dh_session->ifd_p.value = (unsigned char *)OPENSSL_malloc(pubKeyBN_length);
 	if (dh_session->ifd_p.value == NULL) {
 		rv = SC_ERROR_OUT_OF_MEMORY;
 		LOG_ERROR_GOTO(ctx, rv, "Failed to allocate IFD public key part");
 	}
 	dh_session->ifd_p.len = BN_bn2bin(pub_key, dh_session->ifd_p.value);
 
-	dh_session->shared_secret.value = (unsigned char *)OPENSSL_malloc(DH_size(dh));
+	dhsize = DH_size(dh);
+	if (dhsize <= 0) {
+		rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "OpenSSL incorrect 'DH' size");
+	}
+
+	dh_session->shared_secret.value = (unsigned char *)OPENSSL_malloc(dhsize);
 	if (dh_session->shared_secret.value == NULL) {
 		rv = SC_ERROR_OUT_OF_MEMORY;
 		LOG_ERROR_GOTO(ctx, rv, "Failed to allocate shared secret part");
 	}
 
 #if !defined(LIBRESSL_VERSION_NUMBER)
-	dh_session->shared_secret.len = DH_compute_key_padded(dh_session->shared_secret.value, bn_icc_p, dh);
+	sharedSecretLen = DH_compute_key_padded(dh_session->shared_secret.value, bn_icc_p, dh);
+	if (sharedSecretLen <= 0) {
+		rv = SC_ERROR_INTERNAL;
+		LOG_ERROR_GOTO(ctx, rv, "OpenSSL 'DH_compute_key_padded' failed");
+	}
+	dh_session->shared_secret.len = sharedSecretLen;
 #else
 	rv = _compute_key_padded(card, dh_session->shared_secret.value, DH_size(dh), bn_icc_p, bn_ifd_y, bn_N);
 	if (DH_size(dh) > rv)
