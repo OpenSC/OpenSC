@@ -349,8 +349,8 @@ reader_count=""
 for rdriver in "${enable_pcsc}" "${enable_cryptotokenkit}" "${enable_openct}" "${enable_ctapi}"; do
 	test "${rdriver}" = "yes" && reader_count="${reader_count}x"
 done
-if test "${reader_count}" != "x"; then
-	AC_MSG_ERROR([Only one of --enable-pcsc, --enable-cryptotokenkit, --enable-openct, --enable-ctapi can be specified!])
+if test -n "${reader_count}" && test "${reader_count}" != "x"; then
+	AC_MSG_ERROR([At most one of --enable-pcsc, --enable-cryptotokenkit, --enable-openct, --enable-ctapi can be specified!])
 fi
 
 dnl Checks for programs.

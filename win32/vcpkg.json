@@ -1,0 +1,17 @@
+{
+  "name": "opensc",
+  "dependencies": [
+    "openssl"
+  ],
+  "features": {
+    "zlib": {
+      "description": "Compressed data support (PIV, actalis)",
+      "dependencies": ["zlib"]
+    },
+    "openpace": {
+      "description": "EAC/PACE support via OpenPACE",
+      "dependencies": ["openpace"]
+    }
+  },
+  "builtin-baseline": "7849750896c86bd7a4a02ed760812dba321a4a9b"
+}

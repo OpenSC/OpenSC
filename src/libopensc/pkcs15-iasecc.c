@@ -62,15 +62,26 @@ _iasecc_md_update_keyinfo(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 	rv = sc_pkcs15_read_data_object(p15card, (struct sc_pkcs15_data_info *)dobj->data, private_obj, &ddata);
 	LOG_TEST_RET(ctx, rv, "Failed to read container DATA object data");
 
+	/* [0] = 0x01
+	 * [1] = length
+	 * [2 .. 2 + length] = ID
+	 * [2 + length] = 0x02
+	 * [2 + length + 1] = 0x01
+	 * [3 + length + 2] = flags
+	 */
 	offs = 0;
-	if (*(ddata->data + offs++) != 0x01)   {
+	if (ddata->data_len < 2 || *(ddata->data + offs++) != 0x01)   {
 		sc_pkcs15_free_data_object(ddata);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 	}
 
 	id.len = *(ddata->data + offs++);
+	if (id.len > sizeof(id.value) || ddata->data_len < offs + id.len + 3) {
+		sc_pkcs15_free_data_object(ddata);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+	}
 	memcpy(id.value, ddata->data + offs, id.len);
-	offs += (int) id.len;
+	offs += (int)id.len;
 
 	if (*(ddata->data + offs++) != 0x02)  {
 		sc_pkcs15_free_data_object(ddata);

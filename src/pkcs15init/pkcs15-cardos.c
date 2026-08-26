@@ -419,7 +419,7 @@ cardos_delete_object(sc_profile_t *profile, struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_prkey_info *key_info;
 	struct sc_pkcs15_prkey_rsa key_obj;
 	struct sc_context *ctx = p15card->card->ctx;
-	uint8_t abignum[256];
+	uint8_t abignum[SC_MAX_RSA_KEY_SIZE / 8];
 
 	LOG_FUNC_CALLED(ctx);
 	/*
@@ -428,6 +428,10 @@ cardos_delete_object(sc_profile_t *profile, struct sc_pkcs15_card *p15card,
 	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY) {
 		key_info = obj->data;
 		keybits = key_info->modulus_length & ~7UL;
+		if (keybits == 0 || keybits > SC_MAX_RSA_KEY_SIZE) {
+			sc_log(ctx, "Too large modulus length");
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
 		init_key_object(&key_obj, abignum, keybits >> 3);
 		r = cardos_key_algorithm(key_info->usage, keybits, &algorithm);
 		LOG_TEST_RET(ctx, r, "cardos_key_algorithm failed");
@@ -486,9 +490,7 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	 * "no padding required". */
 	maxlen = MIN(profile->pin_maxlen, sizeof(pinpadded));
 	if (pin_len > maxlen) {
-		sc_log(card->ctx,
-			 "invalid pin length: %"SC_FORMAT_LEN_SIZE_T"u (max %u)\n",
-			 pin_len, maxlen);
+		sc_log(card->ctx, "invalid pin length: %zu (max %u)", pin_len, maxlen);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	memcpy(pinpadded, pin, pin_len);

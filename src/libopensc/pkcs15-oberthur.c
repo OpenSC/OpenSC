@@ -415,9 +415,7 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
 		struct container *cont;
 		unsigned char *ptr =  buff + offs + 2;
 
-		sc_log(ctx,
-		       "parse contaniers offs:%"SC_FORMAT_LEN_SIZE_T"u, len:%"SC_FORMAT_LEN_SIZE_T"u",
-		       offs, len);
+		sc_log(ctx, "parse contaniers offs:%zu, len:%zu", offs, len);
 		if (*(buff + offs) != 'R')
 			return SC_ERROR_INVALID_DATA;
 
@@ -1130,9 +1128,8 @@ sc_pkcs15emu_oberthur_init(struct sc_pkcs15_card * p15card)
 				&oberthur_infos[ii].content, &oberthur_infos[ii].len, 1);
 		LOG_TEST_GOTO_ERR(ctx, rv, "Oberthur init failed: read oberthur file error");
 
-		sc_log(ctx,
-		       "Oberthur init: parse %s file, content length %"SC_FORMAT_LEN_SIZE_T"u",
-		       oberthur_infos[ii].name, oberthur_infos[ii].len);
+		sc_log(ctx, "Oberthur init: parse %s file, content length %zu",
+				oberthur_infos[ii].name, oberthur_infos[ii].len);
 		rv = oberthur_infos[ii].parser(p15card, oberthur_infos[ii].content, oberthur_infos[ii].len,
 				oberthur_infos[ii].postpone_allowed);
 		LOG_TEST_GOTO_ERR(ctx, rv, "Oberthur init failed: parse error");

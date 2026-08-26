@@ -33,6 +33,7 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "asn1.h"
 #include "opensc.h"
 #include "cardctl.h"
 #include "internal.h"
@@ -90,20 +91,26 @@ static void cwa_trace_apdu(sc_card_t * card, sc_apdu_t * apdu, int flag)
 		if (apdu->datalen > 0) {	/* apdu data to show */
 			sc_hex_dump(apdu->data, apdu->datalen, buf, sizeof(buf));
 			sc_log(card->ctx,
-			       "\nAPDU before encode: ==================================================\nCLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02"SC_FORMAT_LEN_SIZE_T"X Le: %02"SC_FORMAT_LEN_SIZE_T"X DATA: [%5"SC_FORMAT_LEN_SIZE_T"u bytes]\n%s======================================================================\n",
-			       apdu->cla, apdu->ins, apdu->p1, apdu->p2,
-			       apdu->lc, apdu->le, apdu->datalen, buf);
+					"\nAPDU before encode: ==================================================\n"
+					"CLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02zX Le: %02zX DATA: [%5zu bytes]\n"
+					"%s======================================================================\n",
+					apdu->cla, apdu->ins, apdu->p1, apdu->p2,
+					apdu->lc, apdu->le, apdu->datalen, buf);
 		} else {	/* apdu data field is empty */
 			sc_log(card->ctx,
-			       "\nAPDU before encode: ==================================================\nCLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02"SC_FORMAT_LEN_SIZE_T"X Le: %02"SC_FORMAT_LEN_SIZE_T"X (NO DATA)\n======================================================================\n",
-			       apdu->cla, apdu->ins, apdu->p1, apdu->p2,
-			       apdu->lc, apdu->le);
+					"\nAPDU before encode: ==================================================\n"
+					"CLA: %02X INS: %02X P1: %02X P2: %02X Lc: %02zX Le: %02zX (NO DATA)\n"
+					"======================================================================\n",
+					apdu->cla, apdu->ins, apdu->p1, apdu->p2,
+					apdu->lc, apdu->le);
 		}
 	} else {		/* apdu response */
 		sc_hex_dump(apdu->resp, apdu->resplen, buf, sizeof(buf));
 		sc_log(card->ctx,
-		       "\nAPDU response after decode: ==========================================\nSW1: %02X SW2: %02X RESP: [%5"SC_FORMAT_LEN_SIZE_T"u bytes]\n%s======================================================================\n",
-		       apdu->sw1, apdu->sw2, apdu->resplen, buf);
+				"\nAPDU response after decode: ==========================================\n"
+				"SW1: %02X SW2: %02X RESP: [%5zu bytes]\n"
+				"%s======================================================================\n",
+				apdu->sw1, apdu->sw2, apdu->resplen, buf);
 	}
 }
 
@@ -235,8 +242,8 @@ static int cwa_parse_tlv(sc_card_t * card,
 			 cwa_tlv_t tlv_array[]
     )
 {
-	size_t n = 0;
-	size_t next = 0;
+	const u8 *p = buffer;
+	size_t left = datalen;
 	sc_context_t *ctx = NULL;
 
 	/* preliminary checks */
@@ -249,10 +256,24 @@ static int cwa_parse_tlv(sc_card_t * card,
 	if (!tlv_array)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	for (n = 0; n < datalen; n += next) {
-		cwa_tlv_t *tlv = NULL;	/* pointer to TLV structure to store info */
-		size_t j = 2;	/* TLV has at least two bytes */
-		switch (*(buffer + n)) {
+	while (left > 0) {
+		unsigned int cla = 0, tag_val = 0;
+		size_t tag_len = 0, header_len;
+		const u8 *tlv_start = p;
+		cwa_tlv_t *tlv = NULL;
+		u8 raw_tag;
+
+		int r = sc_asn1_read_tag(&p, left, &cla, &tag_val, &tag_len);
+		if (r != SC_SUCCESS) {
+			sc_log(ctx, "Failed to parse ASN.1 tag");
+			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+		}
+
+		header_len = (p - tlv_start);
+		left -= header_len;
+
+		raw_tag = (cla | tag_val);
+		switch (raw_tag) {
 		case CWA_SM_PLAIN_TAG:
 			tlv = &tlv_array[0];
 			break;	/* 0x81 Plain  */
@@ -266,50 +287,19 @@ static int cwa_parse_tlv(sc_card_t * card,
 			tlv = &tlv_array[3];
 			break;	/* 0x99 Status */
 		default:	/* CWA_SM_LE_TAG (0x97) is not valid here */
-			sc_log(ctx, "Invalid TLV Tag type: '0x%02X'",
-			       *(buffer + n));
+			sc_log(ctx, "Invalid TLV Tag type: '0x%02X'", raw_tag);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 		}
-		tlv->buf = buffer + n;
-		tlv->tag = 0xff & *(buffer + n);
-		tlv->len = 0;	/* temporary */
-		/* evaluate len and start of data */
-		switch (0xff & *(buffer + n + 1)) {
-		case 0x84:
-			tlv->len = (0xff & *(buffer + n + j++));
-			/* fall through */
-		case 0x83:
-			tlv->len =
-			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
-			/* fall through */
-		case 0x82:
-			tlv->len =
-			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
-			/* fall through */
-		case 0x81:
-			tlv->len =
-			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
-			break;
-			/* case 0x80 is not standard, but official code uses it */
-		case 0x80:
-			tlv->len =
-			    (tlv->len << 8) + (0xff & *(buffer + n + j++));
-			break;
-		default:
-			if ((*(buffer + n + 1) & 0xff) < 0x80) {
-				tlv->len = 0xff & *(buffer + n + 1);
-			} else {
-				sc_log(ctx, "Invalid tag length indicator: %d",
-				       *(buffer + n + 1));
-				LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
-			}
-		}
-		tlv->data = buffer + n + j;
-		tlv->buflen = j + tlv->len;
-		sc_log(ctx, "Found Tag: '0x%02X': Length: '%"SC_FORMAT_LEN_SIZE_T"u' Value:\n%s",
-		       tlv->tag, tlv->len, sc_dump_hex(tlv->data, tlv->len));
+		tlv->buf = (u8 *)tlv_start;
+		tlv->tag = raw_tag;
+		tlv->len = tag_len;
+		tlv->data = (u8 *)p;
+		tlv->buflen = header_len + tag_len;
+		sc_log(ctx, "Found Tag: '0x%02X': Length: '%zu' Value:\n%s",
+				tlv->tag, tlv->len, sc_dump_hex(tlv->data, tlv->len));
 		/* set index to next Tag to jump to */
-		next = tlv->buflen;
+		p += tag_len;
+		left -= tag_len;
 	}
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);	/* mark no error */
 }
@@ -908,7 +898,7 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 	u8 *buf1 = NULL;	/* to decrypt with our private key */
 	u8 *buf2 = NULL;	/* to try SIGNUM==SIG */
 	u8 *buf3 = NULL;	/* to try SIGNUM==N.ICC-SIG */
-	size_t len1 = 128, len2 = 128, len3 = 128;
+	size_t len1 = 128, len2 = 128, len3 = 128, bn_len = 0;
 	BIGNUM *bn = NULL;
 	BIGNUM *sigbn = NULL;
 	sc_context_t *ctx = NULL;
@@ -1026,6 +1016,12 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		sc_log_openssl(ctx);
 		msg = "Verify Signature: evaluation of N.ICC-SIG failed";
 		res = SC_ERROR_INTERNAL;
+		goto verify_internal_done;
+	}
+	bn_len = (size_t)BN_num_bytes(sigbn);
+	if (bn_len == 0 || bn_len > len2) {
+		msg = "Verify Signature: unsupported RSA size";
+		res = SC_ERROR_INVALID_DATA;
 		goto verify_internal_done;
 	}
 	len2 = BN_bn2bin(sigbn, buf2);	/* copy result to buffer */
@@ -1687,7 +1683,7 @@ int cwa_encode_apdu(sc_card_t * card,
 
 	/* compose and add computed MAC TLV to result buffer */
 	tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
-	sc_log(ctx, "Using TLV length: %"SC_FORMAT_LEN_SIZE_T"u", tlv_len);
+	sc_log(ctx, "Using TLV length: %zu", tlv_len);
 	res = cwa_compose_tlv(card, 0x8E, tlv_len, macbuf, &apdubuf, &apdulen);
 	if (res != SC_SUCCESS) {
 		msg = "Encode APDU compose_tlv(0x87) failed";

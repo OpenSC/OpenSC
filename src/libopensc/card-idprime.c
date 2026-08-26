@@ -332,11 +332,16 @@ static int idprime_process_containermap(sc_card_t *card, idprime_private_data_t 
 		}
 		const int got = iso_ops->read_binary(card, r, buf + r, read_length, 0);
 		if (got < 1) {
-			r = SC_ERROR_WRONG_LENGTH;
+			if (got < 0) {
+				r = got;
+			} else {
+				r = SC_ERROR_WRONG_LENGTH;
+			}
 			goto done;
 		}
 
 		r += got;
+
 		/* Try to read chunks of container size and stop when last container looks empty */
 		container_index = r > CONTAINER_OBJ_LEN ? (r / CONTAINER_OBJ_LEN - 1) * CONTAINER_OBJ_LEN : 0;
 	} while(length - r > 0 && buf[container_index] != 0);
@@ -593,9 +598,8 @@ static int idprime_init(sc_card_t *card)
 			break;
 		}
 	} else {
-		sc_log(card->ctx, "Failed to get CPLC data or invalid length returned, "
-			"err=%d, len=%"SC_FORMAT_LEN_SIZE_T"u",
-			r, apdu.resplen);
+		sc_log(card->ctx, "Failed to get CPLC data or invalid length returned, err=%d, len=%zu",
+				r, apdu.resplen);
 	}
 
 	/* Proprietary data -- Applet version */
@@ -967,8 +971,7 @@ static int idprime_read_binary(sc_card_t *card, unsigned int offset,
 	int size;
 	size_t sz;
 
-	sc_log(card->ctx, "called; %"SC_FORMAT_LEN_SIZE_T"u bytes at offset %d",
-		count, offset);
+	sc_log(card->ctx, "called; %zu bytes at offset %d", count, offset);
 
 	if (!priv->cached && offset == 0) {
 		/* Read what was reported by FCI from select command */
@@ -1056,6 +1059,7 @@ idprime_set_security_env(struct sc_card *card,
 		} else { /* RSA-PKCS without hashing */
 			new_env.algorithm_ref = 0x1A;
 		}
+		priv->current_op = SC_ALGORITHM_RSA;
 		break;
 	case SC_SEC_OPERATION_SIGN:
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PSS) {
@@ -1104,19 +1108,19 @@ idprime_compute_signature(struct sc_card *card,
 	u8 rbuf[4096]; /* needs work. for 3072 keys, needs 384+2 or so */
 	size_t rbuflen = sizeof(rbuf);
 	idprime_private_data_t *priv = card->drv_data;
+	size_t pad = 0;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/* The data for ECDSA should be padded to the length of a multiple of 8 */
+	if (priv->current_op == SC_ALGORITHM_EC && datalen % 8 != 0) {
+		pad = 8 - (datalen % 8);
+		datalen += pad;
+	}
 
 	/* We should be signing hashes only so we should not reach this limit */
 	if (datalen + 2 > sizeof(sbuf)) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
-	}
-
-	/* The data for ECDSA should be padded to the length of a multiple of 8 */
-	size_t pad = 0;
-	if (priv->current_op == SC_ALGORITHM_EC && datalen % 8 != 0) {
-		pad = 8 - (datalen % 8);
-		datalen += pad;
 	}
 
 	p = sbuf;
@@ -1185,9 +1189,7 @@ idprime_decipher(struct sc_card *card,
 	}
 	LOG_FUNC_CALLED(card->ctx);
 	priv = card->drv_data;
-	sc_log(card->ctx,
-		"IDPrime decipher: in-len %"SC_FORMAT_LEN_SIZE_T"u, out-len %"SC_FORMAT_LEN_SIZE_T"u",
-		crgram_len, outlen);
+	sc_log(card->ctx, "IDPrime decipher: in-len %zu, out-len %zu", crgram_len, outlen);
 
 	sbuf = malloc(crgram_len + 1);
 	if (sbuf == NULL)

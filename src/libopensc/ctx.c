@@ -135,6 +135,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "masktech",	(void *(*)(void)) sc_get_masktech_driver },
 	{ "idprime",	(void *(*)(void)) sc_get_idprime_driver },
+	{ "cedulauy",	(void *(*)(void)) sc_get_cedulauy_driver },
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 	{ "edo",        (void *(*)(void)) sc_get_edo_driver },
 	{ "lteid", (void *(*)(void)) sc_get_lteid_driver },
@@ -1032,6 +1033,8 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 	ctx->reader_driver = sc_get_ctapi_driver();
 #elif defined(ENABLE_OPENCT)
 	ctx->reader_driver = sc_get_openct_driver();
+#else
+	ctx->reader_driver = sc_get_empty_driver();
 #endif
 
 	r = ctx->reader_driver->ops->init(ctx);

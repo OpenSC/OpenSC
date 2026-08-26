@@ -126,14 +126,14 @@ if test -e OpenSCToken -a -n "${CODE_SIGN_IDENTITY}" -a -n "${DEVELOPMENT_TEAM}"
 		cd OpenSC && git pull && cd ..
 	fi
 	mkdir -p build
-	if ! test -e build/openssl; then
-		# build/openssl/lib/libcrypto.a is hardcoded in OpenSCToken
-		ln -sf $BUILDPATH/openssl_bin/$PREFIX build/openssl
+	if ! test -e build/openssl_bin; then
+		# build/openssl_bin/lib/libcrypto.a is hardcoded in OpenSCToken
+		ln -sf $BUILDPATH/openssl_bin/$PREFIX build/openssl_bin
 		# in OpenSCToken's variant of OpenSC we still use OpenSSL flags from above
 	fi
-	if ! test -e build/openpace; then
-		# build/openpace/lib/libeac.a is hardcoded in OpenSCToken
-		ln -sf $BUILDPATH/openpace_bin/$PREFIX build/openpace
+	if ! test -e build/openpace_bin; then
+		# build/openpace_bin/lib/libeac.a is hardcoded in OpenSCToken
+		ln -sf $BUILDPATH/openpace_bin/$PREFIX build/openpace_bin
 		# in OpenSCToken's variant of OpenSC we still use OpenPACE flags from above
 	fi
 	BP=${BUILDPATH}

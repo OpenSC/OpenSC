@@ -393,7 +393,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
     CK_ULONG message_length, test_mech_t *mech, unsigned char *sign,
     CK_ULONG sign_length)
 {
-	CK_RV rv;
+	int rv;
 	CK_BYTE *cmp_message = NULL;
 	unsigned int cmp_message_length = 0;
 
@@ -415,7 +415,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 			    (rv = EVP_PKEY_CTX_set_rsa_padding(ctx, padding)) <= 0 ||
 			    (rv = EVP_PKEY_verify(ctx, sign, sign_length, message, message_length)) != 1) {
 				fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
-					o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
+						o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 				EVP_PKEY_CTX_free(ctx);
 				return -1;
 			}
@@ -474,7 +474,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		    (rv = EVP_DigestVerifyInit(mdctx, NULL, md, NULL, o->key) <= 0) ||
 		    (rv = EVP_DigestVerify(mdctx, sign, sign_length, message, message_length)) != 1) {
 			fprintf(stderr, " [ ERROR %s ] Signature is not valid. Error: %s\n",
-				o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
+					o->id_str, ERR_error_string(ERR_peek_last_error(), NULL));
 			EVP_MD_CTX_free(mdctx);
 			return -1;
 		}
@@ -570,12 +570,12 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		EVP_PKEY_CTX_free(ctx);
 		if (rv == 1) {
 			debug_print(" [  OK %s ] EC Signature of length %lu is valid.",
-				o->id_str, message_length);
+					o->id_str, message_length);
 			mech->result_flags |= FLAGS_SIGN_OPENSSL;
 			return 1;
 		} else {
-			fprintf(stderr, " [FAIL %s ] EVP_PKEY_verify: rv = %lu: %s\n", o->id_str,
-				rv, ERR_error_string(ERR_peek_last_error(), NULL));
+			fprintf(stderr, " [FAIL %s ] EVP_PKEY_verify: rv = %d: %s\n", o->id_str,
+					rv, ERR_error_string(ERR_peek_last_error(), NULL));
 			return -1;
 		}
 		break;
@@ -593,28 +593,82 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 
 		rv = EVP_DigestVerifyInit(ctx, NULL, NULL, NULL, o->key);
 		if (rv != 1) {
-			fprintf(stderr, " [FAIL %s ] EVP_DigestVerifyInit: rv = %lu: %s\n", o->id_str,
-				rv, ERR_error_string(ERR_peek_last_error(), NULL));
+			fprintf(stderr, " [FAIL %s ] EVP_DigestVerifyInit: rv = %d: %s\n", o->id_str,
+					rv, ERR_error_string(ERR_peek_last_error(), NULL));
 			EVP_MD_CTX_free(ctx);
 			return -1;
 		}
 
 		rv = EVP_DigestVerify(ctx, sign, sign_length, message, message_length);
+		EVP_MD_CTX_free(ctx);
 		if (rv == 1) {
 			debug_print(" [  OK %s ] EdDSA Signature of length %lu is valid.",
-				o->id_str, message_length);
+					o->id_str, message_length);
 			mech->result_flags |= FLAGS_SIGN_OPENSSL;
-			EVP_MD_CTX_free(ctx);
 			return 1;
 		} else {
-			fprintf(stderr, " [FAIL %s ] EVP_DigestVerifyInit: rv = %lu: %s\n", o->id_str,
-				rv, ERR_error_string(ERR_peek_last_error(), NULL));
-			EVP_MD_CTX_free(ctx);
+			fprintf(stderr, " [FAIL %s ] EVP_DigestVerify: rv = %d: %s\n", o->id_str,
+					rv, ERR_error_string(ERR_peek_last_error(), NULL));
 			return -1;
 		}
 		break;
 	}
 #endif /* defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_ED448) */
+#ifdef EVP_PKEY_ML_DSA_44
+	case EVP_PKEY_ML_DSA_44:
+	case EVP_PKEY_ML_DSA_65:
+	case EVP_PKEY_ML_DSA_87: {
+		const char *name = NULL;
+		EVP_SIGNATURE *sig = NULL;
+		EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_from_pkey(NULL, o->key, NULL);
+		if (ctx == NULL) {
+			fprintf(stderr, " [FAIL %s ] EVP_PKEY_CTX_new_from_pkey: %s\n", o->id_str,
+				ERR_error_string(ERR_peek_last_error(), NULL));
+			return -1;
+		}
+
+		switch (o->type) {
+		case EVP_PKEY_ML_DSA_44:
+			name = "ML-DSA-44";
+			break;
+		case EVP_PKEY_ML_DSA_65:
+			name = "ML-DSA-65";
+			break;
+		case EVP_PKEY_ML_DSA_87:
+			name = "ML-DSA-87";
+			break;
+		}
+
+		sig = EVP_SIGNATURE_fetch(NULL, name, NULL);
+		if (sig == NULL) {
+			fprintf(stderr, " [FAIL %s ] EVP_SIGNATURE_fetch: %s\n", o->id_str,
+					ERR_error_string(ERR_peek_last_error(), NULL));
+			return -1;
+		}
+
+		rv = EVP_PKEY_verify_message_init(ctx, sig, NULL);
+		if (rv <= 0) {
+			fprintf(stderr, " [FAIL %s ] EVP_PKEY_verify_message_init: rv = %d: %s\n", o->id_str,
+					rv, ERR_error_string(ERR_peek_last_error(), NULL));
+			EVP_PKEY_CTX_free(ctx);
+			return -1;
+		}
+
+		rv = EVP_PKEY_verify(ctx, sign, sign_length, message, message_length);
+		EVP_PKEY_CTX_free(ctx);
+		if (rv == 1) {
+			debug_print(" [  OK %s ] ML-DSA Signature of length %lu is valid.",
+					o->id_str, message_length);
+			mech->result_flags |= FLAGS_SIGN_OPENSSL;
+			return 1;
+		} else {
+			fprintf(stderr, " [FAIL %s ] EVP_PKEY_verify: rv = %d: %s\n", o->id_str,
+					rv, ERR_error_string(ERR_peek_last_error(), NULL));
+			return -1;
+		}
+		break;
+	}
+#endif /* EVP_PKEY_ML_DSA_44 */
 	default:
 		fprintf(stderr, " [ KEY %s ] Unknown type. Not verifying\n", o->id_str);
 	}

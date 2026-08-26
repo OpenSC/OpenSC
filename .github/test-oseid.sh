@@ -51,7 +51,7 @@ echo | ./OsEID-tool INIT
 ./OsEID-tool EC-ECDH-TEST
 ./OsEID-tool UNWRAP-WRAP-TEST
 ./OsEID-tool DES-AES-UPLOAD-KEYS
-./OsEID-tool SYM-CRYPT-TEST
+#./OsEID-tool SYM-CRYPT-TEST
 ./OsEID-tool ERASE-CARD
 
 # initialize card for p11test

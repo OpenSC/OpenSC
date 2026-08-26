@@ -462,13 +462,13 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 					}
 					if (size > MAX_FILE_SIZE) {
 						file->size = MAX_FILE_SIZE;
-						sc_log(ctx, "  file size truncated, encoded length: %"SC_FORMAT_LEN_SIZE_T"u", size);
+						sc_log(ctx, "  file size truncated, encoded length: %zu", size);
 					} else {
 						file->size = size;
 					}
 				}
 
-				sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u", file->size);
+				sc_log(ctx, "  bytes in file: %zu", file->size);
 				break;
 
 			case 0x82:
@@ -508,8 +508,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 							file->record_length = (length > 3)
 								? bebytes2ushort(p+2)
 								: p[2];
-							sc_log(ctx, "  record length: %"SC_FORMAT_LEN_SIZE_T"u",
-								file->record_length);
+							sc_log(ctx, "  record length: %zu", file->record_length);
 						}
 
 						/* number of records */
@@ -517,8 +516,7 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 							file->record_count = (length > 5)
 								? bebytes2ushort(p+4)
 								: p[4];
-							sc_log(ctx, "  records: %"SC_FORMAT_LEN_SIZE_T"u",
-								file->record_count);
+							sc_log(ctx, "  records: %zu", file->record_count);
 						}
 					}
 
@@ -1106,9 +1104,7 @@ iso7816_compute_signature(struct sc_card *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx,
-	       "ISO7816 compute signature: in-len %"SC_FORMAT_LEN_SIZE_T"u, out-len %"SC_FORMAT_LEN_SIZE_T"u",
-	       datalen, outlen);
+	sc_log(card->ctx, "ISO7816 compute signature: in-len %zu, out-len %zu", datalen, outlen);
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature
@@ -1148,9 +1144,7 @@ iso7816_decipher(struct sc_card *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx,
-	       "ISO7816 decipher: in-len %"SC_FORMAT_LEN_SIZE_T"u, out-len %"SC_FORMAT_LEN_SIZE_T"u",
-	       crgram_len, outlen);
+	sc_log(card->ctx, "ISO7816 decipher: in-len %zu, out-len %zu", crgram_len, outlen);
 
 	sbuf = malloc(crgram_len + 1);
 	if (sbuf == NULL)

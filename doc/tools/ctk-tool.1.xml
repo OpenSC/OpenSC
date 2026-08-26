@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="ctk-tool">
+	<refmeta>
+		<refentrytitle>ctk-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>ctk-tool</refname>
+		<refpurpose>tool for accessing CryptoTokenKit</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>ctk-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>ctk-tool</command> utility is used for accessing macOS CryptoTokenKit tokens.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option>
+					</term>
+					<listitem><para>Print help and exit.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--version</option>,
+						<option>-V</option>
+					</term>
+					<listitem><para>Print version and exit.</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--test</option>,
+						<option>-t</option>
+					</term>
+					<listitem><para>
+						Test encryption, decryption and signature with available tokens (default=off).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--test-threads</option>=<replaceable>INT</replaceable>
+					</term>
+					<listitem><para>
+						Specify the number of threads that should execute <option>--test</option> in parallel (default=`1').
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--list-objects</option>,
+						<option>-O</option>
+					</term>
+					<listitem><para>
+						Show objects on tokens (default=off).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--export-certificates</option>,
+						<option>-C</option>
+					</term>
+					<listitem><para>
+						Export certificates (default=off).
+					</para></listitem>
+				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--certificate-format</option>=<replaceable>ENUM</replaceable>,
+						<option>-F</option> <replaceable>ENUM</replaceable>
+					</term>
+					<listitem><para>
+						Format of certificates (possible values="PEM", "DER" default=`PEM').
+					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>ctk-tool</command> was written by
+		Frank Morgner <email>frankmorgner@gmail.com</email>.</para>
+	</refsect1>
+
+	<!--
+	<refsect1>
+		<title>Reporting Bugs</title>
+		<para>Report bugs to <ulink url="@PACKAGE_BUGREPORT@">@PACKAGE_BUGREPORT@</ulink>.</para>
+	</refsect1>
+	-->
+</refentry>

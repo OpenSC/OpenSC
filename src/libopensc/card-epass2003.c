@@ -961,6 +961,11 @@ construct_data_tlv(struct sc_card *card, struct sc_apdu *apdu, unsigned char *ap
 
 	exdata = (epass2003_exdata *)card->drv_data;
 
+	/* we encrypt the pad buffer and then write it to the apdu_buf at offset block_size + tlv_more */
+	if (apdu->lc >= sizeof(pad) - block_size - 5)
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA,
+				"ePass2003 secure messaging APDU data too large");
+
 	/* padding */
 	apdu_buf[block_size] = 0x87;
 	memcpy(pad, apdu->data, apdu->lc);
@@ -1043,6 +1048,10 @@ construct_mac_tlv(struct sc_card *card, unsigned char *apdu_buf, size_t data_tlv
 
 	exdata = (epass2003_exdata *)card->drv_data;
 
+	if (data_tlv_len + le_tlv_len + block_size + 1 > sizeof(mac)) {
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
+
 	if (0 == data_tlv_len && 0 == le_tlv_len) {
 		mac_len = block_size;
 	} else {
@@ -1122,6 +1131,10 @@ construct_mac_tlv_case1(struct sc_card *card, unsigned char *apdu_buf, size_t da
 
 	exdata = (epass2003_exdata *)card->drv_data;
 
+	if (data_tlv_len + le_tlv_len + block_size + 1 > sizeof(mac)) {
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	}
+
 	if (0 == data_tlv_len && 0 == le_tlv_len) {
 		mac_len = block_size;
 	} else {
@@ -1195,6 +1208,7 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 	size_t mac_tlv_len = 10;
 	size_t tmp_lc = 0;
 	size_t tmp_le = 0;
+	size_t expected_total_len;
 	unsigned char mac_tlv[256] = {0};
 	epass2003_exdata *exdata = NULL;
 
@@ -1249,6 +1263,13 @@ encode_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu *sm,
 	} else {
 		apdu_buf[4] = (unsigned char)sm->lc;
 		tmp_lc = 1;
+	}
+
+	/* 2 is for Le extension in the worst case */
+	expected_total_len = 4 + tmp_lc + data_tlv_len + le_tlv_len + mac_tlv_len + 2;
+
+	if (expected_total_len > *apdu_buf_len) {
+	    return SC_ERROR_BUFFER_TOO_SMALL;
 	}
 
 	memcpy(apdu_buf + 4 + tmp_lc, dataTLV, data_tlv_len);
@@ -1520,9 +1541,7 @@ epass2003_sm_unwrap_apdu(struct sc_card *card, struct sc_apdu *sm, struct sc_apd
 	plain->sw1 = sm->sw1;
 	plain->sw2 = sm->sw2;
 
-	sc_log(card->ctx,
-	       "unwrapped APDU: resplen %"SC_FORMAT_LEN_SIZE_T"u, SW %02X%02X",
-	       plain->resplen, plain->sw1, plain->sw2);
+	sc_log(card->ctx, "unwrapped APDU: resplen %zu, SW %02X%02X", plain->resplen, plain->sw1, plain->sw2);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -2173,6 +2192,10 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 0;
 
+		if (datalen > sizeof(sbuf)) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
+
 		memcpy(sbuf, data, datalen);
 		apdu.data = sbuf;
 		apdu.lc = datalen;
@@ -2182,6 +2205,10 @@ static int epass2003_decipher(struct sc_card *card, const u8 * data, size_t data
 		apdu.resp = rbuf;
 		apdu.resplen = sizeof(rbuf);
 		apdu.le = 256;
+
+		if (datalen > sizeof(sbuf)) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
 
 		memcpy(sbuf, data, datalen);
 		apdu.data = sbuf;
@@ -2284,8 +2311,7 @@ epass2003_process_fci(struct sc_card *card, sc_file_t * file, const u8 * buf, si
 		file->size = tag[0];
 		if (taglen == 2)
 			file->size = (file->size << 8) + tag[1];
-		sc_log(ctx, "  bytes in file: %"SC_FORMAT_LEN_SIZE_T"u",
-			   file->size);
+		sc_log(ctx, "  bytes in file: %zu", file->size);
 	}
 
 	if (tag == NULL) {
@@ -2481,6 +2507,9 @@ epass2003_construct_fci(struct sc_card *card, const sc_file_t * file,
 		}
 	}
 	if (file->sec_attr_len) {
+		if (file->sec_attr_len > sizeof(buf)) {
+			return SC_ERROR_INVALID_DATA;
+		}
 		memcpy(buf, file->sec_attr, file->sec_attr_len);
 		sc_asn1_put_tag(0x86, buf, file->sec_attr_len, p, *outlen - (p - out), &p);
 

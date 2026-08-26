@@ -6,7 +6,7 @@ on:
       - '**.c'
       - '**.h'
       - '**.sh'
-      - .github/workflows/fedora.yml
+      - .github/workflows/external-pkcs11.yaml
       - '**.am'
       - doc/**
       - configure.ac
@@ -38,7 +38,7 @@ jobs:
       BUILD_PATH: ./
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Fedora
         run: .github/setup-fedora.sh kryoptic
       - name: Install OpenSC
@@ -52,8 +52,8 @@ jobs:
       SOURCE_PATH: ./
       BUILD_PATH: ./
     steps:
-      - uses: actions/checkout@v6
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: actions/checkout@v7
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-20-base
@@ -73,8 +73,8 @@ jobs:
       SOURCE_PATH: ./
       BUILD_PATH: ./
     steps:
-      - uses: actions/checkout@v6
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: actions/checkout@v7
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-20-base
@@ -97,7 +97,7 @@ jobs:
       BUILD_PATH: ./
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Setup Fedora
         run: .github/setup-fedora.sh kryoptic
       - name: Install OpenSC

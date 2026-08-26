@@ -62,6 +62,18 @@ initialize_cryptoki(token_info_t *info)
 	return 0;
 }
 
+int finalize_token(token_info_t *info)
+{
+	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
+
+	info->session_handle = 0;
+	debug_print("Closing all sessions");
+	function_pointer->C_CloseAllSessions(info->slot_id);
+	debug_print("Finalize CRYPTOKI");
+	function_pointer->C_Finalize(NULL_PTR);
+	return 0;
+}
+
 int token_initialize(void **state)
 {
 	token_info_t *info = (token_info_t *) *state;
@@ -80,6 +92,7 @@ void logfile_init(token_info_t *info)
 
 	if ((info->log.fd = fopen(token.log.outfile, "w")) == NULL) {
 		fail_msg("Couldn't open file for test results.");
+		finalize_token(info);
 		exit(1);
 	}
 	fprintf(info->log.fd, "{\n\"time\": 0,\n\"results\": [");
@@ -160,18 +173,6 @@ int prepare_token(token_info_t *info)
 	return 0;
 }
 
-int finalize_token(token_info_t *info)
-{
-	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
-
-	info->session_handle = 0;
-	debug_print("Closing all sessions");
-	function_pointer->C_CloseAllSessions(info->slot_id);
-	debug_print("Finalize CRYPTOKI");
-	function_pointer->C_Finalize(NULL_PTR);
-	return 0;
-}
-
 int user_login_setup(void **state)
 {
 	token_info_t *info = (token_info_t *) *state;
@@ -180,6 +181,7 @@ int user_login_setup(void **state)
 
 	if (prepare_token(info)) {
 		fail_msg("Could not prepare token.\n");
+		finalize_token(info);
 		exit(1);
 	}
 
@@ -189,6 +191,7 @@ int user_login_setup(void **state)
 
 	if (rv != CKR_OK) {
 		fail_msg("Could not login to token with user PIN '%s'\n", token.pin);
+		finalize_token(info);
 		exit(1);
 	}
 
@@ -213,6 +216,7 @@ int token_setup(void **state)
 
 	if (prepare_token(info)) {
 		fail_msg("Could not prepare token.\n");
+		finalize_token(info);
 		exit(1);
 	}
 
@@ -226,4 +230,3 @@ int token_cleanup(void **state)
 	finalize_token(info);
 	return 0;
 }
-

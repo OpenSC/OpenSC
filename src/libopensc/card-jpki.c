@@ -83,9 +83,7 @@ jpki_finish(sc_card_t * card)
 
 	LOG_FUNC_CALLED(card->ctx);
 	if (drvdata) {
-		if (drvdata->mf) {
-			free(drvdata->mf);
-		}
+		sc_file_free(drvdata->mf);
 		free(drvdata);
 		card->drv_data = NULL;
 	}
@@ -147,9 +145,7 @@ jpki_select_file(struct sc_card *card,
 	struct sc_file *file = NULL;
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx,
-	       "jpki_select_file: path=%s, len=%"SC_FORMAT_LEN_SIZE_T"u",
-	       sc_print_path(path), path->len);
+	sc_log(card->ctx, "jpki_select_file: path=%s, len=%zu", sc_print_path(path), path->len);
 	if (path->len == 2 && memcmp(path->value, "\x3F\x00", 2) == 0) {
 		drvdata->selected = SELECT_MF;
 		if (file_out) {
@@ -287,11 +283,9 @@ jpki_set_security_env(sc_card_t * card,
 	sc_path_t path;
 
 	LOG_FUNC_CALLED(card->ctx);
-	sc_log(card->ctx,
-	       "flags=%08lx op=%d alg=%lu algf=%08lx algr=%08lx kr0=%02x, krfl=%"SC_FORMAT_LEN_SIZE_T"u",
-	       env->flags, env->operation, env->algorithm,
-	       env->algorithm_flags, env->algorithm_ref, env->key_ref[0],
-	       env->key_ref_len);
+	sc_log(card->ctx, "flags=%08lx op=%d alg=%lu algf=%08lx algr=%08lx kr0=%02x, krfl=%zu",
+			env->flags, env->operation, env->algorithm, env->algorithm_flags, env->algorithm_ref,
+			env->key_ref[0], env->key_ref_len);
 
 	switch (env->operation) {
 	case SC_SEC_OPERATION_SIGN:

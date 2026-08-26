@@ -2929,6 +2929,9 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			}
 			free(bytes);
 			rs_len = taglen - 1; // len is length of "04||x||y"
+			if (rs_len > (size_t)sz2) {
+				util_fatal("The signature file is too short");
+			}
 
 			if (sc_asn1_sig_value_sequence_to_rs(NULL, sig_buffer, sz2,
 				rs_buffer, rs_len)) {
@@ -4136,7 +4139,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 	int n_attr = 2;
 	CK_RV rv;
 	int fd;
-	unsigned char in_buffer[2048];
+	unsigned char in_buffer[16384];
 	CK_ULONG wrapped_key_length;
 	CK_BYTE_PTR pWrappedKey;
 	params_t params = {0};
@@ -4146,9 +4149,9 @@ unwrap_key(CK_SESSION_HANDLE session)
 	ssize_t sz;
 
 	if (!find_object(session, CKO_PRIVATE_KEY, &hUnwrappingKey,
-			 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
+			    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
 		if (!find_object(session, CKO_SECRET_KEY, &hUnwrappingKey,
-				 opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
+				    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
 			util_fatal("Private/secret key not found");
 
 	if (!opt_mechanism_used)
@@ -4192,6 +4195,10 @@ unwrap_key(CK_SESSION_HANDLE session)
 	} else if (strncasecmp(opt_key_type, "EC:", strlen("EC:")) == 0) {
 		length = "0"; // No key length for EC keys
 		key_type = CKK_EC;
+		class = CKO_PRIVATE_KEY;
+	} else if (strncasecmp(opt_key_type, "ML-DSA:", strlen("ML-DSA:")) == 0) {
+		length = "0";
+		key_type = CKK_ML_DSA;
 		class = CKO_PRIVATE_KEY;
 	} else {
 		util_fatal("Unsupported key type %s", opt_key_type);
@@ -4263,11 +4270,11 @@ unwrap_key(CK_SESSION_HANDLE session)
 
 	if (opt_allowed_mechanisms_len > 0) {
 		FILL_ATTR(keyTemplate[n_attr], CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
-			  sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+				sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
 		n_attr++;
 	}
 	rv = p11->C_UnwrapKey(session, &mechanism, hUnwrappingKey,
-			      pWrappedKey, wrapped_key_length, keyTemplate, n_attr, &hSecretKey);
+			pWrappedKey, wrapped_key_length, keyTemplate, n_attr, &hSecretKey);
 	if (rv != CKR_OK)
 		p11_fatal("C_UnwrapKey", rv);
 
@@ -4919,10 +4926,10 @@ evp_pkey2ck_key_type(EVP_PKEY *pkey, CK_KEY_TYPE *type, int *pk_type, struct ec_
 		return CKR_OK;
 #endif
 
-#if defined(EVP_PKEY_ML_KEM_512) && defined(EVP_PKEY_ML_KEM_768) && defined(EVP_PKEY_ML_KEM_1024)
-	case EVP_PKEY_ML_KEM_512:
-	case EVP_PKEY_ML_KEM_768:
-	case EVP_PKEY_ML_KEM_1024:
+#if defined(NID_ML_KEM_512) && defined(NID_ML_KEM_768) && defined(NID_ML_KEM_1024)
+	case NID_ML_KEM_512:
+	case NID_ML_KEM_768:
+	case NID_ML_KEM_1024:
 		*type = CKK_ML_KEM;
 		return CKR_OK;
 #endif
@@ -6133,6 +6140,8 @@ derive_ec_key(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key, CK_MECHANISM_TYPE
 	memset(&mech, 0, sizeof(mech));
 	mech.mechanism = mech_mech;
 
+	if (opt_input == NULL)
+		util_fatal("Derive operation needs --input-file");
 	/*  Use OpenSSL to read the other public key, and get the raw version */
 	bio_in = BIO_new(BIO_s_file());
 	if (BIO_read_filename(bio_in, opt_input) <= 0)
@@ -8435,6 +8444,7 @@ static int sign_verify_openssl(CK_SESSION_HANDLE session,
 		errors++;
 	} else if (err != 1) {
 		printf("openssl error during verification: 0x%0x (%d)\n", err, err);
+		ERR_print_errors_fp(stdout);
 	} else
 		printf("OK\n");
 
@@ -9609,11 +9619,11 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 		fprintf(stderr, "ERR: newly generated private key has no (or an empty) CKA_ID\n");
 		return session;
 	}
-	opt_object_id_len = (size_t) i;
-	if (opt_object_id_len > sizeof(opt_object_id)) {
+	if ((size_t)i > sizeof(opt_object_id)) {
 		fprintf(stderr, "ERR: object ID too long\n");
 		return session;
 	}
+	opt_object_id_len = (size_t)i;
 	memcpy(opt_object_id, tmp, opt_object_id_len);
 
 	/* This is done in NSS */
@@ -9797,7 +9807,11 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 		printf("ERR: newly generated private key has no (or an empty) CKA_ID\n");
 		return;
 	}
-	i = (size_t) opt_object_id_len;
+	if ((size_t)i > sizeof(opt_object_id)) {
+		fprintf(stderr, "ERR: object ID too long\n");
+		return;
+	}
+	opt_object_id_len = (size_t)i;
 	memcpy(opt_object_id, tmp, opt_object_id_len);
 
 	/* This is done in NSS */
@@ -10429,6 +10443,7 @@ static struct mech_info	p11_mechanisms[] = {
 	{ CKM_POLY1305,	"POLY1305", NULL, MF_GENERIC_HMAC_FLAGS},
 	{ CKM_CHACHA20_POLY1305,	"CHACHA20-POLY1305", NULL, MF_UNKNOWN},
 	{ CKM_ML_DSA,	"ML-DSA", "mldsa", MF_UNKNOWN},
+	{ CKM_ML_DSA_KEY_PAIR_GEN, "ML-DSA-KEY-PAIR-GEN", NULL, MF_UNKNOWN},
 	{ CKM_HASH_ML_DSA_SHA224, "HASH-ML-DSA-SHA224", "mldsa-sha224", MF_UNKNOWN},
 	{ CKM_HASH_ML_DSA_SHA256, "HASH-ML-DSA-SHA256", "mldsa-sha256", MF_UNKNOWN},
 	{ CKM_HASH_ML_DSA_SHA384, "HASH-ML-DSA-SHA384", "mldsa-sha384", MF_UNKNOWN},
@@ -10440,7 +10455,9 @@ static struct mech_info	p11_mechanisms[] = {
 	{ CKM_HASH_ML_DSA_SHAKE128, "HASH-ML-DSA-SHAKE128", "mldsa-shake128", MF_UNKNOWN},
 	{ CKM_HASH_ML_DSA_SHAKE256, "HASH-ML-DSA-SHAKE256", "mldsa-shake256", MF_UNKNOWN},
 	{ CKM_ML_KEM,	"ML-KEM", "mlkem", MF_UNKNOWN},
+	{ CKM_ML_KEM_KEY_PAIR_GEN, "ML-KEM-KEY-PAIR-GEN", NULL, MF_UNKNOWN},
 	{ CKM_SLH_DSA,	"SLH-DSA", "slhdsa", MF_UNKNOWN},
+	{ CKM_SLH_DSA_KEY_PAIR_GEN, "SLH-DSA-KEY-PAIR-GEN", NULL, MF_UNKNOWN},
 	{ CKM_HASH_SLH_DSA_SHA224, "HASH-SLH-DSA-SHA224", "slhdsa-sha224", MF_UNKNOWN},
 	{ CKM_HASH_SLH_DSA_SHA256, "HASH-SLH-DSA-SHA256", "slhdsa-sha256", MF_UNKNOWN},
 	{ CKM_HASH_SLH_DSA_SHA384, "HASH-SLH-DSA-SHA384", "slhdsa-sha384", MF_UNKNOWN},

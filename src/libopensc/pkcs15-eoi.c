@@ -49,7 +49,7 @@ int sc_pkcs15emu_eoi_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 
 	/*
 	 * Some of the data is not accessible over the unencrypted channel
-	 * when contactless reader is used. So start SM now (if not yet establisahed).
+	 * when contactless reader is used. So start SM now (if not yet established).
 	 */
 	if (card->type == SC_CARD_TYPE_EOI_CONTACTLESS && card->sm_ctx.sm_mode == SM_MODE_NONE) {
 		int r = card->sm_ctx.ops.open(card);
@@ -119,7 +119,7 @@ int sc_pkcs15emu_eoi_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	 * If both PKCS#15 apps are enabled, prkey_mappings can already be partially filled up from the first PKCS#15 app
 	 * as the privdata is shared between both apps which use the same driver
 	  */
-	for (j = 0; privdata->prkey_mappings[j][1] != 0; j++) {
+	for (j = 0; j < MAX_OBJECTS && privdata->prkey_mappings[j][1] != 0; j++) {
 		/* NOP */
 	}
 	for (i = 0; i < len; i++) {
@@ -127,7 +127,7 @@ int sc_pkcs15emu_eoi_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		if ((objs[i]->auth_id.len == 8) && !strncmp((char*)objs[i]->auth_id.value, "Card PIN", 8)) {
 			memcpy(objs[i]->auth_id.value, "Norm PIN", 8);
 		}
-		if (prkey_info) {
+		if (prkey_info && j < MAX_OBJECTS) {
 			privdata->prkey_mappings[j][0] = prkey_info->key_reference;
 			privdata->prkey_mappings[j++][1] = 0xA0 + (i + 1);
 		}

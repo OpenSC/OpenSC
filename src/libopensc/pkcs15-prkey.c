@@ -493,8 +493,7 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 
 	key_info = (struct sc_pkcs15_prkey_info *) key_object->data;
 
-	sc_log(ctx, "CertValue(%"SC_FORMAT_LEN_SIZE_T"u) %p",
-	       cert_object->content.len, cert_object->content.value);
+	sc_log(ctx, "CertValue(%zu) %p", cert_object->content.len, cert_object->content.value);
 	mem = BIO_new_mem_buf(cert_object->content.value, (int)cert_object->content.len);
 	if (!mem) {
 		sc_log_openssl(ctx);
@@ -630,7 +629,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 #ifdef ENABLE_OPENSSL
 	EVP_PKEY *pk = (EVP_PKEY *)evp_key;
 	int pk_type;
-	 pk_type = EVP_PKEY_base_id(pk);
+	pk_type = EVP_PKEY_base_id(pk);
 
 	switch (pk_type) {
 	case EVP_PKEY_RSA: {
@@ -824,10 +823,10 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		/* Octetstring may need leading zeros if BN is to short */
 		if (dst->privateD.len < BYTES4BITS(dst->params.field_length)) {
 			size_t d = BYTES4BITS(dst->params.field_length) - dst->privateD.len;
-
-			dst->privateD.data = realloc(dst->privateD.data, dst->privateD.len + d);
-			if (!dst->privateD.data)
+			u8 *p = realloc(dst->privateD.data, dst->privateD.len + d);
+			if (!p)
 				return SC_ERROR_OUT_OF_MEMORY;
+			dst->privateD.data = p;
 
 			memmove(dst->privateD.data + d, dst->privateD.data, dst->privateD.len);
 			memset(dst->privateD.data, 0, d);

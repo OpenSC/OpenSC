@@ -180,7 +180,7 @@ static int cryptotokenkit_connect(sc_reader_t *reader)
 	}
 
 	if (!priv->tksmartcard || !priv->tksmartcard.valid)
-		return SC_ERROR_CARD_NOT_PRESENT;
+		return SC_ERROR_CARD_REMOVED;
 
 	/* if tksmartcard.context is set to nil, we know that the card has been
 	 * reset or acquired by a different session */
@@ -212,6 +212,8 @@ static int cryptotokenkit_lock(sc_reader_t *reader)
 
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		goto err;
+	if (!priv->tksmartcard)
+		return SC_ERROR_CARD_REMOVED;
 
 	if (priv->tksmartcard.context == nil) {
 		r = SC_ERROR_CARD_RESET;
@@ -239,8 +241,11 @@ static int cryptotokenkit_unlock(sc_reader_t *reader)
 
 	LOG_FUNC_CALLED(reader->ctx);
 
+
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
+	if (!priv->tksmartcard)
+		return SC_ERROR_CARD_REMOVED;
 
 	[priv->tksmartcard endSession];
 
@@ -258,6 +263,9 @@ static int cryptotokenkit_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 	dispatch_semaphore_t sema = dispatch_semaphore_create(0);
 
 	LOG_FUNC_CALLED(reader->ctx);
+
+	if (!priv->tksmartcard)
+		return SC_ERROR_CARD_REMOVED;
 
 	r = sc_apdu_get_octets(reader->ctx, apdu, &sbuf, &ssize, reader->active_protocol);
 	if (r != SC_SUCCESS)
@@ -343,6 +351,8 @@ int cryptotokenkit_perform_verify(struct sc_reader *reader, struct sc_pin_cmd_da
 
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
+	if (!priv->tksmartcard)
+		return SC_ERROR_CARD_REMOVED;
 
 	/* The APDU must be provided by the card driver */
 	if (!data->apdu) {

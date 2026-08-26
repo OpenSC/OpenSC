@@ -288,8 +288,10 @@ enum {
 	/* Serbian cards (CardEdge PKI applet) */
 	SC_CARD_TYPE_SRBEID_BASE = 44000,
 
+	/* Uruguayan eID card (cedula de identidad) */
+	SC_CARD_TYPE_CEDULAUY = 45000,
 	/* JaCarta PKI */
-	SC_CARD_TYPE_JACARTA_PKI = 45000,
+	SC_CARD_TYPE_JACARTA_PKI = 46000,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -336,6 +338,7 @@ extern sc_card_driver_t *sc_get_eoi_driver(void);
 extern sc_card_driver_t *sc_get_dtrust_driver(void);
 extern sc_card_driver_t *sc_get_lteid_driver(void);
 extern sc_card_driver_t *sc_get_srbeid_driver(void);
+extern sc_card_driver_t *sc_get_cedulauy_driver(void);
 extern sc_card_driver_t *sc_get_jacartapki_driver(void);
 
 #ifdef __cplusplus

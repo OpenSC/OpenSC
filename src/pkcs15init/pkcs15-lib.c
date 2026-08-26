@@ -1245,9 +1245,14 @@ sc_pkcs15init_init_prkdf(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	*res_obj = NULL;
 
 	if ((usage = keyargs->usage) == 0) {
-		usage = SC_PKCS15_PRKEY_USAGE_SIGN;
-		if (keyargs->x509_usage)
-			usage = sc_pkcs15init_map_usage(keyargs->x509_usage, 1);
+		if (keyargs->key.algorithm == SC_ALGORITHM_XEDDSA) {
+			/* Can not sign. To create a cert, see: openssl x509 -force_pubkey */
+			usage = SC_PKCS15_PRKEY_USAGE_DERIVE;
+		} else {
+			usage = SC_PKCS15_PRKEY_USAGE_SIGN;
+			if (keyargs->x509_usage)
+				usage = sc_pkcs15init_map_usage(keyargs->x509_usage, 1);
+		}
 	}
 
 	if ((label = keyargs->label) == NULL)
@@ -1583,7 +1588,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 	 * Auth.ID of the public key object is left empty. */
 	pubkey_args.id = keygen_args->prkey_args.id;
 	pubkey_args.label = keygen_args->pubkey_label ? keygen_args->pubkey_label : object->label;
-	pubkey_args.usage = keygen_args->prkey_args.usage;
+	pubkey_args.usage = keygen_args->pubkey_usage;
 	pubkey_args.x509_usage = keygen_args->prkey_args.x509_usage;
 	pubkey_args.key.algorithm = algorithm;
 
@@ -2206,10 +2211,8 @@ sc_pkcs15init_store_certificate(struct sc_pkcs15_card *p15card,
 		cert_info->path = existing_path;
 	}
 
-	sc_log(ctx, "Store cert(%.*s,ID:%s,der(%p,%"SC_FORMAT_LEN_SIZE_T"u))",
-	       (int) sizeof object->label, object->label,
-	       sc_pkcs15_print_id(&cert_info->id), args->der_encoded.value,
-	       args->der_encoded.len);
+	sc_log(ctx, "Store cert(%.*s,ID:%s,der(%p,%zu))", (int)sizeof(object->label), object->label,
+			sc_pkcs15_print_id(&cert_info->id), args->der_encoded.value, args->der_encoded.len);
 
 	if (!profile->pkcs15.direct_certificates)
 		r = sc_pkcs15init_store_data(p15card, profile, object, &args->der_encoded, &cert_info->path);
@@ -2770,17 +2773,14 @@ prkey_bits(struct sc_pkcs15_card *p15card, struct sc_pkcs15_prkey *key)
 		return (int)sc_pkcs15init_keybits(&key->u.rsa.modulus);
 	case SC_ALGORITHM_GOSTR3410:
 		if (sc_pkcs15init_keybits(&key->u.gostr3410.d) > SC_PKCS15_GOSTR3410_KEYSIZE) {
-			sc_log(ctx,
-			       "Unsupported key (keybits %"SC_FORMAT_LEN_SIZE_T"u)",
-			       sc_pkcs15init_keybits(&key->u.gostr3410.d));
+			sc_log(ctx, "Unsupported key (keybits %zu)", sc_pkcs15init_keybits(&key->u.gostr3410.d));
 			return SC_ERROR_OBJECT_NOT_VALID;
 		}
 		return SC_PKCS15_GOSTR3410_KEYSIZE;
 	case SC_ALGORITHM_EC:
 	case SC_ALGORITHM_EDDSA:
 	case SC_ALGORITHM_XEDDSA:
-		sc_log(ctx, "Private EC type key length %" SC_FORMAT_LEN_SIZE_T "u",
-				key->u.ec.params.field_length);
+		sc_log(ctx, "Private EC type key length %zu", key->u.ec.params.field_length);
 		if (key->u.ec.params.field_length == 0)   {
 			sc_log(ctx, "Invalid EC key length");
 			return SC_ERROR_OBJECT_NOT_VALID;
@@ -3110,8 +3110,7 @@ select_object_path(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	if (!name)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-	sc_log(ctx, "key-domain.%s @%s (auth_id.len=%"SC_FORMAT_LEN_SIZE_T"u)",
-	       name, sc_print_path(path), obj->auth_id.len);
+	sc_log(ctx, "key-domain.%s @%s (auth_id.len=%zu)", name, sc_print_path(path), obj->auth_id.len);
 
 	index_id.len = 1;
 	for (index = TEMPLATE_INSTANTIATE_MIN_INDEX; index <= TEMPLATE_INSTANTIATE_MAX_INDEX; index++)   {
@@ -3969,10 +3968,8 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 	}
 
 	if (pin_obj)   {
-		sc_log(ctx,
-		       "PIN object '%.*s'; pin_obj->content.len:%"SC_FORMAT_LEN_SIZE_T"u",
-		       (int) sizeof pin_obj->label, pin_obj->label,
-		       pin_obj->content.len);
+		sc_log(ctx, "PIN object '%.*s'; pin_obj->content.len:%zu",
+				(int)sizeof(pin_obj->label), pin_obj->label, pin_obj->content.len);
 		if (pin_obj->content.value && pin_obj->content.len)   {
 			if (pin_obj->content.len > sizeof(pinbuf))
 				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "PIN buffer is too small");
@@ -3991,9 +3988,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		if (callbacks.get_pin)   {
 			pinsize = sizeof(pinbuf);
 			r = callbacks.get_pin(profile, pin_id, &auth_info, label, pinbuf, &pinsize);
-			sc_log(ctx,
-			       "'get_pin' callback returned %i; pinsize:%"SC_FORMAT_LEN_SIZE_T"u",
-			       r, pinsize);
+			sc_log(ctx, "'get_pin' callback returned %i; pinsize:%zu", r, pinsize);
 		}
 		break;
 	case SC_AC_SCB:
@@ -4264,10 +4259,8 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 	}
 
 	if (selected_file->size < datalen) {
-		sc_log(ctx,
-		       "File %s too small (require %zu, have %"SC_FORMAT_LEN_SIZE_T"u)",
-		       sc_print_path(&file->path), datalen,
-		       selected_file->size);
+		sc_log(ctx, "File %s too small (require %zu, have %zu)",
+				sc_print_path(&file->path), datalen, selected_file->size);
 		sc_file_free(selected_file);
 		LOG_TEST_RET(ctx, SC_ERROR_FILE_TOO_SMALL, "Update file failed");
 	}
@@ -4503,15 +4496,11 @@ sc_pkcs15init_qualify_pin(struct sc_card *card, const char *pin_name,
 	pin_attrs = &auth_info->attrs.pin;
 
 	if (pin_len < pin_attrs->min_length) {
-		sc_log(ctx,
-		       "%s too short (min length %"SC_FORMAT_LEN_SIZE_T"u)",
-		       pin_name, pin_attrs->min_length);
+		sc_log(ctx, "%s too short (min length %zu)", pin_name, pin_attrs->min_length);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
 	}
 	if (pin_len > pin_attrs->max_length) {
-		sc_log(ctx,
-		       "%s too long (max length %"SC_FORMAT_LEN_SIZE_T"u)",
-		       pin_name, pin_attrs->max_length);
+		sc_log(ctx, "%s too long (max length %zu)", pin_name, pin_attrs->max_length);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_LENGTH);
 	}
 

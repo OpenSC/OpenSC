@@ -349,10 +349,8 @@ int sc_pkcs15_verify_pin_with_session_pin(struct sc_pkcs15_card *p15card,
 	struct sc_pin_cmd_data data;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx,
-	       "PIN(type:%X; method:%X; value(%p:%"SC_FORMAT_LEN_SIZE_T"u)",
-	       auth_info->auth_type, auth_info->auth_method,
-	       pincode, pinlen);
+	sc_log(ctx, "PIN(type:%X; method:%X; value(%p:%zu)",
+			auth_info->auth_type, auth_info->auth_method, pincode, pinlen);
 	card = p15card->card;
 
 	if (pinlen > SC_MAX_PIN_SIZE) {

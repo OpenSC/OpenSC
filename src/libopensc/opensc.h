@@ -44,15 +44,6 @@ extern "C" {
 #include "libopensc/sm.h"
 #endif
 
-#if defined(_WIN32) && !(defined(__MINGW32__) && defined (__MINGW_PRINTF_FORMAT))
-#define SC_FORMAT_LEN_SIZE_T "I"
-#define SC_FORMAT_LEN_PTRDIFF_T "I"
-#else
-/* hope SUSv3 ones work */
-#define SC_FORMAT_LEN_SIZE_T "z"
-#define SC_FORMAT_LEN_PTRDIFF_T "t"
-#endif
-
 #define SC_SEC_OPERATION_DECIPHER	0x0001
 #define SC_SEC_OPERATION_SIGN		0x0002
 #define SC_SEC_OPERATION_AUTHENTICATE	0x0003
@@ -227,6 +218,8 @@ extern "C" {
 #define SC_EVENT_READER_EVENTS		(SC_EVENT_READER_ATTACHED|SC_EVENT_READER_DETACHED)
 
 #define MAX_FILE_SIZE 65535
+
+#define SC_MAX_RSA_KEY_SIZE 4096
 
 #define ED448_KEY_SIZE_BYTES 57U
 

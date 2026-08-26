@@ -227,6 +227,8 @@ _dtrust_match_profile(sc_card_t *card)
 	return SC_SUCCESS;
 }
 
+static int dtrust_finish(sc_card_t *card);
+
 static int
 dtrust_match_card(sc_card_t *card)
 {
@@ -326,7 +328,10 @@ dtrust_init(sc_card_t *card)
 	card->drv_data = drv_data;
 
 	r = _dtrust_get_serialnr(card);
-	LOG_TEST_RET(card->ctx, r, "Error reading serial number.");
+	if (r != SC_SUCCESS) {
+		dtrust_finish(card);
+		LOG_TEST_RET(card->ctx, r, "Error reading serial number.");
+	}
 
 	card->caps |= SC_CARD_CAP_APDU_EXT | SC_CARD_CAP_ISO7816_PIN_INFO;
 
@@ -395,7 +400,10 @@ dtrust_init(sc_card_t *card)
 	case SC_CARD_TYPE_DTRUST_V5_1_M100:
 	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
 		r = sc_pkcs15_bind(card, NULL, &drv_data->p15card);
-		LOG_TEST_RET(card->ctx, r, "Binding PKCS#15 context failed");
+		if (r != SC_SUCCESS) {
+			dtrust_finish(card);
+			LOG_TEST_RET(card->ctx, r, "Binding PKCS#15 context failed");
+		}
 		break;
 	}
 

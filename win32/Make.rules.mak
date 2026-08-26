@@ -21,7 +21,7 @@ WIXFLAGS = -d ENABLE_MINIDRIVER $(WIXFLAGS)
 MSI_NAME = $(PRODUCT_NAME)-$(PACKAGE_VERSION_MAJOR).$(PACKAGE_VERSION_MINOR).$(PACKAGE_VERSION_FIX)$(PACKAGE_SUFFIX)_$(PLATFORM).msi
 !IF "$(WIX_PACKAGES)" == ""
 WIX_PACKAGES = $(TOPDIR)\win32\packages
-WIX_VERSION = 6.0.2
+WIX_VERSION = 7.0.0
 !ENDIF
 WIX_INCL_DIR = "/I$(WIX_PACKAGES)/wixtoolset.dutil/$(WIX_VERSION)/build/native/include" \
 	"/I$(WIX_PACKAGES)/wixtoolset.wcautil/$(WIX_VERSION)/build/native/include"
@@ -36,14 +36,36 @@ SM_DEF = /DENABLE_SM
 
 #Build with debugging support
 #DEBUG_DEF = /DDEBUG
-#Release build, disable asserts
-#DEBUG_DEF = /DNDEBUG
 
 !IF "$(BUILD_TYPE)" == ""
 !IF "$(DEBUG_DEF)" == "/DDEBUG"
 BUILD_TYPE = MTd
 !ELSE
 BUILD_TYPE = MT
+!ENDIF
+!ENDIF
+
+# If vcpkg is configured, automatically detect and enable installed dependencies
+!IF "$(VCPKG_INSTALLED)" != ""
+!IF "$(VCPKG_DEFAULT_TRIPLET)" == ""
+VCPKG_DEFAULT_TRIPLET = x64-windows-static
+!ENDIF
+VCPKG_DIR = $(VCPKG_INSTALLED)\$(VCPKG_DEFAULT_TRIPLET)
+!IF EXIST("$(VCPKG_DIR)\lib\libcrypto.lib")
+OPENSSL_DEF = /DENABLE_OPENSSL
+OPENSSL_DIR = $(VCPKG_DIR)
+OPENSSL_LIB = $(VCPKG_DIR)\lib\libcrypto.lib
+OPENSSL_EXTRA_CFLAGS = /DOPENSSL_SECURE_MALLOC_SIZE=65536
+!ENDIF
+!IF EXIST("$(VCPKG_DIR)\lib\zs.lib")
+ZLIBSTATIC_DEF = /DENABLE_ZLIB_STATIC
+ZLIB_INCL_DIR = /I$(VCPKG_DIR)\include
+ZLIB_LIB = $(VCPKG_DIR)\lib\zs.lib
+!ENDIF
+!IF EXIST("$(VCPKG_DIR)\lib\eac.lib")
+OPENPACE_DEF = /DENABLE_OPENPACE
+OPENPACE_INCL_DIR = /I$(VCPKG_DIR)\include
+OPENPACE_LIB = $(VCPKG_DIR)\lib\eac.lib
 !ENDIF
 !ENDIF
 
@@ -64,15 +86,7 @@ OPENSSL_DIR = C:\OpenSSL-Win64
 OPENSSL_INCL_DIR = /I$(OPENSSL_DIR)\include
 
 !IF "$(OPENSSL_LIB)" == ""
-!IF "$(OPENSSL_VER)" == "1.1.1"
-!IF "$(PLATFORM)" == "x86"
-OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\static\libcrypto32$(BUILD_TYPE).lib
-!ELSE
-OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\static\libcrypto64$(BUILD_TYPE).lib
-!ENDIF
-!ELSE
 OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(PLATFORM)\$(BUILD_TYPE)\libcrypto_static.lib
-!ENDIF
 !ENDIF
 OPENSSL_LIB = $(OPENSSL_LIB) user32.lib advapi32.lib crypt32.lib ws2_32.lib
 
@@ -120,8 +134,12 @@ WIXFLAGS = -d zlib="C:\zlib-dll" $(WIXFLAGS)
 !IF "$(OPENPACE_DIR)" == ""
 OPENPACE_DIR = C:\openpace
 !ENDIF
+!IF "$(OPENPACE_INCL_DIR)" == ""
 OPENPACE_INCL_DIR = /I$(OPENPACE_DIR)\src
+!ENDIF
+!IF "$(OPENPACE_LIB)" == ""
 OPENPACE_LIB = $(OPENPACE_DIR)\src\libeac.lib
+!ENDIF
 !IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
 # Build only when OpenPACE and OpenSSL are available
 PROGRAMS_OPENPACE = npa-tool.exe
@@ -152,7 +170,8 @@ LINKFLAGS = $(LINKFLAGS) /NODEFAULTLIB:LIBCMT
 COPTS = /Od /$(BUILD_TYPE) $(COPTS)
 !ELSE
 LINKFLAGS = $(LINKFLAGS) /NODEFAULTLIB:LIBCMTD /OPT:REF /OPT:ICF
-COPTS = /O1 /$(BUILD_TYPE) $(COPTS)
+# Release build: optimize and disable asserts
+COPTS = /O1 /$(BUILD_TYPE) /DNDEBUG $(COPTS)
 !ENDIF
 
 .SUFFIXES: .exports .def

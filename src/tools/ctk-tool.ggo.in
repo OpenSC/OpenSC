@@ -1,0 +1,30 @@
+package "ctk-tool"
+purpose "@PACKAGE_SUMMARY@"
+description "Tool for accessing CryptoTokenKit."
+
+option "test" t
+    "Test encryption, decryption and signature with available tokens"
+    flag off
+
+option "test-threads" -
+    "Specify the number of threads that should execute `--test` in parallel"
+    int default="1"
+    optional
+
+option "list-objects" O
+    "Show objects on tokens"
+    flag off
+
+option "export-certificates" C
+    "Export certificates"
+    flag off
+
+option "certificate-format" F
+    "Format of certificates"
+    enum values="PEM","DER" default="PEM"
+    optional
+
+text "
+Report bugs to @PACKAGE_BUGREPORT@
+
+Written by Frank Morgner <frankmorgner@gmail.com>"

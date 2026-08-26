@@ -248,7 +248,8 @@
 						<para>
 							Change the PIN specified by <replaceable>pin-ref</replaceable>
 							from the value given by <replaceable>old-pin</replaceable> and
-							change its value to <replaceable>new-pin</replaceable>.
+							change its value to <replaceable>new-pin</replaceable>. References
+							should be given in decimal notation.
 						</para>
 						<para>
 							<replaceable>old-pin</replaceable> and
@@ -567,7 +568,7 @@
 							<literal>CHV</literal>, <literal>KEY</literal>,
 							<literal>AUT</literal> or <literal>PRO</literal>.
 							<replaceable>key-id</replaceable> is a number
-							representing the key or PIN reference.
+							representing the key or PIN reference (decimal notation).
 						</para>
 					</listitem>
 				</varlistentry>
@@ -637,6 +638,7 @@
 					<listitem>
 						<para>
 							Unblock the PIN denoted by <replaceable>pin-ref</replaceable>
+							(decimal notation)
 							using the PUK <replaceable>puk</replaceable>, and potentially
 							change its value to <replaceable>new-pin</replaceable>.
 						</para>
@@ -759,7 +761,7 @@
 							<literal>CHV</literal>,	<literal>KEY</literal>,
 							<literal>AUT</literal> or <literal>PRO</literal>.
 							<replaceable>key-id</replaceable> is a number representing
-							the key or PIN reference.
+							the key or PIN reference (decimal notation).
 							<replaceable>key</replaceable> is the key or PIN to be verified,
 							formatted as a colon-separated sequence of hexadecimal values
 							or a string enclosed in double quotes (<literal>"..."</literal>).

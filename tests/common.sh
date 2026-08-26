@@ -118,6 +118,6 @@ function card_setup() {
 
 function card_cleanup() {
 	token_cleanup
-	rm -f 0{1,2,3,4}.pub 1{3,4}.pub
+	rm -f 0{1,2,3,4,5,6,7,8,9}.pub 1{0,1,2,3,4}.pub
 	sleep 1
 }

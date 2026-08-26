@@ -38,6 +38,7 @@
 
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 #include "sm/sm-eac.h"
+#include <eac/ca.h>
 #include <eac/cv_cert.h>
 #include <eac/eac.h>
 #include <eac/ta.h>
@@ -559,6 +560,9 @@ static int sc_hsm_perform_chip_authentication(sc_card_t *card)
 		goto err;
 	}
 
+	/* FIXME set flags with opensc.conf */
+	TA_disable_checks(ctx);
+	CA_disable_passive_authentication(ctx);
 
 	/* check all CVCs given of the document's pki */
 	if (!TA_STEP2_import_certificate(ctx, issuer_cert, issuer_cert_len)
@@ -1068,9 +1072,7 @@ static int sc_hsm_decode_ecdsa_signature(sc_card_t *card,
 	int r;
 	size_t fieldsizebytes = (key_size + 7) >> 3;
 
-	sc_log(card->ctx,
-	       "Field size %"SC_FORMAT_LEN_SIZE_T"u, signature buffer size %"SC_FORMAT_LEN_SIZE_T"u",
-	       fieldsizebytes, outlen);
+	sc_log(card->ctx, "Field size %zu, signature buffer size %zu", fieldsizebytes, outlen);
 
 	r = sc_asn1_decode_ecdsa_signature(card->ctx, data, datalen, fieldsizebytes, &out, outlen);
 	LOG_FUNC_RETURN(card->ctx, r);

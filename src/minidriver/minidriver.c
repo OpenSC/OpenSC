@@ -297,8 +297,7 @@ static void loghex(PCARD_DATA pCardData, int level, PBYTE data, size_t len)
 	unsigned int i, a;
 	unsigned char * p;
 
-	logprintf(pCardData, level, "--- %p:%"SC_FORMAT_LEN_SIZE_T"u\n",
-		  data, len);
+	logprintf(pCardData, level, "--- %p:%zu\n", data, len);
 
 	if (data == NULL || len <= 0) return;
 
@@ -444,14 +443,12 @@ check_card_reader_status(PCARD_DATA pCardData, const char *name)
 	logprintf(pCardData, 7, "sizeof(size_t):%u sizeof(ULONG_PTR):%u sizeof(__int3264):%u sizeof pCardData->hSCardCtx:%u\n",
 		(unsigned)sizeof(size_t), (unsigned)sizeof(ULONG_PTR), (unsigned)sizeof(__int3264), (unsigned)sizeof(pCardData->hSCardCtx));
 
-	logprintf(pCardData, 1, "pCardData->hSCardCtx:0x%08"SC_FORMAT_LEN_SIZE_T"X hScard:0x%08"SC_FORMAT_LEN_SIZE_T"X\n",
-		(size_t)pCardData->hSCardCtx,
-		(size_t)pCardData->hScard);
+	logprintf(pCardData, 1, "pCardData->hSCardCtx:0x%08zX hScard:0x%08zX\n",
+			(size_t)pCardData->hSCardCtx, (size_t)pCardData->hScard);
 
 	if (pCardData->hSCardCtx != vs->hSCardCtx || pCardData->hScard != vs->hScard) {
-		logprintf(pCardData, 1, "HANDLES CHANGED from  vs->hSCardCtx:0x%08"SC_FORMAT_LEN_SIZE_T"X vs->hScard:0x%08"SC_FORMAT_LEN_SIZE_T"X\n",
-			(size_t)vs->hSCardCtx,
-			(size_t)vs->hScard);
+		logprintf(pCardData, 1, "HANDLES CHANGED from  vs->hSCardCtx:0x%08zX vs->hScard:0x%08zX\n",
+				(size_t)vs->hSCardCtx, (size_t)vs->hScard);
 		if (vs->ctx) {
 			if (1 == pcsc_check_reader_handles(vs->ctx, vs->reader, &pCardData->hSCardCtx, &pCardData->hScard)) {
 				_sc_delete_reader(vs->ctx, vs->reader);
@@ -1464,8 +1461,7 @@ md_set_cardid(PCARD_DATA pCardData, struct md_file *file)
 			return dwret;
 	}
 
-	logprintf(pCardData, 3, "cardid(%"SC_FORMAT_LEN_SIZE_T"u)\n",
-		  file->size);
+	logprintf(pCardData, 3, "cardid(%zu)\n", file->size);
 	loghex(pCardData, 3, file->blob, file->size);
 	return SCARD_S_SUCCESS;
 }
@@ -1654,8 +1650,7 @@ md_set_cardcf(PCARD_DATA pCardData, struct md_file *file)
 	if (dwret != SCARD_S_SUCCESS)
 		return dwret;
 
-	logprintf(pCardData, 3, "'cardcf' content(%"SC_FORMAT_LEN_SIZE_T"u)\n",
-		  file->size);
+	logprintf(pCardData, 3, "'cardcf' content(%zu)\n", file->size);
 	loghex(pCardData, 3, file->blob, file->size);
 	return SCARD_S_SUCCESS;
 }
@@ -1673,7 +1668,7 @@ md_set_cardapps(PCARD_DATA pCardData, struct md_file *file)
 	if (dwret != SCARD_S_SUCCESS)
 		return dwret;
 
-	logprintf(pCardData, 3, "mscp(%"SC_FORMAT_LEN_SIZE_T"u)\n", file->size);
+	logprintf(pCardData, 3, "mscp(%zu)\n", file->size);
 	loghex(pCardData, 3, file->blob, file->size);
 	return SCARD_S_SUCCESS;
 }
@@ -1951,9 +1946,8 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 				cont->size_key_exchange = prkey_info->field_length;
 		}
 
-		logprintf(pCardData, 7,
-			  "Container[%i]'s key-exchange:%"SC_FORMAT_LEN_SIZE_T"u, sign:%"SC_FORMAT_LEN_SIZE_T"u\n",
-			  ii, cont->size_key_exchange, cont->size_sign);
+		logprintf(pCardData, 7, "Container[%i]'s key-exchange:%zu, sign:%zu\n",
+				ii, cont->size_key_exchange, cont->size_sign);
 
 		cont->id = prkey_info->id;
 		cont->prkey_obj = prkey_objs[ii];
@@ -2160,7 +2154,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 	if (dwret != SCARD_S_SUCCESS)
 		return dwret;
 
-	logprintf(pCardData, 3, "cmap(%"SC_FORMAT_LEN_SIZE_T"u)\n", file->size);
+	logprintf(pCardData, 3, "cmap(%zu)\n", file->size);
 	loghex(pCardData, 3, file->blob, file->size);
 	return SCARD_S_SUCCESS;
 }
@@ -2891,17 +2885,17 @@ md_query_key_sizes(PCARD_DATA pCardData, DWORD dwKeySpec, CARD_KEY_SIZES *pKeySi
 					break;
 				}
 			}
-			if (keysize) {
-				pKeySizes->dwMinimumBitlen = keysize;
-				pKeySizes->dwDefaultBitlen = keysize;
-				pKeySizes->dwMaximumBitlen = keysize;
-				pKeySizes->dwIncrementalBitlen = 1;
-			} else {
-				logprintf(pCardData, 0,
-					  "No ECC key found (keyspec=%lu)\n",
-					  (unsigned long)dwKeySpec);
-				return SCARD_E_INVALID_PARAMETER;
-			}
+		}
+		if (keysize) {
+			pKeySizes->dwMinimumBitlen = keysize;
+			pKeySizes->dwDefaultBitlen = keysize;
+			pKeySizes->dwMaximumBitlen = keysize;
+			pKeySizes->dwIncrementalBitlen = 1;
+		} else {
+			logprintf(pCardData, 0,
+					"No ECC key found (keyspec=%lu)\n",
+					(unsigned long)dwKeySpec);
+			return SCARD_E_INVALID_PARAMETER;
 		}
 	}
 
@@ -3277,11 +3271,9 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	logprintf(pCardData, 1,
-		  "\nP:%lu T:%lu pCardData:%p hScard=0x%08"SC_FORMAT_LEN_SIZE_T"X hSCardCtx=0x%08"SC_FORMAT_LEN_SIZE_T"X CardDeleteContext\n",
-		  (unsigned long)GetCurrentProcessId(),
-		  (unsigned long)GetCurrentThreadId(), pCardData,
-		  (size_t)pCardData->hScard,
-		  (size_t)pCardData->hSCardCtx);
+			"\nP:%lu T:%lu pCardData:%p hScard=0x%08zX hSCardCtx=0x%08zX CardDeleteContext\n",
+			(unsigned long)GetCurrentProcessId(), (unsigned long)GetCurrentThreadId(), pCardData,
+			(size_t)pCardData->hScard, (size_t)pCardData->hSCardCtx);
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
 	if(!vs)
@@ -3734,8 +3726,8 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					break;
 				default:
 					logprintf(pCardData, 3,
-						  "Unable to match the ECC public size to one of Microsoft algorithm %"SC_FORMAT_LEN_SIZE_T"u\n",
-						  cont->size_sign);
+							"Unable to match the ECC public size to one of Microsoft algorithm %zu\n",
+							cont->size_sign);
 					ret = SCARD_F_INTERNAL_ERROR;
 					goto err;
 				}
@@ -3775,8 +3767,8 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					break;
 				default:
 					logprintf(pCardData, 3,
-						  "Unable to match the ECC public size to one of Microsoft algorithm %"SC_FORMAT_LEN_SIZE_T"u\n",
-						  cont->size_key_exchange);
+							"Unable to match the ECC public size to one of Microsoft algorithm %zu\n",
+							cont->size_key_exchange);
 					ret = SCARD_F_INTERNAL_ERROR;
 					goto err;
 				}
@@ -4636,9 +4628,8 @@ DWORD WINAPI CardRSADecrypt(__in PCARD_DATA pCardData,
 	prkey_info = (struct sc_pkcs15_prkey_info *)(pkey->data);
 	alg_info = sc_card_find_rsa_alg(vs->p15card->card, (unsigned int) prkey_info->modulus_length);
 	if (!alg_info)   {
-		logprintf(pCardData, 2,
-			  "Cannot get appropriate RSA card algorithm for key size %"SC_FORMAT_LEN_SIZE_T"u\n",
-			  prkey_info->modulus_length);
+		logprintf(pCardData, 2, "Cannot get appropriate RSA card algorithm for key size %zu\n",
+				prkey_info->modulus_length);
 		pCardData->pfnCspFree(pbuf);
 		pCardData->pfnCspFree(pbuf2);
 		dwret = SCARD_F_INTERNAL_ERROR;
@@ -4971,9 +4962,7 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				pInfo->cbSignedData = 132;
 				break;
 			default:
-				logprintf(pCardData, 0,
-					  "unknown ECC key size %"SC_FORMAT_LEN_SIZE_T"u\n",
-					  prkey_info->field_length);
+				logprintf(pCardData, 0, "unknown ECC key size %zu\n", prkey_info->field_length);
 				dwret = SCARD_E_INVALID_VALUE;
 				goto err;
 		}
@@ -5036,12 +5025,9 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		loghex(pCardData, 7, pInfo->pbSignedData, pInfo->cbSignedData);
 	}
 
-	logprintf(pCardData, 3,
-		  "CardSignData, dwVersion=%lu, name=%S, hScard=0x%08"SC_FORMAT_LEN_SIZE_T"X, hSCardCtx=0x%08"SC_FORMAT_LEN_SIZE_T"X\n",
-		  (unsigned long)pCardData->dwVersion,
-		  NULLWSTR(pCardData->pwszCardName),
-		  (size_t)pCardData->hScard,
-		  (size_t)pCardData->hSCardCtx);
+	logprintf(pCardData, 3, "CardSignData, dwVersion=%lu, name=%S, hScard=0x%08zX, hSCardCtx=0x%08zX\n",
+			(unsigned long)pCardData->dwVersion, NULLWSTR(pCardData->pwszCardName),
+			(size_t)pCardData->hScard, (size_t)pCardData->hSCardCtx);
 
 err:
 	unlock(pCardData);
@@ -5987,9 +5973,7 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 			logprintf(pCardData, 2, "generating session pin failed");
 		} else {
 			if (*ppbSessionPin != NULL && session_pin_len > 0) {
-				logprintf(pCardData, 2,
-					  "generated session pin with %"SC_FORMAT_LEN_SIZE_T"u bytes",
-					  session_pin_len);
+				logprintf(pCardData, 2, "generated session pin with %zu bytes", session_pin_len);
 
 				*pcbSessionPin = session_pin_len;
 			} else {
@@ -7024,12 +7008,9 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
 		  (unsigned long)GetCurrentThreadId(), pCardData);
-	logprintf(pCardData, 1,
-		  "CardAcquireContext, dwVersion=%lu, name=%S,hScard=0x%08"SC_FORMAT_LEN_SIZE_T"X, hSCardCtx=0x%08"SC_FORMAT_LEN_SIZE_T"X\n",
-		  (unsigned long)pCardData->dwVersion,
-		  NULLWSTR(pCardData->pwszCardName),
-		  (size_t)pCardData->hScard,
-		  (size_t)pCardData->hSCardCtx);
+	logprintf(pCardData, 1, "CardAcquireContext, dwVersion=%lu, name=%S,hScard=0x%08zX, hSCardCtx=0x%08zX\n",
+			(unsigned long)pCardData->dwVersion, NULLWSTR(pCardData->pwszCardName),
+			(size_t)pCardData->hScard, (size_t)pCardData->hSCardCtx);
 
 	vs->hScard = pCardData->hScard;
 	vs->hSCardCtx = pCardData->hSCardCtx;

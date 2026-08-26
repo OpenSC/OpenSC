@@ -408,11 +408,10 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	unsigned int i,j;
 	EVP_CIPHER_CTX *cctx = NULL;
 	int tmplen = 0;
-	unsigned char key1[8], key2[8]; 
+	unsigned char key1[8], key2[8];
 
 	if (keylen != 16) {
-		printf("key has wrong size, need 16 bytes, got %"SC_FORMAT_LEN_SIZE_T"d. aborting.\n",
-		       keylen);
+		printf("key has wrong size, need 16 bytes, got %zd. aborting.\n", keylen);
 		return 0;
 	}
 
@@ -443,7 +442,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	/* prepare des ctx */
 	memcpy(key1, key, 8);
 	memcpy(key2, key + 8, 8);
-	
+
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	if (!legacy_provider) {
 		if (!(legacy_provider = OSSL_PROVIDER_try_load(NULL, "legacy", 1))) {
@@ -465,7 +464,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 		EVP_CIPHER_CTX_free(cctx);
 		return 0;
 	}
-    
+
 	/* first block: XOR with IV and encrypt with key A IV is 8 bytes 00 */
 	for (i=0; i < 8; i++) des_in[i] = mac_input[i]^00;
 	if (!EVP_EncryptUpdate(cctx, des_out, &tmplen, des_in, 8)) {
@@ -622,7 +621,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 		/* copy encrypted bytes into output */
 		for (i=0; i < 8; i++) out[5+8*j+i] = des_out[i];
 	}
-	
+
 	EVP_CIPHER_CTX_free(cctx);
 	if (verbose)	{
 		printf ("Unencrypted APDU:\n");
@@ -718,8 +717,7 @@ static int cardos_format(const char *opt_startkey)
 	if (check_apdu(&apdu))
 		return 1;
 	if (apdu.resplen < 0x04) {
-		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %"SC_FORMAT_LEN_SIZE_T"u\n",
-		       apdu.resplen);
+		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %zu\n", apdu.resplen);
 		printf("aborting\n");
 		return 1;
 	}
@@ -1045,8 +1043,7 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 	if (check_apdu(&apdu))
 		return 1;
 	if (apdu.resplen < 0x04) {
-		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %"SC_FORMAT_LEN_SIZE_T"u\n",
-		       apdu.resplen);
+		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %zu\n", apdu.resplen);
 		printf("aborting\n");
 		return 1;
 	}
@@ -1131,8 +1128,7 @@ change_startkey:
 	if (check_apdu(&apdu))
 		return 1;
 	if (apdu.resplen < 0x04) {
-		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %"SC_FORMAT_LEN_SIZE_T"u\n",
-		       apdu.resplen);
+		printf("expected 4-6 bytes form GET DATA for startkey data, but got only %zu\n", apdu.resplen);
 		printf("aborting\n");
 		return 1;
 	}
@@ -1199,7 +1195,7 @@ int main(int argc, char *argv[])
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
 	}
-	
+
 	if (action_count == 0)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
 

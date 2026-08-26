@@ -293,8 +293,8 @@ static int eac_mse(sc_card_t *card,
 		goto err;
 
 	if (apdu.resplen) {
-		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "MSE:Set AT response data should be empty "
-				"(contains %"SC_FORMAT_LEN_SIZE_T"u bytes)", apdu.resplen);
+		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+				"MSE:Set AT response data should be empty (contains %zu bytes)", apdu.resplen);
 		r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
 		goto err;
 	}

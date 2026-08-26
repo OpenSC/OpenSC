@@ -2580,17 +2580,20 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen, size_t expected)
 		return SC_ERROR_OUT_OF_MEMORY;
 
 
-        inf = fopen(name, "rb");
-        if (inf == NULL) {
-                fprintf(stderr, "Unable to open '%s' for reading.\n", name);
-                return SC_ERROR_FILE_NOT_FOUND;
-        }
-        sz = fread(*out, 1, filesize, inf);
-        fclose(inf);
-        if (sz < 0) {
-                perror("read");
-                return SC_ERROR_FILE_NOT_FOUND;
-        }
+	inf = fopen(name, "rb");
+	if (inf == NULL) {
+		fprintf(stderr, "Unable to open '%s' for reading.\n", name);
+		return SC_ERROR_FILE_NOT_FOUND;
+	}
+	sz = fread(*out, 1, filesize, inf);
+	fclose(inf);
+	if (sz < 0) {
+		perror("read");
+		return SC_ERROR_FILE_NOT_FOUND;
+	}
+	if ((size_t)sz < filesize) {
+		return SC_ERROR_FILE_TOO_SMALL;
+	}
 
 	*outlen = filesize;
 	return SC_SUCCESS;

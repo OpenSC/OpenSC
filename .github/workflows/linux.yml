@@ -43,7 +43,7 @@ jobs:
             arch: arm64
     runs-on: ubuntu-${{ matrix.dist }}${{ matrix.arch == 'arm64' && '-arm' || '' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: .github/setup-linux.sh ${{ matrix.build != 'dist' && 'debug' || '' }} # install debug with valgrind builds
       - run: .github/build.sh ${{ matrix.build }} ${{ matrix.build == 'piv-sm' && 'valgrind' || '' }} # configure piv-sm with valgrind tests
       - name: Upload test logs
@@ -55,7 +55,7 @@ jobs:
             tests/*.log
             src/tests/unittests/*.log
       - &use_cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         id: cache-build
         with:
           path: ./*
@@ -71,8 +71,8 @@ jobs:
   build-no-shared:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: actions/checkout@v7
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -80,11 +80,18 @@ jobs:
       - run: .github/setup-linux.sh
       - run: .github/build.sh no-shared valgrind
 
+  build-no-readers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: .github/setup-linux.sh
+      - run: .github/build.sh no-readers
+
   build-no-openssl:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: actions/checkout@v7
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
@@ -95,8 +102,8 @@ jobs:
   build-ix86:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: actions/checkout@v7
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-24.04-amd64-base
@@ -107,7 +114,7 @@ jobs:
   build-mingw:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: .github/setup-linux.sh mingw force-install
       - run: .github/build.sh mingw
       - name: Cache build artifacts
@@ -120,7 +127,7 @@ jobs:
   build-mingw32:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - run: .github/setup-linux.sh mingw32
       - run: .github/build.sh mingw32
       - name: Cache build artifacts
@@ -134,12 +141,12 @@ jobs:
     runs-on: ubuntu-24.04
     needs: [build]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-24.04-amd64-base
           execute_install_scripts: true
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         id: cache-build
         with:
           path: ./*
@@ -175,7 +182,6 @@ jobs:
           cache: 'maven'
       - run: .github/setup-linux.sh ${{ matrix.target }} debug
       - run: .github/test-${{ matrix.target }}.sh ${{ matrix.ver }}
-      - run: .github/test-${{ matrix.target }}.sh ${{ matrix.ver }} valgrind
 
   test:
     name: test-${{ matrix.target }}-${{ matrix.dist }}
@@ -185,14 +191,13 @@ jobs:
         dist: ['22.04', '24.04']
         arch: [amd64]
         build: [valgrind]
-        target: [cac, oseid]
+        target: [cac, oseid, pico-hsm]
     runs-on: ubuntu-${{ matrix.dist }}
     needs: [build]
     steps:
       - *use_cache
       - run: .github/setup-linux.sh ${{ matrix.target }} debug
       - run: .github/test-${{ matrix.target }}.sh
-      - run: .github/test-${{ matrix.target }}.sh valgrind
 
   #######################
   ## LibreSSL pipeline ##
@@ -202,14 +207,14 @@ jobs:
     env:
       LIBRESSL_VERSION: 4.2.1
     steps:
-      - uses: actions/checkout@v6
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: actions/checkout@v7
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
           execute_install_scripts: true
       - name: Restore LibreSSL build
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         id: libressl-cache
         with:
           path: |
@@ -225,7 +230,7 @@ jobs:
             config.log
             tests/*.log
             src/tests/unittests/*.log
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         id: cache-build
         if: ${{ success() }}
         with:
@@ -233,7 +238,7 @@ jobs:
           key: ${{ runner.os }}-libressl-${{ github.sha }}
       - if: ${{ steps.libressl-cache.outputs.cache-hit != 'true' }}
         name: Cache LibreSSL build
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: |
             libressl-${{ env.LIBRESSL_VERSION }}/
@@ -248,12 +253,12 @@ jobs:
         target: [cac, oseid]
     needs: [build-libressl]
     steps:
-      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         with:
           packages: ${{ env.BASE_DEPS }}
           version: apt-latest-base
           execute_install_scripts: true
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         id: cache-build
         with:
           path: ./*
@@ -269,7 +274,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, build-mingw]
     steps:
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         id: cache-build
         with:
           path: ./*

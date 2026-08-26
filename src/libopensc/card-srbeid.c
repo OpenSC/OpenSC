@@ -32,8 +32,9 @@
 #include "internal.h"
 #include "log.h"
 
-/* MSE algorithm byte for RSA-2048 PKCS#1 v1.5 */
-#define CE_MSE_ALG_RSA2048 0x02u
+/* MSE SET algorithm byte (tag 0x80). */
+#define CE_MSE_ALG_RSA_PKCS1 0x02u /* card adds PKCS#1 padding */
+#define CE_MSE_ALG_RSA_RAW   0x00u /* raw RSA; OpenSC pads */
 
 static struct sc_card_operations srbeid_ops;
 static const struct sc_card_operations *iso_ops;
@@ -84,8 +85,12 @@ srbeid_init(sc_card_t *card)
 
 	card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 
+	/* Keep the card's own PKCS#1 signing, and add raw RSA on top: that gives
+	 * CKM_RSA_X_509 and makes 2048-bit decrypt work (OpenSC does the padding). */
 	_sc_card_add_rsa_alg(card, 2048,
-			SC_ALGORITHM_RSA_PAD_PKCS1 | SC_ALGORITHM_RSA_HASH_NONE, 0);
+			SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_RAW |
+					SC_ALGORITHM_RSA_HASH_NONE,
+			0);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -201,10 +206,13 @@ srbeid_set_security_env(sc_card_t *card,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	/* MSE SET: tag 0x80 = algorithm (RSA2048), tag 0x84 = key ref (2 bytes BE) */
+	/* MSE SET: tag 0x80 = algorithm, tag 0x84 = key ref (2 bytes BE).
+	 * The algorithm byte tells the card to pad (PKCS#1) or not (raw RSA). */
 	mse_data[0] = 0x80;
 	mse_data[1] = 0x01;
-	mse_data[2] = CE_MSE_ALG_RSA2048;
+	mse_data[2] = (env->algorithm_flags & SC_ALGORITHM_RSA_RAW)
+				      ? CE_MSE_ALG_RSA_RAW
+				      : CE_MSE_ALG_RSA_PKCS1;
 	mse_data[3] = 0x84;
 	mse_data[4] = 0x02;
 	mse_data[5] = (u8)((key_ref >> 8) & 0xFF);
@@ -220,31 +228,38 @@ srbeid_set_security_env(sc_card_t *card,
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "MSE SET failed");
 
-	sc_log(card->ctx, "srbeid: set_security_env: key_ref=0x%04x p2=0x%02x", key_ref, p2);
+	sc_log(card->ctx, "srbeid: set_security_env: key_ref=0x%04x p2=0x%02x algo=0x%02x",
+			key_ref, p2, mse_data[2]);
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 /*
- * compute_signature — PSO COMPUTE DIGITAL SIGNATURE (00 2A 9E 00).
- *
- * MSE SET has already been sent by set_security_env().
- * CardEdge uses P2=0x00 (not 0x9A as in ISO 7816-8), so we cannot
- * delegate to iso7816_compute_signature().
+ * One PSO (INS=0x2A, given P1). A 256-byte block exceeds the short-APDU Lc, so
+ * its first byte is carried in P2; a smaller DigestInfo is sent as-is.
  */
 static int
-srbeid_compute_signature(sc_card_t *card,
-		const u8 *data, size_t datalen, u8 *out, size_t outlen)
+srbeid_pso(sc_card_t *card, u8 p1, const u8 *data, size_t datalen, u8 *out,
+		size_t outlen)
 {
 	sc_apdu_t apdu;
 	u8 resp[256];
+	u8 p2 = 0x00;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x9E, 0x00);
+	if (datalen == 0 || datalen > sizeof(resp))
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	if (datalen > SC_MAX_APDU_DATA_SIZE) {
+		p2 = data[0];
+		++data;
+		--datalen;
+	}
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, p1, p2);
 	apdu.data = data;
-	apdu.datalen = datalen;
-	apdu.lc = datalen;
+	apdu.datalen = apdu.lc = datalen;
 	apdu.resp = resp;
 	apdu.resplen = sizeof(resp);
 	apdu.le = sizeof(resp);
@@ -252,7 +267,7 @@ srbeid_compute_signature(sc_card_t *card,
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "PSO COMPUTE DIGITAL SIGNATURE failed");
+	LOG_TEST_RET(card->ctx, r, "PSO failed");
 
 	if (apdu.resplen > outlen)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
@@ -260,40 +275,29 @@ srbeid_compute_signature(sc_card_t *card,
 	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
+/* Signing: PSO COMPUTE SIGNATURE (00 2A 9E). */
+static int
+srbeid_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
+		u8 *out, size_t outlen)
+{
+	return srbeid_pso(card, 0x9E, data, datalen, out, outlen);
+}
+
 /*
- * decipher — PSO DECIPHER (00 2A 80 86).
- *
- * MSE SET has already been sent by set_security_env().
- * CardEdge does not use a padding indicator byte, so we cannot
- * delegate to iso7816_decipher().
+ * Decryption: PSO DECIPHER (00 2A 80) so the card is told the operation. The
+ * applet reads P2 as an ISO template and rejects a cryptogram starting with
+ * 0x86, so fall back to COMPUTE SIGNATURE (00 2A 9E), which is the same RSA
+ * operation on this card.
  */
 static int
-srbeid_decipher(sc_card_t *card,
-		const u8 *crgram, size_t crgram_len, u8 *out, size_t outlen)
+srbeid_decipher(sc_card_t *card, const u8 *crgram, size_t crgram_len, u8 *out,
+		size_t outlen)
 {
-	sc_apdu_t apdu;
-	u8 resp[256];
-	int r;
+	int r = srbeid_pso(card, 0x80, crgram, crgram_len, out, outlen);
 
-	LOG_FUNC_CALLED(card->ctx);
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
-	apdu.data = crgram;
-	apdu.datalen = crgram_len;
-	apdu.lc = crgram_len;
-	apdu.resp = resp;
-	apdu.resplen = sizeof(resp);
-	apdu.le = sizeof(resp);
-
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "PSO DECIPHER failed");
-
-	if (apdu.resplen > outlen)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
-	memcpy(out, resp, apdu.resplen);
-	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
+	if (r == SC_ERROR_INCORRECT_PARAMETERS)
+		r = srbeid_pso(card, 0x9E, crgram, crgram_len, out, outlen);
+	return r;
 }
 
 struct sc_card_driver *

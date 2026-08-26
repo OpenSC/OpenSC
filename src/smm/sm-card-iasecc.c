@@ -64,12 +64,11 @@ sm_iasecc_get_apdu_read_binary(struct sc_context *ctx, struct sm_info *sm_info, 
 	if (!cmd_data || !cmd_data->data)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-        if (!rdata || !rdata->alloc)
+	if (!rdata || !rdata->alloc)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_debug(ctx, SC_LOG_DEBUG_SM,
-	       "SM get 'READ BINARY' APDUs: offset:%"SC_FORMAT_LEN_SIZE_T"u,size:%"SC_FORMAT_LEN_SIZE_T"u",
-	       cmd_data->offs, cmd_data->count);
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM get 'READ BINARY' APDUs: offset:%zu,size:%zu",
+			cmd_data->offs, cmd_data->count);
 	offs = cmd_data->offs;
 	while (cmd_data->count > data_offs)   {
 		size_t sz = (cmd_data->count - data_offs) > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : (cmd_data->count - data_offs);
@@ -110,19 +109,18 @@ sm_iasecc_get_apdu_update_binary(struct sc_context *ctx, struct sm_info *sm_info
 	if (!cmd_data || !cmd_data->data)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-        if (!rdata || !rdata->alloc)
+	if (!rdata || !rdata->alloc)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_debug(ctx, SC_LOG_DEBUG_SM,
-	       "SM get 'UPDATE BINARY' APDUs: offset:%"SC_FORMAT_LEN_SIZE_T"u,size:%"SC_FORMAT_LEN_SIZE_T"u",
-	       cmd_data->offs, cmd_data->count);
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM get 'UPDATE BINARY' APDUs: offset:%zu,size:%zu",
+			cmd_data->offs, cmd_data->count);
 	offs = cmd_data->offs;
 	while (data_offs < cmd_data->count)   {
 		size_t sz = (cmd_data->count - data_offs) > SM_MAX_DATA_SIZE ? SM_MAX_DATA_SIZE : (cmd_data->count - data_offs);
 		struct sc_remote_apdu *rapdu = NULL;
 
  		rv = rdata->alloc(rdata, &rapdu);
-	        LOG_TEST_RET(ctx, rv, "SM get 'UPDATE BINARY' APDUs: cannot allocate remote APDU");
+		LOG_TEST_RET(ctx, rv, "SM get 'UPDATE BINARY' APDUs: cannot allocate remote APDU");
 
 		rapdu->apdu.cse = SC_APDU_CASE_3_SHORT;
 		rapdu->apdu.cla = 0x00;
@@ -161,11 +159,10 @@ sm_iasecc_get_apdu_create_file(struct sc_context *ctx, struct sm_info *sm_info, 
 	if (!cmd_data || !cmd_data->data || !rdata || !rdata->alloc)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_debug(ctx, SC_LOG_DEBUG_SM,
-	       "SM get 'CREATE FILE' APDU: FCP(%"SC_FORMAT_LEN_SIZE_T"u) %s",
-	       cmd_data->size, sc_dump_hex(cmd_data->data,cmd_data->size));
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM get 'CREATE FILE' APDU: FCP(%zu) %s",
+			cmd_data->size, sc_dump_hex(cmd_data->data, cmd_data->size));
 
- 	rv = rdata->alloc(rdata, &rapdu);
+	rv = rdata->alloc(rdata, &rapdu);
 	LOG_TEST_RET(ctx, rv, "SM get 'UPDATE BINARY' APDUs: cannot allocate remote APDU");
 
 	rapdu->apdu.cse = SC_APDU_CASE_3_SHORT;
@@ -513,8 +510,7 @@ sm_iasecc_get_apdus(struct sc_context *ctx, struct sm_info *sm_info,
 	if (!sm_info)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC get APDUs: init_len:%"SC_FORMAT_LEN_SIZE_T"u",
-	       init_len);
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC get APDUs: init_len:%zu", init_len);
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC get APDUs: rdata:%p", rdata);
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC get APDUs: serial %s", sc_dump_hex(sm_info->serialnr.value, sm_info->serialnr.len));
 
@@ -588,12 +584,11 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 
 	LOG_FUNC_CALLED(ctx);
 
-	sc_debug(ctx, SC_LOG_DEBUG_SM,
-	       "IAS/ECC decode answer() rdata length %i, out length %"SC_FORMAT_LEN_SIZE_T"u",
-	       rdata->length, out_len);
-        for (rapdu = rdata->data; rapdu; rapdu = rapdu->next)   {
-                unsigned char *decrypted;
-                size_t decrypted_len;
+	sc_debug(ctx, SC_LOG_DEBUG_SM, "IAS/ECC decode answer() rdata length %i, out length %zu",
+			rdata->length, out_len);
+	for (rapdu = rdata->data; rapdu; rapdu = rapdu->next) {
+		unsigned char *decrypted;
+		size_t decrypted_len;
 		unsigned char resp_data[SC_MAX_APDU_BUFFER_SIZE];
 		size_t resp_len = sizeof(resp_data);
 		unsigned char status[2] = {0, 0};
@@ -601,16 +596,15 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 		unsigned char ticket[8];
 		size_t ticket_len = sizeof(ticket);
 
-		sc_debug(ctx, SC_LOG_DEBUG_SM,
-		       "IAS/ECC decode response(%"SC_FORMAT_LEN_SIZE_T"u) %s",
-		       rapdu->apdu.resplen, sc_dump_hex(rapdu->apdu.resp, rapdu->apdu.resplen));
+		sc_debug(ctx, SC_LOG_DEBUG_SM, "IAS/ECC decode response(%zu) %s",
+				rapdu->apdu.resplen, sc_dump_hex(rapdu->apdu.resp, rapdu->apdu.resplen));
 
 		sc_copy_asn1_entry(c_asn1_iasecc_sm_data_object, asn1_iasecc_sm_data_object);
 		sc_format_asn1_entry(asn1_iasecc_sm_data_object + 0, resp_data, &resp_len, 0);
 		sc_format_asn1_entry(asn1_iasecc_sm_data_object + 1, status, &status_len, 0);
 		sc_format_asn1_entry(asn1_iasecc_sm_data_object + 2, ticket, &ticket_len, 0);
 
-        	rv = sc_asn1_decode(ctx, asn1_iasecc_sm_data_object, rapdu->apdu.resp, rapdu->apdu.resplen, NULL, NULL);
+		rv = sc_asn1_decode(ctx, asn1_iasecc_sm_data_object, rapdu->apdu.resp, rapdu->apdu.resplen, NULL, NULL);
 		LOG_TEST_RET(ctx, rv, "IAS/ECC decode answer(s): ASN1 decode error");
 
 		sc_debug(ctx, SC_LOG_DEBUG_SM, "IAS/ECC decode response() SW:%02X%02X, MAC:%s", status[0], status[1], sc_dump_hex(ticket, ticket_len));
@@ -619,6 +613,9 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 
 		if (asn1_iasecc_sm_data_object[0].flags & SC_ASN1_PRESENT)   {
 			sc_debug(ctx, SC_LOG_DEBUG_SM, "IAS/ECC decode answer() object present");
+			if (resp_len < 2) {
+				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "IAS/ECC decode answer(s): encrypted data too short");
+			}
 			if (resp_data[0] != 0x01)
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "IAS/ECC decode answer(s): invalid encrypted data format");
 
@@ -627,12 +624,14 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 					&decrypted, &decrypted_len);
 			LOG_TEST_RET(ctx, rv, "IAS/ECC decode answer(s): cannot decrypt card answer data");
 
-			sc_debug(ctx, SC_LOG_DEBUG_SM,
-			       "IAS/ECC decrypted data(%"SC_FORMAT_LEN_SIZE_T"u) %s",
-			       decrypted_len,
-			       sc_dump_hex(decrypted, decrypted_len));
-			while(*(decrypted + decrypted_len - 1) == 0x00)
-			       decrypted_len--;
+			sc_debug(ctx, SC_LOG_DEBUG_SM, "IAS/ECC decrypted data(%zu) %s",
+					decrypted_len, sc_dump_hex(decrypted, decrypted_len));
+			while (decrypted_len > 0 && *(decrypted + decrypted_len - 1) == 0x00) {
+				decrypted_len--;
+			}
+			if (decrypted_len == 0) {
+				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "IAS/ECC decode answer(s): empty decrypted data");
+			}
 			if (*(decrypted + decrypted_len - 1) != 0x80)
 				LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "IAS/ECC decode answer(s): invalid card data padding ");
 			decrypted_len--;
@@ -645,8 +644,8 @@ sm_iasecc_decode_card_data(struct sc_context *ctx, struct sm_info *sm_info, stru
 
 				offs += decrypted_len;
 				sc_debug(ctx, SC_LOG_DEBUG_SM,
-				       "IAS/ECC decode card answer(s): out_len/offs %"SC_FORMAT_LEN_SIZE_T"u/%i",
-				       out_len, offs);
+						"IAS/ECC decode card answer(s): out_len/offs %zu/%i",
+						out_len, offs);
 			}
 
 			free(decrypted);
