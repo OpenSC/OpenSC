@@ -329,9 +329,13 @@ chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	/* Mirror the CNS-applet PIN first, while SM is still off (only when the
-	 * card actually carries the CNS applet). */
-	if ((cmd == SC_PIN_CMD_CHANGE || cmd == SC_PIN_CMD_UNBLOCK) && chipdocit_has_cns(card)) {
+	/* This card carries two PIN objects that are kept in sync: the CNS-applet
+	 * PIN (in the clear) and the IAS PIN (under PACE). When the PIN is entered
+	 * in software both are updated. With a PIN pad the secret stays on the
+	 * reader and cannot be replayed to the CNS applet, so only the IAS PIN is
+	 * changed and the CNS-applet PIN is left unchanged. Mirror the CNS side
+	 * first, while SM is still off. */
+	if ((cmd == SC_PIN_CMD_CHANGE || cmd == SC_PIN_CMD_UNBLOCK) && chipdocit_has_cns(card) && !(data->flags & SC_PIN_CMD_USE_PINPAD)) {
 		p1_save = data->pin1;
 		p2_save = data->pin2;
 		r = chipdocit_cns_sync(card, data);
