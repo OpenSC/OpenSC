@@ -150,10 +150,18 @@ chipdocit_match_card(sc_card_t *card)
 	LOG_FUNC_CALLED(card->ctx);
 	if (_sc_match_atr(card, chipdocit_atrs, &card->type) < 0)
 		LOG_FUNC_RETURN(card->ctx, 0);
-	/* The ATR is shared with other Italian CNS cards; confirm this is the
-	 * NXP ChipDoc by selecting its card application, so the others fall
-	 * through to the generic CNS driver. */
+	/* The ATR is shared with other Italian CNS cards; confirm this is the NXP
+	 * ChipDoc so the others fall through to the generic CNS driver. First select
+	 * the IAS-ECC application: this activates the card (its applets are otherwise
+	 * unreachable on a card not yet opened by other software). That AID is not a
+	 * discriminator on its own -- it is also the ICAO eMRTD application AID and
+	 * is present on other IAS-ECC cards, answering 90 00 on unrelated documents.
+	 * Then confirm the ChipDoc by selecting its Bit4id SSCD application, which is
+	 * absent elsewhere (6A 82 on an eMRTD), so the match does not become too
+	 * broad. */
 	if (iso7816_select_aid(card, CHIPDOCIT_IAS_AID, sizeof CHIPDOCIT_IAS_AID, NULL, NULL) != SC_SUCCESS)
+		LOG_FUNC_RETURN(card->ctx, 0);
+	if (iso7816_select_aid(card, CHIPDOCIT_SSCD_AID, sizeof CHIPDOCIT_SSCD_AID, NULL, NULL) != SC_SUCCESS)
 		LOG_FUNC_RETURN(card->ctx, 0);
 	LOG_FUNC_RETURN(card->ctx, 1);
 }
