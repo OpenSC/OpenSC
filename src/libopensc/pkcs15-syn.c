@@ -546,7 +546,7 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
 	default:
 		/* `data`'s members copied by value, no buffer to release */
-		 break;
+		break;
 	case SC_PKCS15_TYPE_PRKEY:
 		((struct sc_pkcs15_prkey_info *)data)->subject.value = NULL;
 		break;
