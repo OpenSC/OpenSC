@@ -3332,8 +3332,11 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "DF missing");
 
 	r = sc_profile_get_file_by_path(profile, &df->path, &file);
-	if (r < 0 || file == NULL)
-		sc_select_file(card, &df->path, &file);
+	if (r < 0 || file == NULL) {
+		r = sc_select_file(card, &df->path, &file);
+		if (r < 0)
+			sc_log(ctx, "Failed to select DF: %s", sc_strerror(r));
+	}
 
 	r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
 	if (r >= 0) {
@@ -3951,10 +3954,11 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		struct sc_path tmp_path = *path;
 		int iter;
 		r = SC_ERROR_OBJECT_NOT_FOUND;
-		for (iter = (int)tmp_path.len/2; iter >= 0 && r == SC_ERROR_OBJECT_NOT_FOUND; iter--, tmp_path.len -= 2) {
+		for (iter = (int)tmp_path.len / 2; iter >= 0 && r == SC_ERROR_OBJECT_NOT_FOUND; iter--) {
 			r = sc_pkcs15_find_pin_by_type_and_reference(p15card,
 					tmp_path.len ? &tmp_path : NULL,
 					type, reference, &pin_obj);
+			tmp_path.len = tmp_path.len >= 2 ? tmp_path.len - 2 : 0;
 		}
 	}
 	else {

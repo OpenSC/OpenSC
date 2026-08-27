@@ -72,9 +72,11 @@ allocate_function_list(int v)
 	CK_FUNCTION_LIST_3_2_PTR list_3_2 = NULL;
 
 	if (v == 30) {
-		list = (CK_FUNCTION_LIST_PTR)malloc(sizeof(CK_FUNCTION_LIST_3_0));
+		list_3_0 = malloc(sizeof(CK_FUNCTION_LIST_3_0));
+		list = (CK_FUNCTION_LIST_PTR)list_3_0;
 	} else if (v == 32) {
-		list = (CK_FUNCTION_LIST_PTR)malloc(sizeof(CK_FUNCTION_LIST_3_2));
+		list_3_2 = malloc(sizeof(CK_FUNCTION_LIST_3_2));
+		list = (CK_FUNCTION_LIST_PTR)list_3_2;
 	} else {
 		list = malloc(sizeof(CK_FUNCTION_LIST));
 	}
@@ -716,6 +718,8 @@ C_Initialize(CK_VOID_PTR pInitArgs)
 		if (rv != CKR_OK)
 			return rv;
 	}
+	if (po == NULL)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	enter("C_Initialize");
 	print_ptr_in("pInitArgs", pInitArgs);

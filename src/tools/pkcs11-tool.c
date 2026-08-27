@@ -62,6 +62,7 @@
 #endif
 #include <openssl/bn.h>
 #include <openssl/err.h>
+#include <openssl/rand.h>
 #endif
 
 #include "common/compat_strlcat.h"
@@ -10170,6 +10171,10 @@ static void pseudo_randomize(unsigned char *data, size_t dataLen)
 {
 	size_t i = 0;
 	/* initialization with some data */
+#ifdef ENABLE_OPENSSL
+	if (RAND_bytes(data, (int)dataLen) == 1)
+		return;
+#endif
 	while (i < dataLen) {
 		*data = rand() & 0xFF;
 		data++;

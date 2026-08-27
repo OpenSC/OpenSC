@@ -992,8 +992,10 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 	memcpy(pubkey->u.ec.params.der.value, ecp->der.value, ecp->der.len);
 	pubkey->u.ec.params.der.len = ecp->der.len;
 
-	/* FIXME: check return value? */
-	sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
+	r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
+	if (r != SC_SUCCESS) {
+		sc_log(ctx, "Error %d fixing EC parameters, continuing anyway", r);
+	}
 
 	return SC_SUCCESS;
 }

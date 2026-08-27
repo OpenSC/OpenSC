@@ -2002,7 +2002,7 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 	unsigned short compressed_offset;
 	unsigned short compressed_length;
 	unsigned short compressed_type;
-	unsigned short object_offset;
+	size_t object_offset;
 	unsigned short object_count;
 	coolkey_decompressed_header_t *decompressed_header;
 	u8 *decompressed_object = NULL;
@@ -2078,6 +2078,10 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 	priv->token_name[decompressed_header->token_name_length] = '\0';
 	priv->token_name_length = decompressed_header->token_name_length;
 
+	if (object_count > decompressed_object_len / sizeof(coolkey_combined_object_header_t)) {
+		r = SC_ERROR_CORRUPTED_DATA;
+		goto done;
+	}
 
 	for (i=0; i < object_count; i++) {
 		u8 *current_object = NULL;

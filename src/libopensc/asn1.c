@@ -83,8 +83,6 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 	 */
 	cla = (*p & SC_ASN1_TAG_CLASS) | (*p & SC_ASN1_TAG_CONSTRUCTED);
 	tag = *p & SC_ASN1_TAG_PRIMITIVE;
-	if (left < 1)
-		return SC_ERROR_INVALID_ASN1_OBJECT;
 	p++;
 	left--;
 	if (tag == SC_ASN1_TAG_PRIMITIVE) {
@@ -1544,6 +1542,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 						r = SC_ERROR_OUT_OF_MEMORY;
 						break;
 					}
+				} else {
+					*buf = NULL;
 				}
 				*len = objlen-1;
 				parm = *buf;
@@ -1581,6 +1581,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 						r = SC_ERROR_OUT_OF_MEMORY;
 						break;
 					}
+				} else {
+					*buf = NULL;
 				}
 				c = *len = objlen;
 				parm = *buf;
@@ -1604,6 +1606,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 						r = SC_ERROR_OUT_OF_MEMORY;
 						break;
 					}
+				} else {
+					*buf = NULL;
 				}
 				c = *len = objlen;
 				parm = *buf;
