@@ -84,7 +84,10 @@ libopensc_la_LIBADD = $(OPENPACE_LIBS) $(OPTIONAL_OPENSSL_LIBS) \
 	$(top_builddir)/src/common/libscdl.la \
 	$(top_builddir)/src/ui/libnotify.la \
 	$(top_builddir)/src/ui/libstrings.la \
+	$(top_builddir)/src/sm/libsmnist.la \
+	$(top_builddir)/src/sm/libsmiso.la \
 	$(top_builddir)/src/sm/libsmeac.la
+
 if WIN32
 libopensc_la_LIBADD += -lws2_32 -lshlwapi -lcomctl32
 endif
