@@ -1067,7 +1067,7 @@ jacartapki_attrs_prvkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
 	attrs_num++;
 
-	sc_log(ctx, "Attributes(%" SC_FORMAT_LEN_SIZE_T "u) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	sc_log(ctx, "Attributes(%zu) '%s'", attrs_num, sc_dump_hex(data, data_len));
 	if (out && out_len) {
 		*out = data;
 		*out_len = data_len;
@@ -1212,7 +1212,7 @@ jacartapki_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to attach cache stamp");
 	attrs_num++;
 
-	sc_log(ctx, "Attributes(%" SC_FORMAT_LEN_SIZE_T "u) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	sc_log(ctx, "Attributes(%zu) '%s'", attrs_num, sc_dump_hex(data, data_len));
 	if (out != NULL && out_len != NULL) {
 		*out = data;
 		*out_len = data_len;
@@ -1356,7 +1356,7 @@ jacartapki_attrs_cert_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_ob
 	SHA1(data, data_len, sha1);
 	memcpy(data + sha1_offs, sha1, SHA_DIGEST_LENGTH);
 
-	sc_log(ctx, "Attributes(%" SC_FORMAT_LEN_SIZE_T "u) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	sc_log(ctx, "Attributes(%zu) '%s'", attrs_num, sc_dump_hex(data, data_len));
 	if (out != NULL && out_len != NULL) {
 		*out = data;
 		*out_len = data_len;
@@ -1464,7 +1464,7 @@ jacartapki_attrs_data_object_encode(struct sc_pkcs15_card *p15card, struct sc_pk
 	SHA1(data, data_len, sha1);
 	memcpy(data + sha1_offs, sha1, SHA_DIGEST_LENGTH);
 
-	sc_log(ctx, "Attributes(%" SC_FORMAT_LEN_SIZE_T "u) '%s'", attrs_num, sc_dump_hex(data, data_len));
+	sc_log(ctx, "Attributes(%zu) '%s'", attrs_num, sc_dump_hex(data, data_len));
 	if (out != NULL && out_len != NULL) {
 		*out = data;
 		*out_len = data_len;

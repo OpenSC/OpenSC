@@ -344,7 +344,7 @@ jacartapki_sm_chv_change(struct sc_card *card, struct sc_pin_cmd_data *data, uns
 	ctx = card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "SM change CHV(ref %i, length %" SC_FORMAT_LEN_SIZE_T "u, op-acl %X)", chv_ref, data->pin2.len, op_acl);
+	sc_log(ctx, "SM change CHV(ref %i, length %zu, op-acl %X)", chv_ref, data->pin2.len, op_acl);
 
 	if (data->pin2.len == 0)
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Unblock procedure needs new PIN defined");
@@ -569,7 +569,7 @@ jacartapki_sm_open(struct sc_card *card)
 #endif
 #endif /* OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER) */
 
-	sc_log(ctx, "shared-secret(%" SC_FORMAT_LEN_SIZE_T "u) %s", dh_session->shared_secret.len,
+	sc_log(ctx, "shared-secret(%zu) %s", dh_session->shared_secret.len,
 			sc_dump_hex(dh_session->shared_secret.value, dh_session->shared_secret.len));
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x86, 0x00, 0x00);
@@ -655,7 +655,7 @@ jacartapki_sm_cbc_cksum(struct sc_card *card, unsigned char *key, size_t key_siz
 		LOG_ERROR_GOTO(ctx, rv, "DES-CBC cipher init failed");
 	}
 
-	sc_log(ctx, "data for checksum (%" SC_FORMAT_LEN_SIZE_T "u) %s", in_len, sc_dump_hex(in, in_len));
+	sc_log(ctx, "data for checksum (%zu) %s", in_len, sc_dump_hex(in, in_len));
 	for (len = (int)in_len; len > (int)sizeof(DES_cblock); len -= (int)sizeof(DES_cblock), in += sizeof(DES_cblock)) {
 		int tmpLen = 0;
 		if (EVP_EncryptUpdate(evpK1Ctx, out, &tmpLen, in, (int)sizeof(DES_cblock)) == 0) {
@@ -705,7 +705,7 @@ jacartapki_sm_cbc_cksum(struct sc_card *card, unsigned char *key, size_t key_siz
 	DES_set_key((const_DES_cblock *)&key[0], &ks);
 	DES_set_key((const_DES_cblock *)&key[sizeof(DES_cblock)], &ks2);
 
-	sc_log(ctx, "data for checksum (%" SC_FORMAT_LEN_SIZE_T "u) %s", in_len, sc_dump_hex(in, in_len));
+	sc_log(ctx, "data for checksum (%zu) %s", in_len, sc_dump_hex(in, in_len));
 	for (len = (int)in_len; len > (int)sizeof(DES_cblock); len -= (int)sizeof(DES_cblock),
 	    in += sizeof(DES_cblock))
 		DES_ncbc_encrypt(in, out, sizeof(DES_cblock), &ks, icv, DES_ENCRYPT);
@@ -938,6 +938,7 @@ jacartapki_iso_sm_get_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc
 			sm_apdu_correct->ins = 0x47;
 			break;
 		}
+		sm_apdu_correct->le = 0;
 	}
 	return rv;
 }

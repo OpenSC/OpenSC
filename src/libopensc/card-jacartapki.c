@@ -292,7 +292,7 @@ jacartapki_erase_binary(struct sc_card *card, unsigned int offs, size_t count, u
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "jacartapki_erase_binary(card:%p) count %" SC_FORMAT_LEN_SIZE_T "u", card, count);
+	sc_log(ctx, "jacartapki_erase_binary(card:%p) count %zu", card, count);
 	if (count == 0)
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "'ERASE BINARY' failed: invalid size to erase");
 
@@ -475,7 +475,7 @@ jacartapki_process_fci(struct sc_card *card, struct sc_file *file, const u8 *buf
 		file->size = tag[0];
 		if (taglen == 2)
 			file->size = (file->size << 8) + tag[1];
-		sc_log(ctx, "  bytes in file: %" SC_FORMAT_LEN_SIZE_T "d", file->size);
+		sc_log(ctx, "  bytes in file: %zd", file->size);
 	}
 	if (tag == NULL) {
 		tag = sc_asn1_find_tag(ctx, p, len, ISO7816_TAG_FCP_SIZE_FULL, &taglen);
@@ -605,7 +605,7 @@ jacartapki_parse_sec_attrs(struct sc_card *card, struct sc_file *file)
 		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported file type");
 	}
 
-	sc_log(ctx, "sec.attrs(%" SC_FORMAT_LEN_SIZE_T "u) %s, ops_len %" SC_FORMAT_LEN_SIZE_T "u", len, sc_dump_hex(attrs, len), ops_len);
+	sc_log(ctx, "sec.attrs(%zu) %s, ops_len %zu", len, sc_dump_hex(attrs, len), ops_len);
 	if (ops_len * 2 > len)
 		LOG_ERROR_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Incorrect security attributes");
 
@@ -1041,7 +1041,7 @@ jacartapki_chv_secure_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_c
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "Verify CHV PIN(ref:%i,len:%" SC_FORMAT_LEN_SIZE_T "u)", pin_cmd->pin_reference, pin_cmd->pin1.len);
+	sc_log(ctx, "Verify CHV PIN(ref:%i,len:%zu)", pin_cmd->pin_reference, pin_cmd->pin1.len);
 
 	if (pin_cmd->pin1.data == NULL || pin_cmd->pin1.len == 0) {
 		rv = SC_ERROR_INVALID_ARGUMENTS;
@@ -1083,7 +1083,7 @@ jacartapki_chv_verify(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd, int
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "Verify CHV PIN(ref:%i,len:%" SC_FORMAT_LEN_SIZE_T "u)", pin_cmd->pin_reference, pin_cmd->pin1.len);
+	sc_log(ctx, "Verify CHV PIN(ref:%i,len:%zu)", pin_cmd->pin_reference, pin_cmd->pin1.len);
 
 	if (pin_cmd->pin1.data != NULL && pin_cmd->pin1.len == 0) {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, pin_cmd->pin_reference);
@@ -1198,7 +1198,7 @@ jacartapki_pin_verify(struct sc_card *card, unsigned type, unsigned reference,
 	size_t i;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "Verify PIN(type:%X,ref:%i,data(len:%" SC_FORMAT_LEN_SIZE_T "u,%p)", type, reference, data_len, data);
+	sc_log(ctx, "Verify PIN(type:%X,ref:%i,data(len:%zu,%p)", type, reference, data_len, data);
 
 	if (type == SC_AC_AUT && reference == JACARTAPKI_TRANSPORT_PIN1_REFERENCE)
 		type = SC_AC_CHV;
@@ -1253,7 +1253,7 @@ jacartapki_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "Change PIN(type:%i,ref:%i,lengths:%" SC_FORMAT_LEN_SIZE_T "u/%" SC_FORMAT_LEN_SIZE_T "u)", data->pin_type, data->pin_reference, data->pin1.len, data->pin2.len);
+	sc_log(ctx, "Change PIN(type:%i,ref:%i,lengths:%zu/%zu)", data->pin_type, data->pin_reference, data->pin1.len, data->pin2.len);
 
 	if (data->pin_type != SC_AC_CHV)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -1299,7 +1299,7 @@ jacartapki_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data)
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "Reset PIN(type:%i,ref:%i,lengths:%" SC_FORMAT_LEN_SIZE_T "u/%" SC_FORMAT_LEN_SIZE_T "u)", data->pin_type, data->pin_reference, data->pin1.len, data->pin2.len);
+	sc_log(ctx, "Reset PIN(type:%i,ref:%i,lengths:%zu/%zu)", data->pin_type, data->pin_reference, data->pin1.len, data->pin2.len);
 
 	if (data->pin_type != SC_AC_CHV)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -1376,7 +1376,7 @@ jacartapki_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "jacartapki_pin_cmd() cmd 0x%X, PIN type 0x%X, PIN reference %i, PIN-1 %p:%" SC_FORMAT_LEN_SIZE_T "u, PIN-2 %p:%" SC_FORMAT_LEN_SIZE_T "u",
+	sc_log(ctx, "jacartapki_pin_cmd() cmd 0x%X, PIN type 0x%X, PIN reference %i, PIN-1 %p:%zu, PIN-2 %p:%zu",
 			data->cmd, data->pin_type, data->pin_reference,
 			data->pin1.data, data->pin1.len, data->pin2.data, data->pin2.len);
 	switch (data->cmd) {
@@ -1579,7 +1579,7 @@ jacartapki_decipher(struct sc_card *card, const unsigned char *in, size_t in_len
 	unsigned int tagClass;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "in-length:%" SC_FORMAT_LEN_SIZE_T "u, key-size:%" SC_FORMAT_LEN_SIZE_T "u, out-length:%" SC_FORMAT_LEN_SIZE_T "u", in_len, (private_data->last_ko ? private_data->last_ko->size : 0), out_len);
+	sc_log(ctx, "in-length:%zu, key-size:%zu, out-length:%zu", in_len, (private_data->last_ko ? private_data->last_ko->size : 0), out_len);
 	if (env->operation != SC_SEC_OPERATION_DECIPHER)
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "has to be SC_SEC_OPERATION_DECIPHER");
 	else if (in_len > (sizeof(sbuf) - 4))
@@ -1611,12 +1611,12 @@ jacartapki_decipher(struct sc_card *card, const unsigned char *in, size_t in_len
 	tlv.value = responseTagPtr;
 
 	if (tagClass != 0x80 || tlv.tag != 0x00) {
-		sc_log(ctx, "invalid decrypted data tag. response(%" SC_FORMAT_LEN_SIZE_T "u) %s ...", apdu.resplen, sc_dump_hex(apdu.resp, 12));
+		sc_log(ctx, "invalid decrypted data tag. response(%zu) %s ...", apdu.resplen, sc_dump_hex(apdu.resp, 12));
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 	}
 
 	if (tlv.len > out_len) {
-		sc_log(ctx, "PSO Decipher failed: response data too long: %" SC_FORMAT_LEN_SIZE_T "u\n", tlv.len);
+		sc_log(ctx, "PSO Decipher failed: response data too long: %zu\n", tlv.len);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 	} else if (tlv.len == 0) {
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_DATA, "PSO Decipher failed: response data missing.");
@@ -1654,7 +1654,7 @@ jacartapki_compute_signature_dst(struct sc_card *card,
 		LOG_ERROR_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "It's not SC_SEC_OPERATION_SIGN");
 
 	keySize = private_data->last_ko != NULL ? private_data->last_ko->size : 0;
-	sc_log(ctx, "SC_SEC_OPERATION: %04X, in-length:%" SC_FORMAT_LEN_SIZE_T "u, key-size:%" SC_FORMAT_LEN_SIZE_T "u", env->operation, in_len, keySize);
+	sc_log(ctx, "SC_SEC_OPERATION: %04X, in-length:%zu, key-size:%zu", env->operation, in_len, keySize);
 
 	if ((env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1) != 0 ||
 			(env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA224) != 0 ||
@@ -1723,7 +1723,7 @@ jacartapki_compute_signature_dst(struct sc_card *card,
 	}
 
 	if (sigValueLength > out_len) {
-		sc_log(ctx, "Compute signature failed: invalid response length %" SC_FORMAT_LEN_SIZE_T "u\n", sigValueLength);
+		sc_log(ctx, "Compute signature failed: invalid response length %zu\n", sigValueLength);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_CARD_CMD_FAILED);
 	}
 
@@ -1768,7 +1768,7 @@ jacartapki_compute_signature(struct sc_card *card,
 
 	env = &private_data->security_env;
 
-	sc_log(ctx, "op:%x, inlen %" SC_FORMAT_LEN_SIZE_T "u, outlen %" SC_FORMAT_LEN_SIZE_T "u", env->operation, in_len, out_len);
+	sc_log(ctx, "op:%x, inlen %zu, outlen %zu", env->operation, in_len, out_len);
 
 	if (env->operation == SC_SEC_OPERATION_SIGN)
 		return jacartapki_compute_signature_dst(card, in, in_len, out, out_len);
