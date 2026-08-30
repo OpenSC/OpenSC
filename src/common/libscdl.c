@@ -67,12 +67,22 @@ int sc_dlclose(void *handle)
 #else
 
 #include <dlfcn.h>
+#ifdef HAVE_LINK_H
+#include <link.h>
+#endif
+#include <stddef.h>
 #include <stdlib.h>
+
+struct sc_dlhandle {
+	void *handle;
+	void *address;
+};
 
 void *sc_dlopen(const char *filename)
 {
-	int flags = RTLD_LAZY | RTLD_LOCAL;
-#ifdef RTLD_DEEPBIND
+	struct sc_dlhandle *dlhandle;
+  int flags = RTLD_LAZY | RTLD_LOCAL;
+  #ifdef RTLD_DEEPBIND
 	/* By default, the pkcs11 modules and pcsclite are opened without RTLD_DEEPBIND.
 	 * Using RTLD_DEEPBIND causes issues for dynamic analysis tools such as ASAN.
 	 * When the OPENSC_DEEPBIND is set to "1", the flag is included in the calls
@@ -82,13 +92,53 @@ void *sc_dlopen(const char *filename)
 	if (deep != NULL && deep[0] == '1') {
 		flags |= RTLD_DEEPBIND;
 	}
+  #endif
+
+	dlhandle = calloc(1, sizeof(struct sc_dlhandle));
+	if (!dlhandle)
+		return NULL;
+
+	dlhandle->handle = dlopen(filename, flags);
+	if (!dlhandle->handle) {
+		free(dlhandle);
+		return NULL;
+	}
+
+#if defined(HAVE_DLINFO)
+	struct link_map *lm;
+
+	if (dlinfo(dlhandle->handle, RTLD_DI_LINKMAP, &lm) < 0) {
+		dlclose(dlhandle->handle);
+		free(dlhandle);
+		return NULL;
+	}
+	dlhandle->address = (void *) lm->l_addr;
 #endif
-	return dlopen(filename, flags);
+
+	return dlhandle;
 }
 
 void *sc_dlsym(void *handle, const char *symbol)
 {
-	return dlsym(handle, symbol);
+	struct sc_dlhandle *dlhandle = handle;
+	void *symbol_handle;
+
+	symbol_handle = dlsym(dlhandle->handle, symbol);
+	if (!symbol_handle)
+		return NULL;
+
+#ifdef HAVE_DLADDR
+	if (dlhandle->address) {
+		Dl_info dli;
+
+		if (dladdr(symbol_handle, &dli) < 0)
+			return NULL;
+		if (dli.dli_fbase != dlhandle->address)
+			return NULL;
+	}
+#endif
+
+	return symbol_handle;
 }
 
 const char *sc_dlerror(void)
@@ -98,6 +148,11 @@ const char *sc_dlerror(void)
 
 int sc_dlclose(void *handle)
 {
-	return dlclose(handle);
+	struct sc_dlhandle *dlhandle = handle;
+	int result;
+
+	result = dlclose(dlhandle->handle);
+	free(dlhandle);
+	return result;
 }
 #endif
