@@ -142,9 +142,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 
 /* Here should be placed drivers that need some APDU transactions in the
  * driver's `match_card()` function. */
-	/* cedulauy: the contactless interface of the Uruguayan eID randomises
-	 * part of its ATR, so match_card() reads EF.CardAccess to recognise it. */
-	{ "cedulauy",	(void *(*)(void)) sc_get_cedulauy_driver },
 	{ "esteid2018",	(void *(*)(void)) sc_get_esteid2018_driver },
 	{ "esteid2025",	(void *(*)(void)) sc_get_esteid2025_driver },
 	/* srbeid: Serbian cards with CardEdge PKI applet (eID, health, PKS).
@@ -172,6 +169,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 	{ "eOI",	(void *(*)(void)) sc_get_eoi_driver },
 #endif
+	{ "cedulauy",	(void *(*)(void)) sc_get_cedulauy_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },

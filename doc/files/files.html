@@ -242,6 +242,8 @@ app <em class="replaceable"><code>application</code></em> {
 							</p></li><li class="listitem"><p>
 									<code class="literal">dtrust</code>: See <a class="xref" href="#dtrust" title="Configuration Options for D-Trust Signature Cards">the section called “Configuration Options for D-Trust Signature Cards”</a>
 							</p></li><li class="listitem"><p>
+									<code class="literal">cedulauy</code>: See <a class="xref" href="#cedulauy" title="Configuration Options for Uruguayan eID Card">the section called “Configuration Options for Uruguayan eID Card”</a>
+							</p></li><li class="listitem"><p>
 									Any other value: Configuration block for an externally loaded card driver
 							</p></li></ul></div><p>
 					</p></dd><dt><span class="term">
@@ -596,7 +598,24 @@ app <em class="replaceable"><code>application</code></em> {
 							<span class="application">lteid-tool</span>. For command
 							line tools it can also be provided via
 							<code class="literal">LTEID_CAN</code> environment variable.
-					</p></dd></dl></div></div><div class="refsect2"><a name="card_atr"></a><h3>Configuration based on ATR</h3><p>
+					</p></dd></dl></div></div><div class="refsect2"><a name="cedulauy"></a><h3>Configuration Options for Uruguayan eID Card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+						<code class="option">enable_nfc_enrollment = <em class="replaceable"><code>bool</code></em>;</code>
+					</span></dt><dd><p>
+						The contactless (NFC) interface of the card is protected with PACE.
+						The only password it accepts is the machine readable zone (MRZ) of
+						the document: the three lines of 30 characters printed on the back,
+						concatenated without separators. It can be provided with the
+						<code class="literal">CEDULAUY_MRZ</code> environment variable, otherwise it
+						is prompted for.
+						</p><p>
+						With this option enabled, the driver reads the MRZ over the contact
+						interface, where it is accessible without a PIN, and caches it in
+						<code class="literal">file_cache_dir</code>. Contactless use then needs neither
+						the environment variable nor the prompt. The cache file holds the
+						MRZ, and with it the document number, name and date of birth, in the
+						clear; it is created readable only by the user, and is removed again
+						when PACE fails with it. This feature is disabled by default.
+						</p></dd></dl></div></div><div class="refsect2"><a name="card_atr"></a><h3>Configuration based on ATR</h3><p>
 				</p><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 							<code class="option">atrmask = <em class="replaceable"><code>hexstring</code></em>;</code>
 						</span></dt><dd><p>

@@ -106,40 +106,28 @@
 #define CEDULAUY_ALGO_RSA_PKCS1	       (CEDULAUY_ALGO_HASH_NONE | CEDULAUY_ALGO_PAD_PKCS1)
 #define CEDULAUY_ALGO_RSA_PKCS1_SHA256 (CEDULAUY_ALGO_HASH_SHA256 | CEDULAUY_ALGO_PAD_PKCS1)
 
-/* The PACE password is the card's MRZ: the three lines of a TD1-size document,
- * 30 characters each, concatenated without separators (ICAO Doc 9303 part 5).
- * The card holds it in EF 700B under DF 7000, one of the public identity files
- * of the AGESIC layout (see cedulauy_data_files[] in pkcs15-cedulauy.c),
- * readable over the contact interface without a PIN.  The file content is a
- * BER-TLV with the 2-byte tag 7F01 and a single-byte length. */
+/* The PACE password is the card's MRZ: three TD1 lines of 30 characters,
+ * concatenated (ICAO Doc 9303 part 5).  EF 700B under DF 7000 holds it as a
+ * BER-TLV with tag 7F01, readable over the contact interface without a PIN. */
 #define CEDULAUY_MRZ_LEN  90
 #define CEDULAUY_MRZ_PATH "3F007000700B"
 #define CEDULAUY_MRZ_TAG1 0x7F
 #define CEDULAUY_MRZ_TAG2 0x01
 
-#define CEDULAUY_SM_MAC_LEN   8	 /* AES-CMAC, truncated as in ISO 7816-4 */
-#define CEDULAUY_SM_BLOCK_LEN 16 /* AES */
-/* ISO/IEC 7816-4 secure messaging turns a plain response into
- *   87 <len> 01 <cryptogram>   padding-content indicator + encrypted data
- *   99 02 <SW1> <SW2>          protected processing status
- *   8E 08 <MAC>                cryptographic checksum
- *   <SW1> <SW2>                status word of the protected response itself
- * The four groups are summed below in that order.  Length fields are counted
- * in their long form (81 xx), which is what the card uses for the cryptogram
- * at every size this driver asks for. */
+#define CEDULAUY_SM_MAC_LEN   8
+#define CEDULAUY_SM_BLOCK_LEN 16
+/* An ISO/IEC 7816-4 protected response is 87 81 <len> 01 <cryptogram>,
+ * 99 02 <SW>, 8E 08 <MAC> and the status word, summed in that order.  The
+ * cryptogram is the plaintext padded (ISO/IEC 9797-1 method 2) to the next
+ * AES block, so always at least one byte longer. */
 #define CEDULAUY_SM_OVERHEAD ((1 + 2 + 1) + 4 + (2 + CEDULAUY_SM_MAC_LEN) + 2)
-/* The cryptogram is the plaintext padded per ISO/IEC 9797-1 method 2 (one
- * mandatory 0x80 byte, then zeroes) up to the next AES block boundary, so it is
- * always at least one byte longer than the plaintext. */
 #define CEDULAUY_SM_WRAPPED(plainlen) \
 	(CEDULAUY_SM_OVERHEAD + \
 			(((plainlen) + 1) / CEDULAUY_SM_BLOCK_LEN + 1) * CEDULAUY_SM_BLOCK_LEN)
 
-/* Largest plain response the driver asks for over SM.  0xC0 is a whole number
- * of AES blocks and leaves margin below 0xDF, the largest plaintext whose
- * protected form still fits into a short APDU response (see the static_assert
- * below).  Keeping every other command under it means only the signature
- * response ever needs GET RESPONSE. */
+/* Largest plain response the driver asks for over SM: a whole number of AES
+ * blocks, below the largest plaintext whose protected form still fits into a
+ * short APDU response.  Only the signature response then needs GET RESPONSE. */
 #define CEDULAUY_SM_MAX_SIZE 0xC0
 
 static_assert(CEDULAUY_SM_WRAPPED(CEDULAUY_SM_MAX_SIZE) <= SC_MAX_APDU_RESP_SIZE,
@@ -153,16 +141,13 @@ static const struct sc_atr_table cedulauy_atrs[] = {
 	{ "3B:7F:94:00:00:80:31:80:65:B0:85:03:00:EF:12:0F:FF:82:90:00",
 	  "FF:FF:00:FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:FF:FF:FF",
 	  "Uruguayan eID (cedula de identidad)", SC_CARD_TYPE_CEDULAUY, 0, NULL },
-	/* Contactless (NFC) interface of the "IAS Classic v5" card.  Observed,
-	 * not documented by AGESIC: the card randomises four of its historical
-	 * bytes on every activation (anti-tracking) and the check byte follows
-	 * from them, so an exact ATR is useless here.  Only the ISO 14443
-	 * header and the ATR length are matched; cedulauy_match_card() then
-	 * confirms the card by reading EF.CardAccess, which ICAO Doc 9303
-	 * part 11 requires to be readable without prior authentication.
-	 * card-npa.c matches by an EF.DIR probe for the same reason. */
-	{ "3B:8C:80:01:00:00:00:00:00:00:00:00:00:00:00:00:00",
-	  "FF:FF:FF:FF:00:00:00:00:00:00:00:00:00:00:00:00:00",
+	/* Contactless (NFC) interface of the "IAS Classic v5" card.  Observed:
+	 * historical bytes 2 to 5 are randomised on every activation
+	 * (anti-tracking) and the check byte follows from them; the rest of the
+	 * ATR is stable.  Only those five bytes are masked out.
+	 * cedulauy_match_card() then compares EF.CardAccess. */
+	{ "3B:8C:80:01:50:00:00:00:00:00:88:3C:1F:77:81:95:00",
+	  "FF:FF:FF:FF:FF:00:00:00:00:FF:FF:FF:FF:FF:FF:FF:00",
 	  "Uruguayan eID (cedula de identidad, NFC)", SC_CARD_TYPE_CEDULAUY_CONTACTLESS, 0, NULL },
 	{ NULL, NULL, NULL, 0, 0, NULL }
 };
@@ -174,19 +159,13 @@ static const unsigned char cedulauy_aid[] = {
 
 #ifdef CEDULAUY_HAS_PACE
 
-/* The PACEInfo this card was observed to announce in EF.CardAccess, DER
- * encoded and without the enclosing SEQUENCE so that it can be matched as a
- * substring of the file.  A SecurityInfo is an OID, a mandatory version and an
- * optional parameterId (BSI TR-03110 part 3, SecurityInfos). */
-static const unsigned char cedulauy_pace_info[] = {
-		/* OBJECT IDENTIFIER 0.4.0.127.0.7.2.2.4.2.4,
-		 * id-PACE-ECDH-GM-AES-CBC-CMAC-256 (BSI TR-03110 part 3, PACE
-		 * object identifiers) */
+/* EF.CardAccess of this card, observed in full: a single PACEInfo announcing
+ * id-PACE-ECDH-GM-AES-CBC-CMAC-256 (0.4.0.127.0.7.2.2.4.2.4), version 2 and
+ * parameterId 15, NIST P-384 (BSI TR-03110 part 3). */
+static const unsigned char cedulauy_ef_cardaccess[] = {
+		0x31, 0x14, 0x30, 0x12,
 		0x06, 0x0A, 0x04, 0x00, 0x7F, 0x00, 0x07, 0x02, 0x02, 0x04, 0x02, 0x04,
-		/* INTEGER 2, PACEInfo version */
 		0x02, 0x01, 0x02,
-		/* INTEGER 15, parameterId: standardized domain parameters,
-		 * NIST P-384 (BSI TR-03110 part 3, A.2.1.1) */
 		0x02, 0x01, 0x0F};
 
 struct cedulauy_drv_data {
@@ -231,7 +210,6 @@ cedulauy_select_app(struct sc_card *card)
 
 #ifdef CEDULAUY_HAS_PACE
 
-
 static int
 cedulauy_select_mf(struct sc_card *card)
 {
@@ -240,7 +218,6 @@ cedulauy_select_mf(struct sc_card *card)
 	struct sc_apdu apdu;
 	int r;
 
-	/* P2 = 0x0C asks for no response data at all */
 	sc_format_apdu_ex(&apdu, 0x00, 0xA4, 0x00, 0x0C, mf, sizeof mf, NULL, 0);
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
@@ -248,7 +225,7 @@ cedulauy_select_mf(struct sc_card *card)
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
 		return SC_SUCCESS;
 
-	/* Which not every batch might accept. */
+	/* Not every batch accepts P2 = 0x0C. */
 	sc_format_apdu_ex(&apdu, 0x00, 0xA4, 0x00, 0x00, mf, sizeof mf, resp, sizeof resp);
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0)
@@ -257,49 +234,31 @@ cedulauy_select_mf(struct sc_card *card)
 	return sc_check_sw(card, apdu.sw1, apdu.sw2);
 }
 
-
-static int
-cedulauy_read_ef_cardaccess(struct sc_card *card, unsigned char *buf, size_t buflen)
-{
-	struct sc_apdu apdu;
-	int r;
-
-	r = cedulauy_select_mf(card);
-	if (r < 0)
-		return r;
-
-	sc_format_apdu_ex(&apdu, 0x00, 0xB0, 0x80 | SFID_EF_CARDACCESS, 0x00,
-			NULL, 0, buf, buflen);
-
-	r = sc_transmit_apdu(card, &apdu);
-	if (r < 0)
-		return r;
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r < 0 && r != SC_ERROR_FILE_END_REACHED)
-		return r;
-
-	return (int)apdu.resplen;
-}
-
+/* EF.CardAccess is the only file readable before PACE -- the card answers
+ * SELECT by AID with 6982, EF.DIR and EF.CardSecurity are absent, GET DATA is
+ * refused with 6999 and SELECT MF returns no FCI -- so the whole file is
+ * compared against what this card is known to hold.  Reading one byte more
+ * than that makes a longer file fail the length check. */
 static int
 cedulauy_match_contactless(struct sc_card *card)
 {
-	unsigned char buf[CEDULAUY_SM_MAX_SIZE];
-	int r;
-	size_t i;
+	unsigned char buf[sizeof cedulauy_ef_cardaccess + 1];
+	struct sc_apdu apdu;
 
-	r = cedulauy_read_ef_cardaccess(card, buf, sizeof buf);
-	if (r < (int)sizeof cedulauy_pace_info) {
-		sc_log(card->ctx, "Cannot read EF.CardAccess, not a cedula");
+	if (cedulauy_select_mf(card) < 0)
+		return 0;
+
+	sc_format_apdu_ex(&apdu, 0x00, 0xB0, 0x80 | SFID_EF_CARDACCESS, 0x00,
+			NULL, 0, buf, sizeof buf);
+
+	if (sc_transmit_apdu(card, &apdu) < 0 ||
+			apdu.resplen != sizeof cedulauy_ef_cardaccess ||
+			0 != memcmp(buf, cedulauy_ef_cardaccess, sizeof cedulauy_ef_cardaccess)) {
+		sc_log(card->ctx, "Unexpected EF.CardAccess, not a cedula");
 		return 0;
 	}
 
-	for (i = 0; i + sizeof cedulauy_pace_info <= (size_t)r; i++)
-		if (0 == memcmp(buf + i, cedulauy_pace_info, sizeof cedulauy_pace_info))
-			return 1;
-
-	sc_log(card->ctx, "EF.CardAccess does not announce the expected PACE parameters");
-	return 0;
+	return 1;
 }
 
 static int
@@ -339,14 +298,13 @@ cedulauy_get_cached_mrz(struct sc_card *card, unsigned char *mrz)
 	return got == CEDULAUY_MRZ_LEN;
 }
 
-/*Open the MRZ cache for writing, owner-readable only.*/
+/* Open the MRZ cache for writing, owner-readable only. */
 static FILE *
 cedulauy_open_mrz_cache(struct sc_card *card, const char *path)
 {
 #ifdef _WIN32
-	/* No per-file restriction here: the cache lives under the user's
-	 * profile directory, whose inherited ACL already limits access to the
-	 * user (and administrators). */
+	/* The cache lives under the user's profile directory, whose inherited
+	 * ACL already limits access to the user. */
 	return fopen(path, "wb");
 #else
 	int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
@@ -526,19 +484,14 @@ cedulauy_perform_pace(struct sc_card *card)
 	r = cedulauy_select_mf(card);
 	LOG_TEST_RET(card->ctx, r, "Cannot select the MF");
 
-	/* Password reference 1, the MRZ (BSI TR-03110 part 3, password
-	 * references; the 83 01 01 of MSE:Set AT).  Observed: this card rejects
-	 * reference 2, the CAN, with 6A88.  Without an MRZ at hand the password
-	 * is left unset and sm-eac asks for it. */
+	/* Observed: this card rejects the CAN reference with 6A88.  Without an
+	 * MRZ at hand the password is left unset and sm-eac asks for it. */
 	pace_input.pin_id = PACE_PIN_ID_MRZ;
 	if (drv_data->mrz_len) {
 		pace_input.pin = drv_data->mrz;
 		pace_input.pin_length = drv_data->mrz_len;
 	}
 
-	/* TR-03110 v2.02 and later, as every other PACE driver in the tree
-	 * requests; only v2.01 cards derive the authentication token
-	 * differently. */
 	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 
 	free(pace_output.ef_cardaccess);
@@ -563,10 +516,8 @@ cedulauy_perform_pace(struct sc_card *card)
 }
 
 /*
- * GET RESPONSE override.
- *
- * This is OpenSC issue #3777.  PR #3778 fixes it generically in iso-sm, and
- * this override can be dropped once that lands.  
+ * GET RESPONSE under SM, see issue #3777.  PR #3778 fixes this generically in
+ * iso-sm; this override can be dropped once that lands.
  */
 static int
 cedulauy_get_response(struct sc_card *card, size_t *count, u8 *buf)
@@ -820,12 +771,10 @@ cedulauy_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
 		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
 				"Unsupported hash/DigestInfo length");
 
-	/* PSO HASH: load the digest.  Over secure messaging the card answers
-	 * with an encrypted body although it returns none on the contact
-	 * interface; without a response buffer the SM layer would size the
-	 * reply from resplen == 0 and truncate it.  The body itself is of no
-	 * interest.  SC_APDU_FLAGS_NO_GET_RESP keeps a 61xx status from
-	 * reaching cedulauy_get_response(), which cannot serve one. */
+	/* PSO HASH: load the digest.  Over SM the card answers with an
+	 * encrypted body although it returns none on the contact interface;
+	 * without a response buffer the SM layer would size the reply from
+	 * resplen == 0 and truncate it.  The body itself is of no interest. */
 	sbuf[offs++] = 0x90;
 	sbuf[offs++] = (unsigned char)datalen;
 	memcpy(sbuf + offs, data, datalen);
@@ -834,12 +783,9 @@ cedulauy_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
 		sc_format_apdu_ex(&apdu, card->cla, 0x2A, 0x90, 0xA0, sbuf, offs, rbuf, sizeof rbuf);
 		apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
 	} else {
-		/* On the contact interface the command stays Case 3, and the
-		 * card answers 61xx.  Leave GET RESPONSE handling alone: with
-		 * Le == 0 sc_get_response() turns that status into 9000 without
-		 * talking to the card, which is what the driver has always
-		 * relied on.  Suppressing it would leave 61xx for sc_check_sw()
-		 * to reject as an unknown status word. */
+		/* Case 3 on the contact interface: the card answers 61xx, which
+		 * sc_get_response() turns into 9000 without talking to the card
+		 * because Le == 0. */
 		sc_format_apdu_ex(&apdu, card->cla, 0x2A, 0x90, 0xA0, sbuf, offs, NULL, 0);
 	}
 	SC_TRANSMIT_TEST_RET(card, apdu, "PSO HASH failed");
@@ -877,11 +823,9 @@ cedulauy_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 static int
 cedulauy_logout(struct sc_card *card)
 {
-	/* Re-selecting the application resets its security status.  On the
-	 * contactless interface the PACE channel is deliberately left up: it is
-	 * transport, not authentication, and the card holds on to its own side
-	 * of it until the RF field drops, so EF.CardAccess could not be read in
-	 * the clear to negotiate a new one anyway. */
+	/* Re-selecting the application resets its security status.  The PACE
+	 * channel is left up: it is transport, not authentication, and the card
+	 * keeps its own side of it until the RF field drops. */
 	LOG_FUNC_RETURN(card->ctx, cedulauy_select_app(card));
 }
 

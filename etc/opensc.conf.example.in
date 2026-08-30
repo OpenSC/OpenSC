@@ -212,21 +212,9 @@ app default {
 	}
 
 	card_driver cedulauy {
-		# The contactless (NFC) interface of the Uruguayan
-		# eID is protected with PACE, whose password is the
-		# card's MRZ (all 90 characters of the three TD1
-		# lines). It can be supplied via the CEDULAUY_MRZ
-		# environment variable; otherwise it is prompted for
-		# on the terminal.
-		#
-		# With enable_nfc_enrollment the driver reads the MRZ
-		# over the contact interface and caches it in the
-		# OpenSC cache directory for later contactless use,
-		# so neither the variable nor the prompt is needed.
-		# The cache file holds the MRZ (document number, name,
-		# date of birth, ...) in the clear, readable only by
-		# the user; it is disabled by default.
-		#
+		# Cache the MRZ read over the contact interface for use
+		# as the PACE password on the contactless (NFC) interface.
+		# Default: false
 		#enable_nfc_enrollment = true;
 	}
 

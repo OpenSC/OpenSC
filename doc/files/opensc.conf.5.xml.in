@@ -306,6 +306,9 @@ app <replaceable>application</replaceable> {
 									<literal>dtrust</literal>: See <xref linkend="dtrust"/>
 							</para></listitem>
 							<listitem><para>
+									<literal>cedulauy</literal>: See <xref linkend="cedulauy"/>
+							</para></listitem>
+							<listitem><para>
 									Any other value: Configuration block for an externally loaded card driver
 							</para></listitem>
 						</itemizedlist>
@@ -947,6 +950,36 @@ app <replaceable>application</replaceable> {
 							line tools it can also be provided via
 							<literal>LTEID_CAN</literal> environment variable.
 					</para></listitem>
+				</varlistentry>
+			</variablelist>
+		</refsect2>
+
+		<refsect2 id="cedulauy">
+			<title>Configuration Options for Uruguayan eID Card</title>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>enable_nfc_enrollment = <replaceable>bool</replaceable>;</option>
+					</term>
+					<listitem>
+						<para>
+						The contactless (NFC) interface of the card is protected with PACE.
+						The only password it accepts is the machine readable zone (MRZ) of
+						the document: the three lines of 30 characters printed on the back,
+						concatenated without separators. It can be provided with the
+						<literal>CEDULAUY_MRZ</literal> environment variable, otherwise it
+						is prompted for.
+						</para>
+						<para>
+						With this option enabled, the driver reads the MRZ over the contact
+						interface, where it is accessible without a PIN, and caches it in
+						<literal>file_cache_dir</literal>. Contactless use then needs neither
+						the environment variable nor the prompt. The cache file holds the
+						MRZ, and with it the document number, name and date of birth, in the
+						clear; it is created readable only by the user, and is removed again
+						when PACE fails with it. This feature is disabled by default.
+						</para>
+					</listitem>
 				</varlistentry>
 			</variablelist>
 		</refsect2>
