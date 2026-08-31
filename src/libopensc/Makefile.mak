@@ -45,9 +45,6 @@ LIBS = $(TOPDIR)\src\scconf\scconf.lib \
 	   $(TOPDIR)\src\common\libscdl.lib \
 	   $(TOPDIR)\src\ui\strings.lib \
 	   $(TOPDIR)\src\ui\notify.lib \
-!IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
-	   $(TOPDIR)\src\sm\libsm.lib \
-!ENDIF
 	   $(TOPDIR)\src\sm\libsmiso.lib \
 	   $(TOPDIR)\src\sm\libsmeac.lib \
 	   $(TOPDIR)\src\sm\libsmjacartapki.lib \
@@ -56,6 +53,11 @@ LIBS = $(TOPDIR)\src\scconf\scconf.lib \
 all: $(TOPDIR)\win32\versioninfo.res $(TARGET)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
+
+!IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
+LIBS = $(LIBS) \
+	   $(TOPDIR)\src\sm\libsm.lib
+!ENDIF
 
 opensc.dll: $(OBJECTS) $(LIBS) $*.def
 	link $(LINKFLAGS) /dll /out:$@ /def:$*.def /implib:$*.lib $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib Comctl32.lib Shell32.lib user32.lib advapi32.lib ws2_32.lib shlwapi.lib
