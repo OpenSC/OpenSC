@@ -139,30 +139,31 @@ static struct profile_operations {
 	const char *name;
 	void *func;
 } profile_operations[] = {
-	{ "rutoken", (void *) sc_pkcs15init_get_rutoken_ops },
-	{ "flex", (void *) sc_pkcs15init_get_cryptoflex_ops },
-	{ "cyberflex", (void *) sc_pkcs15init_get_cyberflex_ops },
-	{ "cardos", (void *) sc_pkcs15init_get_cardos_ops },
-	{ "etoken", (void *) sc_pkcs15init_get_cardos_ops }, /* legacy */
-	{ "starcos", (void *) sc_pkcs15init_get_starcos_ops },
-	{ "oberthur", (void *) sc_pkcs15init_get_oberthur_ops },
-	{ "openpgp", (void *) sc_pkcs15init_get_openpgp_ops },
-	{ "setcos", (void *) sc_pkcs15init_get_setcos_ops },
-	{ "muscle", (void*) sc_pkcs15init_get_muscle_ops },
-	{ "asepcos", (void*) sc_pkcs15init_get_asepcos_ops },
-	{ "entersafe",(void*) sc_pkcs15init_get_entersafe_ops },
-	{ "epass2003",(void*) sc_pkcs15init_get_epass2003_ops },
-	{ "rutoken_ecp", (void *) sc_pkcs15init_get_rtecp_ops },
-	{ "rutoken_lite", (void *) sc_pkcs15init_get_rtecp_ops },
-	{ "myeid", (void *) sc_pkcs15init_get_myeid_ops },
-	{ "sc-hsm", (void *) sc_pkcs15init_get_sc_hsm_ops },
-	{ "isoApplet", (void *) sc_pkcs15init_get_isoApplet_ops },
-	{ "gids", (void *) sc_pkcs15init_get_gids_ops },
+		{"rutoken",	    (void *)sc_pkcs15init_get_rutoken_ops	 },
+		{"flex",	 (void *)sc_pkcs15init_get_cryptoflex_ops},
+		{"cyberflex",    (void *)sc_pkcs15init_get_cyberflex_ops },
+		{"cardos",	   (void *)sc_pkcs15init_get_cardos_ops    },
+		{"etoken",	   (void *)sc_pkcs15init_get_cardos_ops    }, /* legacy */
+		{"starcos",	    (void *)sc_pkcs15init_get_starcos_ops	 },
+		{"oberthur",     (void *)sc_pkcs15init_get_oberthur_ops  },
+		{"openpgp",	    (void *)sc_pkcs15init_get_openpgp_ops	 },
+		{"setcos",	   (void *)sc_pkcs15init_get_setcos_ops    },
+		{"muscle",	   (void *)sc_pkcs15init_get_muscle_ops    },
+		{"asepcos",	    (void *)sc_pkcs15init_get_asepcos_ops	 },
+		{"entersafe",    (void *)sc_pkcs15init_get_entersafe_ops },
+		{"epass2003",    (void *)sc_pkcs15init_get_epass2003_ops },
+		{"rutoken_ecp",	(void *)sc_pkcs15init_get_rtecp_ops	   },
+		{"rutoken_lite", (void *)sc_pkcs15init_get_rtecp_ops	    },
+		{"myeid",	  (void *)sc_pkcs15init_get_myeid_ops     },
+		{"sc-hsm",	   (void *)sc_pkcs15init_get_sc_hsm_ops    },
+		{"isoApplet",    (void *)sc_pkcs15init_get_isoApplet_ops },
+		{"gids",	 (void *)sc_pkcs15init_get_gids_ops	   },
 #ifdef ENABLE_OPENSSL
-	{ "authentic", (void *) sc_pkcs15init_get_authentic_ops },
-	{ "iasecc", (void *) sc_pkcs15init_get_iasecc_ops },
+		{"authentic",    (void *)sc_pkcs15init_get_authentic_ops },
+		{"iasecc",	   (void *)sc_pkcs15init_get_iasecc_ops    },
+		{"jacartapki",   (void *)sc_pkcs15init_get_jacartapki_ops},
 #endif
-	{ NULL, NULL },
+		{NULL,	       NULL				    },
 };
 
 

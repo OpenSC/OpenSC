@@ -3,7 +3,7 @@ TOPDIR = ..\..
 TARGET = smm-local.dll
 
 OBJECTS = smm-local.obj sm-global-platform.obj sm-cwa14890.obj sm-card-iasecc.obj sm-card-authentic.obj
-LIBS = $(TOPDIR)\src\sm\libsm.lib \
+LIBS = \
 	   $(TOPDIR)\src\libopensc\opensc_a.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib \
 	   $(TOPDIR)\src\scconf\scconf.lib \
@@ -13,6 +13,7 @@ LIBS = $(TOPDIR)\src\sm\libsm.lib \
 	   $(TOPDIR)\src\ui\notify.lib \
 	   $(TOPDIR)\src\sm\libsmiso.lib \
 	   $(TOPDIR)\src\sm\libsmeac.lib \
+	   $(TOPDIR)\src\sm\libsmjacartapki.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib
 
 all: $(TARGET)
@@ -20,6 +21,10 @@ all: $(TARGET)
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
 !IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
+
+LIBS = $(LIBS) \
+	   $(TOPDIR)\src\sm\libsm.lib
+
 $(TARGET): $(OBJECTS) $(LIBS) $*.def
 	link /dll $(LINKFLAGS) /out:$@ /def:$*.def $(OBJECTS) $(LIBS) $(ZLIB_LIB) $(OPENPACE_LIB) $(OPENSSL_LIB) ws2_32.lib gdi32.lib advapi32.lib Crypt32.lib User32.lib Shell32.lib Comctl32.lib shlwapi.lib
 
