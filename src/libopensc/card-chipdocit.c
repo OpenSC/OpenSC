@@ -40,7 +40,7 @@
 
 #define CHIPDOCIT_ENC_CAN_EF "3F00E000" /* encrypted CAN (24 B: 16 enc || 8 SN) */
 
-/* Signature-side application AID (SELECT 00 A4 04 04). */
+/* Signature-side (SSCD) application AID. */
 static const u8 CHIPDOCIT_SSCD_AID[] = {
 		0xE8, 0x28, 0xBD, 0x08, 0x0F, 0x01, 0x4E, 0x58, 0x50, 0x31};
 
@@ -172,9 +172,7 @@ chipdocit_read_enc_can(sc_card_t *card, struct chipdocit_privdata *priv)
 	sc_path_t path;
 	int r;
 
-	/* Activate the card application first: on a card that has not been
-	 * opened by other software, the MF and EF E000 are only reachable once
-	 * the IAS-ECC application is selected. */
+	/* Activate the card application (see CHIPDOCIT_IAS_AID) before MF/E000. */
 	r = iso7816_select_aid(card, CHIPDOCIT_IAS_AID, sizeof CHIPDOCIT_IAS_AID, NULL, NULL);
 	LOG_TEST_RET(card->ctx, r, "SELECT IAS-ECC AID failed");
 	r = sc_select_file(card, sc_get_mf_path(), NULL);
@@ -272,8 +270,6 @@ chipdocit_cns_pin_op(struct sc_card *card, int cmd, int reference,
 static int
 chipdocit_select_cns(struct sc_card *card)
 {
-	/* Tear down the PACE channel first: the CNS applet is accessed in the
-	 * clear, and selecting it ends any secure-messaging session anyway. */
 	sc_sm_stop(card);
 	return iso7816_select_aid(card, CHIPDOCIT_CNS_AID, sizeof CHIPDOCIT_CNS_AID,
 			NULL, NULL);
@@ -320,13 +316,9 @@ chipdocit_has_cns(struct sc_card *card)
 }
 
 /*
- * PIN operations. This is a "CNS" card carrying two PIN objects that must be
- * kept in sync: the CNS-applet PIN (in the clear) and the IAS PIN (under the
- * PACE channel). VERIFY only touches the IAS side; CHANGE and UNBLOCK are
- * mirrored onto both. On the IAS side VERIFY sends the unpadded PIN with
- * P2 = BSO|0x80 (0x83 user PIN, 0x86 PUK); CHANGE sends only the new PIN (the
- * old is proven by the preceding VERIFY); UNBLOCK = VERIFY PUK + RESET RETRY
- * COUNTER + set new PIN.
+ * PIN operations. This "CNS" card carries two PIN objects kept in sync: the
+ * CNS-applet PIN (in the clear) and the IAS PIN (under PACE). VERIFY touches
+ * only the IAS side; CHANGE and UNBLOCK are mirrored onto both.
  */
 static int
 chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
@@ -409,7 +401,6 @@ chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 	/* If the IAS side failed after the CNS PIN was changed, roll the CNS PIN
 	 * back so the two objects do not diverge (CHANGE only). */
 	if (r != SC_SUCCESS && synced && cmd == SC_PIN_CMD_CHANGE) {
-		/* Revert the CNS PIN (new -> old) so the two objects stay in sync. */
 		if (chipdocit_select_cns(card) == SC_SUCCESS)
 			(void)chipdocit_cns_pin_op(card, SC_PIN_CMD_CHANGE,
 					CHIPDOCIT_CNS_PIN_BSO, &p2_save, &p1_save);
@@ -433,10 +424,8 @@ chipdocit_set_security_env(struct sc_card *card,
 }
 
 /*
- * DS signature: raw RSA via PSO:DECIPHER on the signature applet. OpenSC has
- * already PKCS#1-padded the DigestInfo to a full modulus-sized block (we
- * advertise RSA_RAW), so we hand that block to the card's private-key
- * operation and return the raw signature.
+ * DS signature: the block is already PKCS#1-padded by OpenSC (we advertise
+ * RSA_RAW), so run it through the signature applet's raw PSO:DECIPHER.
  */
 static int
 chipdocit_compute_signature(struct sc_card *card, const u8 *data,
