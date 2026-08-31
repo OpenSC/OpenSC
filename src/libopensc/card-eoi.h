@@ -39,3 +39,7 @@ struct eoi_privdata {
 	/* PrKey reference to eOI mappings */
 	int prkey_mappings[MAX_OBJECTS][2];
 };
+
+/* Decrypt the 24-byte encrypted CAN blob into its 16-byte plaintext block;
+ * shared with card-chipdocit (same chip and key). */
+int chipdoc_decrypt_can_block(const u8 *enc_can, size_t enc_can_len, u8 out[AES_BLOCK_SIZE]);

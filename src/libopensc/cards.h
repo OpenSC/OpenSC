@@ -290,6 +290,9 @@ enum {
 
 	/* Uruguayan eID card (cedula de identidad) */
 	SC_CARD_TYPE_CEDULAUY = 45000,
+
+	/* Bit4id Digital-DNA (NXP ChipDoc, Italian CNS/eID) */
+	SC_CARD_TYPE_CHIPDOC_IT = 46000,
 };
 
 extern sc_card_driver_t *sc_get_default_driver(void);
@@ -333,6 +336,7 @@ extern sc_card_driver_t *sc_get_edo_driver(void);
 extern sc_card_driver_t *sc_get_nqApplet_driver(void);
 extern sc_card_driver_t *sc_get_skeid_driver(void);
 extern sc_card_driver_t *sc_get_eoi_driver(void);
+extern sc_card_driver_t *sc_get_chipdocit_driver(void);
 extern sc_card_driver_t *sc_get_dtrust_driver(void);
 extern sc_card_driver_t *sc_get_lteid_driver(void);
 extern sc_card_driver_t *sc_get_srbeid_driver(void);
