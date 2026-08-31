@@ -81,11 +81,49 @@ static void itacns_init_cns_card(sc_card_t *card)
 	}
 }
 
+/* Over the contactless interface the card has no historical bytes; it is
+ * identified by selecting its application instead of by ATR. */
+static const u8 itacns_cns_aid[] = {
+		0xA0, 0x00, 0x00, 0x00, 0x95, 0x01, 0x00, 0x4D};
+
+/* Confirm the card model after selecting the application, so an unrelated card
+ * answering the same AID is not matched (cf. card-sc-hsm.c, issue #1377). */
+static int
+itacns_match_cns_aid(sc_card_t *card)
+{
+	static const u8 model[] = {'J', 'S', 'i', 'g', 'n', '4'};
+	sc_apdu_t apdu;
+	u8 rbuf[16];
+	int r;
+
+	if (iso7816_select_aid(card, itacns_cns_aid, sizeof itacns_cns_aid,
+			    NULL, NULL) != SC_SUCCESS)
+		return 0;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x80);
+	apdu.le = sizeof model;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof rbuf;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0 || sc_check_sw(card, apdu.sw1, apdu.sw2) != SC_SUCCESS)
+		return 0;
+
+	return apdu.resplen >= sizeof model &&
+	       0 == memcmp(rbuf, model, sizeof model);
+}
+
 static int itacns_match_cns_card(sc_card_t *card)
 {
 	u8 manufacturer_code;
 	u8 manufacturer_mask;
 	u8 fw_major;
+
+	if (0 == card->reader->atr_info.hist_bytes_len) {
+		if (!itacns_match_cns_aid(card))
+			return 0;
+		card->type = SC_CARD_TYPE_ITACNS_CNS;
+		return 1;
+	}
 
 	if (15 != card->reader->atr_info.hist_bytes_len ||
 	    0 != memcmp(card->reader->atr_info.hist_bytes+9, "CNS", 3))
@@ -153,10 +191,14 @@ static int itacns_init(sc_card_t *card)
 	if (card->type == SC_CARD_TYPE_ITACNS_CNS)
 		itacns_init_cns_card(card);
 
-	DRVDATA(card)->ic_manufacturer_code = card->reader->atr_info.hist_bytes[2];
-	DRVDATA(card)->mask_manufacturer_code = card->reader->atr_info.hist_bytes[3];
-	card->version.fw_major = card->reader->atr_info.hist_bytes[4];
-	card->version.fw_minor = card->reader->atr_info.hist_bytes[5];
+	if (card->reader->atr_info.hist_bytes_len == 0) {
+		DRVDATA(card)->is_nfc = 1;
+	} else {
+		DRVDATA(card)->ic_manufacturer_code = card->reader->atr_info.hist_bytes[2];
+		DRVDATA(card)->mask_manufacturer_code = card->reader->atr_info.hist_bytes[3];
+		card->version.fw_major = card->reader->atr_info.hist_bytes[4];
+		card->version.fw_minor = card->reader->atr_info.hist_bytes[5];
+	}
 
 	/* Set up algorithm info. */
 	flags = SC_ALGORITHM_NEED_USAGE
@@ -164,8 +206,9 @@ static int itacns_init(sc_card_t *card)
 		| SC_ALGORITHM_RSA_HASHES
 		;
 
-	if ((card->version.hw_major >= 1 && card->version.hw_minor >= 1) ||
-	    card->type == SC_CARD_TYPE_ITACNS_CNS_IDEMIA_2021) {
+	if (DRVDATA(card)->is_nfc ||
+			(card->version.hw_major >= 1 && card->version.hw_minor >= 1) ||
+			card->type == SC_CARD_TYPE_ITACNS_CNS_IDEMIA_2021) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 	} else {
