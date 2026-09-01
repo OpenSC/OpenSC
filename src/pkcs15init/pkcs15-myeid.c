@@ -1,7 +1,7 @@
 /*
  * MyEID specific operations for PKCS15 initialization
  *
- * Copyright (C) 2008-2009 Aventra Ltd.
+ * Copyright (C) 2008-2026 Aventra Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -354,8 +354,30 @@ myeid_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	data[18] = 0x00;
 
+	/* by default, MyEID allows unblocking PINs only with the PUK code which is included directly in the card-level PIN object,
+	and doesn't have a separate authentication object in the Authentication Object Directory File.
+	If SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN flag is set, this PIN can be used to unblock other PINs */
+
+	if ((auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN) == SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
+		data[18] = 0x08; /* set global unblocker flag */
+
 	data_obj.Data = data;
 	data_obj.DataLen = 19;
+
+	struct sc_pkcs15_auth_info pin_ainfo = {0};
+
+	sc_profile_get_pin_info(profile, (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN) ? SC_PKCS15INIT_SO_PIN : SC_PKCS15INIT_USER_PIN,
+			&pin_ainfo);
+
+	/* Using a global unblocker PIN for unblocking another PIN must be explicitly allowed by setting the Allow Global Unblocking
+	flag on the user PIN. If auth_id is set in the profile for user PINs, Allow Global Unblocking flag is set on the card-level
+	PIN object and the auth_id is copied to the PKCS#15 object. The auth_id then shows, which PIN should be verified to unblock
+	this user PIN. */
+	if (pin_ainfo.auth_id.len > 0 && (!(auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)) && (!(auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))) {
+		sc_log(ctx, "Allow unblocking with a separate unblocking PIN.");
+		pin_obj->auth_id = pin_ainfo.auth_id;
+		data[18] |= 0x04;
+	}
 
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_MYEID_PUTDATA, &data_obj);
 	LOG_TEST_RET(ctx, r, "Initialize PIN failed");
