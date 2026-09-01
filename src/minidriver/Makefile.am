@@ -14,12 +14,14 @@ endif
 
 AM_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPENPACE_CFLAGS)
 AM_CPPFLAGS = -I$(top_srcdir)/src
+noinst_HEADERS = minidriver-private.h minidriver-jpki.h
 
-opensc_minidriver@LIBRARY_BITNESS@_la_SOURCES = minidriver.c opensc-minidriver.exports versioninfo-minidriver.rc
+opensc_minidriver@LIBRARY_BITNESS@_la_SOURCES = minidriver.c minidriver-jpki.c \
+	opensc-minidriver.exports versioninfo-minidriver.rc
 opensc_minidriver@LIBRARY_BITNESS@_la_LIBADD =  \
 	$(top_builddir)/src/libopensc/libopensc_static.la \
 	$(OPTIONAL_OPENSSL_LIBS) \
-	-lbcrypt -lcrypt32 -lrpcrt4 -lwinmm
+	-lbcrypt -lcrypt32 -lrpcrt4 -lwinmm -lwinscard
 opensc_minidriver@LIBRARY_BITNESS@_la_LDFLAGS = $(AM_LDFLAGS) \
 	-export-symbols "$(srcdir)/opensc-minidriver.exports" \
 	-module -avoid-version -no-undefined

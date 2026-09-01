@@ -73,6 +73,8 @@
 #endif
 
 #include "cardmod.h"
+#include "minidriver-jpki.h"
+#include "minidriver-private.h"
 
 #define MD_FUNC_CALLED(pCardData, level) do { \
 	logprintf(pCardData, level, "MD_Function:%s:%d called\n",__FUNCTION__, __LINE__); \
@@ -101,16 +103,6 @@ HINSTANCE g_inst;
 
 #define NULLSTR(a) (a == NULL ? "<NULL>" : a)
 #define NULLWSTR(a) (a == NULL ? L"<NULL>" : a)
-
-#define MD_MAX_KEY_CONTAINERS 32
-#define MD_CARDID_SIZE 16
-
-#define MD_ROLE_USER_SIGN (ROLE_ADMIN + 1)
-/*
- * must be higher than MD_ROLE_USER_SIGN and
- * less than or equal MAX_PINS
- */
-#define MD_MAX_PINS MAX_PINS
 
 #define MD_CARDCF_LENGTH	(sizeof(CARD_CACHE_FILE_FORMAT))
 
@@ -160,99 +152,20 @@ HINSTANCE g_inst;
 #define TLS1_2_PROTOCOL_VERSION 0x0303
 #define TLS_DERIVE_KEY_SIZE 48
 
-struct md_directory {
-	unsigned char name[9];
-
-	CARD_DIRECTORY_ACCESS_CONDITION acl;
-
-	struct md_file *files;
-	struct md_directory *subdirs;
-
-	struct md_directory *next;
-};
-
-struct md_file {
-	unsigned char name[9];
-
-	CARD_FILE_ACCESS_CONDITION acl;
-
-	unsigned char *blob;
-	size_t size;
-
-	struct md_file *next;
-};
-
-struct md_pkcs15_container {
-	int index;
-	struct sc_pkcs15_id id;
-	char guid[MAX_CONTAINER_NAME_LEN + 1];
-	unsigned char flags;
-	size_t size_key_exchange, size_sign;
-
-	struct sc_pkcs15_object *cert_obj, *prkey_obj, *pubkey_obj;
-	// BOOL guid_overwrite;
-};
-
-struct md_dh_agreement {
-	DWORD dwSize;
-	PBYTE pbAgreement;
-};
-
-struct md_guid_conversion {
-	CHAR szOpenSCGuid[MAX_CONTAINER_NAME_LEN+1];
-	CHAR szWindowsGuid[MAX_CONTAINER_NAME_LEN+1];
-};
-
 #define MD_MAX_CONVERSIONS 50
 struct md_guid_conversion md_static_conversions[MD_MAX_CONVERSIONS] = {0};
 
-typedef struct _VENDOR_SPECIFIC
-{
-	BOOL initialized;
-
-	struct sc_pkcs15_object *pin_objs[MD_MAX_PINS];
-
-	struct sc_context *ctx;
-	struct sc_reader *reader;
-	struct sc_card *card;
-	struct sc_pkcs15_card *p15card;
-
-	struct md_pkcs15_container p15_containers[MD_MAX_KEY_CONTAINERS];
-
-	struct md_directory root;
-
-	SCARDCONTEXT hSCardCtx;
-	SCARDHANDLE hScard;
-
-	/* These will be used in CardAuthenticateEx to display a dialog box when doing
-	 * external PIN verification.
-	 */
-	HWND hwndParent;
-	LPWSTR wszPinContext;
-	/* these will be used to store intermediate dh agreements results */
-	struct md_dh_agreement* dh_agreements;
-	BYTE allocatedAgreements;
-
-	/* if any key used with the MD_ROLE_USER_SIGN has user_consent set PinCacheAlwaysPrompt */
-	int need_pin_always;
-
-	CRITICAL_SECTION hScard_lock;
-} VENDOR_SPECIFIC;
-
-static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
-						  DWORD dwDefaulCode);
+DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
+		DWORD dwDefaulCode);
 static DWORD associate_card(PCARD_DATA pCardData);
 static void disassociate_card(PCARD_DATA pCardData);
 static DWORD md_pkcs15_delete_object(PCARD_DATA pCardData, struct sc_pkcs15_object *obj);
 static DWORD md_fs_init(PCARD_DATA pCardData);
 static void md_fs_finalize(PCARD_DATA pCardData);
 
-#if defined(__GNUC__)
-static void logprintf(PCARD_DATA pCardData, int level, const char* format, ...)
-	__attribute__ ((format (SC_PRINTF_FORMAT, 3, 4)));
-#endif
-
-static void logprintf(PCARD_DATA pCardData, int level, _Printf_format_string_ const char* format, ...)
+void
+logprintf(PCARD_DATA pCardData, int level,
+		_Printf_format_string_ const char *format, ...)
 {
 	va_list arg;
 	VENDOR_SPECIFIC *vs;
@@ -1064,8 +977,7 @@ md_fs_add_directory(PCARD_DATA pCardData, struct md_directory **head, char *name
 	return SCARD_S_SUCCESS;
 }
 
-
-static DWORD
+DWORD
 md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file **out)
 {
 	struct md_file *file = NULL;
@@ -1421,6 +1333,9 @@ md_set_cardid(PCARD_DATA pCardData, struct md_file *file)
 {
 	VENDOR_SPECIFIC *vs;
 	DWORD dwret;
+#ifndef __MINGW32__
+	BYTE jpki_card_identifier[MD_CARDID_SIZE] = {0};
+#endif
 
 	if (!pCardData || !file)
 		return SCARD_E_INVALID_PARAMETER;
@@ -1428,6 +1343,24 @@ md_set_cardid(PCARD_DATA pCardData, struct md_file *file)
 	vs = pCardData->pvVendorSpecific;
 	if (!vs)
 		return SCARD_E_INVALID_PARAMETER;
+
+#ifndef __MINGW32__
+	/* JPKI publishes a dummy token serial.  A zero/repeated card identifier
+	 * prevents the Base KSP global cache from distinguishing cards and makes
+	 * protected public certificates disappear after a new process starts.
+	 * Derive the Windows card identifier from the unprotected authentication
+	 * certificate instead.  No personal certificate fields are logged. */
+	if (md_jpki_build_card_identifier(pCardData, jpki_card_identifier)) {
+		dwret = md_fs_set_content(pCardData, file, jpki_card_identifier,
+				MD_CARDID_SIZE);
+		SecureZeroMemory(jpki_card_identifier,
+				sizeof(jpki_card_identifier));
+		if (dwret != SCARD_S_SUCCESS)
+			return dwret;
+		goto cardid_ready;
+	}
+	SecureZeroMemory(jpki_card_identifier, sizeof(jpki_card_identifier));
+#endif
 
 	if (vs->p15card->tokeninfo && vs->p15card->tokeninfo->serial_number) {
 		unsigned char sn_bin[SC_MAX_SERIALNR];
@@ -1461,8 +1394,14 @@ md_set_cardid(PCARD_DATA pCardData, struct md_file *file)
 			return dwret;
 	}
 
+#ifndef __MINGW32__
+cardid_ready:
+#endif
 	logprintf(pCardData, 3, "cardid(%zu)\n", file->size);
-	loghex(pCardData, 3, file->blob, file->size);
+#ifndef __MINGW32__
+	if (!md_jpki_is_card(pCardData))
+#endif
+		loghex(pCardData, 3, file->blob, file->size);
 	return SCARD_S_SUCCESS;
 }
 
@@ -3195,8 +3134,9 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	return (int) result;
 }
 
-static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
-						  DWORD dwDefaulCode)
+DWORD
+md_translate_OpenSC_to_Windows_error(int OpenSCerror,
+		DWORD dwDefaulCode)
 {
 	switch(OpenSCerror)
 	{
@@ -3212,6 +3152,7 @@ static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
 		case SC_ERROR_CARD_REMOVED:
 			return SCARD_W_REMOVED_CARD;
 		case SC_ERROR_CARD_RESET:
+		case SC_ERROR_READER_REATTACHED:
 			return SCARD_W_RESET_CARD;
 		case SC_ERROR_KEYPAD_CANCELLED:
 			return SCARD_W_CANCELLED_BY_USER;
@@ -3236,6 +3177,8 @@ static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
 			return SCARD_E_NO_MEMORY;
 		case SC_ERROR_NOT_ALLOWED:
 			return SCARD_W_SECURITY_VIOLATION;
+		case SC_ERROR_SECURITY_STATUS_NOT_SATISFIED:
+			return SCARD_W_CARD_NOT_AUTHENTICATED;
 		case SC_ERROR_AUTH_METHOD_BLOCKED:
 			return SCARD_W_CHV_BLOCKED;
 		case SC_ERROR_PIN_CODE_INCORRECT:
@@ -3263,7 +3206,6 @@ static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
 DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 {
 	VENDOR_SPECIFIC *vs = NULL;
-	CRITICAL_SECTION hScard_lock;
 
 	MD_FUNC_CALLED(pCardData, 1);
 
@@ -3279,8 +3221,7 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 	if(!vs)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-	hScard_lock = vs->hScard_lock;
-	EnterCriticalSection(&hScard_lock);
+	EnterCriticalSection(&vs->hScard_lock);
 
 	disassociate_card(pCardData);
 	md_fs_finalize(pCardData);
@@ -3293,11 +3234,10 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 
 	logprintf(pCardData, 1, "**********************************************************************\n");
 
-	pCardData->pfnCspFree(pCardData->pvVendorSpecific);
+	LeaveCriticalSection(&vs->hScard_lock);
+	DeleteCriticalSection(&vs->hScard_lock);
+	pCardData->pfnCspFree(vs);
 	pCardData->pvVendorSpecific = NULL;
-
-	LeaveCriticalSection(&hScard_lock);
-	DeleteCriticalSection(&hScard_lock);
 
 	MD_FUNC_RETURN(pCardData, 1, SCARD_S_SUCCESS);
 }
@@ -3530,6 +3470,11 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	struct sc_pkcs15_der pubkey_der;
 	struct sc_pkcs15_prkey_info *prkey_info = NULL;
 	int rv;
+	PBYTE allocated_sig_public_key = NULL;
+	PBYTE allocated_keyex_public_key = NULL;
+#ifndef __MINGW32__
+	BOOL jpki_signature_container = FALSE;
+#endif
 	pubkey_der.value = NULL;
 	pubkey_der.len = 0;
 
@@ -3584,6 +3529,11 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		goto err;
 	}
 
+#ifndef __MINGW32__
+	jpki_signature_container =
+			md_jpki_is_signature_container(pCardData, bContainerIndex, NULL);
+#endif
+
 	ret = SCARD_F_UNKNOWN_ERROR;
 	prkey_info = (struct sc_pkcs15_prkey_info *)cont->prkey_obj->data;
 
@@ -3592,7 +3542,20 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		ret = SCARD_S_SUCCESS;
 	}
 
+#ifndef __MINGW32__
+	if (!pubkey_der.value &&
+			md_jpki_is_signature_container(pCardData, bContainerIndex, NULL) &&
+			md_jpki_cert_cache_encode_public_key_locked(pCardData, &pubkey_der) ==
+					SCARD_S_SUCCESS)
+		ret = SCARD_S_SUCCESS;
+#endif
+
+#ifndef __MINGW32__
+	if (!pubkey_der.value && cont->pubkey_obj &&
+			!jpki_signature_container) {
+#else
 	if (!pubkey_der.value && cont->pubkey_obj)   {
+#endif
 		struct sc_pkcs15_pubkey *pubkey = NULL;
 
 		logprintf(pCardData, 1, "now read public key '%.*s'\n", (int) sizeof cont->pubkey_obj->label, cont->pubkey_obj->label);
@@ -3612,7 +3575,8 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		}
 		else {
 			logprintf(pCardData, 1, "public key read error %d\n", rv);
-			ret = SCARD_E_FILE_NOT_FOUND;
+			ret = md_translate_OpenSC_to_Windows_error(rv,
+					SCARD_E_FILE_NOT_FOUND);
 		}
 	}
 
@@ -3621,31 +3585,47 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		int private_obj = cont->cert_obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
 
 		logprintf(pCardData, 1, "now read certificate '%.*s'\n", (int) sizeof cont->cert_obj->label, cont->cert_obj->label);
-		rv = sc_pkcs15_read_certificate(vs->p15card, (struct sc_pkcs15_cert_info *)(cont->cert_obj->data), private_obj, &cert);
-		if(!rv)   {
-			rv = sc_pkcs15_encode_pubkey(vs->ctx, cert->key, &pubkey_der.value, &pubkey_der.len);
-			if (rv)   {
-				logprintf(pCardData, 1, "encode certificate public key error %d\n", rv);
-				ret = SCARD_F_INTERNAL_ERROR;
-			}
-			else   {
-				logprintf(pCardData, 1, "certificate public key encoded\n");
-				ret = SCARD_S_SUCCESS;
-			}
 
-			sc_pkcs15_free_certificate(cert);
-		}
-		else   {
-			logprintf(pCardData, 1,
-				  "certificate '%u' read error %d\n",
-				  (unsigned int)bContainerIndex, rv);
-			ret = SCARD_E_FILE_NOT_FOUND;
+#ifndef __MINGW32__
+		if (jpki_signature_container) {
+			ret = md_jpki_signature_certificate_encode_public_key(
+					pCardData, cont, &pubkey_der);
+			if (ret == SCARD_S_SUCCESS)
+				logprintf(pCardData, 1,
+						"certificate public key encoded\n");
+			else
+				logprintf(pCardData, 1,
+						"certificate '%u' read/encode error 0x%08lX\n",
+						(unsigned int)bContainerIndex, (unsigned long)ret);
+		} else
+#endif
+		{
+			rv = sc_pkcs15_read_certificate(vs->p15card, (struct sc_pkcs15_cert_info *)(cont->cert_obj->data), private_obj, &cert);
+			if (!rv) {
+				rv = sc_pkcs15_encode_pubkey(vs->ctx, cert->key, &pubkey_der.value, &pubkey_der.len);
+				if (rv) {
+					logprintf(pCardData, 1, "encode certificate public key error %d\n", rv);
+					ret = SCARD_F_INTERNAL_ERROR;
+				} else {
+					logprintf(pCardData, 1, "certificate public key encoded\n");
+					ret = SCARD_S_SUCCESS;
+				}
+
+				sc_pkcs15_free_certificate(cert);
+			} else {
+				logprintf(pCardData, 1,
+						"certificate '%u' read error %d\n",
+						(unsigned int)bContainerIndex, rv);
+				ret = md_translate_OpenSC_to_Windows_error(rv,
+						SCARD_E_FILE_NOT_FOUND);
+			}
 		}
 	}
 
 	if (!pubkey_der.value && (cont->size_sign || cont->size_key_exchange)) {
 		logprintf(pCardData, 2, "cannot find public key\n");
-		ret = SCARD_F_INTERNAL_ERROR;
+		if (ret != SCARD_W_CARD_NOT_AUTHENTICATED)
+			ret = SCARD_F_INTERNAL_ERROR;
 		goto err;
 	}
 
@@ -3662,9 +3642,26 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 	if (prkey_info->modulus_length > 0) {
 		logprintf(pCardData, 7, "Encoding RSA public key");
 		if (pubkey_der.len && pubkey_der.value)   {
+			if (pubkey_der.len > MAXDWORD) {
+				ret = SCARD_E_INVALID_VALUE;
+				goto err;
+			}
 			sz = 0; /* get size */
-			CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
-					pubkey_der.value, (DWORD) pubkey_der.len, 0, NULL, &sz);
+			if (!CryptDecodeObject(
+					    X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+					    RSA_CSP_PUBLICKEYBLOB, pubkey_der.value,
+					    (DWORD)pubkey_der.len, 0, NULL, &sz) ||
+					!sz) {
+				ret = SCARD_F_INTERNAL_ERROR;
+				goto err;
+			}
+#ifndef __MINGW32__
+			if (jpki_signature_container &&
+					sz != MD_JPKI_RSA_PUBLIC_KEY_BLOB_SIZE) {
+				ret = SCARD_E_INVALID_VALUE;
+				goto err;
+			}
+#endif
 
 			if (cont->size_sign)   {
 				PUBRSAKEYSTRUCT_BASE *publicKey = (PUBRSAKEYSTRUCT_BASE *)pCardData->pfnCspAlloc(sz);
@@ -3672,9 +3669,15 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					ret = SCARD_E_NO_MEMORY;
 					goto err;
 				}
+				allocated_sig_public_key = (PBYTE)publicKey;
 
-				CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
-						pubkey_der.value, (DWORD) pubkey_der.len, 0, publicKey, &sz);
+				if (!CryptDecodeObject(
+						    X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+						    RSA_CSP_PUBLICKEYBLOB, pubkey_der.value,
+						    (DWORD)pubkey_der.len, 0, publicKey, &sz)) {
+					ret = SCARD_F_INTERNAL_ERROR;
+					goto err;
+				}
 
 				publicKey->publickeystruc.aiKeyAlg = CALG_RSA_SIGN;
 				pContainerInfo->cbSigPublicKey = sz;
@@ -3691,9 +3694,15 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					ret = SCARD_E_NO_MEMORY;
 					goto err;
 				}
+				allocated_keyex_public_key = (PBYTE)publicKey;
 
-				CryptDecodeObject(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, RSA_CSP_PUBLICKEYBLOB,
-						pubkey_der.value, (DWORD) pubkey_der.len, 0, publicKey, &sz);
+				if (!CryptDecodeObject(
+						    X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
+						    RSA_CSP_PUBLICKEYBLOB, pubkey_der.value,
+						    (DWORD)pubkey_der.len, 0, publicKey, &sz)) {
+					ret = SCARD_F_INTERNAL_ERROR;
+					goto err;
+				}
 
 				publicKey->publickeystruc.aiKeyAlg = CALG_RSA_KEYX;
 				pContainerInfo->cbKeyExPublicKey = sz;
@@ -3737,6 +3746,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					ret = SCARD_E_NO_MEMORY;
 					goto err;
 				}
+				allocated_sig_public_key = (PBYTE)publicKey;
 
 				publicKey->cbKey =  (DWORD)(pubkey_der.len -3) /2;
 				publicKey->dwMagic = dwMagic;
@@ -3778,6 +3788,7 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 					ret = SCARD_E_NO_MEMORY;
 					goto err;
 				}
+				allocated_keyex_public_key = (PBYTE)publicKey;
 
 				publicKey->cbKey =  (DWORD)(pubkey_der.len -3) /2;
 				publicKey->dwMagic = dwMagic;
@@ -3794,6 +3805,19 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 			}
 		}
 	}
+#ifndef __MINGW32__
+	if (jpki_signature_container) {
+		if (pubkey_der.len > MAXDWORD) {
+			ret = SCARD_E_INVALID_VALUE;
+			goto err;
+		}
+		ret = md_jpki_public_key_snapshot_store(pCardData,
+				pubkey_der.value, (DWORD)pubkey_der.len);
+		if (ret != SCARD_S_SUCCESS)
+			goto err;
+	}
+#endif
+
 	logprintf(pCardData, 7, "returns container(idx:%u) info\n",
 		  (unsigned int)bContainerIndex);
 
@@ -3805,6 +3829,20 @@ DWORD WINAPI CardGetContainerInfo(__in PCARD_DATA pCardData, __in BYTE bContaine
 		  (unsigned long)pContainerInfo->cbKeyExPublicKey);
 
 err:
+	if (ret != SCARD_S_SUCCESS && allocated_sig_public_key) {
+		if (pContainerInfo->pbSigPublicKey == allocated_sig_public_key) {
+			pContainerInfo->pbSigPublicKey = NULL;
+			pContainerInfo->cbSigPublicKey = 0;
+		}
+		pCardData->pfnCspFree(allocated_sig_public_key);
+	}
+	if (ret != SCARD_S_SUCCESS && allocated_keyex_public_key) {
+		if (pContainerInfo->pbKeyExPublicKey == allocated_keyex_public_key) {
+			pContainerInfo->pbKeyExPublicKey = NULL;
+			pContainerInfo->cbKeyExPublicKey = 0;
+		}
+		pCardData->pfnCspFree(allocated_keyex_public_key);
+	}
 	free(pubkey_der.value);
 	unlock(pCardData);
 
@@ -4216,6 +4254,16 @@ DWORD WINAPI CardReadFile(__in PCARD_DATA pCardData,
 		dwret = SCARD_E_FILE_NOT_FOUND;
 		goto err;
 	}
+
+#ifndef __MINGW32__
+	/* Windows consumes cmapfile before it can select a key and display the
+	 * system KSP PIN UI.  Seed the protected public certificate from a validated
+	 * Resource Manager cache or from the current user's public certificate. */
+	if (pszDirectoryName &&
+			strcmp(pszDirectoryName, szBASE_CSP_DIR) == 0 &&
+			strcmp(pszFileName, szCONTAINER_MAP_FILE) == 0)
+		md_jpki_prefetch_signature_certificate(pCardData);
+#endif
 
 	if (!file->blob) {
 		dwret = md_fs_read_content(pCardData, pszDirectoryName, file);
@@ -4749,13 +4797,16 @@ err:
 DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO pInfo)
 {
 	DWORD dwret;
-	VENDOR_SPECIFIC *vs;
+	VENDOR_SPECIFIC *vs = NULL;
 	ALG_ID hashAlg;
 	sc_pkcs15_prkey_info_t *prkey_info;
 	BYTE dataToSign[0x200];
 	int opt_crypt_flags = 0;
 	size_t dataToSignLen = sizeof(dataToSign);
 	sc_pkcs15_object_t *pkey;
+#ifndef __MINGW32__
+	struct md_jpki_sign_context *jpki_sign_context = NULL;
+#endif
 
 	MD_FUNC_CALLED(pCardData, 1);
 
@@ -4981,6 +5032,13 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		BYTE *pbuf = NULL;
 		DWORD lg;
 
+#ifndef __MINGW32__
+		dwret = md_jpki_sign_prepare(pCardData,
+				pInfo->bContainerIndex, &jpki_sign_context);
+		if (dwret != SCARD_S_SUCCESS)
+			goto err;
+#endif
+
 		lg = pInfo->cbSignedData;
 		logprintf(pCardData, 3, "lg = %lu\n", (unsigned long)lg);
 		pbuf = pCardData->pfnCspAlloc(lg);
@@ -5000,10 +5058,17 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		}
 
 		r = sc_pkcs15_compute_signature(vs->p15card, pkey, opt_crypt_flags, dataToSign, dataToSignLen, pbuf, lg, NULL);
+#ifndef __MINGW32__
+		md_jpki_sign_finish(pCardData, &jpki_sign_context,
+				r >= 0);
+#endif
 		logprintf(pCardData, 2, "sc_pkcs15_compute_signature return %d\n", r);
 		if(r < 0)   {
 			logprintf(pCardData, 2, "sc_pkcs15_compute_signature error %s\n", sc_strerror(r));
 			pCardData->pfnCspFree(pbuf);
+			pCardData->pfnCspFree(pInfo->pbSignedData);
+			pInfo->pbSignedData = NULL;
+			pInfo->cbSignedData = 0;
 			dwret = md_translate_OpenSC_to_Windows_error(r, SCARD_F_INTERNAL_ERROR);
 			goto err;
 		}
@@ -5030,6 +5095,9 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 			(size_t)pCardData->hScard, (size_t)pCardData->hSCardCtx);
 
 err:
+#ifndef __MINGW32__
+	md_jpki_sign_finish(pCardData, &jpki_sign_context, FALSE);
+#endif
 	unlock(pCardData);
 	MD_FUNC_RETURN(pCardData, 1, dwret);
 }
@@ -5861,6 +5929,9 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	unsigned int  auth_method;
 	int r;
 	BOOL DisplayPinpadUI = FALSE;
+#ifndef __MINGW32__
+	BOOL had_jpki_signature_snapshot = FALSE;
+#endif
 
 	MD_FUNC_CALLED(pCardData, 1);
 
@@ -5871,10 +5942,18 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 
 	if (!pCardData)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	if (!lock(pCardData))
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
+#ifndef __MINGW32__
+	vs = (VENDOR_SPECIFIC *)pCardData->pvVendorSpecific;
+	had_jpki_signature_snapshot = PinId == MD_ROLE_USER_SIGN &&
+				      md_jpki_has_signature_public_key(pCardData);
+#endif
 
 	dwret = check_card_reader_status(pCardData, "CardAuthenticateEx");
 	if (dwret != SCARD_S_SUCCESS)
-		MD_FUNC_RETURN(pCardData, 1, dwret);
+		goto out;
 
 	logprintf(pCardData, 2,
 		  "CardAuthenticateEx: PinId=%u, dwFlags=0x%08X, cbPinData=%lu, Attempts %s\n",
@@ -5882,15 +5961,49 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		  (unsigned long)cbPinData, pcAttemptsRemaining ? "YES" : "NO");
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
-	if (!vs)
-		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	if (!vs) {
+		dwret = SCARD_E_INVALID_PARAMETER;
+		goto out;
+	}
 
-	if (PinId >= MD_MAX_PINS)
-		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	if (PinId >= MD_MAX_PINS) {
+		dwret = SCARD_E_INVALID_PARAMETER;
+		goto out;
+	}
+
+#ifndef __MINGW32__
+	/* Windows selects the signature key before collecting role-3 PIN data.
+	 * check_card_reader_status() may legitimately rebuild the card context and
+	 * clear the snapshot.  Re-seed it from the imported public certificate;
+	 * only report a reset if the current card no longer exposes the selected
+	 * JPKI signature container or the exact public key cannot be restored. */
+	if (PinId == MD_ROLE_USER_SIGN) {
+		BYTE signature_container_index;
+		BOOL current_jpki_signature =
+				md_jpki_get_signature_container_index(pCardData,
+						&signature_container_index) &&
+				md_jpki_is_signature_container(pCardData,
+						signature_container_index, NULL);
+		BOOL current_snapshot =
+				md_jpki_has_signature_public_key(pCardData);
+		if (current_jpki_signature && !current_snapshot) {
+			dwret = md_jpki_restore_signature_public_key_snapshot(pCardData);
+			current_snapshot = dwret == SCARD_S_SUCCESS &&
+					   md_jpki_has_signature_public_key(pCardData);
+		}
+		if ((had_jpki_signature_snapshot && !current_jpki_signature) ||
+				(current_jpki_signature && !current_snapshot)) {
+			dwret = SCARD_W_RESET_CARD;
+			goto out;
+		}
+	}
+#endif
 
 	pin_obj = vs->pin_objs[PinId];
-	if (!pin_obj)
-		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	if (!pin_obj) {
+		dwret = SCARD_E_INVALID_PARAMETER;
+		goto out;
+	}
 
 #if 0
 	/* TODO do we need to return SCARD_E_UNSUPPORTED_FEATURE if the card
@@ -5903,18 +6016,23 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 	}
 #endif
 
-	if (dwFlags & ~(CARD_AUTHENTICATE_GENERATE_SESSION_PIN | CARD_AUTHENTICATE_SESSION_PIN | CARD_PIN_SILENT_CONTEXT))
-		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+	if (dwFlags & ~(CARD_AUTHENTICATE_GENERATE_SESSION_PIN | CARD_AUTHENTICATE_SESSION_PIN | CARD_PIN_SILENT_CONTEXT)) {
+		dwret = SCARD_E_INVALID_PARAMETER;
+		goto out;
+	}
 
 	if (dwFlags & CARD_AUTHENTICATE_GENERATE_SESSION_PIN &&
-		(ppbSessionPin == NULL || pcbSessionPin == NULL))
-		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+			(ppbSessionPin == NULL || pcbSessionPin == NULL)) {
+		dwret = SCARD_E_INVALID_PARAMETER;
+		goto out;
+	}
 
 	/* using a pin pad */
 	if (NULL == pbPinData) {
-		if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD
-					|| vs->p15card->card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH))
-			MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+		if (!(vs->reader->capabilities & SC_READER_CAP_PIN_PAD || vs->p15card->card->caps & SC_CARD_CAP_PROTECTED_AUTHENTICATION_PATH)) {
+			dwret = SCARD_E_INVALID_PARAMETER;
+			goto out;
+		}
 		if (!(dwFlags & CARD_PIN_SILENT_CONTEXT)
 				&& !(vs->ctx->flags & SC_CTX_FLAG_DISABLE_POPUPS)) {
 			DisplayPinpadUI = TRUE;
@@ -6011,12 +6129,14 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		if (r == SC_ERROR_AUTH_METHOD_BLOCKED) {
 			if(pcAttemptsRemaining)
 				(*pcAttemptsRemaining) = 0;
-			MD_FUNC_RETURN(pCardData, 1, SCARD_W_CHV_BLOCKED);
+			dwret = SCARD_W_CHV_BLOCKED;
+			goto out;
 		}
 
 		if(pcAttemptsRemaining)
 			(*pcAttemptsRemaining) = auth_info->tries_left;
-		MD_FUNC_RETURN(pCardData, 1, md_translate_OpenSC_to_Windows_error(r, SCARD_W_WRONG_CHV));
+		dwret = md_translate_OpenSC_to_Windows_error(r, SCARD_W_WRONG_CHV);
+		goto out;
 	}
 
 	logprintf(pCardData, 2, "Pin code correct.\n");
@@ -6035,7 +6155,11 @@ DWORD WINAPI CardAuthenticateEx(__in PCARD_DATA pCardData,
 		}
 	}
 
-	MD_FUNC_RETURN(pCardData, 1, SCARD_S_SUCCESS);
+	dwret = SCARD_S_SUCCESS;
+
+out:
+	unlock(pCardData);
+	MD_FUNC_RETURN(pCardData, 1, dwret);
 }
 
 
@@ -6379,7 +6503,14 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 			*pdwDataLen = sizeof(*p);
 		if (cbData < sizeof(*p))
 			MD_FUNC_RETURN(pCardData, 1, ERROR_INSUFFICIENT_BUFFER);
+#ifndef __MINGW32__
+		/* The JPKI signature certificate is public but PIN-protected on the
+		 * card.  Keep Base KSP file data in the Resource Manager's global
+		 * cache so a new process does not need a second bootstrap read. */
+		*p = md_jpki_is_card(pCardData) && md_is_read_only(pCardData) ? CP_CACHE_MODE_GLOBAL_CACHE : CP_CACHE_MODE_NO_CACHE;
+#else
 		*p = CP_CACHE_MODE_NO_CACHE;
+#endif
 	}
 	else if (wcscmp(CP_SUPPORTS_WIN_X509_ENROLLMENT, wszProperty) == 0)   {
 		BOOL *p = (BOOL *)pbData;
@@ -6500,6 +6631,14 @@ DWORD WINAPI CardGetProperty(__in PCARD_DATA pCardData,
 				p->dwChangePermission = CREATE_PIN_SET(dwFlags);
 				p->dwUnblockPermission = CREATE_PIN_SET(ROLE_ADMIN);
 				break;
+		}
+		/* JPKI supports VERIFY/GET_INFO for its authentication and
+		 * signature PINs, but not PIN change or unblock through this card
+		 * application.  Do not advertise operations that the driver must
+		 * later reject as SCARD_E_UNSUPPORTED_FEATURE. */
+		if (md_jpki_is_card(pCardData)) {
+			p->dwChangePermission = 0;
+			p->dwUnblockPermission = 0;
 		}
 	}
 	else if (wcscmp(CP_CARD_LIST_PINS,wszProperty) == 0)   {
@@ -6947,7 +7086,6 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 {
 	VENDOR_SPECIFIC *vs;
 	DWORD dwret, suppliedVersion = 0;
-	CRITICAL_SECTION hScard_lock;
 
 	if (!pCardData)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
@@ -7106,11 +7244,10 @@ ret_release:
 	sc_release_context(vs->ctx);
 
 ret_free:
-	hScard_lock = vs->hScard_lock;
-	pCardData->pfnCspFree(pCardData->pvVendorSpecific);
+	LeaveCriticalSection(&vs->hScard_lock);
+	DeleteCriticalSection(&vs->hScard_lock);
+	pCardData->pfnCspFree(vs);
 	pCardData->pvVendorSpecific = NULL;
-	LeaveCriticalSection(&hScard_lock);
-	DeleteCriticalSection(&hScard_lock);
 	MD_FUNC_RETURN(pCardData, 1, dwret);
 }
 
@@ -7195,6 +7332,9 @@ static void disassociate_card(PCARD_DATA pCardData)
 		return;
 	}
 
+#ifndef __MINGW32__
+	md_jpki_public_key_snapshot_clear(pCardData);
+#endif
 	memset(vs->pin_objs, 0, sizeof(vs->pin_objs));
 	memset(vs->p15_containers, 0, sizeof(vs->p15_containers));
 

@@ -323,6 +323,30 @@ LExit:
 	return WcaFinalize(er);
 }
 
+static BOOL
+IsJpkiCardName(PCTSTR szCard)
+{
+	static const TCHAR jpkiPrefix[] = TEXT("JPKI (");
+	size_t i;
+	size_t cardNameLength;
+
+	if (_tcscmp(szCard, TEXT("JPKI")) == 0)
+		return TRUE;
+
+	cardNameLength = _tcslen(szCard);
+	if (cardNameLength <= _tcslen(jpkiPrefix) ||
+			_tcsncmp(szCard, jpkiPrefix, _tcslen(jpkiPrefix)) != 0 ||
+			szCard[cardNameLength - 1] != TEXT(')'))
+		return FALSE;
+
+	for (i = _tcslen(jpkiPrefix); i < cardNameLength - 1; i++) {
+		if (szCard[i] < TEXT('0') || szCard[i] > TEXT('9'))
+			return FALSE;
+	}
+
+	return TRUE;
+}
+
 /* note: szKey is here in case the card has to be registered in the Calais and WOW3264node\Calais databases */
 void RegisterCardWithKey(PTSTR szKey, PTSTR szCard, PTSTR szPath, PBYTE pbATR, DWORD dwATRSize, PBYTE pbAtrMask)
 {
@@ -338,7 +362,19 @@ void RegisterCardWithKey(PTSTR szKey, PTSTR szCard, PTSTR szPath, PBYTE pbATR, D
 	lResult = RegCreateKeyEx(hKey, szCard, 0,NULL,0,KEY_WRITE, NULL,&hTempKey,NULL);
 	if(!lResult)
 	{
-		RegSetValueEx( hTempKey,TEXT("Crypto Provider"),0, REG_SZ, (PBYTE)BASE_CSP,sizeof(BASE_CSP) - sizeof(TCHAR));
+		/*
+		 * JPKI has separate authentication and digital-signature PINs.  The
+		 * legacy Base CSP enumerates both keys as AT_SIGNATURE and duplicates
+		 * the KSP probes, while only the CNG/KSP path preserves the two roles.
+		 * Keep other cards on the existing dual CSP/KSP registration.
+		 */
+		if (IsJpkiCardName(szCard)) {
+			lResult = RegDeleteValue(hTempKey, TEXT("Crypto Provider"));
+			if (lResult != ERROR_SUCCESS && lResult != ERROR_FILE_NOT_FOUND)
+				WcaLog(LOGMSG_STANDARD, "unable to remove the legacy CSP from %S: 0x%08X", szCard, lResult);
+		} else {
+			RegSetValueEx(hTempKey, TEXT("Crypto Provider"), 0, REG_SZ, (PBYTE)BASE_CSP, sizeof(BASE_CSP) - sizeof(TCHAR));
+		}
 		RegSetValueEx( hTempKey,TEXT("Smart Card Key Storage Provider"),0, REG_SZ, (PBYTE)BASE_KSP,sizeof(BASE_KSP) - sizeof(TCHAR));
 		RegSetValueEx( hTempKey,TEXT("80000001"),0, REG_SZ, (PBYTE)szPath,(DWORD) (sizeof(TCHAR) * _tcslen(szPath)));
 		RegSetValueEx( hTempKey,TEXT("ATR"),0, REG_BINARY, (PBYTE)pbATR, dwATRSize);

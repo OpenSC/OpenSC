@@ -1,7 +1,7 @@
 TOPDIR = ..\..
 
 TARGET = opensc-minidriver.dll
-OBJECTS = minidriver.obj versioninfo-minidriver.res
+OBJECTS = minidriver.obj minidriver-jpki.obj versioninfo-minidriver.res
 LIBS = $(TOPDIR)\src\libopensc\opensc_a.lib \
 	   $(TOPDIR)\src\scconf\scconf.lib \
 	   $(TOPDIR)\src\common\common.lib \
@@ -17,4 +17,4 @@ all: $(TARGET)
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
 $(TARGET): $(OBJECTS) $(LIBS) $*.def
-	link /dll $(LINKFLAGS) /out:$@ /def:$*.def $(OBJECTS) $(LIBS) $(ZLIB_LIB) $(OPENPACE_LIB) $(OPENSSL_LIB) ws2_32.lib gdi32.lib Comctl32.lib advapi32.lib Crypt32.lib User32.lib bcrypt.lib DelayImp.lib Rpcrt4.lib Shell32.lib Comctl32.lib Winmm.lib shlwapi.lib /DELAYLOAD:bcrypt.dll
+	link /dll $(LINKFLAGS) /out:$@ /def:$*.def $(OBJECTS) $(LIBS) $(ZLIB_LIB) $(OPENPACE_LIB) $(OPENSSL_LIB) ws2_32.lib gdi32.lib Comctl32.lib advapi32.lib Crypt32.lib User32.lib Winscard.lib bcrypt.lib DelayImp.lib Rpcrt4.lib Shell32.lib Comctl32.lib Winmm.lib shlwapi.lib /DELAYLOAD:bcrypt.dll
