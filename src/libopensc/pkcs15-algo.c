@@ -477,6 +477,30 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_encode_ec_params,
 			asn1_free_ec_params}, /* X448 */
 #endif
+#ifdef SC_ALGORITHM_MLDSA
+		{SC_ALGORITHM_MLDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 17, -1}}, NULL, NULL, NULL}, /* ML-DSA-44 */
+		{SC_ALGORITHM_MLDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 18, -1}}, NULL, NULL, NULL}, /* ML-DSA-65 */
+		{SC_ALGORITHM_MLDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 19, -1}}, NULL, NULL, NULL}, /* ML-DSA-87 */
+#endif
+#ifdef SC_ALGORITHM_MLKEM
+		{SC_ALGORITHM_MLKEM, {{2, 16, 840, 1, 101, 3, 4, 4, 1, -1}}, NULL, NULL, NULL}, /* ML-KEM-512 */
+		{SC_ALGORITHM_MLKEM, {{2, 16, 840, 1, 101, 3, 4, 4, 2, -1}}, NULL, NULL, NULL}, /* ML-KEM-768 */
+		{SC_ALGORITHM_MLKEM, {{2, 16, 840, 1, 101, 3, 4, 4, 3, -1}}, NULL, NULL, NULL}, /* ML-KEM-1024 */
+#endif
+#ifdef SC_ALGORITHM_SLHDSA
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 20, -1}}, NULL, NULL, NULL}, /* SLH-DSA sha2-128s */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 21, -1}}, NULL, NULL, NULL}, /* SLH-DSA sha2-128f */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 22, -1}}, NULL, NULL, NULL}, /* SLH-DSA sha2-192s */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 23, -1}}, NULL, NULL, NULL}, /* SLH-DSA sha2-192f */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 24, -1}}, NULL, NULL, NULL}, /* SLH-DSA sha2-256s */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 25, -1}}, NULL, NULL, NULL}, /* SLH-DSA sha2-256f */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 26, -1}}, NULL, NULL, NULL}, /* SLH-DSA shake-128s */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 27, -1}}, NULL, NULL, NULL}, /* SLH-DSA shake-128f */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 28, -1}}, NULL, NULL, NULL}, /* SLH-DSA shake-192s */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 29, -1}}, NULL, NULL, NULL}, /* SLH-DSA shake-192f */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 30, -1}}, NULL, NULL, NULL}, /* SLH-DSA shake-256s */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 31, -1}}, NULL, NULL, NULL}, /* SLH-DSA shake-256f */
+#endif
 		{-1, {{-1}}, NULL, NULL, NULL}
 };
 

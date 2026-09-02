@@ -225,6 +225,7 @@ static CK_RV	get_usage_bit(unsigned int usage, CK_ATTRIBUTE_PTR attr);
 static CK_RV	get_gostr3410_params(const u8 *, size_t, CK_ATTRIBUTE_PTR);
 static CK_RV	get_ec_pubkey_point(struct sc_pkcs15_pubkey *, CK_ATTRIBUTE_PTR);
 static CK_RV	get_ec_pubkey_params(struct sc_pkcs15_pubkey *, CK_ATTRIBUTE_PTR);
+static CK_RV	get_pqc_parameter_set(struct sc_pkcs15_pubkey *, unsigned long parameter_set, CK_ATTRIBUTE_PTR);
 static int	lock_card(struct pkcs15_fw_data *);
 static int	unlock_card(struct pkcs15_fw_data *);
 
@@ -1281,6 +1282,36 @@ _pkcs15_create_typed_objects(struct pkcs15_fw_data *fw_data)
 		return rv;
 
 	rv = pkcs15_create_pkcs11_objects(fw_data, SC_PKCS15_TYPE_PUBKEY_GOSTR3410, "GOSTR3410 public key",
+			__pkcs15_create_pubkey_object);
+	if (rv < 0)
+		return rv;
+
+	rv = pkcs15_create_pkcs11_objects(fw_data, SC_PKCS15_TYPE_PRKEY_ML_DSA, "ML-DSA private key",
+			__pkcs15_create_prkey_object);
+	if (rv < 0)
+		return rv;
+
+	rv = pkcs15_create_pkcs11_objects(fw_data, SC_PKCS15_TYPE_PUBKEY_ML_DSA, "ML-DSA public key",
+			__pkcs15_create_pubkey_object);
+	if (rv < 0)
+		return rv;
+
+	rv = pkcs15_create_pkcs11_objects(fw_data, SC_PKCS15_TYPE_PRKEY_ML_KEM, "ML-KEM private key",
+			__pkcs15_create_prkey_object);
+	if (rv < 0)
+		return rv;
+
+	rv = pkcs15_create_pkcs11_objects(fw_data, SC_PKCS15_TYPE_PUBKEY_ML_KEM, "ML-KEM public key",
+			__pkcs15_create_pubkey_object);
+	if (rv < 0)
+		return rv;
+
+	rv = pkcs15_create_pkcs11_objects(fw_data, SC_PKCS15_TYPE_PRKEY_SLH_DSA, "SLH-DSA private key",
+			__pkcs15_create_prkey_object);
+	if (rv < 0)
+		return rv;
+
+	rv = pkcs15_create_pkcs11_objects(fw_data, SC_PKCS15_TYPE_PUBKEY_SLH_DSA, "SLH-DSA public key",
 			__pkcs15_create_pubkey_object);
 	if (rv < 0)
 		return rv;
@@ -4156,19 +4187,28 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
 		switch (prkey->prv_p15obj->type) {
 			case SC_PKCS15_TYPE_PRKEY_RSA:
-				*(CK_KEY_TYPE*)attr->pValue = CKK_RSA;
+				*(CK_KEY_TYPE *)attr->pValue = CKK_RSA;
 				break;
 			case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
-				*(CK_KEY_TYPE*)attr->pValue = CKK_GOSTR3410;
+				*(CK_KEY_TYPE *)attr->pValue = CKK_GOSTR3410;
 				break;
 			case SC_PKCS15_TYPE_PRKEY_EDDSA:
-				*(CK_KEY_TYPE*)attr->pValue = CKK_EC_EDWARDS;
+				*(CK_KEY_TYPE *)attr->pValue = CKK_EC_EDWARDS;
 				break;
 			case SC_PKCS15_TYPE_PRKEY_XEDDSA:
-				*(CK_KEY_TYPE*)attr->pValue = CKK_EC_MONTGOMERY;
+				*(CK_KEY_TYPE *)attr->pValue = CKK_EC_MONTGOMERY;
 				break;
 			case SC_PKCS15_TYPE_PRKEY_EC:
-				*(CK_KEY_TYPE*)attr->pValue = CKK_EC;
+				*(CK_KEY_TYPE *)attr->pValue = CKK_EC;
+				break;
+			case SC_PKCS15_TYPE_PRKEY_ML_DSA:
+				*(CK_KEY_TYPE *)attr->pValue = CKK_ML_DSA;
+				break;
+			case SC_PKCS15_TYPE_PRKEY_ML_KEM:
+				*(CK_KEY_TYPE *)attr->pValue = CKK_ML_KEM;
+				break;
+			case SC_PKCS15_TYPE_PRKEY_SLH_DSA:
+				*(CK_KEY_TYPE *)attr->pValue = CKK_SLH_DSA;
 				break;
 			default:
 				return CKR_GENERAL_ERROR; /* Internal error*/
@@ -4182,6 +4222,7 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 		check_attribute_buffer(attr, sizeof(CK_MECHANISM_TYPE));
 		*(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
+	case CKA_DECAPSULATE:
 	case CKA_DECRYPT:
 	case CKA_SIGN:
 	case CKA_SIGN_RECOVER:
@@ -4198,22 +4239,19 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_MODULUS_BITS:
 		check_attribute_buffer(attr, sizeof(CK_ULONG));
 		switch (prkey->prv_p15obj->type) {
-			case SC_PKCS15_TYPE_PRKEY_EDDSA:
-			case SC_PKCS15_TYPE_PRKEY_XEDDSA:
-				/* TODO where to get field length ? */
-				*(CK_ULONG *) attr->pValue = 255;
-				return CKR_OK;
-			case SC_PKCS15_TYPE_PRKEY_EC:
-				if (key) {
-					if (key->u.ec.params.field_length > 0)
-						*(CK_ULONG *) attr->pValue = key->u.ec.params.field_length;
-					else
-						*(CK_ULONG *) attr->pValue = (key->u.ec.ecpointQ.len - 1) / 2 *8;
-				}
-				return CKR_OK;
-			default:
-				*(CK_ULONG *) attr->pValue = prkey->prv_info->modulus_length;
-				return CKR_OK;
+		case SC_PKCS15_TYPE_PRKEY_EC:
+			if (key) {
+				if (key->u.ec.params.field_length > 0)
+					*(CK_ULONG *)attr->pValue = key->u.ec.params.field_length;
+				else
+					*(CK_ULONG *)attr->pValue = (key->u.ec.ecpointQ.len - 1) / 2 * 8;
+			}
+			return CKR_OK;
+		case SC_PKCS15_TYPE_PRKEY_RSA:
+			*(CK_ULONG *)attr->pValue = prkey->prv_info->modulus_length;
+			return CKR_OK;
+		default:
+			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
 	case CKA_PUBLIC_EXPONENT:
 		return get_public_exponent(key, attr);
@@ -4237,6 +4275,17 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 	case CKA_EC_PARAMS:
 		return get_ec_pubkey_params(key, attr); /* get from pubkey for now */
+	case CKA_PARAMETER_SET:
+		switch (prkey->pub_data->algorithm) {
+		case SC_ALGORITHM_MLDSA:
+		case SC_ALGORITHM_MLKEM:
+		case SC_ALGORITHM_SLHDSA:
+			check_attribute_buffer(attr, sizeof(CK_ULONG));
+			return get_pqc_parameter_set(prkey->pub_data, prkey->prv_info->parameter_set, attr);
+		default:
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+		}
+
 	default:
 		return CKR_ATTRIBUTE_TYPE_INVALID;
 	}
@@ -4438,6 +4487,10 @@ pkcs15_prkey_sign(struct sc_pkcs11_session *session, void *obj,
 		break;
 	case CKM_ECDSA_SHA512:
 		flags = SC_ALGORITHM_ECDSA_HASH_SHA512;
+		break;
+	case CKM_ML_DSA:
+	case CKM_SLH_DSA:
+		/* no flags needed */
 		break;
 	default:
 		sc_log(context, "DEE - need EC for %lu", pMechanism->mechanism);
@@ -5020,16 +5073,36 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		check_attribute_buffer(attr, sizeof(CK_KEY_TYPE));
 		/* TODO: -DEE why would we not have a pubkey->pub_data? */
 		/* even if we do not, we should not assume RSA */
-		if (pubkey->pub_data && pubkey->pub_data->algorithm == SC_ALGORITHM_GOSTR3410)
-			*(CK_KEY_TYPE*)attr->pValue = CKK_GOSTR3410;
-		else if (pubkey->pub_data && pubkey->pub_data->algorithm == SC_ALGORITHM_EDDSA)
-			*(CK_KEY_TYPE*)attr->pValue = CKK_EC_EDWARDS;
-		else if (pubkey->pub_data && pubkey->pub_data->algorithm == SC_ALGORITHM_XEDDSA)
-			*(CK_KEY_TYPE*)attr->pValue = CKK_EC_MONTGOMERY;
-		else if (pubkey->pub_data && pubkey->pub_data->algorithm == SC_ALGORITHM_EC)
-			*(CK_KEY_TYPE*)attr->pValue = CKK_EC;
-		else
+		if (pubkey->pub_data) {
+			switch (pubkey->pub_data->algorithm) {
+			case SC_ALGORITHM_GOSTR3410:
+				*(CK_KEY_TYPE *)attr->pValue = CKK_GOSTR3410;
+				break;
+			case SC_ALGORITHM_EDDSA:
+				*(CK_KEY_TYPE *)attr->pValue = CKK_EC_EDWARDS;
+				break;
+			case SC_ALGORITHM_XEDDSA:
+				*(CK_KEY_TYPE *)attr->pValue = CKK_EC_MONTGOMERY;
+				break;
+			case SC_ALGORITHM_EC:
+				*(CK_KEY_TYPE *)attr->pValue = CKK_EC;
+				break;
+			case SC_ALGORITHM_MLDSA:
+				*(CK_KEY_TYPE *)attr->pValue = CKK_ML_DSA;
+				break;
+			case SC_ALGORITHM_MLKEM:
+				*(CK_KEY_TYPE *)attr->pValue = CKK_ML_KEM;
+				break;
+			case SC_ALGORITHM_SLHDSA:
+				*(CK_KEY_TYPE *)attr->pValue = CKK_SLH_DSA;
+				break;
+			default:
+				*(CK_KEY_TYPE *)attr->pValue = CKK_RSA;
+				break;
+			}
+		} else {
 			*(CK_KEY_TYPE*)attr->pValue = CKK_RSA;
+		}
 		break;
 	case CKA_ID:
 		if (pubkey->pub_info) {
@@ -5048,6 +5121,7 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		check_attribute_buffer(attr, sizeof(CK_MECHANISM_TYPE));
 		*(CK_MECHANISM_TYPE*)attr->pValue = CK_UNAVAILABLE_INFORMATION;
 		break;
+	case CKA_ENCAPSULATE:
 	case CKA_ENCRYPT:
 	case CKA_WRAP:
 	case CKA_VERIFY:
@@ -5056,7 +5130,10 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		if (pubkey->pub_info)
 			return get_usage_bit(pubkey->pub_info->usage, attr);
 		else
-			return get_usage_bit(SC_PKCS15_PRKEY_USAGE_ENCRYPT |SC_PKCS15_PRKEY_USAGE_VERIFY | SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER, attr);
+			return get_usage_bit(SC_PKCS15_PRKEY_USAGE_ENCRYPT |
+					SC_PKCS15_PRKEY_USAGE_VERIFY |
+					SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER |
+					SC_PKCS15_PRKEY_USAGE_ENCAPSULATE, attr);
 	case CKA_MODULUS:
 		return get_modulus(pubkey->pub_data, attr);
 	case CKA_MODULUS_BITS:
@@ -5071,9 +5148,19 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 	 * CKA_SPKI is defined internally as a CKA_VENDOR_DFINED attribute.
 	 */
 	case CKA_VALUE:
+		/* PKCS#11 3.2 defines CKA_VALUE for ML-DSA/ML-KEM public keys so first check these */
+		if (pubkey->pub_data) {
+			switch (pubkey->pub_data->algorithm) {
+			case SC_ALGORITHM_MLDSA:
+			case SC_ALGORITHM_MLKEM:
+				check_attribute_buffer(attr, pubkey->pub_data->u.pqc.value.len);
+				memcpy(attr->pValue, pubkey->pub_data->u.pqc.value.value, pubkey->pub_data->u.pqc.value.len);
+				return CKR_OK;
+			}
+		}
+		/* fall through */
 	case CKA_SPKI:
 	case CKA_PUBLIC_KEY_INFO:
-
 		if (attr->type != CKA_SPKI && attr->type != CKA_PUBLIC_KEY_INFO && pubkey->pub_info && pubkey->pub_info->direct.raw.value && pubkey->pub_info->direct.raw.len) {
 			check_attribute_buffer(attr, pubkey->pub_info->direct.raw.len);
 			memcpy(attr->pValue, pubkey->pub_info->direct.raw.value, pubkey->pub_info->direct.raw.len);
@@ -5125,6 +5212,16 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 		return get_ec_pubkey_params(pubkey->pub_data, attr);
 	case CKA_EC_POINT:
 		return get_ec_pubkey_point(pubkey->pub_data, attr);
+	case CKA_PARAMETER_SET:
+		switch (pubkey->pub_data->algorithm) {
+		case SC_ALGORITHM_MLDSA:
+		case SC_ALGORITHM_MLKEM:
+		case SC_ALGORITHM_SLHDSA:
+			check_attribute_buffer(attr, sizeof(CK_ULONG));
+			return get_pqc_parameter_set(pubkey->pub_data, pubkey->pub_info->parameter_set, attr);
+		default:
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+		}
 
 	default:
 		return CKR_ATTRIBUTE_TYPE_INVALID;
@@ -6064,6 +6161,89 @@ get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	return CKR_ATTRIBUTE_TYPE_INVALID;
 }
 
+static CK_ULONG
+get_pqc_parameter_set(struct sc_pkcs15_pubkey *pub, unsigned long parameter_set, CK_ATTRIBUTE_PTR attr)
+{
+	if (pub == NULL || attr == NULL)
+		return CKR_ATTRIBUTE_TYPE_INVALID;
+
+	switch (pub->algorithm) {
+	case SC_ALGORITHM_MLDSA:
+		switch (parameter_set) {
+		case SC_ALGORITHM_MLDSA_44:
+			*(CK_ULONG *)attr->pValue = CKP_ML_DSA_44;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_MLDSA_65:
+			*(CK_ULONG *)attr->pValue = CKP_ML_DSA_65;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_MLDSA_87:
+			*(CK_ULONG *)attr->pValue = CKP_ML_DSA_87;
+			return SC_SUCCESS;
+		default:
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+		}
+
+	case SC_ALGORITHM_MLKEM:
+		switch (parameter_set) {
+		case SC_ALGORITHM_MLKEM_512:
+			*(CK_ULONG *)attr->pValue = CKP_ML_KEM_512;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_MLKEM_768:
+			*(CK_ULONG *)attr->pValue = CKP_ML_KEM_768;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_MLKEM_1024:
+			*(CK_ULONG *)attr->pValue = CKP_ML_KEM_1024;
+			return SC_SUCCESS;
+		default:
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+		}
+
+	case SC_ALGORITHM_SLHDSA:
+		switch (parameter_set) {
+		case SC_ALGORITHM_SLHDSA_SHA2_128S:
+			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHA2_128S;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_SLHDSA_SHAKE_128S:
+			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHAKE_128S;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_SLHDSA_SHA2_128F:
+			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHA2_128F;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_SLHDSA_SHAKE_128F:
+			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHAKE_128F;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_SLHDSA_SHA2_192S:
+			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHA2_192S;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_SLHDSA_SHAKE_192S:
+			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHAKE_192S;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_SLHDSA_SHA2_192F:
+			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHA2_192F;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_SLHDSA_SHAKE_192F:
+			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHAKE_192F;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_SLHDSA_SHA2_256S:
+			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHA2_256S;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_SLHDSA_SHAKE_256S:
+			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHAKE_256S;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_SLHDSA_SHA2_256F:
+			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHA2_256F;
+			return SC_SUCCESS;
+		case SC_ALGORITHM_SLHDSA_SHAKE_256F:
+			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHAKE_256F;
+			return SC_SUCCESS;
+		default:
+			return CKR_ATTRIBUTE_TYPE_INVALID;
+		}
+	default:
+		return CKR_ATTRIBUTE_TYPE_INVALID;
+	}
+}
+
 static CK_RV
 get_gostr3410_params(const u8 *params, size_t params_len, CK_ATTRIBUTE_PTR attr)
 {
@@ -6106,6 +6286,8 @@ get_usage_bit(unsigned int usage, CK_ATTRIBUTE_PTR attr)
 		{ CKA_VERIFY_RECOVER,	SC_PKCS15_PRKEY_USAGE_VERIFYRECOVER },
 		{ CKA_DERIVE,		SC_PKCS15_PRKEY_USAGE_DERIVE },
 		{ CKA_OPENSC_NON_REPUDIATION, SC_PKCS15_PRKEY_USAGE_NONREPUDIATION },
+		{ CKA_ENCAPSULATE,      SC_PKCS15_PRKEY_USAGE_ENCAPSULATE },
+		{ CKA_DECAPSULATE,      SC_PKCS15_PRKEY_USAGE_DECAPSULATE },
 		{ 0, 0 }
 	};
 	unsigned int mask = 0, j;
@@ -6445,6 +6627,122 @@ static CK_RV register_xeddsa_mechanisms(struct sc_pkcs11_card *p11card, int flag
 	return CKR_OK;
 }
 
+static CK_RV
+register_mldsa_mechanisms(struct sc_pkcs11_card *p11card, int flags,
+		CK_ULONG min_key_size, CK_ULONG max_key_size)
+{
+	CK_MECHANISM_INFO mech_info;
+	sc_pkcs11_mechanism_type_t *mt;
+	CK_RV rc;
+
+	mech_info.flags = CKF_HW | CKF_SIGN;
+	mech_info.ulMinKeySize = min_key_size;
+	mech_info.ulMaxKeySize = max_key_size;
+
+	mt = sc_pkcs11_new_fw_mechanism(CKM_ML_DSA, &mech_info, CKK_ML_DSA, NULL, NULL, NULL);
+	if (!mt)
+		return CKR_HOST_MEMORY;
+	rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
+	sc_pkcs11_free_mechanism(&mt);
+	if (rc != CKR_OK)
+		return rc;
+
+#ifdef ENABLE_OPENSSL
+	/* TODO verification using OpenSSL
+	mech_info.flags |= CKF_VERIFY;
+	*/
+#endif
+	// TODO add HASH algorithms
+
+	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
+		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
+		mt = sc_pkcs11_new_fw_mechanism(CKM_ML_DSA_KEY_PAIR_GEN, &mech_info, CKK_ML_DSA, NULL, NULL, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
+		sc_pkcs11_free_mechanism(&mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
+
+	return CKR_OK;
+}
+
+static CK_RV
+register_mlkem_mechanisms(struct sc_pkcs11_card *p11card, int flags,
+		CK_ULONG min_key_size, CK_ULONG max_key_size)
+{
+	CK_MECHANISM_INFO mech_info;
+	sc_pkcs11_mechanism_type_t *mt;
+	CK_RV rc;
+
+	mech_info.flags = CKF_HW | CKF_DECAPSULATE;
+	mech_info.ulMinKeySize = min_key_size;
+	mech_info.ulMaxKeySize = max_key_size;
+
+	mt = sc_pkcs11_new_fw_mechanism(CKM_ML_KEM, &mech_info, CKK_ML_KEM, NULL, NULL, NULL);
+	if (!mt)
+		return CKR_HOST_MEMORY;
+	rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
+	sc_pkcs11_free_mechanism(&mt);
+	if (rc != CKR_OK)
+		return rc;
+
+	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
+		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
+		mt = sc_pkcs11_new_fw_mechanism(CKM_ML_KEM_KEY_PAIR_GEN, &mech_info, CKK_ML_KEM, NULL, NULL, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
+		sc_pkcs11_free_mechanism(&mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
+
+	return CKR_OK;
+}
+
+static CK_RV
+register_slhdsa_mechanisms(struct sc_pkcs11_card *p11card, int flags,
+		CK_ULONG min_key_size, CK_ULONG max_key_size)
+{
+	CK_MECHANISM_INFO mech_info;
+	sc_pkcs11_mechanism_type_t *mt;
+	CK_RV rc;
+
+	mech_info.flags = CKF_HW | CKF_SIGN;
+	mech_info.ulMinKeySize = min_key_size;
+	mech_info.ulMaxKeySize = max_key_size;
+
+	mt = sc_pkcs11_new_fw_mechanism(CKM_SLH_DSA, &mech_info, CKK_SLH_DSA, NULL, NULL, NULL);
+	if (!mt)
+		return CKR_HOST_MEMORY;
+	rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
+	sc_pkcs11_free_mechanism(&mt);
+	if (rc != CKR_OK)
+		return rc;
+
+#ifdef ENABLE_OPENSSL
+	/* TODO verification using OpenSSL
+	mech_info.flags |= CKF_VERIFY;
+	*/
+#endif
+	// TODO add HASH algorithms
+
+	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
+		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;
+		mt = sc_pkcs11_new_fw_mechanism(CKM_SLH_DSA_KEY_PAIR_GEN, &mech_info, CKK_SLH_DSA, NULL, NULL, NULL);
+		if (!mt)
+			return CKR_HOST_MEMORY;
+		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
+		sc_pkcs11_free_mechanism(&mt);
+		if (rc != CKR_OK)
+			return rc;
+	}
+
+	return CKR_OK;
+}
+
 static CK_RV sc_pkcs11_register_aes_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 		CK_ULONG min_key_size, CK_ULONG max_key_size)
 {
@@ -6500,13 +6798,16 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	sc_card_t *card = p11card->card;
 	sc_algorithm_info_t *alg_info;
 	CK_MECHANISM_INFO mech_info;
-	CK_ULONG ec_min_key_size, ec_max_key_size,
-		aes_min_key_size, aes_max_key_size;
+	CK_ULONG ec_min_key_size = ~0, ec_max_key_size = 0,
+		aes_min_key_size = ~0, aes_max_key_size = 0,
+		mldsa_min_key_size = ~0, mldsa_max_key_size = 0,
+		mlkem_min_key_size = ~0, mlkem_max_key_size = 0,
+		slhdsa_min_key_size = ~0, slhdsa_max_key_size = 0;
 	unsigned long ec_ext_flags;
 	sc_pkcs11_mechanism_type_t *mt = NULL, *registered_mt = NULL;
 	unsigned int num;
 	int rsa_flags = 0, ec_flags = 0, eddsa_flags = 0, xeddsa_flags = 0;
-	int ec_found = 0, gostr_flags = 0, aes_flags = 0;
+	int ec_found = 0, gostr_flags = 0, aes_flags = 0, mldsa_flags = 0, mlkem_flags = 0, slhdsa_flags = 0;
 	CK_RV rc;
 
 	/* Register generic mechanisms */
@@ -6524,10 +6825,6 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	mech_info.ulMinKeySize = ~0;
 	mech_info.ulMaxKeySize = 0;
-	ec_min_key_size = ~0;
-	ec_max_key_size = 0;
-	aes_min_key_size = ~0;
-	aes_max_key_size = 0;
 
 	ec_ext_flags = 0;
 
@@ -6538,38 +6835,59 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	alg_info = card->algorithms;
 	while (num--) {
 		switch (alg_info->algorithm) {
-			case SC_ALGORITHM_RSA:
-				if (alg_info->key_length < mech_info.ulMinKeySize)
-					mech_info.ulMinKeySize = alg_info->key_length;
-				if (alg_info->key_length > mech_info.ulMaxKeySize)
-					mech_info.ulMaxKeySize = alg_info->key_length;
-				rsa_flags |= alg_info->flags;
-				break;
-			case SC_ALGORITHM_EC:
-				if (alg_info->key_length < ec_min_key_size)
-					ec_min_key_size = alg_info->key_length;
-				if (alg_info->key_length > ec_max_key_size)
-					ec_max_key_size = alg_info->key_length;
-				ec_flags |= alg_info->flags;
-				ec_ext_flags |= alg_info->u._ec.ext_flags;
-				ec_found = 1;
-				break;
-			case SC_ALGORITHM_EDDSA:
-				eddsa_flags |= alg_info->flags;
-				break;
-			case SC_ALGORITHM_XEDDSA:
-				xeddsa_flags |= alg_info->flags;
-				break;
-			case SC_ALGORITHM_GOSTR3410:
-				gostr_flags |= alg_info->flags;
-				break;
-			case SC_ALGORITHM_AES:
-				aes_flags |= alg_info->flags;
-				if (alg_info->key_length < aes_min_key_size)
-					aes_min_key_size = alg_info->key_length;
-				if (alg_info->key_length > aes_max_key_size)
-					aes_max_key_size = alg_info->key_length;
-				break;
+		case SC_ALGORITHM_RSA:
+			if (alg_info->key_length < mech_info.ulMinKeySize)
+				mech_info.ulMinKeySize = alg_info->key_length;
+			if (alg_info->key_length > mech_info.ulMaxKeySize)
+				mech_info.ulMaxKeySize = alg_info->key_length;
+			rsa_flags |= alg_info->flags;
+			break;
+		case SC_ALGORITHM_EC:
+			if (alg_info->key_length < ec_min_key_size)
+				ec_min_key_size = alg_info->key_length;
+			if (alg_info->key_length > ec_max_key_size)
+				ec_max_key_size = alg_info->key_length;
+			ec_flags |= alg_info->flags;
+			ec_ext_flags |= alg_info->u._ec.ext_flags;
+			ec_found = 1;
+			break;
+		case SC_ALGORITHM_EDDSA:
+			eddsa_flags |= alg_info->flags;
+			break;
+		case SC_ALGORITHM_XEDDSA:
+			xeddsa_flags |= alg_info->flags;
+			break;
+		case SC_ALGORITHM_GOSTR3410:
+			gostr_flags |= alg_info->flags;
+			break;
+		case SC_ALGORITHM_AES:
+			aes_flags |= alg_info->flags;
+			if (alg_info->key_length < aes_min_key_size)
+				aes_min_key_size = alg_info->key_length;
+			if (alg_info->key_length > aes_max_key_size)
+				aes_max_key_size = alg_info->key_length;
+			break;
+		case SC_ALGORITHM_MLDSA:
+			mldsa_flags |= alg_info->flags;
+			if (alg_info->key_length < mldsa_min_key_size)
+				mldsa_min_key_size = alg_info->key_length;
+			if (alg_info->key_length > mldsa_max_key_size)
+				mldsa_max_key_size = alg_info->key_length;
+			break;
+		case SC_ALGORITHM_MLKEM:
+			mlkem_flags |= alg_info->flags;
+			if (alg_info->key_length < mlkem_min_key_size)
+				mlkem_min_key_size = alg_info->key_length;
+			if (alg_info->key_length > mlkem_max_key_size)
+				mlkem_max_key_size = alg_info->key_length;
+			break;
+		case SC_ALGORITHM_SLHDSA:
+			slhdsa_flags |= alg_info->flags;
+			if (alg_info->key_length < slhdsa_min_key_size)
+				slhdsa_min_key_size = alg_info->key_length;
+			if (alg_info->key_length > slhdsa_max_key_size)
+				slhdsa_max_key_size = alg_info->key_length;
+			break;
 		}
 		alg_info++;
 	}
@@ -6593,6 +6911,21 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	if (xeddsa_flags & (SC_ALGORITHM_XEDDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW)) {
 		rc = register_xeddsa_mechanisms(p11card, xeddsa_flags, 255, 255);
+		if (rc != CKR_OK)
+			return rc;
+	}
+	if (mldsa_flags) {
+		rc = register_mldsa_mechanisms(p11card, mldsa_flags, mldsa_min_key_size, mldsa_max_key_size);
+		if (rc != CKR_OK)
+			return rc;
+	}
+	if (mlkem_flags) {
+		rc = register_mlkem_mechanisms(p11card, mlkem_flags, mlkem_min_key_size, mlkem_max_key_size);
+		if (rc != CKR_OK)
+			return rc;
+	}
+	if (slhdsa_flags) {
+		rc = register_slhdsa_mechanisms(p11card, slhdsa_flags, slhdsa_min_key_size, slhdsa_max_key_size);
 		if (rc != CKR_OK)
 			return rc;
 	}

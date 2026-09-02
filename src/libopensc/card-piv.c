@@ -605,6 +605,8 @@ static struct piv_aid piv_aids[] = {
 #define AI_EC_384			    0x00000200U
 #define AI_25519			    0x00100000U
 #define AI_X25519			    0x00200000U
+#define AI_MLDSA			    0x00400000U
+#define AI_MLKEM			    0x00800000U
 /* NIST  cards have or do support these (non SM) algorithm identifiers */
 #define AI_NIST (AI_RSA_1024 | AI_RSA_2048 | AI_RSA_3072 | AI_EC_256 | AI_EC_384)
 
@@ -4703,6 +4705,32 @@ piv_set_security_env(sc_card_t *card, const sc_security_env_t *env, int se_num)
 	} else if (env->algorithm == SC_ALGORITHM_XEDDSA) {
 		priv->alg_id = 0xE1;
 		priv->key_size = 255;
+	} else if (env->algorithm == SC_ALGORITHM_MLDSA) {
+		if (env->algorithm_flags & SC_ALGORITHM_MLDSA_44) {
+			priv->alg_id = 0xE2;
+			priv->key_size = 1312;
+		} else if (env->algorithm_flags & SC_ALGORITHM_MLDSA_65) {
+			priv->alg_id = 0xE3;
+			priv->key_size = 1952;
+		} else if (env->algorithm_flags & SC_ALGORITHM_MLDSA_87) {
+			priv->alg_id = 0xE4;
+			priv->key_size = 2592;
+		} else {
+			r = SC_ERROR_NO_CARD_SUPPORT;
+		}
+	} else if (env->algorithm == SC_ALGORITHM_MLKEM) {
+		if (env->algorithm_flags & SC_ALGORITHM_MLKEM_512) {
+			priv->alg_id = 0xE5;
+			priv->key_size = 800;
+		} else if (env->algorithm_flags & SC_ALGORITHM_MLKEM_768) {
+			priv->alg_id = 0xE6;
+			priv->key_size = 1184;
+		} else if (env->algorithm_flags & SC_ALGORITHM_MLKEM_1024) {
+			priv->alg_id = 0xE7;
+			priv->key_size = 1568;
+		} else {
+			r = SC_ERROR_NO_CARD_SUPPORT;
+		}
 	} else
 		r = SC_ERROR_NO_CARD_SUPPORT;
 	priv->key_ref = env->key_ref[0];
@@ -5782,6 +5810,10 @@ piv_match_card_continued(sc_card_t *card)
 		if (r2 == SC_SUCCESS && apdu.resplen == 3) {
 			priv->yubico_version = (yubico_version_buf[0] << 16) | (yubico_version_buf[1] << 8) | yubico_version_buf[2];
 			sc_log(card->ctx, "Yubikey version test card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->yubico_version);
+			if (priv->yubico_version == 1) {
+				sc_log(card->ctx, "Detected Alpha/development version of yubikey. Assuming v6");
+				priv->yubico_version = 0x060000;
+			}
 		}
 		break;
 	}
@@ -5925,6 +5957,8 @@ piv_match_card_continued(sc_card_t *card)
 			priv->card_issues |= CI_VERIFY_LC0_FAIL;
 		if (priv->yubico_version >= 0x00050700) /* Also used by Token2 */
 			priv->alg_ids |= AI_RSA_4096 | AI_25519 | AI_X25519;
+		if (priv->yubico_version >= 0x00060000) /* Yubikey 6 PQC */
+			priv->alg_ids |= AI_MLDSA | AI_MLKEM;
 		break;
 
 	case SC_CARD_TYPE_PIV_II_NITROKEY:
@@ -6090,6 +6124,18 @@ piv_init(sc_card_t *card)
 			else if (priv->alg_ids & AI_X25519 && ec_curves[i].key_type == SC_ALGORITHM_XEDDSA)
 				_sc_card_add_xeddsa_alg(card, ec_curves[i].size, flags_xeddsa, ext_flags, &ec_curves[i].oid);
 		}
+	}
+
+	if (priv->alg_ids & AI_MLDSA) {
+		_sc_card_add_mldsa_alg(card, 1312, SC_ALGORITHM_MLDSA_44);
+		_sc_card_add_mldsa_alg(card, 1952, SC_ALGORITHM_MLDSA_65);
+		_sc_card_add_mldsa_alg(card, 1952, SC_ALGORITHM_MLDSA_87);
+	}
+
+	if (priv->alg_ids & AI_MLKEM) {
+		_sc_card_add_mlkem_alg(card, 800, SC_ALGORITHM_MLKEM_512);
+		_sc_card_add_mlkem_alg(card, 1184, SC_ALGORITHM_MLKEM_768);
+		_sc_card_add_mlkem_alg(card, 1568, SC_ALGORITHM_MLKEM_1024);
 	}
 
 	if (!(priv->card_issues & CI_NO_RANDOM))

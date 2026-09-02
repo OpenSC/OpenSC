@@ -862,6 +862,13 @@ sc_pkcs15_encode_pubkey_as_spki(sc_context_t *ctx, struct sc_pkcs15_pubkey *pubk
 		r = sc_pkcs15_encode_pubkey(ctx, pubkey, &pkey.value, &pkey.len);
 		key_len = pkey.len * 8;
 		break;
+	case SC_ALGORITHM_MLDSA:
+	case SC_ALGORITHM_MLKEM:
+	case SC_ALGORITHM_SLHDSA:
+		key_len = pubkey->u.pqc.value.len;
+		pkey.value = pubkey->u.pqc.value.value;
+		pkey.len = 0; /* flag as do not delete */
+		break;
 	default:
 		r = sc_pkcs15_encode_pubkey(ctx, pubkey, &pkey.value, &pkey.len);
 		key_len = pkey.len * 8;
@@ -943,6 +950,15 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		break;
 	case SC_PKCS15_TYPE_PUBKEY_XEDDSA:
 		algorithm = SC_ALGORITHM_XEDDSA;
+		break;
+	case SC_PKCS15_TYPE_PUBKEY_ML_DSA:
+		algorithm = SC_ALGORITHM_MLDSA;
+		break;
+	case SC_PKCS15_TYPE_PUBKEY_ML_KEM:
+		algorithm = SC_ALGORITHM_MLKEM;
+		break;
+	case SC_PKCS15_TYPE_PUBKEY_SLH_DSA:
+		algorithm = SC_ALGORITHM_SLHDSA;
 		break;
 	default:
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Unsupported public key type.");
@@ -1073,6 +1089,11 @@ sc_pkcs15_pubkey_from_prvkey(struct sc_context *ctx, struct sc_pkcs15_prkey *prv
 		memcpy(pubkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.value, prvkey->u.ec.ecpointQ.len);
 		pubkey->u.ec.ecpointQ.len = prvkey->u.ec.ecpointQ.len;
 		break;
+	case SC_ALGORITHM_MLDSA:
+	case SC_ALGORITHM_MLKEM:
+	case SC_ALGORITHM_SLHDSA:
+		/* TODO */
+		break;
 	default:
 		sc_log(ctx, "Unsupported private key algorithm");
 		rv = SC_ERROR_NOT_SUPPORTED;
@@ -1167,6 +1188,17 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 		}
 
 		break;
+	case SC_ALGORITHM_MLDSA:
+	case SC_ALGORITHM_MLKEM:
+	case SC_ALGORITHM_SLHDSA:
+		pubkey->u.pqc.value.value = malloc(key->u.pqc.value.len);
+		if (!pubkey->u.pqc.value.value) {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			break;
+		}
+		memcpy(pubkey->u.pqc.value.value, key->u.pqc.value.value, key->u.pqc.value.len);
+		pubkey->u.pqc.value.len = key->u.pqc.value.len;
+		break;
 	default:
 		sc_log(ctx, "Unsupported private key algorithm");
 		rv = SC_ERROR_NOT_SUPPORTED;
@@ -1206,6 +1238,10 @@ sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 		free(key->u.ec.params.der.value);
 		free(key->u.ec.params.named_curve);
 		free(key->u.ec.ecpointQ.value);
+		break;
+	case SC_ALGORITHM_MLDSA:
+	case SC_ALGORITHM_MLKEM:
+		free(key->u.pqc.value.value);
 		break;
 	}
 	sc_mem_clear(key, sizeof(*key));
@@ -1382,7 +1418,8 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INTERNAL, "Incorrect length of key");
 	pk.len = BYTES4BITS(pk.len); /* convert number of bits to bytes */
 
-	if (pk_alg.algorithm == SC_ALGORITHM_EC)   {
+	switch (pk_alg.algorithm) {
+	case SC_ALGORITHM_EC:
 		/* EC public key is not encapsulated into BIT STRING -- it's a BIT STRING */
 		/*
 		 * sc_pkcs15_fix_ec_parameters below will set field_length from curve.
@@ -1412,8 +1449,10 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 		}
 		memcpy(pubkey->u.ec.ecpointQ.value, pk.value, pk.len);
 		pubkey->u.ec.ecpointQ.len = pk.len;
-	} else if (pk_alg.algorithm == SC_ALGORITHM_EDDSA ||
-		   pk_alg.algorithm == SC_ALGORITHM_XEDDSA) {
+		break;
+
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
 		/*
 		 * SPKI will have OID, EDDSA can have ED25519 or ED448 with different sizes
 		 * EDDSA/XEDDSA public key is not encapsulated into BIT STRING -- it's a BIT STRING
@@ -1432,10 +1471,27 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 
 		memcpy(pubkey->u.ec.ecpointQ.value, pk.value, pk.len);
 		pubkey->u.ec.ecpointQ.len = pk.len;
-	} else {
+		break;
+
+	case SC_ALGORITHM_MLDSA:
+	case SC_ALGORITHM_MLKEM:
+	case SC_ALGORITHM_SLHDSA:
+		/* ML-DSA/ML-KEM public key is not encapsulated into BIT STRING -- it's a BIT STRING */
+		pubkey->u.pqc.value.value = malloc(pk.len);
+		if (pubkey->u.pqc.value.value == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			LOG_TEST_GOTO_ERR(ctx, r, "failed to malloc() memory");
+		}
+
+		memcpy(pubkey->u.pqc.value.value, pk.value, pk.len);
+		pubkey->u.pqc.value.len = pk.len;
+		break;
+
+	default:
 		/* Public key is expected to be encapsulated into BIT STRING */
 		r = sc_pkcs15_decode_pubkey(ctx, pubkey, pk.value, pk.len);
 		LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 parsing of subjectPubkeyInfo failed");
+		break;
 	}
 
 	*outpubkey = pubkey;

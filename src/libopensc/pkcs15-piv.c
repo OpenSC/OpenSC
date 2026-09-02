@@ -244,6 +244,36 @@ static int piv_detect_card(sc_pkcs15_card_t *p15card)
 	return SC_SUCCESS;
 }
 
+// FIXME ?? Odd to start just from the size
+unsigned long
+mldsa_params_from_key_length(size_t pubkey_len)
+{
+	switch (pubkey_len) {
+	case 1312:
+		return SC_ALGORITHM_MLDSA_44;
+	case 1952:
+		return SC_ALGORITHM_MLDSA_65;
+	case 2592:
+		return SC_ALGORITHM_MLDSA_87;
+	default:
+		return 0;
+	}
+}
+
+unsigned long
+mlkem_params_from_key_length(size_t pubkey_len)
+{
+	switch (pubkey_len) {
+	case 800:
+		return SC_ALGORITHM_MLKEM_512;
+	case 1184:
+		return SC_ALGORITHM_MLKEM_768;
+	case 1568:
+		return SC_ALGORITHM_MLKEM_1024;
+	default:
+		return 0;
+	}
+}
 
 static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 {
@@ -902,7 +932,12 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			case SC_ALGORITHM_EC:
 			case SC_ALGORITHM_EDDSA:
 			case SC_ALGORITHM_XEDDSA:
-				ckis[i].pubkey_len = cert_out->key->u.ec.params.field_length;
+			case SC_ALGORITHM_MLDSA:
+				if (cert_out->key->algorithm == SC_ALGORITHM_MLDSA) {
+					ckis[i].pubkey_len = cert_out->key->u.pqc.value.len;
+				} else {
+					ckis[i].pubkey_len = cert_out->key->u.ec.params.field_length;
+				}
 				if (ckis[i].cert_keyUsage_present) {
 					if (ckis[i].cert_keyUsage & SC_X509_DIGITAL_SIGNATURE) {
 						ckis[i].pub_usage |= SC_PKCS15_PRKEY_USAGE_VERIFY;
@@ -941,6 +976,9 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 						ckis[i].priv_usage |= 0;
 					}
 				}
+				break;
+			case SC_ALGORITHM_MLKEM:
+				// TODO encapsulate/decapsulate key usage
 				break;
 
 			default:
@@ -1108,6 +1146,13 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					ckis[i].pubkey_found = 1;
 					ckis[i].pubkey_from_file = 1;
 					break;
+				case SC_ALGORITHM_MLDSA:
+				case SC_ALGORITHM_MLKEM:
+					ckis[i].pubkey_len = p15_key->u.pqc.value.len;
+					ckis[i].key_alg = p15_key->algorithm;
+					ckis[i].pubkey_found = 1;
+					ckis[i].pubkey_from_file = 1;
+					break;
 				default:
 					sc_log(card->ctx, "Unsupported key_alg %lu", p15_key->algorithm);
 					continue;
@@ -1163,6 +1208,46 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 
 				LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add EC pubkey");
+
+				ckis[i].pubkey_found = 1;
+				break;
+			case SC_ALGORITHM_MLDSA:
+				if (ckis[i].cert_keyUsage_present) {
+					pubkey_info.usage = ckis[i].pub_usage;
+				} else {
+					pubkey_info.usage = SC_PKCS15_PRKEY_USAGE_VERIFY;
+				}
+				pubkey_info.field_length = ckis[i].pubkey_len;
+				pubkey_info.parameter_set = mldsa_params_from_key_length(ckis[i].pubkey_len);
+				if (pubkey_info.parameter_set == 0) {
+					sc_log(card->ctx, "Unknown ML-DSA Key size %zu", ckis[i].pubkey_len);
+					continue;
+				}
+				strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+
+				/* should not fail */
+				r = sc_pkcs15emu_add_mldsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
+				LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add ML-DSA pubkey");
+
+				ckis[i].pubkey_found = 1;
+				break;
+			case SC_ALGORITHM_MLKEM:
+				if (ckis[i].cert_keyUsage_present) {
+					pubkey_info.usage = ckis[i].pub_usage;
+				} else {
+					pubkey_info.usage = SC_PKCS15_PRKEY_USAGE_ENCAPSULATE;
+				}
+				pubkey_info.field_length = ckis[i].pubkey_len;
+				pubkey_info.parameter_set = mlkem_params_from_key_length(ckis[i].pubkey_len);
+				if (pubkey_info.parameter_set == 0) {
+					sc_log(card->ctx, "Unknown ML-KEM Key size %zu", ckis[i].pubkey_len);
+					continue;
+				}
+				strncpy(pubkey_obj.label, pubkeys[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+
+				/* should not fail */
+				r = sc_pkcs15emu_add_mlkem_pubkey(p15card, &pubkey_obj, &pubkey_info);
+				LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add ML-KEM pubkey");
 
 				ckis[i].pubkey_found = 1;
 				break;
@@ -1264,7 +1349,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 						prkey_obj.user_consent = 1;
 					}
 				} else {
-					prkey_info.usage  |= prkeys[i].usage_ec;
+					prkey_info.usage |= prkeys[i].usage_ec;
 				}
 				prkey_info.field_length = ckis[i].pubkey_len;
 				sc_log(card->ctx, "DEE added key_alg %2.2lx prkey_obj.flags %8.8x",
@@ -1276,6 +1361,42 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					r = sc_pkcs15emu_add_xeddsa_prkey(p15card, &prkey_obj, &prkey_info);
 				else
 					r = sc_pkcs15emu_add_ec_prkey(p15card, &prkey_obj, &prkey_info);
+				break;
+			case SC_ALGORITHM_MLDSA:
+				if (ckis[i].cert_keyUsage_present) {
+					prkey_info.usage |= ckis[i].priv_usage;
+					/* If retired key and non gov cert has NONREPUDIATION, treat as user_consent */
+					if (i >= 4 && (ckis[i].priv_usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)) {
+						prkey_obj.user_consent = 1;
+					}
+				} else {
+					prkey_info.usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
+				}
+				prkey_info.field_length = ckis[i].pubkey_len;
+				prkey_info.parameter_set = mldsa_params_from_key_length(ckis[i].pubkey_len);
+				if (prkey_info.parameter_set == 0) {
+					sc_log(card->ctx, "Unknown ML-DSA Key size %zu", ckis[i].pubkey_len);
+					continue;
+				}
+				r = sc_pkcs15emu_add_mldsa_prkey(p15card, &prkey_obj, &prkey_info);
+				break;
+			case SC_ALGORITHM_MLKEM:
+				if (ckis[i].cert_keyUsage_present) {
+					prkey_info.usage |= ckis[i].priv_usage;
+					/* If retired key and non gov cert has NONREPUDIATION, treat as user_consent */
+					if (i >= 4 && (ckis[i].priv_usage & SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)) {
+						prkey_obj.user_consent = 1;
+					}
+				} else {
+					prkey_info.usage |= SC_PKCS15_PRKEY_USAGE_DECAPSULATE;
+				}
+				prkey_info.field_length = ckis[i].pubkey_len;
+				prkey_info.parameter_set = mlkem_params_from_key_length(ckis[i].pubkey_len);
+				if (prkey_info.parameter_set == 0) {
+					sc_log(card->ctx, "Unknown ML-KEM Key size %zu", ckis[i].pubkey_len);
+					continue;
+				}
+				r = sc_pkcs15emu_add_mlkem_prkey(p15card, &prkey_obj, &prkey_info);
 				break;
 			default:
 				sc_log(card->ctx, "Unsupported key_alg %lu", ckis[i].key_alg);

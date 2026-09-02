@@ -476,6 +476,87 @@ int sc_pkcs15emu_add_xeddsa_pubkey(sc_pkcs15_card_t *p15card,
 	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_PUBKEY_XEDDSA, obj, &key);
 }
 
+int
+sc_pkcs15emu_add_mldsa_prkey(sc_pkcs15_card_t *p15card,
+		const sc_pkcs15_object_t *obj, const sc_pkcs15_prkey_info_t *in_key)
+{
+	sc_pkcs15_prkey_info_t key = *in_key;
+
+	if (key.access_flags == 0)
+		key.access_flags = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
+				| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
+				| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+				| SC_PKCS15_PRKEY_ACCESS_LOCAL;
+
+	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_PRKEY_ML_DSA, obj, &key);
+}
+
+int
+sc_pkcs15emu_add_mldsa_pubkey(sc_pkcs15_card_t *p15card,
+		const sc_pkcs15_object_t *obj, const sc_pkcs15_pubkey_info_t *in_key)
+{
+	sc_pkcs15_pubkey_info_t key = *in_key;
+
+	if (key.access_flags == 0)
+		key.access_flags = SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+
+	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_PUBKEY_ML_DSA, obj, &key);
+}
+
+int
+sc_pkcs15emu_add_mlkem_prkey(sc_pkcs15_card_t *p15card,
+		const sc_pkcs15_object_t *obj, const sc_pkcs15_prkey_info_t *in_key)
+{
+	sc_pkcs15_prkey_info_t key = *in_key;
+
+	if (key.access_flags == 0)
+		key.access_flags = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
+				| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
+				| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+				| SC_PKCS15_PRKEY_ACCESS_LOCAL;
+
+	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_PRKEY_ML_KEM, obj, &key);
+}
+
+int
+sc_pkcs15emu_add_mlkem_pubkey(sc_pkcs15_card_t *p15card,
+		const sc_pkcs15_object_t *obj, const sc_pkcs15_pubkey_info_t *in_key)
+{
+	sc_pkcs15_pubkey_info_t key = *in_key;
+
+	if (key.access_flags == 0)
+		key.access_flags = SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+
+	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_PUBKEY_ML_KEM, obj, &key);
+}
+
+int
+sc_pkcs15emu_add_slhdsa_prkey(sc_pkcs15_card_t *p15card,
+		const sc_pkcs15_object_t *obj, const sc_pkcs15_prkey_info_t *in_key)
+{
+	sc_pkcs15_prkey_info_t key = *in_key;
+
+	if (key.access_flags == 0)
+		key.access_flags = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
+				| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
+				| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
+				| SC_PKCS15_PRKEY_ACCESS_LOCAL;
+
+	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_PRKEY_SLH_DSA, obj, &key);
+}
+
+int
+sc_pkcs15emu_add_slhdsa_pubkey(sc_pkcs15_card_t *p15card,
+		const sc_pkcs15_object_t *obj, const sc_pkcs15_pubkey_info_t *in_key)
+{
+	sc_pkcs15_pubkey_info_t key = *in_key;
+
+	if (key.access_flags == 0)
+		key.access_flags = SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
+
+	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_PUBKEY_SLH_DSA, obj, &key);
+}
+
 int sc_pkcs15emu_add_x509_cert(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *obj, const sc_pkcs15_cert_info_t *cert)
 {

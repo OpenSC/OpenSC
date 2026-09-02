@@ -615,9 +615,11 @@ static CK_RV
 sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 {
 	struct sc_pkcs11_object *key;
-	CK_ATTRIBUTE attr = { CKA_MODULUS_BITS, pLength, sizeof(*pLength) };
+	CK_ATTRIBUTE attr = {CKA_MODULUS_BITS, pLength, sizeof(*pLength)}; // RSA
+	CK_ML_DSA_PARAMETER_SET_TYPE param_set = 0;
+	CK_ATTRIBUTE attr_param_set = {CKA_PARAMETER_SET, &param_set, sizeof(param_set)}; // ML-DSA
 	CK_KEY_TYPE key_type;
-	CK_ATTRIBUTE attr_key_type = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
+	CK_ATTRIBUTE attr_key_type = {CKA_KEY_TYPE, &key_type, sizeof(key_type)};
 	CK_RV rv;
 
 	key = ((struct operation_data *)operation->priv_data)->key;
@@ -628,30 +630,89 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 	 * and then get what ever attributes are needed.
 	 */
 	rv = key->ops->get_attribute(operation->session, key, &attr_key_type);
-	if (rv == CKR_OK) {
-		switch(key_type) {
-			case CKK_RSA:
-				rv = key->ops->get_attribute(operation->session, key, &attr);
-				/* convert bits to bytes */
-				if (rv == CKR_OK)
-					*pLength = BYTES4BITS(*pLength);
-				break;
-			case CKK_EC:
-			case CKK_EC_EDWARDS:
-			case CKK_EC_MONTGOMERY:
-				/* TODO: -DEE we should use something other then CKA_MODULUS_BITS... */
-				rv = key->ops->get_attribute(operation->session, key, &attr);
-				if (rv == CKR_OK)
-					*pLength = BYTES4BITS(*pLength) * 2 ; /* 2*nLen in bytes */
-				break;
-			case CKK_GOSTR3410:
-				rv = key->ops->get_attribute(operation->session, key, &attr);
-				if (rv == CKR_OK)
-					*pLength = BYTES4BITS(*pLength) * 2;
-				break;
-			default:
-				rv = CKR_MECHANISM_INVALID;
+	if (rv != CKR_OK) {
+		LOG_FUNC_RETURN(context, (int)rv);
+	}
+
+	switch (key_type) {
+	case CKK_RSA:
+		rv = key->ops->get_attribute(operation->session, key, &attr);
+		/* convert bits to bytes */
+		if (rv == CKR_OK)
+			*pLength = BYTES4BITS(*pLength);
+		break;
+	case CKK_EC:
+		/* TODO: -DEE we should use something other then CKA_MODULUS_BITS... */
+		rv = key->ops->get_attribute(operation->session, key, &attr);
+		if (rv == CKR_OK)
+			*pLength = BYTES4BITS(*pLength) * 2; /* 2*nLen in bytes */
+		break;
+	case CKK_EC_EDWARDS:
+	case CKK_EC_MONTGOMERY:
+		*pLength = BYTES4BITS(255) * 2; /* FIXME for Ed448 */
+		break;
+	case CKK_ML_DSA:
+		rv = key->ops->get_attribute(operation->session, key, &attr_param_set);
+		if (rv != CKR_OK) {
+			break;
 		}
+		switch (param_set) {
+		case CKP_ML_DSA_44:
+			*pLength = 2420;
+			break;
+		case CKP_ML_DSA_65:
+			*pLength = 3309;
+			break;
+		case CKP_ML_DSA_87:
+			*pLength = 4627;
+			break;
+		default:
+			rv = CKR_MECHANISM_INVALID;
+			break;
+		}
+		break;
+	case CKK_SLH_DSA:
+		rv = key->ops->get_attribute(operation->session, key, &attr_param_set);
+		if (rv != CKR_OK) {
+			break;
+		}
+		switch (param_set) {
+		case CKP_SLH_DSA_SHA2_128S:
+		case CKP_SLH_DSA_SHAKE_128S:
+			*pLength = 7856;
+			break;
+		case CKP_SLH_DSA_SHA2_128F:
+		case CKP_SLH_DSA_SHAKE_128F:
+			*pLength = 17088;
+			break;
+		case CKP_SLH_DSA_SHA2_192S:
+		case CKP_SLH_DSA_SHAKE_192S:
+			*pLength = 16224;
+			break;
+		case CKP_SLH_DSA_SHA2_192F:
+		case CKP_SLH_DSA_SHAKE_192F:
+			*pLength = 35664;
+			break;
+		case CKP_SLH_DSA_SHA2_256S:
+		case CKP_SLH_DSA_SHAKE_256S:
+			*pLength = 29792;
+			break;
+		case CKP_SLH_DSA_SHA2_256F:
+		case CKP_SLH_DSA_SHAKE_256F:
+			*pLength = 49856;
+			break;
+		default:
+			rv = CKR_MECHANISM_INVALID;
+			break;
+		}
+		break;
+	case CKK_GOSTR3410:
+		rv = key->ops->get_attribute(operation->session, key, &attr);
+		if (rv == CKR_OK)
+			*pLength = BYTES4BITS(*pLength) * 2;
+		break;
+	default:
+		rv = CKR_MECHANISM_INVALID;
 	}
 
 	LOG_FUNC_RETURN(context, (int) rv);
