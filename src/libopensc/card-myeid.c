@@ -693,6 +693,7 @@ static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 			global_unblocker_verif_data.cmd = SC_PIN_CMD_VERIFY;
 			global_unblocker_verif_data.pin1 = data->pin1;
 			global_unblocker_verif_data.pin_reference = data->puk_reference;
+			global_unblocker_verif_data.flags = data->flags;
 			r = iso_ops->pin_cmd(card, &global_unblocker_verif_data);
 			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
