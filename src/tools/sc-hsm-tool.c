@@ -594,7 +594,10 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 
 	if (so_pin == NULL) {
 		printf("Enter SO-PIN (16 hexadecimal characters) : ");
-		util_getpass(&_so_pin, NULL, stdin);
+		if (util_getpass(&_so_pin, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading SO-PIN\n");
+			return -1;
+		}
 		printf("\n");
 	} else {
 		_so_pin = (char *)so_pin;
@@ -614,7 +617,10 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 
 	if (user_pin == NULL) {
 		printf("Enter initial User-PIN (6 - 16 characters) : ");
-		util_getpass(&_user_pin, NULL, stdin);
+		if (util_getpass(&_user_pin, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading User-PIN\n");
+			return -1;
+		}
 		printf("\n");
 	} else {
 		_user_pin = (char *)user_pin;
@@ -841,7 +847,10 @@ static int import_dkek_share(sc_card_t *card, const char *inf, int iter, const c
 
 		if (num_of_password_shares == -1) {
 			printf("Enter password to decrypt DKEK share : ");
-			util_getpass(&pwd, NULL, stdin);
+			if (util_getpass(&pwd, NULL, stdin) < 0) {
+				fprintf(stderr, "Error reading password\n");
+				return -1;
+			}
 			pwdlen = (int)strlen(pwd);
 			printf("\n");
 		} else {
@@ -942,7 +951,10 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 
 		if (num_of_password_shares == -1) {
 			printf("Enter password to decrypt DKEK share : ");
-			util_getpass(&pwd, NULL, stdin);
+			if (util_getpass(&pwd, NULL, stdin) < 0) {
+				fprintf(stderr, "Error reading password\n");
+				return -1;
+			}
 			pwdlen = (int)strlen(pwd);
 			printf("\n");
 		} else {
@@ -1007,9 +1019,10 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 	return 0;
 }
 
-static void ask_for_password(char **pwd, int *pwdlen)
+static int ask_for_password(char **pwd, int *pwdlen)
 {
 	char *refpwd = NULL;
+	int r = -1;
 
 	printf(	"\nThe DKEK share will be enciphered using a key derived from a user supplied password.\n");
 	printf(	"The security of the DKEK share relies on a well chosen and sufficiently long password.\n");
@@ -1021,14 +1034,20 @@ static void ask_for_password(char **pwd, int *pwdlen)
 
 	while (1) {
 		printf("Enter password to encrypt DKEK share : ");
-		util_getpass(pwd, NULL, stdin);
+		if (util_getpass(pwd, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading password\n");
+			goto out;
+		}
 		printf("\n");
 		if (strlen(*pwd) < 6) {
 			printf("Password way to short. Please retry.\n");
 			continue;
 		}
 		printf("Please retype password to confirm : ");
-		util_getpass(&refpwd, NULL, stdin);
+		if (util_getpass(&refpwd, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading password\n");
+			goto out;
+		}
 		printf("\n");
 		if (strcmp(*pwd, refpwd)) {
 			printf("Passwords do not match. Please retry.\n");
@@ -1038,8 +1057,13 @@ static void ask_for_password(char **pwd, int *pwdlen)
 		break;
 	}
 
-	OPENSSL_cleanse(refpwd, strlen(refpwd));
-	free(refpwd);
+	r = 0;
+out:
+	if (refpwd != NULL) {
+		OPENSSL_cleanse(refpwd, strlen(refpwd));
+		free(refpwd);
+	}
+	return r;
 }
 
 
@@ -1204,7 +1228,8 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 
 	if (password == NULL) {
 		if ((password_shares_threshold == -1) && (password_shares_total == -1)) {
-			ask_for_password(&pwd, &pwdlen);
+			if (ask_for_password(&pwd, &pwdlen) < 0)
+				return -1;
 		} else { // create password using threshold scheme
 			r = generate_pwd_shares(card, &pwd, &pwdlen, password_shares_threshold, password_shares_total);
 		}
@@ -1351,7 +1376,10 @@ static int wrap_key(sc_context_t *ctx, sc_card_t *card, int keyid, const char *o
 
 	if (pin == NULL) {
 		printf("Enter User PIN : ");
-		util_getpass(&lpin, NULL, stdin);
+		if (util_getpass(&lpin, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading User PIN\n");
+			return -1;
+		}
 		printf("\n");
 	} else {
 		lpin = (char *)pin;
@@ -1640,7 +1668,11 @@ static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *p
 
 	if (pin == NULL) {
 		printf("Enter User PIN : ");
-		util_getpass(&lpin, NULL, stdin);
+		if (util_getpass(&lpin, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading User PIN\n");
+			r = -1;
+			goto err;
+		}
 		printf("\n");
 	} else {
 		lpin = (char *)pin;
