@@ -444,12 +444,16 @@ util_getpass (char **lineptr, size_t *len, FILE *stream)
 	struct termios old, new;
 
 	fflush(stdout);
-	if (tcgetattr (fileno (stdout), &old) != 0)
+	if (tcgetattr (fileno (stdout), &old) != 0) {
+		fprintf(stderr, "\nWARNING: not prompting for input, because stdout is not a TTY\n");
 		return -1;
+	}
 	new = old;
 	new.c_lflag &= ~ECHO;
-	if (tcsetattr (fileno (stdout), TCSAFLUSH, &new) != 0)
+	if (tcsetattr (fileno (stdout), TCSAFLUSH, &new) != 0) {
+		fprintf(stderr, "\nWARNING: not prompting for input, because echo cannot be disabled\n");
 		return -1;
+	}
 #endif
 
 	buf = calloc(1, MAX_PASS_SIZE);
