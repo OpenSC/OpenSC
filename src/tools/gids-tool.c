@@ -102,7 +102,10 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	if (so_pin == NULL) {
 		printf("Enter admin key (48 hexadecimal characters) : \n");
 		printf("Press Enter to set the admin key to 00...00\n");
-		util_getpass(&_so_pin, NULL, stdin);
+		if (util_getpass(&_so_pin, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading admin key\n");
+			return -1;
+		}
 		printf("\n");
 	} else {
 		_so_pin = (char *)so_pin;
@@ -122,7 +125,10 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 
 	if (user_pin == NULL) {
 		printf("Enter initial User-PIN (4 - 16 characters) : ");
-		util_getpass(&_user_pin, NULL, stdin);
+		if (util_getpass(&_user_pin, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading User-PIN\n");
+			return -1;
+		}
 		printf("\n");
 	} else {
 		_user_pin = (char *)user_pin;
@@ -131,7 +137,10 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	if (serial == NULL) {
 		printf("Enter serial number (32 hexadecimal characters): \n");
 		printf("Press Enter to set a random serial number\n");
-		util_getpass(&_serial, NULL, stdin);
+		if (util_getpass(&_serial, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading serial number\n");
+			return -1;
+		}
 		printf("\n");
 	} else {
 		_serial = (char *)serial;
@@ -189,7 +198,10 @@ static int unblock(sc_card_t* card, const char *so_pin, const char *user_pin) {
 		printf("WARNING\n");
 		printf("============================================================\n");
 		printf("Enter admin key (48 hexadecimal characters) : ");
-		util_getpass(&_so_pin, NULL, stdin);
+		if (util_getpass(&_so_pin, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading admin key\n");
+			return -1;
+		}
 		printf("\n");
 	} else {
 		_so_pin = (char *)so_pin;
@@ -217,7 +229,10 @@ static int unblock(sc_card_t* card, const char *so_pin, const char *user_pin) {
 
 	if (user_pin == NULL) {
 		printf("Enter User-PIN (4 - 16 characters) : ");
-		util_getpass(&_user_pin, NULL, stdin);
+		if (util_getpass(&_user_pin, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading User-PIN\n");
+			return -1;
+		}
 		printf("\n");
 	} else {
 		_user_pin = (char *)user_pin;
@@ -252,7 +267,10 @@ static int changeAdminKey(sc_card_t* card, const char *so_pin, const char* new_k
 		printf("WARNING\n");
 		printf("============================================================\n");
 		printf("Enter admin key (48 hexadecimal characters) : ");
-		util_getpass(&_so_pin, NULL, stdin);
+		if (util_getpass(&_so_pin, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading admin key\n");
+			return -1;
+		}
 		printf("\n");
 	} else {
 		_so_pin = (char *)so_pin;
@@ -278,7 +296,10 @@ static int changeAdminKey(sc_card_t* card, const char *so_pin, const char* new_k
 
 	if (new_key == NULL) {
 		printf("Enter new admin key (48 hexadecimal characters) : ");
-		util_getpass(&_new_key, NULL, stdin);
+		if (util_getpass(&_new_key, NULL, stdin) < 0) {
+			fprintf(stderr, "Error reading new admin key\n");
+			return -1;
+		}
 		printf("\n");
 	} else {
 		_new_key = (char *)new_key;
