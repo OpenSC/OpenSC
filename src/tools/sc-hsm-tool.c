@@ -2593,7 +2593,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	if ((initopts & INIT_REQ_PKA_AND_PIN) && opt_num_of_pub_keys == -1) {
-		fprintf(stderr, "Option --require-pka-and-pin option --public-key-auth\n");
+		fprintf(stderr, "Option --require-pka-and-pin requires option --public-key-auth\n");
 		exit(1);
 	}
 
