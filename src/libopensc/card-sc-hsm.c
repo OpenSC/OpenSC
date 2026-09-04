@@ -1337,7 +1337,7 @@ static int sc_hsm_manage_key_domain(sc_card_t *card, sc_cardctl_sc_hsm_key_domai
 	LOG_FUNC_CALLED(card->ctx);
 
 	switch(params->operation) {
-	case 0:
+	case SC_HSM_MANAGE_KEY_DOMAIN_GET_STATUS:
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x52, 0x00, params->key_domain_idx);
 		break;
 	case SC_HSM_MANAGE_KEY_DOMAIN_IMPORT_DKEK_SHARE:
@@ -1352,12 +1352,10 @@ static int sc_hsm_manage_key_domain(sc_card_t *card, sc_cardctl_sc_hsm_key_domai
 		apdu.datalen = sizeof(params->dkek_shares);
 		apdu.lc = apdu.datalen;
 		break;
-//	case SC_MANAGE_KEY_DOMAIN_CREATE_XKEK_KEY_DOMAIN:
 	case SC_HSM_MANAGE_KEY_DOMAIN_DELETE_KEY_DOMAIN:
 	case SC_HSM_MANAGE_KEY_DOMAIN_CLEAR_KEK:
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x52, (params->operation - 1), params->key_domain_idx);
 		break;
-//	case SC_MANAGE_KEY_DOMAIN_ASSOCIATE_KEY_DOMAIN:
 	default:
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}

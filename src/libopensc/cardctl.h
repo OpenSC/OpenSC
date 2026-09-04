@@ -976,6 +976,7 @@ typedef struct sc_cardctl_sc_hsm_pka_register {
     sc_cardctl_sc_hsm_pka_status_t new_status;
 } sc_cardctl_sc_hsm_pka_register_t;
 
+#define SC_HSM_MANAGE_KEY_DOMAIN_GET_STATUS		0
 #define SC_HSM_MANAGE_KEY_DOMAIN_IMPORT_DKEK_SHARE	1
 #define SC_HSM_MANAGE_KEY_DOMAIN_CREATE_DKEK_KEY_DOMAIN 2
 #define SC_HSM_MANAGE_KEY_DOMAIN_CREATE_XKEK_KEY_DOMAIN 3

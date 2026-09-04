@@ -895,12 +895,16 @@ static int ensure_login(sc_card_t *card, const char *pin)
 	char *lpin;
 	int r;
 
-	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_GET_INFO;
 	data.pin_type = SC_AC_CHV;
 	data.pin_reference = ID_USER_PIN;
 
 	r = sc_pin_cmd(card, &data);
+
+	if (r < 0) {
+		fprintf(stderr, "PIN status query failed with %s\n", sc_strerror(r));
+		return -1;
+	}
 
 	if (data.pin1.logged_in == SC_PIN_STATE_LOGGED_IN) {
 		return 0;
@@ -963,7 +967,7 @@ static int create_dkek_key_domain(sc_card_t *card, const char *pin, const int kd
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, (void *)&dkekinfo);
 
-	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) {
 		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
 		return -1;
 	}
@@ -995,7 +999,7 @@ static int delete_key_domain(sc_card_t *card, const char *pin, const int kdidx)
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, (void *)&dkekinfo);
 
-	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) {
 		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
 		return -1;
 	}
@@ -1031,7 +1035,7 @@ static int clear_key_encryption_key(sc_card_t *card, const char *pin, const int 
 
 	r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, (void *)&dkekinfo);
 
-	if (r == SC_ERROR_INS_NOT_SUPPORTED) {			// Not supported or not initialized for key shares
+	if (r == SC_ERROR_INS_NOT_SUPPORTED) {
 		fprintf(stderr, "Not supported by card or card not initialized for key share usage\n");
 		return -1;
 	}
@@ -1243,7 +1247,7 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 
 	memset(&dkekinfo, 0, sizeof(dkekinfo));
 	memcpy(dkekinfo.dkek_share, outbuff, sizeof(dkekinfo.dkek_share));
-	dkekinfo.operation = 1;
+	dkekinfo.operation = SC_HSM_MANAGE_KEY_DOMAIN_IMPORT_DKEK_SHARE;
 
 	OPENSSL_cleanse(outbuff, sizeof(outbuff));
 
@@ -1558,13 +1562,11 @@ static const struct alg_spec alg_types_asym[] = {
 
 static int parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *keybits, struct sc_pkcs15_prkey *prkey)
 {
-	int i, types_idx = -1, algorithm = -1;
-	unsigned int user_keybits = 0;
+	int i, algorithm = -1;
 	char *end;
 
 	for (i = 0; types[i].spec; i++) {
 		if (!strncasecmp(spec, types[i].spec, strlen(types[i].spec))) {
-			types_idx = i; /* save index of types array */
 			algorithm = types[i].algorithm;
 			*keybits = types[i].keybits;
 			spec += strlen(types[i].spec);
@@ -1579,29 +1581,10 @@ static int parse_alg_spec(const struct alg_spec *types, const char *spec, unsign
 	if (*spec == '/' || *spec == '-' || *spec == ':')
 		spec++;
 
-	/*  prkey is required for keys that use ecparms */
-	if (*spec == '\0' && (algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA) && prkey) {
-		if ((prkey->u.ec.params.named_curve = strdup(types[types_idx].spec)) == NULL) /* correct case */
-			return SC_ERROR_OUT_OF_MEMORY;
-		return algorithm;
-	}
-
 	if (*spec != '\0') {
 		if (isalpha((unsigned char)*spec) && algorithm == SC_ALGORITHM_EC && prkey) {
 			if ((prkey->u.ec.params.named_curve = strdup(spec)) == NULL) /* pass EC curve name */
 				return SC_ERROR_OUT_OF_MEMORY;
-		} else if ((algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA) && prkey) {
-			if ((prkey->u.ec.params.named_curve = strdup(types[types_idx].spec)) == NULL) /* copy correct case */
-				return SC_ERROR_OUT_OF_MEMORY;
-			user_keybits = (unsigned)strtoul(spec, &end, 10);
-			if (*end) {
-				util_error("Invalid number of key bits \"%s\"", spec);
-				return SC_ERROR_INVALID_ARGUMENTS;
-			}
-			if (user_keybits != *keybits) {
-				util_error("If specified, number of key bits must be \"%d\" for \"%s\"", *keybits, types[types_idx].spec);
-				return SC_ERROR_INVALID_ARGUMENTS;
-			}
 		} else { /* rsa or symmetric key */
 			*keybits = (unsigned)strtoul(spec, &end, 10);
 			if (*end) {
@@ -1633,6 +1616,11 @@ static int generate_key(struct sc_pkcs15_card *p15card, const char *pin, const c
 
 	sc_hsm_keygen.key_domain = kdidx;
 	sc_hsm_keygen.key_use_counter = kuc;
+
+	if (spec == NULL) {
+		util_error("No key specification given");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	algorithm = parse_alg_spec(alg_types_asym, spec, &keybits, &keygen_args.prkey_args.key);
 	if (algorithm < 0) {
