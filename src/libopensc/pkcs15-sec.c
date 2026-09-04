@@ -762,23 +762,25 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 */
 	else if (senv.algorithm == SC_ALGORITHM_EC &&
 			(senv.algorithm_flags & SC_ALGORITHM_ECDSA_HASHES) == 0) {
+		size_t flen = BYTES4BITS(prkey->field_length);
+
 		if (inlen > flen) {
-   			inlen = flen;
-   		} else if (inlen < flen) {
-   			/* Zero-pad short digests: some applets require the input to match
-   			 * the field length exactly. Leading zeros do not change the integer
-   			 * value, so the signature still verifies. */
-   			if (flen > buflen) {
-   				r = SC_ERROR_BUFFER_TOO_SMALL;
-   				goto err;
-   			}
-   			memmove(tmp + flen - inlen, tmp, inlen);
-   			memset(tmp, 0, flen - inlen);
-   			inlen = flen;
-   		}
+			inlen = flen;
+		} else if (inlen < flen) {
+			/* Zero-pad short digests: some applets require the input to match
+			 * the field length exactly. Leading zeros do not change the integer
+			 * value, so the signature still verifies. */
+			if (flen > buflen) {
+				r = SC_ERROR_BUFFER_TOO_SMALL;
+				goto err;
+			}
+			memmove(tmp + flen - inlen, tmp, inlen);
+			memset(tmp, 0, flen - inlen);
+			inlen = flen;
+		}
 	}
 
-	
+
 	r = use_key(p15card, obj, &senv, sc_compute_signature, tmp, inlen,
 			out, outlen);
 	LOG_TEST_GOTO_ERR(ctx, r, "use_key() failed");
