@@ -759,6 +759,9 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	 * the leftmost bits of the hash up to the length of n will be used. Any
 	 * truncation is done by the token.
 	 * But if card is going to do the hash, pass in all the data
+	 * A hash shorter than the field length is zero-padded on the left, because
+	 * some applets require the input to match the field length exactly. Leading
+	 * zeros do not change the integer value, so the signature is unaffected.
 	 */
 	else if (senv.algorithm == SC_ALGORITHM_EC &&
 			(senv.algorithm_flags & SC_ALGORITHM_ECDSA_HASHES) == 0) {
@@ -767,9 +770,6 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		if (inlen > flen) {
 			inlen = flen;
 		} else if (inlen < flen) {
-			/* Zero-pad short digests: some applets require the input to match
-			 * the field length exactly. Leading zeros do not change the integer
-			 * value, so the signature still verifies. */
 			if (flen > buflen) {
 				r = SC_ERROR_BUFFER_TOO_SMALL;
 				goto err;
