@@ -1563,7 +1563,7 @@ static const struct alg_spec alg_types_asym[] = {
 static int parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *keybits, struct sc_pkcs15_prkey *prkey)
 {
 	int i, algorithm = -1;
-	char *end;
+	char *end = NULL;
 
 	for (i = 0; types[i].spec; i++) {
 		if (!strncasecmp(spec, types[i].spec, strlen(types[i].spec))) {
@@ -1587,7 +1587,7 @@ static int parse_alg_spec(const struct alg_spec *types, const char *spec, unsign
 				return SC_ERROR_OUT_OF_MEMORY;
 		} else { /* rsa or symmetric key */
 			*keybits = (unsigned)strtoul(spec, &end, 10);
-			if (*end) {
+			if (end == NULL || *end) {
 				util_error("Invalid number of key bits \"%s\"", spec);
 				return SC_ERROR_INVALID_ARGUMENTS;
 			}
