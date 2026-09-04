@@ -1,7 +1,7 @@
 /*
  * card-myeid.c
  *
- * Copyright (C) 2008-2019 Aventra Ltd.
+ * Copyright (C) 2008-2026 Aventra Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -669,14 +669,58 @@ static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	sc_log(card->ctx, "ref (%d), pin1 len(%zu), pin2 len (%zu)\n",
-			data->pin_reference, data->pin1.len, data->pin2.len);
+	sc_log(card->ctx, "cmd (%d), ref (%d), pin1 len(%zu), pin2 len (%zu), puk ref (%d)\n",
+			data->cmd, data->pin_reference, data->pin1.len, data->pin2.len, data->puk_reference);
 
 	if(data->pin1.len > 8 || data->pin2.len > 8)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_PIN_LENGTH);
 
 	data->pin1.pad_length = data->pin2.pad_length = 8;
 	data->pin1.pad_char = data->pin2.pad_char = 0xFF;
+
+	if (data->cmd == SC_PIN_CMD_UNBLOCK) {
+		/* In case the PUK reference is set, the PIN is being unblocked implicitly using a global unblocker PIN instead of the
+		directly associated PUK. In this case, we must issue a VERIFY command first and then the RESET RETRY COUNTER command with only
+		the new PIN in the data field. */
+
+		struct sc_pin_cmd_data global_unblocker_verif_data;
+		int r;
+
+		if (data->puk_reference != 0) {
+			/* Call the iso driver to do the VERIFY */
+			memset(&global_unblocker_verif_data, 0, sizeof(global_unblocker_verif_data));
+			global_unblocker_verif_data.pin_type = SC_AC_CHV;
+			global_unblocker_verif_data.cmd = SC_PIN_CMD_VERIFY;
+			global_unblocker_verif_data.pin1 = data->pin1;
+			global_unblocker_verif_data.pin_reference = data->puk_reference;
+			global_unblocker_verif_data.flags = data->flags;
+			r = iso_ops->pin_cmd(card, &global_unblocker_verif_data);
+			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+			if (r != SC_SUCCESS)
+				LOG_FUNC_RETURN(card->ctx, r);
+
+			memset(&data->pin1, 0, sizeof(struct sc_pin_cmd_pin));
+			data->flags |= SC_PIN_CMD_IMPLICIT_CHANGE;
+			struct sc_apdu apdu;
+			u8 buf[SC_MAX_APDU_BUFFER_SIZE];
+
+			/* Let iso driver build the RESET RETRY COUNTER APDU, but we'll have to modify it before transmitting it. */
+			r = iso7816_build_pin_apdu(card, &apdu, data, buf, sizeof(buf));
+
+			if (r != SC_SUCCESS)
+				LOG_FUNC_RETURN(card->ctx, r);
+
+			/* MyEID's implementation of unblocking a PIN implicitly contradicts with ISO 7816-4 here. The iso driver properly sets P2=0x02
+			while MyEID expects 0x00 */
+			apdu.p1 = 0x00;
+
+			r = sc_transmit_apdu(card, &apdu);
+
+			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+			LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+		}
+	}
 
 	if (data->cmd == SC_PIN_CMD_VERIFY && priv->card_state == SC_FILE_STATUS_CREATION) {
 		sc_log(card->ctx, "Card in creation state, no need to verify");
