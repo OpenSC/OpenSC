@@ -749,7 +749,7 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 {
 	int i, types_idx = -1, algorithm = -1;
 	unsigned int user_keybits = 0;
-	char *end;
+	char *end = NULL;
 
 	for (i = 0; types[i].spec; i++) {
 		if (!strncasecmp(spec, types[i].spec, strlen(types[i].spec))) {
@@ -783,7 +783,7 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 			if ((prkey->u.ec.params.named_curve = strdup(types[types_idx].spec)) == NULL) /* copy correct case */
 				return SC_ERROR_OUT_OF_MEMORY;
 			user_keybits = (unsigned)strtoul(spec, &end, 10);
-			if (*end) {
+			if (end == NULL || *end) {
 				util_error("Invalid number of key bits \"%s\"", spec);
 				return SC_ERROR_INVALID_ARGUMENTS;
 			}
@@ -793,7 +793,7 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 			}
 		} else { /* rsa or symmetric key */
 			*keybits = (unsigned)strtoul(spec, &end, 10);
-			if (*end) {
+			if (end == NULL || *end) {
 				util_error("Invalid number of key bits \"%s\"", spec);
 				return SC_ERROR_INVALID_ARGUMENTS;
 			}

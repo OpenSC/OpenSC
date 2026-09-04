@@ -1578,9 +1578,13 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
 
-	r = _pkcd15init_set_aux_md_data(p15card, &key_info->aux_data,
-			keygen_args->prkey_args.guid, keygen_args->prkey_args.guid_len);
-	LOG_TEST_GOTO_ERR(ctx, r, "Failed to set aux MD data");
+	if (keygen_args->prkey_args.guid) {
+		r = _pkcd15init_set_aux_md_data(p15card, &key_info->aux_data,
+				keygen_args->prkey_args.guid, keygen_args->prkey_args.guid_len);
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to set aux MD data");
+	} else {
+		key_info->aux_data = keygen_args->prkey_args.aux_data;
+	}
 
 	/* Set up the PuKDF info. The public key will be filled in
 	 * by the card driver's generate_key function called below.
