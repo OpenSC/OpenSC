@@ -1580,7 +1580,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	if (keygen_args->prkey_args.guid) {
 		r = _pkcd15init_set_aux_md_data(p15card, &key_info->aux_data,
-			keygen_args->prkey_args.guid, keygen_args->prkey_args.guid_len);
+				keygen_args->prkey_args.guid, keygen_args->prkey_args.guid_len);
 		LOG_TEST_GOTO_ERR(ctx, r, "Failed to set aux MD data");
 	} else {
 		key_info->aux_data = keygen_args->prkey_args.aux_data;

@@ -32,9 +32,9 @@ extern "C" {
 #include "asn1.h"
 #include "types.h"
 
-#define SC_AUX_DATA_TYPE_NO_DATA		0x00
-#define SC_AUX_DATA_TYPE_MD_CMAP_RECORD		0x01
-#define SC_AUX_DATA_TYPE_PROP_KEY_GEN_PARAM	0x02
+#define SC_AUX_DATA_TYPE_NO_DATA	    0x00
+#define SC_AUX_DATA_TYPE_MD_CMAP_RECORD	    0x01
+#define SC_AUX_DATA_TYPE_PROP_KEY_GEN_PARAM 0x02
 
 /* From Windows Smart Card Minidriver Specification
  * Version 7.06

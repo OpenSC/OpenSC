@@ -43,29 +43,29 @@
 #define ALGO_RSA_PKCS1_SHA384	0x34		/* RSA signature with SHA-384 hash and PKCS#1 V1.5 padding */
 #define ALGO_RSA_PKCS1_SHA512	0x35		/* RSA signature with SHA-512 hash and PKCS#1 V1.5 padding */
 
-#define ALGO_RSA_PSS		0x40		/* RSA signature with external hash and PKCS#1 PSS padding*/
-#define ALGO_RSA_PSS_SHA1	0x41		/* RSA signature with SHA-1 hash and PKCS#1 PSS padding */
-#define ALGO_RSA_PSS_SHA256	0x43		/* RSA signature with SHA-256 hash and PKCS#1 PSS padding */
-#define ALGO_RSA_PSS_SHA384	0x44		/* RSA signature with SHA-384 hash and PKCS#1 PSS padding */
-#define ALGO_RSA_PSS_SHA512	0x45		/* RSA signature with SHA-512 hash and PKCS#1 PSS padding */
+#define ALGO_RSA_PSS	    0x40 /* RSA signature with external hash and PKCS#1 PSS padding*/
+#define ALGO_RSA_PSS_SHA1   0x41 /* RSA signature with SHA-1 hash and PKCS#1 PSS padding */
+#define ALGO_RSA_PSS_SHA256 0x43 /* RSA signature with SHA-256 hash and PKCS#1 PSS padding */
+#define ALGO_RSA_PSS_SHA384 0x44 /* RSA signature with SHA-384 hash and PKCS#1 PSS padding */
+#define ALGO_RSA_PSS_SHA512 0x45 /* RSA signature with SHA-512 hash and PKCS#1 PSS padding */
 
-#define ALGO_EC_RAW		0x70		/* ECDSA signature with hash input */
-#define ALGO_EC_SHA1		0x71		/* ECDSA signature with SHA-1 hash */
-#define ALGO_EC_SHA224		0x72		/* ECDSA signature with SHA-224 hash */
-#define ALGO_EC_SHA256		0x73		/* ECDSA signature with SHA-256 hash */
-#define ALGO_EC_SHA384		0x74		/* ECDSA signature with SHA-384 hash */
-#define ALGO_EC_SHA512		0x75		/* ECDSA signature with SHA-512 hash */
-#define ALGO_EC_DH		0x80		/* ECDH key derivation */
+#define ALGO_EC_RAW    0x70 /* ECDSA signature with hash input */
+#define ALGO_EC_SHA1   0x71 /* ECDSA signature with SHA-1 hash */
+#define ALGO_EC_SHA224 0x72 /* ECDSA signature with SHA-224 hash */
+#define ALGO_EC_SHA256 0x73 /* ECDSA signature with SHA-256 hash */
+#define ALGO_EC_SHA384 0x74 /* ECDSA signature with SHA-384 hash */
+#define ALGO_EC_SHA512 0x75 /* ECDSA signature with SHA-512 hash */
+#define ALGO_EC_DH     0x80 /* ECDH key derivation */
 
-#define ID_USER_PIN		0x81		/* User PIN identifier */
-#define ID_SO_PIN		0x88		/* Security officer PIN identifier */
+#define ID_USER_PIN 0x81 /* User PIN identifier */
+#define ID_SO_PIN   0x88 /* Security officer PIN identifier */
 
-#define INIT_RRC_ENABLED	0x01		/* Enable RESET RETRY COUNTER command */
-#define INIT_TRANSPORT_PIN	0x02		/* Enable Transport-PIN mode */
-#define INIT_SESSION_PIN	0x04		/* Allow generation of a session PIN after biometric match */
-#define INIT_REPLACE_PKA_KEY	0x08		/* Allow replacing registered keys after Public Key Authentication */
-#define INIT_REQ_PKA_AND_PIN	0x10		/* Require Public Key Authentication an PIN verification */
-#define INIT_RRC_UNBLOCK	0x20		/* Disable resetting the PIN in RESET RETRY COUNTER */
+#define INIT_RRC_ENABLED     0x01 /* Enable RESET RETRY COUNTER command */
+#define INIT_TRANSPORT_PIN   0x02 /* Enable Transport-PIN mode */
+#define INIT_SESSION_PIN     0x04 /* Allow generation of a session PIN after biometric match */
+#define INIT_REPLACE_PKA_KEY 0x08 /* Allow replacing registered keys after Public Key Authentication */
+#define INIT_REQ_PKA_AND_PIN 0x10 /* Require Public Key Authentication an PIN verification */
+#define INIT_RRC_UNBLOCK     0x20 /* Disable resetting the PIN in RESET RETRY COUNTER */
 
 /* Information the driver maintains between calls */
 typedef struct sc_hsm_private_data {
@@ -82,38 +82,38 @@ typedef struct sc_hsm_private_data {
 
 
 struct sc_cvc {
-	int cpi;				// Certificate profile indicator (0)
-	char car[17];				// Certification authority reference
-	size_t carLen;				// strlen of car
+	int cpi;       // Certificate profile indicator (0)
+	char car[17];  // Certification authority reference
+	size_t carLen; // strlen of car
 
-	struct sc_object_id pukoid;		// Public key algorithm object identifier
-	u8 *primeOrModulus;			// Prime for ECC or modulus for RSA
+	struct sc_object_id pukoid; // Public key algorithm object identifier
+	u8 *primeOrModulus;	    // Prime for ECC or modulus for RSA
 	size_t primeOrModuluslen;
-	u8 *coefficientAorExponent;		// Coefficient A for ECC or public exponent for RSA
+	u8 *coefficientAorExponent; // Coefficient A for ECC or public exponent for RSA
 	size_t coefficientAorExponentlen;
-	u8 *coefficientB;			// Coefficient B for ECC
+	u8 *coefficientB; // Coefficient B for ECC
 	size_t coefficientBlen;
-	u8 *basePointG;				// Base point for ECC
+	u8 *basePointG; // Base point for ECC
 	size_t basePointGlen;
-	u8 *order;				// Order of the base point for ECC
+	u8 *order; // Order of the base point for ECC
 	size_t orderlen;
-	u8 *publicPoint;			// Public point for ECC
+	u8 *publicPoint; // Public point for ECC
 	size_t publicPointlen;
-	u8 *cofactor;				// Cofactor for ECC
+	u8 *cofactor; // Cofactor for ECC
 	size_t cofactorlen;
 
-	int modulusSize;			// Size of RSA modulus in bits
+	int modulusSize; // Size of RSA modulus in bits
 
-	char chr[21];				// Certificate holder reference
-	size_t chrLen;				// strlen of chr
+	char chr[21];  // Certificate holder reference
+	size_t chrLen; // strlen of chr
 
-	u8 *signature;				// Certificate signature or request self-signed signature
+	u8 *signature; // Certificate signature or request self-signed signature
 	size_t signatureLen;
 
-	char outer_car[17];			// Instance signing the request
-	size_t outerCARLen;			// strlen of outer_car
+	char outer_car[17]; // Instance signing the request
+	size_t outerCARLen; // strlen of outer_car
 
-	u8 *outerSignature;			// Request authenticating signature
+	u8 *outerSignature; // Request authenticating signature
 	size_t outerSignatureLen;
 };
 typedef struct sc_cvc sc_cvc_t;
@@ -130,15 +130,11 @@ struct ec_curve {
 	const struct sc_lv_data coFactor;
 };
 
-
-
 typedef struct sc_cvc_pka_component {
 	sc_cvc_t cvc;
 	const u8 *ptr; /* don't free, this points to the middle of a buffer */
 	size_t len;
 } sc_cvc_pka_component_t;
-
-
 
 typedef struct sc_cvc_pka {
 	sc_cvc_pka_component_t public_key_req;	/* CVC request with public key */
@@ -146,20 +142,16 @@ typedef struct sc_cvc_pka {
 	sc_cvc_pka_component_t dica;		/* device issuer CA CVC */
 } sc_cvc_pka_t;
 
-
-
 typedef struct sc_hsm_keygen_data {
-	unsigned long key_use_counter;		/* Key use counter */
-	int key_domain;				/* Key domain, 0  for default */
-	u8 *key_algorithms;			/* List of supported algorithms */
-	size_t key_algorithms_len;		/* Size of list */
+	unsigned long key_use_counter; /* Key use counter */
+	int key_domain;		       /* Key domain, 0  for default */
+	u8 *key_algorithms;	       /* List of supported algorithms */
+	size_t key_algorithms_len;     /* Size of list */
 } sc_hsm_keygen_data_t;
 
-
-
-int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t * p15card,
-				   const u8 ** buf, size_t *buflen,
-				   sc_cvc_t *cvc);
+int sc_pkcs15emu_sc_hsm_decode_cvc(sc_pkcs15_card_t *p15card,
+		const u8 **buf, size_t *buflen,
+		sc_cvc_t *cvc);
 int sc_pkcs15emu_sc_hsm_decode_pka(sc_pkcs15_card_t * p15card,
 	const u8 **buf, size_t *buflen,
 	sc_cvc_pka_t *pka);

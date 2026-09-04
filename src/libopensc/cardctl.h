@@ -940,7 +940,7 @@ typedef struct sc_cardctl_sc_hsm_init_param {
 	struct sc_aid bio2;			/* AID of biometric server for template 2 */
 	u8 options[2];				/* Initialization options */
 	signed char dkek_shares;	/* Number of DKEK shares, 0 for card generated, -1 for none */
-	u8 key_domains;				/* Number of key domain slots*/
+	u8 key_domains;			/* Number of key domain slots*/
 	signed char num_of_pub_keys;         /* Total number of public keys used for public authentication (if > 0) */
 	u8 required_pub_keys;       /* Number of public keys required for authentication (if public auth. is used) */
 	char *label;				/* Token label to be set in EF.TokenInfo (2F03) */
@@ -949,7 +949,7 @@ typedef struct sc_cardctl_sc_hsm_init_param {
 typedef struct sc_cardctl_sc_hsm_key_domain {
 	u8 key_domain_idx;			/* Key domain slot index */
 	int operation;				/* 0 to just query status or one of SC_MANAGE_KEY_DOMAIN_IMPORT*. */
-	u8 type;					/* 0 DKEK, 1 XKEK */
+	u8 type;				/* 0 DKEK, 1 XKEK */
 	u8 dkek_share[32];			/* AES-256 DKEK share */
 	u8 dkek_shares;				/* Total number of shares */
 	u8 outstanding_shares;		/* Number of shares to be presented */

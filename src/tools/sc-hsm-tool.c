@@ -43,12 +43,12 @@
 #include <openssl/err.h>
 
 #include "fread_to_eof.h"
-#include "libopensc/sc-ossl-compat.h"
-#include "libopensc/opensc.h"
-#include "libopensc/cardctl.h"
 #include "libopensc/asn1.h"
-#include "libopensc/log.h"
 #include "libopensc/card-sc-hsm.h"
+#include "libopensc/cardctl.h"
+#include "libopensc/log.h"
+#include "libopensc/opensc.h"
+#include "libopensc/sc-ossl-compat.h"
 #include "pkcs15init/pkcs15-init.h"
 #include "util.h"
 
@@ -134,52 +134,50 @@ static const struct option options[] = {
 // clang-format on
 
 static const char *option_help[] = {
-	"Initialize token",
-	"Create DKEK key share and save to <filename>",
-	"Import DKEK key share <filename>",
+		"Initialize token",
+		"Create DKEK key share and save to <filename>",
+		"Import DKEK key share <filename>",
 #ifdef PRINT_DKEK_SHARE
-	"Print HEX of DKEK key share <filename>",
+		"Print HEX of DKEK key share <filename>",
 #endif
-	"Wrap key and save to <filename>",
-	"Unwrap key read from <filename>",
-	"Use public key authentication, set total number of public keys",
-	"Number of public keys required for authentication [1]",
-	"Replacing a public key allowed after authentication",
-	"Require public key authentication and PIN verification",
-	"Export key for public key authentication",
-	"Register public key for public key authentication (PKA file)",
-	"Show status of public key authentication",
-	"Number of DKEK shares [No DKEK]",
-	"Key domain index or number of key domain slots",
-	"Key use counter initial value",
-	"Create DKEK key domain",
-	"Delete key domain",
-	"Delete key encryption key in key domain",
-	"Define security officer PIN (SO-PIN)",
-	"Define user PIN",
-	"Define transport PIN",
-	"Define user PIN retry counter",
-	"Disable RESET RETRY COUNTER support",
-	"No PIN reset in RESET RETRY COUNTER command",
-	"AID of biometric server for template 1 (hex)",
-	"AID of biometric server for template 2 (hex)",
-	"Define password for DKEK share",
-	"Define threshold for number of password shares required for reconstruction",
-	"Define number of password shares",
-	"Key reference for key wrap/unwrap/export",
-	"Token label for --initialize",
-	"Force replacement of key and certificate",
-	"Uses reader number <arg> [0]",
-	"Wait for a card to be inserted",
-	"Verbose operation, may be used several times",
+		"Wrap key and save to <filename>",
+		"Unwrap key read from <filename>",
+		"Use public key authentication, set total number of public keys",
+		"Number of public keys required for authentication [1]",
+		"Replacing a public key allowed after authentication",
+		"Require public key authentication and PIN verification",
+		"Export key for public key authentication",
+		"Register public key for public key authentication (PKA file)",
+		"Show status of public key authentication",
+		"Number of DKEK shares [No DKEK]",
+		"Key domain index or number of key domain slots",
+		"Key use counter initial value",
+		"Create DKEK key domain",
+		"Delete key domain",
+		"Delete key encryption key in key domain",
+		"Define security officer PIN (SO-PIN)",
+		"Define user PIN",
+		"Define transport PIN",
+		"Define user PIN retry counter",
+		"Disable RESET RETRY COUNTER support",
+		"No PIN reset in RESET RETRY COUNTER command",
+		"AID of biometric server for template 1 (hex)",
+		"AID of biometric server for template 2 (hex)",
+		"Define password for DKEK share",
+		"Define threshold for number of password shares required for reconstruction",
+		"Define number of password shares",
+		"Key reference for key wrap/unwrap/export",
+		"Token label for --initialize",
+		"Force replacement of key and certificate",
+		"Uses reader number <arg> [0]",
+		"Wait for a card to be inserted",
+		"Verbose operation, may be used several times",
 };
 
 typedef struct {
 	BIGNUM * x;
 	BIGNUM * y;
 } secret_share_t;
-
-
 
 /**
  * Generate a prime number
@@ -492,14 +490,13 @@ void waitForEnterKeyPressed()
 	}
 }
 
-
-
-static void print_dkek_info(sc_cardctl_sc_hsm_key_domain_t *kdinfo)
+static void
+print_dkek_info(sc_cardctl_sc_hsm_key_domain_t *kdinfo)
 {
 	if (kdinfo->type == 0) {
 		printf("%3i: DKEK shares     : %d\n", (int)kdinfo->key_domain_idx + 1, kdinfo->dkek_shares);
 		if (kdinfo->outstanding_shares > 0) {
-			printf("     DKEK import pending, %d share(s) still missing\n",kdinfo->outstanding_shares);
+			printf("     DKEK import pending, %d share(s) still missing\n", kdinfo->outstanding_shares);
 		} else {
 			printf("     Key Check Value : ");
 			util_hex_dump(stdout, kdinfo->key_check_value, 8, NULL);
@@ -515,9 +512,8 @@ static void print_dkek_info(sc_cardctl_sc_hsm_key_domain_t *kdinfo)
 	}
 }
 
-
-
-static void print_info(sc_card_t *card)
+static void
+print_info(sc_card_t *card)
 {
 	int r;
 	struct sc_pin_cmd_data data;
@@ -626,7 +622,7 @@ static void print_info(sc_card_t *card)
 
 		r = sc_card_ctl(card, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, (void *)&dkekinfo);
 
-		if (r == SC_ERROR_INS_NOT_SUPPORTED || r == SC_ERROR_INCORRECT_PARAMETERS) {			// Not supported or not initialized for key shares
+		if (r == SC_ERROR_INS_NOT_SUPPORTED || r == SC_ERROR_INCORRECT_PARAMETERS) { // Not supported or not initialized for key shares
 			break;
 		}
 		if (header == 0) {
@@ -634,7 +630,7 @@ static void print_info(sc_card_t *card)
 			header++;
 		}
 
-		if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND) {			// Not supported or not initialized for key shares
+		if (r == SC_ERROR_DATA_OBJECT_NOT_FOUND) { // Not supported or not initialized for key shares
 			printf("%3i: Empty\n", i + 1);
 		} else if (r < 0) {
 			fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_SC_HSM_MANAGE_KEY_DOMAIN, *) failed with %s\n", sc_strerror(r));
@@ -644,12 +640,10 @@ static void print_info(sc_card_t *card)
 			print_dkek_info(&dkekinfo);
 		}
 	}
-
 }
 
-
-
-static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, const int options,
+static int
+initialize(sc_card_t *card, const char *so_pin, const char *user_pin, int retry_counter, const int options,
 		const char *bio1, const char *bio2, int dkek_shares, const int key_domains,
 		signed char num_of_pub_keys, u8 required_pub_keys, const char *label)
 {
@@ -887,9 +881,8 @@ static int recreate_password_from_shares(char **pwd, int *pwdlen, int num_of_pas
 	return *pwd ? 0 : -1;
 }
 
-
-
-static int ensure_login(sc_card_t *card, const char *pin)
+static int
+ensure_login(sc_card_t *card, const char *pin)
 {
 	struct sc_pin_cmd_data data = {0};
 	char *lpin;
@@ -943,9 +936,8 @@ static int ensure_login(sc_card_t *card, const char *pin)
 	return 0;
 }
 
-
-
-static int create_dkek_key_domain(sc_card_t *card, const char *pin, const int kdidx, const int shares)
+static int
+create_dkek_key_domain(sc_card_t *card, const char *pin, const int kdidx, const int shares)
 {
 	sc_cardctl_sc_hsm_key_domain_t dkekinfo;
 	int r;
@@ -981,9 +973,8 @@ static int create_dkek_key_domain(sc_card_t *card, const char *pin, const int kd
 	return 0;
 }
 
-
-
-static int delete_key_domain(sc_card_t *card, const char *pin, const int kdidx)
+static int
+delete_key_domain(sc_card_t *card, const char *pin, const int kdidx)
 {
 	sc_cardctl_sc_hsm_key_domain_t dkekinfo;
 	int r;
@@ -1012,9 +1003,8 @@ static int delete_key_domain(sc_card_t *card, const char *pin, const int kdidx)
 	return 0;
 }
 
-
-
-static int clear_key_encryption_key(sc_card_t *card, const char *pin, const int kdidx)
+static int
+clear_key_encryption_key(sc_card_t *card, const char *pin, const int kdidx)
 {
 	sc_cardctl_sc_hsm_key_domain_t dkekinfo;
 	int r;
@@ -1049,9 +1039,8 @@ static int clear_key_encryption_key(sc_card_t *card, const char *pin, const int 
 	return 0;
 }
 
-
-
-static int import_dkek_share(sc_card_t *card, const char *pin, int kdidx, const char *inf, int iter, const char *password, int num_of_password_shares)
+static int
+import_dkek_share(sc_card_t *card, const char *pin, int kdidx, const char *inf, int iter, const char *password, int num_of_password_shares)
 {
 	sc_cardctl_sc_hsm_key_domain_t dkekinfo;
 	EVP_CIPHER_CTX *bn_ctx = NULL;
@@ -1164,8 +1153,6 @@ static int import_dkek_share(sc_card_t *card, const char *pin, int kdidx, const 
 	return 0;
 }
 
-
-
 static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const char *password, int num_of_password_shares)
 {
 	// hex output can be used in the SCSH shell with the
@@ -1263,8 +1250,6 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 
 	return 0;
 }
-
-
 
 static int ask_for_password(char **pwd, int *pwdlen)
 {
@@ -1546,8 +1531,6 @@ static int create_dkek_share(sc_card_t *card, const char *outf, int iter, const 
 	return 0;
 }
 
-
-
 struct alg_spec {
 	const char *spec;
 	int algorithm;
@@ -1555,12 +1538,13 @@ struct alg_spec {
 };
 
 static const struct alg_spec alg_types_asym[] = {
-	{ "rsa",	SC_ALGORITHM_RSA,	3072 },
-	{ "ec",		SC_ALGORITHM_EC,	0 },
-	{ NULL, -1, 0 }
+		{"rsa", SC_ALGORITHM_RSA, 3072},
+		{"ec",  SC_ALGORITHM_EC,	0	 },
+		{NULL,  -1,		   0   }
 };
 
-static int parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *keybits, struct sc_pkcs15_prkey *prkey)
+static int
+parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *keybits, struct sc_pkcs15_prkey *prkey)
 {
 	int i, algorithm = -1;
 	char *end = NULL;
@@ -1597,12 +1581,11 @@ static int parse_alg_spec(const struct alg_spec *types, const char *spec, unsign
 	return algorithm;
 }
 
-
-
 /*
  * Generate a new private key
  */
-static int generate_key(struct sc_pkcs15_card *p15card, const char *pin, const char *spec, char *label, int kdidx, unsigned long kuc)
+static int
+generate_key(struct sc_pkcs15_card *p15card, const char *pin, const char *spec, char *label, int kdidx, unsigned long kuc)
 {
 	struct sc_profile *profile;
 	struct sc_pkcs15init_keygen_args keygen_args;
@@ -1631,10 +1614,7 @@ static int generate_key(struct sc_pkcs15_card *p15card, const char *pin, const c
 	keygen_args.prkey_args.label = label;
 	keygen_args.prkey_args.key.algorithm = algorithm;
 	keygen_args.prkey_args.access_flags |=
-		  SC_PKCS15_PRKEY_ACCESS_SENSITIVE
-		| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
-		| SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE
-		| SC_PKCS15_PRKEY_ACCESS_LOCAL;
+			SC_PKCS15_PRKEY_ACCESS_SENSITIVE | SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE | SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE | SC_PKCS15_PRKEY_ACCESS_LOCAL;
 
 	aux_data.type = SC_AUX_DATA_TYPE_PROP_KEY_GEN_PARAM;
 	aux_data.data.proprietary_key_gen_params = &sc_hsm_keygen;
@@ -1661,8 +1641,6 @@ static int generate_key(struct sc_pkcs15_card *p15card, const char *pin, const c
 	sc_pkcs15_erase_prkey(&keygen_args.prkey_args.key);
 	return r;
 }
-
-
 
 static size_t determineLength(const u8 *tlv, size_t buflen)
 {
@@ -1707,9 +1685,8 @@ static int wrap_with_tag(u8 tag, u8 *indata, size_t inlen, u8 **outdata, size_t 
 	return sc_asn1_put_tag(tag, indata, inlen, *outdata, *outlen, NULL);
 }
 
-
-
-static int wrap_key(sc_context_t *ctx, struct sc_pkcs15_card *p15card, int keyid, const char *label, const char *outf, const char *pin)
+static int
+wrap_key(sc_context_t *ctx, struct sc_pkcs15_card *p15card, int keyid, const char *label, const char *outf, const char *pin)
 {
 	sc_cardctl_sc_hsm_wrapped_key_t wrapped_key;
 	sc_path_t path;
@@ -1926,9 +1903,8 @@ static int update_ef(sc_card_t *card, u8 prefix, u8 id, int erase, const u8 *buf
 	return 0;
 }
 
-
-
-static int determine_free_id(sc_card_t *card, u8 range)
+static int
+determine_free_id(sc_card_t *card, u8 range)
 {
 	u8 filelist[MAX_EXT_APDU_LENGTH];
 	int filelistlength, i, j;
@@ -1950,8 +1926,6 @@ static int determine_free_id(sc_card_t *card, u8 range)
 	}
 	LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
 }
-
-
 
 static int unwrap_key(sc_card_t *card, int keyid, const char *inf, const char *pin, int force)
 {
@@ -2111,8 +2085,6 @@ err:
 	return r;
 }
 
-
-
 static int export_key(sc_card_t *card, int keyid, const char *outf)
 {
 	sc_path_t path;
@@ -2253,8 +2225,6 @@ err:
 	return r;
 }
 
-
-
 static void print_pka_status(const sc_cardctl_sc_hsm_pka_status_t *status)
 {
 	printf("Number of public keys:     %d\n", status->num_total);
@@ -2262,8 +2232,6 @@ static void print_pka_status(const sc_cardctl_sc_hsm_pka_status_t *status)
 	printf("Required pubkeys for auth: %d\n", status->num_required);
 	printf("Authenticated public keys: %d\n", status->num_authenticated);
 }
-
-
 
 static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *inf)
 {
@@ -2322,8 +2290,6 @@ static int public_key_auth_status(sc_context_t *ctx, sc_card_t *card)
 	return 0;
 }
 
-
-
 int main(int argc, char *argv[])
 {
 	int err = 0, r, c, long_optind = 0;
@@ -2365,7 +2331,6 @@ int main(int argc, char *argv[])
 	sc_context_t *ctx = NULL;
 	sc_card_t *card = NULL;
 	struct sc_pkcs15_card *p15card = NULL;
-
 
 	while (1) {
 		c = getopt_long(argc, argv, "XC:I:P:W:U:G:K:n:e:g:Ss:d:i:fr:wv", options, &long_optind);

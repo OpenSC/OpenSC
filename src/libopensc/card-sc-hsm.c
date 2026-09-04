@@ -1243,7 +1243,7 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 		if (params->user_pin_len > 16) {
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
-		*p++ = 0x81;	// User PIN
+		*p++ = 0x81; // User PIN
 		*p++ = (u8)params->user_pin_len;
 		memcpy(p, params->user_pin, params->user_pin_len);
 		p += params->user_pin_len;
@@ -1255,7 +1255,7 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 	p += 8;
 
 	if (params->user_pin != NULL) {
-		*p++ = 0x91;	// User PIN retry counter
+		*p++ = 0x91; // User PIN retry counter
 		*p++ = 0x01;
 		*p++ = params->user_pin_retry_counter;
 	}
@@ -1267,7 +1267,7 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 	}
 
 	if (params->key_domains > 0) {
-		*p++ = 0x97;	// Number of key domains
+		*p++ = 0x97; // Number of key domains
 		*p++ = 0x01;
 		*p++ = params->key_domains;
 	}
@@ -1325,9 +1325,8 @@ static int sc_hsm_initialize(sc_card_t *card, sc_cardctl_sc_hsm_init_param_t *pa
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
-
-
-static int sc_hsm_manage_key_domain(sc_card_t *card, sc_cardctl_sc_hsm_key_domain_t *params)
+static int
+sc_hsm_manage_key_domain(sc_card_t *card, sc_cardctl_sc_hsm_key_domain_t *params)
 {
 	sc_context_t *ctx = card->ctx;
 	sc_apdu_t apdu;
@@ -1336,7 +1335,7 @@ static int sc_hsm_manage_key_domain(sc_card_t *card, sc_cardctl_sc_hsm_key_domai
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	switch(params->operation) {
+	switch (params->operation) {
 	case SC_HSM_MANAGE_KEY_DOMAIN_GET_STATUS:
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x52, 0x00, params->key_domain_idx);
 		break;
