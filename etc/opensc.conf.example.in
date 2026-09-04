@@ -211,6 +211,13 @@ app default {
 		#can = 123456;
 	}
 
+	card_driver cedulauy {
+		# Cache the MRZ read over the contact interface for use
+		# as the PACE password on the contactless (NFC) interface.
+		# Default: false
+		#enable_nfc_enrollment = true;
+	}
+
 	card_driver eoi {
 		# CAN is required to establish connection
 		# with the card. When using contact reader
