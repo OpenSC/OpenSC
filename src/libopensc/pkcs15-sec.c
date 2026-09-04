@@ -780,7 +780,6 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		}
 	}
 
-
 	r = use_key(p15card, obj, &senv, sc_compute_signature, tmp, inlen,
 			out, outlen);
 	LOG_TEST_GOTO_ERR(ctx, r, "use_key() failed");
