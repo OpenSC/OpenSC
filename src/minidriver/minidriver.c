@@ -20,7 +20,9 @@
  */
 
 /*
- * This module requires "cardmod.h" from CNG SDK or platform SDK to build.
+ * This module requires "cardmod.h" from the Microsoft Cryptographic Provider
+ * Development Kit (CPDK) to build. It is not part of the Windows SDK, WDK or
+ * EWDK. See win32/Make.rules.mak (CPDK_INCL_DIR) for the install location.
  */
 
 #include "config.h"
