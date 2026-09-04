@@ -119,6 +119,7 @@ static int cardos_fix_token_info(sc_pkcs15_card_t *p15card)
 			if (p15card->tokeninfo && p15card->tokeninfo->flags & SC_PKCS15_TOKEN_EID_COMPLIANT) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "EID_COMPLIANT flag found");
 				passed->new_flags = (passed->used_flags & ~SC_ALGORITHM_SPECIFIC_FLAGS) | SC_ALGORITHM_RSA_PAD_PKCS1;
+				passed->new_flags |= (passed->used_flags & SC_ALGORITHM_RSA_PAD_PSS);
 			} else
 				passed->new_flags = passed->used_flags; /* from default cardos_init */
 		}
