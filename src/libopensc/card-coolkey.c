@@ -2090,7 +2090,8 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 		int current_object_len;
 
 		/* Can we read the object header at all? */
-		if ((object_offset + sizeof(coolkey_combined_object_header_t)) > decompressed_object_len) {
+		if (decompressed_object_len < sizeof(coolkey_combined_object_header_t) ||
+		    object_offset > decompressed_object_len - sizeof(coolkey_combined_object_header_t)) {
 			r = SC_ERROR_CORRUPTED_DATA;
 			goto done;
 		}
@@ -2106,7 +2107,7 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 		if (r < 0) {
 			goto done;
 		}
-		if ((size_t)r + object_offset > decompressed_object_len) {
+		if ((size_t)r > decompressed_object_len - object_offset) {
 			r = SC_ERROR_CORRUPTED_DATA;
 			goto done;
 		}
