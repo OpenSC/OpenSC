@@ -2399,7 +2399,9 @@ int main(int argc, char *argv[])
 		r = sc_pkcs15_bind(card, &aid, &p15card);
 	}
 	else   {
-		r = sc_pkcs15_bind(card, NULL, &p15card);
+		struct sc_app_info *app_generic = sc_pkcs15_get_application_by_type(card, "generic");
+		struct sc_aid *aid = app_generic ? &app_generic->aid : NULL;
+		r = sc_pkcs15_bind(card, aid, &p15card);
 	}
 
 	if (r) {
