@@ -806,17 +806,16 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			r = sc_pkcs15_get_name_from_dn(card->ctx, cert_out->subject,
 				cert_out->subject_len, &cn_oid, &cn_name, &cn_len);
 			if (r == SC_SUCCESS) {
-				token_name = malloc (cn_len+1);
+				token_name = realloc(cn_name, cn_len + 1);
 				if (!token_name) {
 					sc_pkcs15_free_certificate(cert_out);
+					free(cert_info.value.value);
 					free(cn_name);
 					r = SC_ERROR_OUT_OF_MEMORY;
 					LOG_TEST_GOTO_ERR(card->ctx, r,
 						"Failed to allocate memory");
 				}
-				memcpy(token_name, cn_name, cn_len);
-				free(cn_name);
-				token_name[cn_len] = 0;
+				token_name[cn_len] = '\0';
 				free(p15card->tokeninfo->label);
 				p15card->tokeninfo->label = token_name;
 			}

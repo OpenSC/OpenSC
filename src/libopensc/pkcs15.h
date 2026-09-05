@@ -892,6 +892,9 @@ int sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card,
 				 struct sc_pkcs15_object *obj,
 				 const u8 **buf, size_t *bufsize);
 
+/* `obj` is copied to `p15card` including all buffers contained within `obj`.
+ * On `SC_SUCCESS`, those buffers are set to `NULL` to avoid duplicate
+ * references */
 int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_object *obj);
 void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,
