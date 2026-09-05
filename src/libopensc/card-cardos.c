@@ -307,18 +307,15 @@ static int cardos_init(sc_card_t *card)
 
 		if (card->caps & SC_CARD_CAP_APDU_EXT) {
 			card->max_send_size  = data_field_length - 6;
-#ifdef _WIN32
-			/* Windows does not support PCSC PART_10 and may have forced reader to 255/256
-			 * https://github.com/OpenSC/OpenSC/commit/eddea6f3c2d3dafc2c09eba6695c745a61b5186f
-			 * may have reset this. if so, will override and force extended
-			 * Most, if not all, cardos cards do extended, but not chaining
-			 */
-			if (card->reader->max_send_size == 255 && card->reader->max_recv_size == 256) {
-				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "resetting reader to use data_field_length");
+			/* CardOS V5.x supports extended APDUs but not command chaining for
+			 * PSO:Sign. PC/SC often under-reports reader limits (e.g. 255/261).
+			 * Use the card's data field length so a full RSA block fits in one APDU. */
+			if (card->reader->max_send_size < data_field_length - 6) {
+				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE,
+						"resetting reader max_send/recv to card data_field_length");
 				card->reader->max_send_size = data_field_length - 6;
 				card->reader->max_recv_size = data_field_length - 3;
 			}
-#endif
 		} else
 			card->max_send_size = data_field_length - 3;
 
