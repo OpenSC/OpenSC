@@ -547,8 +547,8 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		struct sc_cardctl_coolkey_object     coolkey_obj;
 		struct sc_pkcs15_object    obj_obj;
 		struct sc_pkcs15_cert_info cert_info = {0};
-		struct sc_pkcs15_pubkey_info pubkey_info;
-		struct sc_pkcs15_prkey_info prkey_info;
+		struct sc_pkcs15_pubkey_info pubkey_info = {0};
+		struct sc_pkcs15_prkey_info prkey_info = {0};
 		sc_pkcs15_pubkey_t *key = NULL;
 		void *obj_info = NULL;
 		int obj_type = 0;
@@ -586,7 +586,6 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 			}
 			/* set the info values */
 			obj_info = &prkey_info;
-			memset(&prkey_info, 0, sizeof(prkey_info));
 			coolkey_get_id(card, &coolkey_obj, &prkey_info.id);
 			prkey_info.path = coolkey_obj.path;
 			prkey_info.key_reference = (int)coolkey_obj.id;
@@ -626,7 +625,6 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 			}
 			/* set the info values */
 			obj_info = &pubkey_info;
-			memset(&pubkey_info, 0, sizeof(pubkey_info));
 			r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, key, &pubkey_info.direct.spki.value,
 				&pubkey_info.direct.spki.len);
 			if (r < 0)
@@ -644,7 +642,6 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 				obj_type = SC_PKCS15_TYPE_PUBKEY_EC;
 				pubkey_info.field_length = key->u.ec.params.field_length;
 			} else {
-				free(pubkey_info.direct.spki.value);
 				goto fail;
 			}
 			/* set the obj values */
@@ -655,7 +652,6 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		case CKO_CERTIFICATE:
 			sc_log(card->ctx, "Processing certificate object %d", i);
 			obj_info = &cert_info;
-			memset(&cert_info, 0, sizeof(cert_info));
 			coolkey_get_id(card, &coolkey_obj, &cert_info.id);
 			cert_info.path = coolkey_obj.path;
 			obj_type = SC_PKCS15_TYPE_CERT_X509;
@@ -681,9 +677,8 @@ fail:
 		if (key) {
 			sc_pkcs15_free_pubkey(key);
 		}
-		if (r != SC_SUCCESS) {
-			free(cert_info.value.value);
-		}
+		free(cert_info.value.value);
+		free(pubkey_info.direct.spki.value);
 	}
 	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS, &count);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize objects.");
