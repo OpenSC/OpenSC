@@ -655,7 +655,6 @@ static int myeid_delete_file(struct sc_card *card, const struct sc_path *path)
 	LOG_TEST_RET(card->ctx, r, "Unable to select file to be deleted");
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xE4, 0x00, 0x00);
-	apdu.cla = 0xA0;
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
