@@ -809,6 +809,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				token_name = realloc(cn_name, cn_len + 1);
 				if (!token_name) {
 					sc_pkcs15_free_certificate(cert_out);
+					free(cert_info.value.value);
 					free(cn_name);
 					r = SC_ERROR_OUT_OF_MEMORY;
 					LOG_TEST_GOTO_ERR(card->ctx, r,
