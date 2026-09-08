@@ -145,12 +145,6 @@
 	],
 	[
 		"01",
-		"SHA1_RSA_PKCS",
-		"YES",
-		""
-	],
-	[
-		"01",
 		"RIPEMD160_RSA_PKCS",
 		"YES",
 		""
@@ -192,11 +186,6 @@
 	[
 		"01",
 		"MD5_RSA_PKCS",
-		"YES"
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS",
 		"YES"
 	],
 	[

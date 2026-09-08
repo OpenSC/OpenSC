@@ -157,12 +157,6 @@
 	],
 	[
 		"01",
-		"SHA1_RSA_PKCS",
-		"YES",
-		""
-	],
-	[
-		"01",
 		"RIPEMD160_RSA_PKCS",
 		"YES",
 		""
@@ -196,12 +190,6 @@
 		"RSA_PKCS",
 		"",
 		"YES"
-	],
-	[
-		"03",
-		"ECDSA_SHA1",
-		"YES",
-		""
 	]],
 	"result": "pass"
 },
@@ -216,11 +204,6 @@
 	[
 		"01",
 		"MD5_RSA_PKCS",
-		"YES"
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS",
 		"YES"
 	],
 	[
@@ -252,7 +235,7 @@
 },
 {
 	"test_id": "ec_sign_size_test",
-	"result": "pass"
+	"result": "skip"
 },
 {
 	"test_id": "usage_test",
