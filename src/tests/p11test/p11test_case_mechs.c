@@ -88,7 +88,6 @@ supported_mechanisms_test(void **state)
 					mechanism_list[i] == CKM_RSA_PKCS ||
 					mechanism_list[i] == CKM_MD5_RSA_PKCS ||
 					mechanism_list[i] == CKM_RIPEMD160_RSA_PKCS ||
-					mechanism_list[i] == CKM_SHA1_RSA_PKCS ||
 					mechanism_list[i] == CKM_SHA224_RSA_PKCS ||
 					mechanism_list[i] == CKM_SHA256_RSA_PKCS ||
 					mechanism_list[i] == CKM_SHA384_RSA_PKCS ||
@@ -98,7 +97,6 @@ supported_mechanisms_test(void **state)
 					mechanism_list[i] == CKM_SHA3_384_RSA_PKCS ||
 					mechanism_list[i] == CKM_SHA3_512_RSA_PKCS ||
 					mechanism_list[i] == CKM_RSA_PKCS_PSS ||
-					mechanism_list[i] == CKM_SHA1_RSA_PKCS_PSS ||
 					mechanism_list[i] == CKM_SHA256_RSA_PKCS_PSS ||
 					mechanism_list[i] == CKM_SHA384_RSA_PKCS_PSS ||
 					mechanism_list[i] == CKM_SHA512_RSA_PKCS_PSS ||
@@ -117,7 +115,6 @@ supported_mechanisms_test(void **state)
 
 			/* We list all known EC mechanisms */
 			if (mechanism_list[i] == CKM_ECDSA ||
-					mechanism_list[i] == CKM_ECDSA_SHA1 ||
 					mechanism_list[i] == CKM_ECDSA_SHA256 ||
 					mechanism_list[i] == CKM_ECDSA_SHA384 ||
 					mechanism_list[i] == CKM_ECDSA_SHA512 ||
