@@ -4281,7 +4281,7 @@ piv_match_card_continued(sc_card_t *card)
 		if (priv->yubico_version < 0x00040302)
 			priv->card_issues |= CI_VERIFY_LC0_FAIL;
 		break;
-	
+
 	case SC_CARD_TYPE_PIV_II_PIVAPPLET:
 		break;
 
@@ -4884,7 +4884,7 @@ piv_card_reader_lock_obtained(sc_card_t *card, int was_reset)
 	}
 
 	priv->init_flags |= PIV_INIT_IN_READER_LOCK_OBTAINED;
-	
+
 	/* first see if PIV applet is active AID by reading discovery object '7E' */
 	/* If not try selecting AID */
 	/* but if card does not support DISCOVERY object we can not use it */
