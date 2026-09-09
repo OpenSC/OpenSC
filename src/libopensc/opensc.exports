@@ -168,6 +168,7 @@ sc_pkcs15_decode_pubkey_gostr3410
 sc_pkcs15_decode_pukdf_entry
 sc_pkcs15_decode_skdf_entry
 sc_pkcs15_derive
+sc_pkcs15_decapsulate
 sc_pkcs15_encode_aodf_entry
 sc_pkcs15_encode_cdf_entry
 sc_pkcs15_encode_df

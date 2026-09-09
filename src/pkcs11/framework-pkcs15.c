@@ -4034,7 +4034,8 @@ struct sc_pkcs11_object_ops pkcs15_cert_ops = {
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL,	/* init_params */
-	NULL	/* wrap_key */
+	NULL,	/* wrap_key */
+	NULL,	/* decapsulate */
 };
 
 /*
@@ -4956,6 +4957,58 @@ pkcs15_prkey_init_params(struct sc_pkcs11_session *session,
 	return CKR_OK;
 }
 
+static CK_RV
+pkcs15_prkey_decapsulate(struct sc_pkcs11_session *session, void *obj, CK_MECHANISM_PTR pMechanism,
+		CK_BYTE_PTR pCiphertext, CK_ULONG ulCiphertextLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+{
+	struct sc_pkcs11_card *p11card = session->slot->p11card;
+	struct pkcs15_fw_data *fw_data = NULL;
+	struct pkcs15_prkey_object *prkey = (struct pkcs15_prkey_object *)obj;
+	int need_unlock = 0;
+	int rv, flags = 0;
+
+	sc_log(context, "Initiating decapsulation");
+
+	if (!p11card)
+		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_DecapsulateKey");
+	fw_data = (struct pkcs15_fw_data *)p11card->fws_data[session->slot->fw_data_idx];
+	if (!fw_data)
+		return sc_to_cryptoki_error(SC_ERROR_INTERNAL, "C_DecapsulateKey");
+	if (!fw_data->p15_card)
+		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_DecapsulateKey");
+
+	/* See which of the alternative keys supports derivation */
+	while (prkey && !(prkey->prv_info->usage & SC_PKCS15_PRKEY_USAGE_DECAPSULATE))
+		prkey = prkey->prv_next;
+
+	if (prkey == NULL)
+		return CKR_KEY_FUNCTION_NOT_PERMITTED;
+
+	if (pData != NULL && *pulDataLen > 0) {
+		need_unlock = 1;
+		rv = sc_lock(p11card->card);
+		if (rv < 0)
+			return sc_to_cryptoki_error(rv, "C_DecapsulateKey");
+	}
+
+	size_t len = *pulDataLen;
+	rv = sc_pkcs15_decapsulate(fw_data->p15_card, prkey->prv_p15obj, flags,
+			pCiphertext, ulCiphertextLen, pData, &len);
+	*pulDataLen = len;
+
+	/* this may have been a request for size */
+
+	if (need_unlock)
+		sc_unlock(p11card->card);
+
+	sc_log(context, "Decapsulate complete. Result %d.", rv);
+
+	if (rv < 0)
+		return sc_to_cryptoki_error(rv, "C_DecapsulateKey");
+
+	return CKR_OK;
+}
+
 
 struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	pkcs15_prkey_release,
@@ -4971,7 +5024,8 @@ struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	pkcs15_prkey_derive,
 	pkcs15_prkey_can_do,
 	pkcs15_prkey_init_params,
-	NULL	/* wrap_key */
+	NULL,	/* wrap_key */
+	pkcs15_prkey_decapsulate,
 };
 
 /*
@@ -5268,11 +5322,12 @@ struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
 	NULL,	/* sign */
 	NULL,	/* unwrap_key */
 	NULL,	/* decrypt */
-	NULL,	/* ecrypt */
+	NULL,	/* encrypt */
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL,	/* init_params */
-	NULL	/* wrap_key */
+	NULL,	/* wrap_key */
+	NULL,	/* decapsulate */
 };
 
 
@@ -5455,7 +5510,8 @@ struct sc_pkcs11_object_ops pkcs15_dobj_ops = {
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL,	/* init_params */
-	NULL	/* wrap_key */
+	NULL,	/* wrap_key */
+	NULL,	/* decapsulate */
 };
 
 /* PKCS#15 Data Object*/
@@ -5525,7 +5581,8 @@ struct sc_pkcs11_object_ops pkcs15_profile_ops = {
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL,	/* init_params */
-	NULL	/* wrap_key */
+	NULL,	/* wrap_key */
+	NULL,	/* decapsulate */
 };
 
 
@@ -6007,7 +6064,8 @@ struct sc_pkcs11_object_ops pkcs15_skey_ops = {
 	NULL,	/* derive */
 	NULL,	/* can_do */
 	NULL,	/* init_params */
-	pkcs15_skey_wrap /* wrap_key */
+	pkcs15_skey_wrap,
+	NULL,	/* decapsulate */
 };
 
 /*
