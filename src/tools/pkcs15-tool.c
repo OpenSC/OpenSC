@@ -1080,10 +1080,12 @@ static int read_ssh_key(void)
 		}
 
 		len = snprintf(alg, sizeof alg, "ecdsa-sha2-nistp%zu", n);
-		if (len < 0) {
+		if (len < 0 || len >= (int)sizeof(alg)) {
 			fprintf(stderr, "failed to write algorithm\n");
 			goto fail2;
 		}
+		if (4 + len > (int)sizeof(buf))
+			goto fail2;
 		buf[0] = 0;
 		buf[1] = 0;
 		buf[2] = 0;
@@ -1091,6 +1093,8 @@ static int read_ssh_key(void)
 		memcpy(buf+4, alg, len);
 		len += 4;
 
+		if (len + 4 + 9 > (int)sizeof(buf))
+			goto fail2;
 		buf[len++] = 0;
 		buf[len++] = 0;
 		buf[len++] = 0;
@@ -1103,6 +1107,8 @@ static int read_ssh_key(void)
 			fprintf(stderr, "Wrong public key length\n");
 			goto fail2;
 		}
+		if (len + 4 + (int)n > (int)sizeof(buf))
+			goto fail2;
 		buf[len++] = 0;
 		buf[len++] = 0;
 		buf[len++] = 0;
