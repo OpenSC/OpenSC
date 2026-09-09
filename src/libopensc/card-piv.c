@@ -1811,13 +1811,15 @@ piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 			(sendbuf ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_1);
 
 	sc_format_apdu(card, &apdu, cse, ins, p1, p2);
-	apdu.flags |= SC_APDU_FLAGS_CHAINING;
+	if (sendbuflen > 255) {
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 #ifdef ENABLE_PIV_SM
-	if (card->sm_ctx.sm_mode != SM_MODE_NONE && sendbuflen > 255) {
-		/* tell apdu.c to not do the chaining, let the SM get_apdu do it */
-		apdu.flags |= SC_APDU_FLAGS_SM_CHAINING;
-	}
+		if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
+			/* tell apdu.c to not do the chaining, let the SM get_apdu do it */
+			apdu.flags |= SC_APDU_FLAGS_SM_CHAINING;
+		}
 #endif
+	}
 	apdu.lc = sendbuflen;
 	apdu.datalen = sendbuflen;
 	apdu.data = sendbuf;
