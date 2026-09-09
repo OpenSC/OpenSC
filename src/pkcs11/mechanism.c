@@ -1411,6 +1411,96 @@ out:
 	return rv;
 }
 
+/* Decapsulate key using KEM algorithm */
+CK_RV
+sc_pkcs11_decaps(struct sc_pkcs11_session *session,
+		CK_MECHANISM_PTR pMechanism,
+		struct sc_pkcs11_object *basekey,
+		CK_KEY_TYPE key_type,
+		CK_SESSION_HANDLE hSession,
+		CK_OBJECT_HANDLE hdkey,
+		struct sc_pkcs11_object *dkey,
+		CK_BYTE_PTR pCiphertext,
+		CK_ULONG ulCiphertextLen)
+{
+	struct sc_pkcs11_card *p11card;
+	sc_pkcs11_operation_t *operation;
+	sc_pkcs11_mechanism_type_t *mt;
+	CK_BYTE_PTR keybuf = NULL;
+	CK_ULONG ulDataLen = 0;
+	CK_ATTRIBUTE template[] = {
+			{CKA_VALUE, keybuf, 0},
+	};
+	CK_RV rv;
+
+	if (!session || !session->slot || !(p11card = session->slot->p11card))
+		return CKR_ARGUMENTS_BAD;
+
+	/* See if we support this mechanism type */
+	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_DECAPSULATE);
+	if (mt == NULL)
+		return CKR_MECHANISM_INVALID;
+
+	/* See if compatible with key type */
+	rv = _validate_key_type(mt, key_type);
+	if (rv != CKR_OK)
+		LOG_FUNC_RETURN(context, (int)rv);
+
+	rv = session_start_operation(session, SC_PKCS11_OPERATION_DECAPSULATE, mt, &operation);
+	if (rv != CKR_OK)
+		return rv;
+
+	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
+
+	/* Get the size of the data to be returned
+	 * If the card could decapsulate a key an leave it on the card
+	 * then no data is returned.
+	 * If the card returns the data, we will store it in the secret key CKA_VALUE
+	 */
+
+	ulDataLen = 0;
+	rv = operation->type->decapsulate(operation, basekey,
+			pCiphertext, ulCiphertextLen,
+			NULL, &ulDataLen);
+	if (rv != CKR_OK)
+		goto out;
+
+	if (ulDataLen > 0)
+		keybuf = calloc(1, ulDataLen);
+	else
+		keybuf = calloc(1, 8); /* pass in  dummy buffer */
+
+	if (!keybuf) {
+		rv = CKR_HOST_MEMORY;
+		goto out;
+	}
+
+	/* Now do the actual derivation */
+
+	rv = operation->type->decapsulate(operation, basekey, pCiphertext, ulCiphertextLen, keybuf, &ulDataLen);
+	if (rv != CKR_OK)
+		goto out;
+
+	/* add the CKA_VALUE attribute to the template if it was returned
+	 * if not assume it is on the card...
+	 */
+	if (ulDataLen > 0) {
+		template[0].pValue = keybuf;
+		template[0].ulValueLen = ulDataLen;
+
+		dkey->ops->set_attribute(session, dkey, &template[0]);
+
+		memset(keybuf, 0, ulDataLen);
+	}
+
+out:
+	session_stop_operation(session, SC_PKCS11_OPERATION_DECAPSULATE);
+
+	if (keybuf)
+		free(keybuf);
+	return rv;
+}
+
 /*
  * Initialize a encrypt operation
  */
@@ -1705,6 +1795,14 @@ sc_pkcs11_derive(sc_pkcs11_operation_t *operation,
 		    pData, pulDataLen);
 }
 
+static CK_RV
+sc_pkcs11_decapsulate(sc_pkcs11_operation_t *operation, struct sc_pkcs11_object *basekey,
+		CK_BYTE_PTR pCiphertext, CK_ULONG ulCiphertextLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+{
+
+	return basekey->ops->decapsulate(operation->session, basekey, &operation->mechanism,
+			pCiphertext, ulCiphertextLen, pData, pulDataLen);
+}
 
 static CK_RV
 sc_pkcs11_wrap_operation(sc_pkcs11_operation_t *operation,
@@ -1797,6 +1895,9 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 		mt->encrypt = sc_pkcs11_encrypt;
 		mt->encrypt_update = sc_pkcs11_encrypt_update;
 		mt->encrypt_final = sc_pkcs11_encrypt_final;
+	}
+	if (pInfo->flags & CKF_DECAPSULATE) {
+		mt->decapsulate = sc_pkcs11_decapsulate;
 	}
 
 	return mt;

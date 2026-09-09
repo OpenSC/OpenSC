@@ -4869,6 +4869,8 @@ piv_validate_general_authentication(sc_card_t *card,
 	}
 	if (priv->operation == SC_SEC_OPERATION_DERIVE && (priv->algorithm == SC_ALGORITHM_EC || priv->algorithm == SC_ALGORITHM_XEDDSA)) {
 		op_tag = 0x85;
+	} else if (priv->operation == SC_SEC_OPERATION_DECAPSULATE && priv->algorithm == SC_ALGORITHM_MLKEM) {
+		op_tag = 0x86;
 	} else {
 		op_tag = 0x81;
 	}
