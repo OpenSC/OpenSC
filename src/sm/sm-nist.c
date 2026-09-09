@@ -1467,9 +1467,9 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 	sctx->finish = sm_nist_finish;
 	sctx->clear_free = sm_nist_clear_free;
 	sctx->padding_indicator = SM_ISO_PADDING;
-	sctx->always_add_padding_indicator = 1;
-	sctx->skip_mac_padding = 1;
-	sctx->sm_encrypt_once_then_chaining = 1;
+	sctx->flags |= ISO_SM_FLAG_ALWAYS_ADD_PADDING_INDICATOR;
+	sctx->flags |= ISO_SM_FLAG_SKIP_MAC_PADDING;
+	sctx->flags |= ISO_SM_FLAG_ENCRYPT_ONCE_THEN_CHAINING;
 	sctx->block_length = 16; /* 800-73-4 uses 16 for both cipher suites */
 
 	r = iso_sm_start(card, sctx);
