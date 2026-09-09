@@ -351,7 +351,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 			break;
 		case SC_APDU_CASE_3_SHORT:
 		case SC_APDU_CASE_3_EXT:
-			if ((apdu->ins & 1) == 0 || ctx->always_add_padding_indicator == 1) {
+			if ((apdu->ins & 1) == 0 || (ctx->flags & ISO_SM_FLAG_ALWAYS_ADD_PADDING_INDICATOR) != 0) {
 				r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
 						sm_capdu + 1, &fdata, &fdata_len);
 			} else {
@@ -377,7 +377,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 				sc_log_hex(card->ctx, "Protected Le (plain)", le, le_len);
 			}
 
-			if ((apdu->ins & 1) == 0 || ctx->always_add_padding_indicator == 1) {
+			if ((apdu->ins & 1) == 0 || (ctx->flags & ISO_SM_FLAG_ALWAYS_ADD_PADDING_INDICATOR) != 0) {
 				r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
 						sm_capdu + 1, &fdata, &fdata_len);
 			} else {
@@ -408,7 +408,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 				sc_log_hex(card->ctx, "Protected Le (plain)", le, le_len);
 			}
 
-			if ((apdu->ins & 1) == 0 || ctx->always_add_padding_indicator == 1) {
+			if ((apdu->ins & 1) == 0 || (ctx->flags & ISO_SM_FLAG_ALWAYS_ADD_PADDING_INDICATOR) != 0) {
 				r = format_data(card, ctx, 1, apdu->data, apdu->datalen,
 						sm_capdu + 1, &fdata, &fdata_len);
 			} else {
@@ -442,7 +442,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		mac_data = p;
 		memcpy(mac_data + mac_data_len, asn1, asn1_len);
 		mac_data_len += asn1_len;
-		if (ctx->skip_mac_padding == 0) {
+		if ((ctx->flags & ISO_SM_FLAG_SKIP_MAC_PADDING) == 0) {
 			r = add_padding(ctx, mac_data, mac_data_len, &mac_data);
 			if (r < 0) {
 				goto err;
@@ -486,7 +486,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	} else {
 		sm_apdu->cse = SC_APDU_CASE_4_SHORT;
 		sm_apdu->le = SC_MAX_APDU_RESP_SIZE;
-		if (ctx->sm_encrypt_once_then_chaining == 0) {
+		if ((ctx->flags & ISO_SM_FLAG_ENCRYPT_ONCE_THEN_CHAINING) == 0) {
 			sm_apdu->le = SC_MAX_APDU_RESP_SIZE;
 			sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
 		} else {
@@ -562,7 +562,7 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 		r = sc_asn1_encode(card->ctx, my_sm_rapdu, &asn1, &asn1_len);
 		if (r < 0)
 			goto err;
-		if (ctx->skip_mac_padding == 0) {
+		if ((ctx->flags & ISO_SM_FLAG_SKIP_MAC_PADDING) == 0) {
 			r = add_padding(ctx, asn1, asn1_len, &mac_data);
 			if (r < 0) {
 				goto err;
