@@ -86,7 +86,7 @@ libopensc_la_LIBADD = $(OPENPACE_LIBS) $(OPTIONAL_OPENSSL_LIBS) \
 	$(top_builddir)/src/ui/libstrings.la \
 	$(top_builddir)/src/sm/libsmeac.la
 if WIN32
-libopensc_la_LIBADD += -lws2_32 -lshlwapi -lcomctl32
+libopensc_la_LIBADD += -lws2_32 -lshlwapi
 endif
 libopensc_static_la_LIBADD = $(libopensc_la_LIBADD)
 libopensc_la_LDFLAGS = $(AM_LDFLAGS) \
