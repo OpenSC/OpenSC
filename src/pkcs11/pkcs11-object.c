@@ -58,6 +58,7 @@ static sc_pkcs11_mechanism_type_t find_mechanism = {
 	NULL,		/* mech_data */
 	NULL,		/* free_mech_data */
 	NULL,		/* copy_mech_data */
+	NULL,		/* decapsulate */
 };
 
 static void
@@ -1418,6 +1419,7 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	}
 
 out:
+	SC_LOG_RV("C_DeriveKey() = %s", rv);
 	sc_pkcs11_unlock();
 	return rv;
 }
@@ -1809,7 +1811,73 @@ C_DecapsulateKey(CK_SESSION_HANDLE hSession,
 		CK_ULONG ulCiphertextLen,
 		CK_OBJECT_HANDLE_PTR phKey)
 {
-	return CKR_FUNCTION_NOT_SUPPORTED;
+	CK_BBOOL can_decapsulate;
+	CK_KEY_TYPE key_type;
+	CK_ATTRIBUTE usage_attribute = {CKA_DECAPSULATE, &can_decapsulate, sizeof(can_decapsulate)};
+	CK_ATTRIBUTE key_type_attr = {CKA_KEY_TYPE, &key_type, sizeof(key_type)};
+	struct sc_pkcs11_session *session;
+	struct sc_pkcs11_object *object;
+	struct sc_pkcs11_object *key_object;
+	CK_RV rv;
+
+	if (pMechanism == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
+	rv = sc_pkcs11_lock();
+	if (rv != CKR_OK)
+		return rv;
+
+	rv = get_object_from_session(hSession, hPrivateKey, &session, &object);
+	if (rv != CKR_OK) {
+		if (rv == CKR_OBJECT_HANDLE_INVALID)
+			rv = CKR_KEY_HANDLE_INVALID;
+		goto out;
+	}
+
+	if (object->ops->decapsulate == NULL_PTR) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+
+	rv = object->ops->get_attribute(session, object, &usage_attribute);
+	if (rv != CKR_OK || !can_decapsulate) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+	rv = object->ops->get_attribute(session, object, &key_type_attr);
+	if (rv != CKR_OK) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto out;
+	}
+
+	switch (key_type) {
+	case CKK_ML_KEM:
+		rv = sc_create_object_int(hSession, pTemplate, ulAttributeCount, phKey, 0);
+		if (rv != CKR_OK)
+			goto out;
+
+		rv = get_object_from_session(hSession, *phKey, &session, &key_object);
+		if (rv != CKR_OK) {
+			if (rv == CKR_OBJECT_HANDLE_INVALID)
+				rv = CKR_KEY_HANDLE_INVALID;
+			goto out;
+		}
+
+		rv = restore_login_state(session->slot);
+		if (rv == CKR_OK)
+			rv = sc_pkcs11_decaps(session, pMechanism, object, key_type,
+					hSession, *phKey, key_object, pCiphertext, ulCiphertextLen);
+		/* TODO if (rv != CK_OK) need to destroy the object */
+		rv = reset_login_state(session->slot, rv);
+		break;
+	default:
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+	}
+
+out:
+	SC_LOG_RV("C_DecapsulateKey() = %s", rv);
+	sc_pkcs11_unlock();
+	return rv;
 }
 
 CK_RV

@@ -680,6 +680,12 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 		       unsigned long flags,
 		       const u8 *in, size_t inlen, u8 *out, size_t *poutlen);
 
+int sc_pkcs15_decapsulate(struct sc_pkcs15_card *p15card,
+		const struct sc_pkcs15_object *obj,
+		unsigned long flags,
+		const u8 *in, size_t inlen, u8 *out,
+		size_t *poutlen);
+
 int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 		const struct sc_pkcs15_object *key,
 		struct sc_pkcs15_object *target_key,
