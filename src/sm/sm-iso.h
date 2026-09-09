@@ -51,9 +51,9 @@ extern "C" {
 #define SM_NO_PADDING  0x02
 
 /** @brief "Unless otherwise specified" in ISO 7816-4_flags */
-#define ISO_SM_FLAG_ALWAYS_ADD_PADDING_INDICATOR	0x00000001UL /* Include padding_indicator even for tag 87 */
-#define ISO_SM_FLAG_SKIP_MAC_PADDING			0x00000002UL /* Do not add padding on data to be mac'ed */
-#define ISO_SM_FLAG_ENCRYPT_ONCE_THEN_CHAINING		0x00000004UL /* Encrypt then use apdu chaining */
+#define ISO_SM_FLAG_ALWAYS_ADD_PADDING_INDICATOR 0x00000001UL /* Include padding_indicator even for tag 87 */
+#define ISO_SM_FLAG_SKIP_MAC_PADDING		0x00000002UL /* Do not add padding on data to be mac'ed */
+#define ISO_SM_FLAG_ENCRYPT_ONCE_THEN_CHAINING	0x00000004UL /* Encrypt then use apdu chaining */
 
 /** @brief Secure messaging context
  *
