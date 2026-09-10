@@ -37,11 +37,25 @@ function generate_key() {
 	TYPE="$1"
 	ID="$2"
 	LABEL="$3"
+	USAGE="$4"
+
+	USAGE_FLAGS="--usage-wrap"
+	if [[ $USAGE == *"S"* ]]; then
+		USAGE_FLAGS="$USAGE_FLAGS --usage-sign"
+	fi
+	if [[ $USAGE == *"C"* ]]; then
+		USAGE_FLAGS="$USAGE_FLAGS --usage-decrypt"
+	fi
+	if [[ $USAGE == *"K"* ]]; then
+		USAGE_FLAGS="$USAGE_FLAGS --usage-encapsulate"
+	fi
+	if [[ $USAGE == *"D"* ]]; then
+		USAGE_FLAGS="$USAGE_FLAGS --usage-derive"
+	fi
 
 	echo "Generate $TYPE key (ID=$ID)"
 	# Generate key pair
-	$PKCS11_TOOL "${PRIV_ARGS[@]}" --keypairgen --key-type="$TYPE" --label="$LABEL" --id=$ID \
-		 --usage-sign --usage-decrypt --usage-derive --usage-encapsulate
+	$PKCS11_TOOL "${PRIV_ARGS[@]}" --keypairgen --key-type="$TYPE" --label="$LABEL" --id=$ID $USAGE_FLAGS
 	if [[ "$?" -ne "0" ]]; then
 		echo "Couldn't generate $TYPE key pair"
 		return 1
@@ -67,13 +81,13 @@ function card_setup() {
 	initialize_token
 
 	# Generate 2048b RSA Key pair
-	generate_key "RSA:2048" "01" "RSA2048" || return 1
+	generate_key "RSA:2048" "01" "RSA2048" "SC" || return 1
 	# Generate 4096b RSA Key pair
-	generate_key "RSA:4096" "02" "RSA4096" || return 1
+	generate_key "RSA:4096" "02" "RSA4096" "SC" || return 1
 	# Generate 256b ECC Key pair
-	generate_key "EC:secp256r1" "03" "ECC_auth" || return 1
+	generate_key "EC:secp256r1" "03" "ECC_auth" "SD" || return 1
 	# Generate 521b ECC Key pair
-	generate_key "EC:secp521r1" "04" "ECC521" || return 1
+	generate_key "EC:secp521r1" "04" "ECC521" "SD" || return 1
 
 	# Generate an HMAC:SHA256 key
 	$PKCS11_TOOL "${PRIV_ARGS[@]}" --keygen --key-type="GENERIC:64" --label="HMAC-SHA256" --id="05" --usage-sign
@@ -83,20 +97,20 @@ function card_setup() {
 	fi
 	if [ "${TOKENTYPE}" == "kryoptic" ]; then
 		# Generate Ed25519 Key pair
-		generate_key "EC:ed25519" "06" "ed25519" || return 1
+		generate_key "EC:ed25519" "06" "ed25519" "S" || return 1
 		# Generate Ed448 Key pair
-		generate_key "EC:ed448" "07" "ed448" || return 1
+		generate_key "EC:ed448" "07" "ed448" "S" || return 1
 		# Generate x25519 Key pair
-		generate_key "EC:x25519" "08" "x25519" || return 1
+		generate_key "EC:x25519" "08" "x25519" "D" || return 1
 		# Generate x448 Key pair
-		generate_key "EC:x448" "09" "x448" || return 1
+		generate_key "EC:x448" "09" "x448" "D" || return 1
 
 		# Generate ML-DSA-65 Key pair
-		generate_key "ML-DSA-65" "10" "ML-DSA-65" || return 1
+		generate_key "ML-DSA-65" "10" "ML-DSA-65" "S" || return 1
 		# Generate ML-KEM-768 Key pair
-		generate_key "ML-KEM-768" "11" "ML-KEM-768" || return 1
+		generate_key "ML-KEM-768" "11" "ML-KEM-768" "K" || return 1
 		# Generate SLH-DSA-SHA2-192S Key pair
-		generate_key "SLH-DSA-SHA2-192S" "12" "SLH-DSA-SHA2-192S" || return 1
+		generate_key "SLH-DSA-SHA2-192S" "12" "SLH-DSA-SHA2-192S" "S" || return 1
 	fi
 
 	# Skip in FIPS mode -- Brainpool curves are not supported
@@ -111,9 +125,9 @@ function card_setup() {
 	fi
 
 	# Generate brainpoolP256r1 Key pair
-	generate_key "EC:brainpoolP256r1" "13" "brainpoolP256r1" || echo "WARNING: brainpoolP256r1 not supported, skipping"
+	generate_key "EC:brainpoolP256r1" "13" "brainpoolP256r1" "SD" || echo "WARNING: brainpoolP256r1 not supported, skipping"
 	# Generate brainpoolP256t1 Key pair
-	generate_key "EC:brainpoolP256t1" "14" "brainpoolP256t1" || echo "WARNING: brainpoolP256t1 not supported, skipping"
+	generate_key "EC:brainpoolP256t1" "14" "brainpoolP256t1" "SD" || echo "WARNING: brainpoolP256t1 not supported, skipping"
 
 }
 
