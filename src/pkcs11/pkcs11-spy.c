@@ -223,6 +223,7 @@ CK_INTERFACE spy_interface = {(CK_UTF8CHAR_PTR) "PKCS 11", NULL, 0};
 static CK_RV
 init_spy(void)
 {
+	CK_VERSION_PTR version = NULL;
 	CK_FUNCTION_LIST_PTR po_v2 = NULL;
 	const char *output, *module;
 	CK_RV rv = CKR_GENERAL_ERROR;
@@ -332,19 +333,48 @@ init_spy(void)
 		rv = CKR_DEVICE_ERROR;
 		goto err;
 	}
+	version = C_GetModuleVersion(modhandle);
+	if (version == NULL) {
+		fprintf(spy_output, "Error: Could not get interface version from \"%s\".\n", module);
+		rv = CKR_DEVICE_ERROR;
+		goto err;
+	}
 
-	/* Make sure we do not overrun underlying list if broken
-	 * module returns version 3 from GetFuntionList()
-	 * https://github.com/softhsm/SoftHSMv2/issues/839
-	 */
 	po = calloc(1, sizeof(CK_FUNCTION_LIST_3_2));
 	if (po == NULL) {
 		rv = CKR_HOST_MEMORY;
 		goto err;
 	}
 
-	memcpy(po, po_v2, sizeof(CK_FUNCTION_LIST));
-	fprintf(spy_output, "Loaded: \"%s\"\n", module);
+	if (version->major < 3) {
+		memcpy(po, po_v2, sizeof(CK_FUNCTION_LIST));
+		if (po_v2->version.major > 2) {
+			/* SoftHSM bug: The version in function list SHOULD NOT be > 2. Override with last
+			 * valid 2.* version also on the SPY interface.
+			 * https://github.com/softhsm/SoftHSMv2/issues/839
+			 */
+			po_v2->version.major = 2;
+			po_v2->version.minor = 40;
+		}
+	} else {
+		/* this function works only with PKCS#11 3.* */
+		CK_FUNCTION_LIST_3_0_PTR funcs;
+		CK_INTERFACE_PTR interface = C_GetModuleInterface(modhandle);
+		if (interface == NULL) {
+			free(po);
+			fprintf(spy_output, "Error: Could not get interface from \"%s\".\n", module);
+			rv = CKR_DEVICE_ERROR;
+			goto err;
+		}
+
+		funcs = interface->pFunctionList;
+		if (funcs->version.minor < 2) {
+			memcpy(po, (CK_FUNCTION_LIST_3_0_PTR)funcs, sizeof(CK_FUNCTION_LIST_3_0));
+		} else {
+			memcpy(po, (CK_FUNCTION_LIST_3_2_PTR)funcs, sizeof(CK_FUNCTION_LIST_3_2));
+		}
+	}
+	fprintf(spy_output, "Loaded: \"%s\", PKCS#11 v. %d.%d\n", module, version->major, version->minor);
 
 	return CKR_OK;
 
@@ -1743,7 +1773,9 @@ spy_interface_function_list(CK_INTERFACE_PTR pInterface, CK_INTERFACE_PTR_PTR re
 	}
 
 	version = (CK_VERSION *)pInterface->pFunctionList;
-	if (version->major == 3 && version->minor == 0) {
+	if (version->major == 3 && version->minor >= 2) {
+		(*retInterface)->pFunctionList = pkcs11_spy_3_2;
+	} else if (version->major == 3) {
 		(*retInterface)->pFunctionList = pkcs11_spy_3_0;
 	} else {
 		(*retInterface)->pFunctionList = pkcs11_spy;
@@ -1845,8 +1877,8 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 	} else {
 		fprintf(spy_output, "[in] pVersion = NULL\n");
 	}
-	fprintf(spy_output, "[in] flags = %s\n",
-		(flags & CKF_INTERFACE_FORK_SAFE ? "CKF_INTERFACE_FORK_SAFE" : ""));
+	fprintf(spy_output, "[in] flags = %s (%lx)\n",
+			(flags & CKF_INTERFACE_FORK_SAFE ? "CKF_INTERFACE_FORK_SAFE" : "<UNKNOWN_VALUE>"), flags);
 	if (po->version.major >= 3 && po->C_GetInterface != NULL) {
 		CK_VERSION in_version = {0, 0};
 		CK_VERSION_PTR fakeVersion = NULL;
