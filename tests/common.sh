@@ -40,7 +40,8 @@ function generate_key() {
 
 	echo "Generate $TYPE key (ID=$ID)"
 	# Generate key pair
-	$PKCS11_TOOL "${PRIV_ARGS[@]}" --keypairgen --key-type="$TYPE" --label="$LABEL" --id=$ID
+	$PKCS11_TOOL "${PRIV_ARGS[@]}" --keypairgen --key-type="$TYPE" --label="$LABEL" --id=$ID \
+		 --usage-sign --usage-decrypt --usage-derive --usage-encapsulate
 	if [[ "$?" -ne "0" ]]; then
 		echo "Couldn't generate $TYPE key pair"
 		return 1

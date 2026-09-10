@@ -26,7 +26,7 @@
 int
 open_session(token_info_t *info)
 {
-	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR function_pointer = info->function_pointer;
 	CK_RV rv;
 
 	rv = function_pointer->C_OpenSession(info->slot_id,
@@ -44,7 +44,7 @@ open_session(token_info_t *info)
 int
 initialize_cryptoki(token_info_t *info)
 {
-	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR function_pointer = info->function_pointer;
 	CK_RV rv;
 
 	rv = function_pointer->C_Initialize(NULL_PTR);
@@ -64,7 +64,7 @@ initialize_cryptoki(token_info_t *info)
 
 int finalize_token(token_info_t *info)
 {
-	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR function_pointer = info->function_pointer;
 
 	info->session_handle = 0;
 	debug_print("Closing all sessions");
@@ -176,7 +176,7 @@ int prepare_token(token_info_t *info)
 int user_login_setup(void **state)
 {
 	token_info_t *info = (token_info_t *) *state;
-	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR function_pointer = info->function_pointer;
 	CK_RV rv;
 
 	if (prepare_token(info)) {
@@ -201,7 +201,7 @@ int user_login_setup(void **state)
 int after_test_cleanup(void **state)
 {
 	token_info_t *info = (token_info_t *) *state;
-	CK_FUNCTION_LIST_PTR function_pointer = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR function_pointer = info->function_pointer;
 
 	debug_print("Logging out from token");
 	function_pointer->C_Logout(info->session_handle);
