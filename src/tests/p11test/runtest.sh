@@ -41,7 +41,7 @@ function generate_sym() {
 		return 1
 	fi
 
-	p11tool --login --provider="$P11LIB" --list-all
+	$PKCS11_TOOL --login --pin=$PIN --module="$P11LIB" -O --id=$ID
 }
 
 function generate_cert() {
@@ -53,7 +53,7 @@ function generate_cert() {
 	# Generate key pair
 	$PKCS11_TOOL --keypairgen --key-type="$TYPE" --login --pin=$PIN \
 		--extractable --usage-wrap --usage-sign --usage-decrypt --usage-derive \
-		--module="$P11LIB" --label="$LABEL" --id=$ID
+		--usage-encapsulate --module="$P11LIB" --label="$LABEL" --id=$ID
 
 	if [[ "$?" -ne "0" ]]; then
 		echo "Couldn't generate $TYPE key pair"
@@ -84,13 +84,16 @@ function generate_cert() {
 		rm "$TYPE.cert" "$TYPE.cert.der"
 	fi
 
-	p11tool --login --provider="$P11LIB" --list-all
+	$PKCS11_TOOL --login --pin=$PIN --module="$P11LIB" -O --id=$ID
 }
 
 function card_setup() {
 	ECC_KEYS=1
 	EDDSA=1
 	SECRET=1
+	MLKEM=0
+	MLDSA=0
+	SLHDSA=0
 	case $1 in
 		"softhsm")
 			P11LIB="/usr/lib64/pkcs11/libsofthsm2.so"
@@ -122,8 +125,11 @@ function card_setup() {
 			/usr/sbin/pkcsconf -u -c $SLOT_ID -S $SO_PIN -n $PIN
 			;;
 		"kryoptic")
+			MLKEM=1
+			MLDSA=1
+			SLHDSA=1
 			PIN="$SOPIN"
-			P11LIB="/home/jjelen/devel/kryoptic/target/debug/libkryoptic_pkcs11.so"
+			P11LIB="/usr/lib64/pkcs11/libkryoptic_pkcs11.so"
 			echo "[[slots]]" > "$PWD/kryoptic.conf"
 			echo "slot = 2" >> "$PWD/kryoptic.conf"
 			echo "dbtype = \"sqlite\"" >> "$PWD/kryoptic.conf"
@@ -211,6 +217,18 @@ function card_setup() {
 			generate_sym "aes:16" "07" "AES128 key"
 			# Generate AES 256 key
 			generate_sym "aes:32" "08" "AES256 key"
+		fi
+		if [[ $MLDSA -eq 1 ]]; then
+			# Generate ML-DSA-65
+			generate_cert "ML-DSA-65" "11" "ML-DSA-65" 1
+		fi
+		if [[ $MLKEM -eq 1 ]]; then
+			# Generate ML-KEM-1024
+			generate_cert "ML-KEM-1024" "12" "ML-KEM-1024" 0
+		fi
+		if [[ $SLHDSA -eq 1 ]]; then
+			# Generate SLH-DSA-SHA2_192S
+			generate_cert "SLH-DSA-SHA2-192S" "13" "SLH-DSA-SHA2-192S" 1
 		fi
 	fi
 }
