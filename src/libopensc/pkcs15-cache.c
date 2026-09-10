@@ -28,29 +28,54 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#include <sys/stat.h>
-#include <limits.h>
+#include <ctype.h>
 #include <errno.h>
-#include <assert.h>
+#include <limits.h>
+#include <sys/stat.h>
+
 
 #include "internal.h"
 #include "pkcs15.h"
 #include "common/compat_strlcpy.h"
 
 #define RANDOM_UID_INDICATOR 0x08
+
+static int
+is_safe_cache_component(const char *s)
+{
+	const unsigned char *p = (const unsigned char *)s;
+
+	if (s == NULL || *s == '\0')
+		return 0;
+	if (strstr(s, "..") != NULL)
+		return 0;
+	for (; *p; p++) {
+		if (*p == '/' || *p == '\n')
+			return 0;
+		if (!isalnum(*p) && *p != '_' && *p != '-' && *p != '.')
+			return 0;
+	}
+	return 1;
+}
+
 static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 				   const sc_path_t *path,
 				   char *buf, size_t bufsize)
 {
 	char dir[PATH_MAX];
 	char *last_update = NULL;
+	char *serial_number = NULL;
 	int  r;
 	unsigned u;
 	size_t change_counter;
 
-	if (p15card->tokeninfo->serial_number == NULL
-			&& (p15card->card->uid.len == 0
-				|| p15card->card->uid.value[0] == RANDOM_UID_INDICATOR))
+	if (p15card == NULL || p15card->tokeninfo == NULL || p15card->card == NULL || p15card->card->ctx) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	serial_number = p15card->tokeninfo->serial_number;
+	if (serial_number == NULL &&
+			(p15card->card->uid.len == 0 || p15card->card->uid.value[0] == RANDOM_UID_INDICATOR))
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (path->len > SC_MAX_PATH_SIZE)
@@ -61,18 +86,15 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 	snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir), "/");
 
 	last_update = sc_pkcs15_get_lastupdate(p15card);
-	if (!last_update)
+	if (!last_update || !is_safe_cache_component(last_update))
 		last_update = "NODATE";
 
-	if (p15card->tokeninfo->serial_number) {
+	if (serial_number && is_safe_cache_component(serial_number)) {
 		snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir),
-				"%s_%s", p15card->tokeninfo->serial_number,
-				last_update);
+				"%s_%s", serial_number, last_update);
 	} else {
-		snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir),
-				"uid-%s_%s", sc_dump_hex(
-					p15card->card->uid.value,
-					p15card->card->uid.len), last_update);
+		snprintf(dir + strlen(dir), sizeof(dir) - strlen(dir), "uid-%s_%s",
+				sc_dump_hex(p15card->card->uid.value, p15card->card->uid.len), last_update);
 	}
 
 	if (SC_SUCCESS == sc_card_ctl(p15card->card, SC_CARDCTL_GET_CHANGE_COUNTER, &change_counter))
