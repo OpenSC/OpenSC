@@ -154,7 +154,7 @@ check_encrypt_decrypt_secret(CK_BYTE *plain_key, CK_ULONG plain_key_len, test_ce
 static int
 test_wrap(test_cert_t *o, token_info_t *info, test_cert_t *key, test_mech_t *mech)
 {
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_MECHANISM mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_MECHANISM tmp_mechanism = {mech->mech, NULL_PTR, 0};
 	/* SoftHSM supports only SHA1 with OAEP encryption */
@@ -381,7 +381,7 @@ out:
 static int
 test_unwrap_aes(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 {
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_MECHANISM mechanism = {mech->mech, NULL_PTR, 0};
 	/* SoftHSM supports only SHA1 with OAEP encryption */
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params = {CKM_SHA_1, CKG_MGF1_SHA1, CKZ_DATA_SPECIFIED, NULL, 0};

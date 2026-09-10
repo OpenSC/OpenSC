@@ -362,7 +362,7 @@ int oaep_encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
     CK_ULONG message_length, test_mech_t *mech, unsigned char **enc_message)
 {
 	CK_RV rv;
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_MECHANISM enc_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 	CK_ULONG enc_message_length;
@@ -415,7 +415,7 @@ int oaep_decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_messag
     CK_ULONG enc_message_length, test_mech_t *mech, unsigned char **dec_message)
 {
 	CK_RV rv;
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_MECHANISM dec_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 	CK_ULONG dec_message_length = BUFFER_SIZE;
@@ -566,7 +566,7 @@ int pss_sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
     CK_ULONG message_length, test_mech_t *mech, unsigned char **sign)
 {
 	CK_RV rv;
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_ULONG sign_length = 0;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
@@ -674,7 +674,7 @@ int pss_verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
     CK_ULONG sign_length)
 {
 	CK_RV rv;
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
 	static int verify_support = 1;
