@@ -2982,6 +2982,7 @@ piv_find_aid(sc_card_t *card)
 			al_label = sc_asn1_find_tag(card->ctx, tag, taglen, 0x50, &al_labellen);
 			if (al_label != NULL) {
 				sc_log_hex(card->ctx, "Application Label", al_label, al_labellen);
+				free(priv->al_label);
 				if ((priv->al_label = malloc(al_labellen)) == NULL) {
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 				}
