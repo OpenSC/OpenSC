@@ -290,9 +290,11 @@ static void print_cert_info(const struct sc_pkcs15_object *obj)
 	private_obj = obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
 	rv = sc_pkcs15_read_certificate(p15card, cert_info, private_obj, &cert_parsed);
 	if (rv >= 0 && cert_parsed)   {
-		printf("\tEncoded serial : %02X %02X ", *(cert_parsed->serial), *(cert_parsed->serial + 1));
-		util_hex_dump(stdout, cert_parsed->serial + 2, cert_parsed->serial_len - 2, "");
-		printf("\n");
+		if (cert_parsed->serial && cert_parsed->serial_len >= 2) {
+			printf("\tEncoded serial : %02X %02X ", *(cert_parsed->serial), *(cert_parsed->serial + 1));
+			util_hex_dump(stdout, cert_parsed->serial + 2, cert_parsed->serial_len - 2, "");
+			printf("\n");
+		}
 		sc_pkcs15_free_certificate(cert_parsed);
 	}
 }
