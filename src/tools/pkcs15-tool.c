@@ -1012,6 +1012,12 @@ static int read_ssh_key(void)
 		return 1;
 	}
 
+	if (!pubkey) {
+		fprintf(stderr, "Public key not available\n");
+		r = 1;
+		goto fail2;
+	}
+
 	if (pubkey->algorithm == SC_ALGORITHM_EDDSA) {
 		// SSH supports only ed25519 key now
 
@@ -1023,7 +1029,7 @@ static int read_ssh_key(void)
 		size_t n, len;
 
 		n = pubkey->u.ec.ecpointQ.len;
-		if (n != 32) {
+		if (n != 32 || !pubkey->u.ec.ecpointQ.value) {
 			fprintf(stderr, "Wrong public key length\n");
 			goto fail2;
 		}
@@ -1105,7 +1111,7 @@ static int read_ssh_key(void)
 		len += tmp;
 
 		n = pubkey->u.ec.ecpointQ.len;
-		if(n > 255) {
+		if (n == 0 || n > 255 || !pubkey->u.ec.ecpointQ.value) {
 			fprintf(stderr, "Wrong public key length\n");
 			goto fail2;
 		}
@@ -1184,7 +1190,7 @@ static int read_ssh_key(void)
 		sc_pkcs15_free_pubkey(pubkey);
 	return 0;
 fail:
-	printf("can't convert key: buffer too small\n");
+	fprintf(stderr, "can't convert key: buffer too small\n");
 fail2:
 	if (opt_outfile != NULL && outf != NULL)
 		fclose(outf);
@@ -1192,7 +1198,7 @@ fail2:
 		sc_pkcs15_free_certificate(cert);
 	else
 		sc_pkcs15_free_pubkey(pubkey);
-	return SC_ERROR_OUT_OF_MEMORY;
+	return 1;
 }
 
 #endif
