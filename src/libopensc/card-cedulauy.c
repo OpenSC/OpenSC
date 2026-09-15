@@ -59,15 +59,6 @@
  * Nothing that identifies the cedula is readable before PACE, so the contactless
  * interface is only matched once PACE with the MRZ, stored with cedulauy-tool or
  * given in CEDULAUY_MRZ, and selecting the eID application have succeeded.
- *
- * Where a constant below comes from a standard rather than from AGESIC or from
- * observation, it is cited in place.  The standards involved are BSI TR-03110
- * part 3 (PACE, SecurityInfos, password references), ICAO Doc 9303 parts 5 and
- * 11 (TD1 MRZ, EF.CardAccess) and ISO/IEC 7816-4 (secure messaging, GET
- * RESPONSE).
- *
- * The PKCS#15 view of the card is provided by the synthetic emulator in
- * pkcs15-cedulauy.c.
  */
 
 #include "libopensc/errors.h"
