@@ -1110,7 +1110,7 @@ import_dkek_share(sc_card_t *card, const char *pin, int kdidx, const char *inf, 
 
 	printf("Deciphering DKEK share, please wait...\n");
 	EVP_BytesToKey(EVP_aes_256_cbc(), EVP_md5(), filebuff + 8, (u8 *)pwd, pwdlen, iter, key, iv);
-	OPENSSL_cleanse(pwd, strlen(pwd));
+	OPENSSL_cleanse(pwd, pwdlen);
 
 	if (password == NULL) {
 		free(pwd);
@@ -1214,7 +1214,7 @@ static int print_dkek_share(sc_card_t *card, const char *inf, int iter, const ch
 
 	printf("Deciphering DKEK share, please wait...\n");
 	EVP_BytesToKey(EVP_aes_256_cbc(), EVP_md5(), filebuff + 8, (u8 *)pwd, pwdlen, iter, key, iv);
-	OPENSSL_cleanse(pwd, strlen(pwd));
+	OPENSSL_cleanse(pwd, pwdlen);
 
 	if (password == NULL) {
 		free(pwd);
