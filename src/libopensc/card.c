@@ -478,8 +478,10 @@ int sc_lock(sc_card_t *card)
 				reader_lock_obtained = 1;
 		}
 	}
-	if (r == 0)
+	if (r == 0) {
+		sc_log(card->ctx, "%d -> %d", card->lock_count, card->lock_count + 1);
 		card->lock_count++;
+	}
 
 	r2 = sc_mutex_unlock(card->ctx, card->mutex);
 	if (r2 != SC_SUCCESS) {
@@ -519,6 +521,8 @@ int sc_unlock(sc_card_t *card)
 	if (card->lock_count < 1) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
+	sc_log(card->ctx, "%d -> %d", card->lock_count, card->lock_count - 1);
+
 	if (--card->lock_count == 0) {
 		/* release reader lock */
 		if (card->reader->ops->unlock != NULL)

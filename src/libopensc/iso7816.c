@@ -50,7 +50,7 @@ iso7816_fixup_transceive_length(const struct sc_card *card,
 	}
 }
 
-
+// clang-format off
 static const struct sc_card_error iso7816_errors[] = {
 	{ 0x6200, SC_ERROR_CARD_CMD_FAILED,	"Warning: no information given, non-volatile memory is unchanged" },
 	{ 0x6281, SC_ERROR_CORRUPTED_DATA,	"Part of returned data may be corrupted" },
@@ -84,7 +84,7 @@ static const struct sc_card_error iso7816_errors[] = {
 	{ 0x6985, SC_ERROR_NOT_ALLOWED,		"Conditions of use not satisfied" },
 	{ 0x6986, SC_ERROR_NOT_ALLOWED,		"Command not allowed (no current EF)" },
 	{ 0x6987, SC_ERROR_INCORRECT_PARAMETERS,"Expected SM data objects missing" },
-	{ 0x6988, SC_ERROR_INCORRECT_PARAMETERS,"Incorrect SM data objects" },
+	{ 0x6988, SC_ERROR_INCORRECT_SM_OBJECTS,"Incorrect SM data objects" },
 
 	{ 0x6A00, SC_ERROR_INCORRECT_PARAMETERS,"Wrong parameter(s) P1-P2" },
 	{ 0x6A80, SC_ERROR_INCORRECT_PARAMETERS,"Incorrect parameters in the data field" },
@@ -104,7 +104,7 @@ static const struct sc_card_error iso7816_errors[] = {
 	{ 0x6E00, SC_ERROR_CLASS_NOT_SUPPORTED,	"Class not supported" },
 	{ 0x6F00, SC_ERROR_CARD_CMD_FAILED,	"No precise diagnosis" },
 };
-
+// clang-format on
 
 static int
 iso7816_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
@@ -918,6 +918,10 @@ iso7816_get_response(struct sc_card *card, size_t *count, u8 *buf)
 	apdu.resp    = buf;
 	/* don't call GET RESPONSE recursively */
 	apdu.flags  |= SC_APDU_FLAGS_NO_GET_RESP;
+#if ENABLE_SM
+	if (card->sm_ctx.sm_flags & SM_FLAGS_GET_RESPONSE_IN_CLEAR)
+		apdu.flags |= SC_APDU_FLAGS_NO_SM;
+#endif /* ENABLE_SM */
 
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");

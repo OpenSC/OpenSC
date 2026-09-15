@@ -364,8 +364,9 @@ sc_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	if (card->reader->ops->transmit == NULL)
 		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "cannot transmit APDU");
 
-	sc_log(ctx, "CLA:%X, INS:%X, P1:%X, P2:%X, data(%zu) %p",
-			apdu->cla, apdu->ins, apdu->p1, apdu->p2, apdu->datalen, apdu->data);
+	sc_log(ctx, "CSE:%X, CLA:%X, INS:%X, P1:%X, P2:%X, FLAGS:0x%8.8lx, data(%zu) %p, resp(%zu) %p",
+			apdu->cse, apdu->cla, apdu->ins, apdu->p1, apdu->p2, apdu->flags, apdu->datalen,
+			apdu->data, apdu->resplen, apdu->resp);
 #ifdef ENABLE_SM
 	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
 		   	&& (apdu->flags & SC_APDU_FLAGS_NO_SM) == 0) {
