@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="cedulauy-tool">
+	<refmeta>
+		<refentrytitle>cedulauy-tool</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="productname">OpenSC</refmiscinfo>
+		<refmiscinfo class="manual">OpenSC Tools</refmiscinfo>
+		<refmiscinfo class="source">opensc</refmiscinfo>
+	</refmeta>
+
+	<refnamediv>
+		<refname>cedulauy-tool</refname>
+		<refpurpose>Uruguayan eID card (cédula de identidad) setup utility</refpurpose>
+	</refnamediv>
+
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>cedulauy-tool</command>
+			<arg choice="opt"><replaceable class="option">OPTIONS</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1>
+		<title>Description</title>
+		<para>
+			The <command>cedulauy-tool</command> utility sets up the Uruguayan eID card for use
+			over its contactless (NFC) interface. That interface is protected with PACE, and the
+			only password the card accepts is the machine readable zone (MRZ) of the document:
+			the three lines of 30 characters printed on the back. OpenSC only recognizes the card
+			over NFC once its MRZ is known, so this tool has to be run before the card can be used
+			contactless.
+		</para>
+		<para>
+			The MRZ is stored in the OpenSC file cache directory (see
+			<literal>file_cache_dir</literal> in <citerefentry><refentrytitle>opensc.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry>).
+			The file holds the MRZ, and with it the document number, name and date of birth, in
+			the clear; it is created readable only by the user. Alternatively, the MRZ can be
+			given in the <literal>CEDULAUY_MRZ</literal> environment variable, which takes
+			precedence over the stored one.
+		</para>
+		<para>
+			When invoked without any options, <command>cedulauy-tool</command> prompts for
+			the three lines of the MRZ.
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Options</title>
+		<para>
+			<variablelist>
+				<varlistentry>
+					<term>
+						<option>--help</option>,
+						<option>-h</option>
+					</term>
+					<listitem><para>Display tool options.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--verbose</option>,
+						<option>-v</option>
+					</term>
+					<listitem><para>Causes <command>cedulauy-tool</command> to be more verbose.
+						Specify this flag several times to enable debug output.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--reader</option> <replaceable>arg</replaceable>,
+						<option>-r</option> <replaceable>arg</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Number of the reader to use with <option>--read-mrz</option>.
+							By default, the first reader with a present card is used. If
+							<replaceable>arg</replaceable> is an ATR, the
+							reader with a matching card will be chosen.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--wait</option>,
+						<option>-w</option>
+					</term>
+					<listitem><para>Causes <command>cedulauy-tool</command> to wait for the card
+						to be inserted into the reader.</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--read-mrz</option>,
+						<option>-c</option>
+					</term>
+					<listitem>
+						<para>
+							Read the MRZ from the card in a contact reader, where it is
+							accessible without a PIN, and store it.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--mrz</option> <replaceable>mrz</replaceable>,
+						<option>-m</option> <replaceable>mrz</replaceable>
+					</term>
+					<listitem>
+						<para>
+							Store the given MRZ: the three lines concatenated, 90 characters.
+							If the value is set to
+							<literal>env:</literal><replaceable>VARIABLE</replaceable>, the value
+							of the specified environment variable is used.
+						</para>
+					</listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--delete</option>,
+						<option>-d</option>
+					</term>
+					<listitem>
+						<para>
+							Delete the stored MRZ.
+						</para>
+					</listitem>
+				</varlistentry>
+			</variablelist>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>See also</title>
+		<para>
+			<citerefentry>
+				<refentrytitle>opensc.conf</refentrytitle>
+				<manvolnum>5</manvolnum>
+			</citerefentry>
+		</para>
+	</refsect1>
+
+	<refsect1>
+		<title>Authors</title>
+		<para><command>cedulauy-tool</command> was written by
+		Nicolás Gutiérrez <email>ngutierreztassano@gmail.com</email>.</para>
+	</refsect1>
+
+</refentry>
