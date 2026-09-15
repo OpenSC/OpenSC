@@ -291,6 +291,7 @@ enum {
 
 	/* Uruguayan eID card (cedula de identidad) */
 	SC_CARD_TYPE_CEDULAUY = 45000,
+	SC_CARD_TYPE_CEDULAUY_CONTACTLESS,
 
 	/* Bit4id Digital-DNA (NXP ChipDoc, Italian CNS/eID) */
 	SC_CARD_TYPE_CHIPDOC_IT = 46000,
