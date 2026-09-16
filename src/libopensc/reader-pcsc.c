@@ -25,7 +25,6 @@
 
 #ifdef ENABLE_PCSC	/* empty file without pcsc */
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>

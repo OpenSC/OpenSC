@@ -26,7 +26,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #ifdef HAVE_SYS_MMAN_H
 #include <sys/mman.h>
 #endif

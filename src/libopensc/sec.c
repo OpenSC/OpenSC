@@ -24,7 +24,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 #include <ctype.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>

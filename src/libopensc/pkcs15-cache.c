@@ -31,7 +31,6 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include <errno.h>
-#include <assert.h>
 
 #include "internal.h"
 #include "pkcs15.h"

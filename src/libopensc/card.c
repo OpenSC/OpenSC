@@ -22,7 +22,6 @@
 #include "config.h"
 #endif
 
-#include <assert.h>
 #include <stdlib.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
