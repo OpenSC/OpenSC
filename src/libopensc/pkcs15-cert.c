@@ -29,7 +29,6 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#include <assert.h>
 
 #include "internal.h"
 #include "asn1.h"

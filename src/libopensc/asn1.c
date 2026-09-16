@@ -22,7 +22,6 @@
 #include "config.h"
 #endif
 
-#include <assert.h>
 #include <ctype.h>
 #include <stddef.h>
 #include <stdio.h>

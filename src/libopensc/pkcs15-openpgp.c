@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 
 #include "common/compat_strlcpy.h"
 #include "internal.h"

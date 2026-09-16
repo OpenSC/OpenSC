@@ -23,7 +23,6 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <stdarg.h>
 
 #include "../libopensc/log.h"

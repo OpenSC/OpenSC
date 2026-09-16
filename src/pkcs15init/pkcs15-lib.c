@@ -44,7 +44,6 @@
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
 #endif
-#include <assert.h>
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
 #include <openssl/bn.h>
