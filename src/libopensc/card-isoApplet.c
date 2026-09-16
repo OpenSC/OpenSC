@@ -1016,6 +1016,7 @@ isoApplet_ctl_import_key(sc_card_t *card, sc_cardctl_isoApplet_import_key_t *arg
 	{
 
 	case SC_ISOAPPLET_ALG_REF_RSA_GEN_2048:
+	case SC_ISOAPPLET_ALG_REF_RSA_GEN_4096:
 		r = isoApplet_put_data_prkey_rsa(card, args);
 		LOG_TEST_RET(card->ctx, r, "Error in PUT DATA.");
 		break;

@@ -716,7 +716,13 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 	switch(object->type)
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
-		args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_2048;
+		if (key->u.rsa.p.len == 128) {
+			args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_2048;
+		} else if (key->u.rsa.p.len == 256) {
+			args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_4096;
+		} else {
+			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported RSA key length");
+		}
 		if(!key->u.rsa.p.data
 		        ||!key->u.rsa.q.data
 		        ||!key->u.rsa.iqmp.data
