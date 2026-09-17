@@ -194,7 +194,8 @@ sc_pkcs15emu_cedulauy_init(struct sc_pkcs15_card *p15card)
 int
 sc_pkcs15emu_cedulauy_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 {
-	if (p15card->card->type != SC_CARD_TYPE_CEDULAUY)
+	if (p15card->card->type != SC_CARD_TYPE_CEDULAUY &&
+			p15card->card->type != SC_CARD_TYPE_CEDULAUY_CONTACTLESS)
 		return SC_ERROR_WRONG_CARD;
 
 	return sc_pkcs15emu_cedulauy_init(p15card);

@@ -1072,6 +1072,13 @@ typedef struct sc_cardctl_coolkey_find_object {
 #define SC_CARDCTL_COOLKEY_FIND_BY_ID       0
 #define SC_CARDCTL_COOLKEY_FIND_BY_TEMPLATE 1
 
+/*
+ * Uruguayan eID (cedula de identidad): the MRZ is the PACE password of the
+ * contactless interface, cedulauy-tool stores it in the file cache directory
+ */
+#define CEDULAUY_MRZ_LEN	90
+#define CEDULAUY_MRZ_CACHE_FILE "cedulauy_mrz"
+
 #ifdef __cplusplus
 }
 #endif
