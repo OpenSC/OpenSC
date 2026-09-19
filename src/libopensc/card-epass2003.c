@@ -112,6 +112,7 @@ typedef struct epass2003_exdata_st {
 	unsigned char bFipsCertification;	/* fips mode Alg */
 	unsigned char currAlg;		/* current Alg */
 	unsigned int  ecAlgFlags; 	/* Ec Alg mechanism type*/
+	unsigned char mscp_mode;	/* MSCP personalization: RSA key reference is the raw vendor handle */
 } epass2003_exdata;
 
 #define REVERSE_ORDER4(x)	(			  \
@@ -2062,8 +2063,13 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 	*p++ = 0x81;
 	*p++ = 0x02;
 
-	fid = 0x2900;
-	fid += (unsigned short)(0x20 * (env->key_ref[0] & 0xff));
+	if (exdata->mscp_mode) {
+		/* key_ref carries the low byte of a 0xA0xx vendor key handle */
+		fid = 0xA000 | (env->key_ref[0] & 0xff);
+	} else {
+		fid = 0x2900;
+		fid += (unsigned short)(0x20 * (env->key_ref[0] & 0xff));
+	}
 	*p++ = fid >> 8;
 	*p++ = fid & 0xff;
 	r = (int)(p - sbuf);
@@ -3048,6 +3054,11 @@ epass2003_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		return epass2003_erase_card(card);
 	case SC_CARDCTL_GET_SERIALNR:
 		return epass2003_get_serialnr(card, (sc_serial_number_t *) ptr);
+	case SC_CARDCTL_ENTERSAFE_MSCP_MODE:
+		if (!card->drv_data)
+			return SC_ERROR_INVALID_ARGUMENTS;
+		((epass2003_exdata *)card->drv_data)->mscp_mode = 1;
+		return SC_SUCCESS;
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}

@@ -142,6 +142,9 @@ enum {
 	SC_CARDCTL_ENTERSAFE_WRITE_KEY,
 	SC_CARDCTL_ENTERSAFE_GENERATE_KEY,
 	SC_CARDCTL_ENTERSAFE_PREINSTALL_KEYS,
+	/* Card has a Microsoft minidriver (MSCP) personalization: RSA keys are
+	 * addressed by raw vendor handle instead of 0x2900 + 0x20*n */
+	SC_CARDCTL_ENTERSAFE_MSCP_MODE,
 
 	/*
 	 * Rutoken ECP specific calls
