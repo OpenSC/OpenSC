@@ -2656,8 +2656,12 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	mech.mechanism = opt_mechanism;
 	hashlen = parse_pss_params(session, key, &mech, &pss_params);
 
-	if (opt_sign_context)
+	if (opt_sign_context) {
 		sign_ctx_buf = hex_string_to_byte_array(opt_sign_context, &sign_ctx_len, "sign context");
+		if (sign_ctx_buf == NULL) {
+			util_fatal("Failed to decode context string %s.", opt_sign_context);
+		}
+	}
 
 	if (opt_input == NULL)
 		fd = 0;
@@ -2881,8 +2885,12 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	mech.mechanism = opt_mechanism;
 	hashlen = parse_pss_params(session, key, &mech, &pss_params);
 
-	if (opt_sign_context)
+	if (opt_sign_context) {
 		sign_ctx_buf = hex_string_to_byte_array(opt_sign_context, &sign_ctx_len, "sign context");
+		if (sign_ctx_buf == NULL) {
+			util_fatal("Failed to decode context string %s.", opt_sign_context);
+		}
+	}
 	if (hashlen && opt_salt_len_given) {
 		if (opt_salt_len == -2) {
 			/* openssl allow us to set sLen to -2 for autodetecting salt length
@@ -3224,14 +3232,23 @@ build_params(
 	case CKM_AES_CBC_PAD:
 		iv_size = 16;
 		*iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		if (*iv == NULL) {
+			util_fatal("Failed to decode IV string %s.", opt_iv);
+		}
 		mech->pParameter = *iv;
 		mech->ulParameterLen = iv_size;
 		break;
 	case CKM_AES_GCM:
 		*iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		if (*iv == NULL) {
+			util_fatal("Failed to decode IV string %s.", opt_iv);
+		}
 		params->gcm.pIv = *iv;
 		params->gcm.ulIvLen = iv_size;
 		*aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
+		if (*aad == NULL) {
+			util_fatal("Failed to decode AAD string %s.", opt_aad);
+		}
 		params->gcm.pAAD = *aad;
 		params->gcm.ulAADLen = aad_size;
 		params->gcm.ulTagBits = opt_tag_bits;
@@ -3240,6 +3257,9 @@ build_params(
 		break;
 	case CKM_AES_CTR:
 		*iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		if (*iv == NULL) {
+			util_fatal("Failed to decode IV string %s.", opt_iv);
+		}
 		if (iv_size != 16U) {
 			util_fatal("Invalid IV length %zu", iv_size);
 		}
@@ -3250,6 +3270,9 @@ build_params(
 		break;
 	case CKM_CHACHA20:
 		*iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		if (*iv == NULL) {
+			util_fatal("Failed to decode IV string %s.", opt_iv);
+		}
 		if (iv_size != 16) {
 			util_fatal("Invalid iv size %zu\n", iv_size);
 		}
@@ -3257,9 +3280,15 @@ build_params(
 		break;
 	case CKM_CHACHA20_POLY1305:
 		*iv = hex_string_to_byte_array(opt_iv, &iv_size, "IV");
+		if (*iv == NULL) {
+			util_fatal("Failed to decode IV string %s.", opt_iv);
+		}
 		params->chacha20poly1305.pNonce = *iv;
 		params->chacha20poly1305.ulNonceLen = iv_size;
 		*aad = hex_string_to_byte_array(opt_aad, &aad_size, "AAD");
+		if (*aad == NULL) {
+			util_fatal("Failed to decode AAD string %s.", opt_aad);
+		}
 		params->chacha20poly1305.pAAD = *aad;
 		params->chacha20poly1305.ulAADLen = aad_size;
 		mech->pParameter = &params->chacha20poly1305;
