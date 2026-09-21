@@ -69,10 +69,7 @@
 /* Lowest plausible private key handle; handles are used verbatim as MSE key reference. */
 #define ES_MSCP_PRIV_HANDLE_BASE 0xA020U
 
-/* Private handle minus public handle in the containermap (0xA020 <-> 0x8000, ...).
- * Used when a prvkNNNN object lacks its own CKA_MODULUS/handle and they are
- * taken from the paired pubkNNNN object. */
-#define ES_MSCP_PUB_TO_PRIV_HANDLE_OFFSET 0x2020U
+#define ES_MSCP_MAX_CONTAINERS 16
 
 struct es_mscp_entry {
 	unsigned int fid;
@@ -403,14 +400,90 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 	return SC_SUCCESS;
 }
 
+struct es_container {
+	unsigned int priv_handle;
+	unsigned int pub_handle;
+};
+
+struct es_containers {
+	struct es_container c[ES_MSCP_MAX_CONTAINERS];
+	size_t n;
+};
+
+/* internal/containermap: a 32 byte header, then 24 byte records holding the
+ * private and public vendor key handles as little-endian 32-bit values (the
+ * rest of a record is zero). Unused records are zero and end the list. */
+#define ES_MSCP_CMAP_HEADER_LEN 0x20
+#define ES_MSCP_CMAP_RECORD_LEN 0x18
+
+static void
+es_parse_containermap(const u8 *buf, size_t len, struct es_containers *cm)
+{
+	size_t i;
+
+	cm->n = 0;
+	for (i = ES_MSCP_CMAP_HEADER_LEN; i + 8 <= len && cm->n < ES_MSCP_MAX_CONTAINERS;
+			i += ES_MSCP_CMAP_RECORD_LEN) {
+		unsigned int priv = es_le32(buf + i);
+		unsigned int pub = es_le32(buf + i + 4);
+
+		if (priv < 0xA000 || priv > 0xAFFF || pub < 0x8000 || pub > 0x8FFF)
+			break;
+		cm->c[cm->n].priv_handle = priv;
+		cm->c[cm->n].pub_handle = pub;
+		cm->n++;
+	}
+}
+
+static void
+es_read_containermap(sc_card_t *card, unsigned int fid, struct es_containers *cm)
+{
+	u8 buf[1024];
+	size_t len = 0;
+
+	cm->n = 0;
+	if (es_select_and_read(card, fid, buf, sizeof buf, &len) < 0)
+		return;
+	es_parse_containermap(buf, len, cm);
+}
+
+static int
+es_container_priv_for_pub(const struct es_containers *cm, unsigned int pub, unsigned int *priv)
+{
+	size_t i;
+
+	for (i = 0; i < cm->n; i++) {
+		if (cm->c[i].pub_handle == pub) {
+			*priv = cm->c[i].priv_handle;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int
+es_container_pub_for_priv_low(const struct es_containers *cm, unsigned int priv_low, unsigned int *pub)
+{
+	size_t i;
+
+	for (i = 0; i < cm->n; i++) {
+		if ((cm->c[i].priv_handle & 0xff) == priv_low) {
+			*pub = cm->c[i].pub_handle;
+			return 1;
+		}
+	}
+	return 0;
+}
+
 /* Look up modulus length and vendor key handle for a prvkNNNN object.
  * Normally both come from that object's own attributes; when they're
  * absent (observed on this card's current-generation key), fall back to
- * the paired pubkNNNN object (same NNNN suffix) and derive the private
- * handle via the fixed containermap offset. */
+ * the paired pubkNNNN object (same NNNN suffix); the private handle is the one
+ * the containermap pairs with that public handle. */
 static int
 es_prkey_lookup_mod_and_handle(sc_pkcs15_card_t *p15card,
 		const struct es_mscp_entry *entries, size_t nentries,
+		const struct es_containers *cm,
 		const struct es_mscp_entry *prvk_entry,
 		const struct es_p11_attr *attrs, size_t nattrs,
 		size_t *out_modulus_len, unsigned int *out_vendor_handle)
@@ -459,15 +532,20 @@ es_prkey_lookup_mod_and_handle(sc_pkcs15_card_t *p15card,
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
+	if (!es_container_priv_for_pub(cm, es_le32(a_handle->value), out_vendor_handle)) {
+		sc_log(card->ctx, "entersafe-mscp: no containermap entry for the key of %s",
+				prvk_entry->filename);
+		free(pubattrs);
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	}
 	*out_modulus_len = a_mod->len;
-	*out_vendor_handle = es_le32(a_handle->value) + ES_MSCP_PUB_TO_PRIV_HANDLE_OFFSET;
 	free(pubattrs);
 	return SC_SUCCESS;
 }
 
 static int
 es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
-		size_t nentries, const struct es_mscp_entry *entry)
+		size_t nentries, const struct es_containers *cm, const struct es_mscp_entry *entry)
 {
 	sc_card_t *card = p15card->card;
 	u8 buf[4096];
@@ -495,7 +573,7 @@ es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 		return r;
 	}
 
-	r = es_prkey_lookup_mod_and_handle(p15card, entries, nentries, entry,
+	r = es_prkey_lookup_mod_and_handle(p15card, entries, nentries, cm, entry,
 			attrs, nattrs, &modulus_len, &vendor_handle);
 	if (r < 0 || vendor_handle < ES_MSCP_PRIV_HANDLE_BASE) {
 		sc_log(card->ctx, "entersafe-mscp: %s missing modulus/vendor handle, skipping",
@@ -652,21 +730,25 @@ es_same_modulus(const struct es_keylike *a, const struct es_keylike *b)
 	return la == lb && la > 0 && memcmp(pa, pb, la) == 0;
 }
 
-/* cert0004/cert0005 and pubk0003 carry no CKA_ID of their own. Empty ids are
- * not tolerated by CryptoTokenKit (its objectID is type byte + id, and two
- * empty ids collide), and they also break cert<->key pairing. Give every
- * id-less certificate/public key the id of the object holding the same RSA
- * modulus, i.e. the actual other half of the key pair. */
+/* Some objects (cert0004/cert0005, pubk0003 on the observed card) carry no
+ * CKA_ID of their own. Empty ids are not tolerated by CryptoTokenKit (its
+ * objectID is a type byte plus the id, so two empty ids collide) and they break
+ * certificate <-> key pairing. Certificates and public keys take the id of the
+ * object with the same RSA modulus; private keys take the id of the public key
+ * the containermap pairs them with. Whatever is still id-less gets a unique
+ * synthetic id. */
 static void
-es_fill_missing_ids(sc_pkcs15_card_t *p15card)
+es_fill_missing_ids(sc_pkcs15_card_t *p15card, const struct es_containers *cm)
 {
 	sc_context_t *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *objs[ES_MSCP_MAX_KEYLIKE];
+	struct sc_pkcs15_object *probjs[ES_MSCP_MAX_KEYLIKE];
 	struct es_keylike items[ES_MSCP_MAX_KEYLIKE];
 	struct sc_pkcs15_cert *certs[ES_MSCP_MAX_KEYLIKE];
 	struct sc_pkcs15_pubkey *pubs[ES_MSCP_MAX_KEYLIKE];
 	size_t nitems = 0, i, j, k;
-	int n;
+	unsigned int synthetic = 0;
+	int n, npub, npr;
 
 	memset(certs, 0, sizeof certs);
 	memset(pubs, 0, sizeof pubs);
@@ -689,8 +771,8 @@ es_fill_missing_ids(sc_pkcs15_card_t *p15card)
 		nitems++;
 	}
 
-	n = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY_RSA, objs, ES_MSCP_MAX_KEYLIKE);
-	for (k = 0; n > 0 && k < (size_t)n && nitems < ES_MSCP_MAX_KEYLIKE; k++) {
+	npub = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY_RSA, objs, ES_MSCP_MAX_KEYLIKE);
+	for (k = 0; npub > 0 && k < (size_t)npub && nitems < ES_MSCP_MAX_KEYLIKE; k++) {
 		struct sc_pkcs15_pubkey_info *info = objs[k]->data;
 		struct sc_pkcs15_pubkey *pub = NULL;
 
@@ -715,13 +797,39 @@ es_fill_missing_ids(sc_pkcs15_card_t *p15card)
 		}
 	}
 
-	/* Anything still id-less gets a unique synthetic id so ids never collide. */
-	for (i = 0, k = 0; i < nitems; i++) {
+	npr = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY_RSA, probjs, ES_MSCP_MAX_KEYLIKE);
+	for (k = 0; npr > 0 && k < (size_t)npr; k++) {
+		struct sc_pkcs15_prkey_info *pr = probjs[k]->data;
+		unsigned int pub_handle = 0;
+
+		if (pr->id.len != 0 ||
+				!es_container_pub_for_priv_low(cm, (unsigned int)pr->key_reference & 0xff, &pub_handle))
+			continue;
+		for (j = 0; npub > 0 && j < (size_t)npub; j++) {
+			struct sc_pkcs15_pubkey_info *pi = objs[j]->data;
+
+			if ((unsigned int)pi->key_reference == pub_handle && pi->id.len != 0) {
+				pr->id = pi->id;
+				break;
+			}
+		}
+	}
+
+	for (i = 0; i < nitems; i++) {
 		if (items[i].id->len != 0)
 			continue;
 		items[i].id->value[0] = 0xF0;
-		items[i].id->value[1] = (u8)(++k);
+		items[i].id->value[1] = (u8)(++synthetic);
 		items[i].id->len = 2;
+	}
+	for (k = 0; npr > 0 && k < (size_t)npr; k++) {
+		struct sc_pkcs15_prkey_info *pr = probjs[k]->data;
+
+		if (pr->id.len != 0)
+			continue;
+		pr->id.value[0] = 0xF0;
+		pr->id.value[1] = (u8)(++synthetic);
+		pr->id.len = 2;
 	}
 
 	for (i = 0; i < nitems; i++) {
@@ -730,6 +838,22 @@ es_fill_missing_ids(sc_pkcs15_card_t *p15card)
 		if (pubs[i])
 			sc_pkcs15_free_pubkey(pubs[i]);
 	}
+}
+
+/* The FCI file name of DF 2003 is a 16 byte field, zero padded after the
+ * 14 characters of the name. Anything else in the padding is another
+ * application (e.g. "ENTERSAFE-ESPKX"). */
+static int
+es_fci_name_matches(const sc_file_t *file)
+{
+	size_t n = strlen(ES_MSCP_TOKEN_LABEL), i;
+
+	if (file == NULL || file->namelen < n || memcmp(file->name, ES_MSCP_TOKEN_LABEL, n) != 0)
+		return 0;
+	for (i = n; i < file->namelen; i++)
+		if (file->name[i] != 0)
+			return 0;
+	return 1;
 }
 
 static int
@@ -743,7 +867,8 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 	size_t idxlen = 0;
 	struct es_mscp_entry *entries = NULL;
 	size_t nentries = 0, i;
-	const struct es_mscp_entry *e_tokeninfo, *e_cardid;
+	const struct es_mscp_entry *e_tokeninfo, *e_cardid, *e_containermap;
+	struct es_containers cm;
 	char label[33];
 	int r, ncerts = 0, npubkeys = 0, nprkeys = 0;
 
@@ -761,8 +886,7 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 		sc_file_free(file);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
 	}
-	if (file == NULL || file->namelen < strlen(ES_MSCP_TOKEN_LABEL) ||
-			memcmp(file->name, ES_MSCP_TOKEN_LABEL, strlen(ES_MSCP_TOKEN_LABEL)) != 0) {
+	if (!es_fci_name_matches(file)) {
 		sc_file_free(file);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
 	}
@@ -791,15 +915,6 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 	/* From here on this really is our card: log failures instead of
 	 * silently deferring to the next emulator. */
 
-	/* RSA keys on this personalization are addressed by their raw vendor handle */
-	r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_MSCP_MODE, NULL);
-	if (r < 0) {
-		sc_log(ctx, "entersafe-mscp: cannot enable MSCP key addressing: %s",
-				sc_strerror(r));
-		free(entries);
-		LOG_FUNC_RETURN(ctx, r);
-	}
-
 	sc_file_free(p15card->file_app);
 	p15card->file_app = sc_file_new();
 	if (!p15card->file_app) {
@@ -818,6 +933,11 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 			sc_log(ctx, "entersafe-mscp: cannot read cardid: %s", sc_strerror(r));
 	}
 
+	e_containermap = es_find_entry(entries, nentries, "containermap");
+	cm.n = 0;
+	if (e_containermap)
+		es_read_containermap(card, e_containermap->fid, &cm);
+
 	r = es_add_pin(p15card);
 	if (r < 0) {
 		sc_log(ctx, "entersafe-mscp: cannot add PIN object: %s", sc_strerror(r));
@@ -835,7 +955,7 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 			if (r == SC_SUCCESS)
 				npubkeys++;
 		} else if (strncmp(entries[i].filename, "prvk", 4) == 0) {
-			r = es_add_prkey(p15card, entries, nentries, &entries[i]);
+			r = es_add_prkey(p15card, entries, nentries, &cm, &entries[i]);
 			if (r == SC_SUCCESS)
 				nprkeys++;
 		}
@@ -843,13 +963,21 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 
 	free(entries);
 
-	es_fill_missing_ids(p15card);
+	es_fill_missing_ids(p15card, &cm);
 
 	sc_log(ctx, "entersafe-mscp: bound %d certificate(s), %d public key(s), %d private key(s)",
 			ncerts, npubkeys, nprkeys);
 
 	if (ncerts == 0)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
+
+	/* Only now that binding succeeded: RSA keys are addressed by their raw
+	 * vendor handle from here on (set_security_env() in card-epass2003.c). */
+	r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_MSCP_MODE, NULL);
+	if (r < 0) {
+		sc_log(ctx, "entersafe-mscp: cannot enable MSCP key addressing: %s", sc_strerror(r));
+		LOG_FUNC_RETURN(ctx, r);
+	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
