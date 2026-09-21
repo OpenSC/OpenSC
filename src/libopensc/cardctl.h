@@ -143,7 +143,10 @@ enum {
 	SC_CARDCTL_ENTERSAFE_GENERATE_KEY,
 	SC_CARDCTL_ENTERSAFE_PREINSTALL_KEYS,
 	/* Card has a Microsoft minidriver (MSCP) personalization: RSA keys are
-	 * addressed by raw vendor handle instead of 0x2900 + 0x20*n */
+	 * addressed by raw vendor handle instead of 0x2900 + 0x20*n.
+	 * ptr is an int*: non zero enables, zero disables; NULL enables.
+	 * While enabled the driver refuses erase and key writing, because it
+	 * cannot rebuild the MSCP file layout it would destroy. */
 	SC_CARDCTL_ENTERSAFE_MSCP_MODE,
 
 	/*

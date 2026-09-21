@@ -36,6 +36,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common/compat_strlcpy.h"
+
+#include "asn1.h"
 #include "cardctl.h"
 #include "internal.h"
 #include "pkcs15.h"
@@ -66,10 +69,31 @@
 #define ES_MSCP_PIN_REFERENCE 1
 #define ES_MSCP_PIN_AUTH_ID   "1"
 
-/* Lowest plausible private key handle; handles are used verbatim as MSE key reference. */
+/* Private key handle range. The generic PKCS#15 layer carries a single key
+ * reference byte (senv.key_ref[0] in pkcs15-sec.c) and card-epass2003.c
+ * rebuilds the FID as 0xA000 | that byte, so a handle outside 0xA000..0xA0FF
+ * cannot survive the round trip: 0xA120 would come back as 0xA020 and address
+ * a different key. Reject those instead of signing with the wrong key. */
 #define ES_MSCP_PRIV_HANDLE_BASE 0xA020U
+#define ES_MSCP_PRIV_HANDLE_MAX	 0xA0FFU
+
+/* Public key handles live in their own range in the containermap. */
+#define ES_MSCP_PUB_HANDLE_MIN 0x8000U
+#define ES_MSCP_PUB_HANDLE_MAX 0x8FFFU
 
 #define ES_MSCP_MAX_CONTAINERS 16
+
+/* The serial number EF (cardid) is 16 bytes on the observed card; cap what is
+ * hex encoded into the token info so a larger file cannot overrun hex[]. */
+#define ES_MSCP_MAX_SERIAL_LEN 32
+
+/* tkinfdir/tokeninfo carries the cardholder label in its first 32 bytes. */
+#define ES_MSCP_LABEL_FIELD_LEN 32
+
+/* Upper bound on any single EF this emulator reads. Well above the largest
+ * object observed on a real card (a 2604 byte certificate), while keeping a
+ * corrupt FCI size from driving an unbounded allocation. */
+#define ES_MSCP_MAX_EF_SIZE (64 * 1024)
 
 struct es_mscp_entry {
 	unsigned int fid;
@@ -97,14 +121,46 @@ es_le32(const u8 *p)
 	       ((unsigned int)p[2] << 16) | ((unsigned int)p[3] << 24);
 }
 
-/* Select 3F00/2003/<fid> and read the whole EF into buf. */
+static void
+es_strip_leading_zeros(const u8 **p, size_t *len)
+{
+	while (*len > 1 && **p == 0) {
+		(*p)++;
+		(*len)--;
+	}
+}
+
+/* Significant byte length of an RSA modulus. The personalization tool stores
+ * CKA_MODULUS with the leading zero byte of its two's complement form, so
+ * taking the raw attribute length would report a 2048 bit key as 2056 bit
+ * and break key size filters in the PKCS#11 layer. */
+static size_t
+es_modulus_bytes(const u8 *p, size_t len)
+{
+	es_strip_leading_zeros(&p, &len);
+	return len;
+}
+
+/* Select 3F00/2003/<fid> and read the whole EF into a freshly allocated
+ * buffer, which the caller frees. Fixed size stack buffers used to cap this
+ * at 4096 bytes (1024 for the containermap, which on a real card already
+ * fills it exactly), so one extra container or a larger certificate would
+ * have been dropped with only a log line. size_used is the index's own byte
+ * count for the file, or 0 when the caller has no index entry; the smaller of
+ * it and the FCI size wins, and ES_MSCP_MAX_EF_SIZE bounds both so a corrupt
+ * or hostile FCI cannot drive a huge allocation. */
 static int
-es_select_and_read(sc_card_t *card, unsigned int fid,
-		u8 *buf, size_t buflen, size_t *out_len)
+es_select_and_read(sc_card_t *card, unsigned int fid, size_t size_used,
+		u8 **out_buf, size_t *out_len)
 {
 	sc_path_t path;
 	sc_file_t *file = NULL;
+	u8 *buf;
+	size_t want;
 	int r;
+
+	*out_buf = NULL;
+	*out_len = 0;
 
 	sc_format_path(ES_MSCP_APP_PATH, &path);
 	r = sc_append_file_id(&path, fid);
@@ -112,21 +168,34 @@ es_select_and_read(sc_card_t *card, unsigned int fid,
 		return r;
 
 	r = sc_select_file(card, &path, &file);
-	if (r < 0)
+	if (r < 0) {
+		sc_file_free(file);
 		return r;
+	}
 	if (file == NULL)
 		return SC_ERROR_INTERNAL;
 
-	if (file->size > buflen) {
-		sc_file_free(file);
-		return SC_ERROR_BUFFER_TOO_SMALL;
+	want = file->size;
+	if (size_used != 0 && size_used < want)
+		want = size_used;
+	sc_file_free(file);
+
+	if (want == 0)
+		return SC_ERROR_INVALID_DATA;
+	if (want > ES_MSCP_MAX_EF_SIZE)
+		want = ES_MSCP_MAX_EF_SIZE;
+
+	buf = malloc(want);
+	if (buf == NULL)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	r = sc_read_binary(card, 0, buf, want, 0);
+	if (r < 0) {
+		free(buf);
+		return r;
 	}
 
-	r = sc_read_binary(card, 0, buf, file->size, 0);
-	sc_file_free(file);
-	if (r < 0)
-		return r;
-
+	*out_buf = buf;
 	*out_len = (size_t)r;
 	return SC_SUCCESS;
 }
@@ -170,6 +239,22 @@ es_parse_index(const u8 *buf, size_t len,
 	return SC_SUCCESS;
 }
 
+/* Index object names are a fixed 8 characters: a 4 character kind followed by
+ * 4 decimal digits (cert0001, pubk0003, prvk0002). Matching the 4 character
+ * prefix alone would also accept unrelated names such as "certificate.bak". */
+static int
+es_name_is(const char *filename, const char *kind)
+{
+	size_t i;
+
+	if (strlen(filename) != 8 || strncmp(filename, kind, 4) != 0)
+		return 0;
+	for (i = 4; i < 8; i++)
+		if (filename[i] < '0' || filename[i] > '9')
+			return 0;
+	return 1;
+}
+
 static const struct es_mscp_entry *
 es_find_entry(const struct es_mscp_entry *entries,
 		size_t count, const char *filename)
@@ -194,7 +279,11 @@ es_parse_p11_attrs(const u8 *buf, size_t len,
 	while (pos + 8 <= len) {
 		unsigned int alen = es_le32(buf + pos + 4);
 
-		if (pos + 8 + (size_t)alen > len)
+		/* Saturated comparison: pos + 8 + alen would wrap where size_t
+		 * is 32 bit wide, letting a hostile alen of ~0xFFFFFFFF pass
+		 * the bounds check and point value[] past the end of buf.
+		 * pos + 8 <= len holds, so len - pos - 8 cannot underflow. */
+		if ((size_t)alen > len - pos - 8)
 			break;
 		count++;
 		pos += 8 + (size_t)alen;
@@ -238,7 +327,7 @@ static int
 es_add_cert(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 {
 	sc_card_t *card = p15card->card;
-	u8 buf[4096];
+	u8 *buf = NULL;
 	size_t len = 0;
 	struct es_p11_attr *attrs = NULL;
 	size_t nattrs = 0;
@@ -247,7 +336,7 @@ es_add_cert(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 	sc_pkcs15_object_t cert_obj;
 	int r;
 
-	r = es_select_and_read(card, entry->fid, buf, sizeof buf, &len);
+	r = es_select_and_read(card, entry->fid, entry->size_used, &buf, &len);
 	if (r < 0) {
 		sc_log(card->ctx, "entersafe-mscp: cannot read %s (fid %04X): %s",
 				entry->filename, entry->fid, sc_strerror(r));
@@ -258,6 +347,7 @@ es_add_cert(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 	if (r < 0) {
 		sc_log(card->ctx, "entersafe-mscp: cannot parse attributes of %s: %s",
 				entry->filename, sc_strerror(r));
+		free(buf);
 		return r;
 	}
 
@@ -266,6 +356,7 @@ es_add_cert(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 		sc_log(card->ctx, "entersafe-mscp: %s has no CKA_VALUE, skipping",
 				entry->filename);
 		free(attrs);
+		free(buf);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
@@ -275,6 +366,7 @@ es_add_cert(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 	cert_info.value.value = malloc(a_value->len);
 	if (!cert_info.value.value) {
 		free(attrs);
+		free(buf);
 		return SC_ERROR_OUT_OF_MEMORY;
 	}
 	memcpy(cert_info.value.value, a_value->value, a_value->len);
@@ -298,10 +390,11 @@ es_add_cert(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 			lbl_len = sizeof(cert_obj.label) - 1;
 		memcpy(cert_obj.label, a_label->value, lbl_len);
 	} else {
-		strncpy(cert_obj.label, entry->filename, sizeof(cert_obj.label) - 1);
+		strlcpy(cert_obj.label, entry->filename, sizeof(cert_obj.label));
 	}
 
 	free(attrs);
+	free(buf);
 
 	r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 	if (r < 0) {
@@ -315,7 +408,7 @@ static int
 es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 {
 	sc_card_t *card = p15card->card;
-	u8 buf[4096];
+	u8 *buf = NULL;
 	size_t len = 0;
 	struct es_p11_attr *attrs = NULL;
 	size_t nattrs = 0;
@@ -327,7 +420,7 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 	size_t spki_len = 0;
 	int r;
 
-	r = es_select_and_read(card, entry->fid, buf, sizeof buf, &len);
+	r = es_select_and_read(card, entry->fid, entry->size_used, &buf, &len);
 	if (r < 0) {
 		sc_log(card->ctx, "entersafe-mscp: cannot read %s (fid %04X): %s",
 				entry->filename, entry->fid, sc_strerror(r));
@@ -338,6 +431,7 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 	if (r < 0) {
 		sc_log(card->ctx, "entersafe-mscp: cannot parse attributes of %s: %s",
 				entry->filename, sc_strerror(r));
+		free(buf);
 		return r;
 	}
 
@@ -347,6 +441,7 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 		sc_log(card->ctx, "entersafe-mscp: %s missing modulus/exponent, skipping",
 				entry->filename);
 		free(attrs);
+		free(buf);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
@@ -358,10 +453,19 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 	pubkey.u.rsa.exponent.len = a_exp->len;
 
 	r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, &pubkey, &spki, &spki_len);
+	/* The encoder fills in alg_id when it is NULL, and it allocates into our
+	 * stack struct. modulus and exponent point into buf and are not ours to
+	 * free, so release that one field instead of sc_pkcs15_erase_pubkey(). */
+	if (pubkey.alg_id) {
+		sc_asn1_clear_algorithm_id(pubkey.alg_id);
+		free(pubkey.alg_id);
+		pubkey.alg_id = NULL;
+	}
 	if (r < 0) {
 		sc_log(card->ctx, "entersafe-mscp: cannot encode SPKI for %s: %s",
 				entry->filename, sc_strerror(r));
 		free(attrs);
+		free(buf);
 		return r;
 	}
 
@@ -370,13 +474,19 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 
 	pubkey_info.direct.spki.value = spki;
 	pubkey_info.direct.spki.len = spki_len;
-	pubkey_info.modulus_length = a_mod->len * 8;
+	pubkey_info.modulus_length = es_modulus_bytes(a_mod->value, a_mod->len) * 8;
 	pubkey_info.native = 1;
 	pubkey_info.usage = SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_VERIFY;
 
 	a_handle = es_find_attr(attrs, nattrs, P11_CKA_VENDOR_KEY_HANDLE);
-	if (a_handle && a_handle->len == 4)
-		pubkey_info.key_reference = (int)es_le32(a_handle->value);
+	if (a_handle && a_handle->len == 4) {
+		unsigned int h = es_le32(a_handle->value);
+
+		/* Only used to pair this key with a containermap record; anything
+		 * outside the public handle range would pair with nothing. */
+		if (h >= ES_MSCP_PUB_HANDLE_MIN && h <= ES_MSCP_PUB_HANDLE_MAX)
+			pubkey_info.key_reference = (int)h;
+	}
 
 	a_id = es_find_attr(attrs, nattrs, P11_CKA_ID);
 	if (a_id && a_id->len > 0) {
@@ -388,9 +498,10 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 		pubkey_info.id.len = idlen;
 	}
 
-	strncpy(pubkey_obj.label, entry->filename, sizeof(pubkey_obj.label) - 1);
+	strlcpy(pubkey_obj.label, entry->filename, sizeof(pubkey_obj.label));
 
 	free(attrs);
+	free(buf);
 
 	r = sc_pkcs15emu_add_rsa_pubkey(p15card, &pubkey_obj, &pubkey_info);
 	if (r < 0) {
@@ -427,7 +538,8 @@ es_parse_containermap(const u8 *buf, size_t len, struct es_containers *cm)
 		unsigned int priv = es_le32(buf + i);
 		unsigned int pub = es_le32(buf + i + 4);
 
-		if (priv < 0xA000 || priv > 0xAFFF || pub < 0x8000 || pub > 0x8FFF)
+		if (priv < 0xA000 || priv > 0xAFFF ||
+				pub < ES_MSCP_PUB_HANDLE_MIN || pub > ES_MSCP_PUB_HANDLE_MAX)
 			break;
 		cm->c[cm->n].priv_handle = priv;
 		cm->c[cm->n].pub_handle = pub;
@@ -436,15 +548,17 @@ es_parse_containermap(const u8 *buf, size_t len, struct es_containers *cm)
 }
 
 static void
-es_read_containermap(sc_card_t *card, unsigned int fid, struct es_containers *cm)
+es_read_containermap(sc_card_t *card, unsigned int fid, size_t size_used,
+		struct es_containers *cm)
 {
-	u8 buf[1024];
+	u8 *buf = NULL;
 	size_t len = 0;
 
 	cm->n = 0;
-	if (es_select_and_read(card, fid, buf, sizeof buf, &len) < 0)
+	if (es_select_and_read(card, fid, size_used, &buf, &len) < 0)
 		return;
 	es_parse_containermap(buf, len, cm);
+	free(buf);
 }
 
 static int
@@ -475,6 +589,25 @@ es_container_pub_for_priv_low(const struct es_containers *cm, unsigned int priv_
 	return 0;
 }
 
+/* Whether a private key handle can be addressed at all, i.e. whether it fits
+ * the single key reference byte the generic layer carries. */
+static int
+es_priv_handle_usable(unsigned int handle)
+{
+	return handle >= ES_MSCP_PRIV_HANDLE_BASE && handle <= ES_MSCP_PRIV_HANDLE_MAX;
+}
+
+static int
+es_container_has_priv(const struct es_containers *cm, unsigned int handle)
+{
+	size_t i;
+
+	for (i = 0; i < cm->n; i++)
+		if (cm->c[i].priv_handle == handle)
+			return 1;
+	return 0;
+}
+
 /* Look up modulus length and vendor key handle for a prvkNNNN object.
  * Normally both come from that object's own attributes; when they're
  * absent (observed on this card's current-generation key), fall back to
@@ -492,7 +625,7 @@ es_prkey_lookup_mod_and_handle(sc_pkcs15_card_t *p15card,
 	const struct es_p11_attr *a_mod, *a_handle;
 	char pubk_filename[sizeof(prvk_entry->filename)];
 	const struct es_mscp_entry *e_pubk;
-	u8 pubbuf[4096];
+	u8 *pubbuf = NULL;
 	size_t publen = 0;
 	struct es_p11_attr *pubattrs = NULL;
 	size_t pubnattrs = 0;
@@ -501,15 +634,16 @@ es_prkey_lookup_mod_and_handle(sc_pkcs15_card_t *p15card,
 	a_mod = es_find_attr(attrs, nattrs, P11_CKA_MODULUS);
 	a_handle = es_find_attr(attrs, nattrs, P11_CKA_VENDOR_KEY_HANDLE);
 	if (a_mod && a_mod->len > 0 && a_handle && a_handle->len == 4) {
-		*out_modulus_len = a_mod->len;
+		*out_modulus_len = es_modulus_bytes(a_mod->value, a_mod->len);
 		*out_vendor_handle = es_le32(a_handle->value);
 		return SC_SUCCESS;
 	}
 
-	if (strlen(prvk_entry->filename) != 8 || strncmp(prvk_entry->filename, "prvk", 4) != 0)
+	if (!es_name_is(prvk_entry->filename, "prvk"))
 		return SC_ERROR_OBJECT_NOT_FOUND;
-	strcpy(pubk_filename, "pubk");
-	strcpy(pubk_filename + 4, prvk_entry->filename + 4);
+	/* es_name_is() guarantees 4 digits plus the terminator fit. */
+	memcpy(pubk_filename, "pubk", 4);
+	strlcpy(pubk_filename + 4, prvk_entry->filename + 4, sizeof(pubk_filename) - 4);
 
 	e_pubk = es_find_entry(entries, nentries, pubk_filename);
 	if (!e_pubk) {
@@ -518,17 +652,20 @@ es_prkey_lookup_mod_and_handle(sc_pkcs15_card_t *p15card,
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
-	r = es_select_and_read(card, e_pubk->fid, pubbuf, sizeof pubbuf, &publen);
+	r = es_select_and_read(card, e_pubk->fid, e_pubk->size_used, &pubbuf, &publen);
 	if (r < 0)
 		return r;
 	r = es_parse_p11_attrs(pubbuf, publen, &pubattrs, &pubnattrs);
-	if (r < 0)
+	if (r < 0) {
+		free(pubbuf);
 		return r;
+	}
 
 	a_mod = es_find_attr(pubattrs, pubnattrs, P11_CKA_MODULUS);
 	a_handle = es_find_attr(pubattrs, pubnattrs, P11_CKA_VENDOR_KEY_HANDLE);
 	if (!a_mod || a_mod->len == 0 || !a_handle || a_handle->len != 4) {
 		free(pubattrs);
+		free(pubbuf);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
@@ -536,10 +673,12 @@ es_prkey_lookup_mod_and_handle(sc_pkcs15_card_t *p15card,
 		sc_log(card->ctx, "entersafe-mscp: no containermap entry for the key of %s",
 				prvk_entry->filename);
 		free(pubattrs);
+		free(pubbuf);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
-	*out_modulus_len = a_mod->len;
+	*out_modulus_len = es_modulus_bytes(a_mod->value, a_mod->len);
 	free(pubattrs);
+	free(pubbuf);
 	return SC_SUCCESS;
 }
 
@@ -548,7 +687,7 @@ es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 		size_t nentries, const struct es_containers *cm, const struct es_mscp_entry *entry)
 {
 	sc_card_t *card = p15card->card;
-	u8 buf[4096];
+	u8 *buf = NULL;
 	size_t len = 0;
 	struct es_p11_attr *attrs = NULL;
 	size_t nattrs = 0;
@@ -559,7 +698,7 @@ es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 	unsigned int vendor_handle = 0;
 	int r;
 
-	r = es_select_and_read(card, entry->fid, buf, sizeof buf, &len);
+	r = es_select_and_read(card, entry->fid, entry->size_used, &buf, &len);
 	if (r < 0) {
 		sc_log(card->ctx, "entersafe-mscp: cannot read %s (fid %04X): %s",
 				entry->filename, entry->fid, sc_strerror(r));
@@ -570,17 +709,35 @@ es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 	if (r < 0) {
 		sc_log(card->ctx, "entersafe-mscp: cannot parse attributes of %s: %s",
 				entry->filename, sc_strerror(r));
+		free(buf);
 		return r;
 	}
 
 	r = es_prkey_lookup_mod_and_handle(p15card, entries, nentries, cm, entry,
 			attrs, nattrs, &modulus_len, &vendor_handle);
-	if (r < 0 || vendor_handle < ES_MSCP_PRIV_HANDLE_BASE) {
-		sc_log(card->ctx, "entersafe-mscp: %s missing modulus/vendor handle, skipping",
-				entry->filename);
+	if (r < 0) {
+		sc_log(card->ctx, "entersafe-mscp: %s (fid %04X) missing modulus/vendor handle, skipping",
+				entry->filename, entry->fid);
 		free(attrs);
+		free(buf);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
+	if (!es_priv_handle_usable(vendor_handle)) {
+		sc_log(card->ctx,
+				"entersafe-mscp: %s (fid %04X) has vendor handle %04X outside the "
+				"addressable range %04X..%04X, skipping",
+				entry->filename, entry->fid, vendor_handle,
+				ES_MSCP_PRIV_HANDLE_BASE, ES_MSCP_PRIV_HANDLE_MAX);
+		free(attrs);
+		free(buf);
+		return SC_ERROR_OBJECT_NOT_FOUND;
+	}
+	/* A consistency check, not a security control: the containermap comes
+	 * from the same card as the handle, so it cannot vouch for it. Warn and
+	 * carry on, so a key that is simply not in a container still works. */
+	if (cm->n != 0 && !es_container_has_priv(cm, vendor_handle))
+		sc_log(card->ctx, "entersafe-mscp: %s uses vendor handle %04X, which the "
+				"containermap does not list", entry->filename, vendor_handle);
 
 	memset(&prkey_info, 0, sizeof prkey_info);
 	memset(&prkey_obj, 0, sizeof prkey_obj);
@@ -616,9 +773,10 @@ es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 
 	sc_pkcs15_format_id(ES_MSCP_PIN_AUTH_ID, &prkey_obj.auth_id);
 	prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
-	strncpy(prkey_obj.label, entry->filename, sizeof(prkey_obj.label) - 1);
+	strlcpy(prkey_obj.label, entry->filename, sizeof(prkey_obj.label));
 
 	free(attrs);
+	free(buf);
 
 	return sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
 }
@@ -648,26 +806,32 @@ es_add_pin(sc_pkcs15_card_t *p15card)
 	sc_format_path(ES_MSCP_APP_PATH, &pin_info.path);
 	pin_info.tries_left = -1;
 
-	strncpy(pin_obj.label, "PIN", sizeof(pin_obj.label) - 1);
+	strlcpy(pin_obj.label, "PIN", sizeof(pin_obj.label));
 	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 	return sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 }
 
 static int
-es_read_serial(sc_pkcs15_card_t *p15card, unsigned int fid)
+es_read_serial(sc_pkcs15_card_t *p15card, unsigned int fid, size_t size_used)
 {
 	sc_card_t *card = p15card->card;
-	u8 buf[32];
+	u8 *buf = NULL;
 	size_t len = 0;
-	char hex[sizeof(buf) * 2 + 1];
+	char hex[ES_MSCP_MAX_SERIAL_LEN * 2 + 1];
 	int r;
 
-	r = es_select_and_read(card, fid, buf, sizeof buf, &len);
+	r = es_select_and_read(card, fid, size_used, &buf, &len);
 	if (r < 0)
 		return r;
 
-	sc_bin_to_hex(buf, len, hex, sizeof hex, 0);
+	if (len > ES_MSCP_MAX_SERIAL_LEN)
+		len = ES_MSCP_MAX_SERIAL_LEN;
+	r = sc_bin_to_hex(buf, len, hex, sizeof hex, 0);
+	free(buf);
+	if (r < 0)
+		return r;
+
 	set_string(&p15card->tokeninfo->serial_number, hex);
 	return SC_SUCCESS;
 }
@@ -676,20 +840,20 @@ es_read_serial(sc_pkcs15_card_t *p15card, unsigned int fid)
  * bytes are ASCII, space-padded. This is personal data (a name-derived
  * string in the observed personalization): never sc_log() the raw bytes. */
 static int
-es_read_label(sc_pkcs15_card_t *p15card, unsigned int fid,
+es_read_label(sc_pkcs15_card_t *p15card, unsigned int fid, size_t size_used,
 		char *label_out, size_t label_out_size)
 {
 	sc_card_t *card = p15card->card;
-	u8 buf[64];
+	u8 *buf = NULL;
 	size_t len = 0;
 	size_t n;
 	int r;
 
-	r = es_select_and_read(card, fid, buf, sizeof buf, &len);
+	r = es_select_and_read(card, fid, size_used, &buf, &len);
 	if (r < 0)
 		return r;
 
-	n = 32;
+	n = ES_MSCP_LABEL_FIELD_LEN;
 	if (n > len)
 		n = len;
 	while (n > 0 && buf[n - 1] == ' ')
@@ -698,6 +862,7 @@ es_read_label(sc_pkcs15_card_t *p15card, unsigned int fid,
 		n = label_out_size - 1;
 	memcpy(label_out, buf, n);
 	label_out[n] = 0;
+	free(buf);
 
 	return SC_SUCCESS;
 }
@@ -709,15 +874,6 @@ struct es_keylike {
 	u8 *modulus;
 	size_t modulus_len;
 };
-
-static void
-es_strip_leading_zeros(const u8 **p, size_t *len)
-{
-	while (*len > 1 && **p == 0) {
-		(*p)++;
-		(*len)--;
-	}
-}
 
 static int
 es_same_modulus(const struct es_keylike *a, const struct es_keylike *b)
@@ -863,7 +1019,7 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 	sc_context_t *ctx = card->ctx;
 	sc_path_t path;
 	sc_file_t *file = NULL;
-	u8 idxbuf[2048];
+	u8 *idxbuf = NULL;
 	size_t idxlen = 0;
 	struct es_mscp_entry *entries = NULL;
 	size_t nentries = 0, i;
@@ -871,6 +1027,7 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 	struct es_containers cm;
 	char label[33];
 	int r, ncerts = 0, npubkeys = 0, nprkeys = 0;
+	int mscp_on;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -892,11 +1049,13 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 	}
 	sc_file_free(file);
 
-	r = es_select_and_read(card, ES_MSCP_INDEX_FID, idxbuf, sizeof idxbuf, &idxlen);
+	/* size_used is unknown here: the index is the file that carries it. */
+	r = es_select_and_read(card, ES_MSCP_INDEX_FID, 0, &idxbuf, &idxlen);
 	if (r < 0)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
 
 	r = es_parse_index(idxbuf, idxlen, &entries, &nentries);
+	free(idxbuf);
 	if (r < 0)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
 
@@ -906,7 +1065,8 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
 	}
 
-	r = es_read_label(p15card, e_tokeninfo->fid, label, sizeof label);
+	r = es_read_label(p15card, e_tokeninfo->fid, e_tokeninfo->size_used,
+			label, sizeof label);
 	if (r < 0) {
 		free(entries);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
@@ -925,10 +1085,15 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 
 	set_string(&p15card->tokeninfo->label, label);
 	set_string(&p15card->tokeninfo->manufacturer_id, "Feitian/EnterSafe ePass2003 (MSCP)");
+	/* This emulator only publishes what the minidriver personalization put on
+	 * the card; it cannot create or update MSCP objects. Without this flag
+	 * pkcs15-init would happily erase the card through the ePass2003 driver,
+	 * which knows nothing about the MSCP layout. */
+	p15card->tokeninfo->flags |= SC_PKCS15_TOKEN_READONLY;
 
 	e_cardid = es_find_entry(entries, nentries, "cardid");
 	if (e_cardid) {
-		r = es_read_serial(p15card, e_cardid->fid);
+		r = es_read_serial(p15card, e_cardid->fid, e_cardid->size_used);
 		if (r < 0)
 			sc_log(ctx, "entersafe-mscp: cannot read cardid: %s", sc_strerror(r));
 	}
@@ -936,7 +1101,7 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 	e_containermap = es_find_entry(entries, nentries, "containermap");
 	cm.n = 0;
 	if (e_containermap)
-		es_read_containermap(card, e_containermap->fid, &cm);
+		es_read_containermap(card, e_containermap->fid, e_containermap->size_used, &cm);
 
 	r = es_add_pin(p15card);
 	if (r < 0) {
@@ -946,19 +1111,29 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 	}
 
 	for (i = 0; i < nentries; i++) {
-		if (strncmp(entries[i].filename, "cert", 4) == 0) {
+		const char *kind = NULL;
+
+		if (es_name_is(entries[i].filename, "cert")) {
+			kind = "certificate";
 			r = es_add_cert(p15card, &entries[i]);
 			if (r == SC_SUCCESS)
 				ncerts++;
-		} else if (strncmp(entries[i].filename, "pubk", 4) == 0) {
+		} else if (es_name_is(entries[i].filename, "pubk")) {
+			kind = "public key";
 			r = es_add_pubkey(p15card, &entries[i]);
 			if (r == SC_SUCCESS)
 				npubkeys++;
-		} else if (strncmp(entries[i].filename, "prvk", 4) == 0) {
+		} else if (es_name_is(entries[i].filename, "prvk")) {
+			kind = "private key";
 			r = es_add_prkey(p15card, entries, nentries, &cm, &entries[i]);
 			if (r == SC_SUCCESS)
 				nprkeys++;
 		}
+		/* Name the object that dropped out, so a partially bound token can
+		 * be diagnosed from the log instead of just looking short. */
+		if (kind != NULL && r != SC_SUCCESS)
+			sc_log(ctx, "entersafe-mscp: skipped %s %s (fid %04X): %s",
+					kind, entries[i].filename, entries[i].fid, sc_strerror(r));
 	}
 
 	free(entries);
@@ -971,9 +1146,15 @@ es_mscp_detect_and_bind(sc_pkcs15_card_t *p15card)
 	if (ncerts == 0)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_WRONG_CARD);
 
+	/* Certificates alone still make a usable read-only token, but without a
+	 * private key nothing can be signed: say so rather than look healthy. */
+	if (nprkeys == 0)
+		sc_log(ctx, "entersafe-mscp: no private key was bound; this token cannot sign");
+
 	/* Only now that binding succeeded: RSA keys are addressed by their raw
 	 * vendor handle from here on (set_security_env() in card-epass2003.c). */
-	r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_MSCP_MODE, NULL);
+	mscp_on = 1;
+	r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_MSCP_MODE, &mscp_on);
 	if (r < 0) {
 		sc_log(ctx, "entersafe-mscp: cannot enable MSCP key addressing: %s", sc_strerror(r));
 		LOG_FUNC_RETURN(ctx, r);
