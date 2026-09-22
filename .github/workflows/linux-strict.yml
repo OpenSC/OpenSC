@@ -35,7 +35,7 @@ permissions:
 # -Wno-incompatible-function-pointer-types -- this looks just buggy as it
 #   complains about missing const, which is there
 env:
-  CFLAGS: >-
+  SET_CFLAGS: >-
     -pedantic -Werror -Wall -Wextra
     -Wno-strict-prototypes -Wno-empty-translation-unit
     -Wno-incompatible-library-redeclaration
@@ -76,7 +76,7 @@ jobs:
       - run: .github/build.sh piv-sm dist
         env:
           CC: ${{ matrix.compiler }}
-          CFLAGS: ${{ env.CFLAGS }} ${{ matrix.compiler == 'clang' && env.CLANG_CFLAGS || '' }}
+          SET_CFLAGS: ${{ env.SET_CFLAGS }} ${{ matrix.compiler == 'clang' && env.CLANG_CFLAGS || '' }}
       - name: Upload test logs
         uses: actions/upload-artifact@v7
         if: failure()
