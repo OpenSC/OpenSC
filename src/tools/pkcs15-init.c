@@ -192,7 +192,6 @@ const struct option	options[] = {
 	{ "application-name",	required_argument, NULL,	OPT_APPLICATION_NAME },
 	{ "application-id",	required_argument, NULL,	OPT_APPLICATION_ID },
 	{ "aid",		required_argument, NULL,        OPT_BIND_TO_AID },
-	{ "output-file",	required_argument, NULL,	'o' },
 	{ "format",		required_argument, NULL,	'f' },
 	{ "passphrase",		required_argument, NULL,	OPT_PASSPHRASE },
 	{ "authority",		no_argument,	   NULL,	OPT_AUTHORITY },
@@ -258,7 +257,6 @@ static const char *		option_help[] = {
 	"Specify application name of data object (use with --store-data-object)",
 	"Specify application id of data object (use with --store-data-object)",
 	"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
-	"Output public portion of generated key to file",
 	"Specify key/cert file format: PEM (=default), DER or PKCS12",
 	"Specify passphrase for unlocking secret key",
 	"Mark certificate as a CA certificate",
@@ -282,6 +280,7 @@ static const char *		option_help[] = {
 	"Display this message",
 	"Verbose operation, may be used several times",
 
+	NULL,
 	NULL,
 	NULL,
 };
@@ -377,7 +376,6 @@ static char *			pins[4];
 static char *			opt_serial = NULL;
 static const char *		opt_passphrase = NULL;
 static char *			opt_newkey = NULL;
-static char *			opt_outkey = NULL;
 static char *			opt_application_id = NULL;
 static char *			opt_application_name = NULL;
 static char *			opt_bind_to_aid = NULL;
@@ -2850,9 +2848,6 @@ handle_option(const struct option *opt)
 		break;
 	case 'l':
 		opt_label = optarg;
-		break;
-	case 'o':
-		opt_outkey = optarg;
 		break;
 	case 'p':
 		opt_profile = optarg;
