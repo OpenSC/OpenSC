@@ -57,6 +57,7 @@
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
 #endif /* OPENSSL_NO_EC */
+#include <assert.h>
 
 #include "common/compat_strlcpy.h"
 #include "libopensc/internal.h"
@@ -448,6 +449,9 @@ main(int argc, char **argv)
 	unsigned int		n;
 	int					r = 0;
 	struct sc_pkcs15_card *tmp_p15_data = NULL;
+
+	static_assert(sizeof(options) / sizeof(options[0]) == sizeof(option_help) / sizeof(option_help[0]),
+			"Inconsistent size of the options and options_help structures!");
 
 #ifdef RANDOM_POOL
 	if (!RAND_load_file(RANDOM_POOL, 32))
