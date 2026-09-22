@@ -300,7 +300,6 @@ cmdline_parser_required (struct gengetopt_args_info *args_info, const char *prog
 }
 
 
-static char *package_name = 0;
 
 
 
@@ -313,14 +312,13 @@ cmdline_parser_internal (
 
   int error_occurred = 0;
   struct gengetopt_args_info local_args_info;
-  
+
   int override;
   int initialize;
   int check_required;
   int check_ambiguity;
-  
-  package_name = argv[0];
-  
+
+
   /* TODO: Why is this here? It is not used anywhere. */
   override = params->override;
   FIX_UNUSED(override);
