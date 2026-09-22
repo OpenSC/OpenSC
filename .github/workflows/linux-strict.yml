@@ -16,35 +16,21 @@ on:
 permissions:
   contents: read  #  to fetch code (actions/checkout)
 
-# -Wno-incompatible-library-redeclaration -- strlcat and strlcpy compat
-#     functions make the build fail with
-#        incompatible redeclaration of library function 'strlcat'
-#     even if there is no implementation in Linux.
-#     Worth investigating
-# -Wno-strict-prototypes -- is needed for the configure to pass
-#     otherwise it fails detect dlopen()
 # -Wno-variadic-macros -- we are ok using the GNU extension in log.c
 # -Wno-gnu-zero-variadic-macro-arguments -- related
 # -Wno-incompatible-pointer-types-discards-qualifiers -- again with logging
-# -Wno-unused-function -- the inline compat functions for openssl
-#     are included in files where they are needed and clang does not like it
 # -Wno-unused-parameter -- too many to fix them right now
 # -Wformat-pedantic - this complains about missing casts to (void *) which is
 #     pointles
 # -Wno-pedantic -- this complains about void and function pointers casts
-# -Wno-incompatible-function-pointer-types -- this looks just buggy as it
-#   complains about missing const, which is there
 env:
   SET_CFLAGS: >-
     -pedantic -Werror -Wall -Wextra
-    -Wno-strict-prototypes -Wno-empty-translation-unit
-    -Wno-incompatible-library-redeclaration
-    -Wno-variadic-macros -Wno-unused-function -Wno-unused-parameter
+    -Wno-variadic-macros -Wno-unused-parameter
     -Wno-incompatible-pointer-types-discards-qualifiers
     -Wno-gnu-zero-variadic-macro-arguments
     -Wno-format-pedantic
     -Wno-pedantic
-    -Wno-incompatible-function-pointer-types
   CLANG_CFLAGS: >-
     -Wshorten-64-to-32
   BASE_DEPS: |
