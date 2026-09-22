@@ -18,9 +18,13 @@
  */
 #include "torture.h"
 /* sc.c brings in set_string() and friends, which libopensc does not export;
- * same approach as simpletlv.c. */
+ * same approach as simpletlv.c. sc.c must come first: pkcs15-entersafe-mscp.c
+ * calls set_string(), and clang-format would otherwise alphabetize the two
+ * and break that. */
+// clang-format off
 #include "libopensc/sc.c"
 #include "libopensc/pkcs15-entersafe-mscp.c"
+// clang-format on
 
 /*
  * These parsers consume data supplied verbatim by the card, i.e. hostile
@@ -388,28 +392,28 @@ main(void)
 {
 	int rc;
 	struct CMUnitTest tests[] = {
-		/* es_parse_p11_attrs() */
-		cmocka_unit_test(torture_mscp_attrs_wellformed),
-		cmocka_unit_test(torture_mscp_attrs_exact_fit),
-		cmocka_unit_test(torture_mscp_attrs_huge_len_first),
-		cmocka_unit_test(torture_mscp_attrs_huge_len_trailing),
-		cmocka_unit_test(torture_mscp_attrs_one_past_end),
-		cmocka_unit_test(torture_mscp_attrs_truncated_header),
-		/* es_name_is() */
-		cmocka_unit_test(torture_mscp_name_is),
-		/* es_parse_index() */
-		cmocka_unit_test(torture_mscp_index_basic),
-		cmocka_unit_test(torture_mscp_index_partial_record),
-		cmocka_unit_test(torture_mscp_index_too_short),
-		/* es_parse_containermap() */
-		cmocka_unit_test(torture_mscp_containermap),
-		cmocka_unit_test(torture_mscp_containermap_short),
-		/* key handle validation */
-		cmocka_unit_test(torture_mscp_priv_handle_range),
-		cmocka_unit_test(torture_mscp_container_has_priv),
-		/* es_strip_leading_zeros() / es_modulus_bytes() */
-		cmocka_unit_test(torture_mscp_strip_leading_zeros),
-		cmocka_unit_test(torture_mscp_modulus_bytes),
+			/* es_parse_p11_attrs() */
+			cmocka_unit_test(torture_mscp_attrs_wellformed),
+			cmocka_unit_test(torture_mscp_attrs_exact_fit),
+			cmocka_unit_test(torture_mscp_attrs_huge_len_first),
+			cmocka_unit_test(torture_mscp_attrs_huge_len_trailing),
+			cmocka_unit_test(torture_mscp_attrs_one_past_end),
+			cmocka_unit_test(torture_mscp_attrs_truncated_header),
+			/* es_name_is() */
+			cmocka_unit_test(torture_mscp_name_is),
+			/* es_parse_index() */
+			cmocka_unit_test(torture_mscp_index_basic),
+			cmocka_unit_test(torture_mscp_index_partial_record),
+			cmocka_unit_test(torture_mscp_index_too_short),
+			/* es_parse_containermap() */
+			cmocka_unit_test(torture_mscp_containermap),
+			cmocka_unit_test(torture_mscp_containermap_short),
+			/* key handle validation */
+			cmocka_unit_test(torture_mscp_priv_handle_range),
+			cmocka_unit_test(torture_mscp_container_has_priv),
+			/* es_strip_leading_zeros() / es_modulus_bytes() */
+			cmocka_unit_test(torture_mscp_strip_leading_zeros),
+			cmocka_unit_test(torture_mscp_modulus_bytes),
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);

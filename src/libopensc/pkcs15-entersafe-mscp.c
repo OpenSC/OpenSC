@@ -332,8 +332,8 @@ es_add_cert(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 	struct es_p11_attr *attrs = NULL;
 	size_t nattrs = 0;
 	const struct es_p11_attr *a_value, *a_id, *a_label;
-	sc_pkcs15_cert_info_t cert_info;
-	sc_pkcs15_object_t cert_obj;
+	sc_pkcs15_cert_info_t cert_info = {0};
+	sc_pkcs15_object_t cert_obj = {0};
 	int r;
 
 	r = es_select_and_read(card, entry->fid, entry->size_used, &buf, &len);
@@ -359,9 +359,6 @@ es_add_cert(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 		free(buf);
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
-
-	memset(&cert_info, 0, sizeof cert_info);
-	memset(&cert_obj, 0, sizeof cert_obj);
 
 	cert_info.value.value = malloc(a_value->len);
 	if (!cert_info.value.value) {
@@ -413,9 +410,9 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 	struct es_p11_attr *attrs = NULL;
 	size_t nattrs = 0;
 	const struct es_p11_attr *a_mod, *a_exp, *a_id, *a_handle;
-	sc_pkcs15_pubkey_info_t pubkey_info;
-	sc_pkcs15_object_t pubkey_obj;
-	sc_pkcs15_pubkey_t pubkey;
+	sc_pkcs15_pubkey_info_t pubkey_info = {0};
+	sc_pkcs15_object_t pubkey_obj = {0};
+	sc_pkcs15_pubkey_t pubkey = {0};
 	u8 *spki = NULL;
 	size_t spki_len = 0;
 	int r;
@@ -445,7 +442,6 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 
-	memset(&pubkey, 0, sizeof pubkey);
 	pubkey.algorithm = SC_ALGORITHM_RSA;
 	pubkey.u.rsa.modulus.data = (u8 *)a_mod->value;
 	pubkey.u.rsa.modulus.len = a_mod->len;
@@ -468,9 +464,6 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 		free(buf);
 		return r;
 	}
-
-	memset(&pubkey_info, 0, sizeof pubkey_info);
-	memset(&pubkey_obj, 0, sizeof pubkey_obj);
 
 	pubkey_info.direct.spki.value = spki;
 	pubkey_info.direct.spki.len = spki_len;
@@ -692,8 +685,8 @@ es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 	struct es_p11_attr *attrs = NULL;
 	size_t nattrs = 0;
 	const struct es_p11_attr *a_id, *a_sign, *a_sign_rec, *a_decrypt;
-	sc_pkcs15_prkey_info_t prkey_info;
-	sc_pkcs15_object_t prkey_obj;
+	sc_pkcs15_prkey_info_t prkey_info = {0};
+	sc_pkcs15_object_t prkey_obj = {0};
 	size_t modulus_len = 0;
 	unsigned int vendor_handle = 0;
 	int r;
@@ -739,9 +732,6 @@ es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 		sc_log(card->ctx, "entersafe-mscp: %s uses vendor handle %04X, which the "
 				"containermap does not list", entry->filename, vendor_handle);
 
-	memset(&prkey_info, 0, sizeof prkey_info);
-	memset(&prkey_obj, 0, sizeof prkey_obj);
-
 	prkey_info.native = 1;
 	/* card-epass2003.c's MSE:SET reconstructs the full vendor handle as
 	 * 0xA000 | key_reference, so only the low byte needs to survive the
@@ -784,11 +774,8 @@ es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 static int
 es_add_pin(sc_pkcs15_card_t *p15card)
 {
-	sc_pkcs15_auth_info_t pin_info;
-	sc_pkcs15_object_t pin_obj;
-
-	memset(&pin_info, 0, sizeof pin_info);
-	memset(&pin_obj, 0, sizeof pin_obj);
+	sc_pkcs15_auth_info_t pin_info = {0};
+	sc_pkcs15_object_t pin_obj = {0};
 
 	pin_info.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	sc_pkcs15_format_id(ES_MSCP_PIN_AUTH_ID, &pin_info.auth_id);
@@ -861,7 +848,7 @@ es_read_label(sc_pkcs15_card_t *p15card, unsigned int fid, size_t size_used,
 	if (n >= label_out_size)
 		n = label_out_size - 1;
 	memcpy(label_out, buf, n);
-	label_out[n] = 0;
+	label_out[n] = '\0';
 	free(buf);
 
 	return SC_SUCCESS;
@@ -900,14 +887,11 @@ es_fill_missing_ids(sc_pkcs15_card_t *p15card, const struct es_containers *cm)
 	struct sc_pkcs15_object *objs[ES_MSCP_MAX_KEYLIKE];
 	struct sc_pkcs15_object *probjs[ES_MSCP_MAX_KEYLIKE];
 	struct es_keylike items[ES_MSCP_MAX_KEYLIKE];
-	struct sc_pkcs15_cert *certs[ES_MSCP_MAX_KEYLIKE];
-	struct sc_pkcs15_pubkey *pubs[ES_MSCP_MAX_KEYLIKE];
+	struct sc_pkcs15_cert *certs[ES_MSCP_MAX_KEYLIKE] = {0};
+	struct sc_pkcs15_pubkey *pubs[ES_MSCP_MAX_KEYLIKE] = {0};
 	size_t nitems = 0, i, j, k;
 	unsigned int synthetic = 0;
 	int n, npub, npr;
-
-	memset(certs, 0, sizeof certs);
-	memset(pubs, 0, sizeof pubs);
 
 	n = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, ES_MSCP_MAX_KEYLIKE);
 	for (k = 0; n > 0 && k < (size_t)n && nitems < ES_MSCP_MAX_KEYLIKE; k++) {
