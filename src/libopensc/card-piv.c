@@ -4945,7 +4945,7 @@ piv_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 		}
 
 		ecdatalen = datalen + ecpadlen;
-		ecdata = calloc(1, ecdatalen);
+		ecdata = calloc(ecdatalen, sizeof(u8));
 		if (ecdata == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
@@ -6030,7 +6030,7 @@ piv_match_card_continued(sc_card_t *card)
 		break;
 
 	case SC_CARD_TYPE_PIV_II_OPENFIPS201:
-		/* also supports using Yubic-piv-tool */
+		/* also supports using yubico-piv-tool */
 		priv->card_issues |= CI_ENFORCES_EC_HASH_EQ_KEYSIZE |
 				     CI_OTHER_AID_LOSE_STATE |
 				     CI_LEAKS_FILE_NOT_FOUND;
