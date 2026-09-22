@@ -26,7 +26,7 @@ permissions:
 env:
   SET_CFLAGS: >-
     -pedantic -Werror -Wall -Wextra
-    -Wno-variadic-macros -Wno-unused-parameter
+    -Wno-variadic-macros
     -Wno-incompatible-pointer-types-discards-qualifiers
     -Wno-gnu-zero-variadic-macro-arguments
     -Wno-format-pedantic

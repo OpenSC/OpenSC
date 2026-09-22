@@ -172,6 +172,8 @@ setcos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	sc_pkcs15_auth_info_t auth_info_prof = {0};
 
+	(void)p15card;
+
 	auth_info_prof.attrs.pin.reference = 1; /* Default SO PIN ref. */
 	auth_info_prof.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &auth_info_prof);
@@ -205,6 +207,8 @@ setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 	sc_file_t *pinfile = NULL, *tmp_pinfile = NULL;
 	int r, ignore_ac = 0;
+
+	(void)df;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -313,6 +317,12 @@ setcos_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 	struct sc_pkcs15_prkey_rsa *rsa,
 	u8 *key, size_t *keysize, int key_ref)
 {
+	(void)profile;
+	(void)card;
+	(void)rsa;
+	(void)key;
+	(void)keysize;
+	(void)key_ref;
 	return 0;
 }
 
@@ -321,6 +331,13 @@ setcos_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 	struct sc_pkcs15_prkey_rsa *rsa,
 	u8 *key, size_t *keysize, int key_ref)
 {
+	(void)profile;
+	(void)card;
+	(void)rsa;
+	(void)key;
+	(void)keysize;
+	(void)key_ref;
+
 	return 0;
 }
 

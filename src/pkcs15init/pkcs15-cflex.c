@@ -186,10 +186,13 @@ cflex_create_domain(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
  * Select the PIN reference
  */
 static int
-cflex_select_pin_reference(sc_profile_t *profike, sc_pkcs15_card_t *p15card,
+cflex_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_auth_info_t *auth_info)
 {
 	int	preferred;
+
+	(void)profile;
+	(void)p15card;
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
@@ -732,6 +735,9 @@ cryptoflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
         size_t base = rsa->modulus.len / 2, key_blob_size;
         int r, key_num = key_ref + 1;
 
+	(void)profile;
+	(void)card;
+
         switch (rsa->modulus.len) {
 	case  512 / 8:
 	case  768 / 8:
@@ -773,6 +779,9 @@ cryptoflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 {
         size_t base;
         int r, key_num = key_ref + 1;
+
+	(void)profile;
+	(void)card;
 
         switch (rsa->modulus.len) {
 	case  512 / 8:
@@ -820,6 +829,9 @@ cyberflex_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 {
         size_t base = rsa->modulus.len / 2, key_blob_size, bnlen;
         int r, key_num = key_ref + 1, alg_id;
+
+	(void)profile;
+	(void)card;
 
         switch (rsa->modulus.len) {
 	case  512 / 8: alg_id = 0xC4; break;
@@ -873,6 +885,9 @@ cyberflex_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 {
 	size_t base = rsa->modulus.len, key_blob_size, bnlen;
         int r, key_num = key_ref + 1, alg_id;
+
+	(void)profile;
+	(void)card;
 
         switch (rsa->modulus.len) {
 	case  512 / 8: alg_id = 0xC5; break;
