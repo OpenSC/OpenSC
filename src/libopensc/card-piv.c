@@ -601,6 +601,7 @@ static struct piv_aid piv_aids[] = {
 
 #define CI_NO_EC384			    0x00000400U /* does not have EC 384 */
 #define CI_NO_EC			    0x00000800U /* No EC at all */
+#define CI_ENFORCES_EC_HASH_EQ_KEYSIZE	    0x00001000U /* Applet enforces hash size == EC field size for ECDSA. Windows issue */
 
 /* PIV and PIV like cards are know to support these asymmetric algorithm identifiers used in alg_ids */
 #define AI_RSA_1024			    0x00000001U
@@ -638,6 +639,7 @@ static struct {
 	int al_labellen;
 } al_map[] = {
 		{ SC_CARD_TYPE_PIV_II_PIVAPPLET, (u8 *)"PivApplet v", 11 },
+		{ SC_CARD_TYPE_PIV_II_OPENFIPS201, (u8 *)"OpenFIPS201", 11 },
 		{ 0, NULL, 0 }
 	};
 
@@ -4911,6 +4913,9 @@ piv_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 {
 	piv_private_data_t *priv = PIV_DATA(card);
 	int r;
+	u8 *ecdata = NULL;
+	size_t ecdatalen = 0;
+	size_t ecpadlen = 0;
 	size_t nLen;
 	u8 rbuf[128]; /* For EC conversions  384 will fit */
 
@@ -4925,6 +4930,28 @@ piv_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 
 	if (priv->alg_id == 0x11 || priv->alg_id == 0x14) {
 		nLen = BYTES4BITS(priv->key_size);
+
+		/* One applet is known to enforce the hash size
+		 * must match the field_length in bytes. But Windows
+		 * may try ECDSA without a hash when offline
+		 * So we will pad input to hash size.
+		 */
+		if (priv->card_issues & CI_ENFORCES_EC_HASH_EQ_KEYSIZE &&
+				!strcmp(card->ctx->app_name, "cardmod") &&
+				(datalen < nLen)) {
+			ecpadlen = nLen - datalen;
+		} else {
+			ecpadlen = 0;
+		}
+
+		ecdatalen = datalen + ecpadlen;
+		ecdata = calloc(ecdatalen, sizeof(u8));
+		if (ecdata == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+		memcpy(ecdata + ecpadlen, data, datalen);
+
 		if (outlen < 2 * nLen) {
 			sc_log(card->ctx, " output too small for EC signature %zu < %zu",
 					outlen, 2 * nLen);
@@ -4932,7 +4959,7 @@ piv_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 			goto err;
 		}
 
-		r = piv_validate_general_authentication(card, data, datalen, rbuf, sizeof rbuf);
+		r = piv_validate_general_authentication(card, ecdata, ecdatalen, rbuf, sizeof rbuf);
 		if (r < 0)
 			goto err;
 
@@ -4953,6 +4980,7 @@ piv_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	}
 
 err:
+	free(ecdata);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
@@ -5605,6 +5633,7 @@ piv_match_card(sc_card_t *card)
 	case SC_CARD_TYPE_PIV_II_NITROKEY:
 	case SC_CARD_TYPE_PIV_II_TOKEN2:
 	case SC_CARD_TYPE_PIV_II_PIVAPPLET:
+	case SC_CARD_TYPE_PIV_II_OPENFIPS201:
 		break;
 	default:
 		return 0; /* can not handle the card */
@@ -5659,6 +5688,8 @@ piv_match_card_continued(sc_card_t *card)
 	case SC_CARD_TYPE_PIV_II_NITROKEY:
 	case SC_CARD_TYPE_PIV_II_TOKEN2:
 	case SC_CARD_TYPE_PIV_II_PIVAPPLET:
+	case SC_CARD_TYPE_PIV_II_OPENFIPS201:
+
 		type = card->type;
 		break;
 	default:
@@ -5844,6 +5875,7 @@ piv_match_card_continued(sc_card_t *card)
 	case SC_CARD_TYPE_PIV_II_NITROKEY:
 	case SC_CARD_TYPE_PIV_II_TOKEN2:
 	case SC_CARD_TYPE_PIV_II_PIVAPPLET:
+	case SC_CARD_TYPE_PIV_II_OPENFIPS201:
 	case SC_CARD_TYPE_PIV_II_GENERIC:
 	case SC_CARD_TYPE_PIV_II_BASE: /* unknown PIV card */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xFD, 0x00, 0x00);
@@ -5935,6 +5967,8 @@ piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_NITROKEY:
 		case SC_CARD_TYPE_PIV_II_TOKEN2:
 		case SC_CARD_TYPE_PIV_II_PIVAPPLET:
+		case SC_CARD_TYPE_PIV_II_OPENFIPS201:
+
 			r2 = piv_find_aid(card);
 		}
 	}
@@ -5993,6 +6027,13 @@ piv_match_card_continued(sc_card_t *card)
 				     CI_NFC_EXPOSE_TOO_MUCH;
 		if (priv->yubico_version < 0x00040302)
 			priv->card_issues |= CI_VERIFY_LC0_FAIL;
+		break;
+
+	case SC_CARD_TYPE_PIV_II_OPENFIPS201:
+		/* also supports using yubico-piv-tool */
+		priv->card_issues |= CI_ENFORCES_EC_HASH_EQ_KEYSIZE |
+				     CI_OTHER_AID_LOSE_STATE |
+				     CI_LEAKS_FILE_NOT_FOUND;
 		break;
 
 	case SC_CARD_TYPE_PIV_II_YUBIKEY4:
