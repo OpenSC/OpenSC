@@ -698,9 +698,16 @@ static int myeid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 
 			if (r != SC_SUCCESS)
 				LOG_FUNC_RETURN(card->ctx, r);
+		}
 
+		/* In case puk_reference is 0 and pin1 is empty, we may have end up here from a C_InitPIN call and a pin is being unblocked using the
+		'user_pin_unblock_style = init_pin_in_so_session' workflow. In this case, the SO-PIN, used as the unblocking PIN, should already have been authenticated
+		in a separate C_Login call and we don't need the PUK here */
+
+		if (data->puk_reference != 0 || data->pin1.len == 0) {
 			memset(&data->pin1, 0, sizeof(struct sc_pin_cmd_pin));
 			data->flags |= SC_PIN_CMD_IMPLICIT_CHANGE;
+			data->flags |= SC_PIN_CMD_NEED_PADDING; /* we don't have this set in the C_InitPIN use case. Perhaps should be fixed at higher level */
 			struct sc_apdu apdu;
 			u8 buf[SC_MAX_APDU_BUFFER_SIZE];
 
