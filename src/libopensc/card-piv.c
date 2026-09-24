@@ -4623,10 +4623,18 @@ piv_yk_pin_policy(sc_card_t *card, u8 *ptr)
 }
 
 static int
-piv_yk_get_pubkey(sc_card_t *card, sc_cardctl_piv_pubkey_info_t *ptr)
+piv_yk_get_pubkey(sc_card_t *card, sc_cardctl_piv_pubkey_info_t *info)
 {
-	u8 slot = ptr->slot;
-	LOG_FUNC_RETURN(card->ctx, piv_yk_get_metadata(card, slot, NULL, NULL, ptr));
+	int rc;
+	u8 slot = info->slot;
+
+	rc = piv_yk_get_metadata(card, slot, NULL, NULL, info);
+	LOG_TEST_RET(card->ctx, rc, "piv_yk_get_metadata failed");
+	if (info->pubkey.value == NULL || info->pubkey.len == 0 || info->algorithm == 0) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_DATA_OBJECT_NOT_FOUND);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static int
