@@ -22,7 +22,6 @@
 #include "config.h"
 #endif
 
-#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -37,7 +36,6 @@ static const struct option options[] = {
 		{"reader",   1, NULL, 'r'},
 		{"wait",	 0, NULL, 'w'},
 		{"read-mrz", 0, NULL, 'c'},
-		{"mrz",	1, NULL, 'm'},
 		{"delete",   0, NULL, 'd'},
 		{"verbose",  0, NULL, 'v'},
 		{"help",	 0, NULL, 'h'},
@@ -48,7 +46,6 @@ static const char *option_help[] = {
 		"Uses reader number <arg> [0]",
 		"Wait for a card to be inserted",
 		"Read the MRZ from the card in a contact reader",
-		"Use the MRZ <arg> (the three lines without separators)",
 		"Delete the stored MRZ",
 		"Verbose operation, may be used several times",
 		"Display tool options",
@@ -94,56 +91,18 @@ read_mrz(sc_context_t *ctx, const char *reader, int wait, unsigned char *mrz)
 	return r;
 }
 
-static int
-append_mrz(const char *in, unsigned char *mrz, size_t *len)
-{
-	for (; *in != '\0'; in++) {
-		if (isspace((unsigned char)*in))
-			continue;
-		if (*len == CEDULAUY_MRZ_LEN)
-			return SC_ERROR_WRONG_LENGTH;
-		mrz[(*len)++] = (unsigned char)toupper((unsigned char)*in);
-	}
-
-	return SC_SUCCESS;
-}
-
-static int
-prompt_mrz(unsigned char *mrz, size_t *len)
-{
-	char line[128];
-	int i, r = SC_SUCCESS;
-
-	printf("Enter the three lines of the MRZ printed on the back of the card.\n");
-	for (i = 1; i <= 3 && r == SC_SUCCESS; i++) {
-		printf("Line %d: ", i);
-		fflush(stdout);
-		if (fgets(line, sizeof line, stdin) == NULL) {
-			fprintf(stderr, "Cannot read the MRZ\n");
-			r = SC_ERROR_INTERNAL;
-			break;
-		}
-		r = append_mrz(line, mrz, len);
-	}
-	sc_mem_clear(line, sizeof line);
-
-	return r;
-}
-
 int
 main(int argc, char *argv[])
 {
 	const char *opt_reader = NULL;
-	const char *opt_mrz = NULL;
-	int opt_wait = 0, opt_read = 0, opt_delete = 0, opt_mrz_given = 0;
+	int opt_wait = 0, opt_read = 0, opt_delete = 0;
 	int verbose = 0;
 	sc_context_t *ctx = NULL;
 	sc_context_param_t ctx_param = {0};
 	unsigned char mrz[CEDULAUY_MRZ_LEN];
-	size_t mrz_len = 0;
 	int c, r;
 
-	while ((c = getopt_long(argc, argv, "r:wcm:dvh", options, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "r:wcdvh", options, NULL)) != -1) {
 		switch (c) {
 		case 'r':
 			opt_reader = optarg;
@@ -153,10 +112,6 @@ main(int argc, char *argv[])
 			break;
 		case 'c':
 			opt_read = 1;
-			break;
-		case 'm':
-			util_get_pin(optarg, &opt_mrz);
-			opt_mrz_given = 1;
 			break;
 		case 'd':
 			opt_delete = 1;
@@ -170,13 +125,8 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (optind < argc || opt_read + opt_delete + opt_mrz_given > 1)
+	if (optind < argc || opt_read + opt_delete != 1)
 		util_print_usage_and_die(app_name, options, option_help, NULL);
-
-	if (opt_mrz_given && opt_mrz == NULL) {
-		fprintf(stderr, "No MRZ given\n");
-		return 1;
-	}
 
 	ctx_param.app_name = app_name;
 	ctx_param.debug = verbose;
@@ -200,21 +150,7 @@ main(int argc, char *argv[])
 			printf("MRZ removed.\n");
 		}
 	} else {
-		if (opt_read) {
-			r = read_mrz(ctx, opt_reader, opt_wait, mrz);
-			if (r == SC_SUCCESS)
-				mrz_len = CEDULAUY_MRZ_LEN;
-		} else if (opt_mrz != NULL) {
-			r = append_mrz(opt_mrz, mrz, &mrz_len);
-		} else {
-			r = prompt_mrz(mrz, &mrz_len);
-		}
-
-		if ((r == SC_SUCCESS && mrz_len != CEDULAUY_MRZ_LEN) || r == SC_ERROR_WRONG_LENGTH) {
-			fprintf(stderr, "The MRZ has to be %d characters long\n", CEDULAUY_MRZ_LEN);
-			r = SC_ERROR_WRONG_LENGTH;
-		}
-
+		r = read_mrz(ctx, opt_reader, opt_wait, mrz);
 		if (r == SC_SUCCESS) {
 			r = cedulauy_write_mrz_cache(ctx, mrz);
 			if (r < 0)

@@ -38,10 +38,6 @@
 			given in the <literal>CEDULAUY_MRZ</literal> environment variable, which takes
 			precedence over the stored one.
 		</para>
-		<para>
-			When invoked without any options, <command>cedulauy-tool</command> prompts for
-			the three lines of the MRZ.
-		</para>
 	</refsect1>
 
 	<refsect1>
@@ -99,21 +95,6 @@
 						<para>
 							Read the MRZ from the card in a contact reader, where it is
 							accessible without a PIN, and store it.
-						</para>
-					</listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--mrz</option> <replaceable>mrz</replaceable>,
-						<option>-m</option> <replaceable>mrz</replaceable>
-					</term>
-					<listitem>
-						<para>
-							Store the given MRZ: the three lines concatenated, 90 characters.
-							If the value is set to
-							<literal>env:</literal><replaceable>VARIABLE</replaceable>, the value
-							of the specified environment variable is used.
 						</para>
 					</listitem>
 				</varlistentry>
