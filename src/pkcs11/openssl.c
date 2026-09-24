@@ -800,6 +800,7 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 			md_ctx = EVP_MD_CTX_create();
 			if (md_ctx == NULL) {
 				EVP_PKEY_free(pkey);
+				free(mdbuf);
 				return CKR_GENERAL_ERROR;
 			}
 
@@ -814,6 +815,7 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 			sc_log(context, "Unknown base type %u.", EVP_PKEY_base_id(pkey));
 		}
 
+		free(mdbuf);
 		EVP_PKEY_free(pkey);
 
 		if (res == 1) {
