@@ -730,7 +730,8 @@ es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 	 * carry on, so a key that is simply not in a container still works. */
 	if (cm->n != 0 && !es_container_has_priv(cm, vendor_handle))
 		sc_log(card->ctx, "entersafe-mscp: %s uses vendor handle %04X, which the "
-				"containermap does not list", entry->filename, vendor_handle);
+				  "containermap does not list",
+				entry->filename, vendor_handle);
 
 	prkey_info.native = 1;
 	/* card-epass2003.c's MSE:SET reconstructs the full vendor handle as
