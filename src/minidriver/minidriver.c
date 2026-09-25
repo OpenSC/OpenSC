@@ -2122,11 +2122,15 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 
 			if (vs->p15_containers[ii].cert_obj)   {
 				char k_name[6];
+				CARD_FILE_ACCESS_CONDITION cert_acl = file->acl;
+
+				if (vs->p15_containers[ii].cert_obj->flags & SC_PKCS15_CO_FLAG_PRIVATE)
+					cert_acl = UserReadWriteAc;
 
 				if (vs->p15_containers[ii].size_key_exchange)   {
 					snprintf(k_name, sizeof(k_name), "kxc%02i", ii);
 					k_name[sizeof(k_name) - 1] = 0;
-					dwret = md_fs_add_file(pCardData, &(file->next), k_name, file->acl, NULL, 0, NULL);
+					dwret = md_fs_add_file(pCardData, &(file->next), k_name, cert_acl, NULL, 0, NULL);
 					if (dwret != SCARD_S_SUCCESS)
 						return dwret;
 				}
@@ -2134,7 +2138,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 				if (vs->p15_containers[ii].size_sign)   {
 					snprintf(k_name, sizeof(k_name), "ksc%02i", ii);
 					k_name[sizeof(k_name) - 1] = 0;
-					dwret = md_fs_add_file(pCardData, &(file->next), k_name, file->acl, NULL, 0, NULL);
+					dwret = md_fs_add_file(pCardData, &(file->next), k_name, cert_acl, NULL, 0, NULL);
 					if (dwret != SCARD_S_SUCCESS)
 						return dwret;
 				}
