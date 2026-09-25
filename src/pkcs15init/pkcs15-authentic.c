@@ -588,10 +588,14 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 	rv = sc_pkcs15_allocate_object_content(ctx, object, (unsigned char *)sdo, sizeof(struct sc_authentic_sdo));
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to allocate PrvKey SDO as object content");
 
+	sdo->file = NULL;
+
 err:
-	if (sdo == NULL || sdo->file != file_p_prvkey)
-		sc_file_free(file_p_prvkey);
-	authentic_free_sdo_data(sdo);
+	if (rv != SC_SUCCESS) {
+		if (sdo == NULL || sdo->file != file_p_prvkey)
+			sc_file_free(file_p_prvkey);
+		authentic_free_sdo_data(sdo);
+	}
 	free(sdo);
 	LOG_FUNC_RETURN(ctx, rv);
 }
