@@ -460,13 +460,18 @@ sc_pkcs15init_set_p15card(struct sc_profile *profile, struct sc_pkcs15_card *p15
 			continue;
 		if (pin_attrs->flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN)
 			continue;
-		if (!auth_info->path.len)
+		if (auth_info->path.len < 2)
 			continue;
 
 		r = sc_profile_get_file_by_path(profile, &auth_info->path, &file);
                 if (r == SC_ERROR_FILE_NOT_FOUND)   {
 			if (!sc_select_file(p15card->card, &auth_info->path, &file))   {
 				char pin_name[16];
+
+				if (file->path.len < 2) {
+					sc_file_free(file);
+					continue;
+				}
 
 				sprintf(pin_name, "pin-dir-%02X%02X", file->path.value[file->path.len - 2],
 						file->path.value[file->path.len - 1]);
