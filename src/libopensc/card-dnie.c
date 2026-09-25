@@ -482,7 +482,11 @@ static char *findPattern(u8 *pat, u8 *buf, size_t len)
 	char *res = NULL;
 	u8 *from = buf;
 	int size = 0;
-	/* Locate pattern. Assume pattern length=6 */
+
+	if (len < 7)
+		return NULL;
+
+	/* Locate pattern */
 	for ( from = buf; from < buf+len-6; from++) {
 		if (memcmp(from,pat,6) == 0 ) goto data_found;
 	}
