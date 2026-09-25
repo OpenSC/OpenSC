@@ -646,7 +646,7 @@ static int myeid_delete_file(struct sc_card *card, const struct sc_path *path)
 	struct sc_apdu apdu;
 
 	LOG_FUNC_CALLED(card->ctx);
-	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2)
+	if (!path || path->type != SC_PATH_TYPE_FILE_ID || path->len != 2)
 	{
 		sc_log(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
