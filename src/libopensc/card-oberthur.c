@@ -611,16 +611,16 @@ auth_delete_file(struct sc_card *card, const struct sc_path *path)
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!path || path->len < 2) {
+		sc_log(card->ctx, "Invalid path length");
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
 	rv = sc_path_print(pbuf, sizeof(pbuf), path);
 	if (rv != SC_SUCCESS)
 		pbuf[0] = '\0';
 
 	sc_log(card->ctx, "path; type=%d, path=%s", path->type, pbuf);
-
-	if (path->len < 2) {
-		sc_log(card->ctx, "Invalid path length");
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
 
 	if (path->len > 2) {
 		struct sc_path parent = *path;
