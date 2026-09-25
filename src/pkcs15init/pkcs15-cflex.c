@@ -712,7 +712,7 @@ bn2cft(sc_pkcs15_bignum_t *num, u8 tag, u8 *buf, size_t bufsize)
 {
 	size_t	len = num->len;
 
-	if (len + 3 > bufsize)
+	if (len + 3 > bufsize || len + 1 > 0xFF)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	memset(buf, 0, bufsize);
 	buf[0] = tag;
