@@ -402,6 +402,9 @@ sc_oberthur_parse_containers (struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	size_t offs;
 
+	if (!buff)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(ctx);
 
 	while (Containers)   {
@@ -459,6 +462,9 @@ sc_oberthur_parse_publicinfo (struct sc_pkcs15_card *p15card,
 	size_t ii;
 	int rv;
 
+	if (!buff)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(ctx);
 	for (ii=0; ii+5<=len; ii+=5)   {
 		unsigned int file_id, size;
@@ -502,6 +508,9 @@ sc_oberthur_parse_privateinfo (struct sc_pkcs15_card *p15card,
 	size_t ii;
 	int rv;
 	int no_more_private_keys = 0, no_more_private_data = 0;
+
+	if (!buff)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -1180,6 +1189,9 @@ sc_awp_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	unsigned char *buf = NULL;
 	size_t buf_len;
 	int rv;
+
+	if (!df)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(ctx);
 	if (df->type != SC_PKCS15_PRKDF && df->type != SC_PKCS15_DODF)
