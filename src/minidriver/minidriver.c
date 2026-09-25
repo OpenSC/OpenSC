@@ -4943,6 +4943,48 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		}
 	}
 
+	/* Check if the selected padding algorithm is supported */
+	sc_algorithm_info_t *alg_info = NULL;
+	if (prkey_info->modulus_length > 0) {
+		alg_info = sc_card_find_rsa_alg(vs->p15card->card, (unsigned int) prkey_info->modulus_length);
+	} else if (prkey_info->field_length > 0) {
+		alg_info = sc_card_find_ec_alg(vs->p15card->card, prkey_info->field_length, NULL);
+	}
+
+	if (!alg_info) {
+		logprintf(pCardData, 2, "Cannot get appropriate card algorithm for key\n");
+		dwret = SCARD_E_UNSUPPORTED_FEATURE;
+		goto err;
+	}
+
+	if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PSS) {
+		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PSS)) {
+#ifdef ENABLE_OPENSSL
+			if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+				logprintf(pCardData, 2, "PSS padding requires native PSS or RAW RSA support\n");
+				dwret = SCARD_E_UNSUPPORTED_FEATURE;
+				goto err;
+			}
+#else
+			logprintf(pCardData, 2, "PSS padding requires native PSS support\n");
+			dwret = SCARD_E_UNSUPPORTED_FEATURE;
+			goto err;
+#endif
+		}
+	} else if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01) {
+		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1) && !(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+			logprintf(pCardData, 2, "PKCS1 padding requires native PKCS1 or RAW RSA support\n");
+			dwret = SCARD_E_UNSUPPORTED_FEATURE;
+			goto err;
+		}
+	} else if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_NONE) {
+		if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+			logprintf(pCardData, 2, "No padding requires RAW RSA support\n");
+			dwret = SCARD_E_UNSUPPORTED_FEATURE;
+			goto err;
+		}
+	}
+
 	/* Compute output size */
 	if ( prkey_info->modulus_length > 0) {
 		/* RSA */
