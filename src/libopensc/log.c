@@ -372,18 +372,23 @@ void sc_hex_dump(const u8 * in, size_t count, char *buf, size_t len)
 	size_t p_len = len;
 	int lines = 0;
 
-	if (buf == NULL || (in == NULL && count != 0)) {
+	if (buf == NULL || len == 0 || (in == NULL && count != 0)) {
 		return;
 	}
 	buf[0] = 0;
-	if ((count * 5) > len)
+	if (count == 0)
 		return;
-	while (count) {
+	if (count > (SIZE_MAX - 15) / 65 || ((count + 15) / 16) * 65 >= len)
+		return;
+	while (count && p_len > 0) {
 		char ascbuf[17];
 		size_t i;
+		size_t asc_len;
 
 		for (i = 0; i < count && i < 16; i++) {
-			sprintf(p, "%02X ", *in);
+			if (p_len < 4)
+				return;
+			snprintf(p, p_len, "%02X ", *in);
 			if (isprint(*in))
 				ascbuf[i] = *in;
 			else
@@ -394,14 +399,19 @@ void sc_hex_dump(const u8 * in, size_t count, char *buf, size_t len)
 		}
 		count -= i;
 		ascbuf[i] = 0;
+		asc_len = i;
 		for (; i < 16 && lines; i++) {
+			if (p_len < 4)
+				return;
 			strlcat(p, "   ", p_len);
 			p += 3;
 			p_len -= 3;
 		}
+		if (p_len < asc_len + 2)
+			return;
 		snprintf(p, p_len, "%s\n", ascbuf);
-		p += strlen(ascbuf) + 1;
-		p_len -= strlen(ascbuf) - 1;
+		p += asc_len + 1;
+		p_len -= asc_len + 1;
 		lines++;
 	}
 }
