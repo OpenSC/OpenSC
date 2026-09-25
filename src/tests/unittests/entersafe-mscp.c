@@ -43,9 +43,9 @@ put_le32(u8 *p, unsigned int v)
 
 /* Append one (type, len, value) triple; returns bytes written. */
 static size_t
-put_attr(u8 *p, unsigned int type, unsigned int len, u8 fill)
+put_attr(u8 *p, CK_ATTRIBUTE_TYPE type, unsigned int len, u8 fill)
 {
-	put_le32(p, type);
+	put_le32(p, (unsigned int)type);
 	put_le32(p + 4, len);
 	memset(p + 8, fill, len);
 	return 8 + (size_t)len;
@@ -61,15 +61,15 @@ torture_mscp_attrs_wellformed(void **state)
 	struct es_p11_attr *attrs = NULL;
 	size_t nattrs = 0;
 
-	n += put_attr(buf + n, P11_CKA_ID, 2, 0xAB);
-	n += put_attr(buf + n, P11_CKA_VALUE, 4, 0xCD);
+	n += put_attr(buf + n, CKA_ID, 2, 0xAB);
+	n += put_attr(buf + n, CKA_VALUE, 4, 0xCD);
 
 	assert_int_equal(es_parse_p11_attrs(buf, n, &attrs, &nattrs), SC_SUCCESS);
 	assert_int_equal(nattrs, 2);
-	assert_int_equal(attrs[0].type, P11_CKA_ID);
+	assert_int_equal(attrs[0].type, CKA_ID);
 	assert_int_equal(attrs[0].len, 2);
 	assert_ptr_equal(attrs[0].value, buf + 8);
-	assert_int_equal(attrs[1].type, P11_CKA_VALUE);
+	assert_int_equal(attrs[1].type, CKA_VALUE);
 	assert_int_equal(attrs[1].len, 4);
 	assert_ptr_equal(attrs[1].value, buf + 8 + 2 + 8);
 	free(attrs);
@@ -83,7 +83,7 @@ torture_mscp_attrs_exact_fit(void **state)
 	struct es_p11_attr *attrs = NULL;
 	size_t nattrs = 0;
 
-	put_attr(buf, P11_CKA_VALUE, 8, 0x11);
+	put_attr(buf, CKA_VALUE, 8, 0x11);
 
 	assert_int_equal(es_parse_p11_attrs(buf, sizeof buf, &attrs, &nattrs), SC_SUCCESS);
 	assert_int_equal(nattrs, 1);
@@ -109,7 +109,7 @@ torture_mscp_attrs_huge_len_first(void **state)
 	size_t nattrs = 0;
 
 	memset(buf, 0, sizeof buf);
-	put_le32(buf, P11_CKA_VALUE);
+	put_le32(buf, (unsigned int)CKA_VALUE);
 	put_le32(buf + 4, 0xFFFFFFF9u); /* 0 + 8 + alen wraps to 1 in 32 bit */
 
 	assert_int_equal(es_parse_p11_attrs(buf, sizeof buf, &attrs, &nattrs),
@@ -128,13 +128,13 @@ torture_mscp_attrs_huge_len_trailing(void **state)
 	size_t nattrs = 0;
 
 	memset(buf, 0, sizeof buf);
-	n += put_attr(buf + n, P11_CKA_ID, 2, 0xAB);
-	put_le32(buf + n, P11_CKA_VALUE);
+	n += put_attr(buf + n, CKA_ID, 2, 0xAB);
+	put_le32(buf + n, (unsigned int)CKA_VALUE);
 	put_le32(buf + n + 4, 0x80000000u);
 
 	assert_int_equal(es_parse_p11_attrs(buf, sizeof buf, &attrs, &nattrs), SC_SUCCESS);
 	assert_int_equal(nattrs, 1);
-	assert_int_equal(attrs[0].type, P11_CKA_ID);
+	assert_int_equal(attrs[0].type, CKA_ID);
 	/* value + len must stay inside buf */
 	assert_true(attrs[0].value + attrs[0].len <= buf + sizeof buf);
 	free(attrs);
@@ -149,7 +149,7 @@ torture_mscp_attrs_one_past_end(void **state)
 	size_t nattrs = 0;
 
 	memset(buf, 0, sizeof buf);
-	put_le32(buf, P11_CKA_VALUE);
+	put_le32(buf, (unsigned int)CKA_VALUE);
 	put_le32(buf + 4, 9); /* 8 + 9 = 17 > 16 */
 
 	assert_int_equal(es_parse_p11_attrs(buf, sizeof buf, &attrs, &nattrs),
@@ -387,6 +387,50 @@ torture_mscp_modulus_bytes(void **state)
 	assert_int_equal(es_modulus_bytes(mod1024, sizeof mod1024), 1);
 }
 
+/* Attribute type numbers written out from the PKCS#11 specification on
+ * purpose, independent of the constants the emulator uses. */
+#define SPEC_CKA_DECRYPT      0x105U
+#define SPEC_CKA_UNWRAP	      0x107U
+#define SPEC_CKA_SIGN	      0x108U
+#define SPEC_CKA_SIGN_RECOVER 0x109U
+
+static unsigned int
+usage_of(unsigned int decrypt, unsigned int unwrap, unsigned int sign, unsigned int sign_recover)
+{
+	u8 buf[4 * 9];
+	size_t n = 0;
+	struct es_p11_attr *attrs = NULL;
+	size_t nattrs = 0;
+	unsigned int usage;
+
+	n += put_attr(buf + n, SPEC_CKA_DECRYPT, 1, (u8)decrypt);
+	n += put_attr(buf + n, SPEC_CKA_UNWRAP, 1, (u8)unwrap);
+	n += put_attr(buf + n, SPEC_CKA_SIGN, 1, (u8)sign);
+	n += put_attr(buf + n, SPEC_CKA_SIGN_RECOVER, 1, (u8)sign_recover);
+	assert_int_equal(es_parse_p11_attrs(buf, n, &attrs, &nattrs), SC_SUCCESS);
+	usage = es_prkey_usage(attrs, nattrs);
+	free(attrs);
+	return usage;
+}
+
+/* Each flag must be read from its own attribute: a signing key that cannot
+ * unwrap still signs, and an unwrap-only key does not. */
+static void
+torture_mscp_prkey_usage(void **state)
+{
+	unsigned int all;
+
+	(void)state;
+	assert_int_equal(usage_of(0, 0, 1, 0), SC_PKCS15_PRKEY_USAGE_SIGN);
+	assert_int_equal(usage_of(0, 1, 0, 0), 0);
+	assert_int_equal(usage_of(0, 0, 0, 1), SC_PKCS15_PRKEY_USAGE_SIGNRECOVER);
+	assert_int_equal(usage_of(1, 0, 0, 0), SC_PKCS15_PRKEY_USAGE_DECRYPT);
+	/* the reference card: all four set */
+	all = SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_SIGNRECOVER |
+	      SC_PKCS15_PRKEY_USAGE_DECRYPT;
+	assert_int_equal(usage_of(1, 1, 1, 1), all);
+}
+
 int
 main(void)
 {
@@ -414,6 +458,8 @@ main(void)
 			/* es_strip_leading_zeros() / es_modulus_bytes() */
 			cmocka_unit_test(torture_mscp_strip_leading_zeros),
 			cmocka_unit_test(torture_mscp_modulus_bytes),
+			/* es_prkey_usage() */
+			cmocka_unit_test(torture_mscp_prkey_usage),
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);

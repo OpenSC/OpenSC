@@ -41,6 +41,7 @@
 #include "asn1.h"
 #include "cardctl.h"
 #include "internal.h"
+#include "pkcs11/pkcs11.h"
 #include "pkcs15.h"
 
 /* Application DF and fixed entry point of the MSCP directory index. The
@@ -51,31 +52,27 @@
 #define ES_MSCP_INDEX_RECLEN 30
 #define ES_MSCP_TOKEN_LABEL  "ENTERSAFE-ESPK"
 
-/* PKCS#11 base-spec attribute type values, as they appear verbatim (as
- * little-endian u32) in the card's attribute streams. Kept local instead of
- * pulling in src/pkcs11/pkcs11.h, which belongs to a different module. */
-#define P11_CKA_LABEL		0x00000003U
-#define P11_CKA_VALUE		0x00000011U
-#define P11_CKA_DECRYPT		0x00000105U
-#define P11_CKA_SIGN		0x00000107U
-#define P11_CKA_SIGN_RECOVER	0x00000108U
-#define P11_CKA_ID		0x00000102U
-#define P11_CKA_MODULUS		0x00000120U
-#define P11_CKA_PUBLIC_EXPONENT 0x00000122U
-/* Vendor attribute: the card's internal key handle (e.g. 0xA060), little-endian. */
-#define P11_CKA_VENDOR_KEY_HANDLE 0x80000100U
+/* Vendor attribute holding the card's internal key handle (e.g. 0xA060), little-endian. */
+#define ES_MSCP_CKA_KEY_HANDLE (CKA_VENDOR_DEFINED | 0x100UL)
 
 /* CHV reference for card-epass2003.c's EXTERNAL AUTHENTICATE based PIN check. */
 #define ES_MSCP_PIN_REFERENCE 1
 #define ES_MSCP_PIN_AUTH_ID   "1"
 
-/* Private key handle range. The generic PKCS#15 layer carries a single key
- * reference byte (senv.key_ref[0] in pkcs15-sec.c) and card-epass2003.c
- * rebuilds the FID as 0xA000 | that byte, so a handle outside 0xA000..0xA0FF
- * cannot survive the round trip: 0xA120 would come back as 0xA020 and address
- * a different key. Reject those instead of signing with the wrong key. */
-#define ES_MSCP_PRIV_HANDLE_BASE 0xA020U
-#define ES_MSCP_PRIV_HANDLE_MAX	 0xA0FFU
+/* Usable private key handles. The vendor layout numbers them 0xA020 + 0x20*n.
+ * The generic PKCS#15 layer carries a single key reference byte
+ * (senv.key_ref[0] in pkcs15-sec.c) and card-epass2003.c rebuilds the FID as
+ * 0xA000 | that byte, so a handle above 0xA0FF cannot survive the round trip:
+ * 0xA120 would come back as 0xA020 and address a different key. Reject those
+ * instead of signing with the wrong key. */
+#define ES_MSCP_PRIV_HANDLE_MIN 0xA020U
+#define ES_MSCP_PRIV_HANDLE_MAX 0xA0FFU
+
+/* Any private key handle as it may appear in the containermap. This only
+ * decides whether a record is a key pair or the end of the list; whether the
+ * handle is usable is checked per key with ES_MSCP_PRIV_HANDLE_MIN/MAX. */
+#define ES_MSCP_CMAP_PRIV_MIN 0xA000U
+#define ES_MSCP_CMAP_PRIV_MAX 0xAFFFU
 
 /* Public key handles live in their own range in the containermap. */
 #define ES_MSCP_PUB_HANDLE_MIN 0x8000U
@@ -103,7 +100,7 @@ struct es_mscp_entry {
 };
 
 struct es_p11_attr {
-	unsigned int type;
+	CK_ATTRIBUTE_TYPE type;
 	const u8 *value;
 	unsigned int len;
 };
@@ -313,7 +310,7 @@ es_parse_p11_attrs(const u8 *buf, size_t len,
 
 static const struct es_p11_attr *
 es_find_attr(const struct es_p11_attr *attrs,
-		size_t count, unsigned int type)
+		size_t count, CK_ATTRIBUTE_TYPE type)
 {
 	size_t i;
 
@@ -351,7 +348,7 @@ es_add_cert(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 		return r;
 	}
 
-	a_value = es_find_attr(attrs, nattrs, P11_CKA_VALUE);
+	a_value = es_find_attr(attrs, nattrs, CKA_VALUE);
 	if (!a_value || a_value->len == 0) {
 		sc_log(card->ctx, "entersafe-mscp: %s has no CKA_VALUE, skipping",
 				entry->filename);
@@ -369,7 +366,7 @@ es_add_cert(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 	memcpy(cert_info.value.value, a_value->value, a_value->len);
 	cert_info.value.len = a_value->len;
 
-	a_id = es_find_attr(attrs, nattrs, P11_CKA_ID);
+	a_id = es_find_attr(attrs, nattrs, CKA_ID);
 	if (a_id && a_id->len > 0) {
 		size_t idlen = a_id->len;
 
@@ -379,7 +376,7 @@ es_add_cert(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 		cert_info.id.len = idlen;
 	}
 
-	a_label = es_find_attr(attrs, nattrs, P11_CKA_LABEL);
+	a_label = es_find_attr(attrs, nattrs, CKA_LABEL);
 	if (a_label && a_label->len > 0) {
 		size_t lbl_len = a_label->len;
 
@@ -432,8 +429,8 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 		return r;
 	}
 
-	a_mod = es_find_attr(attrs, nattrs, P11_CKA_MODULUS);
-	a_exp = es_find_attr(attrs, nattrs, P11_CKA_PUBLIC_EXPONENT);
+	a_mod = es_find_attr(attrs, nattrs, CKA_MODULUS);
+	a_exp = es_find_attr(attrs, nattrs, CKA_PUBLIC_EXPONENT);
 	if (!a_mod || !a_exp || a_mod->len == 0 || a_exp->len == 0) {
 		sc_log(card->ctx, "entersafe-mscp: %s missing modulus/exponent, skipping",
 				entry->filename);
@@ -471,7 +468,7 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 	pubkey_info.native = 1;
 	pubkey_info.usage = SC_PKCS15_PRKEY_USAGE_ENCRYPT | SC_PKCS15_PRKEY_USAGE_VERIFY;
 
-	a_handle = es_find_attr(attrs, nattrs, P11_CKA_VENDOR_KEY_HANDLE);
+	a_handle = es_find_attr(attrs, nattrs, ES_MSCP_CKA_KEY_HANDLE);
 	if (a_handle && a_handle->len == 4) {
 		unsigned int h = es_le32(a_handle->value);
 
@@ -481,7 +478,7 @@ es_add_pubkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entry)
 			pubkey_info.key_reference = (int)h;
 	}
 
-	a_id = es_find_attr(attrs, nattrs, P11_CKA_ID);
+	a_id = es_find_attr(attrs, nattrs, CKA_ID);
 	if (a_id && a_id->len > 0) {
 		size_t idlen = a_id->len;
 
@@ -531,7 +528,7 @@ es_parse_containermap(const u8 *buf, size_t len, struct es_containers *cm)
 		unsigned int priv = es_le32(buf + i);
 		unsigned int pub = es_le32(buf + i + 4);
 
-		if (priv < 0xA000 || priv > 0xAFFF ||
+		if (priv < ES_MSCP_CMAP_PRIV_MIN || priv > ES_MSCP_CMAP_PRIV_MAX ||
 				pub < ES_MSCP_PUB_HANDLE_MIN || pub > ES_MSCP_PUB_HANDLE_MAX)
 			break;
 		cm->c[cm->n].priv_handle = priv;
@@ -587,7 +584,7 @@ es_container_pub_for_priv_low(const struct es_containers *cm, unsigned int priv_
 static int
 es_priv_handle_usable(unsigned int handle)
 {
-	return handle >= ES_MSCP_PRIV_HANDLE_BASE && handle <= ES_MSCP_PRIV_HANDLE_MAX;
+	return handle >= ES_MSCP_PRIV_HANDLE_MIN && handle <= ES_MSCP_PRIV_HANDLE_MAX;
 }
 
 static int
@@ -624,8 +621,8 @@ es_prkey_lookup_mod_and_handle(sc_pkcs15_card_t *p15card,
 	size_t pubnattrs = 0;
 	int r;
 
-	a_mod = es_find_attr(attrs, nattrs, P11_CKA_MODULUS);
-	a_handle = es_find_attr(attrs, nattrs, P11_CKA_VENDOR_KEY_HANDLE);
+	a_mod = es_find_attr(attrs, nattrs, CKA_MODULUS);
+	a_handle = es_find_attr(attrs, nattrs, ES_MSCP_CKA_KEY_HANDLE);
 	if (a_mod && a_mod->len > 0 && a_handle && a_handle->len == 4) {
 		*out_modulus_len = es_modulus_bytes(a_mod->value, a_mod->len);
 		*out_vendor_handle = es_le32(a_handle->value);
@@ -654,8 +651,8 @@ es_prkey_lookup_mod_and_handle(sc_pkcs15_card_t *p15card,
 		return r;
 	}
 
-	a_mod = es_find_attr(pubattrs, pubnattrs, P11_CKA_MODULUS);
-	a_handle = es_find_attr(pubattrs, pubnattrs, P11_CKA_VENDOR_KEY_HANDLE);
+	a_mod = es_find_attr(pubattrs, pubnattrs, CKA_MODULUS);
+	a_handle = es_find_attr(pubattrs, pubnattrs, ES_MSCP_CKA_KEY_HANDLE);
 	if (!a_mod || a_mod->len == 0 || !a_handle || a_handle->len != 4) {
 		free(pubattrs);
 		free(pubbuf);
@@ -675,6 +672,27 @@ es_prkey_lookup_mod_and_handle(sc_pkcs15_card_t *p15card,
 	return SC_SUCCESS;
 }
 
+/* PKCS#15 usage of a private key from its CKA_SIGN / CKA_SIGN_RECOVER /
+ * CKA_DECRYPT attributes. A key that states neither signing nor decryption is
+ * assumed to sign. */
+static unsigned int
+es_prkey_usage(const struct es_p11_attr *attrs, size_t nattrs)
+{
+	const struct es_p11_attr *a_sign, *a_sign_rec, *a_decrypt;
+	unsigned int usage = 0;
+
+	a_sign = es_find_attr(attrs, nattrs, CKA_SIGN);
+	a_sign_rec = es_find_attr(attrs, nattrs, CKA_SIGN_RECOVER);
+	a_decrypt = es_find_attr(attrs, nattrs, CKA_DECRYPT);
+	if ((a_sign && a_sign->len && a_sign->value[0]) || (!a_sign && !a_decrypt))
+		usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
+	if (a_sign_rec && a_sign_rec->len && a_sign_rec->value[0])
+		usage |= SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
+	if (a_decrypt && a_decrypt->len && a_decrypt->value[0])
+		usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT;
+	return usage;
+}
+
 static int
 es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 		size_t nentries, const struct es_containers *cm, const struct es_mscp_entry *entry)
@@ -684,7 +702,7 @@ es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 	size_t len = 0;
 	struct es_p11_attr *attrs = NULL;
 	size_t nattrs = 0;
-	const struct es_p11_attr *a_id, *a_sign, *a_sign_rec, *a_decrypt;
+	const struct es_p11_attr *a_id;
 	sc_pkcs15_prkey_info_t prkey_info = {0};
 	sc_pkcs15_object_t prkey_obj = {0};
 	size_t modulus_len = 0;
@@ -720,7 +738,7 @@ es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 				"entersafe-mscp: %s (fid %04X) has vendor handle %04X outside the "
 				"addressable range %04X..%04X, skipping",
 				entry->filename, entry->fid, vendor_handle,
-				ES_MSCP_PRIV_HANDLE_BASE, ES_MSCP_PRIV_HANDLE_MAX);
+				ES_MSCP_PRIV_HANDLE_MIN, ES_MSCP_PRIV_HANDLE_MAX);
 		free(attrs);
 		free(buf);
 		return SC_ERROR_OBJECT_NOT_FOUND;
@@ -742,17 +760,9 @@ es_add_prkey(sc_pkcs15_card_t *p15card, const struct es_mscp_entry *entries,
 	prkey_info.key_reference = (int)(vendor_handle & 0xff);
 	prkey_info.modulus_length = modulus_len * 8;
 
-	a_sign = es_find_attr(attrs, nattrs, P11_CKA_SIGN);
-	a_sign_rec = es_find_attr(attrs, nattrs, P11_CKA_SIGN_RECOVER);
-	a_decrypt = es_find_attr(attrs, nattrs, P11_CKA_DECRYPT);
-	if ((a_sign && a_sign->len && a_sign->value[0]) || (!a_sign && !a_decrypt))
-		prkey_info.usage |= SC_PKCS15_PRKEY_USAGE_SIGN;
-	if (a_sign_rec && a_sign_rec->len && a_sign_rec->value[0])
-		prkey_info.usage |= SC_PKCS15_PRKEY_USAGE_SIGNRECOVER;
-	if (a_decrypt && a_decrypt->len && a_decrypt->value[0])
-		prkey_info.usage |= SC_PKCS15_PRKEY_USAGE_DECRYPT;
+	prkey_info.usage = es_prkey_usage(attrs, nattrs);
 
-	a_id = es_find_attr(attrs, nattrs, P11_CKA_ID);
+	a_id = es_find_attr(attrs, nattrs, CKA_ID);
 	if (a_id && a_id->len > 0) {
 		size_t idlen = a_id->len;
 
