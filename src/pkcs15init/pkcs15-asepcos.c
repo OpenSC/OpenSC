@@ -661,6 +661,9 @@ static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *pro
 	sc_path_t tpath;
 	sc_cardctl_asepcos_change_key_t	ckdata;
 
+	if (!key || !key->exponent.data || !key->exponent.len || !key->p.data || !key->p.len || !key->q.data || !key->q.len || key->exponent.len > sizeof(buf) || key->p.len > sizeof(buf) || key->q.len > sizeof(buf) || key->exponent.len + key->p.len + key->q.len + 32 > sizeof(buf))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* authenticate if necessary */
 	if (obj->auth_id.len != 0) {
 		r = asepcos_do_authenticate(profile, p15card, &kinfo->path, SC_AC_OP_UPDATE);
