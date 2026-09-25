@@ -709,6 +709,7 @@ authentic_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_STORE, sdo);
 	LOG_TEST_RET(ctx, rv, "store IAS SDO PRIVATE KEY failed");
 
+	sdo->data.prvkey = NULL;
 	authentic_free_sdo_data(sdo);
 	sc_pkcs15_free_object_content(object);
 
