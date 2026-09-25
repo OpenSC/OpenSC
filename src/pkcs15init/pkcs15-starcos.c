@@ -548,6 +548,8 @@ static int starcos_encode_prkey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf)
 			*p++ = 0x00;
 		for (i = rsa->dmp1.len; i != 0; i--)
 			*p++ = rsa->dmp1.data[i - 1];
+		if (rsa->p.len < rsa->iqmp.len)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		for (i = rsa->iqmp.len; i != 0; i--)
 			*p++ = rsa->iqmp.data[i - 1];
 		for (i = rsa->p.len - rsa->iqmp.len; i != 0; i--)
