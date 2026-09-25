@@ -573,6 +573,9 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	          fileid = (kinfo->path.value[kinfo->path.len-2]) << 8 |
 	                   kinfo->path.value[kinfo->path.len-1];
 
+	if (blen + 64 > sizeof(buf))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (obj->auth_id.len != 0) {
 		/* the key is protected by a PIN */
 		sc_pkcs15_object_t *pin;
@@ -660,6 +663,9 @@ static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *pro
 	u8        buf[512], *p = buf;
 	sc_path_t tpath;
 	sc_cardctl_asepcos_change_key_t	ckdata;
+
+	if (key->exponent.len + key->p.len + key->q.len + 32 > sizeof(buf))
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* authenticate if necessary */
 	if (obj->auth_id.len != 0) {
