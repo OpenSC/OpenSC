@@ -17,12 +17,18 @@ LIBS = $(TOPDIR)\src\libopensc\opensc_a.lib \
 	   $(TOPDIR)\src\ui\notify.lib \
 	   $(TOPDIR)\src\sm\libsmiso.lib \
 	   $(TOPDIR)\src\sm\libsmeac.lib \
+	   $(TOPDIR)\src\sm\libsmjacartapki.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib
 LIBS3 = $(TOPDIR)\src\common\libpkcs11.lib $(TOPDIR)\src\common\libscdl.lib $(TOPDIR)\src\common\common.lib
 
 all: $(TARGET1) $(TARGET3)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
+
+!IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
+LIBS = $(LIBS) \
+	   $(TOPDIR)\src\sm\libsm.lib
+!ENDIF
 
 $(TARGET1): $(OBJECTS) $(LIBS) pkcs11.def
 	link /dll $(LINKFLAGS) /out:$@ /def:pkcs11.def /implib:$*.lib $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib Comctl32.lib Shell32.lib user32.lib advapi32.lib ws2_32.lib Shell32.lib Comctl32.lib shlwapi.lib
