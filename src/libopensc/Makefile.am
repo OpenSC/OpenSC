@@ -52,6 +52,7 @@ libopensc_la_SOURCES_BASE = \
 	card-npa.c card-esteid2018.c card-esteid2025.c card-idprime.c \
 	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c card-dtrust.c \
 	card-lteid.c card-srbeid.c card-cedulauy.c \
+	card-starsign.c \
 	\
 	pkcs15-openpgp.c pkcs15-starcert.c pkcs15-cardos.c pkcs15-tcos.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c pkcs15-piv.c \
@@ -60,7 +61,7 @@ libopensc_la_SOURCES_BASE = \
 	pkcs15-coolkey.c pkcs15-din-66291.c pkcs15-idprime.c pkcs15-nqApplet.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-cedulauy.c pkcs15-jpki.c pkcs15-esteid2018.c \
 	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-eoi.c pkcs15-dtrust.c pkcs15-lteid.c \
-	pkcs15-srbeid.c compression.c sm.c aux-data.c
+	pkcs15-srbeid.c pkcs15-starsign.c compression.c sm.c aux-data.c
 
 if ENABLE_CRYPTOTOKENKIT
 # most platforms don't support objective C the way we needed.
@@ -134,6 +135,7 @@ TIDY_FILES = \
 	card-npa.c card-esteid2018.c card-idprime.c \
 	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c card-dtrust.c \
 	card-lteid.c card-srbeid.c card-cedulauy.c \
+	card-starsign.c \
 	\
 	pkcs15-openpgp.c pkcs15-cardos.c pkcs15-tcos.c \
 	pkcs15-actalis.c pkcs15-atrust-acos.c pkcs15-tccardos.c \
@@ -142,7 +144,7 @@ TIDY_FILES = \
 	pkcs15-coolkey.c pkcs15-din-66291.c pkcs15-idprime.c pkcs15-nqApplet.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-cedulauy.c pkcs15-jpki.c pkcs15-esteid2018.c \
 	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-dtrust.c pkcs15-lteid.c \
-	pkcs15-srbeid.c compression.c sm.c aux-data.c \
+	pkcs15-srbeid.c pkcs15-starsign.c compression.c sm.c aux-data.c \
 	#$(SOURCES)
 
 check-local:
