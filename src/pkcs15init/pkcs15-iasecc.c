@@ -1103,7 +1103,10 @@ iasecc_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 
 err:
 	iasecc_sdo_free(card, sdo_pubkey);
-	iasecc_sdo_free(card, sdo_prvkey);
+	if (rv == SC_SUCCESS)
+		free(sdo_prvkey);
+	else
+		iasecc_sdo_free(card, sdo_prvkey);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
