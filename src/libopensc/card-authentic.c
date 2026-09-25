@@ -916,6 +916,9 @@ authentic_create_file(struct sc_card *card, struct sc_file *file)
 	if (file->type != SC_FILE_TYPE_WORKING_EF)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Creation of the file with of this type is not supported");
 
+	if (file->path.len < 2)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid path length");
+
 	rv = authentic_fcp_encode(card, file, sbuf + 2, sizeof(sbuf)-2);
 	LOG_TEST_RET(ctx, rv, "FCP encode error");
 	sbuf_len = rv;
@@ -953,7 +956,7 @@ authentic_delete_file(struct sc_card *card, const struct sc_path *path)
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (!path)
+	if (!path || path->len < 2)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	for (ii=0, p1 = 0x02; ii<2; ii++, p1 = 0x01)   {

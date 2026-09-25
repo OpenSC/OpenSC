@@ -240,7 +240,7 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 
 	file->id = (file->id & 0xFF00) | (num & 0xFF);
 	if (file->type != SC_FILE_TYPE_BSO)   {
-		if (file->path.len == 0)   {
+		if (file->path.len < 2)   {
 			file->path.type = SC_PATH_TYPE_FILE_ID;
 			file->path.len = 2;
 		}
