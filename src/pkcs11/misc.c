@@ -317,6 +317,9 @@ CK_RV attr_extract(CK_ATTRIBUTE_PTR pAttr, void *ptr, size_t * sizep)
 {
 	size_t size;
 
+	if (!pAttr || !ptr)
+		return CKR_ARGUMENTS_BAD;
+
 	if (sizep) {
 		size = *sizep;
 		if (size < pAttr->ulValueLen)
@@ -350,7 +353,11 @@ CK_RV attr_extract(CK_ATTRIBUTE_PTR pAttr, void *ptr, size_t * sizep)
 		if (size != pAttr->ulValueLen)
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 	}
-	memcpy(ptr, pAttr->pValue, pAttr->ulValueLen);
+	if (pAttr->ulValueLen) {
+		if (!pAttr->pValue)
+			return CKR_ATTRIBUTE_VALUE_INVALID;
+		memcpy(ptr, pAttr->pValue, pAttr->ulValueLen);
+	}
 	return CKR_OK;
 }
 
@@ -393,6 +400,15 @@ CK_RV attr_find_and_allocate_ptr(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, C
 	rv = attr_find_ptr(pTemplate, ulCount, type, &ptr, &len);
 	if (rv != CKR_OK)
 		return rv;
+
+	if (len == 0) {
+		*out = NULL;
+		*out_len = 0;
+		return CKR_OK;
+	}
+
+	if (ptr == NULL)
+		return CKR_ATTRIBUTE_VALUE_INVALID;
 
 	*out = calloc(1, len);
 	if (*out == NULL)
