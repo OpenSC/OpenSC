@@ -58,6 +58,10 @@ static int openpgp_erase(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 static int openpgp_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *df)
 {
+	(void)profile;
+	(void)p15card;
+	(void)df;
+
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
@@ -69,6 +73,10 @@ static int openpgp_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int openpgp_select_pin_reference(sc_profile_t *profile,
 		sc_pkcs15_card_t *p15card, sc_pkcs15_auth_info_t *auth_info)
 {
+	(void)profile;
+	(void)p15card;
+	(void)auth_info;
+
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
@@ -87,6 +95,15 @@ static int openpgp_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *df, sc_pkcs15_object_t *pin_obj,
 	const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
 {
+	(void)profile;
+	(void)p15card;
+	(void)df;
+	(void)pin_obj;
+	(void)pin;
+	(void)pin_len;
+	(void)puk;
+	(void)puk_len;
+
 	return SC_ERROR_NOT_SUPPORTED;
 }
 
@@ -100,6 +117,9 @@ static int openpgp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	 * so this function does not really do anything.
 	 * It just present here to avoid pkcs15init's default routine,
 	 * which tries to do impossible things. */
+	(void)profile;
+	(void)obj;
+
 	LOG_FUNC_CALLED(p15card->card->ctx);
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
@@ -175,6 +195,8 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
 	sc_cardctl_openpgp_key_gen_store_info_t key_info = {0};
 	int r;
+
+	(void)profile;
 
 	LOG_FUNC_CALLED(card->ctx);
 

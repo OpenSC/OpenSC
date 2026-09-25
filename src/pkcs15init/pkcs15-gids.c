@@ -105,6 +105,10 @@ gids_delete_object(struct sc_profile *profile, struct sc_pkcs15_card * p15card,
 static int gids_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		unsigned op, struct sc_pkcs15_object *object)
 {
+	(void)profile;
+	(void)op;
+	(void)object;
+
 	LOG_FUNC_CALLED(p15card->card->ctx);
 	/* After storing object, pkcs15init will call this function to update DF.
 	 * But GIDS has no other DF than GIDS-Application, so we do nothing. */
@@ -133,6 +137,9 @@ static int gids_emu_store_data(struct sc_pkcs15_card *p15card, struct sc_profile
 	sc_card_t *card = p15card->card;
 	int r;
 
+	(void)profile;
+	(void)content;
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	switch (object->type & SC_PKCS15_TYPE_CLASS_MASK) {
@@ -155,6 +162,9 @@ static int gids_emu_store_data(struct sc_pkcs15_card *p15card, struct sc_profile
 static int gids_emu_update_tokeninfo(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 										sc_pkcs15_tokeninfo_t *tokeninfo)
 {
+	(void)profile;
+	(void)tokeninfo;
+
 	LOG_FUNC_CALLED(p15card->card->ctx);
 	/* When unbinding pkcs15init, this function will be called.
 	 * But for GIDS, token info does not need to change, we do nothing. */

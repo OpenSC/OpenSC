@@ -158,6 +158,9 @@ static int
 cardos_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_auth_info_t *auth_info)
 {
+	(void)profile;
+	(void)p15card;
+
 	int	preferred, current;
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
@@ -234,6 +237,9 @@ static int
 cardos_select_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_prkey_info_t *key_info)
 {
+	(void)profile;
+	(void)p15card;
+
 	if (key_info->key_reference < CARDOS_KEY_ID_MIN)
 		key_info->key_reference = CARDOS_KEY_ID_MIN;
 	if (key_info->key_reference > CARDOS_KEY_ID_MAX)
@@ -249,6 +255,10 @@ static int
 cardos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_object_t *obj)
 {
+	(void)profile;
+	(void)p15card;
+	(void)obj;
+
 	return 0;
 }
 
@@ -580,6 +590,8 @@ cardos_create_sec_env(struct sc_profile *profile, sc_card_t *card,
 	struct tlv	tlv;
 	unsigned char	buffer[64];
 	int		r;
+
+	(void)profile;
 
 	tlv_init(&tlv, buffer, sizeof(buffer));
 	if (tlv_next(&tlv, 0x83) != SC_SUCCESS

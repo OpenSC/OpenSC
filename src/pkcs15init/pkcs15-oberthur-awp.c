@@ -317,6 +317,9 @@ awp_create_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	struct sc_file *clist = NULL, *file = NULL;
 	int rv = 0;
 
+	(void)key_id;
+	(void)type;
+
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx,  "create container(%X:%X:%X)", acc->prkey_id, acc->cert_id, acc->pubkey_id);
 
@@ -548,6 +551,9 @@ static int
 awp_update_df_create_pin(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		struct sc_pkcs15_object *pinobj)
 {
+	(void)profile;
+	(void)pinobj;
+
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	/* No update DF when creating PIN objects */
 	SC_FUNC_RETURN(p15card->card->ctx, 1, SC_SUCCESS);
@@ -1223,6 +1229,8 @@ awp_get_lv(struct sc_context *ctx, unsigned char *buf, size_t buf_len,
 		struct awp_lv *out)
 {
 	int len = 0, ii;
+
+	(void)ctx;
 
 	if (buf_len - offs < 2)
 		return 0;
