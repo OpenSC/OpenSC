@@ -206,14 +206,14 @@ awp_update_blob(struct sc_context *ctx,
 			return SC_ERROR_OUT_OF_MEMORY;
 		*(pp + *blob_size) = (lv->len >> 8) & 0xFF;
 		*(pp + *blob_size + 1) = lv->len & 0xFF;
-		memcpy(pp + *blob_size + 2, lv->value, (lv->len & 0xFF));
+		memcpy(pp + *blob_size + 2, lv->value, lv->len);
 		*blob_size += 2 + lv->len;
 		break;
 	case TLV_TYPE_LV :
 		if (!(pp = realloc(*blob, *blob_size + 1 + lv->len)))
 			return SC_ERROR_OUT_OF_MEMORY;
 		*(pp + *blob_size) = lv->len & 0xFF;
-		memcpy(pp + *blob_size + 1, lv->value, (lv->len & 0xFF));
+		memcpy(pp + *blob_size + 1, lv->value, lv->len);
 		*blob_size += 1 + lv->len;
 		break;
 	case TLV_TYPE_V :
@@ -514,7 +514,10 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 						rv = 0;
 						id_offs = 5 + *(buff+3);
 
-						if (key_id->len == *(buff + id_offs) &&
+						if (id_offs + 1 + key_id->len > ff->size)  {
+							rv = SC_ERROR_INVALID_DATA;
+						}
+						else if (key_id->len == *(buff + id_offs) &&
 								!memcmp(key_id->value, buff + id_offs + 1, key_id->len))  {
 							sc_log(ctx,  "found key file friend");
 							if (!rv)
