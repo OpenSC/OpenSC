@@ -323,7 +323,7 @@ myeid_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		return SC_ERROR_OBJECT_NOT_VALID;
 	if (auth_info->attrs.pin.reference >= MYEID_MAX_PINS)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (pin == NULL || puk == NULL || pin_len < 4 || puk_len < 4)
+	if (pin == NULL || puk == NULL || pin_len < 4 || pin_len > 8 || puk_len < 4 || puk_len > 8)
 		return SC_ERROR_INVALID_PIN_LENGTH;
 
 	sc_profile_get_pin_info(profile, (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
