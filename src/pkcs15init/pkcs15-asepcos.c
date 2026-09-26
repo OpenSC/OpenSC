@@ -569,9 +569,15 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	size_t    len;
 	u8        buf[512], *p = buf;
 	size_t    blen = kinfo->modulus_length / 8;
-	int       afileid = -1,
-	          fileid = (kinfo->path.value[kinfo->path.len-2]) << 8 |
-	                   kinfo->path.value[kinfo->path.len-1];
+	int       afileid = -1, fileid;
+
+	if (kinfo->path.len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	fileid = (kinfo->path.value[kinfo->path.len-2]) << 8 |
+	         kinfo->path.value[kinfo->path.len-1];
+
+	if (blen + 64 > sizeof(buf))
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (obj->auth_id.len != 0) {
 		/* the key is protected by a PIN */
@@ -661,12 +667,18 @@ static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *pro
 	sc_path_t tpath;
 	sc_cardctl_asepcos_change_key_t	ckdata;
 
+	if (key->exponent.len + key->p.len + key->q.len + 32 > sizeof(buf))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* authenticate if necessary */
 	if (obj->auth_id.len != 0) {
 		r = asepcos_do_authenticate(profile, p15card, &kinfo->path, SC_AC_OP_UPDATE);
 		if (r != SC_SUCCESS)
 			return r;
 	}
+
+	if (kinfo->path.len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* select the rsa private key */
 	memset(&tpath, 0, sizeof(sc_path_t));
@@ -756,6 +768,9 @@ static int asepcos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	r = asepcos_do_authenticate(profile, p15card, &kinfo->path, SC_AC_OP_UPDATE);
 	if (r != SC_SUCCESS)
 		return r;
+
+	if (kinfo->path.len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* select the rsa private key */
 	memset(&tpath, 0, sizeof(sc_path_t));

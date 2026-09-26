@@ -228,7 +228,7 @@ iasecc_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 	sc_log(ctx, "path(type:%X;path:%s)\n", file->path.type, sc_print_path(&file->path));
 
 	file->id = (file->id & 0xFF00) | (num & 0xFF);
-	if (file->path.len == 0)   {
+	if (file->path.len < 2)   {
 		file->path.type = SC_PATH_TYPE_FILE_ID;
 		file->path.len = 2;
 	}
@@ -1103,7 +1103,10 @@ iasecc_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 
 err:
 	iasecc_sdo_free(card, sdo_pubkey);
-	iasecc_sdo_free(card, sdo_prvkey);
+	if (rv == SC_SUCCESS)
+		free(sdo_prvkey);
+	else
+		iasecc_sdo_free(card, sdo_prvkey);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -1745,7 +1748,11 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 
 		for (ii=0; ii<nn_objs; ii++)   {
 			struct sc_pkcs15_data_info *info = (struct sc_pkcs15_data_info *)p15objects[ii]->data;
-			int file_id = info->path.value[info->path.len - 2] * 0x100 + info->path.value[info->path.len - 1];
+			int file_id;
+
+			if (info->path.len < 2)
+				continue;
+			file_id = info->path.value[info->path.len - 2] * 0x100 + info->path.value[info->path.len - 1];
 
 			sc_log(ctx, "iasecc_store_data_object() %i: file_id 0x%X, pfile->id 0x%X\n", ii, file_id, file->id);
 			if (file->id == file_id)

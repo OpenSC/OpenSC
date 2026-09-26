@@ -597,7 +597,7 @@ sc_profile_get_file_instance(struct sc_profile *profile, const char *name,
 			sc_file_free(file);
 		LOG_TEST_RET(ctx, r, "Profile error: cannot add BSO file");
 	}
-	else if (file->path.len)   {
+	else if (file->path.len >= 2)   {
 		file->path.value[file->path.len - 2] = (file->id >> 8) & 0xFF;
 		file->path.value[file->path.len - 1] = file->id & 0xFF;
 
@@ -605,6 +605,10 @@ sc_profile_get_file_instance(struct sc_profile *profile, const char *name,
 		if (r < 0)
 			sc_file_free(file);
 		LOG_TEST_RET(ctx, r, "Profile error: cannot add file");
+	}
+	else if (file->path.len != 0) {
+		sc_file_free(file);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
 	if (ret)
@@ -651,9 +655,11 @@ sc_profile_add_file(sc_profile_t *profile, const char *name, sc_file_t *file)
 	LOG_FUNC_CALLED(ctx);
 	if (!path.len)   {
 		parent = profile->df_info;
-	} else {
+	} else if (path.len >= 2) {
 		path.len -= 2;
 		parent = sc_profile_find_file_by_path(profile, &path);
+	} else {
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	if (!parent)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_FILE_NOT_FOUND);

@@ -582,7 +582,7 @@ int sc_delete_file(sc_card_t *card, const sc_path_t *path)
 	int r;
 	char pbuf[SC_MAX_PATH_STRING_SIZE];
 
-	if (card == NULL) {
+	if (card == NULL || path == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 

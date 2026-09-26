@@ -240,7 +240,7 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 
 	file->id = (file->id & 0xFF00) | (num & 0xFF);
 	if (file->type != SC_FILE_TYPE_BSO)   {
-		if (file->path.len == 0)   {
+		if (file->path.len < 2)   {
 			file->path.type = SC_PATH_TYPE_FILE_ID;
 			file->path.len = 2;
 		}
@@ -588,10 +588,14 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 	rv = sc_pkcs15_allocate_object_content(ctx, object, (unsigned char *)sdo, sizeof(struct sc_authentic_sdo));
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to allocate PrvKey SDO as object content");
 
+	sdo->file = NULL;
+
 err:
-	if (sdo == NULL || sdo->file != file_p_prvkey)
-		sc_file_free(file_p_prvkey);
-	authentic_free_sdo_data(sdo);
+	if (rv != SC_SUCCESS) {
+		if (sdo == NULL || sdo->file != file_p_prvkey)
+			sc_file_free(file_p_prvkey);
+		authentic_free_sdo_data(sdo);
+	}
 	free(sdo);
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -709,6 +713,7 @@ authentic_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_STORE, sdo);
 	LOG_TEST_RET(ctx, rv, "store IAS SDO PRIVATE KEY failed");
 
+	sdo->data.prvkey = NULL;
 	authentic_free_sdo_data(sdo);
 	sc_pkcs15_free_object_content(object);
 
