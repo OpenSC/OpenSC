@@ -272,6 +272,8 @@ init_file(unsigned int type)
 	unsigned int	op;
 
 	file = sc_file_new();
+	if (!file)
+		return NULL;
 	for (op = 0; op < SC_MAX_AC_OPS; op++) {
 		sc_file_add_acl_entry(file, op, SC_AC_NONE, 0);
 	}
