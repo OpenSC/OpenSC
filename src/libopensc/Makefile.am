@@ -9,7 +9,7 @@ noinst_HEADERS = cards.h ctbcs.h internal.h muscle.h muscle-filesystem.h \
 	internal-winscard.h pkcs15-syn.h pkcs15-emulator-filter.h \
 	opensc.h pkcs15.h gp.h \
 	cardctl.h asn1.h log.h simpletlv.h \
-	errors.h types.h compression.h itacns.h iso7816.h \
+	errors.h types.h compression.h itacns.h bit4id-cert-dict.h iso7816.h \
 	authentic.h iasecc.h iasecc-sdo.h sm.h card-sc-hsm.h \
 	pace.h cwa14890.h cwa-dnie.h card-gids.h aux-data.h \
 	jpki.h sc-ossl-compat.h card-npa.h card-openpgp.h \
@@ -50,7 +50,7 @@ libopensc_la_SOURCES_BASE = \
 	card-dnie.c cwa14890.c cwa-dnie.c \
 	card-isoApplet.c card-masktech.c card-gids.c card-jpki.c \
 	card-npa.c card-esteid2018.c card-esteid2025.c card-idprime.c \
-	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c card-dtrust.c \
+	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c card-chipdocit.c card-dtrust.c \
 	card-lteid.c card-srbeid.c card-cedulauy.c \
 	\
 	pkcs15-openpgp.c pkcs15-starcert.c pkcs15-cardos.c pkcs15-tcos.c \
@@ -59,7 +59,7 @@ libopensc_la_SOURCES_BASE = \
 	pkcs15-oberthur.c pkcs15-itacns.c pkcs15-gemsafeV1.c pkcs15-sc-hsm.c \
 	pkcs15-coolkey.c pkcs15-din-66291.c pkcs15-idprime.c pkcs15-nqApplet.c \
 	pkcs15-dnie.c pkcs15-gids.c pkcs15-iasecc.c pkcs15-cedulauy.c pkcs15-jpki.c pkcs15-esteid2018.c \
-	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-eoi.c pkcs15-dtrust.c pkcs15-lteid.c \
+	pkcs15-starcos-esign.c pkcs15-skeid.c pkcs15-eoi.c pkcs15-chipdocit.c pkcs15-dtrust.c pkcs15-lteid.c \
 	pkcs15-srbeid.c compression.c sm.c aux-data.c
 
 if ENABLE_CRYPTOTOKENKIT
@@ -132,7 +132,7 @@ TIDY_FILES = \
 	cwa14890.c cwa-dnie.c \
 	card-isoApplet.c card-masktech.c card-jpki.c \
 	card-npa.c card-esteid2018.c card-idprime.c \
-	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c card-dtrust.c \
+	card-edo.c card-nqApplet.c card-skeid.c card-eoi.c card-chipdocit.c card-dtrust.c \
 	card-lteid.c card-srbeid.c card-cedulauy.c \
 	\
 	pkcs15-openpgp.c pkcs15-cardos.c pkcs15-tcos.c \
