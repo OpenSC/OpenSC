@@ -322,6 +322,9 @@ static int muscle_delete_file(sc_card_t *card, const sc_path_t *path_in)
 	mscfs_file_t *file_data = NULL;
 	int r = 0;
 
+	if (!path_in)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+
 	r = mscfs_loadFileInfo(fs, path_in->value, path_in->len, &file_data, NULL);
 	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 	for(int x = 0; x < fs->cache.size; x++) {
@@ -405,6 +408,8 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 	if(file_out) {
 		sc_file_t *file;
 		file = sc_file_new();
+		if (!file)
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);
 		file->path = *path_in;
 		file->size = file_data->size;
 		file->id = (oid[2] << 8) | oid[3];
