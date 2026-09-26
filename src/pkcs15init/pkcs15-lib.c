@@ -446,6 +446,9 @@ sc_pkcs15init_set_p15card(struct sc_profile *profile, struct sc_pkcs15_card *p15
 	struct sc_pkcs15_object *p15objects[10];
 	int i, r, nn_objs;
 
+	if (!profile)
+		return;
+
 	LOG_FUNC_CALLED(ctx);
 
 	/* Prepare pin-domain instantiation:
@@ -572,6 +575,9 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 	struct sc_path path;
 	int rv;
 	/*int file_type = SC_FILE_TYPE_DF;*/
+
+	if (!profile || !file_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "trying to delete '%s'", sc_print_path(file_path));
@@ -4683,6 +4689,8 @@ sc_pkcs15init_write_info(struct sc_pkcs15_card *p15card,
 	memset(buffer, 0, sizeof(buffer));
 
 	file = sc_file_new();
+	if (!file)
+		return SC_ERROR_OUT_OF_MEMORY;
 	file->path.type = SC_PATH_TYPE_PATH;
 	memcpy(file->path.value, df->path.value, df->path.len);
 	file->path.len = df->path.len;
