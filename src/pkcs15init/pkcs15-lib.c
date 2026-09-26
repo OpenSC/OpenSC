@@ -4683,6 +4683,8 @@ sc_pkcs15init_write_info(struct sc_pkcs15_card *p15card,
 	memset(buffer, 0, sizeof(buffer));
 
 	file = sc_file_new();
+	if (!file)
+		return SC_ERROR_OUT_OF_MEMORY;
 	file->path.type = SC_PATH_TYPE_PATH;
 	memcpy(file->path.value, df->path.value, df->path.len);
 	file->path.len = df->path.len;
