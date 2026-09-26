@@ -2631,6 +2631,9 @@ epass2003_delete_file(struct sc_card *card, const sc_path_t * path)
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!path || path->len < 2)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	r = sc_select_file(card, path, NULL);
 	LOG_TEST_RET(card->ctx, r, "Can not select file");
 	r = epass2003_hook_path((struct sc_path *)path, 1);
