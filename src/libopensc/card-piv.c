@@ -390,6 +390,7 @@ static const struct sc_card_error piv_sm_errors[] = {
 
 typedef struct yk_slot_info_st {
 	u8 slot;
+	u8 invalid;
 	u8 policy;
 	u8 touch;
 	u8 algorithm;
@@ -4552,7 +4553,7 @@ piv_yk_get_metadata(sc_card_t *card, u8 slot, u8 *pin_policy, u8 *touch_policy, 
 
 	/* initialize with the default behaviour */
 	if (pin_policy)
-		*pin_policy = 0x00;
+		*pin_policy = 0x00; /* i.e. use NIST defined */
 	if (touch_policy)
 		*touch_policy = 0x00;
 	if (info) {
@@ -4572,15 +4573,24 @@ piv_yk_get_metadata(sc_card_t *card, u8 slot, u8 *pin_policy, u8 *touch_policy, 
 			/* reached the last initialized entry */
 			break;
 
-		if (priv->yk_slot_info[i].slot == slot)
+		if (priv->yk_slot_info[i].slot == slot) {
 			/* metadata already initialized */
+			if (priv->yk_slot_info[i].invalid)
+				/* already failed don't try again */
+				return SC_ERROR_NOT_SUPPORTED;
 			break;
+		}
 	}
 
 	if (priv->yk_slot_info[i].slot == 0x00) {
 		/* initialize this entry */
 		rc = piv_general_io(card, 0xF7, 0x00, slot, NULL, 0, resp, sizeof(resp));
-		if (rc > 2) { /* Min TLV */
+
+		if (rc >= 0) { /* set defaults */
+			priv->yk_slot_info[i].slot = slot;
+		}
+
+		if (rc > 2) { /* at least 1 TLV */
 			resplen = rc;
 			rc = piv_yk_metadata_get_policy(card->ctx, resp, resplen,
 					&priv->yk_slot_info[i].policy, &priv->yk_slot_info[i].touch);
@@ -4592,10 +4602,10 @@ piv_yk_get_metadata(sc_card_t *card, u8 slot, u8 *pin_policy, u8 *touch_policy, 
 			if (SC_SUCCESS == rc) {
 				sc_log(card->ctx, "Public key for slot 0x%02X: present", slot);
 			}
-			priv->yk_slot_info[i].slot = slot;
 		} else {
 			sc_log(card->ctx, "Could not get Yubikey's PIN and touch policy");
-			return SC_ERROR_INVALID_DATA;
+			priv->yk_slot_info[i].invalid = 1;
+			return SC_ERROR_NOT_SUPPORTED;
 		}
 	} else if (priv->yk_slot_info[i].slot != slot) {
 		sc_log(card->ctx, "No free slot found");
