@@ -3217,13 +3217,13 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	internal_sanitize_pin_info(&data->pin1, 0);
 	internal_sanitize_pin_info(&data->pin2, 1);
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 	kid = data->pin_reference;
-
-	if (NULL == (unsigned char *)data->pin1.data || 0 == data->pin1.len)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 
 	/* get pin retries */
 	if (data->cmd == SC_PIN_CMD_GET_INFO) {
@@ -3236,13 +3236,28 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 			LOG_TEST_RET(card->ctx, r, "get max counter failed");
 
 			data->pin1.max_tries = maxtries;
+			data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
 		}
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
-	} else if (data->cmd == SC_PIN_CMD_UNBLOCK) { /* verify */
+		LOG_FUNC_RETURN(card->ctx, r);
+	}
+
+	if (NULL == (unsigned char *)data->pin1.data || 0 == data->pin1.len)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
+
+	if (data->cmd == SC_PIN_CMD_UNBLOCK) {
 		r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
 				data->pin1.len);
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
-	} else if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) { /* change */
+		LOG_TEST_RET(card->ctx, r, "verify unblock pin failed");
+
+		if (data->pin2.data && data->pin2.len > 0) {
+			r = update_secret_key(card, 0x04, kid, data->pin2.data,
+					(unsigned long)data->pin2.len);
+			LOG_TEST_RET(card->ctx, r, "change pin failed");
+		}
+	} else if (data->cmd == SC_PIN_CMD_CHANGE) {
+		if (NULL == data->pin2.data || 0 == data->pin2.len)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
 				data->pin1.len);
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
