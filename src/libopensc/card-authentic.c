@@ -1499,6 +1499,9 @@ authentic_get_challenge(struct sc_card *card, unsigned char *rnd, size_t len)
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!rnd || len == 0)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	r = iso_ops->get_challenge(card, rbuf, sizeof rbuf);
 	LOG_TEST_RET(card->ctx, r, "GET CHALLENGE cmd failed");
 
@@ -2004,20 +2007,28 @@ static int
 authentic_sm_free_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_apdu **sm_apdu)
 {
 	struct sc_context *ctx = card->ctx;
+	int rv = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(ctx);
 	if (!sm_apdu)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-        if (!(*sm_apdu))
+	if (!(*sm_apdu))
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
-        if (plain)   {
-		if (plain->resplen < (*sm_apdu)->resplen)
-			LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Insufficient plain APDU response size");
-		memcpy(plain->resp, (*sm_apdu)->resp, (*sm_apdu)->resplen);
-		plain->resplen = (*sm_apdu)->resplen;
-		plain->sw1 = (*sm_apdu)->sw1;
-		plain->sw2 = (*sm_apdu)->sw2;
+	if (plain) {
+		if ((*sm_apdu)->resplen > 0) {
+			if (!plain->resp || plain->resplen < (*sm_apdu)->resplen) {
+				sc_log(ctx, "Insufficient plain APDU response size");
+				rv = SC_ERROR_BUFFER_TOO_SMALL;
+			} else {
+				memcpy(plain->resp, (*sm_apdu)->resp, (*sm_apdu)->resplen);
+			}
+		}
+		if (rv == SC_SUCCESS) {
+			plain->resplen = (*sm_apdu)->resplen;
+			plain->sw1 = (*sm_apdu)->sw1;
+			plain->sw2 = (*sm_apdu)->sw2;
+		}
 	}
 
 	if ((*sm_apdu)->data)
@@ -2027,7 +2038,7 @@ authentic_sm_free_wrapped_apdu(struct sc_card *card, struct sc_apdu *plain, stru
 
 	free(*sm_apdu);
 	*sm_apdu = NULL;
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 static int
