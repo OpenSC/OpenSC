@@ -1532,7 +1532,11 @@ epass2003_sm_unwrap_apdu(struct sc_card *card, struct sc_apdu *sm, struct sc_apd
 			if (0 != decrypt_response(card, sm->resp, sm->resplen, plain->resp, &len))
 				return SC_ERROR_CARD_CMD_FAILED;
 		} else {
-			memcpy(plain->resp, sm->resp, sm->resplen);
+			if (sm->resplen > 0) {
+				if (!plain->resp || plain->resplen < sm->resplen)
+					return SC_ERROR_BUFFER_TOO_SMALL;
+				memcpy(plain->resp, sm->resp, sm->resplen);
+			}
 			len = sm->resplen;
 		}
 	}
@@ -3152,6 +3156,9 @@ epass2003_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!rnd || len == 0)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	r = iso_ops->get_challenge(card, rbuf, sizeof rbuf);
 	LOG_TEST_RET(card->ctx, r, "GET CHALLENGE cmd failed");
