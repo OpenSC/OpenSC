@@ -21,6 +21,7 @@ AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE(foreign 1.10 [subdir-objects])
+AC_USE_SYSTEM_EXTENSIONS
 
 OPENSC_VERSION_MAJOR="PACKAGE_VERSION_MAJOR"
 OPENSC_VERSION_MINOR="PACKAGE_VERSION_MINOR"
@@ -428,7 +429,7 @@ dnl Checks for header files.
 AC_HEADER_SYS_WAIT
 AC_HEADER_ASSERT
 AC_CHECK_HEADERS([ \
-	errno.h fcntl.h stdlib.h \
+	errno.h fcntl.h link.h stdlib.h \
 	inttypes.h string.h strings.h \
 	sys/time.h unistd.h sys/mman.h \
 	sys/endian.h endian.h
@@ -443,7 +444,7 @@ AC_FUNC_ERROR_AT_LINE
 AC_FUNC_STAT
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([ \
-	getpass gettimeofday getline memset mkdir \
+	dladdr dlinfo getpass gettimeofday getline memset mkdir \
 	strdup strerror memset_s explicit_bzero \
 	strnlen sigaction
 ])

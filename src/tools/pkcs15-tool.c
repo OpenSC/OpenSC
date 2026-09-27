@@ -20,11 +20,6 @@
  */
 #include "config.h"
 
-#ifdef __APPLE__
-#define _XOPEN_SOURCE 600
-#else
-#define _XOPEN_SOURCE 500
-#endif
 #include <assert.h>
 #include <ctype.h>
 #ifdef _WIN32
