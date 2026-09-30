@@ -1616,9 +1616,8 @@ epass2003_sm_get_wrapped_apdu(struct sc_card *card,
 
 	rv = epass2003_sm_wrap_apdu(card, plain, apdu);
 	if (rv) {
-		rv = epass2003_sm_free_wrapped_apdu(card, NULL, &apdu);
-		if (rv < 0)
-			goto err;
+		epass2003_sm_free_wrapped_apdu(card, NULL, &apdu);
+		LOG_FUNC_RETURN(ctx, rv);
 	}
 
 	*sm_apdu = apdu;
