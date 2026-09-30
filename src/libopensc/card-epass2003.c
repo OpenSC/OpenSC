@@ -2971,7 +2971,10 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 
 		data->modulus = tmp;
 	} else {
-		size_t mod_len = BYTES4BITS(len);
+		size_t mod_len;
+		if (len < 8)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		mod_len = BYTES4BITS(len);
 		if (apdu.resplen < mod_len)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 
