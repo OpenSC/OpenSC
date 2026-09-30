@@ -184,14 +184,15 @@ torture_spec_token_object_serial_pin(void **state)
 }
 
 static void
-torture_spec_unsupported_module_name(void **state)
+torture_spec_module_name(void **state)
 {
 	char *uri = "pkcs11:object=my-sign-key;"
 		    "type=private"
 		    "?module-name=mypkcs11";
 	struct pkcs11_uri *result = pkcs11_uri_new();
 	int rv = parse_pkcs11_uri(uri, result);
-	assert_int_equal(rv, 1);
+	assert_int_equal(rv, 0);
+	assert_string_equal("mypkcs11", result->module_name);
 	pkcs11_uri_free(result);
 }
 
@@ -350,7 +351,7 @@ main(void)
 			cmocka_unit_test(torture_spec_object_label),
 			cmocka_unit_test(torture_spec_type_pin),
 			cmocka_unit_test(torture_spec_token_object_serial_pin),
-			cmocka_unit_test(torture_spec_unsupported_module_name),
+			cmocka_unit_test(torture_spec_module_name),
 			cmocka_unit_test(torture_module_path),
 			cmocka_unit_test(torture_pin_value),
 			cmocka_unit_test(torture_encoded_semicolon),
