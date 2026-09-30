@@ -245,6 +245,39 @@ end:
 	return rv;
 }
 
+static int
+validate_library_version(const char *ver)
+{
+	int digits = 0;
+
+	if (!ver || *ver == '\0')
+		return 0;
+
+	while (*ver >= '0' && *ver <= '9') {
+		digits++;
+		ver++;
+	}
+	if (digits < 1 || digits > 2)
+		return 0;
+
+	if (*ver == '\0')
+		return 1;
+
+	if (*ver != '.')
+		return 0;
+	ver++;
+
+	digits = 0;
+	while (*ver >= '0' && *ver <= '9') {
+		digits++;
+		ver++;
+	}
+	if (digits < 1 || digits > 2)
+		return 0;
+
+	return *ver == '\0';
+}
+
 struct pkcs11_uri *
 pkcs11_uri_new()
 {
@@ -321,19 +354,13 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 			result_len = &result->id_len;
 			break;
 		case PKCS11_LIB_DESCRIPTION:
-			rv = 1;
-			fprintf(stderr, "PKCS#11 library description not supported\n");
-			goto end;
+			result_ptr = &result->library_description;
 			break;
 		case PKCS11_LIB_MANUFACTURER:
-			rv = 1;
-			fprintf(stderr, "PKCS#11 manufacturer ID not supported\n");
-			goto end;
+			result_ptr = &result->library_manufacturer;
 			break;
 		case PKCS11_LIB_VERSION:
-			rv = 1;
-			fprintf(stderr, "PKCS#11 library version not supported\n");
-			goto end;
+			result_ptr = &result->library_version;
 			break;
 		case PKCS11_MANUFACTURER:
 			result_ptr = &result->token_manufacturer;
@@ -369,6 +396,11 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 		}
 		if (parse_string(argument, result_ptr, result_len, max_len) != 0) {
 			rv = 1;
+			goto end;
+		}
+		if (id == PKCS11_LIB_VERSION && !validate_library_version(result->library_version)) {
+			rv = 1;
+			fprintf(stderr, "Invalid PKCS#11 library version\n");
 			goto end;
 		}
 		token = strtok(NULL, ";");
@@ -407,9 +439,7 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 			result_ptr = &result->pin_value;
 			break;
 		case PKCS11_MODULE_NAME:
-			rv = 1;
-			fprintf(stderr, "PKCS#11 module name for query not supported\n");
-			goto end;
+			result_ptr = &result->module_name;
 			break;
 		case PKCS11_MODULE_PATH:
 			result_ptr = &result->module_path;
