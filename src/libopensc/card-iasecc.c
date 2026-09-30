@@ -78,39 +78,39 @@ static struct sc_card_driver iasecc_drv = {
 };
 
 static const struct sc_atr_table iasecc_known_atrs[] = {
-	{ "3B:7F:96:00:00:00:31:B8:64:40:70:14:10:73:94:01:80:82:90:00",
-	  "FF:FF:FF:FF:FF:FF:FF:FE:FF:FF:00:00:FF:FF:FF:FF:FF:FF:FF:FF",
-		"IAS/ECC Gemalto", SC_CARD_TYPE_IASECC_GEMALTO,  0, NULL },
-        { "3B:DD:00:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:08:00:07:90:00:00",
-	  "FF:FF:00:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00",
-		"IAS/ECC v1.0.1 Oberthur", SC_CARD_TYPE_IASECC_OBERTHUR,  0, NULL },
-	{ "3B:7D:13:00:00:4D:44:57:2D:49:41:53:2D:43:41:52:44:32", NULL,
-		"IAS/ECC v1.0.1 Sagem MDW-IAS-CARD2", SC_CARD_TYPE_IASECC_SAGEM,  0, NULL },
-	{ "3B:7F:18:00:00:00:31:B8:64:50:23:EC:C1:73:94:01:80:82:90:00", NULL,
-		"IAS/ECC v1.0.1 Sagem ypsID S3", SC_CARD_TYPE_IASECC_SAGEM,  0, NULL },
-	{ "3B:DF:96:00:80:31:FE:45:00:31:B8:64:04:1F:EC:C1:73:94:01:80:82:90:00:EC", NULL,
-		"IAS/ECC Morpho MinInt - Agent Card", SC_CARD_TYPE_IASECC_MI, 0, NULL },
-	{ "3B:DF:18:FF:81:91:FE:1F:C3:00:31:B8:64:0C:01:EC:C1:73:94:01:80:82:90:00:B3", NULL,
-		"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL },
-	{ "3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:02:04:03:55:00:02:34", NULL,
-		"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL },
-	{ "3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:01:0B:03:52:00:05:38", NULL,
-		"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL },
-	{ "3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:05:03:63:51:00:02:50", NULL,
-		"IAS/ECC Monaco eID", SC_CARD_TYPE_IASECC_MONACO, 0, NULL },
-	{
-		.atr     = "3B:AC:00:40:2A:00:12:25:00:64:80:00:03:10:00:90:00",
-		.atrmask = "FF:00:00:00:00:FF:FF:FF:FF:FF:FF:00:00:00:FF:FF:FF",
-		.name = "IAS/ECC CPx",
-		.type = SC_CARD_TYPE_IASECC_CPX,
-	},
-	{
-		.atr     = "2B:8F:80:01:00:31:B8:64:04:B0:EC:C1:73:94:01:80:82:90:00:0E",
-		.atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:FF:C0:FF:FF:FF:FF:FF:FF:FF:FF",
-		.name = "IAS/ECC CPxCL",
-		.type = SC_CARD_TYPE_IASECC_CPXCL,
-	},
-	{ NULL, NULL, NULL, 0, 0, NULL }
+		{"3B:7F:96:00:00:00:31:B8:64:40:70:14:10:73:94:01:80:82:90:00",
+			"FF:FF:FF:FF:FF:FF:FF:FE:FF:FF:00:00:FF:FF:FF:FF:FF:FF:FF:FF",
+			"IAS/ECC Gemalto", SC_CARD_TYPE_IASECC_GEMALTO, 0, NULL},
+		{"3B:DD:00:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:08:00:07:90:00:00",
+			"FF:FF:00:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00",
+			"IAS/ECC v1.0.1 Oberthur", SC_CARD_TYPE_IASECC_OBERTHUR, 0, NULL},
+		{"3B:7D:13:00:00:4D:44:57:2D:49:41:53:2D:43:41:52:44:32", NULL,
+			"IAS/ECC v1.0.1 Sagem MDW-IAS-CARD2", SC_CARD_TYPE_IASECC_SAGEM, 0, NULL},
+		{"3B:7F:18:00:00:00:31:B8:64:50:23:EC:C1:73:94:01:80:82:90:00", NULL,
+			"IAS/ECC v1.0.1 Sagem ypsID S3", SC_CARD_TYPE_IASECC_SAGEM, 0, NULL},
+		{"3B:DF:96:00:80:31:FE:45:00:31:B8:64:04:1F:EC:C1:73:94:01:80:82:90:00:EC", NULL,
+			"IAS/ECC Morpho MinInt - Agent Card", SC_CARD_TYPE_IASECC_MI, 0, NULL},
+		{"3B:DF:18:FF:81:91:FE:1F:C3:00:31:B8:64:0C:01:EC:C1:73:94:01:80:82:90:00:B3", NULL,
+			"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL},
+		{"3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:02:04:03:55:00:02:34", NULL,
+			"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL},
+		{"3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:01:0B:03:52:00:05:38", NULL,
+			"IAS/ECC v1.0.1 Amos", SC_CARD_TYPE_IASECC_AMOS, 0, NULL},
+		{"3B:DC:18:FF:81:91:FE:1F:C3:80:73:C8:21:13:66:05:03:63:51:00:02:50", NULL,
+			"IAS/ECC Monaco eID", SC_CARD_TYPE_IASECC_MONACO, 0, NULL},
+		{
+			.atr = "3B:AC:00:40:2A:00:12:25:00:64:80:00:03:10:00:90:00",
+			.atrmask = "FF:00:00:00:00:FF:FF:FF:FF:FF:FF:00:00:00:FF:FF:FF",
+			.name = "IAS/ECC CPx",
+			.type = SC_CARD_TYPE_IASECC_CPX,
+		 },
+		{
+			.atr = "2B:8F:80:01:00:31:B8:64:04:B0:EC:C1:73:94:01:80:82:90:00:0E",
+			.atrmask = "FF:FF:FF:FF:FF:FF:FF:FF:00:00:FF:C0:FF:FF:FF:FF:FF:FF:FF:FF",
+			.name = "IAS/ECC CPxCL",
+			.type = SC_CARD_TYPE_IASECC_CPXCL,
+		 },
+		{NULL, NULL, NULL, 0, 0, NULL}
 };
 
 static struct sc_aid OberthurIASECC_AID = {
@@ -382,22 +382,21 @@ static int iasecc_parse_ef_atr(struct sc_card *card)
 	/* Pre-issuing data (chip/OS/IAS-ECC version) feeds nothing but the log line
 	 * below.  Some IAS/ECC cards do not publish it in EF.ATR, so parse it when
 	 * present and leave the version fields untouched when it is absent. */
-	if (card->ef_atr->pre_issuing_len >= 4)   {
-		version->ic_manufacturer =	card->ef_atr->pre_issuing[0];
-		version->ic_type =		card->ef_atr->pre_issuing[1];
-		version->os_version =		card->ef_atr->pre_issuing[2];
-		version->iasecc_version =	card->ef_atr->pre_issuing[3];
+	if (card->ef_atr->pre_issuing_len >= 4) {
+		version->ic_manufacturer = card->ef_atr->pre_issuing[0];
+		version->ic_type = card->ef_atr->pre_issuing[1];
+		version->os_version = card->ef_atr->pre_issuing[2];
+		version->iasecc_version = card->ef_atr->pre_issuing[3];
 		sc_log(ctx, "EF.ATR: IC manufacturer/type %X/%X, OS/IasEcc versions %X/%X",
-			version->ic_manufacturer, version->ic_type, version->os_version, version->iasecc_version);
-	}
-	else   {
+				version->ic_manufacturer, version->ic_type, version->os_version, version->iasecc_version);
+	} else {
 		sc_log(ctx, "EF.ATR: no pre-issuing data, skipping version info");
 	}
 
-	if (card->ef_atr->issuer_data_len >= 16)   {
-		sizes->send =	 card->ef_atr->issuer_data[2] * 0x100 + card->ef_atr->issuer_data[3];
+	if (card->ef_atr->issuer_data_len >= 16) {
+		sizes->send = card->ef_atr->issuer_data[2] * 0x100 + card->ef_atr->issuer_data[3];
 		sizes->send_sc = card->ef_atr->issuer_data[6] * 0x100 + card->ef_atr->issuer_data[7];
-		sizes->recv =	 card->ef_atr->issuer_data[10] * 0x100 + card->ef_atr->issuer_data[11];
+		sizes->recv = card->ef_atr->issuer_data[10] * 0x100 + card->ef_atr->issuer_data[11];
 		sizes->recv_sc = card->ef_atr->issuer_data[14] * 0x100 + card->ef_atr->issuer_data[15];
 
 		sc_log(ctx, "EF.ATR: IO Buffer Size send/sc %zd/%zd recv/sc %zd/%zd",
@@ -414,13 +413,11 @@ static int iasecc_parse_ef_atr(struct sc_card *card)
 			card->max_send_size -= 5;
 
 		sc_log(ctx, "EF.ATR: max send/recv sizes %zX/%zX", card->max_send_size, card->max_recv_size);
-	}
-	else if (card->type == SC_CARD_TYPE_IASECC_MONACO)   {
+	} else if (card->type == SC_CARD_TYPE_IASECC_MONACO) {
 		card->max_send_size = 0xFF;
 		card->max_recv_size = 0x100;
 		sc_log(ctx, "EF.ATR: no issuer data, using short-APDU IO buffer sizes");
-	}
-	else   {
+	} else {
 		sc_log(ctx, "EF.ATR: no issuer data, keeping the IO buffer sizes as they are");
 	}
 
@@ -657,11 +654,10 @@ iasecc_init(struct sc_card *card)
 		rv = iasecc_init_amos_or_sagem(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_AMOS)
 		rv = iasecc_init_amos_or_sagem(card);
-	else if (card->type == SC_CARD_TYPE_IASECC_MONACO)   {
+	else if (card->type == SC_CARD_TYPE_IASECC_MONACO) {
 		rv = iasecc_init_amos_or_sagem(card);
-		card->caps &= ~((unsigned long) SC_CARD_CAP_ISO7816_PIN_INFO);
-	}
-	else if (card->type == SC_CARD_TYPE_IASECC_MI)
+		card->caps &= ~((unsigned long)SC_CARD_CAP_ISO7816_PIN_INFO);
+	} else if (card->type == SC_CARD_TYPE_IASECC_MI)
 		rv = iasecc_init_amos_or_sagem(card);
 	else if (iasecc_is_cpx(card))
 		rv = iasecc_init_cpx(card);
@@ -951,14 +947,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x00, 0x00);
 
-		if (card->type != SC_CARD_TYPE_IASECC_GEMALTO
-				&& card->type != SC_CARD_TYPE_IASECC_OBERTHUR
-				&& card->type != SC_CARD_TYPE_IASECC_SAGEM
-				&& card->type != SC_CARD_TYPE_IASECC_AMOS
-				&& card->type != SC_CARD_TYPE_IASECC_MONACO
-				&& card->type != SC_CARD_TYPE_IASECC_MI
-				&& card->type != SC_CARD_TYPE_IASECC_MI2
-				&& !iasecc_is_cpx(card)) {
+		if (card->type != SC_CARD_TYPE_IASECC_GEMALTO && card->type != SC_CARD_TYPE_IASECC_OBERTHUR && card->type != SC_CARD_TYPE_IASECC_SAGEM && card->type != SC_CARD_TYPE_IASECC_AMOS && card->type != SC_CARD_TYPE_IASECC_MONACO && card->type != SC_CARD_TYPE_IASECC_MI && card->type != SC_CARD_TYPE_IASECC_MI2 && !iasecc_is_cpx(card)) {
 			rv = SC_ERROR_NOT_SUPPORTED;
 			LOG_TEST_GOTO_ERR(ctx, rv, "Unsupported card");
 		}
@@ -968,25 +957,24 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)
 				apdu.p1 = 0x01;
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
-			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
-			    card->type == SC_CARD_TYPE_IASECC_MONACO ||
-			    card->type == SC_CARD_TYPE_IASECC_MI ||
-			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
-			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
-			    iasecc_is_cpx(card)
-			    )   {
+					card->type == SC_CARD_TYPE_IASECC_AMOS ||
+					card->type == SC_CARD_TYPE_IASECC_MONACO ||
+					card->type == SC_CARD_TYPE_IASECC_MI ||
+					card->type == SC_CARD_TYPE_IASECC_MI2 ||
+					card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
+					iasecc_is_cpx(card)) {
 				apdu.p2 = 0x04;
 			}
 		}
 		else if (lpath.type == SC_PATH_TYPE_FROM_CURRENT)  {
 			apdu.p1 = 0x09;
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
-			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
-			    card->type == SC_CARD_TYPE_IASECC_MONACO ||
-			    card->type == SC_CARD_TYPE_IASECC_MI ||
-			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
-			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
-			    iasecc_is_cpx(card)) {
+					card->type == SC_CARD_TYPE_IASECC_AMOS ||
+					card->type == SC_CARD_TYPE_IASECC_MONACO ||
+					card->type == SC_CARD_TYPE_IASECC_MI ||
+					card->type == SC_CARD_TYPE_IASECC_MI2 ||
+					card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
+					iasecc_is_cpx(card)) {
 				apdu.p2 = 0x04;
 			}
 		}
@@ -998,11 +986,11 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		else if (lpath.type == SC_PATH_TYPE_DF_NAME)   {
 			apdu.p1 = 0x04;
 			if (card->type == SC_CARD_TYPE_IASECC_AMOS ||
-			    card->type == SC_CARD_TYPE_IASECC_MONACO ||
-			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
-			    card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
-			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
-			    iasecc_is_cpx(card)) {
+					card->type == SC_CARD_TYPE_IASECC_MONACO ||
+					card->type == SC_CARD_TYPE_IASECC_MI2 ||
+					card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
+					card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
+					iasecc_is_cpx(card)) {
 				apdu.p2 = 0x04;
 			}
 		}
@@ -1278,7 +1266,7 @@ iasecc_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *out
 	/* TODO: Encode contactless ACLs and life cycle status for all IAS/ECC cards */
 	if (card->type == SC_CARD_TYPE_IASECC_SAGEM ||
 			card->type == SC_CARD_TYPE_IASECC_AMOS ||
-			card->type == SC_CARD_TYPE_IASECC_MONACO )  {
+			card->type == SC_CARD_TYPE_IASECC_MONACO) {
 		unsigned char status = 0;
 
 		buf[offs++] = IASECC_FCP_TAG_ACLS;
@@ -1307,8 +1295,7 @@ iasecc_fcp_encode(struct sc_card *card, struct sc_file *file, unsigned char *out
 			buf[offs++] = 0x01;
 			buf[offs++] = status;
 		}
-	}
-	else   {
+	} else {
 		buf[offs++] = IASECC_FCP_TAG_ACLS;
 		buf[offs++] = 2 + 1 + nn_smb;
 
@@ -1514,58 +1501,55 @@ iasecc_check_sw(struct sc_card *card, unsigned int sw1, unsigned int sw2)
 	return iso_ops->check_sw(card, sw1, sw2);
 }
 
-
 static unsigned
 iasecc_get_algorithm(struct sc_card *card, const struct sc_security_env *env,
 		unsigned operation, unsigned mechanism)
 {
-    struct sc_context *ctx = card->ctx;
-    const struct sc_supported_algo_info *info = NULL;
-    int ii;
+	struct sc_context *ctx = card->ctx;
+	const struct sc_supported_algo_info *info = NULL;
+	int ii;
 
-    if (!env)
-        return 0;
+	if (!env)
+		return 0;
 
-    for (ii=0;ii<SC_MAX_SUPPORTED_ALGORITHMS && env->supported_algos[ii].reference; ii++)
-        if ((env->supported_algos[ii].operations & operation)
-			&& (env->supported_algos[ii].mechanism == mechanism))
-            break;
+	for (ii = 0; ii < SC_MAX_SUPPORTED_ALGORITHMS && env->supported_algos[ii].reference; ii++)
+		if ((env->supported_algos[ii].operations & operation) && (env->supported_algos[ii].mechanism == mechanism))
+			break;
 
-    if (ii < SC_MAX_SUPPORTED_ALGORITHMS && env->supported_algos[ii].reference)   {
-        info = &env->supported_algos[ii];
-        sc_log(ctx, "found IAS/ECC algorithm %X:%X:%X:%X",
-			info->reference, info->mechanism, info->operations, info->algo_ref);
-    }
-    else   {
-        sc_log(ctx, "cannot find IAS/ECC algorithm (operation:%X,mechanism:%X)", operation, mechanism);
-    }
+	if (ii < SC_MAX_SUPPORTED_ALGORITHMS && env->supported_algos[ii].reference) {
+		info = &env->supported_algos[ii];
+		sc_log(ctx, "found IAS/ECC algorithm %X:%X:%X:%X",
+				info->reference, info->mechanism, info->operations, info->algo_ref);
+	} else {
+		sc_log(ctx, "cannot find IAS/ECC algorithm (operation:%X,mechanism:%X)", operation, mechanism);
+	}
 
-    if (info)
-        return info->algo_ref;
+	if (info)
+		return info->algo_ref;
 
-    /* The Monaco eID leaves supportedAlgorithms empty in its PKCS#15 objects, so
-     * the lookup above never finds anything for it.  Fall back to this driver's
-     * own IAS/ECC references -- the same values the MSE:SET templates are
-     * initialised with -- for that card only.  Every other card keeps the
-     * "not supported" outcome logged above. */
-    if (card->type == SC_CARD_TYPE_IASECC_MONACO)   {
-        switch (mechanism)   {
-        case CKM_SHA256:
-            return IASECC_ALGORITHM_SHA2;
-        case CKM_SHA256_RSA_PKCS:
-            return IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA2;
-        case CKM_SHA_1:
-            return IASECC_ALGORITHM_SHA1;
-        case CKM_SHA1_RSA_PKCS:
-            return IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA1;
-        case CKM_RSA_PKCS:
-            return IASECC_ALGORITHM_RSA_PKCS;
-        default:
-            break;
-        }
-    }
+	/* The Monaco eID leaves supportedAlgorithms empty in its PKCS#15 objects, so
+	 * the lookup above never finds anything for it.  Fall back to this driver's
+	 * own IAS/ECC references -- the same values the MSE:SET templates are
+	 * initialised with -- for that card only.  Every other card keeps the
+	 * "not supported" outcome logged above. */
+	if (card->type == SC_CARD_TYPE_IASECC_MONACO) {
+		switch (mechanism) {
+		case CKM_SHA256:
+			return IASECC_ALGORITHM_SHA2;
+		case CKM_SHA256_RSA_PKCS:
+			return IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA2;
+		case CKM_SHA_1:
+			return IASECC_ALGORITHM_SHA1;
+		case CKM_SHA1_RSA_PKCS:
+			return IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA1;
+		case CKM_RSA_PKCS:
+			return IASECC_ALGORITHM_RSA_PKCS;
+		default:
+			break;
+		}
+	}
 
-    return 0;
+	return 0;
 }
 
 
@@ -1854,7 +1838,7 @@ iasecc_set_security_env(struct sc_card *card,
 	case SC_SEC_OPERATION_DECIPHER:
 		rv = iasecc_sdo_convert_acl(card, &sdo, SC_AC_OP_PSO_DECRYPT, &prv->op_method, &prv->op_ref);
 		LOG_TEST_RET(ctx, rv, "Cannot convert SC_AC_OP_PSO_DECRYPT acl");
-		algo_ref = iasecc_get_algorithm(card, env, SC_PKCS15_ALGO_OP_DECIPHER,  CKM_RSA_PKCS);
+		algo_ref = iasecc_get_algorithm(card, env, SC_PKCS15_ALGO_OP_DECIPHER, CKM_RSA_PKCS);
 		if (!algo_ref)
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Application do not supports DECIPHER:RSA_PKCS");
 
@@ -2018,11 +2002,9 @@ iasecc_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data)
 		if (pin_cmd.pin1.logged_in & SC_PIN_STATE_LOGGED_IN)
 			if (iasecc_chv_cache_is_verified(card, &pin_cmd))
 				LOG_FUNC_RETURN(ctx, SC_SUCCESS);
-	}
-	else if (rv == SC_ERROR_NOT_SUPPORTED)   {
+	} else if (rv == SC_ERROR_NOT_SUPPORTED) {
 		sc_log(ctx, "PIN status unavailable on this card; verifying anyway");
-	}
-	else if (rv != SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)   {
+	} else if (rv != SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
 		LOG_FUNC_RETURN(ctx, rv);
 	}
 
@@ -2126,8 +2108,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 		pin->tries_remaining = -1;
 		pin->stored_length = -1;
 		rv = SC_SUCCESS;
-	}
-	else {
+	} else {
 		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get SDO PIN data");
 
 		if (sdo.docp.acls_contact.size == 0) {
@@ -2147,7 +2128,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 		if (sdo.docp.size.value && sdo.docp.size.size <= sizeof(int)) {
 			unsigned int n = 0;
 			unsigned int i;
-			for (i=0; i<sdo.docp.size.size; i++)
+			for (i = 0; i < sdo.docp.size.size; i++)
 				n = (n << 8) + *(sdo.docp.size.value + i);
 			pin->stored_length = n;
 		} else {
@@ -2155,7 +2136,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 		}
 
 		sc_log(ctx, "PIN policy: size max/min %i/%i, tries max/left %i/%i",
-		       pin->max_length, pin->min_length, pin->tries_maximum, pin->tries_remaining);
+				pin->max_length, pin->min_length, pin->tries_maximum, pin->tries_remaining);
 		iasecc_sdo_free_fields(card, &sdo);
 	}
 
@@ -2196,12 +2177,11 @@ iasecc_pin_get_info(struct sc_card *card, struct sc_pin_cmd_data *data)
 	 * policy takes precedence.
 	 */
 	rv = iasecc_pin_get_status(card, data);
-	if (rv == SC_ERROR_NOT_SUPPORTED)   {
+	if (rv == SC_ERROR_NOT_SUPPORTED) {
 		sc_log(ctx, "PIN status unavailable on this card; reporting the policy alone");
 		data->pin1.tries_left = -1;
 		data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
-	}
-	else   {
+	} else {
 		LOG_TEST_RET(ctx, rv, "Failed to get PIN status");
 	}
 
@@ -2918,7 +2898,6 @@ iasecc_sdo_get_tagged_data(struct sc_card *card, int sdo_tag, struct iasecc_sdo 
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
-
 /* The Monaco eID answers 6A88 to 'GET DATA' for its RSA private keys: the card
  * holds the keys but publishes no SDO describing them.  Rather than teach every
  * consumer of iasecc_sdo_get_data() to cope with a missing SDO, describe the
@@ -2935,17 +2914,16 @@ iasecc_sdo_virtual_monaco(struct sc_card *card, struct iasecc_sdo *sdo, unsigned
 	sdo->docp.size.value = calloc(1, 2);
 	if (sdo->docp.size.value == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
-	sdo->docp.size.value[0] = 0x01;		/* 0x0100 bytes == 2048-bit modulus */
+	sdo->docp.size.value[0] = 0x01; /* 0x0100 bytes == 2048-bit modulus */
 	sdo->docp.size.size = 2;
 
 	sdo->docp.amb = IASECC_ACL_PSO_SIGNATURE | IASECC_ACL_INTERNAL_AUTHENTICATE;
-	sdo->docp.scbs[0] = 0x00;		/* PSO compute signature: no condition */
-	sdo->docp.scbs[1] = 0x00;		/* internal authenticate: no condition */
+	sdo->docp.scbs[0] = 0x00; /* PSO compute signature: no condition */
+	sdo->docp.scbs[1] = 0x00; /* internal authenticate: no condition */
 
 	sc_log(card->ctx, "Monaco eID: no RSA private SDO on card, using the card's known configuration");
 	return SC_SUCCESS;
 }
-
 
 static int
 iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo)
@@ -2967,9 +2945,9 @@ iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo)
 		LOG_TEST_RET(ctx, rv, "cannot parse ECC SDO data");
 
 	rv = iasecc_sdo_get_tagged_data(card, IASECC_DOCP_TAG, sdo);
-	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND && card->type == SC_CARD_TYPE_IASECC_MONACO)   {
+	if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND && card->type == SC_CARD_TYPE_IASECC_MONACO) {
 		rv = iasecc_sdo_virtual_monaco(card, sdo, sdo_class);
-		if (rv == SC_SUCCESS)   {
+		if (rv == SC_SUCCESS) {
 			sdo->sdo_class = sdo_class;
 			sdo->sdo_ref = sdo_ref;
 		}
