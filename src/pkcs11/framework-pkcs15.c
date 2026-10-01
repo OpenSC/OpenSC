@@ -3939,6 +3939,8 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 	size_t	len, _len;
 
 	sc_log(context, "pkcs15_cert_cmp_attribute() called");
+	if (!attr || !attr->pValue)
+		return 0;
 	if (!p11card)
 		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_GetAttributeValue");
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
