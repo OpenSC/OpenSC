@@ -81,6 +81,9 @@ esteid_select_file(struct sc_card *card, const struct sc_path *in_path, struct s
 	struct sc_file *file = NULL;
 	struct sc_apdu apdu;
 
+	if (!card || !in_path)
+		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	// Only support full paths
