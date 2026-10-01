@@ -1849,6 +1849,11 @@ epass2003_select_fid_(struct sc_card *card, sc_path_t * in_path, sc_file_t ** fi
 	size_t pathlen;
 	sc_file_t *file = NULL;
 
+	if (!card || !in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (in_path->len > sizeof(pathbuf))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	r = epass2003_hook_path(in_path, 1);
 	LOG_TEST_RET(card->ctx, r, "Can not hook path");
 
