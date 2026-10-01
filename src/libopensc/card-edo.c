@@ -201,15 +201,24 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
 	LOG_FUNC_CALLED(card->ctx);
 	struct edo_buff buff;
 
+	if (!in_path)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	memset(&buff, 0, sizeof(buff));
+
 	switch (in_path->type) {
 		case SC_PATH_TYPE_PATH:
 		case SC_PATH_TYPE_FILE_ID:
+			if (!in_path->aid.len && !in_path->len)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 			if (in_path->aid.len)
 				LOG_TEST_RET(card->ctx, edo_select_name(card, in_path->aid.value, in_path->aid.len, &buff), "Select AID failed");
 			if (in_path->len)
 				LOG_TEST_RET(card->ctx, edo_select_path(card, in_path->value, in_path->len, &buff), "Select path failed");
 			break;
 		case SC_PATH_TYPE_DF_NAME:
+			if (!in_path->len)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 			LOG_TEST_RET(card->ctx, edo_select_name(card, in_path->value, in_path->len, &buff), "Select AID failed");
 			break;
 		default:
