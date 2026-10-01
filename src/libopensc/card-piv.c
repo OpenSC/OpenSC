@@ -4989,6 +4989,12 @@ piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (!card || !in_path)
+		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+
+	if (in_path->len < 2)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	path = in_path->value;
 	pathlen = in_path->len;
 
@@ -5007,6 +5013,9 @@ piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 			pathlen -= 2;
 		}
 	}
+
+	if (pathlen < 2)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 
 	i = piv_find_obj_by_containerid(card, path);
 
