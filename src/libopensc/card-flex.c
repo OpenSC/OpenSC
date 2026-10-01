@@ -548,6 +548,9 @@ static int cryptoflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	int r;
 	size_t count = 0;
 
+	if (!card || !buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA8, 0, 0);
 	apdu.cla = 0xF0;
 	apdu.le = 4;
