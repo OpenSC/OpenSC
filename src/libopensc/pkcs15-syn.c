@@ -368,7 +368,11 @@ static sc_pkcs15_df_t * sc_pkcs15emu_get_df(sc_pkcs15_card_t *p15card,
 int sc_pkcs15emu_add_pin_obj(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *obj, const sc_pkcs15_auth_info_t *in_pin)
 {
-	sc_pkcs15_auth_info_t pin = *in_pin;
+	sc_pkcs15_auth_info_t pin;
+
+	if (!in_pin)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	pin = *in_pin;
 
 	pin.auth_type = SC_PKCS15_PIN_AUTH_TYPE_PIN;
 	if(!pin.auth_method) /* or SC_AC_NONE */
@@ -380,7 +384,11 @@ int sc_pkcs15emu_add_pin_obj(sc_pkcs15_card_t *p15card,
 int sc_pkcs15emu_add_rsa_prkey(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *obj, const sc_pkcs15_prkey_info_t *in_key)
 {
-	sc_pkcs15_prkey_info_t key = *in_key;
+	sc_pkcs15_prkey_info_t key;
+
+	if (!in_key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	key = *in_key;
 
 	if (key.access_flags == 0)
 		key.access_flags = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
@@ -394,7 +402,11 @@ int sc_pkcs15emu_add_rsa_prkey(sc_pkcs15_card_t *p15card,
 int sc_pkcs15emu_add_rsa_pubkey(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *obj, const sc_pkcs15_pubkey_info_t *in_key)
 {
-	sc_pkcs15_pubkey_info_t key = *in_key;
+	sc_pkcs15_pubkey_info_t key;
+
+	if (!in_key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	key = *in_key;
 
 	if (key.access_flags == 0)
 		key.access_flags = SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
@@ -405,7 +417,11 @@ int sc_pkcs15emu_add_rsa_pubkey(sc_pkcs15_card_t *p15card,
 int sc_pkcs15emu_add_ec_prkey(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *obj, const sc_pkcs15_prkey_info_t *in_key)
 {
-	sc_pkcs15_prkey_info_t key = *in_key;
+	sc_pkcs15_prkey_info_t key;
+
+	if (!in_key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	key = *in_key;
 
 	if (key.access_flags == 0)
 		key.access_flags = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
@@ -419,7 +435,11 @@ int sc_pkcs15emu_add_ec_prkey(sc_pkcs15_card_t *p15card,
 int sc_pkcs15emu_add_ec_pubkey(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *obj, const sc_pkcs15_pubkey_info_t *in_key)
 {
-	sc_pkcs15_pubkey_info_t key = *in_key;
+	sc_pkcs15_pubkey_info_t key;
+
+	if (!in_key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	key = *in_key;
 
 	if (key.access_flags == 0)
 		key.access_flags = SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
@@ -430,7 +450,11 @@ int sc_pkcs15emu_add_ec_pubkey(sc_pkcs15_card_t *p15card,
 int sc_pkcs15emu_add_eddsa_prkey(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *obj, const sc_pkcs15_prkey_info_t *in_key)
 {
-	sc_pkcs15_prkey_info_t key = *in_key;
+	sc_pkcs15_prkey_info_t key;
+
+	if (!in_key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	key = *in_key;
 
 	if (key.access_flags == 0)
 		key.access_flags = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
@@ -444,7 +468,11 @@ int sc_pkcs15emu_add_eddsa_prkey(sc_pkcs15_card_t *p15card,
 int sc_pkcs15emu_add_eddsa_pubkey(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *obj, const sc_pkcs15_pubkey_info_t *in_key)
 {
-	sc_pkcs15_pubkey_info_t key = *in_key;
+	sc_pkcs15_pubkey_info_t key;
+
+	if (!in_key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	key = *in_key;
 
 	if (key.access_flags == 0)
 		key.access_flags = SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
@@ -455,7 +483,11 @@ int sc_pkcs15emu_add_eddsa_pubkey(sc_pkcs15_card_t *p15card,
 int sc_pkcs15emu_add_xeddsa_prkey(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *obj, const sc_pkcs15_prkey_info_t *in_key)
 {
-	sc_pkcs15_prkey_info_t key = *in_key;
+	sc_pkcs15_prkey_info_t key;
+
+	if (!in_key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	key = *in_key;
 
 	if (key.access_flags == 0)
 		key.access_flags = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
@@ -469,7 +501,11 @@ int sc_pkcs15emu_add_xeddsa_prkey(sc_pkcs15_card_t *p15card,
 int sc_pkcs15emu_add_xeddsa_pubkey(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *obj, const sc_pkcs15_pubkey_info_t *in_key)
 {
-	sc_pkcs15_pubkey_info_t key = *in_key;
+	sc_pkcs15_pubkey_info_t key;
+
+	if (!in_key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	key = *in_key;
 
 	if (key.access_flags == 0)
 		key.access_flags = SC_PKCS15_PRKEY_ACCESS_EXTRACTABLE;
@@ -480,12 +516,16 @@ int sc_pkcs15emu_add_xeddsa_pubkey(sc_pkcs15_card_t *p15card,
 int sc_pkcs15emu_add_x509_cert(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *obj, const sc_pkcs15_cert_info_t *cert)
 {
+	if (!cert)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_CERT_X509, obj, cert);
 }
 
 int sc_pkcs15emu_add_data_object(sc_pkcs15_card_t *p15card,
 	const sc_pkcs15_object_t *obj, const sc_pkcs15_data_info_t *data)
 {
+	if (!data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	return sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT, obj, data);
 }
 
@@ -541,6 +581,11 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	memcpy(obj->data, data, data_len);
 
 	obj->df = sc_pkcs15emu_get_df(p15card, df_type);
+	if (!obj->df) {
+		free(obj->data);
+		free(obj);
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 	sc_pkcs15_add_object(p15card, obj);
 
 	/* release memory ownership of buffers that are now contained in `p15card` */
