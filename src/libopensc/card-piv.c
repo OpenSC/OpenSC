@@ -1776,6 +1776,9 @@ piv_find_obj_by_containerid(sc_card_t *card, const u8 *str)
 {
 	int i;
 
+	if (!card || !str)
+		return -1;
+
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx, "str=0x%02X%02X\n", str[0], str[1]);
 
@@ -4469,10 +4472,14 @@ piv_get_serial_nr_from_CHUI(sc_card_t *card, sc_serial_number_t *serial)
 static int
 piv_is_object_present(sc_card_t *card, u8 *ptr)
 {
-	piv_private_data_t *priv = PIV_DATA(card);
+	piv_private_data_t *priv;
 	int r = 0;
 	int enumtag;
 
+	if (!card || !ptr)
+		return 0;
+
+	priv = PIV_DATA(card);
 	enumtag = piv_find_obj_by_containerid(card, ptr);
 	if (enumtag >= 0 && priv->obj_cache[enumtag].flags & PIV_OBJ_CACHE_NOT_PRESENT)
 		r = 1;
