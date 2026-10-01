@@ -547,7 +547,7 @@ md_get_pin_by_role(PCARD_DATA pCardData, PIN_ID role, struct sc_pkcs15_object **
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
-	if (!ret_obj)
+	if (!vs || !vs->p15card || !ret_obj)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	rv = get_pin_by_name(pCardData, vs->p15card, role, ret_obj);
@@ -4344,7 +4344,7 @@ DWORD WINAPI CardDeleteFile(__in PCARD_DATA pCardData,
 		  (unsigned long)GetCurrentThreadId(), pCardData);
 	logprintf(pCardData, 1, "CardDeleteFile(%s, %s) called\n", NULLSTR(pszDirectoryName), NULLSTR(pszFileName));
 
-	if(!pCardData  || !lock(pCardData))
+	if(!pCardData || !pszFileName || !strlen(pszFileName) || dwFlags != 0 || !lock(pCardData))
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	dwret = check_card_reader_status(pCardData, "CardDeleteFile");
@@ -4452,7 +4452,7 @@ DWORD WINAPI CardGetFileInfo(__in PCARD_DATA pCardData,
 
 	MD_FUNC_CALLED(pCardData, 1);
 
-	if(!pCardData  || !lock(pCardData))
+	if(!pCardData || !pCardFileInfo || !pszFileName || !strlen(pszFileName) || !lock(pCardData))
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
@@ -4488,6 +4488,9 @@ DWORD WINAPI CardQueryFreeSpace(__in PCARD_DATA pCardData, __in DWORD dwFlags,
 
 	MD_FUNC_CALLED(pCardData, 1);
 
+	if (!pCardData || !pCardFreeSpaceInfo || !lock(pCardData))
+		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
 	logprintf(pCardData, 1, "\nP:%lu T:%lu pCardData:%p ",
 		  (unsigned long)GetCurrentProcessId(),
 		  (unsigned long)GetCurrentThreadId(), pCardData);
@@ -4495,9 +4498,6 @@ DWORD WINAPI CardQueryFreeSpace(__in PCARD_DATA pCardData, __in DWORD dwFlags,
 		  "CardQueryFreeSpace %p, dwFlags=%lX, version=%lX\n",
 		  pCardFreeSpaceInfo, (unsigned long)dwFlags,
 		  (unsigned long)pCardFreeSpaceInfo->dwVersion);
-
-	if (!pCardData || !lock(pCardData))
-		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	dwret = check_card_status(pCardData, "CardQueryFreeSpace");
 	if (dwret != SCARD_S_SUCCESS)
@@ -4535,7 +4535,7 @@ DWORD WINAPI CardQueryKeySizes(__in PCARD_DATA pCardData,
 		  (unsigned long)dwKeySpec, (unsigned long)dwFlags,
 		  pKeySizes ? (unsigned long)pKeySizes->dwVersion : 0);
 
-	if (!pCardData || dwFlags != 0 || dwKeySpec == 0 || !lock(pCardData))
+	if (!pCardData || !pKeySizes || dwFlags != 0 || dwKeySpec == 0 || !lock(pCardData))
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
 	dwret = check_card_status(pCardData, "CardQueryKeySizes");
@@ -4896,6 +4896,10 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				opt_crypt_flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01;
 				BCRYPT_PKCS1_PADDING_INFO *pkcs1_pinf = (BCRYPT_PKCS1_PADDING_INFO *)pInfo->pPaddingInfo;
 
+				if (!pkcs1_pinf) {
+					dwret = SCARD_E_INVALID_PARAMETER;
+					goto err;
+				}
 				if (!pkcs1_pinf->pszAlgId)
 					opt_crypt_flags |= SC_ALGORITHM_RSA_HASH_NONE;
 				else if (wcscmp(pkcs1_pinf->pszAlgId, L"SHAMD5") == 0)
@@ -4926,6 +4930,10 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				BCRYPT_PSS_PADDING_INFO *pss_pinf = (BCRYPT_PSS_PADDING_INFO *)pInfo->pPaddingInfo;
 				ULONG expected_salt_len;
 
+				if (!pss_pinf) {
+					dwret = SCARD_E_INVALID_PARAMETER;
+					goto err;
+				}
 				if (!pss_pinf->pszAlgId || wcscmp(pss_pinf->pszAlgId, BCRYPT_SHA1_ALGORITHM) == 0) {
 					/* hashAlg = CALG_SHA1; */
 					logprintf(pCardData, 3, "Using CALG_SHA1  hashAlg\n");
