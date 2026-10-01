@@ -414,8 +414,8 @@ static int nqapplet_get_data(struct sc_card *card, unsigned int id, u8 *resp, si
 static int nqapplet_select_file(struct sc_card *card, const struct sc_path *in_path,
                                 struct sc_file **file_out)
 {
-	if (!card || !in_path)
-		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+	if (!card || !card->ctx || !in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -440,10 +440,17 @@ static int nqapplet_select_file(struct sc_card *card, const struct sc_path *in_p
 
 static int nqapplet_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 {
+	if (!card)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	switch (cmd) {
 	case SC_CARDCTL_GET_SERIALNR:
+		if (!ptr)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		if (card->serialnr.len) {
 			sc_serial_number_t *serial = (sc_serial_number_t *)ptr;
+			if (card->serialnr.len > sizeof(serial->value))
+				return SC_ERROR_INVALID_DATA;
 			memcpy(serial->value, card->serialnr.value, card->serialnr.len);
 			serial->len = card->serialnr.len;
 			return SC_SUCCESS;
