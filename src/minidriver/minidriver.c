@@ -1316,7 +1316,7 @@ md_pkcs15_update_containers(PCARD_DATA pCardData, unsigned char *blob, size_t si
 			if (cont->guid[0] != 0) {
 				md_contguid_delete_conversion(pCardData, cont->guid);
 			}
-			memset(cont, 0, sizeof(CONTAINER_MAP_RECORD));
+			memset(cont, 0, sizeof(*cont));
 		}
 		else   {
 			strlcpy(cont->guid, szGuid, MAX_CONTAINER_NAME_LEN + 1);
@@ -1347,7 +1347,7 @@ md_pkcs15_delete_object(PCARD_DATA pCardData, struct sc_pkcs15_object *obj)
 	if (!pCardData)
 		return SCARD_E_INVALID_PARAMETER;
 	vs = pCardData->pvVendorSpecific;
-	if (!vs)
+	if (!vs || !vs->p15card || !vs->p15card->card)
 		return SCARD_E_INVALID_PARAMETER;
 
 	card = vs->p15card->card;
