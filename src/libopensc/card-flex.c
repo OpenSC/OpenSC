@@ -490,10 +490,16 @@ static int flex_select_file(sc_card_t *card, const sc_path_t *path,
 			     sc_file_t **file_out)
 {
 	int r;
-	const u8 *pathptr = path->value;
-	size_t pathlen = path->len;
+	const u8 *pathptr;
+	size_t pathlen;
 	int locked = 0;
 	u8 p1 = 0;
+
+	if (!card || !path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	pathptr = path->value;
+	pathlen = path->len;
 
 	switch (path->type) {
 	case SC_PATH_TYPE_PATH:
