@@ -5031,7 +5031,20 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		if(r < 0)   {
 			logprintf(pCardData, 2, "sc_pkcs15_compute_signature error %s\n", sc_strerror(r));
 			pCardData->pfnCspFree(pbuf);
+			pCardData->pfnCspFree(pInfo->pbSignedData);
+			pInfo->pbSignedData = NULL;
+			pInfo->cbSignedData = 0;
 			dwret = md_translate_OpenSC_to_Windows_error(r, SCARD_F_INTERNAL_ERROR);
+			goto err;
+		}
+
+		if ((DWORD)r > pInfo->cbSignedData) {
+			logprintf(pCardData, 1, "sc_pkcs15_compute_signature returned size %d > buffer %lu\n", r, (unsigned long)pInfo->cbSignedData);
+			pCardData->pfnCspFree(pbuf);
+			pCardData->pfnCspFree(pInfo->pbSignedData);
+			pInfo->pbSignedData = NULL;
+			pInfo->cbSignedData = 0;
+			dwret = SCARD_E_INSUFFICIENT_BUFFER;
 			goto err;
 		}
 
