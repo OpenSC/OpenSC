@@ -168,7 +168,12 @@ static int
 cedulauy_select_file(struct sc_card *card, const struct sc_path *in_path,
 		struct sc_file **file_out)
 {
-	struct sc_path path = *in_path;
+	struct sc_path path;
+
+	if (!card || !in_path)
+		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+
+	path = *in_path;
 
 	LOG_FUNC_CALLED(card->ctx);
 
