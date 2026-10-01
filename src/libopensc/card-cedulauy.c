@@ -171,7 +171,7 @@ cedulauy_select_file(struct sc_card *card, const struct sc_path *in_path,
 	struct sc_path path;
 
 	if (!card || !in_path)
-		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	path = *in_path;
 
@@ -188,7 +188,11 @@ cedulauy_select_file(struct sc_card *card, const struct sc_path *in_path,
 	}
 	if (path.type == SC_PATH_TYPE_PATH && path.len == 0) {
 		/* Selection of MF was requested */
-		sc_file_dup(file_out, cedulauy_get_mf());
+		if (file_out) {
+			sc_file_dup(file_out, cedulauy_get_mf());
+			if (*file_out == NULL)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
@@ -203,10 +207,11 @@ cedulauy_set_security_env(struct sc_card *card, const struct sc_security_env *en
 	/* MSE SET, Digital Signature Template: key reference and algorithm */
 	unsigned char mse_data[] = {0x84, 0x01, 0xFF, 0x80, 0x01, CEDULAUY_ALGO_RSA_PKCS1};
 
+	if (card == NULL || env == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(card->ctx);
 
-	if (env == NULL)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (env->operation != SC_SEC_OPERATION_SIGN)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	if ((env->flags & SC_SEC_ENV_ALG_PRESENT) && env->algorithm != SC_ALGORITHM_RSA)
@@ -234,10 +239,10 @@ cedulauy_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
 	unsigned char rbuf[256]; /* RSA 2048 */
 	size_t offs = 0;
 
-	LOG_FUNC_CALLED(card->ctx);
+	if (card == NULL || data == NULL || out == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (data == NULL || out == NULL)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	LOG_FUNC_CALLED(card->ctx);
 
 	/* What is loaded here matches the algorithm set in set_security_env:
 	 * for 0x42 'data' is the bare SHA-256 digest and the card builds the
@@ -272,6 +277,9 @@ cedulauy_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	/* As on other IAS/ECC cards, GET CHALLENGE only handles a length of 8 */
 	unsigned char rbuf[8];
 	int r;
+
+	if (card == NULL || rnd == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 
