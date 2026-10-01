@@ -737,6 +737,9 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 	CK_RV rv;
 	unsigned int i;
 
+	if (pLabel == NULL_PTR || (pPin == NULL_PTR && ulPinLen > 0))
+		return CKR_ARGUMENTS_BAD;
+
 	/* Strip trailing whitespace and null terminate the label.
 	 * Keep the fixed-length buffer though as some other layers or drivers (SC-HSM)
 	 * might expect the length is fixed! */
