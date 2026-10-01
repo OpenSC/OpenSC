@@ -344,6 +344,9 @@ static int eoi_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t 
 	struct eoi_privdata *privdata = (struct eoi_privdata *)card->drv_data;
 	int i;
 
+	if (!in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (!privdata)
@@ -351,6 +354,13 @@ static int eoi_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t 
 
 	for (i = 0; i < MAX_OBJECTS && privdata->pin_paths[i]; i++) {
 		if (privdata->pin_paths[i] && sc_compare_path(privdata->pin_paths[i], in_path)) {
+			if (file_out) {
+				sc_file_t *file = sc_file_new();
+				if (!file)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+				file->path = *in_path;
+				*file_out = file;
+			}
 			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		}
 	}
