@@ -331,17 +331,23 @@ static int eoi_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t 
 	int i;
 
 	if (!card || !in_path)
-		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
-
-	privdata = (struct eoi_privdata *)card->drv_data;
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	privdata = (struct eoi_privdata *)card->drv_data;
 	if (!privdata)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
 	for (i = 0; i < MAX_OBJECTS && privdata->pin_paths[i]; i++) {
 		if (privdata->pin_paths[i] && sc_compare_path(privdata->pin_paths[i], in_path)) {
+			if (file_out) {
+				sc_file_t *file = sc_file_new();
+				if (!file)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+				file->path = *in_path;
+				*file_out = file;
+			}
 			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		}
 	}
@@ -351,13 +357,17 @@ static int eoi_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t 
 
 static int eoi_logout(struct sc_card *card)
 {
-	struct eoi_privdata *privdata = (struct eoi_privdata *)card->drv_data;
+	struct eoi_privdata *privdata;
 	struct sc_apdu apdu;
 	u8 buf[256];
 	int r = SC_SUCCESS;
 
+	if (!card)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(card->ctx);
 
+	privdata = (struct eoi_privdata *)card->drv_data;
 	if (!privdata)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
