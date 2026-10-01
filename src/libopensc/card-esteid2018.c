@@ -99,7 +99,9 @@ static int esteid_select_file(struct sc_card *card, const struct sc_path *in_pat
 	struct sc_apdu apdu;
 
 	if (!card || !in_path)
-		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	path = in_path->value;
 
 	LOG_FUNC_CALLED(card->ctx);
 	path = in_path->value;
