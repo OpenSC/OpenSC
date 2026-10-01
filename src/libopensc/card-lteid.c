@@ -516,6 +516,9 @@ lteid_set_security_env(struct sc_card *card, const struct sc_security_env *env, 
 static int
 lteid_compute_signature(struct sc_card *card, const u8 *data, size_t data_len, u8 *out, size_t outlen)
 {
+	if (!card || !data || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	// Usually this is called with 104 bytes buffer. But we expect card to return 96 byte hash.
@@ -532,9 +535,14 @@ lteid_compute_signature(struct sc_card *card, const u8 *data, size_t data_len, u
 static int
 lteid_process_fci(struct sc_card *card, struct sc_file *file, const u8 *buf, size_t buflen)
 {
+	int rv;
+
+	if (!card || !file)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	int rv = iso_ops->process_fci(card, file, buf, buflen);
+	rv = iso_ops->process_fci(card, file, buf, buflen);
 
 	if (rv != SC_SUCCESS) {
 		LOG_FUNC_RETURN(card->ctx, rv);
