@@ -1973,8 +1973,10 @@ epass2003_select_aid(struct sc_card *card, const sc_path_t * in_path, sc_file_t 
 	r = iso_ops->select_file(card, in_path, file_out);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
-	if (file_out) {
+	if (file_out && *file_out) {
 		sc_file_t *file = *file_out;
+		if (in_path->len > sizeof(file->name))
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 		file->type = SC_FILE_TYPE_DF;
 		file->ef_structure = SC_FILE_EF_UNKNOWN;
