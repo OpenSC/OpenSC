@@ -139,10 +139,16 @@ static int
 jpki_select_file(struct sc_card *card,
 		 const struct sc_path *path, struct sc_file **file_out)
 {
-	struct jpki_private_data *drvdata = JPKI_DRVDATA(card);
+	struct jpki_private_data *drvdata;
 	int rc;
 	sc_apdu_t apdu;
 	struct sc_file *file = NULL;
+
+	if (!card || !card->ctx || !path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	drvdata = JPKI_DRVDATA(card);
+	if (!drvdata)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx, "jpki_select_file: path=%s, len=%zu", sc_print_path(path), path->len);
@@ -210,8 +216,14 @@ jpki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 	int rc;
 	sc_path_t path;
 	sc_apdu_t apdu;
-	struct jpki_private_data *priv = JPKI_DRVDATA(card);
+	struct jpki_private_data *priv;
 	int max_tries = 0;
+
+	if (!card || !card->ctx || !data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	priv = JPKI_DRVDATA(card);
+	if (!priv)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 

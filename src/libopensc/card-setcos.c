@@ -901,10 +901,13 @@ static int setcos_select_file(sc_card_t *card,
 {
 	int r;
 
+	if (!card || !in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	r = iso_ops->select_file(card, in_path, file);
 	if (r)
 		return r;
-	if (file != NULL) {
+	if (file != NULL && *file != NULL) {
 		if (card->type == SC_CARD_TYPE_SETCOS_44 ||
 		    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
 		    SETCOS_IS_EID_APPLET(card))

@@ -318,6 +318,8 @@ iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 		LOG_TEST_RET(card->ctx, rv, "Cannot select MF");
 	}
 	else   {
+		if (card->ef_atr->aid.len > sizeof(path.value))
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "AID length too large");
 		memset(&path, 0, sizeof(path));
 		path.type = SC_PATH_TYPE_DF_NAME;
 		memcpy(path.value, card->ef_atr->aid.value, card->ef_atr->aid.len);
@@ -861,10 +863,15 @@ static int
 iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		 struct sc_file **file_out)
 {
-	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
-	struct sc_context *ctx = card->ctx;
+	struct iasecc_private_data *prv;
+	struct sc_context *ctx;
 	struct sc_path lpath;
 	int rv, ii;
+
+	if (!card || !card->ctx || !path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	prv = (struct iasecc_private_data *)card->drv_data;
+	ctx = card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
 	memcpy(&lpath, path, sizeof(struct sc_path));
@@ -892,6 +899,9 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 	if (lpath.aid.len)	{
 		struct sc_file *file = NULL;
 		struct sc_path ppath;
+
+		if (lpath.aid.len > sizeof(ppath.value))
+			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_ARGUMENTS, "AID length too large");
 
 		sc_log(ctx, "iasecc_select_file() select parent AID:%p/%zu", lpath.aid.value, lpath.aid.len);
 		sc_log(ctx, "iasecc_select_file() select parent AID:%s", sc_dump_hex(lpath.aid.value, lpath.aid.len));

@@ -847,8 +847,15 @@ select_file_by_fid(sc_card_t * card, unsigned short *pathptr,
 static int
 mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 {
-	struct mcrd_priv_data *priv = DRVDATA(card);
+	struct mcrd_priv_data *priv;
 	int r = 0;
+
+	if (!card || !path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	priv = DRVDATA(card);
+	if (!priv)
+		return SC_ERROR_INTERNAL;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 

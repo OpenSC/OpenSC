@@ -1173,6 +1173,9 @@ static int rutoken_get_serial(sc_card_t *card, sc_serial_number_t *serial)
 	sc_apdu_t apdu;
 	int ret;
 
+	if (!card || !card->ctx || !serial)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x81);
 	apdu.resp = serial->value;
@@ -1191,6 +1194,9 @@ static int rutoken_get_info(sc_card_t *card, void *buff)
 	sc_apdu_t apdu;
 	u8 rbuf[8];
 	int ret;
+
+	if (!card || !card->ctx || !buff)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x89);

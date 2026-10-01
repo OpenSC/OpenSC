@@ -518,6 +518,8 @@ static int starcos_encode_prkey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf)
 		if (len > STARCOS_MAX_PR_KEYSIZE) {
 			return SC_ERROR_INTERNAL;
 		}
+		if (rsa->p.len < rsa->iqmp.len)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		/* get number of 0x00 bytes */
 		i = STARCOS_MAX_PR_KEYSIZE - len;
 

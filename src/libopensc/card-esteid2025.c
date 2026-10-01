@@ -81,6 +81,9 @@ esteid_select_file(struct sc_card *card, const struct sc_path *in_path, struct s
 	struct sc_file *file = NULL;
 	struct sc_apdu apdu;
 
+	if (!card || !in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	// Only support full paths
@@ -94,7 +97,7 @@ esteid_select_file(struct sc_card *card, const struct sc_path *in_path, struct s
 		file = sc_file_new();
 		if (file == NULL)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-		r = iso_ops->process_fci(card, file, resp, resplen);
+		r = iso_ops->process_fci(card, file, resp, apdu.resplen);
 		if (r != SC_SUCCESS) {
 			sc_file_free(file);
 		}

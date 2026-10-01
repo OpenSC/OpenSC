@@ -662,6 +662,12 @@ int msc_compute_crypt_init(sc_card_t *card,
 	int r;
 
 	u8 outputBuffer[MSC_MAX_APDU + 2];
+
+	if (dataLength + 5 > sizeof(buffer) || dataLength + 2 > sizeof(outputBuffer))
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	if (dataLength > 0 && !initData)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x36, keyLocation, 0x01); /* Init */
 	apdu.data = buffer;
 	apdu.datalen = dataLength + 5;
@@ -719,6 +725,11 @@ int msc_compute_crypt_final(
 	u8 *ptr;
 	int r;
 
+	if (dataLength + 3 > sizeof(buffer) || dataLength + 2 > sizeof(outputBuffer))
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	if (dataLength > 0 && !inputData)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4, 0x36, keyLocation, 0x03); /* Final */
 
 	apdu.data = buffer;
@@ -774,6 +785,11 @@ static int msc_compute_crypt_final_object(
 	u8 buffer[MSC_MAX_APDU];
 	u8 *ptr;
 	int r;
+
+	if (dataLength + 3 > sizeof(buffer) || (outputDataLength && dataLength > *outputDataLength))
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (dataLength > 0 && !inputData)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x36, keyLocation, 0x03); /* Final */
 
@@ -849,7 +865,7 @@ int msc_compute_crypt(sc_card_t *card,
 
 	size_t received = outputDataLength;
 
-	if (outputDataLength < dataLength)
+	if (outputDataLength < dataLength || !outputData || (dataLength > 0 && !data))
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* Don't send data during init... apparently current version does not support it */
@@ -863,12 +879,16 @@ int msc_compute_crypt(sc_card_t *card,
 		toSend,
 		&received);
 	if(r < 0) LOG_FUNC_RETURN(card->ctx, r);
+	if (received > outLeft)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	left -= toSend;
 	inPtr += toSend;
 	outLeft -= received;
 	outPtr += received;
 
-	toSend = MIN((int)left, MSC_MAX_APDU - 5);
+	if (left > MSC_MAX_APDU - 5)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	toSend = (int)left;
 	/* If the card supports extended APDUs, or the data fits in
            one normal APDU, use it for the data exchange */
 	if (left < (MSC_MAX_SEND - 4) || (card->caps & SC_CARD_CAP_APDU_EXT) != 0) {

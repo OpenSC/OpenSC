@@ -963,8 +963,13 @@ static int gids_read_public_key (struct sc_card *card , unsigned int algorithm,
 static int gids_select_file(sc_card_t *card, const struct sc_path *in_path,
 			   struct sc_file **file_out) {
 	struct sc_file *file = NULL;
-	struct sc_context *ctx = card->ctx;
-	struct gids_private_data *data = (struct gids_private_data *) card->drv_data;
+	struct sc_context *ctx;
+	struct gids_private_data *data;
+
+	if (!card || !card->drv_data || !in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	ctx = card->ctx;
+	data = (struct gids_private_data *) card->drv_data;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1005,6 +1010,8 @@ static int gids_select_file(sc_card_t *card, const struct sc_path *in_path,
 
 static int gids_get_pin_policy(struct sc_card *card, struct sc_pin_cmd_data *data) {
 	int r;
+	if (!card || !data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	if (data->pin_type != SC_AC_CHV) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}

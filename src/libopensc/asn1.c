@@ -161,14 +161,18 @@ static void print_indent(size_t depth)
 
 static void print_hex(const u8 * buf, size_t buflen, size_t depth)
 {
-	size_t lines_len = buflen * 5 + 128;
-	char *lines = malloc(lines_len);
-	char *line = lines;
+	size_t lines_len;
+	char *lines, *line;
 
-	if (buf == NULL || buflen == 0 || lines == NULL) {
-		free(lines);
+	if (buf == NULL || buflen == 0 || buflen > (SIZE_MAX - 128) / 5) {
 		return;
 	}
+	lines_len = buflen * 5 + 128;
+	lines = malloc(lines_len);
+	if (lines == NULL) {
+		return;
+	}
+	line = lines;
 
 	sc_hex_dump(buf, buflen, lines, lines_len);
 
@@ -2218,12 +2222,12 @@ sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, const unsigned char *in
 	if (r_len > 0)
 		memcpy(buf + (halflen - r_len), r, r_len);
 	if (s_len > 0)
-		memcpy(buf + (buflen - s_len), s, s_len);
+		memcpy(buf + (2*halflen - s_len), s, s_len);
 
 	sc_log(ctx, "r(%zu): %s", halflen, sc_dump_hex(buf, halflen));
 	sc_log(ctx, "s(%zu): %s", halflen, sc_dump_hex(buf + halflen, halflen));
 
-	rv = SC_SUCCESS;
+	rv = 2*halflen;
 err:
 	free(r);
 	free(s);

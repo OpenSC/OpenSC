@@ -322,6 +322,9 @@ static int muscle_delete_file(sc_card_t *card, const sc_path_t *path_in)
 	mscfs_file_t *file_data = NULL;
 	int r = 0;
 
+	if (!path_in)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+
 	r = mscfs_loadFileInfo(fs, path_in->value, path_in->len, &file_data, NULL);
 	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 	for(int x = 0; x < fs->cache.size; x++) {
@@ -405,6 +408,8 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 	if(file_out) {
 		sc_file_t *file;
 		file = sc_file_new();
+		if (!file)
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);
 		file->path = *path_in;
 		file->size = file_data->size;
 		file->id = (oid[2] << 8) | oid[3];
@@ -554,6 +559,10 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd)
 	muscle_private_t* priv = MUSCLE_DATA(card);
 	const int bufferLength = MSC_MAX_PIN_COMMAND_LENGTH;
 	u8 buffer[MSC_MAX_PIN_COMMAND_LENGTH];
+
+	if (!priv || !cmd)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	switch(cmd->cmd) {
 	case SC_PIN_CMD_VERIFY:
 		switch(cmd->pin_type) {
@@ -566,7 +575,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd)
 			cmd->apdu = &apdu;
 			cmd->pin1.offset = 5;
 			r = iso_ops->pin_cmd(card, cmd);
-			if(r >= 0)
+			if (r >= 0 && cmd->pin_reference < 16)
 				priv->verifiedPins |= (1 << cmd->pin_reference);
 			return r;
 		}
@@ -672,6 +681,9 @@ static int muscle_card_verified_pins(sc_card_t *card, sc_cardctl_muscle_verified
 }
 static int muscle_card_ctl(sc_card_t *card, unsigned long request, void *data)
 {
+	if (!card->drv_data || !data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	switch(request) {
 	case SC_CARDCTL_MUSCLE_GENERATE_KEY:
 		return muscle_card_generate_key(card, (sc_cardctl_muscle_gen_key_info_t*) data);
@@ -691,6 +703,9 @@ static int muscle_set_security_env(sc_card_t *card,
 				 int se_num)
 {
 	muscle_private_t* priv = MUSCLE_DATA(card);
+
+	if (!priv || !env)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (env->operation != SC_SEC_OPERATION_SIGN &&
 	    env->operation != SC_SEC_OPERATION_DECIPHER) {

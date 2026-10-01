@@ -366,6 +366,11 @@ static int atrust_acos_select_file(struct sc_card *card,
 	int    r;
 	size_t i, pathlen;
 
+	if (!card || !in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (in_path->len > sizeof(pathbuf))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
 

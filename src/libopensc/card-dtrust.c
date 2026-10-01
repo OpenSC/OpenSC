@@ -1024,6 +1024,9 @@ dtrust_logout(sc_card_t *card)
 	struct dtrust_drv_data_t *drv_data;
 	int r;
 
+	if (!card || !card->drv_data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	drv_data = card->drv_data;
@@ -1035,7 +1038,7 @@ dtrust_logout(sc_card_t *card)
 	/* If PACE is done between reader and card, SM is transparent to us as
 	 * it ends at the reader. With CLA=0x0C we provoke a SM error to
 	 * disable SM on the reader. */
-	if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) {
+	if (card->reader && (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC)) {
 		struct sc_apdu apdu;
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0xA4, 0x00, 0x00);
