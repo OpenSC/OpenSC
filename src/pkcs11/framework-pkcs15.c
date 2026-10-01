@@ -1487,10 +1487,10 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 {
 	struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 	int public_certificates = 1;
-	unsigned i;
+	int i;
 
 	sc_log(context, "Add objects related to PIN('%.*s',ID:%s)", (int) sizeof pin_obj->label, pin_obj->label, sc_pkcs15_print_id(&pin_info->auth_id));
-	for (i=0; i < fw_data->num_objects; i++) {
+	for (i=0; i < (int)fw_data->num_objects; i++) {
 		struct pkcs15_any_object *obj = fw_data->objects[i];
 
 		/* "Fake" objects we've generated */
@@ -1533,8 +1533,8 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 			int tail = fw_data->num_objects - i - 1;
 
 			move_to_fw->objects[move_to_fw->num_objects++] = obj;
-			if (tail)
-				memcpy(&fw_data->objects[i], &fw_data->objects[i + 1], sizeof(fw_data->objects[0]) * tail);
+			if (tail > 0)
+				memmove(&fw_data->objects[i], &fw_data->objects[i + 1], sizeof(fw_data->objects[0]) * tail);
 			i--;
 			fw_data->num_objects--;
 		}
