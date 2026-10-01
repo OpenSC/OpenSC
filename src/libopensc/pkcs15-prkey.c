@@ -176,6 +176,9 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	u8 ec_domain[32];
 	size_t ec_domain_len = sizeof(ec_domain);
 
+	if (!obj || !buf || !buflen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_copy_asn1_entry(c_asn1_prkey, asn1_prkey);
 	sc_copy_asn1_entry(c_asn1_supported_algorithms, asn1_supported_algorithms);
 
@@ -392,10 +395,15 @@ int sc_pkcs15_encode_prkdf_entry(sc_context_t *ctx, const struct sc_pkcs15_objec
 		asn1_com_key_attr, asn1_com_prkey_attr,
 		asn1_prk_ecc_attr
 	};
-	struct sc_pkcs15_prkey_info *prkey = (struct sc_pkcs15_prkey_info *) obj->data;
+	struct sc_pkcs15_prkey_info *prkey;
 	struct sc_pkcs15_keyinfo_gostparams *keyinfo_gostparams;
 	int r, i;
 	size_t af_len, usage_len;
+
+	if (!obj || !obj->data || !buf || !buflen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	prkey = (struct sc_pkcs15_prkey_info *) obj->data;
 
 	sc_copy_asn1_entry(c_asn1_prkey, asn1_prkey);
 	sc_copy_asn1_entry(c_asn1_supported_algorithms, asn1_supported_algorithms);
@@ -481,14 +489,23 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 	unsigned char *buff = NULL, *ptr = NULL;
 	int rv;
 
+	if (!cert_object || !cert_object->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(ctx);
 	if (out_key_object)
 		*out_key_object = NULL;
+
+	if (cert_object->content.value == NULL || cert_object->content.len == 0)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
 	rv = sc_pkcs15_find_prkey_by_id(p15card, &((struct sc_pkcs15_cert_info *)cert_object->data)->id, &key_object);
 	if (rv == SC_ERROR_OBJECT_NOT_FOUND)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	LOG_TEST_RET(ctx, rv, "Find private key error");
+
+	if (!key_object || !key_object->data)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
 	key_info = (struct sc_pkcs15_prkey_info *) key_object->data;
 
@@ -502,32 +519,44 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 	x = d2i_X509_bio(mem, NULL);
 	if (!x) {
 		sc_log_openssl(ctx);
-		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "x509 parse error");
+		rv = SC_ERROR_INTERNAL;
+		goto out;
 	}
 	buff = OPENSSL_malloc(i2d_X509(x,NULL) + EVP_MAX_MD_SIZE);
 	if (!buff) {
 		sc_log_openssl(ctx);
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "OpenSSL allocation error");
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		goto out;
 	}
 
 	ptr = buff;
 	rv = i2d_X509_NAME(X509_get_subject_name(x), &ptr);
 	if (rv <= 0) {
 		sc_log_openssl(ctx);
-		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "Get subject name error");
+		rv = SC_ERROR_INTERNAL;
+		goto out;
 	}
 
+	free(key_info->subject.value);
 	key_info->subject.value = malloc(rv);
-	if (!key_info->subject.value)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Subject allocation error");
+	if (!key_info->subject.value) {
+		key_info->subject.len = 0;
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		goto out;
+	}
 
 	memcpy(key_info->subject.value, buff, rv);
 	key_info->subject.len = rv;
 
 	strlcpy(key_object->label, cert_object->label, sizeof(key_object->label));
 
-	rv = 0;
+	if (out_key_object)
+		*out_key_object = key_object;
 
+	sc_log(ctx, "Subject %s", sc_dump_hex(key_info->subject.value, key_info->subject.len));
+	rv = SC_SUCCESS;
+
+out:
 	if (x)
 		X509_free(x);
 	if (mem)
@@ -536,11 +565,6 @@ sc_pkcs15_prkey_attrs_from_cert(struct sc_pkcs15_card *p15card, struct sc_pkcs15
 		OPENSSL_free(buff);
 
 	ERR_clear_error();
-
-	if (out_key_object)
-		*out_key_object = key_object;
-
-	sc_log(ctx, "Subject %s", sc_dump_hex(key_info->subject.value, key_info->subject.len));
 	LOG_FUNC_RETURN(ctx, rv);
 #else
 	LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
@@ -609,10 +633,10 @@ sc_pkcs15_convert_bignum(sc_pkcs15_bignum_t *dst, const void *src)
 #ifdef ENABLE_OPENSSL
 	const BIGNUM *bn = (const BIGNUM *)src;
 
-	if (bn == 0)
+	if (!dst || !bn)
 		return 0;
 	dst->len = BN_num_bytes(bn);
-	dst->data = malloc(dst->len);
+	dst->data = malloc(dst->len ? dst->len : 1);
 	if (!dst->data)
 		return 0;
 	BN_bn2bin(bn, dst->data);
@@ -626,8 +650,13 @@ int
 sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 {
 #ifdef ENABLE_OPENSSL
-	EVP_PKEY *pk = (EVP_PKEY *)evp_key;
+	EVP_PKEY *pk;
 	int pk_type;
+
+	if (!pkcs15_key || !evp_key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	pk = (EVP_PKEY *)evp_key;
 	pk_type = EVP_PKEY_base_id(pk);
 
 	switch (pk_type) {
@@ -669,6 +698,7 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 			!sc_pkcs15_convert_bignum(&dst->d, src_d) ||
 			!sc_pkcs15_convert_bignum(&dst->p, src_p) ||
 			!sc_pkcs15_convert_bignum(&dst->q, src_q)) {
+			sc_pkcs15_erase_prkey(pkcs15_key);
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 			BN_free(src_n);
 			BN_free(src_e);
@@ -794,18 +824,27 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		/* Decode EC_POINT from a octet string */
 		buflen = EC_POINT_point2oct(grp, src_pub_key,
 				POINT_CONVERSION_UNCOMPRESSED, buf, buflen, NULL);
-		if (!buflen)
+		if (!buflen) {
+			sc_pkcs15_erase_prkey(pkcs15_key);
 			return SC_ERROR_INCOMPATIBLE_KEY;
+		}
 #else
 		/* Decode EC_POINT from a octet string */
 		if (EVP_PKEY_get_octet_string_param(pk, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, buflen, &buflen) != 1) {
+			EC_GROUP_free(grp);
+			sc_pkcs15_erase_prkey(pkcs15_key);
 			return SC_ERROR_INCOMPATIBLE_KEY;
 		}
 #endif
 		/* copy the public key */
 		dst->ecpointQ.value = malloc(buflen);
-		if (!dst->ecpointQ.value)
+		if (!dst->ecpointQ.value) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+			EC_GROUP_free(grp);
+#endif
+			sc_pkcs15_erase_prkey(pkcs15_key);
 			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		memcpy(dst->ecpointQ.value, buf, buflen);
 		dst->ecpointQ.len = buflen;
 
@@ -823,8 +862,10 @@ sc_pkcs15_convert_prkey(struct sc_pkcs15_prkey *pkcs15_key, void *evp_key)
 		if (dst->privateD.len < BYTES4BITS(dst->params.field_length)) {
 			size_t d = BYTES4BITS(dst->params.field_length) - dst->privateD.len;
 			u8 *p = realloc(dst->privateD.data, dst->privateD.len + d);
-			if (!p)
+			if (!p) {
+				sc_pkcs15_erase_prkey(pkcs15_key);
 				return SC_ERROR_OUT_OF_MEMORY;
+			}
 			dst->privateD.data = p;
 
 			memmove(dst->privateD.data + d, dst->privateD.data, dst->privateD.len);
