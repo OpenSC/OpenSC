@@ -3289,7 +3289,6 @@ static DWORD md_translate_OpenSC_to_Windows_error(int OpenSCerror,
 DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 {
 	VENDOR_SPECIFIC *vs = NULL;
-	CRITICAL_SECTION hScard_lock;
 
 	MD_FUNC_CALLED(pCardData, 1);
 
@@ -3305,8 +3304,7 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 	if(!vs)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
 
-	hScard_lock = vs->hScard_lock;
-	EnterCriticalSection(&hScard_lock);
+	EnterCriticalSection(&vs->hScard_lock);
 
 	disassociate_card(pCardData);
 	md_fs_finalize(pCardData);
@@ -3319,11 +3317,11 @@ DWORD WINAPI CardDeleteContext(__inout PCARD_DATA  pCardData)
 
 	logprintf(pCardData, 1, "**********************************************************************\n");
 
+	LeaveCriticalSection(&vs->hScard_lock);
+	DeleteCriticalSection(&vs->hScard_lock);
+
 	pCardData->pfnCspFree(pCardData->pvVendorSpecific);
 	pCardData->pvVendorSpecific = NULL;
-
-	LeaveCriticalSection(&hScard_lock);
-	DeleteCriticalSection(&hScard_lock);
 
 	MD_FUNC_RETURN(pCardData, 1, SCARD_S_SUCCESS);
 }
@@ -7038,7 +7036,6 @@ DWORD WINAPI CardAcquireContext(__inout PCARD_DATA pCardData, __in DWORD dwFlags
 {
 	VENDOR_SPECIFIC *vs;
 	DWORD dwret, suppliedVersion = 0;
-	CRITICAL_SECTION hScard_lock;
 
 	if (!pCardData)
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
@@ -7197,11 +7194,10 @@ ret_release:
 	sc_release_context(vs->ctx);
 
 ret_free:
-	hScard_lock = vs->hScard_lock;
+	LeaveCriticalSection(&vs->hScard_lock);
+	DeleteCriticalSection(&vs->hScard_lock);
 	pCardData->pfnCspFree(pCardData->pvVendorSpecific);
 	pCardData->pvVendorSpecific = NULL;
-	LeaveCriticalSection(&hScard_lock);
-	DeleteCriticalSection(&hScard_lock);
 	MD_FUNC_RETURN(pCardData, 1, dwret);
 }
 
