@@ -446,6 +446,13 @@
 					</term>
 					<listitem><para>Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations</para></listitem>
 				</varlistentry>
+				<varlistentry>
+					<term>
+						<option>--decapsulate</option>
+					</term>
+					<listitem><para>Decapsulate ciphertext provided in file laded from
+					<option>--input-file</option> to a shared secret key.</para></listitem>
+				</varlistentry>
 
 				<varlistentry>
 					<term>
