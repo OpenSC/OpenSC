@@ -809,8 +809,8 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	CK_RV rv;
 	int r;
 
-	if (pReserved != NULL_PTR)
-		return  CKR_ARGUMENTS_BAD;
+	if (pSlot == NULL_PTR || pReserved != NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
 
 	sc_log(context, "C_WaitForSlotEvent(block=%d)", !(flags & CKF_DONT_BLOCK));
 	rv = sc_pkcs11_lock();
@@ -829,11 +829,17 @@ again:
 	sc_pkcs11_unlock();
 	r = sc_wait_for_event(context, mask, &found, &events, -1, &reader_states);
 	/* Was C_Finalize called ? */
-	if (in_finalize == 1)
+	if (in_finalize == 1) {
+		if (reader_states)
+			sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
+	}
 
-	if ((rv = sc_pkcs11_lock()) != CKR_OK)
+	if ((rv = sc_pkcs11_lock()) != CKR_OK) {
+		if (reader_states)
+			sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
 		return rv;
+	}
 
 	if (r != SC_SUCCESS) {
 		sc_log(context, "sc_wait_for_event() returned %d\n",  r);
