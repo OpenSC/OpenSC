@@ -327,8 +327,13 @@ static int eoi_finish(sc_card_t* card)
 
 static int eoi_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file_out)
 {
-	struct eoi_privdata *privdata = (struct eoi_privdata *)card->drv_data;
+	struct eoi_privdata *privdata;
 	int i;
+
+	if (!card || !in_path)
+		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+
+	privdata = (struct eoi_privdata *)card->drv_data;
 
 	LOG_FUNC_CALLED(card->ctx);
 
