@@ -168,7 +168,12 @@ static int
 cedulauy_select_file(struct sc_card *card, const struct sc_path *in_path,
 		struct sc_file **file_out)
 {
-	struct sc_path path = *in_path;
+	struct sc_path path;
+
+	if (!in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	path = *in_path;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -183,7 +188,11 @@ cedulauy_select_file(struct sc_card *card, const struct sc_path *in_path,
 	}
 	if (path.type == SC_PATH_TYPE_PATH && path.len == 0) {
 		/* Selection of MF was requested */
-		sc_file_dup(file_out, cedulauy_get_mf());
+		if (file_out) {
+			sc_file_dup(file_out, cedulauy_get_mf());
+			if (*file_out == NULL)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
@@ -267,6 +276,9 @@ cedulauy_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	/* As on other IAS/ECC cards, GET CHALLENGE only handles a length of 8 */
 	unsigned char rbuf[8];
 	int r;
+
+	if (rnd == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 
