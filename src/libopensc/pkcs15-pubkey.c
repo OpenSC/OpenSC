@@ -294,19 +294,25 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 		obj->type = SC_PKCS15_TYPE_PUBKEY_RSA;
 	} else if (asn1_pubkey_choice[1].flags & SC_ASN1_PRESENT) {
 		obj->type = SC_PKCS15_TYPE_PUBKEY_GOSTR3410;
-		if (info->modulus_length != 0)
-			return SC_ERROR_INTERNAL;
+		if (info->modulus_length != 0) {
+			r = SC_ERROR_INTERNAL;
+			goto err;
+		}
 		info->modulus_length = SC_PKCS15_GOSTR3410_KEYSIZE;
-		if (info->params.len != 0)
-			return SC_ERROR_INTERNAL;
+		if (info->params.len != 0) {
+			r = SC_ERROR_INTERNAL;
+			goto err;
+		}
 		info->params.len = sizeof(struct sc_pkcs15_keyinfo_gostparams);
 		info->params.data = malloc(info->params.len);
 		if (info->params.data == NULL) {
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
-		if (sizeof(*keyinfo_gostparams) != info->params.len)
-			return SC_ERROR_INTERNAL;
+		if (sizeof(*keyinfo_gostparams) != info->params.len) {
+			r = SC_ERROR_INTERNAL;
+			goto err;
+		}
 		keyinfo_gostparams = info->params.data;
 		keyinfo_gostparams->gostr3410 = (unsigned int)gostr3410_params[0];
 		keyinfo_gostparams->gostr3411 = (unsigned int)gostr3410_params[1];
@@ -316,6 +322,7 @@ int sc_pkcs15_decode_pukdf_entry(struct sc_pkcs15_card *p15card,
 		obj->type = SC_PKCS15_TYPE_PUBKEY_EC;
 	}
 	else {
+		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		goto err;
 	}
 
@@ -919,7 +926,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 	int	private_obj;
 
 	if (p15card == NULL || p15card->card == NULL || p15card->card->ops == NULL
-			|| obj == NULL || out == NULL) {
+			|| obj == NULL || obj->data == NULL || out == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	ctx = p15card->card->ctx;
@@ -1108,15 +1115,23 @@ sc_pkcs15_dup_pubkey(struct sc_context *ctx, struct sc_pkcs15_pubkey *key, struc
 	pubkey->algorithm = key->algorithm;
 
 	if (key->alg_id) {
-		rv = sc_asn1_encode_algorithm_id(ctx, &alg, &alglen,key->alg_id, 0);
+		rv = sc_asn1_encode_algorithm_id(ctx, &alg, &alglen, key->alg_id, 0);
 		if (rv == SC_SUCCESS) {
 			pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
 			if (pubkey->alg_id == NULL) {
-				free(pubkey);
+				free(alg);
+				sc_pkcs15_free_pubkey(pubkey);
 				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 			}
 			rv = sc_asn1_decode_algorithm_id(ctx, alg, alglen, pubkey->alg_id, 0);
 			free(alg);
+			if (rv != SC_SUCCESS) {
+				sc_pkcs15_free_pubkey(pubkey);
+				LOG_FUNC_RETURN(ctx, rv);
+			}
+		} else {
+			sc_pkcs15_free_pubkey(pubkey);
+			LOG_FUNC_RETURN(ctx, rv);
 		}
 	}
 
@@ -1250,7 +1265,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	ssize_t sz;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!buf || !buflen)
+	if (!filename || !buf || !buflen)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	*buf = NULL;
@@ -1281,7 +1296,7 @@ sc_pkcs15_read_der_file(sc_context_t *ctx, char * filename,
 	}
 
 	offs = body - tagbuf;
-	if (offs > len || offs < 2 || offs > offs + bodylen)   {
+	if (offs > len || offs < 2 || (SIZE_MAX - offs < bodylen) || (offs + bodylen > INT_MAX))   {
 		r = SC_ERROR_INVALID_ASN1_OBJECT;
 		goto out;
 	}
@@ -1461,14 +1476,17 @@ sc_pkcs15_pubkey_from_spki_sequence(struct sc_context *ctx, const unsigned char 
 
 	LOG_FUNC_CALLED(ctx);
 
-	r = sc_asn1_decode(ctx, asn1_spki, buf, buflen, NULL, NULL);
-	LOG_TEST_RET(ctx, r, "ASN.1 cannot parse subjectPublicKeyInfo");
+	if (!buf || !outpubkey)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	if(outpubkey) {
-		free(*outpubkey);
-		*outpubkey = pubkey;
-	} else
-		free(pubkey);
+	r = sc_asn1_decode(ctx, asn1_spki, buf, buflen, NULL, NULL);
+	if (r < 0) {
+		sc_pkcs15_free_pubkey(pubkey);
+		LOG_TEST_RET(ctx, r, "ASN.1 cannot parse subjectPublicKeyInfo");
+	}
+
+	sc_pkcs15_free_pubkey(*outpubkey);
+	*outpubkey = pubkey;
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -1483,6 +1501,9 @@ sc_pkcs15_pubkey_from_spki_file(struct sc_context *ctx, char * filename,
 	size_t buflen = 0;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!filename || !outpubkey)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	r = sc_pkcs15_read_der_file(ctx, filename, &buf, &buflen);
 	LOG_TEST_RET(ctx, r, "Cannot read SPKI DER file");
