@@ -3099,6 +3099,7 @@ pkcs15_create_object(struct sc_pkcs11_slot *slot, CK_ATTRIBUTE_PTR pTemplate, CK
 		rc = sc_pkcs15init_finalize_profile(p11card->card, profile, aid);
 		if (rc != CKR_OK) {
 			sc_log(context, "Cannot finalize profile: %i", rc);
+			sc_pkcs15init_unbind(profile);
 			sc_unlock(p11card->card);
 			return sc_to_cryptoki_error(rc, "C_CreateObject");
 		}
