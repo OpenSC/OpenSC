@@ -115,6 +115,9 @@ srbeid_select_file(sc_card_t *card, const sc_path_t *in_path,
 	sc_file_t *file;
 	int r;
 
+	if (!card || !in_path)
+		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+
 	if (in_path->type == SC_PATH_TYPE_DF_NAME)
 		return iso_ops->select_file(card, in_path, file_out);
 
