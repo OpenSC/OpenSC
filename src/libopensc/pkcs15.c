@@ -1543,7 +1543,11 @@ sc_pkcs15_get_objects(struct sc_pkcs15_card *p15card, unsigned int type,
 static int
 compare_obj_id(struct sc_pkcs15_object *obj, const struct sc_pkcs15_id *id)
 {
-	void *data = obj->data;
+	void *data;
+
+	if (!obj || !obj->data || !id)
+		return 0;
+	data = obj->data;
 
 	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_CERT:
@@ -1566,6 +1570,8 @@ compare_obj_id(struct sc_pkcs15_object *obj, const struct sc_pkcs15_id *id)
 static int
 sc_obj_app_oid(struct sc_pkcs15_object *obj, const struct sc_object_id *app_oid)
 {
+	if (!obj || !obj->data || !app_oid)
+		return 0;
 	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_DATA_OBJECT)
 		return sc_compare_oid(&((struct sc_pkcs15_data_info *) obj->data)->app_oid, app_oid);
 	return 0;
@@ -1575,8 +1581,12 @@ sc_obj_app_oid(struct sc_pkcs15_object *obj, const struct sc_object_id *app_oid)
 static int
 compare_obj_usage(struct sc_pkcs15_object *obj, unsigned int mask, unsigned int value)
 {
-	void		*data = obj->data;
+	void		*data;
 	unsigned int	usage;
+
+	if (!obj || !obj->data)
+		return 0;
+	data = obj->data;
 
 	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_PRKEY:
@@ -1598,6 +1608,9 @@ compare_obj_flags(struct sc_pkcs15_object *obj, unsigned int mask, unsigned int 
 	struct sc_pkcs15_auth_info *auth_info;
 	unsigned int	flags;
 
+	if (!obj || !obj->data)
+		return 0;
+
 	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_AUTH:
 		auth_info = (struct sc_pkcs15_auth_info *) obj->data;
@@ -1616,8 +1629,12 @@ static int
 compare_obj_reference(struct sc_pkcs15_object *obj, int value)
 {
 	struct sc_pkcs15_auth_info *auth_info;
-	void		*data = obj->data;
+	void		*data;
 	int		reference;
+
+	if (!obj || !obj->data)
+		return 0;
+	data = obj->data;
 
 	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_AUTH:
@@ -1639,7 +1656,11 @@ compare_obj_reference(struct sc_pkcs15_object *obj, int value)
 static int
 compare_obj_path(struct sc_pkcs15_object *obj, const struct sc_path *path)
 {
-	void *data = obj->data;
+	void *data;
+
+	if (!obj || !obj->data || !path)
+		return 0;
+	data = obj->data;
 
 	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_PRKEY:
@@ -1662,7 +1683,11 @@ compare_obj_path(struct sc_pkcs15_object *obj, const struct sc_path *path)
 static int
 compare_obj_data_name(struct sc_pkcs15_object *obj, const char *app_label, const char *label)
 {
-	struct sc_pkcs15_data_info *cinfo = (struct sc_pkcs15_data_info *) obj->data;
+	struct sc_pkcs15_data_info *cinfo;
+
+	if (!obj || !obj->data || !app_label || !label)
+		return 0;
+	cinfo = (struct sc_pkcs15_data_info *) obj->data;
 
 	if (obj->type != SC_PKCS15_TYPE_DATA_OBJECT)
 		return 0;
@@ -1676,6 +1701,9 @@ static int
 compare_obj_key(struct sc_pkcs15_object *obj, void *arg)
 {
 	struct sc_pkcs15_search_key *sk = (struct sc_pkcs15_search_key *) arg;
+
+	if (!obj || !sk)
+		return 0;
 
 	if (sk->id && !compare_obj_id(obj, sk->id))
 		return 0;
@@ -1827,7 +1855,11 @@ sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *p15card, const s
 	nn_objs = r;
 
 	for (ii=0; ii<nn_objs; ii++)   {
-		struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)auth_objs[ii]->data;
+		struct sc_pkcs15_auth_info *auth_info;
+
+		if (!auth_objs[ii] || !auth_objs[ii]->data)
+			continue;
+		auth_info = (struct sc_pkcs15_auth_info *)auth_objs[ii]->data;
 
 		if (auth_info->auth_method != auth_method)
 			continue;
@@ -1838,8 +1870,7 @@ sc_pkcs15_find_pin_by_type_and_reference(struct sc_pkcs15_card *p15card, const s
 		if (path && !sc_compare_path(&auth_info->path, path))
 			continue;
 
-		if (out)
-			*out = auth_objs[ii];
+		*out = auth_objs[ii];
 
 		return SC_SUCCESS;
 	}
@@ -1873,6 +1904,8 @@ sc_pkcs15_find_pin_by_flags(struct sc_pkcs15_card *p15card,
 	sc_log(ctx, "Find PIN flags:0x%X, mask:0x%X, index:%i", flags, mask, index ? *index : -1);
 	if (index)
 		idx = *index;
+	if (idx < 0)
+		idx = 0;
 	/* Get authentication PKCS#15 objects that are present in the given application */
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH_PIN, auths, SC_PKCS15_MAX_PINS);
 	if (r < 0)
@@ -2532,7 +2565,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 	size_t	len = 0, offset = 0;
 	int	r;
 
-	if (p15card == NULL || p15card->card == NULL || in_path == NULL || buf == NULL) {
+	if (in_path == NULL || buf == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	ctx = p15card->card->ctx;
@@ -2600,7 +2633,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 				offset = in_path->index;
 				len = in_path->count;
 				/* Make sure we're within proper bounds */
-				if (offset >= file->size || offset + len > file->size) {
+				if (in_path->index < 0 || offset >= file->size || file->size - offset < len) {
 					r = SC_ERROR_INVALID_ASN1_OBJECT;
 					goto fail_unlock;
 				}
@@ -2734,6 +2767,8 @@ sc_pkcs15_print_id(const struct sc_pkcs15_id *id)
 {
 	static char buffer[256];
 
+	if (!id)
+		return "";
 	sc_bin_to_hex(id->value, id->len, buffer, sizeof(buffer), '\0');
 	return buffer;
 }
@@ -2742,6 +2777,8 @@ sc_pkcs15_print_id(const struct sc_pkcs15_id *id)
 int
 sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out)
 {
+	if (!in || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	out->len = sizeof(out->value);
 	return sc_hex_to_bin(in, out->value, &out->len);
 }
@@ -2750,6 +2787,9 @@ sc_pkcs15_hex_string_to_id(const char *in, struct sc_pkcs15_id *out)
 int
 sc_pkcs15_make_absolute_path(const struct sc_path *parent, struct sc_path *child)
 {
+	if (!parent || !child)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* nothing to do if child has valid 'aid' */
 	if (child->aid.len)
 		return SC_SUCCESS;
@@ -3144,4 +3184,3 @@ sc_pkcs15_free_key_params(struct sc_pkcs15_key_params *params)
 
 	params->data = NULL;
 }
-
