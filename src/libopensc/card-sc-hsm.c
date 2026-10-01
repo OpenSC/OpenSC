@@ -148,11 +148,18 @@ static int sc_hsm_select_file_ex(sc_card_t *card,
 			       sc_file_t **file_out)
 {
 	int rv;
-	sc_hsm_private_data_t *priv = (sc_hsm_private_data_t *) card->drv_data;
+	sc_hsm_private_data_t *priv;
 	sc_file_t *file = NULL;
 	sc_path_t cpath;
-	size_t card_max_recv_size = card->max_recv_size;
-	size_t reader_max_recv_size = card->reader->max_recv_size;
+	size_t card_max_recv_size;
+	size_t reader_max_recv_size;
+
+	if (!card || !card->reader || !in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	priv = (sc_hsm_private_data_t *) card->drv_data;
+	card_max_recv_size = card->max_recv_size;
+	reader_max_recv_size = card->reader->max_recv_size;
 
 	if (file_out == NULL) {				// Versions before 0.16 of the SmartCard-HSM do not support P2='0C'
 		rv = sc_hsm_select_file_ex(card, in_path, forceselect, &file);
