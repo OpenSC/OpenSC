@@ -1595,13 +1595,15 @@ pgp_strip_path(sc_card_t *card, const sc_path_t *path)
 {
 	unsigned int start_point = 0;
 	/* start_point will move through the path string */
-	if (path->len == 0)
+	if (!path || path->len < 2)
 		return 0;
 
 	/* ignore 3F00 (MF) at the beginning */
-	start_point = (memcmp(path->value, "\x3f\x00", 2) == 0) ? 2 : 0;
+	if (memcmp(path->value, "\x3f\x00", 2) == 0)
+		start_point = 2;
 	/* strip path of PKCS15-App DF (5015) */
-	start_point += (memcmp(path->value + start_point, "\x50\x15", 2) == 0) ? 2 : 0;
+	if (path->len >= start_point + 2 && memcmp(path->value + start_point, "\x50\x15", 2) == 0)
+		start_point += 2;
 	return start_point;
 }
 
@@ -1619,6 +1621,9 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	sc_path_t dummy_path;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!path)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (path->type == SC_PATH_TYPE_DF_NAME)
 		LOG_FUNC_RETURN(card->ctx, iso_ops->select_file(card, path, ret));
