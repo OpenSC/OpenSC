@@ -542,12 +542,16 @@ authentic_set_current_files(struct sc_card *card, struct sc_path *path,
 static int
 authentic_select_mf(struct sc_card *card, struct sc_file **file_out)
 {
-	struct sc_context *ctx = card->ctx;
+	struct sc_context *ctx;
 	struct sc_path mfpath;
 	int rv;
 
 	struct sc_apdu apdu;
 	unsigned char rbuf[SC_MAX_APDU_BUFFER_SIZE];
+
+	if (!card)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	ctx = card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -574,12 +578,16 @@ static int
 authentic_select_file(struct sc_card *card, const struct sc_path *path,
 		 struct sc_file **file_out)
 {
-	struct sc_context *ctx = card->ctx;
+	struct sc_context *ctx;
 	struct sc_apdu apdu;
 	struct sc_path lpath;
 	unsigned char rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	size_t pathlen;
 	int rv;
+
+	if (!card || !path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	ctx = card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
 
