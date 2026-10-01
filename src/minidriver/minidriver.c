@@ -1020,8 +1020,7 @@ md_fs_find_directory(PCARD_DATA pCardData, struct md_directory *parent, char *na
 	else   {
 		dir = parent->subdirs;
 		while(dir)   {
-			if (strlen(name) > sizeof dir->name
-					|| !strncmp((char *)dir->name, name, sizeof dir->name))
+			if (!strcmp((char *)dir->name, name))
 				break;
 			dir = dir->next;
 		}
@@ -1098,11 +1097,9 @@ md_fs_find_file(PCARD_DATA pCardData, char *parent, char *name, struct md_file *
 		return SCARD_E_INVALID_PARAMETER;
 	}
 
-	for (file = dir->files; file!=NULL;)   {
-		if (sizeof file->name < strlen(name)
-				|| !strncmp((char *)file->name, name, sizeof file->name))
+	for (file = dir->files; file != NULL; file = file->next)   {
+		if (!strcmp((char *)file->name, name))
 			break;
-		file = file->next;
 	}
 	if (!file)
 		return SCARD_E_FILE_NOT_FOUND;
@@ -1208,8 +1205,7 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 		return SCARD_E_FILE_NOT_FOUND;
 	}
 
-	if (sizeof dir->files->name < strlen(name)
-			|| !strncmp((char *)dir->files->name, name, sizeof dir->files->name))   {
+	if (!strcmp((char *)dir->files->name, name))   {
 		file_to_rm = dir->files;
 		dir->files = dir->files->next;
 		md_fs_free_file(pCardData, file_to_rm);
@@ -1219,8 +1215,7 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 		for (file = dir->files; file!=NULL; file = file->next)   {
 			if (!file->next)
 				break;
-			if (sizeof file->next->name < strlen(name)
-					|| !strncmp((char *)file->next->name, name, sizeof file->next->name))   {
+			if (!strcmp((char *)file->next->name, name))   {
 				file_to_rm = file->next;
 				file->next = file->next->next;
 				md_fs_free_file(pCardData, file_to_rm);
@@ -1231,7 +1226,7 @@ md_fs_delete_file(PCARD_DATA pCardData, char *parent, char *name)
 		dwret = deleted ? SCARD_S_SUCCESS : SCARD_E_FILE_NOT_FOUND;
 	}
 
-	if (!strcmp(parent, "mscp"))   {
+	if (parent && !strcmp(parent, "mscp"))   {
 		int idx = -1;
 
 		if(sscanf(name, "ksc%d", &idx) > 0)   {
