@@ -84,6 +84,9 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 	const u8 *obj;
 	size_t objlen;
 
+	if (!der || !der->value || !cert)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(ctx);
 
 	memset(cert, 0, sizeof(*cert));
@@ -132,6 +135,15 @@ err:
 	free(serial);
 	free(subject);
 	free(issuer);
+	if (r < 0) {
+		sc_pkcs15_free_pubkey(cert->key);
+		free(cert->subject);
+		free(cert->issuer);
+		free(cert->serial);
+		free(cert->data.value);
+		free(cert->extensions);
+		memset(cert, 0, sizeof(*cert));
+	}
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -160,6 +172,9 @@ sc_pkcs15_get_name_from_dn(struct sc_context *ctx, const u8 *dn, size_t dn_len,
 	size_t rdn_len = 0;
 	size_t next_ava_len = 0;
 	int rv;
+
+	if (!dn || !type || !name || !name_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	rdn = sc_asn1_skip_tag(ctx, &dn, &dn_len, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, &rdn_len);
 	if (rdn == NULL)
@@ -261,6 +276,9 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert,
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 
+	if (!cert || !type || !ext_val || !ext_val_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(ctx);
 
 	for (next_ext = cert->extensions, next_ext_len = cert->extensions_len; next_ext_len; ) {
@@ -277,8 +295,11 @@ sc_pkcs15_get_extension(struct sc_context *ctx, struct sc_pkcs15_cert *cert,
 		 * to make a final copy of the extension value before we return */
 		critical = 0;
 		r = sc_asn1_decode(ctx, asn1_cert_ext, ext, ext_len, NULL, NULL);
-		if (r < 0)
+		if (r < 0) {
+			if (val)
+				free(val);
 			LOG_FUNC_RETURN(ctx, r);
+		}
 
 		/* is it the RN we are looking for */
 		if (sc_compare_oid(&oid, type) != 0) {
@@ -350,14 +371,21 @@ sc_pkcs15_pubkey_from_cert(struct sc_context *ctx,
 	int rv;
 	struct sc_pkcs15_cert * cert;
 
+	if (out == NULL || cert_blob == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	cert =  calloc(1, sizeof(struct sc_pkcs15_cert));
 	if (cert == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 
 	rv = parse_x509_cert(ctx, cert_blob, cert);
 
-	*out = cert->key;
-	cert->key = NULL;
+	if (rv == SC_SUCCESS) {
+		*out = cert->key;
+		cert->key = NULL;
+	} else {
+		*out = NULL;
+	}
 	sc_pkcs15_free_certificate(cert);
 
 	LOG_FUNC_RETURN(ctx, rv);
@@ -396,10 +424,11 @@ sc_pkcs15_read_certificate(struct sc_pkcs15_card *p15card, const struct sc_pkcs1
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 	memset(cert, 0, sizeof(struct sc_pkcs15_cert));
-	if (parse_x509_cert(ctx, &der, cert)) {
+	r = parse_x509_cert(ctx, &der, cert);
+	if (r != SC_SUCCESS) {
 		free(der.value);
 		sc_pkcs15_free_certificate(cert);
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ASN1_OBJECT);
+		LOG_FUNC_RETURN(ctx, r);
 	}
 	free(der.value);
 
@@ -493,7 +522,10 @@ sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 			return SC_ERROR_INTERNAL;
 		}
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
-		LOG_TEST_RET(ctx, r, "Cannot make absolute path");
+		if (r < 0) {
+			free(der->value);
+			LOG_TEST_RET(ctx, r, "Cannot make absolute path");
+		}
 	}
 	else   {
 		info.path.aid = p15card->app->ddo.aid;
@@ -513,8 +545,10 @@ sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 
 	obj->type = SC_PKCS15_TYPE_CERT_X509;
 	obj->data = malloc(sizeof(info));
-	if (obj->data == NULL)
+	if (obj->data == NULL) {
+		free(der->value);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 	memcpy(obj->data, &info, sizeof(info));
 
 	return 0;
