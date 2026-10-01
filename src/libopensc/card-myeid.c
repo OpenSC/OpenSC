@@ -392,6 +392,9 @@ static int myeid_select_file(struct sc_card *card, const struct sc_path *in_path
 {
 	int r;
 
+	if (!card || !in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(card->ctx);
 	r = iso_ops->select_file(card, in_path, file);
 
@@ -421,6 +424,9 @@ static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 {
 	struct sc_apdu apdu;
 	int r;
+
+	if (!card || !buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 
