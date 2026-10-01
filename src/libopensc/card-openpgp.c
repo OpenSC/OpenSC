@@ -1646,6 +1646,8 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	if (sc_compare_path(path, &dummy_path)) {
 		if (ret != NULL) {
 			*ret = sc_file_new();
+			if (!*ret)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 			/* One use case of this dummy file is after writing certificate in pkcs15init.
 			 * So we set its size to be the same as max certificate size the card supports. */
 			(*ret)->size = priv->max_cert_size;
@@ -1672,6 +1674,8 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 
 			/* Else, need to return file */
 			*ret = sc_file_new();
+			if (!*ret)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 			(*ret)->size = priv->max_cert_size;
 			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		}
@@ -1702,7 +1706,13 @@ pgp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	unsigned int	k;
 	int		r;
 
+	if (!card)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!priv || !priv->current || !priv->current->file)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 
 	/* jump to selected file */
 	blob = priv->current;
