@@ -625,9 +625,12 @@ md_get_config_str(PCARD_DATA pCardData, enum ui_str id)
 		return ret;
 
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (!vs || !pCardData->pbAtr)
+		return ret;
+
 	if (vs->ctx && vs->reader) {
 		struct sc_atr atr;
-		atr.len = pCardData->cbAtr;
+		atr.len = pCardData->cbAtr > sizeof(atr.value) ? sizeof(atr.value) : pCardData->cbAtr;
 		memcpy(atr.value, pCardData->pbAtr, atr.len);
 		ret = ui_get_str(vs->ctx, &atr, vs->p15card, id);
 	}
@@ -648,10 +651,13 @@ md_get_config_icon(PCARD_DATA pCardData, char *flag_name, HICON ret_default)
 	logprintf(pCardData, 2, "Get '%s' option\n", flag_name);
 
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (!vs || !pCardData->pbAtr)
+		return ret;
+
 	if (vs->ctx && vs->reader)   {
 		struct sc_atr atr;
 		scconf_block *atrblock;
-		atr.len = pCardData->cbAtr;
+		atr.len = pCardData->cbAtr > sizeof(atr.value) ? sizeof(atr.value) : pCardData->cbAtr;
 		memcpy(atr.value, pCardData->pbAtr, atr.len);
 		atrblock = _sc_match_atr_block(vs->ctx, NULL, &atr);
 		logprintf(pCardData, 2, "Match ATR:\n");
@@ -692,10 +698,13 @@ md_get_config_int(PCARD_DATA pCardData, char *flag_name, int ret_default)
 	logprintf(pCardData, 2, "Get '%s' option\n", flag_name);
 
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (!vs || !pCardData->pbAtr)
+		return ret;
+
 	if (vs->ctx && vs->reader)   {
 		struct sc_atr atr;
 		scconf_block *atrblock;
-		atr.len = pCardData->cbAtr;
+		atr.len = pCardData->cbAtr > sizeof(atr.value) ? sizeof(atr.value) : pCardData->cbAtr;
 		memcpy(atr.value, pCardData->pbAtr, atr.len);
 		atrblock = _sc_match_atr_block(vs->ctx, NULL, &atr);
 		logprintf(pCardData, 2, "Match ATR:\n");
@@ -726,13 +735,13 @@ md_get_config_bool(PCARD_DATA pCardData, char *flag_name, BOOL ret_default)
 		return ret;
 
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
-	if (!vs)
+	if (!vs || !pCardData->pbAtr)
 		return ret;
 
 	if (vs->ctx && vs->reader)   {
 		struct sc_atr atr;
 		scconf_block *atrblock;
-		atr.len = pCardData->cbAtr;
+		atr.len = pCardData->cbAtr > sizeof(atr.value) ? sizeof(atr.value) : pCardData->cbAtr;
 		memcpy(atr.value, pCardData->pbAtr, atr.len);
 		atrblock = _sc_match_atr_block(vs->ctx, NULL, &atr);
 		logprintf(pCardData, 2, "Match ATR:\n");
