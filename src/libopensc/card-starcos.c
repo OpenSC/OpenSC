@@ -915,6 +915,9 @@ static int starcos_select_file(sc_card_t *card,
 	int    r, pathtype;
 	size_t i, pathlen;
 
+	if (!card || !in_path)
+		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if ( in_path->len > sizeof(pathbuf) ) {
