@@ -223,6 +223,9 @@ static int gemsafe_finish(sc_card_t *card)
 static int gemsafe_select_file(struct sc_card *card, const struct sc_path *path,
 	   struct sc_file **file_out)
 {
+	if (!path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* so far just call the iso select file (but this will change) */
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -435,6 +438,9 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 	u8 sbuf[MAX_RESP_BUFFER_SIZE];
 	sc_context_t *ctx = card->ctx;
 
+	if (!data || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* the card can sign 36 bytes of free form data */
@@ -482,7 +488,9 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 			if(apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 		}
-		len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		if (apdu.resplen > outlen)
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_BUFFER_TOO_SMALL);
+		len = apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
@@ -494,9 +502,14 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 	size_t crgram_len, u8 *out, size_t outlen)
 {
 	int r;
+	size_t len;
 	struct sc_apdu apdu;
 	u8 rbuf[MAX_RESP_BUFFER_SIZE];
-	sc_context_t *ctx = card->ctx;
+	sc_context_t *ctx;
+
+	if (!crgram || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	ctx = card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (crgram_len > 255)
@@ -514,7 +527,9 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		if (apdu.resplen > outlen)
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_BUFFER_TOO_SMALL);
+		len = apdu.resplen;
 
 		memcpy(out, apdu.resp, len);
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
@@ -525,6 +540,9 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 static int gemsafe_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
 	int prev_cla, r;
+
+	if (!rnd)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	prev_cla = card->cla;
 	if(card->type == SC_CARD_TYPE_GEMSAFEV1_PTEID) {
@@ -591,4 +609,3 @@ struct sc_card_driver *sc_get_gemsafeV1_driver(void)
 {
 	return sc_get_driver();
 }
-
