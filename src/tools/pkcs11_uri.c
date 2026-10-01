@@ -23,6 +23,7 @@
 
 #include "config.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,6 +55,102 @@ static struct pkcs11_uri_attr query_attr[] = {
 		{"module-path", PKCS11_MODULE_PATH},
 		{NULL,	       0			}
 };
+
+static int
+is_unreserved(char c)
+{
+	if (isalnum((unsigned char)c))
+		return 1;
+	switch (c) {
+	case '-':
+	case '.':
+	case '_':
+	case '~':
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+static int
+is_sub_delim(char c)
+{
+	switch (c) {
+	case '!':
+	case '$':
+	case '&':
+	case '\'':
+	case '(':
+	case ')':
+	case '*':
+	case '+':
+	case ',':
+	case ';':
+	case '=':
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+static int
+is_pchar(const char *s, size_t *consumed)
+{
+	if (is_unreserved(*s) || is_sub_delim(*s) || *s == ':' || *s == '@') {
+		*consumed = 1;
+		return 1;
+	}
+	if (*s == '%') {
+		if (isxdigit((unsigned char)s[1]) && isxdigit((unsigned char)s[2])) {
+			*consumed = 3;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int
+is_qchar(const char *s, size_t *consumed)
+{
+	if (is_pchar(s, consumed)) {
+		return 1;
+	}
+	if (*s == '/' || *s == '?') {
+		*consumed = 1;
+		return 1;
+	}
+	return 0;
+}
+
+static int
+validate_path(const char *path)
+{
+	const char *p = path;
+	size_t consumed = 0;
+
+	while (*p != '\0') {
+		if (!is_pchar(p, &consumed)) {
+			return 0;
+		}
+		p += consumed;
+	}
+	return 1;
+}
+
+static int
+validate_query(const char *query)
+{
+	const char *p = query;
+	size_t consumed = 0;
+
+	while (*p != '\0') {
+		if (!is_qchar(p, &consumed)) {
+			return 0;
+		}
+		p += consumed;
+	}
+	return 1;
+}
 
 static int
 get_attr(struct pkcs11_uri_attr attr[], char *token)
@@ -160,7 +257,7 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 {
 	size_t length = 0;
 	char *uri;
-	char *path, *query, *token;
+	char *path, *query, *token, *qmark;
 	int rv = 0;
 
 	if (!input_string || !result) {
@@ -179,15 +276,30 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 		fprintf(stderr, "Error when allocating memory\n");
 		goto end;
 	}
-	path = uri;
-	path = strtok(path, "?");
-	query = strtok(NULL, "?");
-	if (path == NULL) {
-		rv = 1;
-		goto end;
+
+	qmark = strchr(uri, '?');
+	if (qmark != NULL) {
+		*qmark = '\0';
+		query = qmark + 1;
+	} else {
+		query = NULL;
 	}
+	path = uri;
+
 	/* Skip PKCS#11 URI scheme*/
 	path = path + length;
+
+	/* Validate path and query characters */
+	if (!validate_path(path)) {
+		rv = 1;
+		fprintf(stderr, "Invalid character in PKCS#11 URI path\n");
+		goto end;
+	}
+	if (query != NULL && !validate_query(query)) {
+		rv = 1;
+		fprintf(stderr, "Invalid character in PKCS#11 URI query\n");
+		goto end;
+	}
 
 	/* parse path */
 	token = strtok(path, ";");
@@ -266,7 +378,7 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 	if (query == NULL) {
 		goto end;
 	}
-	token = strtok(query, ";");
+	token = strtok(query, ";&");
 	while (token != NULL) {
 		char *argument = NULL, **result_ptr = NULL;
 		int id = get_attr(query_attr, token);
@@ -307,7 +419,7 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 			rv = 1;
 			goto end;
 		}
-		token = strtok(NULL, ";");
+		token = strtok(NULL, ";&");
 	}
 
 end:
