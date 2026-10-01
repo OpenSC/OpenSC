@@ -21,7 +21,7 @@ all: $(TARGET)
 
 !IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
 $(TARGET): $(OBJECTS) $(LIBS) $*.def
-	link /dll $(LINKFLAGS) /out:$@ /def:$*.def $(OBJECTS) $(LIBS) $(ZLIB_LIB) $(OPENPACE_LIB) $(OPENSSL_LIB) ws2_32.lib gdi32.lib advapi32.lib Crypt32.lib User32.lib Shell32.lib Comctl32.lib shlwapi.lib
+	link /dll $(LINKFLAGS) /out:$@ /def:$*.def $(OBJECTS) $(LIBS) $(ZLIB_LIB) $(OPENPACE_LIB) $(OPENSSL_LIB) ws2_32.lib gdi32.lib advapi32.lib Crypt32.lib User32.lib Shell32.lib shlwapi.lib
 
 !ELSE
 $(TARGET):
