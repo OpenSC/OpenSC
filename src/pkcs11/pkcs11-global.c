@@ -422,8 +422,12 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	for (i=0; i < (int)sc_ctx_get_reader_count(context); i++)
 		card_removed(sc_ctx_get_reader(context, i));
 
-	while ((p = list_fetch(&sessions)))
-		free(p);
+	while ((p = list_fetch(&sessions))) {
+		struct sc_pkcs11_session *sess = (struct sc_pkcs11_session *)p;
+		for (size_t j = 0; j < SC_PKCS11_OPERATION_MAX; j++)
+			sc_pkcs11_release_operation(&sess->operation[j]);
+		free(sess);
+	}
 	list_destroy(&sessions);
 
 	while ((slot = list_fetch(&virtual_slots))) {
