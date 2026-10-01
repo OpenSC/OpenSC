@@ -954,7 +954,7 @@ static int idprime_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 	priv->cached = 0;
 
 	r = iso_ops->select_file(card, in_path, file_out);
-	if (r == SC_SUCCESS && file_out != NULL) {
+	if (r == SC_SUCCESS && file_out != NULL && *file_out != NULL) {
  	 	/* Cache the real file size for the caching read_binary() */
  	 	priv->file_size = (*file_out)->size;
 	}
