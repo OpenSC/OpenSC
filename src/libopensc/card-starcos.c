@@ -761,7 +761,10 @@ static int starcos_select_aid(sc_card_t *card,
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 
 	if (file_out) {
-		sc_file_t *file = sc_file_new();
+		sc_file_t *file;
+		if (len > sizeof(file->name))
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		file = sc_file_new();
 		if (!file)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		file->type = SC_FILE_TYPE_DF;
@@ -916,7 +919,7 @@ static int starcos_select_file(sc_card_t *card,
 	size_t i, pathlen;
 
 	if (!card || !in_path)
-		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
