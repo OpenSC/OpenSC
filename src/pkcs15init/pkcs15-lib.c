@@ -304,20 +304,29 @@ int
 sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_option,
 		struct sc_app_info *app_info, struct sc_profile **result)
 {
-	struct sc_context *ctx = card->ctx;
+	struct sc_context *ctx;
 	struct sc_profile *profile;
 	struct sc_pkcs15init_operations * (* func)(void) = NULL;
-	const char	*driver = card->driver->short_name;
+	const char	*driver;
 	char		card_profile[PATH_MAX];
 	int		r, i;
 
+	if (!name || !result)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = card->ctx;
+	driver = card->driver->short_name;
 	LOG_FUNC_CALLED(ctx);
+	*result = NULL;
+
 	/* Put the card into administrative mode */
 	r = sc_pkcs15init_set_lifecycle(card, SC_CARDCTRL_LIFECYCLE_ADMIN);
 	if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
 		LOG_TEST_RET(ctx, r, "Set lifecycle error");
 
 	profile = sc_profile_new();
+	if (!profile)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	profile->card = card;
 
 	for (i = 0; profile_operations[i].name; i++) {
@@ -344,6 +353,10 @@ sc_pkcs15init_bind(struct sc_card *card, const char *name, const char *profile_o
 	 * any options in there
 	 */
 	profile->name = strdup(name);
+	if (!profile->name) {
+		sc_profile_free(profile);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 	if (strchr(profile->name, '+') != NULL) {
 		char	*s;
 
@@ -426,8 +439,12 @@ void
 sc_pkcs15init_unbind(struct sc_profile *profile)
 {
 	int r;
-	struct sc_context *ctx = profile->card->ctx;
+	struct sc_context *ctx;
 
+	if (!profile)
+		return;
+
+	ctx = profile->card->ctx;
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "Pksc15init Unbind: %i:%p:%i", profile->dirty, profile->p15_data, profile->pkcs15.do_last_update);
 	if (profile->dirty != 0 && profile->p15_data != NULL && profile->pkcs15.do_last_update) {
@@ -442,13 +459,14 @@ sc_pkcs15init_unbind(struct sc_profile *profile)
 void
 sc_pkcs15init_set_p15card(struct sc_profile *profile, struct sc_pkcs15_card *p15card)
 {
-	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_context *ctx;
 	struct sc_pkcs15_object *p15objects[10];
 	int i, r, nn_objs;
 
 	if (!profile)
 		return;
 
+	ctx = p15card->card->ctx;
 	LOG_FUNC_CALLED(ctx);
 
 	/* Prepare pin-domain instantiation:
@@ -511,7 +529,7 @@ sc_pkcs15init_erase_card(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	struct sc_context *ctx = NULL;
 	int rv;
 
-	if (!p15card)
+	if (!p15card || !profile || !profile->ops)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	ctx = p15card->card->ctx;
@@ -534,8 +552,13 @@ int
 sc_pkcs15init_erase_card_recursively(struct sc_pkcs15_card *p15card,
 		struct sc_profile *profile)
 {
-	struct sc_file	*df = profile->df_info->file, *dir;
+	struct sc_file	*df, *dir;
 	int		r;
+
+	if (!profile || !profile->df_info || !profile->df_info->file)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	df = profile->df_info->file;
 
 	/* Delete EF(DIR). This may not be very nice
 	 * against other applications that use this file, but
@@ -570,7 +593,7 @@ int
 sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		const struct sc_path *file_path)
 {
-	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_context *ctx;
 	struct sc_file *parent = NULL, *file = NULL;
 	struct sc_path path;
 	int rv;
@@ -579,6 +602,7 @@ sc_pkcs15init_delete_by_path(struct sc_profile *profile, struct sc_pkcs15_card *
 	if (!profile || !file_path)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
+	ctx = p15card->card->ctx;
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "trying to delete '%s'", sc_print_path(file_path));
 
@@ -3479,7 +3503,7 @@ sc_pkcs15init_new_object(int type, const char *label, struct sc_pkcs15_id *auth_
 		break;
 	case SC_PKCS15_TYPE_DATA_OBJECT:
 		object->flags = DEFAULT_DATA_FLAGS;
-		if (auth_id->len != 0)
+		if (auth_id && auth_id->len != 0)
 			object->flags |= SC_PKCS15_CO_FLAG_PRIVATE;
 		data_size = sizeof(struct sc_pkcs15_data_info);
 		break;
@@ -3508,10 +3532,7 @@ sc_pkcs15init_new_object(int type, const char *label, struct sc_pkcs15_id *auth_
 void
 sc_pkcs15init_free_object(struct sc_pkcs15_object *object)
 {
-	if (object) {
-		free(object->data);
-		free(object);
-	}
+	sc_pkcs15_free_object(object);
 }
 
 
@@ -3519,17 +3540,21 @@ int
 sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *profile, struct sc_pkcs15_object *object,
 		int new_attrib_type, void *new_value, int new_len)
 {
-	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_card	*card = p15card->card;
+	struct sc_context *ctx;
+	struct sc_card	*card;
 	unsigned char	*buf = NULL;
 	size_t		bufsize = 0;
 	int		df_type, r = 0;
 	struct sc_pkcs15_df *df;
-	struct sc_pkcs15_id new_id = *((struct sc_pkcs15_id *) new_value);
 
+
+	if (!profile || !object || !object->df || !new_value)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = p15card->card->ctx;
+	card = p15card->card;
 	LOG_FUNC_CALLED(ctx);
-	if (object == NULL || object->df == NULL)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Cannot change attribute");
+
 	df_type = object->df->type;
 
 	df = find_df_by_type(p15card, df_type);
@@ -3539,12 +3564,13 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	sc_log(ctx, "type of attribute to change %i; DF type %i", new_attrib_type, df_type);
 	switch(new_attrib_type)   {
 	case P15_ATTR_TYPE_LABEL:
-		if (new_len >= SC_PKCS15_MAX_LABEL_SIZE)
+		if (new_len < 0 || (size_t)new_len >= sizeof(object->label))
 			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "New label too long");
 		memcpy(object->label, new_value, new_len);
 		object->label[new_len] = '\0';
 		break;
-	case P15_ATTR_TYPE_ID:
+	case P15_ATTR_TYPE_ID: {
+		struct sc_pkcs15_id new_id = *((struct sc_pkcs15_id *) new_value);
 		switch(df_type) {
 		case SC_PKCS15_PRKDF:
 			((struct sc_pkcs15_prkey_info *) object->data)->id = new_id;
@@ -3565,7 +3591,10 @@ sc_pkcs15init_change_attrib(struct sc_pkcs15_card *p15card, struct sc_profile *p
 			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot change ID attribute");
 		}
 		break;
+	}
 	case P15_ATTR_TYPE_VALUE:
+		if (new_len < 0)
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid length");
 		switch(df_type) {
 		case SC_PKCS15_DODF: {
 			u8 *nv;
@@ -3636,12 +3665,16 @@ int
 sc_pkcs15init_delete_object(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 		struct sc_pkcs15_object *obj)
 {
-	struct sc_context	*ctx = p15card->card->ctx;
+	struct sc_context	*ctx;
 	struct sc_file *file = NULL;
 	struct sc_path path;
 	struct sc_pkcs15_df *df;
 	int r = 0, stored_in_ef = 0;
 
+	if (!profile || !profile->ops || !obj)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = p15card->card->ctx;
 	LOG_FUNC_CALLED(ctx);
 	r = get_object_path_from_object(obj, &path);
 	LOG_TEST_RET(ctx, r, "Failed to get object path");
@@ -3700,11 +3733,17 @@ sc_pkcs15init_update_certificate(struct sc_pkcs15_card *p15card,
 	struct sc_profile *profile, struct sc_pkcs15_object *obj,
 	const unsigned char *rawcert, size_t certlen)
 {
-	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_context *ctx;
 	struct sc_file *file = NULL;
-	struct sc_path *path = &((struct sc_pkcs15_cert_info *)obj->data)->path;
+	struct sc_path *path;
 	int r;
 
+
+	if (!profile || !obj || !obj->data || !rawcert)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ctx = p15card->card->ctx;
+	path = &((struct sc_pkcs15_cert_info *)obj->data)->path;
 	LOG_FUNC_CALLED(ctx);
 	r = sc_select_file(p15card->card, path, &file);
 	LOG_TEST_RET(ctx, r, "Failed to select cert file");
