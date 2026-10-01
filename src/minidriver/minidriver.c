@@ -5130,6 +5130,10 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 	}
 
 	/* convert the Windows public key into an OpenSC public key */
+	if (pAgreementInfo->dwPublicKey <= sizeof(BCRYPT_ECCKEY_BLOB)) {
+		dwret = SCARD_E_INVALID_PARAMETER;
+		goto err;
+	}
 	publicKeySize = pAgreementInfo->dwPublicKey - sizeof(BCRYPT_ECCKEY_BLOB) + 1;
 	pbPublicKey = (PBYTE) pCardData->pfnCspAlloc(publicKeySize);
 	if (!pbPublicKey) {
@@ -5154,6 +5158,7 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 	out = pCardData->pfnCspAlloc(outlen);
 
 	if (!out) {
+		pCardData->pfnCspFree(pbPublicKey);
 		dwret = ERROR_OUTOFMEMORY;
 		goto err;
 	}
@@ -5184,6 +5189,11 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 		}
 	}
 	/* no empty space => need to allocate memory */
+	if (vs->allocatedAgreements >= 255) {
+		pCardData->pfnCspFree(out);
+		dwret = SCARD_E_NO_MEMORY;
+		goto err;
+	}
 	temp = (struct md_dh_agreement*) pCardData->pfnCspAlloc((vs->allocatedAgreements+1) * sizeof(struct md_dh_agreement));
 	if (!temp) {
 		pCardData->pfnCspFree(out);
@@ -7226,6 +7236,19 @@ static void disassociate_card(PCARD_DATA pCardData)
 
 	memset(vs->pin_objs, 0, sizeof(vs->pin_objs));
 	memset(vs->p15_containers, 0, sizeof(vs->p15_containers));
+
+	if (vs->dh_agreements) {
+		BYTE i;
+		for (i = 0; i < vs->allocatedAgreements; i++) {
+			if (vs->dh_agreements[i].pbAgreement) {
+				SecureZeroMemory(vs->dh_agreements[i].pbAgreement, vs->dh_agreements[i].dwSize);
+				pCardData->pfnCspFree(vs->dh_agreements[i].pbAgreement);
+			}
+		}
+		pCardData->pfnCspFree(vs->dh_agreements);
+		vs->dh_agreements = NULL;
+		vs->allocatedAgreements = 0;
+	}
 
 	if(vs->p15card)   {
 		logprintf(pCardData, 6, "sc_pkcs15_unbind\n");
