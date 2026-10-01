@@ -43,7 +43,7 @@ static int
 sc_pkcs15emu_esteid2025_init(sc_pkcs15_card_t *p15card)
 {
 	sc_card_t *card = p15card->card;
-	int r, i;
+	int r, i, num_objs;
 	size_t field_length = 0;
 	sc_path_t tmppath;
 	static const u8 prkey_id[2] = {0x01, 0x02};
