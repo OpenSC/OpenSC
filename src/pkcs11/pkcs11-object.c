@@ -435,14 +435,17 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 			       object->handle);
 			/* Realloc handles - remove restriction on only 32 matching objects -dee */
 			if (operation->num_handles >= operation->allocated_handles) {
+				CK_OBJECT_HANDLE *new_handles;
 				operation->allocated_handles += SC_PKCS11_FIND_INC_HANDLES;
 				sc_log(context, "realloc for %d handles", operation->allocated_handles);
-				operation->handles = realloc(operation->handles,
+				new_handles = (CK_OBJECT_HANDLE *) realloc(operation->handles,
 					sizeof(CK_OBJECT_HANDLE) * operation->allocated_handles);
-				if (operation->handles == NULL) {
+				if (new_handles == NULL) {
+					session_stop_operation(session, SC_PKCS11_OPERATION_FIND);
 					rv = CKR_HOST_MEMORY;
 					goto out;
 				}
+				operation->handles = new_handles;
 			}
 			operation->handles[operation->num_handles++] = object->handle;
 		}
@@ -485,13 +488,19 @@ C_FindObjects(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	if (rv != CKR_OK)
 		goto out;
 
+	if (operation->current_handle >= operation->num_handles) {
+		*pulObjectCount = 0;
+		goto out;
+	}
+
 	to_return = (CK_ULONG) operation->num_handles - operation->current_handle;
 	if (to_return > ulMaxObjectCount)
 		to_return = ulMaxObjectCount;
 
 	*pulObjectCount = to_return;
 
-	memcpy(phObject, &operation->handles[operation->current_handle], to_return * sizeof(CK_OBJECT_HANDLE));
+	if (to_return > 0 && operation->handles != NULL)
+		memcpy(phObject, &operation->handles[operation->current_handle], to_return * sizeof(CK_OBJECT_HANDLE));
 
 	operation->current_handle += to_return;
 
