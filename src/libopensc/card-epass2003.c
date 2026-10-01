@@ -1532,7 +1532,11 @@ epass2003_sm_unwrap_apdu(struct sc_card *card, struct sc_apdu *sm, struct sc_apd
 			if (0 != decrypt_response(card, sm->resp, sm->resplen, plain->resp, &len))
 				return SC_ERROR_CARD_CMD_FAILED;
 		} else {
-			memcpy(plain->resp, sm->resp, sm->resplen);
+			if (sm->resplen > 0) {
+				if (!plain->resp || plain->resplen < sm->resplen)
+					return SC_ERROR_BUFFER_TOO_SMALL;
+				memcpy(plain->resp, sm->resp, sm->resplen);
+			}
 			len = sm->resplen;
 		}
 	}
@@ -1612,9 +1616,8 @@ epass2003_sm_get_wrapped_apdu(struct sc_card *card,
 
 	rv = epass2003_sm_wrap_apdu(card, plain, apdu);
 	if (rv) {
-		rv = epass2003_sm_free_wrapped_apdu(card, NULL, &apdu);
-		if (rv < 0)
-			goto err;
+		epass2003_sm_free_wrapped_apdu(card, NULL, &apdu);
+		LOG_FUNC_RETURN(ctx, rv);
 	}
 
 	*sm_apdu = apdu;
@@ -2631,6 +2634,9 @@ epass2003_delete_file(struct sc_card *card, const sc_path_t * path)
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!path || path->len < 2)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	r = sc_select_file(card, path, NULL);
 	LOG_TEST_RET(card->ctx, r, "Can not select file");
 	r = epass2003_hook_path((struct sc_path *)path, 1);
@@ -2691,6 +2697,9 @@ internal_write_rsa_key_factor(struct sc_card *card, unsigned short fid, u8 facto
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!data.data || data.len == 0 || data.len > sizeof(sbuff) - 2)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	sbuff[0] = ((fid & 0xff00) >> 8);
 	sbuff[1] = (fid & 0x00ff);
 	memcpy(&sbuff[2], data.data, data.len);
@@ -2716,6 +2725,9 @@ internal_write_rsa_key(struct sc_card *card, unsigned short fid, struct sc_pkcs1
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!rsa)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	r = internal_write_rsa_key_factor(card, fid, 0x02, rsa->modulus);
 	LOG_TEST_RET(card->ctx, r, "write n failed");
@@ -2842,6 +2854,9 @@ epass2003_write_key(struct sc_card *card, sc_epass2003_wkey_data * data)
 {
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	if (data->type & SC_EPASS2003_KEY) {
 		if (data->type == SC_EPASS2003_KEY_RSA)
 			return internal_write_rsa_key(card, data->key_data.es_key.fid,
@@ -2867,12 +2882,17 @@ static int
 epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 {
 	int r;
-	size_t len = data->key_length;
+	size_t len;
 	struct sc_apdu apdu;
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
 	u8 sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE] = {0};
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	len = data->key_length;
 
 	if (len == 256) {
 		sbuf[0] = 0x02;
@@ -2914,15 +2934,16 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "get pukey failed");
 
-	if (len < apdu.resplen)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-
 	if (256 == len) { /* ECC 256 bit */
-		size_t xCoordinateLen = rbuf[1];
+		size_t xCoordinateLen;
 		size_t yCoordinateLen;
 		unsigned char *tmp;
 
-		if (2 + xCoordinateLen + 1 > apdu.resplen) {
+		if (apdu.resplen < 4) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+		}
+		xCoordinateLen = rbuf[1];
+		if (2 + xCoordinateLen + 2 > apdu.resplen) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		}
 		yCoordinateLen = rbuf[2 + xCoordinateLen + 1];
@@ -2950,11 +2971,19 @@ epass2003_gen_key(struct sc_card *card, sc_epass2003_gen_key_data * data)
 
 		data->modulus = tmp;
 	} else {
-		data->modulus = (u8 *) malloc(len);
+		size_t mod_len;
+		if (len < 8)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		mod_len = BYTES4BITS(len);
+		if (apdu.resplen < mod_len)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+
+		data->modulus = (u8 *)malloc(mod_len);
 		if (!data->modulus) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		} else {
-			memcpy(data->modulus, rbuf, len);
+			memcpy(data->modulus, rbuf, mod_len);
+			data->modulus_len = mod_len;
 		}
 	}
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
@@ -3021,6 +3050,9 @@ epass2003_get_serialnr(struct sc_card *card, sc_serial_number_t * serial)
 	size_t rbuf_len = sizeof(rbuf);
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!serial)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (SC_SUCCESS != get_data(card, 0x80, rbuf, rbuf_len))
 		return SC_ERROR_CARD_CMD_FAILED;
@@ -3127,6 +3159,9 @@ epass2003_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!rnd || len == 0)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	r = iso_ops->get_challenge(card, rbuf, sizeof rbuf);
 	LOG_TEST_RET(card->ctx, r, "GET CHALLENGE cmd failed");
 
@@ -3217,13 +3252,13 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	internal_sanitize_pin_info(&data->pin1, 0);
 	internal_sanitize_pin_info(&data->pin2, 1);
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 	kid = data->pin_reference;
-
-	if (NULL == (unsigned char *)data->pin1.data || 0 == data->pin1.len)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
 
 	/* get pin retries */
 	if (data->cmd == SC_PIN_CMD_GET_INFO) {
@@ -3236,13 +3271,28 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 			LOG_TEST_RET(card->ctx, r, "get max counter failed");
 
 			data->pin1.max_tries = maxtries;
+			data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
 		}
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
-	} else if (data->cmd == SC_PIN_CMD_UNBLOCK) { /* verify */
+		LOG_FUNC_RETURN(card->ctx, r);
+	}
+
+	if (NULL == (unsigned char *)data->pin1.data || 0 == data->pin1.len)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_PIN_CODE_INCORRECT);
+
+	if (data->cmd == SC_PIN_CMD_UNBLOCK) {
 		r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
 				data->pin1.len);
-		LOG_TEST_RET(card->ctx, r, "verify pin failed");
-	} else if (data->cmd == SC_PIN_CMD_CHANGE || data->cmd == SC_PIN_CMD_UNBLOCK) { /* change */
+		LOG_TEST_RET(card->ctx, r, "verify unblock pin failed");
+
+		if (data->pin2.data && data->pin2.len > 0) {
+			r = update_secret_key(card, 0x04, kid, data->pin2.data,
+					(unsigned long)data->pin2.len);
+			LOG_TEST_RET(card->ctx, r, "change pin failed");
+		}
+	} else if (data->cmd == SC_PIN_CMD_CHANGE) {
+		if (NULL == data->pin2.data || 0 == data->pin2.len)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
 				data->pin1.len);
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");

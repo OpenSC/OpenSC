@@ -206,14 +206,14 @@ awp_update_blob(struct sc_context *ctx,
 			return SC_ERROR_OUT_OF_MEMORY;
 		*(pp + *blob_size) = (lv->len >> 8) & 0xFF;
 		*(pp + *blob_size + 1) = lv->len & 0xFF;
-		memcpy(pp + *blob_size + 2, lv->value, (lv->len & 0xFF));
+		memcpy(pp + *blob_size + 2, lv->value, lv->len);
 		*blob_size += 2 + lv->len;
 		break;
 	case TLV_TYPE_LV :
 		if (!(pp = realloc(*blob, *blob_size + 1 + lv->len)))
 			return SC_ERROR_OUT_OF_MEMORY;
 		*(pp + *blob_size) = lv->len & 0xFF;
-		memcpy(pp + *blob_size + 1, lv->value, (lv->len & 0xFF));
+		memcpy(pp + *blob_size + 1, lv->value, lv->len);
 		*blob_size += 1 + lv->len;
 		break;
 	case TLV_TYPE_V :
@@ -504,6 +504,12 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 					break;
 				}
 
+				if (ff->size < 4) {
+					rv = SC_ERROR_INVALID_DATA;
+					sc_file_free(ff);
+					break;
+				}
+
 				buff = malloc(ff->size);
 				if (!buff)
 					rv = SC_ERROR_OUT_OF_MEMORY;
@@ -514,8 +520,10 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 						rv = 0;
 						id_offs = 5 + *(buff+3);
 
-						if (key_id->len == *(buff + id_offs) &&
-								!memcmp(key_id->value, buff + id_offs + 1, key_id->len))  {
+						if (id_offs + 1 + key_id->len > ff->size) {
+							rv = SC_ERROR_INVALID_DATA;
+						} else if (key_id->len == *(buff + id_offs) &&
+								!memcmp(key_id->value, buff + id_offs + 1, key_id->len)) {
 							sc_log(ctx,  "found key file friend");
 							if (!rv)
 								rv = awp_update_container_entry(p15card, profile, file, type, obj_id, rec + 1, rec_offs);
@@ -1388,6 +1396,8 @@ awp_update_df_create_cert(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 
 	der = obj->content;
 	path = ((struct sc_pkcs15_cert_info *)obj->data)->path;
+	if (path.len < 2)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid path length");
 	obj_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 
 	rv = awp_new_file(p15card, profile, SC_PKCS15_TYPE_CERT_X509, obj_id & 0xFF, &info_file, &obj_file);
@@ -1450,6 +1460,8 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 
 	memset(&cc, 0, sizeof(cc));
 	path = key_info->path;
+	if (path.len < 2)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid private key path");
 	cc.prkey_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 
 	rv = sc_pkcs15_find_cert_by_id(p15card, &key_info->id, &cert_obj);
@@ -1458,6 +1470,8 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 		int private_obj = cert_obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
 
 		path = cert_info->path;
+		if (path.len < 2)
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid cert path");
 		cc.cert_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 
 		rv = sc_pkcs15_read_certificate(p15card, cert_info, private_obj, &p15cert);
@@ -1476,6 +1490,8 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	rv = sc_pkcs15_find_pubkey_by_id(p15card, &key_info->id, &pubkey_obj);
 	if (!rv)   {
 		path = ((struct sc_pkcs15_cert_info *)pubkey_obj->data)->path;
+		if (path.len < 2)
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid pubkey path");
 		cc.pubkey_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 	}
 
@@ -1528,6 +1544,8 @@ awp_update_df_create_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 
 	path = ((struct sc_pkcs15_pubkey_info *)obj->data)->path;
 	der = obj->content;
+	if (path.len < 2)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid path length");
 	index = path.value[path.len-1] & 0xFF;
 	obj_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 
@@ -1575,6 +1593,8 @@ awp_update_df_create_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	memset(&idata, 0, sizeof(idata));
 
 	path = ((struct sc_pkcs15_data_info *)obj->data)->path;
+	if (path.len < 2)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid path length");
 	obj_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 
 	rv = awp_new_file(p15card, profile, obj_type, obj_id & 0xFF, &info_file, &obj_file);
@@ -1802,6 +1822,8 @@ awp_update_df_delete_cert(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	LOG_FUNC_CALLED(ctx);
 
 	path = ((struct sc_pkcs15_cert_info *) obj->data)->path;
+	if (path.len < 2)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid path length");
 	file_id = path.value[path.len-2] * 0x100 + path.value[path.len-1];
 	sc_log(ctx,  "file-id:%X", file_id);
 
@@ -1836,6 +1858,8 @@ awp_update_df_delete_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	LOG_FUNC_CALLED(ctx);
 
 	path = ((struct sc_pkcs15_prkey_info *) obj->data)->path;
+	if (path.len < 2)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid path length");
 	file_id = path.value[path.len-2] * 0x100 + path.value[path.len-1];
 	sc_log(ctx,  "file-id:%X", file_id);
 
@@ -1870,6 +1894,8 @@ awp_update_df_delete_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	LOG_FUNC_CALLED(ctx);
 
 	path = ((struct sc_pkcs15_pubkey_info *) obj->data)->path;
+	if (path.len < 2)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid path length");
 	file_id = path.value[path.len-2] * 0x100 + path.value[path.len-1];
 	sc_log(ctx,  "file-id:%X", file_id);
 
@@ -1904,6 +1930,8 @@ awp_update_df_delete_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	LOG_FUNC_CALLED(ctx);
 
 	path = ((struct sc_pkcs15_data_info *) obj->data)->path;
+	if (path.len < 2)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid path length");
 	file_id = path.value[path.len-2] * 0x100 + path.value[path.len-1];
 	sc_log(ctx,  "file-id:%X", file_id);
 
