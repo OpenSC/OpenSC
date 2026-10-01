@@ -2026,6 +2026,9 @@ epass2003_select_file(struct sc_card *card, const sc_path_t * in_path,
 {
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!in_path)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	switch (in_path->type) {
 	case SC_PATH_TYPE_FILE_ID:
 		if (in_path->len != 2)
