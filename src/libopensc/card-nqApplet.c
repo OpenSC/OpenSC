@@ -414,6 +414,9 @@ static int nqapplet_get_data(struct sc_card *card, unsigned int id, u8 *resp, si
 static int nqapplet_select_file(struct sc_card *card, const struct sc_path *in_path,
                                 struct sc_file **file_out)
 {
+	if (!card || !in_path)
+		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	/* the applet does not support SELECT EF/DF except for SELECT APPLET.
