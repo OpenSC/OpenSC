@@ -2461,6 +2461,12 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 	if (PinId >= MD_MAX_PINS || !vs->pin_objs[PinId])
 		return SCARD_E_INVALID_PARAMETER;
 
+	if (idx >= MD_MAX_KEY_CONTAINERS)
+		return SCARD_E_NO_KEY_CONTAINER;
+
+	if (!vs->p15card || !vs->p15card->card)
+		return SCARD_E_INVALID_PARAMETER;
+
 	card = vs->p15card->card;
 
 	memset(&pub_args, 0, sizeof(pub_args));
@@ -2601,6 +2607,12 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 		return SCARD_E_INVALID_PARAMETER;
 
 	if (PinId >= MD_MAX_PINS || !vs->pin_objs[PinId])
+		return SCARD_E_INVALID_PARAMETER;
+
+	if (idx >= MD_MAX_KEY_CONTAINERS)
+		return SCARD_E_NO_KEY_CONTAINER;
+
+	if (!vs->p15card || !vs->p15card->card)
 		return SCARD_E_INVALID_PARAMETER;
 
 	card = vs->p15card->card;
@@ -3429,6 +3441,11 @@ DWORD WINAPI CardCreateContainerEx(__in PCARD_DATA  pCardData,
 
 	if (PinId == ROLE_ADMIN) {
 		dwret = SCARD_W_SECURITY_VIOLATION;
+		goto err;
+	}
+
+	if (bContainerIndex >= MD_MAX_KEY_CONTAINERS) {
+		dwret = SCARD_E_NO_KEY_CONTAINER;
 		goto err;
 	}
 
