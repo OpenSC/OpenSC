@@ -168,6 +168,10 @@ static int loadFile(const sc_pkcs15_card_t *p15card, const sc_path_t *path,
 	u8 *buf, const size_t buflen)
 {
 	int sc_res;
+
+	if (!path || !buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	sc_res = sc_select_file(p15card->card, path, NULL);
@@ -197,6 +201,9 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	int private_obj;
 #endif
 
+	if (!id || !label || !ext_info_ok || !key_usage || !x_key_usage || !modulus_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	if(type != SC_PKCS15_TYPE_CERT_X509) {
@@ -225,6 +232,11 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 	LOG_TEST_RET(p15card->card->ctx, r,
 		"Could not read X.509 certificate");
 
+	if (!cert || !cert->data.value || cert->data.len == 0) {
+		sc_pkcs15_free_certificate(cert);
+		return SC_ERROR_INVALID_DATA;
+	}
+
 	{
 		const u8 *throwaway = cert->data.value;
 		x509 = d2i_X509(NULL, &throwaway, cert->data.len);
@@ -246,7 +258,7 @@ static int itacns_add_cert(sc_pkcs15_card_t *p15card,
 		*key_usage = X509_get_key_usage(x509);
 		*x_key_usage = X509_get_extended_key_usage(x509);
 	}
-	OPENSSL_free(x509);
+	X509_free(x509);
 
 #endif /* ENABLE_OPENSSL */
 
@@ -265,6 +277,9 @@ static int itacns_add_pubkey(sc_pkcs15_card_t *p15card,
 	int r;
 	sc_pkcs15_pubkey_info_t info;
 	sc_pkcs15_object_t obj;
+
+	if (!id || !label)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
 
@@ -297,6 +312,9 @@ static int itacns_add_prkey(sc_pkcs15_card_t *p15card,
 	sc_pkcs15_prkey_info_t info;
 	sc_pkcs15_object_t obj;
 
+	if (!id || !label)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
 
 	if(type != SC_PKCS15_TYPE_PRKEY_RSA) {
@@ -326,7 +344,7 @@ static int itacns_add_prkey(sc_pkcs15_card_t *p15card,
 }
 
 static int itacns_add_pin(sc_pkcs15_card_t *p15card,
-	char *label,
+	const char *label,
 	int id,
 	int auth_id,
 	int reference,
@@ -335,6 +353,9 @@ static int itacns_add_pin(sc_pkcs15_card_t *p15card,
 {
 	struct sc_pkcs15_auth_info pin_info;
 	struct sc_pkcs15_object pin_obj;
+
+	if (!label)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_NORMAL);
 
@@ -366,18 +387,18 @@ static int itacns_add_pin(sc_pkcs15_card_t *p15card,
 	return sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
 }
 
-static int hextoint(char *src, unsigned int len)
+static int hextoint(const char *src, unsigned int len)
 {
 	char hex[16];
 	char *end;
 	int res;
 
-	if(len >= sizeof(hex))
+	if(!src || len >= sizeof(hex))
 		return -1;
 	strncpy(hex, src, len);
 	hex[len] = '\0';
 	res = (int)strtol(hex, &end, 0x10);
-	if(end != (char*)&hex[len])
+	if(end != (char*)&hex[len] || res < 0)
 		return -1;
 	return res;
 }
@@ -390,6 +411,9 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 	char *file = NULL;
 	int file_size;
 
+	if (!EFdata || !name || name_len <= 0)
+		return -1;
+
 	/*
 	 * Bytes 0-5 contain the ASCII encoding of the following TLV
 	 * structure's total size, in base 16.
@@ -399,7 +423,7 @@ static int get_name_from_EF_DatiPersonali(unsigned char *EFdata,
 		return -1;
 	}
 	file_size = hextoint((char*)EFdata, tlv_length_size);
-	if (EFdata_len < (file_size + tlv_length_size)) {
+	if (EFdata_len < (size_t)(file_size + tlv_length_size)) {
 		/* Inconsistent external file length and internal file length
 		 * suggests we are trying to process junk data.
 		 * If the internal data length is shorter, the data can be padded,
@@ -487,7 +511,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 	sc_pkcs15_data_t *p15_personaldata = NULL;
 	sc_pkcs15_data_info_t dinfo;
 	struct sc_pkcs15_object *objs[32];
-	struct sc_pkcs15_data_info *cinfo;
+	struct sc_pkcs15_data_info *cinfo = NULL;
 	int private_obj;
 
 	for(i=0; i < array_size; i++) {
@@ -522,7 +546,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 	strlcpy(dinfo.app_label, "EF_DatiPersonali", sizeof(dinfo.app_label));
 
 	/* Find EF_DatiPersonali */
-
+	memset(objs, 0, sizeof(objs));
 	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
 		objs, 32);
 	if(rv < 0) {
@@ -531,13 +555,14 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 		return SC_SUCCESS;
 	}
 
-	for(i=0; i<32; i++) {
-		cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
-		if(!strcmp("EF_DatiPersonali", objs[i]->label))
+	for(i=0; i < (unsigned int)rv; i++) {
+		if (objs[i] && !strcmp("EF_DatiPersonali", objs[i]->label)) {
+			cinfo = (struct sc_pkcs15_data_info *) objs[i]->data;
 			break;
+		}
 	}
 
-	if(i>=32) {
+	if(i >= (unsigned int)rv || !cinfo) {
 		sc_log(p15card->card->ctx,
 			"Could not find EF_DatiPersonali: "
 			"keeping generic card name");
@@ -553,7 +578,7 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 		return SC_SUCCESS;
 	}
 
-	if (p15_personaldata->data) {
+	if (p15_personaldata && p15_personaldata->data) {
 		char fullname[160];
 		if (get_name_from_EF_DatiPersonali(p15_personaldata->data,
 			p15_personaldata->data_len, fullname, sizeof(fullname))) {
@@ -563,12 +588,14 @@ static int itacns_add_data_files(sc_pkcs15_card_t *p15card)
 			sc_pkcs15_free_data_object(p15_personaldata);
 			free(cinfo->data.value);
 			cinfo->data.value = NULL;
+			cinfo->data.len = 0;
 			return SC_SUCCESS;
 		}
 		set_string(&p15card->tokeninfo->label, fullname);
 	}
 	free(cinfo->data.value);
 	cinfo->data.value = NULL;
+	cinfo->data.len = 0;
 	sc_pkcs15_free_data_object(p15_personaldata);
 	return SC_SUCCESS;
 }
@@ -585,6 +612,8 @@ static int itacns_add_keyset(sc_pkcs15_card_t *p15card,
 	char pinlabel[16];
 	int fake_puk_authid, pin_flags;
 
+	if (!label || !cert_id)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* Public key; not really needed */
 	/* FIXME: set usage according to the certificate. */
@@ -659,6 +688,9 @@ static int itacns_check_and_add_keyset(sc_pkcs15_card_t *p15card,
 	int ku = 0, xku = 0;
 	size_t modulus_len = 0;
 	int pubkey_usage_flags = 0, prkey_usage_flags = 0;
+
+	if (!label || !found_certificates)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	cert_id.len = 1;
 	cert_id.value[0] = sec_env;
@@ -855,7 +887,7 @@ static int itacns_init(sc_pkcs15_card_t *p15card)
 	r = itacns_check_and_add_keyset(p15card, "CNS1", 0x02,
 		0, "3F00140090012002", "3F0011001102", "3F0014009002",
 		0x10, &found_certs);
-	LOG_TEST_RET(p15card->card->ctx, r,
+	LOG_TEST_GOTO_ERR(p15card->card->ctx, r,
 		"Could not add CNS1");
 	certificate_count += found_certs;
 
