@@ -25,6 +25,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #ifdef ENABLE_ZLIB
 #include "compression.h"
@@ -138,6 +139,9 @@ ce_parse_dir(const u8 *data, size_t len, ce_dir_entry_t **entries_out)
 {
 	size_t count, i;
 	ce_dir_entry_t *entries;
+
+	if (!data || !entries_out)
+		return -1;
 
 	*entries_out = NULL;
 	if (len < CE_DIR_HEADER_SIZE)
@@ -265,6 +269,9 @@ srbeid_enum_certs(sc_card_t *card, cert_entry_t **certs_out)
 			} else {
 				continue;
 			}
+
+			if (!isdigit((unsigned char)e->name[3]) || !isdigit((unsigned char)e->name[4]))
+				continue;
 
 			if (ncerts >= cap) {
 				cert_entry_t *tmp = realloc(certs,
@@ -563,6 +570,8 @@ sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 	sc_log(card->ctx, "srbeid: pkcs15 bind OK (%d certs)", ncerts);
 
 out:
+	if (r < 0)
+		sc_pkcs15_card_clear(p15card);
 	free(certs);
 	return r;
 }

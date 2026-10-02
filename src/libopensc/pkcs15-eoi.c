@@ -33,11 +33,15 @@
 
 int sc_pkcs15emu_eoi_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 {
-	struct sc_card *card = p15card->card;
-	struct eoi_privdata *privdata = (struct eoi_privdata *)card->drv_data;
+	struct sc_card *card;
+	struct eoi_privdata *privdata;
 	struct sc_pkcs15_search_key sk;
 	struct sc_pkcs15_object *objs[MAX_OBJECTS];
 	int i, j, len;
+
+
+	card = p15card->card;
+	privdata = (struct eoi_privdata *)card->drv_data;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -71,16 +75,20 @@ int sc_pkcs15emu_eoi_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	memset(&sk, 0, sizeof(sk));
 	sk.class_mask = SC_PKCS15_SEARCH_CLASS_AUTH;
 	len = sc_pkcs15_search_objects(p15card, &sk, (struct sc_pkcs15_object **)&objs, MAX_OBJECTS);
+	if (len > MAX_OBJECTS)
+		len = MAX_OBJECTS;
 	for (i = 0, j = 0; i < len; i++) {
-		struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *)objs[i]->data;
-		if (auth_info && auth_info->auth_id.len == 8 && !strcmp((char*)auth_info->auth_id.value, "Card CAN")) {
+		struct sc_pkcs15_auth_info *auth_info;
+		if (!objs[i] || !objs[i]->data)
+			continue;
+		auth_info = (struct sc_pkcs15_auth_info *)objs[i]->data;
+		if (auth_info->auth_id.len == 8 && !strcmp((char*)auth_info->auth_id.value, "Card CAN")) {
 			auth_info->path.type = SC_PATH_TYPE_PATH;
 			/* Read the file that contains serial and encrypted CAN */
 			if (sc_pkcs15_read_file(p15card, &auth_info->path, &privdata->enc_can.value, &privdata->enc_can.len, 0) == SC_SUCCESS) {
 				/* File should be 24 bytes long */
 				if (privdata->enc_can.len != 24)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_CORRUPTED_DATA);
-				if (strlen(p15card->tokeninfo->serial_number) != 20)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_CORRUPTED_DATA);
 				/* First 8 bytes are used as serial number */
 				sc_bin_to_hex(privdata->enc_can.value, 8, &p15card->tokeninfo->serial_number[4], 17, 0);
@@ -97,7 +105,7 @@ int sc_pkcs15emu_eoi_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		if (auth_info && auth_info->auth_id.len == 8 && !strcmp((char*)auth_info->auth_id.value, "Norm PUK")) {
 			auth_info->attrs.pin.flags |= SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN;
 		}
-		if (auth_info) {
+		if (auth_info && j < MAX_OBJECTS) {
 			privdata->pin_paths[j++] = &auth_info->path;
 		}
 	}
@@ -115,6 +123,8 @@ int sc_pkcs15emu_eoi_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	memset(&sk, 0, sizeof(sk));
 	sk.class_mask = SC_PKCS15_SEARCH_CLASS_PRKEY;
 	len = sc_pkcs15_search_objects(p15card, &sk, (struct sc_pkcs15_object **)&objs, MAX_OBJECTS);
+	if (len > MAX_OBJECTS)
+		len = MAX_OBJECTS;
 	/*
 	 * If both PKCS#15 apps are enabled, prkey_mappings can already be partially filled up from the first PKCS#15 app
 	 * as the privdata is shared between both apps which use the same driver
@@ -123,7 +133,10 @@ int sc_pkcs15emu_eoi_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 		/* NOP */
 	}
 	for (i = 0; i < len; i++) {
-		struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)objs[i]->data;
+		struct sc_pkcs15_prkey_info *prkey_info;
+		if (!objs[i])
+			continue;
+		prkey_info = (struct sc_pkcs15_prkey_info *)objs[i]->data;
 		if ((objs[i]->auth_id.len == 8) && !strncmp((char*)objs[i]->auth_id.value, "Card PIN", 8)) {
 			memcpy(objs[i]->auth_id.value, "Norm PIN", 8);
 		}
@@ -140,6 +153,7 @@ int sc_pkcs15emu_eoi_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 
 int sc_pkcs15emu_eoi_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 {
+
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_WRONG_CARD);
 }
 

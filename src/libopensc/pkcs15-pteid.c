@@ -116,6 +116,9 @@ int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *p15card)
 
 	sc_path_t path_prefix;
 
+	if (!buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_format_path("3F004F00", &path_prefix);
 
 	sc_copy_asn1_entry(c_asn1_odf, asn1_odf);
@@ -129,6 +132,8 @@ int parse_odf(const u8 * buf, size_t buflen, struct sc_pkcs15_card *p15card)
 		if (r < 0)
 			return r;
 		type = r;
+		if (type < 0 || (size_t)type >= sizeof(odf_indexes)/sizeof(odf_indexes[0]))
+			return SC_ERROR_INVALID_DATA;
 		r = sc_pkcs15_make_absolute_path(&path_prefix, &path);
 		if (r < 0)
 			return r;
@@ -236,7 +241,7 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 
 	p15_obj = p15card->obj_list;
 	while (p15_obj != NULL) {
-		if ( p15_obj->df && (p15_obj->df->type == SC_PKCS15_PRKDF) ) {
+		if ( p15_obj->df && (p15_obj->df->type == SC_PKCS15_PRKDF) && p15_obj->data ) {
 			struct sc_pkcs15_prkey_info *prkey_info = (sc_pkcs15_prkey_info_t *) p15_obj->data;
 			prkey_info->access_flags = SC_PKCS15_PRKEY_ACCESS_SENSITIVE
 					| SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE
@@ -254,11 +259,17 @@ static int sc_pkcs15emu_pteid_init(sc_pkcs15_card_t * p15card)
 			};
 
 			struct sc_pin_cmd_data pin_cmd_data;
-			struct sc_pkcs15_auth_info *pin_info = (sc_pkcs15_auth_info_t *) p15_obj->data;
+			struct sc_pkcs15_auth_info *pin_info;
 
-			if (pin_info->auth_id.value[0] < 1 || pin_info->auth_id.value[0] > 3) {
+			if (!p15_obj->data) {
+				p15_obj = p15_obj->next;
+				continue;
+			}
+			pin_info = (sc_pkcs15_auth_info_t *) p15_obj->data;
+
+			if (pin_info->auth_id.len == 0 || pin_info->auth_id.value[0] < 1 || pin_info->auth_id.value[0] > 3) {
 				sc_log(ctx, "Invalid auth_id for PIN: Value %d out of range. Skipping.",
-						pin_info->auth_id.value[0]);
+						pin_info->auth_id.len ? pin_info->auth_id.value[0] : -1);
 				p15_obj = p15_obj->next;
 				continue;
 			}
