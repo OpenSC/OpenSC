@@ -336,7 +336,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)
 	{
-		if (key_info->params.len < sizeof(int))
+		if (!key_info->params.data || key_info->params.len < sizeof(int))
 			return SC_ERROR_INVALID_ARGUMENTS;
 		if (((int*)key_info->params.data)[0] < 1
 				|| ((int*)key_info->params.data)[0] > 3)
@@ -350,6 +350,8 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	r = sc_profile_get_file(profile, "PKCS15-AppDF", &file);
 	LOG_TEST_RET(ctx, r, "Get PKCS15-AppDF info failed");
+	if (!file)
+		return SC_ERROR_INTERNAL;
 	r = sc_file_add_acl_entry(file, SC_AC_OP_CREATE, SC_AC_CHV, auth_id);
 	if (r == SC_SUCCESS)
 		r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_CREATE);
@@ -474,8 +476,10 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	buf = calloc(1, buf_len);
 	if (!buf)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	if (key_len > buf_len)
+	if (key_len > buf_len) {
+		free(buf);
 		return SC_ERROR_INTERNAL;
+	}
 	if (key->algorithm == SC_ALGORITHM_RSA)
 	{
 		/* p */
@@ -511,8 +515,10 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		key_len = len * 3;
 	else
 		goto end;
-	if (key_len > buf_len)
-		return SC_ERROR_INTERNAL;
+	if (key_len > buf_len) {
+		r = SC_ERROR_INTERNAL;
+		goto end;
+	}
 	if (key->algorithm == SC_ALGORITHM_RSA)
 	{
 		/* modulus */
@@ -528,8 +534,10 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		r = sc_profile_get_file(profile, "PuKey-DF", &pukey_df);
 		if (r == SC_SUCCESS)
 		{
-			if (!pukey_df)
-				return SC_ERROR_INTERNAL;
+			if (!pukey_df) {
+				r = SC_ERROR_INTERNAL;
+				goto end;
+			}
 			path = pukey_df->path;
 			r = sc_append_file_id(&path, key_info->key_reference);
 			sc_file_free(pukey_df);
@@ -633,6 +641,18 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			break;
 		}
 	}
+	else
+	{
+		if (data.type == SC_ALGORITHM_RSA)
+		{
+			free(data.u.rsa.modulus);
+			free(data.u.rsa.exponent);
+		}
+		else if (data.type == SC_ALGORITHM_GOSTR3410)
+		{
+			free(data.u.gostr3410.xy);
+		}
+	}
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -661,7 +681,8 @@ static int rtecp_delete_object(struct sc_profile *profile, struct sc_pkcs15_card
 	int key_ref;
 	int r;
 
-	if (!profile || !p15card || !p15card->card || !p15card->card->ctx)
+	if (!profile || !p15card || !p15card->card || !p15card->card->ctx
+			|| !obj || !obj->data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	ctx = p15card->card->ctx;
