@@ -2936,7 +2936,7 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			}
 
 			if (sc_asn1_sig_value_sequence_to_rs(NULL, sig_buffer, sz2,
-				rs_buffer, rs_len)) {
+				rs_buffer, rs_len) < 0) {
 				util_fatal("Failed to convert ASN.1 signature");
 			}
 
