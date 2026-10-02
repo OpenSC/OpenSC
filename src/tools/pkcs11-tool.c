@@ -1311,8 +1311,8 @@ int main(int argc, char * argv[])
 				fprintf(stderr, "Options specifying object cannot be specified with --uri option\n");
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
-		if (opt_uri->slot_id) {
-			opt_slot = (CK_SLOT_ID)strtoul(opt_uri->slot_id, NULL, 0);
+		if (opt_uri->slot_id != CK_UNAVAILABLE_INFORMATION) {
+			opt_slot = opt_uri->slot_id;
 			opt_slot_set = 1;
 		}
 		opt_module = opt_uri->module_path;
