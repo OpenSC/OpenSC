@@ -135,7 +135,7 @@ sc_pkcs15emu_esteid2025_init(sc_pkcs15_card_t *p15card)
 		r = sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not read authentication certificate");
 
-		if (cert->key->algorithm == SC_ALGORITHM_EC)
+		if (cert->key && cert->key->algorithm == SC_ALGORITHM_EC)
 			field_length = cert->key->u.ec.params.field_length;
 
 		static const struct sc_object_id cn_oid = {
@@ -145,7 +145,10 @@ sc_pkcs15emu_esteid2025_init(sc_pkcs15_card_t *p15card)
 		size_t cn_len = 0;
 		r = sc_pkcs15_get_name_from_dn(card->ctx, cert->subject, cert->subject_len, &cn_oid, &cn_name, &cn_len);
 		sc_pkcs15_free_certificate(cert);
-		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not read authentication certificate");
+		if (r < 0) {
+			free(cn_name);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Could not read authentication certificate");
+		}
 		if (cn_len > 0) {
 			char *token_name = (char *)realloc(cn_name, cn_len + 1);
 			if (token_name) {
@@ -214,7 +217,8 @@ sc_pkcs15emu_esteid2025_init(sc_pkcs15_card_t *p15card)
 		sc_log(card->ctx, "Can not get auth objects");
 		goto err;
 	}
-	for (i = 0; i < r; i++) {
+	num_objs = r;
+	for (i = 0; i < num_objs; i++) {
 		r = sc_pkcs15_get_pin_info(p15card, objs[i]);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not get pin object");
 	}

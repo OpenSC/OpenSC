@@ -41,11 +41,14 @@ is_latvian_eid(sc_pkcs15_card_t *p15card)
 }
 
 static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
-	sc_card_t *card = p15card->card;
+	sc_card_t *card;
 	u8 buff[11];
-	int r, i, cert_slot = 0;
+	int r, i, cert_slot = 0, num_objs;
 	size_t field_length = 0, taglen, buflen;
 	sc_path_t tmppath;
+
+
+	card = p15card->card;
 
 	/* Read documber number to be used as serial */
 	sc_format_path("3F00D003", &tmppath);
@@ -71,7 +74,7 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 	p15card->tokeninfo->flags = SC_PKCS15_TOKEN_READONLY;
 
 	if (is_latvian_eid(p15card)) {
-		u8 *buf;
+		u8 *buf = NULL;
 		const u8 *ptr;
 		sc_pkcs15_object_t obj = {0};
 		sc_pkcs15_cert_info_t *cert_info = NULL;
@@ -86,10 +89,19 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 		sc_format_path("3F00adf1", &p15card->file_app->path);
 		sc_format_path("3F00adf17005", &tmppath);
 		r = sc_pkcs15_read_file(p15card, &tmppath, &buf, &buflen, 0);
-		LOG_TEST_GOTO_ERR(card->ctx, r, "Reading EF.CDF file failed");
+		if (r < 0) {
+			sc_file_free(p15card->file_app);
+			p15card->file_app = NULL;
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Reading EF.CDF file failed");
+		}
 		ptr = buf;
 		r = sc_pkcs15_decode_cdf_entry(p15card, &obj, &ptr, &buflen);
-		LOG_TEST_GOTO_ERR(card->ctx, r, "Decoding EF.CDF file failed");
+		if (r < 0) {
+			free(buf);
+			sc_file_free(p15card->file_app);
+			p15card->file_app = NULL;
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Decoding EF.CDF file failed");
+		}
 
 		cert_info = (struct sc_pkcs15_cert_info *)obj.data;
 		if (cert_info && cert_info->path.len > 0) {
@@ -97,7 +109,6 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 			if (cert_slot != 0 && cert_slot != 1) {
 				/* unknown slot, see `cert_paths` below */
 				r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
-				LOG_TEST_GOTO_ERR(card->ctx, r, "Unknown certificate path");
 			}
 		}
 
@@ -105,6 +116,8 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 		sc_file_free(p15card->file_app);
 		p15card->file_app = NULL;
 		free(buf);
+		if (r < 0)
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Unknown certificate path");
 	}
 
 	/* add certificates */
@@ -134,7 +147,7 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 		r = sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not read authentication certificate");
 
-		if (cert->key->algorithm == SC_ALGORITHM_EC)
+		if (cert->key && cert->key->algorithm == SC_ALGORITHM_EC)
 			field_length = cert->key->u.ec.params.field_length;
 
 		static const struct sc_object_id cn_oid = {
@@ -209,7 +222,8 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
 		sc_log(card->ctx, "Can not get auth objects");
 		goto err;
 	}
-	for (i = 0; i < r; i++) {
+	num_objs = r;
+	for (i = 0; i < num_objs; i++) {
 		r = sc_pkcs15_get_pin_info(p15card, objs[i]);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Could not get pin object");
 	}
