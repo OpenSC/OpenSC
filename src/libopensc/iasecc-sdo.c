@@ -799,7 +799,7 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 	offs = 3 + size_size;
 	for (; offs < data_len;)   {
 		rv = iasecc_sdo_parse_data(card, data + offs, data_len - offs, sdo);
-		if (rv != SC_SUCCESS) {
+		if (rv < 0) {
 			iasecc_sdo_free_fields(card, sdo);
 			LOG_TEST_RET(ctx, rv, "parse error: invalid SDO data");
 		}
