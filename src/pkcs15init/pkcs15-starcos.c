@@ -54,11 +54,16 @@ static u8 get_so_ac(const sc_file_t *file, unsigned int op,
 	int is_global = 1;
 	const sc_acl_entry_t *acl;
 
+	if (!file || !auth)
+		return (u8)(def & 0xff);
+
 	if (auth->attrs.pin.flags & SC_PKCS15_PIN_FLAG_LOCAL)
 		is_global = 0;
 	if (!is_global && need_global)
-		return def & 0xff;
+		return (u8)(def & 0xff);
 	acl = sc_file_get_acl_entry(file, op);
+	if (!acl)
+		return (u8)(def & 0xff);
 	if (acl->method == SC_AC_NONE)
 		return STARCOS_AC_ALWAYS;
 	else if (acl->method == SC_AC_NEVER)
@@ -69,7 +74,7 @@ static u8 get_so_ac(const sc_file_t *file, unsigned int op,
 		else
 			return STARCOS_SOPIN_LAC;
 	} else
-		return def;
+		return (u8)(def & 0xff);
 }
 
 
@@ -79,10 +84,13 @@ static int starcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	static const u8 key[]  = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
 	int		ret;
 	sc_starcos_create_data  mf_data, ipf_data;
-	sc_file_t	*mf_file, *isf_file, *ipf_file;
+	sc_file_t	*mf_file = NULL, *isf_file = NULL, *ipf_file = NULL;
 	sc_path_t	tpath;
 	u8		*p = mf_data.data.mf.header, tmp = 0;
 	sc_pkcs15_auth_info_t sopin = {0};
+
+	if (!profile)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* test if we already have a MF */
 	memset(&tpath, 0, sizeof(sc_path_t));
@@ -99,13 +107,13 @@ static int starcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 
 	/* get mf profile */
 	ret = sc_profile_get_file(profile, "MF", &mf_file);
-	if (ret < 0)
-		return ret;
+	if (ret < 0 || !mf_file)
+		return ret < 0 ? ret : SC_ERROR_FILE_NOT_FOUND;
 	/* get size of the isf */
 	ret = sc_profile_get_file(profile, "mf_isf", &isf_file);
-	if (ret < 0) {
+	if (ret < 0 || !isf_file) {
 		sc_file_free(mf_file);
-		return ret;
+		return ret < 0 ? ret : SC_ERROR_FILE_NOT_FOUND;
 	}
 	mf_data.type = SC_STARCOS_MF_DATA;
 	memcpy(p, key, 8);
@@ -134,8 +142,8 @@ static int starcos_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 	/* create IPF */
 	/* get size of the ipf */
 	ret = sc_profile_get_file(profile, "mf_ipf", &ipf_file);
-	if (ret < 0)
-		return ret;
+	if (ret < 0 || !ipf_file)
+		return ret < 0 ? ret : SC_ERROR_FILE_NOT_FOUND;
 	ipf_data.type = SC_STARCOS_EF_DATA;
 	p = ipf_data.data.ef.header;
 	*p++ = (ipf_file->id >> 8) & 0xff;
@@ -177,23 +185,29 @@ static int starcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	struct sc_card *card = p15card->card;
 	int             ret;
 	sc_starcos_create_data df_data, ipf_data;
-	sc_file_t	*isf_file, *ipf_file;
+	sc_file_t	*isf_file = NULL, *ipf_file = NULL;
 	u8		*p = df_data.data.df.header, tmp = 0;
 	sc_pkcs15_auth_info_t sopin = {0};
+	size_t		namelen;
+
+	if (!profile || !df)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
 
 	/* get p15_isf profile */
 	ret = sc_profile_get_file(profile, "p15_isf", &isf_file);
-	if (ret < 0)
-		return ret;
+	if (ret < 0 || !isf_file)
+		return ret < 0 ? ret : SC_ERROR_FILE_NOT_FOUND;
 
 	df_data.type = SC_STARCOS_DF_DATA;
 	memset(p, 0, 25);
 	*p++ = (df->id >> 8) & 0xff;
 	*p++ = df->id & 0xff;
-	*p++ = df->namelen & 0xff;
-	memcpy(p, df->name, (u8) df->namelen);
+	namelen = df->namelen > 16 ? 16 : df->namelen;
+	*p++ = (u8)namelen;
+	if (namelen > 0)
+		memcpy(p, df->name, namelen);
 	p   += 16;
 	*p++ = (isf_file->size >> 8) & 0xff;
 	*p++ = isf_file->size & 0xff;
@@ -215,8 +229,8 @@ static int starcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (ret != SC_SUCCESS)
 		return ret;
 	ret = sc_profile_get_file(profile, "p15_ipf", &ipf_file);
-	if (ret < 0)
-		return ret;
+	if (ret < 0 || !ipf_file)
+		return ret < 0 ? ret : SC_ERROR_FILE_NOT_FOUND;
 	ipf_data.type = SC_STARCOS_EF_DATA;
 	p = ipf_data.data.ef.header;
 	*p++ = (ipf_file->id >> 8) & 0xff;
@@ -256,6 +270,9 @@ static int have_onepin(sc_profile_t *profile)
 {
 	sc_pkcs15_auth_info_t sopin = {0};
 
+	if (!profile)
+		return 0;
+
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
 
 	if (!(sopin.attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN))
@@ -275,6 +292,9 @@ static int starcos_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15car
 	sc_pkcs15_auth_info_t *auth_info)
 {
 	int tmp;
+
+	if (!auth_info)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
