@@ -227,22 +227,7 @@ app default {
 	}
 
 	card_driver PIV-II {
-		# *NOTE* The following are only usable if OpenSC is configured with --enable-piv-sm
-
-		# "piv_pairing_code"
-		# Virtual Contact Interface (VCI) an optional feature, to allow
-		# contactless access to card as if it was using the contact reader.
-		# VCI requires SM. It may also require a pairing code which may be printed on the
-		# card, given to card owner when card issued or available from the card when used
-		# with a contact reader. Contact your card issuing agency for details on what your
-		# card supports.
-		# Pairing code can be set in opensc.conf or via environment (recommended).
-		# It is an 8 digit string.
-		# Default: no pairing code.
-		# piv_pairing_code = 12345678;
-		# May be set via environment: PIV_PAIRING_CODE=12345678
-
-		# Environment variables override opensc.conf
+		# See sm-nist section
 	}
 
 	# In addition to the built-in list of known cards in the
@@ -908,6 +893,56 @@ app default {
 
 		keyset_D2500000044164E86C650101_03_enc = "SIENCECHANTILLON";
 		keyset_D2500000044164E86C650101_03_mac = "SIMACECHANTILLON";
+	}
+
+	sm-nist {
+		# NIST PIV Secure Messageing (SM) and Virtual Contact Interface (VCI)
+		# introduced in NIST sp800-73-4. These two features are
+		# optional features designed to prevent skimming of PIN, crypto
+		# and objects protected by the PIN over contactless interface.
+		#
+		# An optional "pairing code" may be present to use with
+		# VCI to be sent to card before starting SM. The "pairing code"
+		# may be printed on the card, given to card owner when card
+		# issued or available from the card when used with a contact reader.
+		# Contact your card issuing agency for details on what your
+                # card supports.
+
+		# Use env NIST_SM_PAIRING_CODE="8 bytes of ASCII digits"
+
+
+		# For higher security the "Secure Messaging Certificate Signer"
+		# can be verified by OpenSSL.
+		# Either the calling application can read the certificate using pkcs11
+		# and verify the certificate or have OpenSC verify the certificate
+		# by providing the trusted and untrusted certificates
+		# in the trust path using the following:
+		
+		# signer_cert_untrusted_dir for intermediate CA. (may be empty or absent)
+		# signer_cert_untrusted_dir = "";
+		# root CA certs that are trusted by system admin are in
+		# signer_cert_trusted_dir = "";
+
+		# Other card drivers may also use SM.
+
+		#  Use of sm-nist can be set to several "levels":
+		#   "default"  use for contactless only
+		#   "always"   use for contact as well as contactless
+		#   "never"    never use it. But if card requires SM over contactless it will fail.
+
+		# The levels can be set for different type cards:
+		# PIV card:
+		# piv_use_sm = "level";
+		#  for other cards Use "opensc-tool -D"  to get other driver names
+		#  such as myeid"
+		# myeid_use_sm = "level";
+		# Use  opensc-tool -D  to get other driver names
+
+		# The levels may be set in env such as:
+		#   PIV_USE_SM=level
+		#   MYEID_USE_SM=level
+		# Enviroment superceeds the opensc.conf.
+	
 	}
 
 	# Below are the framework specific configuration blocks.
