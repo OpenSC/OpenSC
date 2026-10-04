@@ -772,6 +772,27 @@
 					<listitem><para>Include SlotId in PKCS#11 URI</para></listitem>
 				</varlistentry>
 
+				<varlistentry>
+					<term>
+						<option>--sign-context</option> <replaceable>data</replaceable>
+					</term>
+					<listitem><para>Provide a signature context to signing/verification
+					operation. The <replaceable>data</replaceable> is hexadecimal number,
+					i.e. "000013aa7bffa0".i This is useful for new PQC algortihsm
+					ML-DSA and SLH-DSA as well as for classical EdDSA.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--sign-hedge</option> <replaceable>value</replaceable>
+					</term>
+					<listitem><para>Specify the hedge variant for PQC signature
+					(ML-DSA, SLH-DSA). Possible values are
+					<replaceable>preferred</replaceable> (default),
+					<replaceable>required</replaceable>, or
+					<replaceable>deterministic</replaceable>.</para></listitem>
+				</varlistentry>
+
 			</variablelist>
 		</para>
 	</refsect1>
