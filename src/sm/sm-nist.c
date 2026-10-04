@@ -27,8 +27,6 @@
 #include "libopensc/log.h"
 #include "libopensc/opensc.h"
 #include "sm-iso.h"
-// #include "cardctl.h"
-// #include "simpletlv.h"
 
 #include "sm-nist.h"
 #include <ctype.h>
@@ -46,7 +44,6 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#define NIST_PAIRING_CODE_LEN 8
 
 /* 800-73-4 Cipher Suite Table 14 */
 #define NIST_CS_CS2 0x27
@@ -202,9 +199,6 @@ typedef struct sm_nist_private_data {
 	X509 *signer_cert;
 	nist_cvc_t sm_cvc;    /* 800-73-4:  SM CVC Table 15 */
 	nist_cvc_t sm_in_cvc; /* Intermediate CVC Table 16 */
-	// unsigned long *sm_flags; /* flags shared with caller */
-	// unsigned long pin_policy;
-	unsigned char pairing_code[PIV_PAIRING_CODE_LEN]; /* 8 ASCII digits */
 	nist_sm_session_t sm_session;
 } sm_nist_private_data_t;
 
@@ -231,18 +225,13 @@ static void sm_nist_clear_free(const struct iso_sm_ctx *ctx);
 static int sm_nist_close(sc_card_t *card);
 
 static void nist_inc(u8 *counter, size_t size);
-// static int nist_encode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
-// static int nist_get_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu);
-// static int nist_free_sm_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t **sm_apdu);
 static int nist_get_asn1_obj(sc_context_t *ctx, void *arg, const u8 *obj, size_t len, int depth);
 int sm_nist_open(struct sc_card *card);
-// static int nist_decode_apdu(sc_card_t *card, sc_apdu_t *plain, sc_apdu_t *sm_apdu);
 void nist_clear_cvc_content(nist_cvc_t *cvc);
 static void nist_clear_sm_session(nist_sm_session_t *session);
 int sm_nist_decode_cvc(sc_context_t *ctx, u8 **buf, size_t *buflen, nist_cvc_t *cvc);
-// TODO   static int piv_parse_pairing_code(sc_card_t *card, const char *option);
 static int Q2OS(int fsize, u8 *Q, size_t Qlen, u8 *OS, size_t *OSlen);
-// TODO comment for now static int piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code);
+static int sm_nist_send_vci_pairing_code(struct sc_card *card, sm_nist_params_t *params);
 static int nist_sm_verify_sig(struct sc_card *card, const EVP_MD *type,
 		EVP_PKEY *pkey, u8 *data, size_t data_size,
 		unsigned char *sig, size_t siglen);
@@ -254,6 +243,8 @@ sm_nist_params_cleanup(sm_nist_params_t *params)
 
 	free(params->signer_cert_der);
 	free(params->sm_in_cvc_der);
+	free(params->signer_cert_untrusted_dir);
+	free(params->signer_cert_trusted_dir);
 	memset(params, 0, sizeof(sm_nist_params_t));
 
 	return 0;
@@ -286,62 +277,46 @@ Q2OS(int fsize, u8 *Q, size_t Qlen, u8 *OS, size_t *OSlen)
 	return 0;
 }
 
-#if 0
-/*  TODO Should card driver do thisa?  */
 /*
- * if needed, send VCI pairing code to card just after the
- * SM key establishment. Called from sm_nist_open under same lock
+ * If needed, send VCI pairing code to card just after the
+ * SM key establishment. Called from sm_nist_start under same lock
  */
-static int nist_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
+static int sm_nist_send_vci_pairing_code(struct sc_card *card, sm_nist_params_t *params)
 {
 	int r;
-	sm_nist_private_data_t * priv = SM_NIST_PRIV_CARD;
-	struct iso_sm_ctx *ctx = NULL;
 	sc_apdu_t plain;
-	sc_apdu_t sm_apdu;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	priv = (sm_nist_private_data_t *)((struct iso_sm_ctx *)card->sm_ctx.info.cmd_data)->priv_data;
 
-	if (priv->pin_policy & PIV_PP_VCI_WITHOUT_PC)
+	if (params->flags & NIST_SM_VCI_WITHOUT_PC)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS); /* Not needed */
 
-	if ((priv->pin_policy & PIV_PP_VCI_IMPL) == 0)
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NO_CARD_SUPPORT);
+	/* TODO for testing with contact will comment out next test */
+	//	if (!(params->flags & NIST_SM_CONTACTLESS))
+	//		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 
+	if ((params->flags & NIST_SM_VCI_IMPL) == 0)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
+
+	/* really just another PIN */
 	sc_format_apdu(card, &plain, SC_APDU_CASE_3_SHORT, 0x20, 0x00, 0x98);
-	plain.datalen = plain.lc = 8;
-	plain.data = paring_code;
+	plain.datalen = plain.lc = NIST_SM_PAIRING_CODE_LEN;
+	plain.data = params->pairing_code;
 	plain.resp = NULL;
 	plain.resplen = plain.le = 0;
-//TODO Needs work to send with or without SM
-	memset(&sm_apdu,0,sizeof(sm_apdu));
-	/* build sm_apdu and set alloc sm_apdu.resp */
-	r = nist_encode_apdu(card, &plain, &sm_apdu);
-	if (r < 0) {
-		free(sm_apdu.resp);
-		sc_log(card->ctx, "nist_encode_apdu failed");
-		LOG_FUNC_RETURN(card->ctx, r);
-	}
 
-	sm_apdu.flags |= SC_APDU_FLAGS_NO_SM; /* run as is */
-	r = sc_transmit_apdu(card, &sm_apdu);
+	r = sc_transmit_apdu(card, &plain);
 	if (r < 0) {
-		free(sm_apdu.resp);
 		sc_log(card->ctx, "transmit failed");
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	r = nist_decode_apdu(card, &plain, &sm_apdu);
-	free(sm_apdu.resp);
-	LOG_TEST_RET(card->ctx, r, "nist_decode_apdu failed");
 	r = sc_check_sw(card, plain.sw1, plain.sw2);
-	if (r < 0)
-		r = SC_ERROR_PIN_CODE_INCORRECT;
+	if (r == SC_SUCCESS)
+		params->flags |= NIST_SM_VCI_ACTIVE;
 
 	LOG_FUNC_RETURN(card->ctx, r);
 }
-#endif /* 0 TODO pairing */
 
 /* Verify one signature using pubkey */
 static int
@@ -375,6 +350,151 @@ err:
 }
 
 /*
+ * load sm options for a particular card driver
+ * from env or opensc.conf
+ */
+
+
+static int
+sm_nist_parse_pairing_code(sc_card_t *card, const char *option)
+{
+	size_t i;
+
+	if (strlen(option) != NIST_SM_PAIRING_CODE_LEN) {
+		sc_log(card->ctx, "pairing code length invalid must be %d", NIST_SM_PAIRING_CODE_LEN);
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+	for (i = 0; i < NIST_SM_PAIRING_CODE_LEN; i++) {
+		if (!isdigit(option[i])) {
+			sc_log(card->ctx, "pairing code must be %d decimal digits", NIST_SM_PAIRING_CODE_LEN);
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
+	}
+	return SC_SUCCESS;
+}
+
+static int
+sm_nist_set_use_option(sc_card_t *card, sm_nist_params_t *params, int *found, const char *option)
+{
+	int r = 0;
+
+	if (!strcasecmp(option, "never")) {
+		params->flags |= NIST_SM_FLAGS_NEVER;
+		*found = 1;
+	} else if (!strcasecmp(option, "always")) {
+		params->flags |= NIST_SM_FLAGS_ALWAYS;
+		*found = 1;
+	} else if (!strcasecmp(option, "default")) {
+	 *found = 1;
+	} else {
+		sc_log(card->ctx, "Invalid use sm option: %s", option);
+	}
+	return r;
+}
+int
+sm_nist_load_options(sc_card_t *card, sm_nist_params_t *params, char *prefix)
+{
+	int r = 0;
+	size_t i;
+	scconf_block *conf_block = NULL;
+	scconf_block *block;
+	const char *option = NULL;
+	int use_sm_found = 0;
+	/* upper version of <prefix>_ followd by var name */
+	char bufu[32] = {0};
+	char bufl[32] = {0};
+	size_t prefix_len;
+
+	if (!card || !prefix) {
+		r = SC_ERROR_INTERNAL;
+	}
+
+	LOG_FUNC_CALLED(card->ctx);
+	
+	prefix_len = strlen(prefix);
+	if (prefix_len > 19) {
+		r = SC_ERROR_INTERNAL;
+		goto err;
+	}
+		
+	for (i = 0; i < prefix_len; i++) {
+		bufu[i] = toupper((unsigned char)prefix[i]);
+		bufl[i] = tolower((unsigned char)prefix[i]);
+	}
+
+	/* pairing code is 8 decimal digits and is card specific */
+	/* TODO look under user ~ somewhere */
+ 
+	if ((option = getenv("NIST_SM_PAIRING_CODE")) != NULL) {
+		sc_log(card->ctx, "getenv(\"NIST_SM_PAIRING_CODE\") found");
+		if (sm_nist_parse_pairing_code(card, option) == SC_SUCCESS) {
+			memcpy(params->pairing_code, option, NIST_SM_PAIRING_CODE_LEN);
+		}
+	}
+
+	strcpy(bufu+prefix_len, "_USE_SM");
+	strcpy(bufl+prefix_len, "_use_sm");
+
+	if ((option = getenv(bufu)) != NULL) {
+		sc_log(card->ctx, "getenv(\"%s\")=\"%s\"", bufu, option);
+		sm_nist_set_use_option(card, params, &use_sm_found, option);
+	}
+
+	conf_block = sc_get_conf_block(card->ctx, "sm-nist", NULL, 1);
+	if (!conf_block)
+		goto err;
+	block = conf_block;
+	
+	/*
+	 * "use_sm_nist" if card supports NIST sp800-73-4 sm, when should it be used
+	 * never - use card like 800-73-3, i.e. contactless is very limited on
+	 * true PIV cards. Some  PIV-like" card may allow this.
+	 * this security risk
+	 * always - Use even for contact interface.
+	 * PINS, crypto and reading of object will not show up in logs
+	 * or over network.
+	 */
+
+	if (use_sm_found == 0) {
+		option = scconf_get_str(block, bufl, "default");
+		sc_log(card->ctx, "conf: %s = \"%s\"", bufl, option);
+		sm_nist_set_use_option(card, params, &use_sm_found, option);
+	}
+
+	option = scconf_get_str(block, "signer_cert_untrusted_dir", "");
+	if (option) {
+		sc_log(card->ctx, "conf: signer_cert_untrusted_dir = \"%s\"", option);
+		if (strlen(option) > 0)
+			params->signer_cert_untrusted_dir = strdup(option);
+	}
+
+	option = scconf_get_str(block, "signer_cert_trusted_dir", "");
+	if (option) {
+		sc_log(card->ctx, "conf: signer_cert_trusted_dir = \"%s\"", option);
+			if (strlen(option) > 0)
+			params->signer_cert_trusted_dir = strdup(option);
+	}
+
+	r = SC_SUCCESS;
+err:
+	return r;
+}
+	/* 
+	 * verify NIST_OBJ_SM_CERT_SIGNER was signed by trusted cert chain
+	 * using OpenSSL and external files
+	 * As every card may have different trust chains 
+	 * maintance of the list is up to system admin.
+	 * This is optional.
+	 */
+static int
+sm_nist_verify_sm_cert_signer(struct sc_card *card)
+{
+/* TODO */
+
+	return 0;
+}
+
+/*
  * If sm_in_cvc is present, verify NIST_OBJ_SM_CERT_SIGNER signed sm_in_cvc
  * and sm_in_cvc signed sm_cvc.
  * If sm_in_cvc is not present verify NIST_OBJ_SM_CERT_SIGNER signed sm_cvc.
@@ -386,11 +506,6 @@ nist_sm_verify_certs(struct sc_card *card)
 	sm_nist_private_data_t *priv = SM_NIST_PRIV_CARD;
 	cipher_suite_t *cs = priv->cs;
 	int r = 0;
-	//	u8 *cert_blob = NULL; /* do not free */
-	//	size_t cert_bloblen = 0;
-
-	//	u8 *rbuf; /* do not free*/
-	//	size_t rbuflen;
 	EVP_PKEY *cert_pkey = NULL; /* do not free */
 	EVP_PKEY *in_cvc_pkey = NULL;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -532,7 +647,7 @@ nist_sm_general_io(sc_card_t *card, int ins, int p1, int p2,
 	sc_format_apdu(card, &apdu,
 			recvbuf ? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_3_SHORT,
 			ins, p1, p2);
-	apdu.flags |= SC_APDU_FLAGS_CHAINING;
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 
 	//	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
 	/* tell apdu.c to not do the chaining, let the SM get_apdu do it */
@@ -1127,7 +1242,7 @@ sm_nist_open(struct sc_card *card)
 #if 0
 /* TODO should card driver do this? */
 	/* VCI only needed for contactless */
-	if (*priv->sm_flags & PIV_SM_CONTACTLESS) {
+	if (*priv->sm_flags & NIST_SM_CONTACTLESS) {
 		/* Is pairing code required? */
 		if (!(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC)) {
 			r = piv_send_vci_pairing_code(card, priv->pairing_code);
@@ -1140,6 +1255,12 @@ sm_nist_open(struct sc_card *card)
 	r = 0;
 	priv->params->flags |= NIST_SM_FLAGS_SM_IS_ACTIVE;
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
+
+	 
+	/* send pairing code if needed */
+	r = sm_nist_send_vci_pairing_code(card, priv->params);
+	if (r != SC_SUCCESS)
+		goto err;
 
 err:
 	if (r != 0)
@@ -1327,27 +1448,26 @@ sm_nist_decode_cvc(sc_context_t *ctx, u8 **buf, size_t *buflen,
 }
 
 #if 0
-/* TODO pairing */
-static int nist_parse_pairing_code(sc_card_t *card, const char *option)
+static int sm_nist_parse_pairing_code(sc_card_t *card, const char *option)
 {
 	size_t i;
 
 	if (!card)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (strlen(option) != PIV_PAIRING_CODE_LEN) {
-		sc_log(card->ctx, "pairing code length invalid must be %d", PIV_PAIRING_CODE_LEN);
+	if (strlen(option) != NIST_SM_PAIRING_CODE_LEN) {
+		sc_log(card->ctx, "pairing code length invalid must be %d", NIST_SM_PAIRING_CODE_LEN);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
-	for (i = 0; i < PIV_PAIRING_CODE_LEN; i++) {
+	for (i = 0; i < NIST_SM_PAIRING_CODE_LEN; i++) {
 		if (!isdigit(option[i])) {
-			sc_log(card->ctx, "pairing code must be %d decimal digits",PIV_PAIRING_CODE_LEN);
+			sc_log(card->ctx, "pairing code must be %d decimal digits",NIST_SM_PAIRING_CODE_LEN);
 			return SC_ERROR_INVALID_ARGUMENTS;
 		}
 	}
 	return SC_SUCCESS;
 }
-#endif /* 0 TODO pairing */
+#endif /* 0 */
 
 static sm_nist_private_data_t *
 sm_nist_private_data_create(sm_nist_params_t *params)
@@ -1443,6 +1563,9 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 			r = SC_ERROR_SM_AUTHENTICATION_FAILED;
 			goto err;
 		}
+		r = sm_nist_verify_sm_cert_signer(card);
+		if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)  /* TODO accept for now */
+			goto err;
 	}
 
 	if (params->sm_in_cvc_der && params->sm_in_cvc_der_len) {
@@ -1510,7 +1633,6 @@ sm_nist_encrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	u8 zeros[16] = {0x00};
 	int outli = 0;
 	int outl = 0;
-	//	int outll = 0;
 	int outdl = 0;
 	u8 discard[16];
 
@@ -1581,14 +1703,11 @@ sm_nist_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	cipher_suite_t *cs;
 	u8 zeros[16] = {0};
 	u8 IV[16];
-	//	u8 *p = NULL;
 	u8 *out = NULL;
 	int outl = 0;
 	int outli = 0;
 	int outdl = 0;
-	//	u8 lastb[16];
 	u8 discard[8];
-	//	u8 *q = NULL;
 	EVP_CIPHER_CTX *ed_ctx = NULL;
 
 	if (!card)
@@ -1652,7 +1771,6 @@ static int
 sm_nist_authenticate(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *data, size_t datalen, u8 **macdata)
 {
-	//	u8 *p = NULL;
 	int r;
 	sm_nist_private_data_t *priv = NULL;
 	cipher_suite_t *cs = NULL;
@@ -1744,13 +1862,11 @@ sm_nist_verify_authentication(sc_card_t *card, const struct iso_sm_ctx *ctx,
 		const u8 *rmac, size_t rmaclen,
 		const u8 *macdata, size_t macdatalen)
 {
-	//	u8 *p = NULL;
 	int r;
 	sm_nist_private_data_t *priv = NULL;
 	cipher_suite_t *cs = NULL;
 	int MCVlen = 16;
 	size_t R_MCVlen = 0;
-	//	size_t C_MCVlen = 16; /* debugging*/
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	CMAC_CTX *cmac_ctx = NULL;

@@ -34,7 +34,7 @@ extern "C" {
 #include "config.h"
 #endif
 
-#ifdef ENABLE_ZLIB
+#if ENABLE_ZLIB
 #include "libopensc/compression.h"
 #endif
 #include "libopensc/internal.h"
@@ -42,7 +42,7 @@ extern "C" {
 #include "libopensc/pkcs15.h"
 #include "sm/sm-iso.h"
 
-#define PIV_PAIRING_CODE_LEN 8
+#define NIST_SM_PAIRING_CODE_LEN 8
 
 /* sm_flags */
 // clang-format off
@@ -58,6 +58,8 @@ extern "C" {
 /* Default is use if card supports it */
 /* will use VCI if card supports it for contactless */
 #define NIST_SM_FLAGS_ALWAYS			0x00000200lu /* Use SM or quit, VCI requires SM */
+#define NIST_SM_VCI_IMPL			0x00000400lu /* VCI implemented */
+#define NIST_SM_VCI_WITHOUT_PC			0x00000800lu /* VCI without pairing code OK */
 #define NIST_SM_VCI_ACTIVE			0x00002000lu /* VCI is active */
 #define NIST_SM_FLAGS_FORCE_IN_CLEAR		0x00004000lu /* force this apdu in the clear */
 #define NIST_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED 0x00008000lu /* compressed */
@@ -94,15 +96,20 @@ typedef struct sm_nist_params {
 	unsigned long flags; /* NIST_SM_* */
 	u8 *signer_cert_der;
 	size_t signer_cert_der_len;
+	char *signer_cert_untrusted_dir;
+	char *signer_cert_trusted_dir;
 	u8 *sm_in_cvc_der;
 	size_t sm_in_cvc_der_len;
-	unsigned long pin_policy;
-	u8 pairing_code[PIV_PAIRING_CODE_LEN];
+	u8 pairing_code[NIST_SM_PAIRING_CODE_LEN];
 	u8 csID; /* 0x27 or 0x2E */
+
 	/** @brief Call back function for fine control of what is in the clear */
 	/* return 0 to use SM, or SC_ERROR_SM_NOT_APPLIED to send in the clear */
 	int (*sm_nist_pre_transmit_callback)(sc_card_t *card, sc_apdu_t *apdu);
 } sm_nist_params_t;
+
+int
+sm_nist_load_options(sc_card_t *card, sm_nist_params_t *params, char *prefix);
 
 int
 sm_nist_start(sc_card_t *card, sm_nist_params_t *params);
