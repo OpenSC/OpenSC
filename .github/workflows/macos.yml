@@ -20,7 +20,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-26, macos-15, macos-14]
+        os: [macos-26, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
