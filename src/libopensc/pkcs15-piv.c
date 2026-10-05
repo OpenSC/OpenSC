@@ -1092,16 +1092,16 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					r = sc_asn1_read_tag(&p, info.pubkey.len, &cla, &tag, &tag_len);
 					if (r != SC_SUCCESS) {
 						sc_log(card->ctx, "Failed to parse RSA modulus: %d", r);
-						continue;
+						goto next_pubkey;
 					}
 					if ((tag | cla) != 0x81) {
 						sc_log(card->ctx, "Unexpected tag %u received, expected 0x81", (tag | cla));
-						continue;
+						goto next_pubkey;
 					}
 					pubkey.u.rsa.modulus.data = malloc(tag_len);
 					if (pubkey.u.rsa.modulus.data == NULL) {
 						sc_log(card->ctx, "Out of memory");
-						continue;
+						goto next_pubkey;
 					}
 					memcpy(pubkey.u.rsa.modulus.data, p, tag_len);
 					pubkey.u.rsa.modulus.len = tag_len;
@@ -1110,16 +1110,16 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					r = sc_asn1_read_tag(&p, info.pubkey.len - (p - info.pubkey.value), &cla, &tag, &tag_len);
 					if (r != SC_SUCCESS) {
 						sc_log(card->ctx, "Failed to parse RSA exponent: %d", r);
-						continue;
+						goto next_pubkey;
 					}
 					if ((tag | cla) != 0x82) {
 						sc_log(card->ctx, "Unexpected tag %u received, expected 0x82", (tag | cla));
-						continue;
+						goto next_pubkey;
 					}
 					pubkey.u.rsa.exponent.data = malloc(tag_len);
 					if (pubkey.u.rsa.exponent.data == NULL) {
 						sc_log(card->ctx, "Out of memory");
-						continue;
+						goto next_pubkey;
 					}
 					memcpy(pubkey.u.rsa.exponent.data, p, tag_len);
 					pubkey.u.rsa.exponent.len = tag_len;
@@ -1131,7 +1131,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					r = yk_copy_pubkey_from_tag(&info, &pubkey.u.ec.ecpointQ, 0x86);
 					if (r != SC_SUCCESS) {
 						sc_log(card->ctx, "Failed to parse ECDSA public key. %d", r);
-						continue;
+						goto next_pubkey;
 					}
 					pubkey.algorithm = SC_ALGORITHM_EC;
 					break;
@@ -1139,7 +1139,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					r = yk_copy_pubkey_from_tag(&info, &pubkey.u.ec.ecpointQ, 0x86);
 					if (r != SC_SUCCESS) {
 						sc_log(card->ctx, "Failed to parse EDDSA public key. %d", r);
-						continue;
+						goto next_pubkey;
 					}
 					pubkey.algorithm = SC_ALGORITHM_EDDSA;
 					break;
@@ -1147,27 +1147,31 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					r = yk_copy_pubkey_from_tag(&info, &pubkey.u.ec.ecpointQ, 0x86);
 					if (r != SC_SUCCESS) {
 						sc_log(card->ctx, "Failed to parse XEDDSA public key. %d", r);
-						continue;
+						goto next_pubkey;
 					}
 					pubkey.algorithm = SC_ALGORITHM_XEDDSA;
 					break;
 				default:
 					sc_log(card->ctx, "Got unknown algorithm ID %d", info.algorithm);
-					continue;
+					goto next_pubkey;
 				}
 
 				r = sc_pkcs15_encode_pubkey_as_spki(card->ctx, &pubkey,
 						&pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
 				if (r < 0) {
-					continue;
+					goto next_pubkey;
 				}
 				r = sc_pkcs15_pubkey_from_spki_sequence(card->ctx,
 						pubkey_info.direct.spki.value, pubkey_info.direct.spki.len,
 						&p15_key);
 				if (r < 0) {
 					free(p15_key);
-					continue;
+					p15_key = NULL;
 				}
+next_pubkey:
+				sc_pkcs15_erase_pubkey(&pubkey);
+				if (!p15_key)
+					continue;
 			} else {
 				char *filename = NULL;
 
