@@ -296,6 +296,7 @@ struct sm_card_operations {
 			unsigned char * buf, size_t count);
 	int (*update_binary)(struct sc_card *card, unsigned int idx,
 			const unsigned char * buf, size_t count);
+	int (*get_response)(struct sc_card *card, size_t *count, u8 *buf);
 };
 
 /*
