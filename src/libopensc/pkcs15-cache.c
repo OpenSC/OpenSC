@@ -155,10 +155,14 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 	}
 
 	if (*buf == NULL) {
-		data = malloc((size_t)stbuf.st_size);
-		if (data == NULL)   {
-			rv = SC_ERROR_OUT_OF_MEMORY;
-			goto err;
+		if (count == 0) {
+			data = NULL;
+		} else {
+			data = malloc(count);
+			if (data == NULL)   {
+				rv = SC_ERROR_OUT_OF_MEMORY;
+				goto err;
+			}
 		}
 	}
 	else {
@@ -169,7 +173,7 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 		data = *buf;
 	}
 
-	if (count != fread(data, 1, count, f)) {
+	if (count > 0 && count != fread(data, 1, count, f)) {
 		rv = SC_ERROR_BUFFER_TOO_SMALL;
 		goto err;
 	}
