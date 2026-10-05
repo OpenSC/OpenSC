@@ -187,7 +187,7 @@ void sc_pkcs15_free_data_object(struct sc_pkcs15_data *data_object)
 
 void sc_pkcs15_free_data_info(struct sc_pkcs15_data_info *info)
 {
-	if (info && info->data.value && info->data.len)
+	if (info && info->data.value)
 		free(info->data.value);
 
 	free(info);
