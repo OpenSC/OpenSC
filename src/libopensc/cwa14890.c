@@ -1682,7 +1682,7 @@ int cwa_encode_apdu(sc_card_t * card,
 	}
 
 	/* compose and add computed MAC TLV to result buffer */
-	tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
+	tlv_len = (card->type == SC_CARD_TYPE_DNIE_CONTACTLESS || card->atr.value[15] >= DNIE_30_VERSION) ? 8 : 4;
 	sc_log(ctx, "Using TLV length: %zu", tlv_len);
 	res = cwa_compose_tlv(card, 0x8E, tlv_len, macbuf, &apdubuf, &apdulen);
 	if (res != SC_SUCCESS) {
@@ -1832,7 +1832,7 @@ int cwa_decode_response(sc_card_t * card,
 		res = SC_ERROR_INVALID_DATA;
 		goto response_decode_end;
 	}
-	tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
+	tlv_len = (card->type == SC_CARD_TYPE_DNIE_CONTACTLESS || card->atr.value[15] >= DNIE_30_VERSION) ? 8 : 4;
 	if (m_tlv->len != tlv_len) {
 		msg = "Invalid MAC TAG Length";
 		res = SC_ERROR_INVALID_DATA;

@@ -142,6 +142,19 @@ static struct sc_atr_table dnie_atrs[] = {
 	 SC_CARD_TYPE_DNIE_TERMINATED,
 	 0,
 	 NULL},
+
+#ifdef ENABLE_OPENPACE
+	/* contactless interface (PC/SC wrapped ATRs for 14443 Type B) */
+	/* FIXME: check if ATR is the same for uninitialized DNIe */
+	{
+	 "3B:88:80:01:E1:F3:5E:11:00:00:00:00:00",
+	 "FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00",
+	 DNIE_CHIP_SHORTNAME,
+	 SC_CARD_TYPE_DNIE_CONTACTLESS,
+	 0,
+	 NULL},
+#endif
+
 	{NULL, NULL, NULL, 0, 0, NULL}
 };
 
@@ -642,7 +655,7 @@ static int dnie_get_serialnr(sc_card_t * card, sc_serial_number_t * serial)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
-	if (card->type != SC_CARD_TYPE_DNIE_USER)
+	if (card->type != SC_CARD_TYPE_DNIE_USER && card->type != SC_CARD_TYPE_DNIE_CONTACTLESS)
 		return SC_ERROR_NOT_SUPPORTED;
 	/* if serial number is cached, use it */
 	if (card->serialnr.len) {
@@ -1799,6 +1812,7 @@ static int dnie_card_ctl(struct sc_card *card,
 		case SC_CARD_TYPE_DNIE_ADMIN:
 			result = SC_CARDCTRL_LIFECYCLE_ADMIN;
 			break;
+		case SC_CARD_TYPE_DNIE_CONTACTLESS: /* FIXME: read EF.ATR */
 		case SC_CARD_TYPE_DNIE_USER:
 			result = SC_CARDCTRL_LIFECYCLE_USER;
 			break;
@@ -2112,7 +2126,7 @@ static int dnie_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data)
 
 	LOG_FUNC_CALLED(card->ctx);
 	/* ensure that secure channel is established from reset */
-	if (card->atr.value[15] >= DNIE_30_VERSION) {
+	if (card->type == SC_CARD_TYPE_DNIE_CONTACTLESS || card->atr.value[15] >= DNIE_30_VERSION) {
 		/* the provider should be prepared for using PIN information */
 		sc_log(card->ctx, "DNIe 3.0 detected doing PIN initialization");
 		dnie_change_cwa_provider_to_pin(card);
@@ -2147,7 +2161,7 @@ static int dnie_pin_verify(struct sc_card *card, struct sc_pin_cmd_data *data)
 	res = dnie_check_sw(card, apdu.sw1, apdu.sw2);	/* not a pinerr: parse result */
 
 	/* ensure that secure channel is established after a PIN channel in 3.0 */
-	if (card->atr.value[15] >= DNIE_30_VERSION) {
+	if (card->type == SC_CARD_TYPE_DNIE_CONTACTLESS || card->atr.value[15] >= DNIE_30_VERSION) {
 		sc_log(card->ctx, "DNIe 3.0 detected => re-establish secure channel");
 		dnie_change_cwa_provider_to_secure(card);
 		if (res == SC_SUCCESS) {
