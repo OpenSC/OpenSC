@@ -1543,6 +1543,8 @@ iasecc_get_algorithm(struct sc_card *card, const struct sc_security_env *env,
 		case CKM_SHA1_RSA_PKCS:
 			return IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA1;
 		case CKM_RSA_PKCS:
+			if (operation & SC_PKCS15_ALGO_OP_DECIPHER)
+				return IASECC_ALGORITHM_RSA_PKCS_DECRYPT | IASECC_ALGORITHM_SHA1;
 			return IASECC_ALGORITHM_RSA_PKCS;
 		default:
 			break;
