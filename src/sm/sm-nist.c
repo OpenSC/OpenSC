@@ -1506,6 +1506,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 		r = SC_ERROR_OUT_OF_MEMORY;
 		goto err;
 	}
+	sctx->clear_free = sm_nist_clear_free;
 	card->sm_ctx.ops.close = sm_nist_close;
 	card->sm_ctx.ops.open = sm_nist_open;
 
@@ -1596,6 +1597,11 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 	sctx->block_length = 16; /* 800-73-4 uses 16 for both cipher suites */
 
 	r = iso_sm_start(card, sctx);
+	if (r < 0) {
+		sc_log(card->ctx, "sm_nist_start failed with r:%d", r);
+		goto err;
+	}
+
 
 	/* We want to control if SM is on or not from driver, so set it off. */
 	card->sm_ctx.sm_mode = SM_MODE_NONE;
@@ -1612,10 +1618,6 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 
 err:
 	free(cert_blob);
-	if (r < 0) {
-		sm_nist_clear_free(sctx);
-		iso_sm_ctx_clear_free(sctx);
-	}
 
 	return r;
 }
@@ -2068,7 +2070,7 @@ static void
 sm_nist_clear_free(const struct iso_sm_ctx *ctx)
 {
 	if (ctx) {
-		struct sm_nist_private_data *priv = SM_NIST_PRIV(ctx);
+		struct sm_nist_private_data *priv = ctx->priv_data;
 
 		if (priv) {
 			nist_clear_sm_session(&priv->sm_session);
