@@ -115,6 +115,9 @@ srbeid_select_file(sc_card_t *card, const sc_path_t *in_path,
 	sc_file_t *file;
 	int r;
 
+	if (!card || !in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (in_path->type == SC_PATH_TYPE_DF_NAME)
 		return iso_ops->select_file(card, in_path, file_out);
 
@@ -180,6 +183,9 @@ srbeid_set_security_env(sc_card_t *card,
 	unsigned key_ref;
 	u8 p2;
 	int r;
+
+	if (!card || !env)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 	(void)se_num;

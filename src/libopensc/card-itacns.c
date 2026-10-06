@@ -421,9 +421,12 @@ static int itacns_select_file(sc_card_t *card,
 {
 	int r;
 
+	if (!card || !in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	r = default_ops->select_file(card, in_path, file);
-	if (r >= 0 && file) {
+	if (r >= 0 && file && *file) {
 		parse_sec_attr((*file), (*file)->sec_attr,
 			(*file)->sec_attr_len);
 	}
@@ -433,12 +436,12 @@ static int itacns_select_file(sc_card_t *card,
 static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 {
 	sc_path_t path;
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 	size_t    len;
 	int r;
 	u8        rbuf[256];
 
-	if (!serial) return SC_ERROR_INVALID_ARGUMENTS;
+	if (!card || !serial) return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* see if we have cached serial number */
 	if (card->serialnr.len) {
@@ -454,6 +457,8 @@ static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	if (r != SC_SUCCESS) {
 		return SC_ERROR_WRONG_CARD;
 	}
+	if (!file)
+		return SC_ERROR_INTERNAL;
 	len = file->size;
 	sc_file_free(file);
 

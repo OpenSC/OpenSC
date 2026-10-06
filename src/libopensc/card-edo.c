@@ -75,7 +75,7 @@ static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pac
 
 	can = getenv("EDO_CAN");
 
-	if (!can || can[0] != '\0') {
+	if (!can || can[0] == '\0') {
 		for (size_t i = 0; card->ctx->conf_blocks[i]; ++i) {
 			scconf_block** blocks = scconf_find_blocks(card->ctx->conf, card->ctx->conf_blocks[i], "card_driver", "edo");
 			if (!blocks)
@@ -201,15 +201,24 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
 	LOG_FUNC_CALLED(card->ctx);
 	struct edo_buff buff;
 
+	if (!in_path)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	memset(&buff, 0, sizeof(buff));
+
 	switch (in_path->type) {
 		case SC_PATH_TYPE_PATH:
 		case SC_PATH_TYPE_FILE_ID:
+			if (!in_path->aid.len && !in_path->len)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 			if (in_path->aid.len)
 				LOG_TEST_RET(card->ctx, edo_select_name(card, in_path->aid.value, in_path->aid.len, &buff), "Select AID failed");
 			if (in_path->len)
 				LOG_TEST_RET(card->ctx, edo_select_path(card, in_path->value, in_path->len, &buff), "Select path failed");
 			break;
 		case SC_PATH_TYPE_DF_NAME:
+			if (!in_path->len)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 			LOG_TEST_RET(card->ctx, edo_select_name(card, in_path->value, in_path->len, &buff), "Select AID failed");
 			break;
 		default:
@@ -235,11 +244,20 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
  * card needs to be converted to the raw concatenation of R,S for PKCS#11.
  */
 static int edo_compute_signature(struct sc_card* card, const u8* data, size_t datalen, u8* out, size_t outlen) {
-	LOG_FUNC_CALLED(card->ctx);
+	LOG_FUNC_CALLED(card ? card->ctx : NULL);
 	u8 sig[SC_MAX_APDU_RESP_SIZE];
-	LOG_TEST_RET(card->ctx, sc_get_iso7816_driver()->ops->compute_signature(card, data, datalen, sig, sizeof sig), "Internal signature failed");
-	LOG_TEST_RET(card->ctx, sc_asn1_sig_value_sequence_to_rs(card->ctx, sig, sizeof sig, out, outlen), "ASN.1 conversion failed");
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	int r;
+
+	if (!card || !data || !out)
+		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+
+	r = sc_get_iso7816_driver()->ops->compute_signature(card, data, datalen, sig, sizeof sig);
+	LOG_TEST_RET(card->ctx, r, "Internal signature failed");
+
+	r = sc_asn1_sig_value_sequence_to_rs(card->ctx, sig, r, out, r);
+	LOG_TEST_RET(card->ctx, r, "ASN.1 conversion failed");
+
+	LOG_FUNC_RETURN(card->ctx, (int)r);
 }
 
 
@@ -250,16 +268,22 @@ static int edo_compute_signature(struct sc_card* card, const u8* data, size_t da
  * where x is the key reference byte.
  */
 static int edo_set_security_env(struct sc_card* card, const struct sc_security_env* env, int se_num) {
-	LOG_FUNC_CALLED(card->ctx);
+	LOG_FUNC_CALLED(card ? card->ctx : NULL);
 	struct sc_apdu apdu;
 
-	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+	if (!card || !env)
+		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+
+	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN &&
+	    (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) && env->key_ref_len >= 1) {
 		u8 payload[] = {0x80, 0x01, 0xcc, 0x84, 0x01, 0x80 | env->key_ref[0]};
 		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, payload, sizeof payload, NULL, 0);
 	} else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	LOG_TEST_RET(card->ctx, sc_select_file(card, &env->file_ref, NULL), "SELECT file failed");
+	if (env->flags & SC_SEC_ENV_FILE_REF_PRESENT) {
+		LOG_TEST_RET(card->ctx, sc_select_file(card, &env->file_ref, NULL), "SELECT file failed");
+	}
 	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
 	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SW check failed");
 

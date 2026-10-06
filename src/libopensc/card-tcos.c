@@ -343,6 +343,8 @@ static int tcos_select_file(sc_card_t *card,
 
 	if (card == NULL || in_path == NULL)
 		return SC_ERROR_INTERNAL;
+	if (in_path->len > sizeof(pathbuf))
+		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx=card->ctx;
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
@@ -452,7 +454,7 @@ static int tcos_delete_file(sc_card_t *card, const sc_path_t *path)
 	sc_apdu_t apdu;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
+	if (!path || path->type != SC_PATH_TYPE_FILE_ID || path->len != 2) {
 		sc_log(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}

@@ -554,7 +554,7 @@ cosm_get_temporary_public_key_file(struct sc_card *card,
 	int rv;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (!pubkey_file || !prvkey_file)
+	if (!pubkey_file || !prvkey_file || prvkey_file->path.len < 2)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	file = sc_file_new();

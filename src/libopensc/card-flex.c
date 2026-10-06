@@ -490,10 +490,16 @@ static int flex_select_file(sc_card_t *card, const sc_path_t *path,
 			     sc_file_t **file_out)
 {
 	int r;
-	const u8 *pathptr = path->value;
-	size_t pathlen = path->len;
+	const u8 *pathptr;
+	size_t pathlen;
 	int locked = 0;
 	u8 p1 = 0;
+
+	if (!card || !path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	pathptr = path->value;
+	pathlen = path->len;
 
 	switch (path->type) {
 	case SC_PATH_TYPE_PATH:
@@ -541,6 +547,9 @@ static int cryptoflex_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	u8 rbuf[4];
 	int r;
 	size_t count = 0;
+
+	if (!card || !buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xA8, 0, 0);
 	apdu.cla = 0xF0;
@@ -609,7 +618,7 @@ static int flex_delete_file(sc_card_t *card, const sc_path_t *path)
 	int r;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (path->type != SC_PATH_TYPE_FILE_ID && path->len != 2) {
+	if (!path || path->type != SC_PATH_TYPE_FILE_ID || path->len != 2) {
 		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID\n");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}

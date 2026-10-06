@@ -941,7 +941,11 @@ static int idprime_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 static int idprime_select_file(sc_card_t *card, const sc_path_t *in_path, sc_file_t **file_out)
 {
 	int r;
-	idprime_private_data_t * priv = card->drv_data;
+	idprime_private_data_t * priv;
+
+	if (!card || !card->drv_data || !in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	priv = card->drv_data;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -954,7 +958,7 @@ static int idprime_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 	priv->cached = 0;
 
 	r = iso_ops->select_file(card, in_path, file_out);
-	if (r == SC_SUCCESS && file_out != NULL) {
+	if (r == SC_SUCCESS && file_out != NULL && *file_out != NULL) {
  	 	/* Cache the real file size for the caching read_binary() */
  	 	priv->file_size = (*file_out)->size;
 	}
@@ -966,10 +970,14 @@ static int idprime_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 static int idprime_read_binary(sc_card_t *card, unsigned int offset,
 	unsigned char *buf, size_t count, unsigned long *flags)
 {
-	struct idprime_private_data *priv = card->drv_data;
+	struct idprime_private_data *priv;
 	int r = 0;
 	int size;
 	size_t sz;
+
+	if (!card || !card->drv_data || !buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	priv = card->drv_data;
 
 	sc_log(card->ctx, "called; %zu bytes at offset %d", count, offset);
 

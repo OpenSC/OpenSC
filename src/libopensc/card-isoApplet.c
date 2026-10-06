@@ -1072,6 +1072,8 @@ isoApplet_set_security_env(sc_card_t *card,
 	LOG_FUNC_CALLED(card->ctx);
 
 	drvdata = DRVDATA(card);
+	if (!drvdata)
+		return SC_ERROR_INTERNAL;
 
 	if(se_num != 0)
 	{
@@ -1171,9 +1173,16 @@ isoApplet_compute_signature(struct sc_card *card,
                             const u8 *data, size_t datalen,
                             u8 *out, size_t outlen)
 {
-	struct sc_context *ctx = card->ctx;
-	struct isoApplet_drv_data *drvdata = DRVDATA(card);
+	struct sc_context *ctx;
+	struct isoApplet_drv_data *drvdata;
 	int r;
+
+	if (!card || !card->ctx || !data || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	ctx = card->ctx;
+	drvdata = DRVDATA(card);
+	if (!drvdata)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(ctx);
 

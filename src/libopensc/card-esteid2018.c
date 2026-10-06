@@ -91,14 +91,20 @@ static int esteid_match_card(sc_card_t *card) {
 }
 
 static int esteid_select_file(struct sc_card *card, const struct sc_path *in_path, struct sc_file **file_out) {
-	const u8 *path = in_path->value;
+	const u8 *path;
 	u8 resp[SC_MAX_APDU_RESP_SIZE];
 	size_t resplen = sizeof(resp);
 	int r;
 	struct sc_file *file = NULL;
 	struct sc_apdu apdu;
 
+	if (!card || !in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	path = in_path->value;
+
 	LOG_FUNC_CALLED(card->ctx);
+	path = in_path->value;
 
 	// Only support full paths
 	if (in_path->type != SC_PATH_TYPE_PATH) {
