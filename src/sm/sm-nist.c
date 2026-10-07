@@ -1239,19 +1239,6 @@ sm_nist_open(struct sc_card *card)
 		}
 	}
 
-#if 0
-/* TODO should card driver do this? */
-	/* VCI only needed for contactless */
-	if (*priv->sm_flags & NIST_SM_CONTACTLESS) {
-		/* Is pairing code required? */
-		if (!(priv->pin_policy & PIV_PP_VCI_WITHOUT_PC)) {
-			r = piv_send_vci_pairing_code(card, priv->pairing_code);
-			if (r < 0)
-				goto err;
-		}
-	}
-#endif /* 0  TODO pairing */
-
 	r = 0;
 	priv->params->flags |= NIST_SM_FLAGS_SM_IS_ACTIVE;
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
@@ -1446,28 +1433,6 @@ sm_nist_decode_cvc(sc_context_t *ctx, u8 **buf, size_t *buflen,
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
-
-#if 0
-static int sm_nist_parse_pairing_code(sc_card_t *card, const char *option)
-{
-	size_t i;
-
-	if (!card)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	if (strlen(option) != NIST_SM_PAIRING_CODE_LEN) {
-		sc_log(card->ctx, "pairing code length invalid must be %d", NIST_SM_PAIRING_CODE_LEN);
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	for (i = 0; i < NIST_SM_PAIRING_CODE_LEN; i++) {
-		if (!isdigit(option[i])) {
-			sc_log(card->ctx, "pairing code must be %d decimal digits",NIST_SM_PAIRING_CODE_LEN);
-			return SC_ERROR_INVALID_ARGUMENTS;
-		}
-	}
-	return SC_SUCCESS;
-}
-#endif /* 0 */
 
 static sm_nist_private_data_t *
 sm_nist_private_data_create(sm_nist_params_t *params)
