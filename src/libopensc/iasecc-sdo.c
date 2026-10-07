@@ -146,21 +146,34 @@ iasecc_sdo_convert_acl(struct sc_card *card, struct iasecc_sdo *sdo,
 
 
 void
+iasecc_docp_free_fields(struct iasecc_sdo_docp *docp)
+{
+	if (!docp)
+		return;
+
+	free(docp->tries_maximum.value);
+	free(docp->tries_remaining.value);
+	free(docp->usage_maximum.value);
+	free(docp->usage_remaining.value);
+	free(docp->non_repudiation.value);
+	free(docp->acls_contact.value);
+	free(docp->acls_contactless.value);
+	free(docp->size.value);
+	free(docp->name.value);
+	free(docp->issuer_data.value);
+
+	/* invalidate all the other members too */
+	memset(docp, 0, sizeof(struct iasecc_sdo_docp));
+}
+
+void
 iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 {
 	if (sdo == NULL) {
 		return;
 	}
 
-	free(sdo->docp.tries_maximum.value);
-	free(sdo->docp.tries_remaining.value);
-	free(sdo->docp.usage_remaining.value);
-	free(sdo->docp.non_repudiation.value);
-	free(sdo->docp.acls_contact.value);
-	free(sdo->docp.acls_contactless.value);
-	free(sdo->docp.size.value);
-	free(sdo->docp.name.value);
-	free(sdo->docp.issuer_data.value);
+	iasecc_docp_free_fields(&sdo->docp);
 
 	if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PUBLIC)   {
 		free(sdo->data.pub_key.n.value);
@@ -181,6 +194,11 @@ iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 		free(sdo->data.chv.size_max.value);
 		free(sdo->data.chv.size_min.value);
 		free(sdo->data.chv.value.value);
+	}
+	else if (sdo->sdo_class == IASECC_SDO_CLASS_KEYSET)   {
+		free(sdo->data.keyset.mac.value);
+		free(sdo->data.keyset.enc.value);
+		free(sdo->data.keyset.compulsory.value);
 	}
 	/* invalidate all the other members too */
 	memset(sdo, 0, sizeof(struct iasecc_sdo));
@@ -799,7 +817,7 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 	offs = 3 + size_size;
 	for (; offs < data_len;)   {
 		rv = iasecc_sdo_parse_data(card, data + offs, data_len - offs, sdo);
-		if (rv != SC_SUCCESS) {
+		if (rv < 0) {
 			iasecc_sdo_free_fields(card, sdo);
 			LOG_TEST_RET(ctx, rv, "parse error: invalid SDO data");
 		}
@@ -807,8 +825,10 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 		offs += rv;
 	}
 
-	if (offs != data_len)
+	if (offs != data_len) {
+		iasecc_sdo_free_fields(card, sdo);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totally parsed");
+	}
 
 	sc_log(ctx, "docp.acls_contact.size %zu, docp.size.size %zu",
 			sdo->docp.acls_contact.size, sdo->docp.size.size);
@@ -845,23 +865,37 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	size_size = iasecc_parse_size(data + 3, data_len - 3, &size);
-	LOG_TEST_RET(ctx, size_size, "parse error: invalid size data");
+	if (size_size < 0) {
+		iasecc_sdo_free(card, sdo);
+		*out = NULL;
+		LOG_TEST_RET(ctx, size_size, "parse error: invalid size data");
+	}
 
-	if (data_len != size + size_size + 3)
+	if (data_len != size + size_size + 3) {
+		iasecc_sdo_free(card, sdo);
+		*out = NULL;
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalid SDO data size");
+	}
 
 	sc_log(ctx, "sz %zu, sz_size %d", size, size_size);
 
 	offs = 3 + size_size;
 	for (; offs < data_len;)   {
 		rv = iasecc_sdo_parse_data(card, data + offs, data_len - offs, sdo);
-		LOG_TEST_RET(ctx, rv, "parse error: invalid SDO data");
+		if (rv < 0) {
+			iasecc_sdo_free(card, sdo);
+			*out = NULL;
+			LOG_TEST_RET(ctx, rv, "parse error: invalid SDO data");
+		}
 
 		offs += rv;
 	}
 
-	if (offs != data_len)
+	if (offs != data_len) {
+		iasecc_sdo_free(card, sdo);
+		*out = NULL;
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totally parsed");
+	}
 
 	sc_log(ctx, "docp.acls_contact.size %zu; docp.size.size %zu",
 			sdo->docp.acls_contact.size, sdo->docp.size.size);
