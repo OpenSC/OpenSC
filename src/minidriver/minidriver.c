@@ -3072,6 +3072,8 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	int rv = 0;
 	BOOL checked, user_checked;
 	VENDOR_SPECIFIC* pv = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	static HMODULE hComctl = NULL;
+	HRESULT(WINAPI * pfnTaskDialogIndirect)(const TASKDIALOGCONFIG *, int *, int *, BOOL *) = NULL;
 
 	/* stack the parameters */
 	parameter[0] = (LONG_PTR)operation;
@@ -3088,6 +3090,12 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	parameter[11] = 0; /* place holder for end of timer */
 
 	/* launch the function to perform in the same thread context */
+	if (displayUI) {
+		if (NULL == (hComctl = LoadLibraryA("comctl32.dll")) || NULL == (pfnTaskDialogIndirect = (HRESULT(WINAPI *)(const TASKDIALOGCONFIG *, int *, int *, BOOL *))(void (*)(void))GetProcAddress(hComctl, "TaskDialogIndirect"))) {
+			displayUI = FALSE;
+		}
+	}
+
 	if (!displayUI) {
 		rv = md_dialog_perform_pin_operation_thread(parameter);
 		SecureZeroMemory(parameter, sizeof(parameter));
@@ -3161,7 +3169,7 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	tc.lpCallbackData = (LONG_PTR)parameter;
 	tc.cbSize = sizeof(tc);
 
-	result = TaskDialogIndirect(&tc, NULL, NULL, &user_checked);
+	result = pfnTaskDialogIndirect(&tc, NULL, NULL, &user_checked);
 
 	if (user_checked != checked) {
 		if (pv && pv->ctx && pv->ctx->exe_path) {
