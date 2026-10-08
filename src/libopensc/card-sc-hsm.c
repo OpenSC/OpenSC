@@ -975,7 +975,7 @@ static int sc_hsm_delete_file(sc_card_t *card, const sc_path_t *path)
 	u8 sbuf[2];
 	int r;
 
-	if ((path->type != SC_PATH_TYPE_FILE_ID) || (path->len != 2)) {
+	if (!path || (path->type != SC_PATH_TYPE_FILE_ID) || (path->len != 2)) {
 		sc_log(card->ctx,  "File type has to be SC_PATH_TYPE_FILE_ID");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}

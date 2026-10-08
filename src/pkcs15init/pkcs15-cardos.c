@@ -421,6 +421,9 @@ cardos_delete_object(sc_profile_t *profile, struct sc_pkcs15_card *p15card,
 	uint8_t abignum[SC_MAX_RSA_KEY_SIZE / 8];
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!obj || !path)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	/*
 	 * If we are deleting a private key, overwrite it so it can't be used.
 	 */
