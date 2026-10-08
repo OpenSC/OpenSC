@@ -168,6 +168,7 @@ typedef struct idprime_private_data {
 	int tinfo_present;			/* Token Info Label object is present*/
 	u8 tinfo_df[2];				/* DF of object with Token Info Label */
 	unsigned long current_op;		/* current operation set by idprime_set_security_env */
+	size_t ec_hash_len;			/* ECDSA hash length the algorithm reference takes */
 	list_t containers;			/* list of private key containers */
 	list_t keyrefmap;			/* list of key references for private keys */
 } idprime_private_data_t;
@@ -1083,7 +1084,19 @@ idprime_set_security_env(struct sc_card *card,
 			}
 			priv->current_op = SC_ALGORITHM_RSA;
 		} else if (env->algorithm == SC_ALGORITHM_EC) {
-			new_env.algorithm_ref = 0x44;
+			/* The reference fixes the hash length the card takes: SHA-256, SHA-384 and
+			 * SHA-512 sized for P-256, P-384 and P-521. A longer hash is truncated to
+			 * the key size before it gets here, a shorter one is padded with zeros. */
+			if (env->key_size_bits > 384) {
+				new_env.algorithm_ref = 0x64;
+				priv->ec_hash_len = 64;
+			} else if (env->key_size_bits > 256) {
+				new_env.algorithm_ref = 0x54;
+				priv->ec_hash_len = 48;
+			} else {
+				new_env.algorithm_ref = 0x44;
+				priv->ec_hash_len = 32;
+			}
 			priv->current_op = SC_ALGORITHM_EC;
 		}
 		break;
@@ -1112,9 +1125,10 @@ idprime_compute_signature(struct sc_card *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	/* The data for ECDSA should be padded to the length of a multiple of 8 */
-	if (priv->current_op == SC_ALGORITHM_EC && datalen % 8 != 0) {
-		pad = 8 - (datalen % 8);
+	/* The data for ECDSA is padded with leading zeros to the hash length of the
+	 * algorithm reference, which leaves its value unchanged */
+	if (priv->current_op == SC_ALGORITHM_EC && datalen < priv->ec_hash_len) {
+		pad = priv->ec_hash_len - datalen;
 		datalen += pad;
 	}
 
