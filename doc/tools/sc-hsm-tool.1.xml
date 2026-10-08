@@ -385,6 +385,8 @@
 							  and fewer than N public keys have been registered. Use <option>--public-key-auth-status</option> to check the
 							  how many public keys have been registered.
 						</para>
+						<para>The SmartCard-HSM requires an authenticated session to register a public key.
+							  Use <option>--pin</option> to provide a user PIN on the command line.</para>
 					</listitem>
 				</varlistentry>
 

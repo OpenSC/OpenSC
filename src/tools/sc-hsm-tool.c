@@ -2233,7 +2233,8 @@ static void print_pka_status(const sc_cardctl_sc_hsm_pka_status_t *status)
 	printf("Authenticated public keys: %d\n", status->num_authenticated);
 }
 
-static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *inf)
+static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *inf,
+		const char *pin)
 {
 	int r = 0;
 	sc_cardctl_sc_hsm_pka_register_t pka_register;
@@ -2241,6 +2242,15 @@ static int register_public_key(sc_context_t *ctx, sc_card_t *card, const char *i
 	memset(&pka_register, 0, sizeof(pka_register));
 
 	if (!fread_to_eof(inf, &pka_register.buf, &pka_register.buflen)) {
+		r = -1;
+		goto err;
+	}
+
+	/* The card requires an authenticated session before it will accept a
+	 * public key (SmartCard-HSM: PUK_AUTH 'Add' checks the security status),
+	 * so log in first as the other write operations here do. */
+	r = ensure_login(card, pin);
+	if (r < 0) {
 		r = -1;
 		goto err;
 	}
@@ -2618,7 +2628,7 @@ int main(int argc, char *argv[])
 	if (do_export_key && export_key(card, opt_key_reference, opt_filename))
 		goto fail;
 
-	if (do_register_public_key && register_public_key(ctx, card, opt_filename))
+	if (do_register_public_key && register_public_key(ctx, card, opt_filename, opt_pin))
 		goto fail;
 
 	if (do_public_key_auth_status && public_key_auth_status(ctx, card))
