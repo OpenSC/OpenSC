@@ -1,9 +1,11 @@
 #!/bin/bash
 
 # copy libs to /usr/local/lib
-cp /Library/OpenSC/lib/opensc-pkcs11.so \
-  /Library/OpenSC/lib/onepin-opensc-pkcs11.so \
-  /usr/local/lib/
+mkdir -p /usr/local/lib
+for f in opensc-pkcs11.so onepin-opensc-pkcs11.so; do
+  rm -f "/usr/local/lib/$f"
+  cp "/Library/OpenSC/lib/$f" /usr/local/lib/
+done
 
 # install opensc.conf if it hasn't been locally modified
 # shellcheck disable=SC2043
@@ -31,24 +33,8 @@ do
   b=/usr/local
   l="${f/$a/$b}" # parameter expansion, returns $f where $a is replaced by $b
   mkdir -p "$(dirname "$l")"
-  ln -sf "$f" "$l"
-done
-
-# correct past issue where a literal shell glob character was symlinked
-# e.g. /usr/local/share/man/man1/* -> /Library/OpenSC/share/man/man1/*
-# maybe remove this step post 2022?
-for f in \
-  '/usr/local/share/man/man1/*' \
-  '/usr/local/share/man/man5/*'
-do
-  [ -L "$f" ] || continue # skip unless $f is a symlink
-  t="$(readlink "$f")"
-  [ -e "$t" ] && continue # skip if the symlink target actually exists
-  a=/usr/local
-  b=/Library/OpenSC
-  [ "$t" = "${f/$a/$b}" ] || continue # skip unless the target is in the corresponding /Library/OpenSC subdirectory
-  # we can now assume that we originally made $f and can safely remove it
-  unlink "$f"
+  rm -f "$l"
+  ln -s "$f" "$l"
 done
 
 # register the launch agents

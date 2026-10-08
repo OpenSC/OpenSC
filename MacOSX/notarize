@@ -1,8 +1,5 @@
 #!/bin/bash
 # Notarize and staple the macOS installer image.
-#
-# This is only tested and supported on macOS 10.10 or later, using Xcode 6.0.1.
-# Building should also work on older macOS versions with slight changes; YMMV.
 
 set -ex
 BUILDPATH=${PWD}
