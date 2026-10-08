@@ -28,7 +28,7 @@ OBJECTS			= \
 	card-sc-hsm.obj card-dnie.obj card-isoApplet.obj pkcs15-coolkey.obj \
 	card-masktech.obj card-gids.obj card-jpki.obj \
 	card-npa.obj card-esteid2018.obj card-esteid2025.obj card-idprime.obj \
-	card-edo.obj card-nqApplet.obj card-skeid.obj card-eoi.obj card-dtrust.obj \
+	card-edo.obj card-nqApplet.obj card-skeid.obj card-eoi.obj card-chipdocit.obj card-dtrust.obj \
 	card-lteid.obj card-srbeid.obj card-cedulauy.obj \
 	\
 	pkcs15-openpgp.obj pkcs15-starcert.obj pkcs15-cardos.obj pkcs15-tcos.obj \
@@ -37,7 +37,7 @@ OBJECTS			= \
 	pkcs15-oberthur.obj pkcs15-itacns.obj pkcs15-gemsafeV1.obj pkcs15-sc-hsm.obj \
 	pkcs15-dnie.obj pkcs15-gids.obj pkcs15-iasecc.obj pkcs15-cedulauy.obj pkcs15-jpki.obj \
 	pkcs15-esteid2018.obj pkcs15-esteid2025.obj pkcs15-idprime.obj pkcs15-nqApplet.obj \
-	pkcs15-starcos-esign.obj pkcs15-skeid.obj pkcs15-eoi.obj pkcs15-dtrust.obj \
+	pkcs15-starcos-esign.obj pkcs15-skeid.obj pkcs15-eoi.obj pkcs15-chipdocit.obj pkcs15-dtrust.obj \
 	pkcs15-lteid.obj pkcs15-srbeid.obj compression.obj sm.obj aux-data.obj \
 	$(TOPDIR)\win32\versioninfo.res
 LIBS = $(TOPDIR)\src\scconf\scconf.lib \
