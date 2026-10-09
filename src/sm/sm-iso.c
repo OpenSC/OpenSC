@@ -305,7 +305,6 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	}
 	sm_apdu->control = apdu->control;
 	sm_apdu->flags = apdu->flags;
-	sm_apdu->flags &= ~SC_APDU_FLAGS_SM_CHAINING;
 	sm_apdu->cla = apdu->cla|0x0C;
 	sm_apdu->ins = apdu->ins;
 	sm_apdu->p1 = apdu->p1;
@@ -486,18 +485,23 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	} else {
 		sm_apdu->cse = SC_APDU_CASE_4_SHORT;
 		sm_apdu->le = SC_MAX_APDU_RESP_SIZE;
-		if ((ctx->flags & ISO_SM_FLAG_ENCRYPT_ONCE_THEN_CHAINING) == 0) {
-			sm_apdu->le = SC_MAX_APDU_RESP_SIZE;
-			sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
-		} else {
+		if ((ctx->flags & ISO_SM_FLAG_ENCRYPT_ONCE_THEN_CHAINING) != 0) {
+			/*
+			 * send the sm_apdu and let apdu do the chaining
+			 * without calling SM for each chunk
+			 */
 			if (sm_apdu->lc > 255) {
 				sm_apdu->flags |= SC_APDU_FLAGS_NO_SM;
+				sm_apdu->flags |= SC_APDU_FLAGS_CHAINING;
 			}
 			if (sm_apdu->resplen > 256) {
 				sm_apdu->le = 256;
 			} else {
 				sm_apdu->le = sm_apdu->resplen;
 			}
+		} else {
+			sm_apdu->le = SC_MAX_APDU_RESP_SIZE;
+			sm_apdu->resplen = SC_MAX_APDU_RESP_SIZE;
 		}
 	}
 
