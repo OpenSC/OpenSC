@@ -45,6 +45,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "idprime",    sc_pkcs15emu_idprime_init_ex	},
 	{ "gemsafeV1",	sc_pkcs15emu_gemsafeV1_init_ex	},
 	{ "entersafe",  sc_pkcs15emu_entersafe_init_ex	},
+	{ "entersafe-mscp", sc_pkcs15emu_entersafe_mscp_init_ex },
 	{ "pteid",	sc_pkcs15emu_pteid_init_ex	},
 	{ "oberthur",   sc_pkcs15emu_oberthur_init_ex	},
 	{ "sc-hsm",	sc_pkcs15emu_sc_hsm_init_ex	},

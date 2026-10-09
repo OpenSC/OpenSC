@@ -112,6 +112,7 @@ typedef struct epass2003_exdata_st {
 	unsigned char bFipsCertification;	/* fips mode Alg */
 	unsigned char currAlg;		/* current Alg */
 	unsigned int  ecAlgFlags; 	/* Ec Alg mechanism type*/
+	unsigned char mscp_mode;	/* MSCP personalization: RSA key reference is the raw vendor handle */
 } epass2003_exdata;
 
 #define REVERSE_ORDER4(x)	(			  \
@@ -2062,8 +2063,13 @@ epass2003_set_security_env(struct sc_card *card, const sc_security_env_t * env, 
 	*p++ = 0x81;
 	*p++ = 0x02;
 
-	fid = 0x2900;
-	fid += (unsigned short)(0x20 * (env->key_ref[0] & 0xff));
+	if (exdata->mscp_mode) {
+		/* key_ref carries the low byte of a 0xA0xx vendor key handle */
+		fid = 0xA000 | (env->key_ref[0] & 0xff);
+	} else {
+		fid = 0x2900;
+		fid += (unsigned short)(0x20 * (env->key_ref[0] & 0xff));
+	}
 	*p++ = fid >> 8;
 	*p++ = fid & 0xff;
 	r = (int)(p - sbuf);
@@ -3039,6 +3045,24 @@ epass2003_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	LOG_FUNC_CALLED(card->ctx);
 
 	sc_log(card->ctx, "cmd is %0lx", cmd);
+
+	/* A card personalized by the Microsoft minidriver carries an MSCP file
+	 * layout (DF 2003) this driver cannot rebuild. Erasing it or writing
+	 * keys into the PKCS#15 style 0x2900 slots would destroy that
+	 * personalization with no way back, so refuse while MSCP mode is on. */
+	switch (cmd) {
+	case SC_CARDCTL_ENTERSAFE_WRITE_KEY:
+	case SC_CARDCTL_ENTERSAFE_GENERATE_KEY:
+	case SC_CARDCTL_ERASE_CARD:
+		if (card->drv_data && ((epass2003_exdata *)card->drv_data)->mscp_mode) {
+			sc_log(card->ctx, "refusing cmd %0lx: card has an MSCP personalization", cmd);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
+		}
+		break;
+	default:
+		break;
+	}
+
 	switch (cmd) {
 	case SC_CARDCTL_ENTERSAFE_WRITE_KEY:
 		return epass2003_write_key(card, (sc_epass2003_wkey_data *) ptr);
@@ -3048,6 +3072,15 @@ epass2003_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 		return epass2003_erase_card(card);
 	case SC_CARDCTL_GET_SERIALNR:
 		return epass2003_get_serialnr(card, (sc_serial_number_t *) ptr);
+	case SC_CARDCTL_ENTERSAFE_MSCP_MODE:
+		/* ptr is an int* carrying the wanted state, so a caller that turned
+		 * MSCP addressing on can turn it back off; NULL keeps the original
+		 * "enable" meaning for callers that pass nothing. */
+		if (!card->drv_data)
+			return SC_ERROR_INVALID_ARGUMENTS;
+		((epass2003_exdata *)card->drv_data)->mscp_mode =
+				(ptr == NULL || *(int *)ptr != 0) ? 1 : 0;
+		return SC_SUCCESS;
 	default:
 		return SC_ERROR_NOT_SUPPORTED;
 	}
