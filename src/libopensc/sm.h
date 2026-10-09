@@ -90,6 +90,7 @@ extern "C" {
 
 /* sm_context.sm_flags */
 #define SM_FLAGS_GET_RESPONSE_IN_CLEAR 0x01
+#define SM_FLAGS_ENCRYPT_THEN_CHAINING 0x02
 
 /* As in OpenSSL include/openssl/des.h */
 typedef unsigned char sm_des_cblock[8];
