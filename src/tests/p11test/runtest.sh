@@ -182,6 +182,22 @@ function card_setup() {
 			$INIT --generate-key rsa:2048 --id 02 --label="RSA key" --key-usage=sign,decrypt
 			$PKCS15_INIT -F
 			;;
+		"yk-pqc")
+			GENERATE_KEYS=0 # we generate them directly here
+			P11LIB="../../pkcs11/.libs/opensc-pkcs11.so"
+			PIN="123456"
+
+			# uv run ykman piv keys generate --algorithm MLDSA44 9a 9a_mldsa44.pem
+			# uv run ykman piv keys generate --algorithm MLDSA65 9c 9c_mldsa65.pem
+			# uv run ykman piv keys generate --algorithm MLKEM768 82 82_mlkem768.pem
+			# uv run ykman piv keys generate --algorithm MLKEM1024 83 83_mlkem1024.pem
+			# uv run ykman piv keys generate --algorithm ED25519 84 84_ed25519.pem
+			# uv run ykman piv keys generate --algorithm X25519 85 85_x25519.pem
+			# uv run ykman piv keys generate --algorithm RSA2048 86 86_rsa.pem
+			#
+			# uv run ykman piv certificates generate --subject "CN=yubico" 84 84_ed25519.pem
+
+			;;
 		*)
 			echo "Error: Missing argument."
 			echo "    Usage:"

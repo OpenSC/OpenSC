@@ -94,7 +94,7 @@
 #endif
 
 #ifndef ENABLE_SHARED
-extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
+extern CK_FUNCTION_LIST_3_2 pkcs11_function_list_3_2;
 #endif
 
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
@@ -251,7 +251,8 @@ enum {
 	OPT_INFO_FILE,
 	OPT_PUBLIC_KEY_INFO,
 	OPT_URI,
-	OPT_URI_WITH_SLOT_ID
+	OPT_URI_WITH_SLOT_ID,
+	OPT_DECAPSULATE,
 };
 
 // clang-format off
@@ -348,6 +349,7 @@ static const struct option options[] = {
 	{ "public-key-info",	0, NULL,		OPT_PUBLIC_KEY_INFO},
 	{ "uri",		1, NULL,		OPT_URI},
 	{ "uri-with-slot-id",	0, NULL,		OPT_URI_WITH_SLOT_ID},
+	{ "decapsulate",	0, NULL,		OPT_DECAPSULATE},
 	{ NULL, 0, NULL, 0 },
 };
 // clang-format on
@@ -445,6 +447,7 @@ static const char *option_help[] = {
 		"When reading a public key, try to read PUBLIC_KEY_INFO (DER encoding of SPKI)",
 		"Specify the PKCS#11 URI for module, slot, token or object",
 		"Include SlotId in PKCS#11 URI",
+		"Decapsulate shared secret using private key",
 		"",
 };
 
@@ -516,7 +519,7 @@ static struct pkcs11_uri *opt_uri = NULL;
 static int opt_uri_with_slot_id = 0; /* include slot-id in PKCS#11 URI */
 
 static void *module = NULL;
-static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
+static CK_FUNCTION_LIST_3_2_PTR p11 = NULL;
 static CK_SLOT_ID_PTR p11_slots = NULL;
 static CK_ULONG p11_num_slots = 0;
 static int suppress_warn = 0;
@@ -633,6 +636,7 @@ static void		decrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		encrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		derive_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+static void		decapsulate_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static int		gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE,
 				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *, const char *);
 static int		gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE, CK_OBJECT_HANDLE *, const char *, char *);
@@ -820,6 +824,7 @@ int main(int argc, char * argv[])
 	int do_wrap = 0;
 	int do_hash = 0;
 	int do_derive = 0;
+	int do_decapsulate = 0;
 	int do_gen_keypair = 0;
 	int do_gen_key = 0;
 	int do_write_object = 0;
@@ -1041,6 +1046,11 @@ int main(int argc, char * argv[])
 		case OPT_WRAP:
 			need_session |= NEED_SESSION_RO;
 			do_wrap = 1;
+			action_count++;
+			break;
+		case OPT_DECAPSULATE:
+			need_session |= NEED_SESSION_RO;
+			do_decapsulate = 1;
 			action_count++;
 			break;
 		case 'f':
@@ -1362,7 +1372,7 @@ int main(int argc, char * argv[])
 
 #ifndef ENABLE_SHARED
 	if (strcmp(opt_module, DEFAULT_PKCS11_PROVIDER) == 0)
-		p11 = &pkcs11_function_list_3_0;
+		p11 = &pkcs11_function_list_3_2;
 	else
 #endif
 	{
@@ -1371,7 +1381,7 @@ int main(int argc, char * argv[])
 		module = C_LoadModule(opt_module, &p11_v2);
 		if (module == NULL)
 			util_fatal("Failed to load pkcs11 module");
-		p11 = (CK_FUNCTION_LIST_3_0_PTR) p11_v2;
+		p11 = (CK_FUNCTION_LIST_3_2_PTR)p11_v2;
 	}
 
 	/* This can be done even before initialization */
@@ -1467,7 +1477,7 @@ int main(int argc, char * argv[])
 	if (do_list_mechs)
 		list_mechs(opt_slot);
 
-	if (do_sign || do_decrypt || do_encrypt || do_unwrap || do_wrap) {
+	if (do_sign || do_decrypt || do_encrypt || do_unwrap || do_wrap || do_decapsulate) {
 		CK_TOKEN_INFO info;
 
 		get_token_info(opt_slot, &info);
@@ -1529,7 +1539,7 @@ int main(int argc, char * argv[])
 		mf_flags = p11_mechanism_to_flags(opt_mechanism);
 	}
 
-	if (do_sign || do_derive) {
+	if (do_sign || do_derive || do_decapsulate) {
 		/*
 		 * Newer mechanisms have their details in the mechanism table, however
 		 * if it's not known fall back to the old code always assuming it was a
@@ -1675,6 +1685,10 @@ int main(int argc, char * argv[])
 	/* before list objects, so we can see a derived key */
 	if (do_derive)
 		derive_key(opt_slot, session, object);
+
+	/* before list objects, so we can see a decapsulated key */
+	if (do_decapsulate)
+		decapsulate_key(opt_slot, session, object);
 
 	if (do_list_objects)
 		list_objects(session);
@@ -6472,6 +6486,89 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	}
 }
 
+static void
+decapsulate_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
+{
+	CK_BYTE *value = NULL;
+	int fd;
+	ssize_t sz;
+	CK_KEY_TYPE key_type = getKEY_TYPE(session, key);
+	CK_MECHANISM mech = {0};
+	CK_OBJECT_CLASS newkey_class = CKO_SECRET_KEY;
+	CK_KEY_TYPE newkey_type = CKK_GENERIC_SECRET;
+	CK_BBOOL _true = TRUE;
+	CK_BBOOL _false = FALSE;
+	CK_OBJECT_HANDLE newkey = 0;
+	CK_ULONG value_len = 32;
+
+	// clang-format off
+	CK_ATTRIBUTE newkey_template[20] = {
+			{CKA_TOKEN,	&_false,	sizeof(_false)	    }, /* session only object */
+			{CKA_CLASS,	&newkey_class,	sizeof(newkey_class)},
+			{CKA_KEY_TYPE,  &newkey_type,	sizeof(newkey_type) },
+			{CKA_SENSITIVE,	&_false,	sizeof(_false)      },
+			{CKA_EXTRACTABLE, &_true,	sizeof(_true)       },
+			{CKA_ENCRYPT,	&_true,		sizeof(_true)       },
+			{CKA_DECRYPT,	&_true,		sizeof(_true)       },
+			{CKA_WRAP,	&_true,		sizeof(_true)       },
+			{CKA_UNWRAP,	&_true,		sizeof(_true)       },
+			{CKA_VALUE_LEN,	&value_len,	sizeof(value_len)   },
+	   };
+	// clang-format on
+	int n_attrs = 9;
+	CK_RV rv;
+	unsigned char in_buffer[2048];
+
+	if (!opt_mechanism_used)
+		if (!find_mechanism(slot, CKF_DECAPSULATE | opt_allow_sw, NULL, 0, &opt_mechanism))
+			util_fatal("Decapsulate mechanism not supported");
+
+	switch (opt_mechanism) {
+	case CKM_ML_KEM:
+		/* The only supported now */
+		break;
+	default:
+		util_fatal("Key type %lu does not support decapsulation", key_type);
+		break;
+	}
+
+	printf("Using decapsulate algorithm 0x%8.8lx %s\n", opt_mechanism, p11_mechanism_to_name(opt_mechanism));
+	mech.mechanism = opt_mechanism;
+
+	if (opt_input == NULL)
+		fd = 0;
+	else if ((fd = open(opt_input, O_RDONLY | O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %m", opt_input);
+
+	sz = read(fd, in_buffer, sizeof(in_buffer));
+	if (sz < 0)
+		util_fatal("Cannot read from %s: %m", opt_input);
+	if (fd != 0)
+		close(fd);
+
+	rv = p11->C_DecapsulateKey(session, &mech, key, newkey_template, n_attrs, in_buffer, sz, &newkey);
+	if (rv != CKR_OK)
+		p11_fatal("C_DecapsulateKey", rv);
+
+	value = getVALUE(session, newkey, &value_len);
+	if (value && value_len > 0) {
+		fd = STDOUT_FILENO;
+		if (opt_output) {
+			fd = open(opt_output, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR);
+			if (fd < 0)
+				util_fatal("failed to open %s: %m", opt_output);
+		}
+
+		sz = write(fd, value, value_len);
+		free(value);
+		if (sz < 0)
+			util_fatal("Failed to write to %s: %m", opt_output);
+
+		if (opt_output)
+			close(fd);
+	}
+}
+
 #define BYTES_PER_LINE 32
 void
 print_hex(const u8 *bin_input, size_t input_size, int separator, bool newline)
@@ -9728,7 +9825,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 	module = C_LoadModule(opt_module, &p11_v2);
 	if (module == NULL)
 		util_fatal("Failed to load pkcs11 module");
-	p11 = (CK_FUNCTION_LIST_3_0_PTR ) p11_v2;
+	p11 = (CK_FUNCTION_LIST_3_2_PTR)p11_v2;
 
 	rv = p11->C_Initialize(c_initialize_args_ptr);
 	if (rv == CKR_CRYPTOKI_ALREADY_INITIALIZED)
