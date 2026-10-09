@@ -925,6 +925,12 @@ dnie_create_pace_channel(struct sc_card *card,
 		}
 	}
 
+	/* ensure MF is selected before starting PACE */
+	r = sc_select_file(card, sc_get_mf_path(), NULL);
+	if (r != SC_SUCCESS) {
+		return r;
+	}
+
 	/* Establish secure channel via PACE */
 	memset(&pace_input, 0, sizeof pace_input);
 	memset(&pace_output, 0, sizeof pace_output);
@@ -1032,6 +1038,15 @@ static int dnie_init(struct sc_card *card)
 			free(card->drv_data);
 			free(provider);
 			LOG_TEST_RET(card->ctx, res, "Failed to establish PACE channel against contactless card");
+		}
+
+		/* FIXME: the proprietary APDU to get chip serial number has some unknown preconditions... for now just cache it here */
+		sc_serial_number_t serial;
+		res = dnie_get_serialnr(card, &serial);
+		if (res != SC_SUCCESS) {
+			free(card->drv_data);
+			free(provider);
+			LOG_TEST_RET(card->ctx, res, "Failed to pre-fetch serial number");
 		}
 	}
 #endif
