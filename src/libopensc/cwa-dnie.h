@@ -89,6 +89,7 @@ typedef struct dnie_channel_data {
 	 struct ui_context ui_ctx;
 #endif
      dnie_channel_data_t *channel_data; /* Configuration data for the secure channel */
+     char *can_value;			/* global CAN from configuration file */
  } dnie_private_data_t;
 
 /**

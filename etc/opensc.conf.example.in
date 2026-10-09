@@ -200,6 +200,9 @@ app default {
 		# Default: /usr/bin/pinentry
 		# Only used if compiled with --enable-dnie-ui
 		# user_consent_app = "/usr/bin/pinentry";
+
+		# Specify CAN to use for the contactless interface.
+		# can = 123546;
 	}
 
 	card_driver edo {
