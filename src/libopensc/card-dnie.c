@@ -40,6 +40,10 @@
 #include "internal.h"
 #include "cwa14890.h"
 #include "cwa-dnie.h"
+#ifdef ENABLE_OPENPACE
+#include "pace.h"
+#include "sm/sm-eac.h"
+#endif
 
 #ifdef _WIN32
 
@@ -832,6 +836,118 @@ static int dnie_sm_get_wrapped_apdu(struct sc_card *card,
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
+#ifdef ENABLE_OPENPACE
+
+static int dnie_init_can(struct sc_card *card)
+{
+	const char *can_env, *can_value;
+	size_t i, j;
+	scconf_block **found_blocks, *block;
+
+	/* read environment variable */
+	can_env = getenv("DNIE_CAN");
+
+	/* read configuration */
+	can_value = NULL;
+	for (i = 0; card->ctx->conf_blocks[i]; i++) {
+		found_blocks = scconf_find_blocks(card->ctx->conf, card->ctx->conf_blocks[i], "card_driver", "dnie");
+		if (!found_blocks)
+			continue;
+
+		for (j = 0, block = found_blocks[j]; block; j++, block = found_blocks[j]) {
+			/* Environment variable has precedence over configured CAN */
+			if (can_env == NULL) {
+				can_value = scconf_get_str(block, "can", can_value);
+			}
+		}
+		free(found_blocks);
+	}
+
+	if (can_env != NULL) {
+		sc_log(card->ctx, "Using CAN provided by environment variable.");
+		can_value = can_env;
+	} else if (can_value != NULL) {
+		sc_log(card->ctx, "Using CAN provided by configuration file.");
+	}
+
+	if (can_value != NULL) {
+		size_t can_len;
+
+		can_len = strlen(can_value);
+		GET_DNIE_PRIV_DATA(card)->can_value = sc_mem_secure_alloc(can_len + 1);
+		if (GET_DNIE_PRIV_DATA(card)->can_value == NULL) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+		memcpy(GET_DNIE_PRIV_DATA(card)->can_value, can_value, can_len + 1);
+	}
+
+	return SC_SUCCESS;
+}
+
+static int dnie_create_pace_channel(struct sc_card *card,
+	int ref,
+	const unsigned char *pin, size_t pinlen)
+{
+	int r;
+	struct establish_pace_channel_input pace_input;
+	struct establish_pace_channel_output pace_output;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	/* The PKCS#11 layer cannot provide a CAN. Instead we consider the
+	 * following sources for CAN input.
+	 *  1. A CAN provided by the caller
+	 *  2. A CAN provided in the environment variable DNIE_CAN
+	 *  3. A CAN provided in the configuration file
+	 *  4. If the reader supports the PACE protocol, we let it query for a
+	 *     CAN on the pin pad.
+	 *  5. Querying the user interactively if possible */
+	if (ref == PACE_PIN_ID_CAN) {
+		/* Use CAN from environment variable or configuration file */
+		if (pin == NULL) {
+			pin = (const unsigned char *)GET_DNIE_PRIV_DATA(card)->can_value;
+			if (pin != NULL) {
+				sc_log(card->ctx, "Using static CAN (environment variable/configuration file).");
+				pinlen = strlen(GET_DNIE_PRIV_DATA(card)->can_value);
+			}
+		}
+
+		/* Query the user interactively if no cached CAN is available. */
+		if (pin == NULL) {
+			if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) {
+				/* If no CAN is provided and the reader is
+				 * PACE-capable, we leave pin == NULL to request the
+				 * ready for querying the CAN on its pin pad. */
+				sc_log(card->ctx, "Letting the reader prompt for the CAN on its pin pad.");
+			} else {
+				/* TODO: Request user input */
+				sc_log(card->ctx, "Unable to query for the CAN. Aborting.");
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+			}
+		}
+	}
+
+	/* Establish secure channel via PACE */
+	memset(&pace_input, 0, sizeof pace_input);
+	memset(&pace_output, 0, sizeof pace_output);
+
+	pace_input.pin_id = ref;
+	pace_input.pin = pin;
+	pace_input.pin_length = pinlen;
+
+	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+
+	free(pace_output.ef_cardaccess);
+	free(pace_output.recent_car);
+	free(pace_output.previous_car);
+	free(pace_output.id_icc);
+	free(pace_output.id_pcd);
+
+	return r;
+}
+
+#endif
+
 static int dnie_create_cwa_channel(struct sc_card *card, int flag)
 {
 	int res = cwa_create_secure_channel(card, GET_DNIE_PRIV_DATA(card)->cwa_provider, flag);
@@ -903,6 +1019,24 @@ static int dnie_init(struct sc_card *card)
 
 	GET_DNIE_PRIV_DATA(card)->cwa_provider = provider;
 
+#ifdef ENABLE_OPENPACE
+	if (card->type == SC_CARD_TYPE_DNIE_CONTACTLESS) {
+		res = dnie_init_can(card);
+		if (res != SC_SUCCESS) {
+			free(card->drv_data);
+			free(provider);
+			LOG_TEST_RET(card->ctx, res, "Failed to initialize CAN");
+		}
+
+		res = dnie_create_pace_channel(card, PACE_PIN_ID_CAN, NULL, 0);
+		if (res != SC_SUCCESS) {
+			free(card->drv_data);
+			free(provider);
+			LOG_TEST_RET(card->ctx, res, "Failed to establish PACE channel against contactless card");
+		}
+	}
+#endif
+
 	LOG_FUNC_RETURN(card->ctx, res);
 }
 
@@ -919,6 +1053,9 @@ static int dnie_finish(struct sc_card *card)
 {
 	int result = SC_SUCCESS;
 	LOG_FUNC_CALLED(card->ctx);
+	if (GET_DNIE_PRIV_DATA(card)->can_value != NULL) {
+		sc_mem_secure_free(GET_DNIE_PRIV_DATA(card)->can_value, strlen(GET_DNIE_PRIV_DATA(card)->can_value) + 1);
+	}
 	dnie_clear_cache(GET_DNIE_PRIV_DATA(card));
 	/* disable sm channel if established */
 	result = dnie_create_cwa_channel(card, CWA_SM_OFF);
