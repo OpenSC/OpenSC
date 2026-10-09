@@ -789,34 +789,14 @@ piv_sm_nist_pre_transmit_callback(sc_card_t *card, sc_apdu_t *apdu)
 }
 #endif /* PIV_SM_NIST */
 
-#if 0
-static int
-piv_parse_pairing_code(sc_card_t *card, const char *option)
-{
-	size_t i;
-
-	if (strlen(option) != PIV_PAIRING_CODE_LEN) {
-		sc_log(card->ctx, "pairing code length invalid must be %d", PIV_PAIRING_CODE_LEN);
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
-	for (i = 0; i < PIV_PAIRING_CODE_LEN; i++) {
-		if (!isdigit(option[i])) {
-			sc_log(card->ctx, "pairing code must be %d decimal digits", PIV_PAIRING_CODE_LEN);
-			return SC_ERROR_INVALID_ARGUMENTS;
-		}
-	}
-	return SC_SUCCESS;
-}
-#endif /* 0 */
 
 static int
 piv_load_options(sc_card_t *card)
 {
 	int r;
-#if 0
 	
 	size_t i, j;
-	piv_private_data_t *priv = PIV_DATA(card);
+	//piv_private_data_t *priv = PIV_DATA(card);
 	scconf_block **found_blocks, *block;
 
 	for (i = 0; card->ctx->conf_blocks[i]; i++) {
@@ -826,11 +806,10 @@ piv_load_options(sc_card_t *card)
 			continue;
 
 		for (j = 0, block = found_blocks[j]; block; j++, block = found_blocks[j]) {
-			/* no options other then SM for now */
+			/* no options for now */
 		}
 		free(found_blocks);
 	}
-#endif /* 0 */
 	r = SC_SUCCESS;
 	return r;
 }
@@ -877,12 +856,6 @@ piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	sc_format_apdu(card, &apdu, cse, ins, p1, p2);
 	if (sendbuflen > 255) {
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
-#ifdef ENABLE_PIV_SM
-		if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
-			/* tell apdu.c to not do the chaining, let the SM get_apdu do it */
-			apdu.flags |= SC_APDU_FLAGS_SM_CHAINING;
-		}
-#endif
 	}
 	apdu.lc = sendbuflen;
 	apdu.datalen = sendbuflen;
