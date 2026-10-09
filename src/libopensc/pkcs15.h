@@ -580,6 +580,7 @@ typedef struct sc_pkcs15_card {
 		int pin_cache_counter;
 		int pin_cache_ignore_user_consent;
 		int pin_protected_certificate;
+		int allow_duplicate_object_ids;
 	} opts;
 
 	unsigned int magic;

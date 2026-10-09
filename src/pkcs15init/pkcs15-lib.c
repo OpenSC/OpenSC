@@ -1561,7 +1561,7 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 		/* Make sure that private key's ID is the unique inside the PKCS#15 application */
 		r = sc_pkcs15_find_prkey_by_id(p15card, &keygen_args->prkey_args.id, NULL);
-		if (!r) {
+		if (!r && !p15card->opts.allow_duplicate_object_ids) {
 			r = SC_ERROR_NON_UNIQUE_ID;
 			LOG_TEST_GOTO_ERR(ctx, r, "Non unique ID of the private key object");
 		}
@@ -1697,7 +1697,7 @@ sc_pkcs15init_generate_secret_key(struct sc_pkcs15_card *p15card, struct sc_prof
 	if (skey_args->id.len)   {
 		/* Make sure that secret key's ID is the unique inside the PKCS#15 application */
 		r = sc_pkcs15_find_skey_by_id(p15card, &skey_args->id, NULL);
-		if (!r)
+		if (!r && !p15card->opts.allow_duplicate_object_ids)
 			LOG_TEST_RET(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the private key object");
 		else if (r != SC_ERROR_OBJECT_NOT_FOUND)
 			LOG_TEST_RET(ctx, r, "Find private key error");
@@ -1784,7 +1784,7 @@ sc_pkcs15init_store_private_key(struct sc_pkcs15_card *p15card, struct sc_profil
 
 	/* Make sure that private key's ID is the unique inside the PKCS#15 application */
 	r = sc_pkcs15_find_prkey_by_id(p15card, &keyargs->id, NULL);
-	if (!r)
+	if (!r && !p15card->opts.allow_duplicate_object_ids)
 		LOG_TEST_RET(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the private key object");
 	else if (r != SC_ERROR_OBJECT_NOT_FOUND)
 		LOG_TEST_RET(ctx, r, "Find private key error");
@@ -2010,7 +2010,7 @@ sc_pkcs15init_store_public_key(struct sc_pkcs15_card *p15card, struct sc_profile
 
 	/* Make sure that private key's ID is the unique inside the PKCS#15 application */
 	r = sc_pkcs15_find_pubkey_by_id(p15card, &keyargs->id, NULL);
-	if (!r) {
+	if (!r && !p15card->opts.allow_duplicate_object_ids) {
 		r = SC_ERROR_NON_UNIQUE_ID;
 		LOG_TEST_GOTO_ERR(ctx, r, "Non unique ID of the public key object");
 	} else if (r != SC_ERROR_OBJECT_NOT_FOUND)  {
@@ -2094,7 +2094,7 @@ sc_pkcs15init_store_secret_key(struct sc_pkcs15_card *p15card, struct sc_profile
 
 	/* Make sure that secret key's ID is the unique inside the PKCS#15 application */
 	r = sc_pkcs15_find_skey_by_id(p15card, &keyargs->id, NULL);
-	if (!r)
+	if (!r && !p15card->opts.allow_duplicate_object_ids)
 		LOG_TEST_RET(ctx, SC_ERROR_NON_UNIQUE_ID, "Non unique ID of the secret key object");
 	else if (r != SC_ERROR_OBJECT_NOT_FOUND)
 		LOG_TEST_RET(ctx, r, "Find secret key error");
@@ -2963,7 +2963,7 @@ select_id(struct sc_pkcs15_card *p15card, int type, struct sc_pkcs15_id *id)
 
 		if (r == SC_ERROR_OBJECT_NOT_FOUND)
 			r = 0;
-		else if (!r)
+		else if (!r && !p15card->opts.allow_duplicate_object_ids)
 			r = SC_ERROR_NON_UNIQUE_ID;
 
 		LOG_FUNC_RETURN(ctx, r);
