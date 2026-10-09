@@ -44,7 +44,6 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-
 /* 800-73-4 Cipher Suite Table 14 */
 #define NIST_CS_CS2 0x27
 #define NIST_CS_CS7 0x2E
@@ -281,12 +280,12 @@ Q2OS(int fsize, u8 *Q, size_t Qlen, u8 *OS, size_t *OSlen)
  * If needed, send VCI pairing code to card just after the
  * SM key establishment. Called from sm_nist_start under same lock
  */
-static int sm_nist_send_vci_pairing_code(struct sc_card *card, sm_nist_params_t *params)
+static int
+sm_nist_send_vci_pairing_code(struct sc_card *card, sm_nist_params_t *params)
 {
 	int r;
 	sc_apdu_t plain;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 
 	if (params->flags & NIST_SM_VCI_WITHOUT_PC)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS); /* Not needed */
@@ -354,7 +353,6 @@ err:
  * from env or opensc.conf
  */
 
-
 static int
 sm_nist_parse_pairing_code(sc_card_t *card, const char *option)
 {
@@ -385,7 +383,7 @@ sm_nist_set_use_option(sc_card_t *card, sm_nist_params_t *params, int *found, co
 		params->flags |= NIST_SM_FLAGS_ALWAYS;
 		*found = 1;
 	} else if (!strcasecmp(option, "default")) {
-	 *found = 1;
+		*found = 1;
 	} else {
 		sc_log(card->ctx, "Invalid use sm option: %s", option);
 	}
@@ -400,7 +398,7 @@ sm_nist_load_options(sc_card_t *card, sm_nist_params_t *params, char *prefix)
 	scconf_block *block;
 	const char *option = NULL;
 	int use_sm_found = 0;
-	/* upper version of <prefix>_ followd by var name */
+	/* upper version of <prefix>_ followed by var name */
 	char bufu[32] = {0};
 	char bufl[32] = {0};
 	size_t prefix_len;
@@ -410,13 +408,13 @@ sm_nist_load_options(sc_card_t *card, sm_nist_params_t *params, char *prefix)
 	}
 
 	LOG_FUNC_CALLED(card->ctx);
-	
+
 	prefix_len = strlen(prefix);
 	if (prefix_len > 19) {
 		r = SC_ERROR_INTERNAL;
 		goto err;
 	}
-		
+
 	for (i = 0; i < prefix_len; i++) {
 		bufu[i] = toupper((unsigned char)prefix[i]);
 		bufl[i] = tolower((unsigned char)prefix[i]);
@@ -424,7 +422,7 @@ sm_nist_load_options(sc_card_t *card, sm_nist_params_t *params, char *prefix)
 
 	/* pairing code is 8 decimal digits and is card specific */
 	/* TODO look under user ~ somewhere */
- 
+
 	if ((option = getenv("NIST_SM_PAIRING_CODE")) != NULL) {
 		sc_log(card->ctx, "getenv(\"NIST_SM_PAIRING_CODE\") found");
 		if (sm_nist_parse_pairing_code(card, option) == SC_SUCCESS) {
@@ -432,8 +430,8 @@ sm_nist_load_options(sc_card_t *card, sm_nist_params_t *params, char *prefix)
 		}
 	}
 
-	strcpy(bufu+prefix_len, "_USE_SM");
-	strcpy(bufl+prefix_len, "_use_sm");
+	strcpy(bufu + prefix_len, "_USE_SM");
+	strcpy(bufl + prefix_len, "_use_sm");
 
 	if ((option = getenv(bufu)) != NULL) {
 		sc_log(card->ctx, "getenv(\"%s\")=\"%s\"", bufu, option);
@@ -444,7 +442,7 @@ sm_nist_load_options(sc_card_t *card, sm_nist_params_t *params, char *prefix)
 	if (!conf_block)
 		goto err;
 	block = conf_block;
-	
+
 	/*
 	 * "use_sm_nist" if card supports NIST sp800-73-4 sm, when should it be used
 	 * never - use card like 800-73-3, i.e. contactless is very limited on
@@ -471,7 +469,7 @@ sm_nist_load_options(sc_card_t *card, sm_nist_params_t *params, char *prefix)
 	option = scconf_get_str(block, "signer_cert_trusted_dir", "");
 	if (option) {
 		sc_log(card->ctx, "conf: signer_cert_trusted_dir = \"%s\"", option);
-			if (strlen(option) > 0)
+		if (strlen(option) > 0)
 			params->signer_cert_trusted_dir = strdup(option);
 	}
 
@@ -479,13 +477,13 @@ sm_nist_load_options(sc_card_t *card, sm_nist_params_t *params, char *prefix)
 err:
 	return r;
 }
-	/* 
-	 * verify NIST_OBJ_SM_CERT_SIGNER was signed by trusted cert chain
-	 * using OpenSSL and external files
-	 * As every card may have different trust chains 
-	 * maintance of the list is up to system admin.
-	 * This is optional.
-	 */
+/*
+ * verify NIST_OBJ_SM_CERT_SIGNER was signed by trusted cert chain
+ * using OpenSSL and external files
+ * As every card may have different trust chains
+ * maintenance of the list is up to system admin.
+ * This is optional.
+ */
 static int
 sm_nist_verify_sm_cert_signer(struct sc_card *card)
 {
@@ -647,12 +645,7 @@ nist_sm_general_io(sc_card_t *card, int ins, int p1, int p2,
 	sc_format_apdu(card, &apdu,
 			recvbuf ? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_3_SHORT,
 			ins, p1, p2);
-		apdu.flags |= SC_APDU_FLAGS_CHAINING;
-
-	//	if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
-	/* tell apdu.c to not do the chaining, let the SM get_apdu do it */
-	apdu.flags |= SC_APDU_FLAGS_SM_CHAINING;
-	//	}
+	apdu.flags |= SC_APDU_FLAGS_CHAINING;
 
 	apdu.lc = sendbuflen;
 	apdu.datalen = sendbuflen;
@@ -1243,7 +1236,6 @@ sm_nist_open(struct sc_card *card)
 	priv->params->flags |= NIST_SM_FLAGS_SM_IS_ACTIVE;
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 
-	 
 	/* send pairing code if needed */
 	r = sm_nist_send_vci_pairing_code(card, priv->params);
 	if (r != SC_SUCCESS)
@@ -1530,7 +1522,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 			goto err;
 		}
 		r = sm_nist_verify_sm_cert_signer(card);
-		if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)  /* TODO accept for now */
+		if (r < 0 && r != SC_ERROR_NOT_SUPPORTED) /* TODO accept for now */
 			goto err;
 	}
 
@@ -1567,7 +1559,6 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 		goto err;
 	}
 
-
 	/* We want to control if SM is on or not from driver, so set it off. */
 	card->sm_ctx.sm_mode = SM_MODE_NONE;
 	card->sm_ctx.ops.close = sm_nist_close;
@@ -1579,6 +1570,8 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 		goto err;
 	}
 
+	/* NIST SM encrypt and encode data then sends in chucks using chaining */
+	card->sm_ctx.sm_flags |= SM_FLAGS_ENCRYPT_THEN_CHAINING;
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 
 err:
