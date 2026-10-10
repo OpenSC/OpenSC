@@ -831,10 +831,14 @@ sc_asn1_decode_object_id(const u8 *inbuf, size_t inlen, struct sc_object_id *id)
 	const u8 *p = inbuf;
 	int *octet;
 
-	if (inlen == 0 || inbuf == NULL || id == NULL)
+	if (inbuf == NULL || id == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_init_oid(id);
+
+	if (inlen == 0)
+		return SC_SUCCESS;
+
 	octet = id->value;
 
 	/* The first octet can be 0, 1 or 2 and is derived from the first byte */
