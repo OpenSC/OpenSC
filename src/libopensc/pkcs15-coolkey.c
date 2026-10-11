@@ -39,6 +39,7 @@
 #include "cardctl.h"
 #include "asn1.h"
 #include "pkcs15.h"
+#include "common/compat_strlcpy.h"
 #include "../pkcs11/pkcs11.h"
 
 typedef struct pdata_st {
@@ -72,6 +73,10 @@ coolkey_get_object(sc_card_t *card, unsigned long object_id, sc_cardctl_coolkey_
 	sc_cardctl_coolkey_find_object_t fobj;
 	int r;
 
+	if (!obj) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
 	fobj.type = SC_CARDCTL_COOLKEY_FIND_BY_ID;
 	fobj.find_id = object_id;
 	fobj.obj = NULL;
@@ -91,6 +96,10 @@ static int
 coolkey_get_attribute(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, CK_ATTRIBUTE_TYPE type, const u8 **val, size_t *val_len, u8 *data_type) {
 	sc_cardctl_coolkey_attribute_t attribute;
 	int r;
+
+	if (!val || !val_len) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	attribute.object = obj;
 	attribute.attribute_type = type;
@@ -113,6 +122,10 @@ coolkey_find_matching_cert(sc_card_t *card, sc_cardctl_coolkey_object_t *in_obj,
 	sc_cardctl_coolkey_attribute_t template[2];
 	u8 obj_class[4];
 	int r;
+
+	if (!cert_obj) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	/* we are searching for certs .. */
 	template[0].attribute_type = CKA_CLASS;
@@ -152,6 +165,10 @@ coolkey_get_attribute_ulong(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, C
 	u8 data_type = 0;
 	int r;
 
+	if (!value) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
 	r  = coolkey_get_attribute(card, obj, type, &val, &val_len, &data_type);
 	if (r < 0) {
 		return r;
@@ -189,6 +206,10 @@ coolkey_get_attribute_bytes(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, C
 	size_t val_len = 0;
 	int r;
 
+	if (!data || !data_len) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
 	r = coolkey_get_attribute(card, obj, type, &val, &val_len, NULL);
 	if (r < 0) {
 		return r;
@@ -208,6 +229,10 @@ coolkey_get_attribute_bytes_alloc(sc_card_t *card, sc_cardctl_coolkey_object_t *
 	size_t val_len;
 	int r;
 
+	if (!data || !data_len) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
 	r = coolkey_get_attribute(card, obj, type, &val, &val_len, NULL);
 	if (r < 0 || val_len < 1) {
 		return r;
@@ -224,6 +249,9 @@ coolkey_get_attribute_bytes_alloc(sc_card_t *card, sc_cardctl_coolkey_object_t *
 static int
 coolkey_get_id(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, struct sc_pkcs15_id *id)
 {
+	if (!id) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	return coolkey_get_attribute_bytes(card, obj, CKA_ID, id->value , &id->len, sizeof(id->value));
 }
 
@@ -243,6 +271,9 @@ int
 coolkey_get_attribute_lv(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, CK_ATTRIBUTE_TYPE type, void *ptr)
 {
 	struct sc_pkcs15_data *item = (struct sc_pkcs15_data *)ptr;
+	if (!ptr) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 	return coolkey_get_attribute_bytes_alloc(card, obj, type, &item->data, &item->data_len);
 }
 
@@ -269,6 +300,10 @@ coolkey_get_certificate(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, struc
 	unsigned long object_id;
 	int r;
 
+	if (!obj || !cert) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
 	cert_obj = obj;
 	if (coolkey_get_object_type(obj->id) != COOLKEY_ID_CERT) {
 		r = coolkey_find_matching_cert(card, obj, &cert_obj);
@@ -282,6 +317,14 @@ coolkey_get_certificate(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, struc
 		r = coolkey_get_object(card, object_id, &cert_obj);
 		if (r < 0) {
 			return r;
+		}
+		if (cert_obj->length == 0) {
+			cert->value = NULL;
+			cert->len = 0;
+			return SC_SUCCESS;
+		}
+		if (!cert_obj->data) {
+			return SC_ERROR_CORRUPTED_DATA;
 		}
 		/* fill in cert data */
 		cert->value = malloc(cert_obj->length);
@@ -336,6 +379,10 @@ coolkey_set_bool_flags(sc_card_t *card, sc_cardctl_coolkey_object_t *obj, unsign
 {
 	unsigned int flags = 0;
 	int i;
+
+	if (!flags_ptr || !table) {
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
 
 	for (i=0; i< table_size; i++) {
 		if (coolkey_get_attribute_boolean(card, obj, table[i].attribute_type)) {
@@ -436,7 +483,7 @@ coolkey_get_public_key_from_certificate(sc_pkcs15_card_t *p15card, sc_cardctl_co
 	coolkey_get_flags(p15card->card, obj, &flags);
 	private_obj = flags & SC_PKCS15_CO_FLAG_PRIVATE;
 	r = sc_pkcs15_read_certificate(p15card, &cert_info, private_obj, &cert_out);
-	if (r < 0) {
+	if (r < 0 || cert_out == NULL) {
 		goto fail;
 	}
 	key = cert_out->key;
@@ -539,7 +586,7 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 	}
 
 	/* set other objects */
-	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_INIT_GET_OBJECTS, &count);
+	r = sc_card_ctl(card, SC_CARDCTL_COOLKEY_INIT_GET_OBJECTS, &count);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not initiate objects.");
 
 	sc_log(card->ctx,  "Iterating over %d objects", count);
@@ -556,8 +603,11 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		CK_OBJECT_CLASS obj_class;
 		size_t len;
 
-		r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_GET_NEXT_OBJECT, &coolkey_obj);
-		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next object from card.");
+		r = sc_card_ctl(card, SC_CARDCTL_COOLKEY_GET_NEXT_OBJECT, &coolkey_obj);
+		if (r < 0) {
+			sc_card_ctl(card, SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS, &count);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next object from card.");
+		}
 		sc_log(card->ctx, "Loading object %d", i);
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		/* coolkey applets have label only on the certificates,
@@ -671,8 +721,13 @@ static int sc_pkcs15emu_coolkey_init(sc_pkcs15_card_t *p15card)
 		}
 
 		r = sc_pkcs15emu_object_add(p15card, obj_type, &obj_obj, obj_info);
-		if (r != SC_SUCCESS)
+		if (r != SC_SUCCESS) {
 			sc_log(card->ctx, "sc_pkcs15emu_object_add() returned %d", r);
+			if (obj_obj.emulated) {
+				sc_pkcs15_free_pubkey((sc_pkcs15_pubkey_t *)obj_obj.emulated);
+				obj_obj.emulated = NULL;
+			}
+		}
 fail:
 		if (key) {
 			sc_pkcs15_free_pubkey(key);
@@ -680,7 +735,7 @@ fail:
 		free(cert_info.value.value);
 		free(pubkey_info.direct.spki.value);
 	}
-	r = (card->ops->card_ctl)(card, SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS, &count);
+	r = sc_card_ctl(card, SC_CARDCTL_COOLKEY_FINAL_GET_OBJECTS, &count);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize objects.");
 
 	/* Iterate over all the created objects and fill missing labels */
@@ -709,7 +764,7 @@ fail:
 
 		sc_log(card->ctx, "Copy label \"%s\" from cert to key object",
 			cert_object->label);
-		memcpy(obj->label, cert_object->label, SC_PKCS15_MAX_LABEL_SIZE);
+		strlcpy(obj->label, cert_object->label, sizeof(obj->label));
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
