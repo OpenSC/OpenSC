@@ -982,6 +982,7 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 	pubkey->u.ec.ecpointQ.value = malloc(cvc->publicPointlen);
 	if (!pubkey->u.ec.ecpointQ.value) {
 		free(pubkey->alg_id);
+		pubkey->alg_id = NULL;
 		free(ecp->der.value);
 		free(ecp);
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -992,7 +993,9 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 	pubkey->u.ec.params.der.value = malloc(ecp->der.len);
 	if (!pubkey->u.ec.params.der.value) {
 		free(pubkey->u.ec.ecpointQ.value);
+		pubkey->u.ec.ecpointQ.value = NULL;
 		free(pubkey->alg_id);
+		pubkey->alg_id = NULL;
 		free(ecp->der.value);
 		free(ecp);
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -1088,23 +1091,32 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, u8 *efbin, 
 
 	memset(&pubkey, 0, sizeof(pubkey));
 	r = sc_pkcs15emu_sc_hsm_get_public_key(ctx, &cvc, &pubkey);
-	LOG_TEST_RET(card->ctx, r, "Could not extract public key");
+	if (r != SC_SUCCESS) {
+		sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
+		LOG_TEST_RET(card->ctx, r, "Could not extract public key");
+	}
 
 	memset(&pubkey_info, 0, sizeof(pubkey_info));
 	memset(&pubkey_obj, 0, sizeof(pubkey_obj));
 
 	r = sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_obj.content.value, &pubkey_obj.content.len);
 	if (r != SC_SUCCESS) {
+		sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
 		sc_pkcs15_erase_pubkey(&pubkey);
 		LOG_TEST_RET(ctx, r, "Could not encode public key");
 	}
 	r = sc_pkcs15_encode_pubkey(ctx, &pubkey, &pubkey_info.direct.raw.value, &pubkey_info.direct.raw.len);
 	if (r != SC_SUCCESS) {
+		free(pubkey_obj.content.value);
+		sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
 		sc_pkcs15_erase_pubkey(&pubkey);
 		LOG_TEST_RET(ctx, r, "Could not encode public key");
 	}
 	r = sc_pkcs15_encode_pubkey_as_spki(ctx, &pubkey, &pubkey_info.direct.spki.value, &pubkey_info.direct.spki.len);
 	if (r != SC_SUCCESS) {
+		free(pubkey_info.direct.raw.value);
+		free(pubkey_obj.content.value);
+		sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
 		sc_pkcs15_erase_pubkey(&pubkey);
 		LOG_TEST_RET(ctx, r, "Could not encode public key");
 	}
@@ -1122,9 +1134,14 @@ static int sc_pkcs15emu_sc_hsm_add_pubkey(sc_pkcs15_card_t *p15card, u8 *efbin, 
 		pubkey_info.usage = SC_PKCS15_PRKEY_USAGE_VERIFY|SC_PKCS15_PRKEY_USAGE_DERIVE;
 		r = sc_pkcs15emu_add_ec_pubkey(p15card, &pubkey_obj, &pubkey_info);
 	}
-	if (r < 0)
+	if (r < 0) {
 		free(pubkey_info.direct.spki.value);
-	LOG_TEST_RET(ctx, r, "Could not add public key");
+		free(pubkey_info.direct.raw.value);
+		free(pubkey_obj.content.value);
+		sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
+		sc_pkcs15_erase_pubkey(&pubkey);
+		LOG_TEST_RET(ctx, r, "Could not add public key");
+	}
 
 	sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
 	sc_pkcs15_erase_pubkey(&pubkey);
@@ -1168,6 +1185,8 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 
 	memset(&prkd, 0, sizeof(prkd));
 	r = sc_pkcs15_decode_prkdf_entry(p15card, &prkd, (const u8 **)&ptr, &len);
+	if (prkd.data == NULL && r >= SC_SUCCESS)
+		r = SC_ERROR_OBJECT_NOT_FOUND;
 	LOG_TEST_RET(card->ctx, r, "Skipping optional EF.PRKD");
 
 	/* All keys require user PIN authentication */
@@ -1193,23 +1212,34 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 		r = sc_pkcs15emu_add_ec_prkey(p15card, &prkd, key_info);
 	}
 
-	LOG_TEST_RET(card->ctx, r, "Could not add private key to framework");
+	if (r < 0) {
+		sc_pkcs15_free_prkey_info(key_info);
+		LOG_TEST_RET(card->ctx, r, "Could not add private key to framework");
+	}
 
 	/* Check if we also have a certificate for the private key */
 	fid[0] = EE_CERTIFICATE_PREFIX;
 
 	len = sizeof efbin;
 	r = read_file(p15card, fid, efbin, &len, 0);
-	LOG_TEST_RET(card->ctx, r, "Could not read EF");
+	if (r < 0) {
+		sc_pkcs15_free_prkey_info(key_info);
+		LOG_TEST_RET(card->ctx, r, "Could not read EF");
+	}
+
+	if (len == 0) {
+		sc_pkcs15_free_prkey_info(key_info);
+		return SC_SUCCESS;
+	}
 
 	if (efbin[0] == 0x67) {		/* Decode CSR and create public key object */
 		sc_pkcs15emu_sc_hsm_add_pubkey(p15card, efbin, len, key_info, prkd.label);
-		free(key_info);
+		sc_pkcs15_free_prkey_info(key_info);
 		return SC_SUCCESS;		/* Ignore any errors */
 	}
 
 	if (efbin[0] != 0x30) {
-		free(key_info);
+		sc_pkcs15_free_prkey_info(key_info);
 		return SC_SUCCESS;
 	}
 
@@ -1231,7 +1261,7 @@ static int sc_pkcs15emu_sc_hsm_add_prkd(sc_pkcs15_card_t * p15card, u8 keyid) {
 	strlcpy(cert_obj.label, prkd.label, sizeof(cert_obj.label));
 	r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 
-	free(key_info);
+	sc_pkcs15_free_prkey_info(key_info);
 
 	LOG_TEST_RET(card->ctx, r, "Could not add certificate");
 
@@ -1266,11 +1296,15 @@ static int sc_pkcs15emu_sc_hsm_add_dcod(sc_pkcs15_card_t * p15card, u8 id) {
 
 	memset(&data_obj, 0, sizeof(data_obj));
 	r = sc_pkcs15_decode_dodf_entry(p15card, &data_obj, &ptr, &len);
+	if (data_obj.data == NULL && r >= SC_SUCCESS)
+		r = SC_ERROR_OBJECT_NOT_FOUND;
 	LOG_TEST_RET(card->ctx, r, "Could not decode optional EF.DCOD");
 
 	data_info = (sc_pkcs15_data_info_t *)data_obj.data;
 
 	r = sc_pkcs15emu_add_data_object(p15card, &data_obj, data_info);
+
+	sc_pkcs15_free_data_info(data_info);
 
 	LOG_TEST_RET(card->ctx, r, "Could not add data object to framework");
 
@@ -1312,6 +1346,8 @@ static int sc_pkcs15emu_sc_hsm_add_cd(sc_pkcs15_card_t * p15card, u8 id) {
 	cert_info = (sc_pkcs15_cert_info_t *)obj.data;
 
 	r = sc_pkcs15emu_add_x509_cert(p15card, &obj, cert_info);
+
+	sc_pkcs15_free_cert_info(cert_info);
 
 	LOG_TEST_RET(card->ctx, r, "Could not add data object to framework");
 
@@ -1365,6 +1401,9 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 	size_t len;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!priv || !p15card->tokeninfo)
+		return SC_ERROR_INTERNAL;
 
 	appinfo = calloc(1, sizeof(struct sc_app_info));
 
@@ -1425,8 +1464,11 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		} else {
 			p15card->tokeninfo->label = strdup("SmartCard-HSM");
 		}
-		if (p15card->tokeninfo->label == NULL)
+		if (p15card->tokeninfo->label == NULL) {
+			sc_pkcs15emu_sc_hsm_free_cvc(&devcert);
+			sc_pkcs15_card_clear(p15card);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 	}
 
 	if ((p15card->tokeninfo->manufacturer_id != NULL) && !strcmp("(unknown)", p15card->tokeninfo->manufacturer_id)) {
@@ -1442,6 +1484,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 			p15card->tokeninfo->manufacturer_id = strdup("www.CardContact.de");
 		}
 		if (p15card->tokeninfo->manufacturer_id == NULL) {
+			sc_pkcs15emu_sc_hsm_free_cvc(&devcert);
 			sc_pkcs15_card_clear(p15card);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		}
@@ -1449,18 +1492,23 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 
 	appinfo->label = strdup(p15card->tokeninfo->label);
 	if (appinfo->label == NULL) {
+		sc_pkcs15emu_sc_hsm_free_cvc(&devcert);
 		sc_pkcs15_card_clear(p15card);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 
 	len = strnlen(devcert.chr, sizeof devcert.chr);		/* Strip last 5 digit sequence number from CHR */
-	if (len < 8)
+	if (len < 8) {
+		sc_pkcs15emu_sc_hsm_free_cvc(&devcert);
+		sc_pkcs15_card_clear(p15card);
 		return SC_ERROR_INTERNAL;
+	}
 	len -= 5;
 
 	free(p15card->tokeninfo->serial_number);
 	p15card->tokeninfo->serial_number = calloc(1, len + 1);
 	if (p15card->tokeninfo->serial_number == NULL) {
+		sc_pkcs15emu_sc_hsm_free_cvc(&devcert);
 		sc_pkcs15_card_clear(p15card);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
@@ -1585,7 +1633,7 @@ static int sc_pkcs15emu_sc_hsm_init (sc_pkcs15_card_t * p15card)
 		sc_pkcs15_card_clear(p15card);
 	LOG_TEST_RET(card->ctx, filelistlength, "Could not enumerate file and key identifier");
 
-	for (i = 0; i < filelistlength; i += 2) {
+	for (i = 0; i + 1 < filelistlength; i += 2) {
 		switch(filelist[i]) {
 		case KEY_PREFIX:
 			r = sc_pkcs15emu_sc_hsm_add_prkd(p15card, filelist[i + 1]);
