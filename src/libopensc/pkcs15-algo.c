@@ -47,6 +47,9 @@ asn1_decode_des_params(sc_context_t *ctx, void **paramp,
 	size_t ivlen = 8;
 	int r;
 
+	if (!paramp || !buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_copy_asn1_entry(c_asn1_des_iv, asn1_des_iv);
 	sc_format_asn1_entry(asn1_des_iv + 0, iv, &ivlen, 0);
 	r = _sc_asn1_decode(ctx, asn1_des_iv, buf, buflen, NULL, NULL, 0, depth + 1);
@@ -67,6 +70,9 @@ asn1_encode_des_params(sc_context_t *ctx, void *params,
 {
 	struct sc_asn1_entry asn1_des_iv[2];
 	int	ivlen = 8;
+
+	if (!params || !buf || !buflen)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_copy_asn1_entry(c_asn1_des_iv, asn1_des_iv);
 	sc_format_asn1_entry(asn1_des_iv + 0, params, &ivlen, 1);
@@ -145,6 +151,9 @@ asn1_decode_pbkdf2_params(sc_context_t *ctx, void **paramp,
 	struct sc_asn1_entry asn1_pbkdf2_params[5];
 	int r;
 
+	if (!paramp || !buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_copy_asn1_entry(c_asn1_pbkdf2_params, asn1_pbkdf2_params);
 	sc_format_asn1_entry(asn1_pbkdf2_params + 0,
 			info.salt, &info.salt_len, 0);
@@ -177,6 +186,9 @@ asn1_encode_pbkdf2_params(sc_context_t *ctx, void *params,
 	struct sc_pbkdf2_params *info;
 	struct sc_asn1_entry asn1_pbkdf2_params[5];
 
+	if (!params || !buf || !buflen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	info = (struct sc_pbkdf2_params *) params;
 
 	sc_copy_asn1_entry(c_asn1_pbkdf2_params, asn1_pbkdf2_params);
@@ -208,6 +220,9 @@ asn1_decode_pbes2_params(sc_context_t *ctx, void **paramp,
 	struct sc_pbes2_params info;
 	int r;
 
+	if (!paramp || !buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_copy_asn1_entry(c_asn1_pbes2_params, asn1_pbes2_params);
 	sc_format_asn1_entry(asn1_pbes2_params + 0,
 				&info.derivation_alg, NULL, 0);
@@ -232,6 +247,9 @@ asn1_encode_pbes2_params(sc_context_t *ctx, void *params,
 	struct sc_asn1_entry asn1_pbes2_params[3];
 	struct sc_pbes2_params *info;
 
+	if (!params || !buf || !buflen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	info = (struct sc_pbes2_params *) params;
 	sc_copy_asn1_entry(c_asn1_pbes2_params, asn1_pbes2_params);
 	sc_format_asn1_entry(asn1_pbes2_params + 0,
@@ -245,6 +263,9 @@ static void
 asn1_free_pbes2_params(void *ptr)
 {
 	struct sc_pbes2_params *params = (struct sc_pbes2_params *) ptr;
+
+	if (!params)
+		return;
 
 	sc_asn1_clear_algorithm_id(&params->derivation_alg);
 	sc_asn1_clear_algorithm_id(&params->key_encr_alg);
@@ -311,7 +332,10 @@ static int
 asn1_encode_ec_params(sc_context_t *ctx, void *params,
 u8 **buf, size_t *buflen, int depth)
 {
-	 struct sc_ec_parameters *ecp = (struct sc_ec_parameters *) params;
+	struct sc_ec_parameters *ecp = (struct sc_ec_parameters *) params;
+
+	if (!buf || !buflen)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* Only handle named curves. They may be absent too */
 	sc_debug(ctx, SC_LOG_DEBUG_ASN1, "asn1_encode_ec_params() called");
@@ -512,6 +536,9 @@ sc_asn1_decode_algorithm_id(struct sc_context *ctx, const unsigned char *in,
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!in || !id)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	sc_copy_asn1_entry(c_asn1_alg_id, asn1_alg_id);
 	sc_format_asn1_entry(asn1_alg_id + 0, &id->oid, NULL, 0);
 
@@ -553,6 +580,9 @@ sc_asn1_encode_algorithm_id(struct sc_context *ctx, u8 **buf, size_t *len,
 	u8 *tmp;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!buf || !len || !id)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
         sc_log(ctx, "type of algorithm to encode: %lu", id->algorithm);
 	alg_info = sc_asn1_get_algorithm_info(id);
 	if (alg_info == NULL) {
@@ -615,6 +645,9 @@ void
 sc_asn1_clear_algorithm_id(struct sc_algorithm_id *id)
 {
 	struct sc_asn1_pkcs15_algorithm_info *aip;
+
+	if (!id)
+		return;
 
 	if (id->params && (aip = sc_asn1_get_algorithm_info(id)) && aip->free) {
 		aip->free(id->params);
