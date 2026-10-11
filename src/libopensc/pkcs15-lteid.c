@@ -26,7 +26,7 @@ lteid_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *pkobjs[32];
-	int rv, count;
+	int rv, count, i;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -46,9 +46,11 @@ lteid_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	LOG_TEST_RET(ctx, rv, "Cannot get PRKEY objects list");
 
 	count = rv;
-	for (int i = 0; i < count; i++) {
-		struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)pkobjs[i]->data;
-		prkey_info->field_length = 384;
+	for (i = 0; i < count; i++) {
+		if (pkobjs[i] && pkobjs[i]->data) {
+			struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)pkobjs[i]->data;
+			prkey_info->field_length = 384;
+		}
 	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -57,9 +59,13 @@ lteid_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 static int
 sc_pkcs15emu_lteid_init(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 {
+	int rv;
+
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
-	int rv = sc_pkcs15_bind_internal(p15card, aid);
+	rv = sc_pkcs15_bind_internal(p15card, aid);
+	LOG_TEST_RET(p15card->card->ctx, rv, "sc_pkcs15_bind_internal failed");
+
 	p15card->ops.parse_df = lteid_parse_df;
 
 	LOG_FUNC_RETURN(p15card->card->ctx, rv);
