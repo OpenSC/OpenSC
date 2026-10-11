@@ -40,17 +40,28 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 	struct jpki_private_data *drvdata = JPKI_DRVDATA(card);
 	int i, rc;
 
+	if (!drvdata || !p15card->tokeninfo)
+		return SC_ERROR_INTERNAL;
+
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
 	set_string(&p15card->tokeninfo->label, "JPKI");
 	set_string(&p15card->tokeninfo->manufacturer_id, "JPKI");
 	/* set dummy until we found serial number */
 	set_string(&p15card->tokeninfo->serial_number, "00000000");
+	if (!p15card->tokeninfo->label || !p15card->tokeninfo->manufacturer_id ||
+	    !p15card->tokeninfo->serial_number) {
+		sc_pkcs15_card_clear(p15card);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 
 	/* Select application directory */
 	if (drvdata->selected != SELECT_JPKI_AP) {
 		rc = jpki_select_ap(card);
-		LOG_TEST_RET(card->ctx, rc, "select AP failed");
+		if (rc < 0) {
+			sc_pkcs15_card_clear(p15card);
+			LOG_TEST_RET(card->ctx, rc, "select AP failed");
+		}
 		drvdata->selected = SELECT_JPKI_AP;
 	}
 
@@ -148,8 +159,11 @@ sc_pkcs15emu_jpki_init(sc_pkcs15_card_t * p15card)
 		pin_cmd_data.pin_type = SC_AC_CHV;
 		pin_cmd_data.pin_reference = jpki_pin_ref[i];
 		rc = sc_pin_cmd(card, &pin_cmd_data);
+		if (rc < 0) {
+			sc_pkcs15_card_clear(p15card);
+			LOG_TEST_RET(card->ctx, rc, "sc_pin_cmd failed");
+		}
 		pin_info.tries_left = pin_cmd_data.pin1.tries_left;
-		LOG_TEST_RET(card->ctx, rc, "sc_pin_cmd failed");
 		strlcpy(pin_obj.label, jpki_pin_names[i], sizeof(pin_obj.label));
 		pin_obj.flags = jpki_pin_flags[i];
 
