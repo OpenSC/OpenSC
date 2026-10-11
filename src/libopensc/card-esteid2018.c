@@ -91,7 +91,7 @@ static int esteid_match_card(sc_card_t *card) {
 }
 
 static int esteid_select_file(struct sc_card *card, const struct sc_path *in_path, struct sc_file **file_out) {
-	const u8 *path = in_path->value;
+	const u8 *path;
 	u8 resp[SC_MAX_APDU_RESP_SIZE];
 	size_t resplen = sizeof(resp);
 	int r;
@@ -101,6 +101,7 @@ static int esteid_select_file(struct sc_card *card, const struct sc_path *in_pat
 	if (!in_path)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
+	path = in_path->value;
 	LOG_FUNC_CALLED(card->ctx);
 
 	// Only support full paths
@@ -189,6 +190,8 @@ static int esteid_compute_signature(sc_card_t *card, const u8 *data, size_t data
 	LOG_FUNC_CALLED(card->ctx);
 	if (data == NULL || out == NULL || datalen > SIGNATURE_PAYLOAD_SIZE)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	if (!priv)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
 	env = &priv->sec_env;
 	// left-pad if necessary
@@ -235,6 +238,10 @@ static int esteid_get_pin_remaining_tries(sc_card_t *card, int pin_reference) {
 static int esteid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data) {
 	int r;
 	struct sc_pin_cmd_data tmp;
+
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx, "PIN CMD is %d", data->cmd);
 	if (data->cmd == SC_PIN_CMD_GET_INFO) {
