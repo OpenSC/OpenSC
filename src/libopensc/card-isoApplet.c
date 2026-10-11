@@ -1072,6 +1072,8 @@ isoApplet_set_security_env(sc_card_t *card,
 	LOG_FUNC_CALLED(card->ctx);
 
 	drvdata = DRVDATA(card);
+	if (!drvdata)
+		return SC_ERROR_INTERNAL;
 
 	if(se_num != 0)
 	{
@@ -1177,6 +1179,11 @@ isoApplet_compute_signature(struct sc_card *card,
 
 	LOG_FUNC_CALLED(ctx);
 
+	if (!data || !out)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	if (!drvdata)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+
 	if (drvdata->sec_env_alg_ref == ISOAPPLET_ALG_REF_RSA_PAD_PSS) {
 		// For RSA-PSS signature schemes the IsoApplet expects only the hash.
 		u8 tmp[64]; // large enough for SHA512
@@ -1227,6 +1234,8 @@ isoApplet_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
+	if (!rnd || len == 0)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if(card->caps & SC_CARD_CAP_RNG) {
 		r = iso_ops->get_challenge(card, rnd, len);
