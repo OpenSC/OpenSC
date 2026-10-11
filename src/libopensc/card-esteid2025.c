@@ -162,11 +162,21 @@ esteid_compute_signature(sc_card_t *card, const u8 *data, size_t datalen, u8 *ou
 static int
 esteid_get_pin_info(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
-	const u8 get_pin_info[] = {0xA0, 0x03, 0x83, 0x01, data->pin_reference};
+	u8 get_pin_info[5];
 	struct sc_apdu apdu;
 	u8 apdu_resp[SC_MAX_APDU_RESP_SIZE];
 	size_t taglen;
+
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	LOG_FUNC_CALLED(card->ctx);
+
+	get_pin_info[0] = 0xA0;
+	get_pin_info[1] = 0x03;
+	get_pin_info[2] = 0x83;
+	get_pin_info[3] = 0x01;
+	get_pin_info[4] = data->pin_reference;
 
 	sc_format_apdu_ex(&apdu, 0x00, 0xCB, 0x00, 0xFF, get_pin_info, sizeof(get_pin_info), apdu_resp, sizeof(apdu_resp));
 	SC_TRANSMIT_TEST_RET(card, apdu, "GET DATA(pin info) failed");
@@ -190,6 +200,9 @@ esteid_get_pin_info(sc_card_t *card, struct sc_pin_cmd_data *data)
 static int
 esteid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx, "PIN CMD is %d", data->cmd);
 	if (data->cmd == SC_PIN_CMD_GET_INFO) {
