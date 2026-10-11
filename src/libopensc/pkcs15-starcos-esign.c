@@ -103,7 +103,10 @@ get_cert_size(sc_card_t *card, sc_path_t *path, size_t *psize)
 	sc_file_t *file = NULL;
 
 	r = sc_select_file(card, path, &file);
-	LOG_TEST_RET(card->ctx, r, "Failed to select EF certificate");
+	if (r != SC_SUCCESS || !file) {
+		sc_file_free(file);
+		LOG_TEST_RET(card->ctx, r < 0 ? r : SC_ERROR_INTERNAL, "Failed to select EF certificate");
+	}
 
 	*psize = file->size;
 	sc_file_free(file);
@@ -143,7 +146,10 @@ add_app(sc_pkcs15_card_t *p15card, const container *containers, int container_co
 		cert_obj.flags = containers[i].certdata->obj_flags;
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
-		LOG_TEST_RET(card->ctx, r, "Failed to add certificate");
+		if (r < 0) {
+			sc_pkcs15_card_clear(p15card);
+			LOG_TEST_RET(card->ctx, r, "Failed to add certificate");
+		}
 
 		if (containers[i].pindata != 0) {
 			size_t j;
@@ -189,7 +195,10 @@ add_app(sc_pkcs15_card_t *p15card, const container *containers, int container_co
 				pin_obj.flags = containers[i].pindata->obj_flags;
 
 				r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-				LOG_TEST_RET(card->ctx, r, "Failed to add PIN object");
+				if (r < 0) {
+					sc_pkcs15_card_clear(p15card);
+					LOG_TEST_RET(card->ctx, r, "Failed to add PIN object");
+				}
 			}
 		}
 
@@ -214,13 +223,17 @@ add_app(sc_pkcs15_card_t *p15card, const container *containers, int container_co
 			}
 
 			r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
-			LOG_TEST_RET(card->ctx, r, "Failed to add RSA prkey");
+			if (r < 0) {
+				sc_pkcs15_card_clear(p15card);
+				LOG_TEST_RET(card->ctx, r, "Failed to add RSA prkey");
+			}
 		}
 
 		containers_added++;
 	}
 
 	if (containers_added == 0) {
+		sc_pkcs15_card_clear(p15card);
 		r = SC_ERROR_INVALID_CARD;
 	} else {
 		r = SC_SUCCESS;
@@ -317,14 +330,18 @@ starcos_esign_init(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 			struct sc_file *file = NULL;
 			sc_path_set(&path, SC_PATH_TYPE_DF_NAME, aid->value, aid->len, 0, 0);
 			r = sc_select_file(card, &path, &file);
-			if (r != SC_SUCCESS || !file)
+			if (r != SC_SUCCESS || !file) {
+				sc_file_free(file);
+				sc_pkcs15_card_clear(p15card);
 				return SC_ERROR_INTERNAL;
+			}
 			sc_file_free(p15card->file_app);
 			p15card->file_app = file;
 		}
 	}
 
 	if (apps_added == 0) {
+		sc_pkcs15_card_clear(p15card);
 		LOG_TEST_RET(ctx, SC_ERROR_WRONG_CARD, "No supported app found on this card");
 	}
 
@@ -332,19 +349,30 @@ starcos_esign_init(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 
 	p15card->tokeninfo = sc_pkcs15_tokeninfo_new();
 	if (!p15card->tokeninfo) {
+		sc_pkcs15_card_clear(p15card);
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "unable to create tokeninfo struct");
 	} else {
 		sc_serial_number_t serial;
 		char serial_hex[SC_MAX_SERIALNR * 2 + 2];
 		r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
-		LOG_TEST_RET(ctx, r, "Failed to query card serial number");
+		if (r < 0) {
+			sc_pkcs15_card_clear(p15card);
+			LOG_TEST_RET(ctx, r, "Failed to query card serial number");
+		}
 
 		r = sc_bin_to_hex(serial.value, serial.len, serial_hex, sizeof serial_hex, 0);
-		LOG_TEST_RET(ctx, r, "Failed to convert S/N to hex");
+		if (r < 0) {
+			sc_pkcs15_card_clear(p15card);
+			LOG_TEST_RET(ctx, r, "Failed to convert S/N to hex");
+		}
 		p15card->tokeninfo->serial_number = strdup(serial_hex);
 		p15card->tokeninfo->label = strdup(label);
 		p15card->tokeninfo->manufacturer_id = strdup(name_Vendor);
 		p15card->tokeninfo->flags = SC_PKCS15_TOKEN_READONLY;
+		if (!p15card->tokeninfo->serial_number || !p15card->tokeninfo->label || !p15card->tokeninfo->manufacturer_id) {
+			sc_pkcs15_card_clear(p15card);
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "unable to allocate tokeninfo strings");
+		}
 	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
