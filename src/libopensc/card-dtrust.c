@@ -945,7 +945,12 @@ dtrust_compute_signature(struct sc_card *card, const u8 *data,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (!data || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	drv_data = card->drv_data;
+	if (!drv_data || !drv_data->env)
+		return SC_ERROR_INTERNAL;
 	flags = drv_data->env->algorithm_flags;
 
 	/*
@@ -994,6 +999,9 @@ dtrust_decipher(struct sc_card *card, const u8 *data,
 		size_t data_len, u8 *out, size_t outlen)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!data || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	switch (card->type) {
 	/* No special handling necessary for RSA cards. */
