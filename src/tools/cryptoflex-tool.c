@@ -1146,6 +1146,10 @@ static int create_pin_file(const sc_path_t *inpath, int chv, const char *key_id)
 	free(puk);
 
 	file = sc_file_new();
+	if (!file) {
+		fprintf(stderr, "out of memory.\n");
+		return 1;
+	}
 	file->type = SC_FILE_TYPE_WORKING_EF;
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
 	sc_file_add_acl_entry(file, SC_AC_OP_READ, SC_AC_NEVER, SC_AC_KEY_REF_NONE);
