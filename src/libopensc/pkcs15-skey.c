@@ -119,6 +119,9 @@ sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_ASN1);
 
+	if (!obj || !buf || !buflen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_copy_asn1_entry(c_asn1_skey, asn1_skey);
 	sc_copy_asn1_entry(c_asn1_skey_choice, asn1_skey_choice);
 	sc_copy_asn1_entry(c_asn1_supported_algorithms, asn1_supported_algorithms);
@@ -198,10 +201,10 @@ int sc_pkcs15_encode_skdf_entry(struct sc_context *ctx,
 				 const struct sc_pkcs15_object *obj,
 				 u8 **buf, size_t *buflen)
 {
-	struct sc_pkcs15_skey_info *skey = (struct sc_pkcs15_skey_info *) obj->data;
+	struct sc_pkcs15_skey_info *skey;
 	int r, i;
-	size_t usage_len = sizeof(skey->usage);
-	size_t af_len = sizeof(skey->access_flags);
+	size_t usage_len;
+	size_t af_len;
 	struct sc_asn1_entry asn1_com_key_attr[C_ASN1_COM_KEY_ATTR_SIZE];
 	struct sc_asn1_entry asn1_com_skey_attr[C_ASN1_COM_SKEY_ATTR_SIZE];
 	struct sc_asn1_entry asn1_generic_skey_attr[C_ASN1_COM_SKEY_GENERIC_ATTR_SIZE];
@@ -215,6 +218,13 @@ int sc_pkcs15_encode_skdf_entry(struct sc_context *ctx,
 	};
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_ASN1);
+
+	if (!obj || !obj->data || !buf || !buflen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	skey = (struct sc_pkcs15_skey_info *) obj->data;
+	usage_len = sizeof(skey->usage);
+	af_len = sizeof(skey->access_flags);
 
 	sc_copy_asn1_entry(c_asn1_skey, asn1_skey);
 	sc_copy_asn1_entry(c_asn1_skey_choice, asn1_skey_choice);
