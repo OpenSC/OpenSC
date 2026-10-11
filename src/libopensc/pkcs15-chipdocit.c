@@ -96,13 +96,11 @@ read_ds_cert(sc_pkcs15_card_t *p15card, unsigned fid,
 		sc_log(card->ctx, "ChipDoc cert %04x: unexpected tag %02x", fid, raw[0]);
 		return SC_SUCCESS;
 	}
-	/* Parse the container tag and length with the ASN.1 helper (it does the
-	 * bounds and format checking); body then points at the value. */
 	body = raw;
 	if (sc_asn1_read_tag(&body, (size_t)rawlen, &cla, &tag, &bodylen) != SC_SUCCESS || !body)
 		return SC_SUCCESS;
 	hdr = (size_t)(body - raw);
-	if (hdr + bodylen > (size_t)rawlen)
+	if (hdr > (size_t)rawlen || bodylen > (size_t)rawlen - hdr)
 		return SC_SUCCESS;
 
 	memset(&cinfo, 0, sizeof cinfo);
@@ -220,6 +218,8 @@ sc_pkcs15emu_chipdocit_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	sc_card_t *card = p15card->card;
 	sc_pkcs15_id_t id_auth, id_ds;
 	struct sc_apdu apdu;
+	u8 csn[32];
+	int r;
 
 	memset(&id_auth, 0, sizeof id_auth);
 	id_auth.len = 1;
@@ -227,15 +227,13 @@ sc_pkcs15emu_chipdocit_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	memset(&id_ds, 0, sizeof id_ds);
 	id_ds.len = 1;
 	id_ds.value[0] = 0x02;
-	u8 csn[32];
-	int r;
 
 	(void)aid;
 	LOG_FUNC_CALLED(card->ctx);
 	if (card->type != SC_CARD_TYPE_CHIPDOC_IT)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_WRONG_CARD);
 
-	set_string(&p15card->tokeninfo->label, card->name);
+	set_string(&p15card->tokeninfo->label, card->name ? card->name : "ChipDoc IT");
 	set_string(&p15card->tokeninfo->manufacturer_id, "Bit4id / NXP");
 
 	/* Serial = card serial number (GET DATA 00 CA 01 14), read in clear. */
@@ -245,7 +243,8 @@ sc_pkcs15emu_chipdocit_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	apdu.le = 256;
 	if (sc_transmit_apdu(card, &apdu) == SC_SUCCESS && sc_check_sw(card, apdu.sw1, apdu.sw2) == SC_SUCCESS && apdu.resplen) {
 		char hex[2 * sizeof(csn) + 1];
-		sc_bin_to_hex(csn, apdu.resplen, hex, sizeof hex, 0);
+		size_t hexlen = MIN(apdu.resplen, sizeof(csn));
+		sc_bin_to_hex(csn, hexlen, hex, sizeof hex, 0);
 		set_string(&p15card->tokeninfo->serial_number, hex);
 	}
 
