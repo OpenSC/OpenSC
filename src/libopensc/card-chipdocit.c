@@ -324,10 +324,13 @@ static int
 chipdocit_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_pin_cmd_pin p1_save = {0}, p2_save = {0};
-	int cmd = data->cmd;
+	int cmd;
 	int synced = 0, r;
 
 	LOG_FUNC_CALLED(card->ctx);
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	cmd = data->cmd;
 
 	/* This card carries two PIN objects that are kept in sync: the CNS-applet
 	 * PIN (in the clear) and the IAS PIN (under PACE). When the PIN is entered
@@ -438,8 +441,8 @@ chipdocit_compute_signature(struct sc_card *card, const u8 *data,
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
-	if (!priv)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+	if (!priv || !data || !out)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (card->sm_ctx.sm_mode == SM_MODE_NONE) {
 		r = chipdocit_sm_open(card);
