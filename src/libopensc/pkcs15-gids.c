@@ -91,8 +91,8 @@ static int sc_pkcs15emu_gids_add_prkey(sc_pkcs15_card_t * p15card, sc_cardctl_gi
 		memset(&cert_obj, 0, sizeof(cert_obj));
 
 		cert_info.id = prkey_info.id;
-		cert_info.path.count = -1;
 		cert_info.path = container->certificatepath;
+		cert_info.path.count = -1;
 
 		strlcpy(cert_obj.label, container->label, sizeof(cert_obj.label));
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
@@ -119,25 +119,28 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 	size_t recordsnum;
 	int has_puk;
 
+	if (!p15card->tokeninfo)
+		return SC_ERROR_INTERNAL;
+
 	r = sc_card_ctl(card, SC_CARDCTL_GIDS_GET_ALL_CONTAINERS, &recordsnum);
-	LOG_TEST_RET(card->ctx, r, "unable to get the containers. Uninitialized card ?");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "unable to get the containers. Uninitialized card ?");
 
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, NULL);
-	LOG_TEST_RET(card->ctx, r, "unable to get the serial number. Uninitialized card ?");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "unable to get the serial number. Uninitialized card ?");
 
 	free(p15card->tokeninfo->serial_number);
 	p15card->tokeninfo->serial_number = (char*) malloc(card->serialnr.len *2 +1);
 	if (!p15card->tokeninfo->serial_number) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
 	}
 	sc_bin_to_hex(card->serialnr.value, card->serialnr.len, p15card->tokeninfo->serial_number, card->serialnr.len *2 +1, 0);
 
 	if (p15card->tokeninfo->label == NULL) {
 		p15card->tokeninfo->label = strdup("GIDS card");
 		if (p15card->tokeninfo->label == NULL) {
-			free(p15card->tokeninfo->serial_number);
-			p15card->tokeninfo->serial_number = NULL;
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
 		}
 	}
 
@@ -149,8 +152,8 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 	if (p15card->tokeninfo->manufacturer_id == NULL) {
 		p15card->tokeninfo->manufacturer_id = strdup("www.mysmartlogon.com");
 		if (p15card->tokeninfo->manufacturer_id == NULL) {
-			sc_pkcs15_card_clear(p15card);
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
 		}
 	}
 	if (p15card->card->type == SC_CARD_TYPE_GIDS_V2) {
@@ -223,8 +226,8 @@ static int sc_pkcs15emu_gids_init (sc_pkcs15_card_t * p15card)
 		memset(&container, 0, sizeof(sc_cardctl_gids_get_container_t));
 		container.containernum = i;
 		r = sc_card_ctl(card, SC_CARDCTL_GIDS_GET_CONTAINER_DETAIL, &container);
-		if (r < 0) {
-			// one of the container information couldn't be retrieved
+		if (r < 0 || container.module_length == 0) {
+			// one of the container information couldn't be retrieved or is unallocated
 			// ignore it
 			continue;
 		}
