@@ -1137,6 +1137,8 @@ static int rutoken_compute_signature(struct sc_card *card,
 	auth_senv_t *senv = (auth_senv_t *)card->drv_data;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (!data || !out)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (!senv)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
@@ -1154,6 +1156,8 @@ static int rutoken_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
+	if (!rnd || len == 0)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	r = iso_ops->get_challenge(card, rbuf, sizeof rbuf);
 	LOG_TEST_RET(card->ctx, r, "GET CHALLENGE cmd failed");
@@ -1174,6 +1178,8 @@ static int rutoken_get_serial(sc_card_t *card, sc_serial_number_t *serial)
 	int ret;
 
 	LOG_FUNC_CALLED(card->ctx);
+	if (!serial)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x81);
 	apdu.resp = serial->value;
 	apdu.resplen = sizeof(serial->value);
@@ -1193,6 +1199,8 @@ static int rutoken_get_info(sc_card_t *card, void *buff)
 	int ret;
 
 	LOG_FUNC_CALLED(card->ctx);
+	if (!buff)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x89);
 	apdu.resp = rbuf;
 	apdu.resplen = sizeof(rbuf);
