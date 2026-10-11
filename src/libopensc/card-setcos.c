@@ -196,11 +196,15 @@ static const struct sc_card_operations *iso_ops = NULL;
 
 static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *out, size_t *outlen)
 {
-	u8 *p = out;
+	u8 *p;
 	u8 buf[64];
 	const u8 *pin_key_info;
 	int len;
 
+	if (!file || !out || !outlen || *outlen < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	p = out;
 	/* Command */
 	*p++ = 0x6F;
 	p++;
@@ -316,6 +320,9 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 
 static int setcos_construct_fci(sc_card_t *card, const sc_file_t *file, u8 *out, size_t *outlen)
 {
+	if (!file || !out || !outlen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (card->type == SC_CARD_TYPE_SETCOS_44 ||
 	    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
 	    SETCOS_IS_EID_APPLET(card))
@@ -649,6 +656,9 @@ err:
 static int setcos_set_security_env(sc_card_t *card,
 				   const sc_security_env_t *env, int se_num)
 {
+	if (!env)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
 		sc_security_env_t tmp;
 
@@ -920,6 +930,9 @@ static int setcos_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 	sc_apdu_t apdu;
 	int r;
 
+	if (!buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xAA, 0, 0);
 	if (card->type == SC_CARD_TYPE_SETCOS_44 ||
 	    card->type == SC_CARD_TYPE_SETCOS_NIDEL ||
@@ -940,7 +953,12 @@ static int setcos_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 static int setcos_process_fci(sc_card_t *card, sc_file_t *file,
 		       const u8 *buf, size_t buflen)
 {
-	int r = iso_ops->process_fci(card, file, buf, buflen);
+	int r;
+
+	if (!file || !buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	r = iso_ops->process_fci(card, file, buf, buflen);
 
 	/* SetCOS 4.4: RSA key file is an internal EF but it's
 	 * file descriptor doesn't seem to follow ISO7816. */
@@ -961,6 +979,9 @@ static int setcos_putdata(struct sc_card *card, struct sc_cardctl_setcos_data_ob
 {
 	int				r;
 	struct sc_apdu			apdu;
+
+	if (!data_obj)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -988,6 +1009,9 @@ static int setcos_getdata(struct sc_card *card, struct sc_cardctl_setcos_data_ob
 {
 	int				r;
 	struct sc_apdu			apdu;
+
+	if (!data_obj)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1026,6 +1050,9 @@ static int setcos_generate_store_key(sc_card_t *card,
 	struct	sc_apdu apdu;
 	u8	sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int	r, len;
+
+	if (!data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
