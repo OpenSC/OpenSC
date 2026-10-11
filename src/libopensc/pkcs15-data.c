@@ -98,10 +98,17 @@ int sc_pkcs15_decode_dodf_entry(struct sc_pkcs15_card *p15card,
 	struct sc_asn1_entry	asn1_com_data_attr[3],
 				asn1_type_data_attr[2],
 				asn1_data[2];
-	struct sc_asn1_pkcs15_object data_obj = { obj, asn1_com_data_attr, NULL,
-					     asn1_type_data_attr };
+	struct sc_asn1_pkcs15_object data_obj;
 	size_t label_len = sizeof(info.app_label) - 1;
 	int r;
+
+	if (!obj || !buf || !buflen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	data_obj.p15_obj = obj;
+	data_obj.asn1_class_attr = asn1_com_data_attr;
+	data_obj.asn1_subclass_attr = NULL;
+	data_obj.asn1_type_attr = asn1_type_data_attr;
 
 	memset(info.app_label, 0, sizeof(info.app_label));
 
@@ -152,10 +159,16 @@ int sc_pkcs15_encode_dodf_entry(sc_context_t *ctx,
 				asn1_type_data_attr[2],
 				asn1_data[2];
 	struct sc_pkcs15_data_info *info;
-	struct sc_asn1_pkcs15_object data_obj = { (struct sc_pkcs15_object *) obj,
-							asn1_com_data_attr, NULL,
-							asn1_type_data_attr };
+	struct sc_asn1_pkcs15_object data_obj;
 	size_t label_len;
+
+	if (!obj || !obj->data || !buf || !bufsize)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	data_obj.p15_obj = (struct sc_pkcs15_object *) obj;
+	data_obj.asn1_class_attr = asn1_com_data_attr;
+	data_obj.asn1_subclass_attr = NULL;
+	data_obj.asn1_type_attr = asn1_type_data_attr;
 
 	info = (struct sc_pkcs15_data_info *) obj->data;
 	label_len = strnlen(info->app_label, sizeof info->app_label);
