@@ -767,6 +767,9 @@ static int gids_set_security_env(sc_card_t *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	p = sbuf;
+	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len == 0) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	}
 	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
 		return SC_ERROR_NOT_SUPPORTED;
 	} else {
@@ -779,9 +782,6 @@ static int gids_set_security_env(sc_card_t *card,
 		} else {
 			*p++ |= 0x50;
 		}
-	}
-	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT)) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 	if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
 		*p++ = 0x83;
@@ -968,6 +968,9 @@ static int gids_select_file(sc_card_t *card, const struct sc_path *in_path,
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!in_path)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	data->state = GIDS_STATE_NONE;
 	data->currentDO = 0;
 	data->currentEFID = 0;
@@ -1005,6 +1008,8 @@ static int gids_select_file(sc_card_t *card, const struct sc_path *in_path,
 
 static int gids_get_pin_policy(struct sc_card *card, struct sc_pin_cmd_data *data) {
 	int r;
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (data->pin_type != SC_AC_CHV) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
@@ -1020,6 +1025,8 @@ static int gids_get_pin_policy(struct sc_card *card, struct sc_pin_cmd_data *dat
 
 static int
 gids_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data) {
+	if (!data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	if (data->cmd == SC_PIN_CMD_GET_INFO) {
 		return gids_get_pin_policy(card, data);
 	} else {
