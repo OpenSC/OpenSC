@@ -852,6 +852,9 @@ mcrd_select_file(sc_card_t * card, const sc_path_t * path, sc_file_t ** file)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (!path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (path->type == SC_PATH_TYPE_DF_NAME) {
 		if (path->len > 16)
 			return SC_ERROR_INVALID_ARGUMENTS;
@@ -1026,6 +1029,8 @@ static int mcrd_compute_signature(sc_card_t * card,
 static int mcrd_pin_cmd(sc_card_t * card, struct sc_pin_cmd_data *data)
 {
 	LOG_FUNC_CALLED(card->ctx);
+	if (!data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	data->pin1.offset = 5;
 	data->pin2.offset = 5;
 
