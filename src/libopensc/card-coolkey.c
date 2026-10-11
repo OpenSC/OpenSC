@@ -1612,6 +1612,9 @@ static int coolkey_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!rnd || len == 0)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	if (len > COOLKEY_MAX_CHUNK_SIZE)
 		len = COOLKEY_MAX_CHUNK_SIZE;
 
@@ -1629,6 +1632,9 @@ static int coolkey_set_security_env(sc_card_t *card, const sc_security_env_t *en
 	coolkey_private_data_t * priv = COOLKEY_DATA(card);
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!env)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_log(card->ctx, "flags=%08lx op=%d alg=%lu algf=%08lx algr=%08lx kr0=%02x, krfl=%zu",
 			env->flags, env->operation, env->algorithm, env->algorithm_flags, env->algorithm_ref,
@@ -1854,6 +1860,9 @@ static int coolkey_compute_crypt(sc_card_t *card,
 	coolkey_private_data_t * priv = COOLKEY_DATA(card);
 	int r;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!data || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	switch (priv->algorithm) {
 	case SC_ALGORITHM_RSA:
