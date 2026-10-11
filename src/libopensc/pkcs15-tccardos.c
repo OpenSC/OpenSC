@@ -58,8 +58,8 @@ static int read_file(struct sc_card *card, const char *file, u8 *buf,
 		*len = fid->size;
 	r = sc_read_binary(card, 0, buf, *len, 0);
 	sc_file_free(fid);
-	if ((size_t)r < *len)
-		return SC_ERROR_INTERNAL;
+	if (r < 0 || (size_t)r < *len)
+		return r < 0 ? r : SC_ERROR_INTERNAL;
 
 	return SC_SUCCESS;
 }
@@ -112,7 +112,7 @@ static int create_cert_obj(sc_pkcs15_card_t *p15card, int fileId)
 	cinfo.path.count = -1;
 
 	/* compose the certificate name from the fileID */
-	sprintf(p15obj.label, "C.%s.%s", get_keyholder(fileId), get_service(fileId));
+	snprintf(p15obj.label, sizeof(p15obj.label), "C.%s.%s", get_keyholder(fileId), get_service(fileId));
 	p15obj.flags        = 0; /* XXX */
 	p15obj.user_consent = 0;
 
@@ -151,7 +151,7 @@ static int create_pkey_obj(sc_pkcs15_card_t *p15card, int cert, int key_descr,
 	pinfo.path.index = 0;
 	pinfo.path.count = 0;
 	/* the common object attributes */
-	sprintf(p15obj.label, "SK.CH.%s", get_service(cert));
+	snprintf(p15obj.label, sizeof(p15obj.label), "SK.CH.%s", get_service(cert));
 	if (pinId && (key_descr & TC_CARDOS_PIN_MASK)) {
 		p15obj.auth_id.value[0] = (u8)pinId;
 		p15obj.auth_id.len      = 1;
@@ -191,7 +191,7 @@ static int create_pin_obj(sc_pkcs15_card_t *p15card, int cert,
 	ainfo.path.index = 0;
 	ainfo.path.count = 0;
 	/* the common object attributes */
-	sprintf(p15obj.label, "PIN.CH.%s", get_service(cert));
+	snprintf(p15obj.label, sizeof(p15obj.label), "PIN.CH.%s", get_service(cert));
 	p15obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 	p15obj.user_consent = 0;
 	p15obj.type = SC_PKCS15_TYPE_AUTH_PIN;
@@ -323,16 +323,24 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 	iccsn.len = sizeof iccsn.value;
 
 	/* check if we have the correct card OS */
-	if (strcmp(card->name, "CardOS M4"))
+	if (!card->name || strcmp(card->name, "CardOS M4"))
 		return SC_ERROR_WRONG_CARD;
+
+	if (!p15card->tokeninfo)
+		return SC_ERROR_INTERNAL;
+
 	/* create pkcs15 objects */
 	r = parse_EF_CardInfo(p15card);
-	if (r != SC_SUCCESS)
+	if (r != SC_SUCCESS) {
+		sc_pkcs15_card_clear(p15card);
 		return r;
+	}
 	/* set card label */
 	set_string(&p15card->tokeninfo->label, TC_CARDOS_LABEL);
-	if (p15card->tokeninfo->label == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
+	if (p15card->tokeninfo->label == NULL) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 	/* set the manufacturer ID */
 	set_string(&p15card->tokeninfo->manufacturer_id, MANU_ID);
 	if (p15card->tokeninfo->manufacturer_id == NULL) {
@@ -365,6 +373,7 @@ static int sc_pkcs15_tccardos_init_func(sc_pkcs15_card_t *p15card)
 	return SC_SUCCESS;
 
 err:
+	sc_file_free(file);
 	sc_pkcs15_card_clear(p15card);
 	return r;
 }
