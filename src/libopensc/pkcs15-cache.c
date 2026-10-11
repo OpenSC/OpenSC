@@ -68,7 +68,7 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 	unsigned u;
 	size_t change_counter;
 
-	if (p15card == NULL || p15card->tokeninfo == NULL || p15card->card == NULL || p15card->card->ctx) {
+	if (!path || !buf || bufsize == 0 || !p15card->tokeninfo) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -121,9 +121,8 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 					"%02X",  path->value[u + offs]);
 	}
 
-	if (!buf)
+	if (strlcpy(buf, dir, bufsize) >= bufsize)
 		return SC_ERROR_BUFFER_TOO_SMALL;
-	strlcpy(buf, dir, bufsize);
 
 	return SC_SUCCESS;
 }
@@ -139,7 +138,7 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 	struct stat stbuf;
 	u8 *data = NULL;
 
-	if (path->len < 2)
+	if (!path || !buf || !bufsize || path->len < 2)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* Accept full path or FILE-ID path with AID */
@@ -165,7 +164,7 @@ int sc_pkcs15_read_cached_file(struct sc_pkcs15_card *p15card,
 	}
 	else {
 		count = path->count;
-		if (path->index + count > (size_t)stbuf.st_size)   {
+		if (path->index > (size_t)stbuf.st_size || count > (size_t)stbuf.st_size - path->index)   {
 			rv = SC_ERROR_FILE_NOT_FOUND; /* cache file bad? */
 			goto err;
 		}
@@ -225,6 +224,9 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 	FILE *f;
 	size_t c;
 
+	if (!path || (buf == NULL && bufsize > 0))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	r = generate_cache_filename(p15card, path, fname, sizeof(fname));
 	if (r != 0)
 		return r;
@@ -244,6 +246,10 @@ int sc_pkcs15_cache_file(struct sc_pkcs15_card *p15card,
 	/* we opened the file for appending so we should be at the end of file.
 	 * The ftell() will give use the length of the file */
 	len = ftell(f);
+	if (len < 0) {
+		fclose(f);
+		return 0;
+	}
 	if (len > path->index) {
 		/* override previous cache records on this location */
 		r = fseek(f, path->index, SEEK_SET);
