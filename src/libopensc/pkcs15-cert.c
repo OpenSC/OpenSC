@@ -40,8 +40,8 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 	int r;
 	struct sc_algorithm_id sig_alg = {0};
 	struct sc_pkcs15_pubkey *pubkey = NULL;
-	unsigned char *serial = NULL, *issuer = NULL, *subject = NULL, *buf =  der->value;
-	size_t serial_len = 0, issuer_len = 0, subject_len = 0, data_len = 0, buflen = der->len;
+	unsigned char *serial = NULL, *issuer = NULL, *subject = NULL, *buf = NULL;
+	size_t serial_len = 0, issuer_len = 0, subject_len = 0, data_len = 0, buflen = 0;
 	struct sc_asn1_entry asn1_version[] = {
 		{ "version", SC_ASN1_INTEGER, SC_ASN1_TAG_INTEGER, 0, &cert->version, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
@@ -86,6 +86,9 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 
 	if (!der || !der->value || !cert)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	buf = der->value;
+	buflen = der->len;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -351,6 +354,9 @@ sc_pkcs15_get_bitstring_extension(struct sc_context *ctx,
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 
+	if (!value)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	LOG_FUNC_CALLED(ctx);
 
 	r = sc_pkcs15_get_extension(ctx, cert, type, &bit_string, &bit_string_len, is_critical);
@@ -486,6 +492,9 @@ sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 	size_t id_value_len = sizeof(id_value);
 	int r;
 
+	if (!obj || !buf || !buflen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_copy_asn1_entry(c_asn1_cred_ident, asn1_cred_ident);
 	sc_copy_asn1_entry(c_asn1_com_cert_attr, asn1_com_cert_attr);
 	sc_copy_asn1_entry(c_asn1_x509_cert_attr, asn1_x509_cert_attr);
@@ -562,12 +571,21 @@ sc_pkcs15_encode_cdf_entry(sc_context_t *ctx, const struct sc_pkcs15_object *obj
 	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_cert_attr[4],
 				asn1_x509_cert_attr[2], asn1_type_cert_attr[2],
 				asn1_cert[2], asn1_x509_cert_value_choice[3];
-	struct sc_pkcs15_cert_info *infop = (sc_pkcs15_cert_info_t *) obj->data;
-	sc_pkcs15_der_t *der = &infop->value;
-	struct sc_asn1_pkcs15_object cert_obj = { (struct sc_pkcs15_object *) obj,
-							asn1_com_cert_attr, NULL,
-							asn1_type_cert_attr };
+	struct sc_pkcs15_cert_info *infop;
+	sc_pkcs15_der_t *der;
+	struct sc_asn1_pkcs15_object cert_obj;
 	int r;
+
+	if (!obj || !obj->data || !buf || !bufsize)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	infop = (sc_pkcs15_cert_info_t *) obj->data;
+	der = &infop->value;
+	memset(&cert_obj, 0, sizeof(cert_obj));
+	cert_obj.p15_obj = (struct sc_pkcs15_object *) obj;
+	cert_obj.asn1_class_attr = asn1_com_cert_attr;
+	cert_obj.asn1_subclass_attr = NULL;
+	cert_obj.asn1_type_attr = asn1_type_cert_attr;
 
 	sc_copy_asn1_entry(c_asn1_cred_ident, asn1_cred_ident);
 	sc_copy_asn1_entry(c_asn1_com_cert_attr, asn1_com_cert_attr);
