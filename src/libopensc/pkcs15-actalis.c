@@ -44,7 +44,14 @@ static int set_sec_env(sc_card_t * card, const sc_security_env_t *env,
 		       int se_num)
 {
 	int r;
-	sc_security_env_t tenv = *env;
+	sc_security_env_t tenv;
+
+	if (!env)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (!card->ops->restore_security_env || !set_security_env)
+		return SC_ERROR_NOT_SUPPORTED;
+
+	tenv = *env;
 	if (tenv.operation == SC_SEC_OPERATION_SIGN)
 		tenv.operation = SC_SEC_OPERATION_DECIPHER;
 
@@ -58,6 +65,8 @@ static int set_sec_env(sc_card_t * card, const sc_security_env_t *env,
 static int do_sign(sc_card_t * card, const u8 * in, size_t inlen, u8 * out,
 		   size_t outlen)
 {
+	if (!card->ops->decipher)
+		return SC_ERROR_NOT_SUPPORTED;
 	return card->ops->decipher(card, in, inlen, out, outlen);
 }
 
@@ -73,6 +82,9 @@ static int sc_pkcs15emu_add_pin(sc_pkcs15_card_t *p15card,
 {
 	sc_pkcs15_auth_info_t info;
 	sc_pkcs15_object_t   obj;
+
+	if (!id || !label)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	memset(&info, 0, sizeof(info));
 	memset(&obj,  0, sizeof(obj));
@@ -109,6 +121,9 @@ static int sc_pkcs15emu_add_prkey(sc_pkcs15_card_t *p15card,
 {
         sc_pkcs15_prkey_info_t info;
 	sc_pkcs15_object_t     obj;
+
+	if (!id || !label)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	memset(&info, 0, sizeof(info));
 	memset(&obj,  0, sizeof(obj));
@@ -314,7 +329,7 @@ static int actalis_detect_card(sc_pkcs15_card_t * p15card)
 	sc_card_t *card = p15card->card;
 
 	/* check if we have the correct card OS */
-	if (strcmp(card->name, "CardOS M4"))
+	if (!card->name || strcmp(card->name, "CardOS M4"))
 		return SC_ERROR_WRONG_CARD;
 
 	return SC_SUCCESS;
