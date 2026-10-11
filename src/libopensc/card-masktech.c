@@ -288,6 +288,8 @@ static int masktech_pin_cmd(sc_card_t *card,
                             struct sc_pin_cmd_data *data)
 {
 	int       rv;
+	if (!data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	switch(data->cmd)
