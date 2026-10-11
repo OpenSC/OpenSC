@@ -295,9 +295,12 @@ static int itacns_set_security_env(sc_card_t *card,
 static int
 itacns_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
+	if (!data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 	/* Enable backtracking for STIncard cards. */
-	if(DRVDATA(card)->mask_manufacturer_code == ITACNS_MASKMAN_STINCARD) {
+	if (DRVDATA(card) && DRVDATA(card)->mask_manufacturer_code == ITACNS_MASKMAN_STINCARD) {
 		data->pin_reference |= 0x80;
 	}
 
@@ -317,6 +320,10 @@ static int itacns_read_binary(sc_card_t *card,
 	size_t already_read = 0;
 	size_t requested;
 	int r;
+
+	if (!buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	while(1) {
 		requested = count - already_read;
 		if(requested > ITACNS_MAX_PAYLOAD)
@@ -335,6 +342,9 @@ static int itacns_read_binary(sc_card_t *card,
 
 static int itacns_list_files(sc_card_t *card, u8 *buf, size_t buflen) {
 	struct sc_card_operations *list_ops;
+
+	if (!buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (DRVDATA(card) && (DRVDATA(card)->mask_manufacturer_code
 		== ITACNS_MASKMAN_SIEMENS)) {
@@ -439,6 +449,8 @@ static int itacns_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	int r;
 	u8        rbuf[256];
 
+	if (!serial)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* see if we have cached serial number */
 	if (card->serialnr.len) {
@@ -496,6 +508,9 @@ itacns_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 static int
 itacns_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
+	if (!rnd || len == 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (card->type == SC_CARD_TYPE_ITACNS_CNS_IDEMIA_2021)
 		len = MIN (0x20, len);
 
