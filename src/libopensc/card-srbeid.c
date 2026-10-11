@@ -115,6 +115,9 @@ srbeid_select_file(sc_card_t *card, const sc_path_t *in_path,
 	sc_file_t *file;
 	int r;
 
+	if (!in_path)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	if (in_path->type == SC_PATH_TYPE_DF_NAME)
 		return iso_ops->select_file(card, in_path, file_out);
 
@@ -184,6 +187,9 @@ srbeid_set_security_env(sc_card_t *card,
 	LOG_FUNC_CALLED(card->ctx);
 	(void)se_num;
 
+	if (!env)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	/* Extract key FID. */
 	if ((env->flags & SC_SEC_ENV_FILE_REF_PRESENT) && env->file_ref.len >= 2) {
 		key_ref = ((unsigned)env->file_ref.value[0] << 8) | (unsigned)env->file_ref.value[1];
@@ -248,7 +254,7 @@ srbeid_pso(sc_card_t *card, u8 p1, const u8 *data, size_t datalen, u8 *out,
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	if (datalen == 0 || datalen > sizeof(resp))
+	if (!data || !out || datalen == 0 || datalen > sizeof(resp))
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (datalen > SC_MAX_APDU_DATA_SIZE) {
