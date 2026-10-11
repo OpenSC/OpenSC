@@ -108,6 +108,8 @@ cac_private_data_t *cac_new_private_data(void)
 
 void cac_free_private_data(cac_private_data_t *priv)
 {
+	if (!priv)
+		return;
 	free(priv->cac_id);
 	free(priv->cache_buf);
 	free(priv->aca_path);
@@ -119,6 +121,8 @@ void cac_free_private_data(cac_private_data_t *priv)
 
 int cac_add_object_to_list(list_t *list, const cac_object_t *object)
 {
+	if (!list || !object)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	if (list_append(list, object) < 0)
 		return SC_ERROR_UNKNOWN;
 	return SC_SUCCESS;
