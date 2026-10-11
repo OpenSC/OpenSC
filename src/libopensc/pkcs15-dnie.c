@@ -43,11 +43,15 @@ int dump_ef(sc_card_t * card, const char *path, u8 * buf, size_t * buf_len)
 	int rv;
 	sc_file_t *file = NULL;
 	sc_path_t scpath;
+
+	if (!path || !buf || !buf_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_format_path(path, &scpath);
 	rv = sc_select_file(card, &scpath, &file);
-	if (rv < 0) {
+	if (rv < 0 || !file) {
 		sc_file_free(file);
-		return rv;
+		return rv < 0 ? rv : SC_ERROR_INTERNAL;
 	}
 	if (file->size > *buf_len) {
 		sc_file_free(file);
@@ -149,7 +153,8 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	LOG_FUNC_CALLED(ctx);
 
 	/* Check for correct card driver (i.e. iso7816) */
-	if (strcmp(p15card->card->driver->short_name, "dnie") != 0)
+	if (!p15card->card->driver || !p15card->card->driver->short_name ||
+	    strcmp(p15card->card->driver->short_name, "dnie") != 0)
 		return SC_ERROR_WRONG_CARD;
 
 	/* Check for correct card atr */
@@ -159,7 +164,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	/* The two keys inside DNIe 3.0 needs login before performing any signature.
 	 * They are CKA_ALWAYS_AUTHENTICATE although they are not tagged like that.
 	 * For the moment caching is forced if 3.0 is detected to make it work properly. */
-	if (p15card->card->atr.value[15] >= DNIE_30_VERSION) {
+	if (p15card->card->atr.len > 15 && p15card->card->atr.value[15] >= DNIE_30_VERSION) {
 		p15card->opts.use_pin_cache = 1;
 		p15card->opts.pin_cache_counter = DNIE_30_CACHE_COUNTER;
 		sc_log(ctx, "DNIe 3.0 detected - PKCS#15 options reset: use_file_cache=%d use_pin_cache=%d pin_cache_counter=%d pin_cache_ignore_user_consent=%d",
@@ -187,7 +192,8 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	LOG_TEST_GOTO_ERR(ctx, rv, "Decoding of EF.TOKENINFO failed.");
 
 	/* Only accept the original stuff */
-	if (strcmp(p15card->tokeninfo->manufacturer_id, "DGP-FNMT") != 0) {
+	if (!p15card->tokeninfo->manufacturer_id ||
+	    strcmp(p15card->tokeninfo->manufacturer_id, "DGP-FNMT") != 0) {
 		rv = SC_ERROR_WRONG_CARD;
 		LOG_TEST_GOTO_ERR(ctx, rv, "Wrong card.");
 	}
@@ -251,7 +257,8 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
                    DNIe versions  */
 		if ( p15_obj->df && (p15_obj->df->type == SC_PKCS15_CDF) ) {
                     p15_info = (struct sc_pkcs15_cert_info *) p15_obj ->data;
-		    p15_info ->path.count = -1;
+		    if (p15_info)
+		        p15_info ->path.count = -1;
 		}
 		/* Remove found public keys as cannot be read_binary()'d */
 		if ( p15_obj->df && (p15_obj->df->type == SC_PKCS15_PUKDF) ) {
