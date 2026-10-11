@@ -99,6 +99,9 @@ sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_ASN1);
 
+	if (!obj || !buf || !buflen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_copy_asn1_entry(c_asn1_auth_type, asn1_auth_type);
 	sc_copy_asn1_entry(c_asn1_auth_type_choice, asn1_auth_type_choice);
 
@@ -213,12 +216,17 @@ int sc_pkcs15_encode_aodf_entry(sc_context_t *ctx,
 	struct sc_asn1_entry asn1_com_ao_attr[2], asn1_pin_attr[10], asn1_type_pin_attr[2];
 	struct sc_asn1_entry asn1_auth_type[2];
 	struct sc_asn1_entry asn1_auth_type_choice[4];
-	struct sc_pkcs15_auth_info *info = (struct sc_pkcs15_auth_info *) obj->data;
+	struct sc_pkcs15_auth_info *info;
 	struct sc_asn1_pkcs15_object pin_obj = { (struct sc_pkcs15_object *) obj,
 						 asn1_com_ao_attr, NULL, asn1_type_pin_attr };
 	int r;
 	size_t flags_len;
 	size_t padchar_len = 1;
+
+	if (!obj || !obj->data || !buf || !buflen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	info = (struct sc_pkcs15_auth_info *) obj->data;
 
 	if (info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_NOT_SUPPORTED;
