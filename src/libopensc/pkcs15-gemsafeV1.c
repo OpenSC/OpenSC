@@ -209,8 +209,10 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 	 * the private key.
 	 */
 	ind = 2; /* skip length */
-	while (ind + 1 < (size_t)read_len && ibuf[ind] == 0x01 && i < gemsafe_cert_max) {
+	while (ind + 8 <= (size_t)read_len && ibuf[ind] == 0x01 && i < gemsafe_cert_max) {
 		if (ibuf[ind+1] == 0xFE) {
+			if (ind + 9 > (size_t)read_len)
+				break;
 			gemsafe_prkeys[i].ref = ibuf[ind+4];
 			sc_log(card->ctx, "Key container %d is allocated and uses key_ref %d",
 					i+1, gemsafe_prkeys[i].ref);
@@ -266,9 +268,11 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 				return SC_SUCCESS;
 			}
 			/* DER cert len is encoded this way */
-			if (ind+3 >= sizeof ibuf)
+			if (ind + 3 >= objlen)
 				return SC_ERROR_INVALID_DATA;
 			certlen = ((((int)ibuf[ind + 2]) << 8) | ibuf[ind + 3]) + 4;
+			if (certlen <= 0 || (size_t)certlen > objlen - ind)
+				return SC_ERROR_INVALID_DATA;
 			sc_log(card->ctx,
 			       "Found certificate of key container %d at offset %d, len %d",
 			       i+1, ind, certlen);
@@ -296,7 +300,7 @@ static int gemsafe_get_cert_len(sc_card_t *card)
 
 static int gemsafe_detect_card( sc_pkcs15_card_t *p15card)
 {
-	if (strcmp(p15card->card->name, "GemSAFE V1"))
+	if (!p15card->card->name || strcmp(p15card->card->name, "GemSAFE V1"))
 		return SC_ERROR_WRONG_CARD;
 
 	return SC_SUCCESS;
@@ -312,6 +316,9 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 	struct sc_apdu  apdu;
 	u8		    rbuf[SC_MAX_APDU_BUFFER_SIZE];
 
+	if (!p15card->tokeninfo)
+		return SC_ERROR_INTERNAL;
+
 	sc_log(p15card->card->ctx, "Setting pkcs15 parameters");
 
 	set_string(&p15card->tokeninfo->label, APPLET_NAME);
@@ -320,8 +327,7 @@ static int sc_pkcs15emu_gemsafeV1_init( sc_pkcs15_card_t *p15card)
 
 	set_string(&p15card->tokeninfo->serial_number, DRIVER_SERIAL_NUMBER);
 	if (!p15card->tokeninfo->serial_number) {
-		free(p15card->tokeninfo->label);
-		p15card->tokeninfo->label = NULL;
+		sc_pkcs15_card_clear(p15card);
 		return SC_ERROR_INTERNAL;
 	}
 
@@ -493,14 +499,17 @@ sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 
 	obj = calloc(1, sizeof(*obj));
 	if (!obj) {
+		free(data);
 		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 
 	obj->type  = type;
 	obj->data  = data;
 
-	if (label)
+	if (label) {
 		strncpy(obj->label, label, sizeof(obj->label)-1);
+		obj->label[sizeof(obj->label)-1] = '\0';
+	}
 
 	obj->flags = obj_flags;
 	if (auth_id)
@@ -522,6 +531,7 @@ sc_pkcs15emu_add_object(sc_pkcs15_card_t *p15card, int type,
 	default:
 		sc_log(p15card->card->ctx, "Unknown PKCS15 object type %d", type);
 		free(obj);
+		free(data);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
