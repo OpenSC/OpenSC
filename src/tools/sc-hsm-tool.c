@@ -1883,6 +1883,8 @@ static int update_ef(sc_card_t *card, u8 prefix, u8 id, int erase, const u8 *buf
 
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
 		file = sc_file_new();
+		if (!file)
+			return SC_ERROR_OUT_OF_MEMORY;
 		file->id = (path.value[0] << 8) | path.value[1];
 		file->type = SC_FILE_TYPE_WORKING_EF;
 		file->ef_structure = SC_FILE_EF_TRANSPARENT;
