@@ -150,14 +150,14 @@ sc_pkcs15emu_din_66291_init(sc_pkcs15_card_t *p15card)
                 continue;
 
             if (i == 0) {
-                sc_pkcs15_cert_t *cert;
-                if (SC_SUCCESS == sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert)) {
+                sc_pkcs15_cert_t *cert = NULL;
+                if (SC_SUCCESS == sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert) && cert) {
                     static const struct sc_object_id cn_oid = {{ 2, 5, 4, 3, -1 }};
                     u8 *cn_name = NULL;
                     size_t cn_len = 0;
                     sc_pkcs15_get_name_from_dn(p15card->card->ctx, cert->subject,
                             cert->subject_len, &cn_oid, &cn_name, &cn_len);
-                    if (cn_len > 0) {
+                    if (cn_len > 0 && p15card->tokeninfo) {
                         char *token_name = malloc(cn_len+1);
                         if (token_name) {
                             memcpy(token_name, cn_name, cn_len);
@@ -225,10 +225,11 @@ int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid
             if (SC_SUCCESS != sc_select_file(p15card->card, &path, &file_tokeninfo))
                 goto err;
 
-            tokeninfo_content = malloc(file_tokeninfo->size);
+            size_t tsize = file_tokeninfo->size ? file_tokeninfo->size : 256;
+            tokeninfo_content = malloc(tsize);
             if (!tokeninfo_content)
                 goto err;
-            r = sc_read_binary(p15card->card, 0, tokeninfo_content, file_tokeninfo->size, 0);
+            r = sc_read_binary(p15card->card, 0, tokeninfo_content, tsize, 0);
             if (r < 0)
                 goto err;
             r = sc_pkcs15_parse_tokeninfo(p15card->card->ctx, tokeninfo, tokeninfo_content, r);
@@ -248,7 +249,10 @@ int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid
                     || SC_SUCCESS != sc_select_file(p15card->card, &path, NULL))
                 goto err;
 
+            free(tokeninfo->profile_indication.name);
             tokeninfo->profile_indication.name = strdup("DIN V 66291");
+            if (!tokeninfo->profile_indication.name)
+                goto err;
         }
     }
 
@@ -264,6 +268,7 @@ int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid
     file_tokeninfo = NULL;
 
     /* get the card serial number */
+    memset(&serial, 0, sizeof(serial));
     if (!p15card->tokeninfo->serial_number
             && SC_SUCCESS == sc_card_ctl(p15card->card, SC_CARDCTL_GET_SERIALNR, &serial)) {
         char serial_hex[SC_MAX_SERIALNR*2+2];
