@@ -161,12 +161,14 @@ static int
 read_file(sc_card_t *card, const char *path_name, void *buf, size_t len)
 {
 	sc_path_t	path;
-	sc_file_t	*file;
+	sc_file_t	*file = NULL;
 	int		r;
 
 	sc_format_path(path_name, &path);
 	if ((r = sc_select_file(card, &path, &file)) < 0)
 		return r;
+	if (!file)
+		return SC_ERROR_INTERNAL;
 
 	if (file->size < len)
 		len = file->size;
@@ -190,6 +192,10 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	                               ? pin_cfg_v1 : pin_cfg_v2;
 	sc_path_t path;
 	sc_file_t *file = NULL;
+	u8 cert_idx;
+
+	if (!priv || !p15card->tokeninfo)
+		return SC_ERROR_INTERNAL;
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -198,16 +204,18 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 	/* card->serialnr = 2 byte manufacturer_id + 4 byte serial_number */
 	if (card->serialnr.len > 0) {
-		unsigned short manuf_id = bebytes2ushort(card->serialnr.value);
 		int j;
 
 		sc_bin_to_hex(card->serialnr.value, card->serialnr.len, string, sizeof(string), 0);
 		set_string(&p15card->tokeninfo->serial_number, string);
 
-		for (j = 0; manuf_map[j].name != NULL; j++) {
-			if (manuf_id == manuf_map[j].id) {
-				set_string(&p15card->tokeninfo->manufacturer_id, manuf_map[j].name);
-				break;
+		if (card->serialnr.len >= 2) {
+			unsigned short manuf_id = bebytes2ushort(card->serialnr.value);
+			for (j = 0; manuf_map[j].name != NULL; j++) {
+				if (manuf_id == manuf_map[j].id) {
+					set_string(&p15card->tokeninfo->manufacturer_id, manuf_map[j].name);
+					break;
+				}
 			}
 		}
 	}
@@ -335,12 +343,17 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				cxdata[0] == SC_OPENPGP_KEYALGO_EDDSA) {
 				/* Last byte could be Import-Format of private key, let's ignore it,
 				 * as it is not part of OID */
-				if (cxdata[cxdata_len-1] == SC_OPENPGP_KEYFORMAT_EC_STD ||
-				    cxdata[cxdata_len-1] == SC_OPENPGP_KEYFORMAT_EC_STDPUB)
+				if (cxdata_len > 2 && (cxdata[cxdata_len-1] == SC_OPENPGP_KEYFORMAT_EC_STD ||
+				    cxdata[cxdata_len-1] == SC_OPENPGP_KEYFORMAT_EC_STDPUB))
 					cxdata_len--;
-				r = sc_asn1_decode_object_id(&cxdata[1], cxdata_len-1, &oid);
-				if (r != SC_SUCCESS) {
-					sc_log(ctx, "Failed to parse OID for elliptic curve algorithm");
+				if (cxdata_len >= 2) {
+					r = sc_asn1_decode_object_id(&cxdata[1], cxdata_len-1, &oid);
+					if (r != SC_SUCCESS) {
+						sc_log(ctx, "Failed to parse OID for elliptic curve algorithm");
+					}
+				} else {
+					sc_log(ctx, "Invalid algorithm data length (%d)", cxdata_len);
+					continue;
 				}
 			}
 
@@ -466,12 +479,17 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 				cxdata[0] == SC_OPENPGP_KEYALGO_EDDSA) {
 				/* Last byte could be Import-Format of private key, let's ignore it,
 				 * as it is not part of OID */
-				if (cxdata[cxdata_len-1] == SC_OPENPGP_KEYFORMAT_EC_STD ||
-				    cxdata[cxdata_len-1] == SC_OPENPGP_KEYFORMAT_EC_STDPUB)
+				if (cxdata_len > 2 && (cxdata[cxdata_len-1] == SC_OPENPGP_KEYFORMAT_EC_STD ||
+				    cxdata[cxdata_len-1] == SC_OPENPGP_KEYFORMAT_EC_STDPUB))
 					cxdata_len--;
-				r = sc_asn1_decode_object_id(&cxdata[1], cxdata_len-1, &oid);
-				if (r != SC_SUCCESS) {
-					sc_log(ctx, "Failed to parse OID for elliptic curve algorithm");
+				if (cxdata_len >= 2) {
+					r = sc_asn1_decode_object_id(&cxdata[1], cxdata_len-1, &oid);
+					if (r != SC_SUCCESS) {
+						sc_log(ctx, "Failed to parse OID for elliptic curve algorithm");
+					}
+				} else {
+					sc_log(ctx, "Invalid algorithm data length (%d)", cxdata_len);
+					continue;
 				}
 			}
 
@@ -557,25 +575,27 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 	if (r < 0)
 		goto failed;
 
-	for(u8 i=0; i<PGP_MAX_NUM_CERTS; i++) {
+	for (cert_idx = 0; cert_idx < PGP_MAX_NUM_CERTS; cert_idx++) {
 		struct sc_pkcs15_cert_info cert_info;
 		struct sc_pkcs15_object    cert_obj;
 		u8* buffer = malloc(MAX_OPENPGP_DO_SIZE);
 		int resp_len = 0;
 
-		if (buffer == NULL)
+		if (buffer == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
 			goto failed;
+		}
 
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&cert_obj,  0, sizeof(cert_obj));
 
 		/* try to SELECT DATA. Will only work for OpenPGP >= v3, errors are non-critical */
-		sc_card_ctl(card, SC_CARDCTL_OPENPGP_SELECT_DATA, &i);
+		sc_card_ctl(card, SC_CARDCTL_OPENPGP_SELECT_DATA, &cert_idx);
 
-		sc_format_path(certs[i].path, &cert_info.path);
+		sc_format_path(certs[cert_idx].path, &cert_info.path);
 
 		/* Certificate ID. We use the same ID as the authentication key */
-		sc_pkcs15_format_id(certs[i].id, &cert_info.id);
+		sc_pkcs15_format_id(certs[cert_idx].id, &cert_info.id);
 
 		resp_len = sc_get_data(card, 0x7F21, buffer, MAX_OPENPGP_DO_SIZE);
 
@@ -587,6 +607,7 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 
 		/* Catch error during sc_get_data */
 		if (resp_len < 0) {
+			r = resp_len;
 			free(buffer);
 			goto failed;
 		}
@@ -594,11 +615,11 @@ sc_pkcs15emu_openpgp_init(sc_pkcs15_card_t *p15card)
 		/* Assemble certificate info struct, based on `certs` array */
 		cert_info.value.len = resp_len;
 		cert_info.value.value = buffer;
-		cert_info.authority = certs[i].authority;
-		cert_obj.flags = certs[i].obj_flags;
+		cert_info.authority = certs[cert_idx].authority;
+		cert_obj.flags = certs[cert_idx].obj_flags;
 
 		/* Object label */
-		strlcpy(cert_obj.label, certs[i].label, sizeof(cert_obj.label));
+		strlcpy(cert_obj.label, certs[cert_idx].label, sizeof(cert_obj.label));
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0) {
@@ -647,8 +668,8 @@ sc_pkcs15emu_openpgp_add_data(sc_pkcs15_card_t *p15card)
 		memset(&dat_info, 0, sizeof(dat_info));
 		memset(&dat_obj, 0, sizeof(dat_obj));
 
-		snprintf(name, 8, "PrivDO%d", i);
-		snprintf(path, 9, "3F00010%d", i);
+		snprintf(name, sizeof(name), "PrivDO%d", i);
+		snprintf(path, sizeof(path), "3F00010%d", i);
 
 		/* Check if the DO can be read and is not empty. Otherwise we
 		 * won't expose a PKCS#15 DATA object.
