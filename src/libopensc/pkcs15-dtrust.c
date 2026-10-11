@@ -54,6 +54,8 @@ _dtrust_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 
 	count = rv;
 	for (i = 0; i < count; i++) {
+		if (!pkobjs[i] || !pkobjs[i]->data)
+			continue;
 		prkey_info = (struct sc_pkcs15_prkey_info *)pkobjs[i]->data;
 
 		switch (p15card->card->type) {
@@ -93,24 +95,27 @@ static int
 sc_pkcs15emu_dtrust_init(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 {
 	struct sc_context *ctx = p15card->card->ctx;
+#if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
+	struct sc_pkcs15_search_key sk;
+	struct sc_pkcs15_object *objs[8];
+	int i, len;
+#endif
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
 
 	rv = sc_pkcs15_bind_internal(p15card, aid);
+	if (rv < 0)
+		LOG_FUNC_RETURN(ctx, rv);
 
 	p15card->ops.parse_df = _dtrust_parse_df;
 
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
-	struct sc_pkcs15_search_key sk;
-	struct sc_pkcs15_object *objs[8];
-	int i, len;
-
 	memset(&sk, 0, sizeof(sk));
 	sk.class_mask = SC_PKCS15_SEARCH_CLASS_AUTH;
-	len = sc_pkcs15_search_objects(p15card, &sk, (struct sc_pkcs15_object **)&objs, sizeof(objs) / sizeof(struct sc_pkcs15_object *));
+	len = sc_pkcs15_search_objects(p15card, &sk, objs, sizeof(objs) / sizeof(objs[0]));
 	for (i = 0; i < len; i++) {
-		if (!strcmp(objs[i]->label, "CAN")) {
+		if (objs[i] && !strcmp(objs[i]->label, "CAN")) {
 			/* Mark "Card CAN" as NOT a PIN object, so that it doesn't get it's own PKCS#11 slot */
 			objs[i]->type &= ~SC_PKCS15_TYPE_AUTH_PIN;
 		}
