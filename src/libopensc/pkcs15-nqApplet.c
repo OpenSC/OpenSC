@@ -47,10 +47,10 @@ static int get_nqapplet_certificate(sc_card_t *card, u8 data_id, struct sc_pkcs1
 	if (cert_info != NULL) {
 		free(cert_info->value);
 		cert_info->value = malloc(rv);
-		if (cert_info->value != NULL) {
-			cert_info->len = rv;
-			memcpy(cert_info->value, buffer, rv);
-		}
+		if (cert_info->value == NULL)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		cert_info->len = rv;
+		memcpy(cert_info->value, buffer, rv);
 	}
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -108,7 +108,10 @@ static int add_nqapplet_certificate(sc_pkcs15_card_t *p15card, const char *id, c
 	strlcpy(cert_obj.label, name, sizeof(cert_obj.label));
 
 	rv = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
-	LOG_TEST_RET(card->ctx, rv, "sc_pkcs15emu_add_x509_cert failed");
+	if (rv < 0) {
+		free(cert_info.value.value);
+		LOG_TEST_RET(card->ctx, rv, "sc_pkcs15emu_add_x509_cert failed");
+	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -217,10 +220,15 @@ int sc_pkcs15emu_nqapplet_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	} else {
 		char serial_hex[SC_MAX_SERIALNR * 2 + 2];
 
-		sc_bin_to_hex(card->serialnr.value, card->serialnr.len, serial_hex, sizeof(serial_hex), 0);
+		sc_bin_to_hex(card->serialnr.value, MIN(card->serialnr.len, sizeof(card->serialnr.value)), serial_hex, sizeof(serial_hex), 0);
 		set_string(&p15card->tokeninfo->serial_number, serial_hex);
 		set_string(&p15card->tokeninfo->label, name_Card);
 		set_string(&p15card->tokeninfo->manufacturer_id, name_Vendor);
+		if (!p15card->tokeninfo->serial_number || !p15card->tokeninfo->label ||
+		    !p15card->tokeninfo->manufacturer_id) {
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
 		p15card->tokeninfo->flags = SC_PKCS15_TOKEN_READONLY;
 	}
 
