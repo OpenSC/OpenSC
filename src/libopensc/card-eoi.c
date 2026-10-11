@@ -405,6 +405,9 @@ static int eoi_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	int r;
 
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (data->cmd == SC_PIN_CMD_VERIFY && card->sm_ctx.sm_mode == SM_MODE_NONE) {
@@ -559,6 +562,9 @@ static int eoi_compute_signature(struct sc_card *card, const u8 * data, size_t d
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!data || !out)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (!privdata)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
