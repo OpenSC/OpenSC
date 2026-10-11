@@ -366,6 +366,9 @@ static int atrust_acos_select_file(struct sc_card *card,
 	int    r;
 	size_t i, pathlen;
 
+	if (!in_path || in_path->len > sizeof(pathbuf))
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
 
@@ -431,11 +434,16 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 				    int se_num)
 {
 	u8              *p, *pp;
-	int              r, operation = env->operation;
+	int              r, operation;
 	struct sc_apdu   apdu;
 	u8               sbuf[SC_MAX_APDU_BUFFER_SIZE];
-	atrust_acos_ex_data *ex_data = (atrust_acos_ex_data *)card->drv_data;
+	atrust_acos_ex_data *ex_data;
 
+	if (!env)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	operation = env->operation;
+	ex_data = (atrust_acos_ex_data *)card->drv_data;
 	p     = sbuf;
 
 	/* copy key reference, if present */
@@ -561,8 +569,10 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	atrust_acos_ex_data *ex_data = (atrust_acos_ex_data *)card->drv_data;
 
-	if (datalen > SC_MAX_APDU_BUFFER_SIZE)
+	if (!data || !out || datalen > SC_MAX_APDU_BUFFER_SIZE)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+	if (!ex_data)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INTERNAL);
 
 	if (ex_data->sec_ops == SC_SEC_OPERATION_SIGN) {
 		/* compute signature with the COMPUTE SIGNATURE command */
