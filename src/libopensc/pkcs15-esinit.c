@@ -36,7 +36,7 @@ static int entersafe_detect_card( sc_pkcs15_card_t *p15card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* check if we have the correct card OS */
-	if (strcmp(card->name, "entersafe"))
+	if (!card->name || strcmp(card->name, "entersafe"))
 		return SC_ERROR_WRONG_CARD;
 
     return SC_SUCCESS;
@@ -50,6 +50,11 @@ static int sc_pkcs15emu_entersafe_init( sc_pkcs15_card_t *p15card)
 	sc_serial_number_t serial;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!p15card->tokeninfo)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	memset(&serial, 0, sizeof(serial));
 
 	/* get serial number */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
