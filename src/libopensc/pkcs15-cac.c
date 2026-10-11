@@ -177,23 +177,29 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 	}
 
 	/* set other objects */
-	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_INIT_GET_GENERIC_OBJECTS, &count);
+	r = sc_card_ctl(card, SC_CARDCTL_CAC_INIT_GET_GENERIC_OBJECTS, &count);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not initiate generic objects.");
 
 	for (i = 0; i < count; i++) {
 		struct sc_pkcs15_data_info obj_info;
 		struct sc_pkcs15_object    obj_obj;
 
-		r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_GET_NEXT_GENERIC_OBJECT, &obj_info);
-		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next generic object.");
+		r = sc_card_ctl(card, SC_CARDCTL_CAC_GET_NEXT_GENERIC_OBJECT, &obj_info);
+		if (r < 0) {
+			sc_card_ctl(card, SC_CARDCTL_CAC_FINAL_GET_GENERIC_OBJECTS, &count);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next generic object.");
+		}
 		memset(&obj_obj, 0, sizeof(obj_obj));
 		memcpy(obj_obj.label, obj_info.app_label, sizeof(obj_obj.label));
 
 		r = sc_pkcs15emu_object_add(p15card, SC_PKCS15_TYPE_DATA_OBJECT,
 			&obj_obj, &obj_info);
-		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize generic object.");
+		if (r < 0) {
+			sc_card_ctl(card, SC_CARDCTL_CAC_FINAL_GET_GENERIC_OBJECTS, &count);
+			LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize generic object.");
+		}
 	}
-	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_GENERIC_OBJECTS, &count);
+	r = sc_card_ctl(card, SC_CARDCTL_CAC_FINAL_GET_GENERIC_OBJECTS, &count);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize generic objects.");
 
 	/*
@@ -203,7 +209,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 	 * We use those for the pubkey, and priv key objects.
 	 */
 	sc_log(card->ctx,  "CAC adding certs, pub and priv keys...");
-	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_INIT_GET_CERT_OBJECTS, &count);
+	r = sc_card_ctl(card, SC_CARDCTL_CAC_INIT_GET_CERT_OBJECTS, &count);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not initiate cert objects.");
 
 	for (i = 0; i < count; i++) {
@@ -217,8 +223,11 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_der_t   cert_der;
 		sc_pkcs15_cert_t *cert_out = NULL;
 
-		r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_GET_NEXT_CERT_OBJECT, &obj_info);
-		LOG_TEST_RET(card->ctx, r, "Can not get next object");
+		r = sc_card_ctl(card, SC_CARDCTL_CAC_GET_NEXT_CERT_OBJECT, &obj_info);
+		if (r < 0) {
+			sc_log(card->ctx, "Can not get next object");
+			goto fail;
+		}
 
 		memset(&cert_info, 0, sizeof(cert_info));
 		memset(&pubkey_info, 0, sizeof(pubkey_info));
@@ -226,6 +235,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		memset(&cert_obj,  0, sizeof(cert_obj));
 		memset(&pubkey_obj,  0, sizeof(pubkey_obj));
 		memset(&prkey_obj,  0, sizeof(prkey_obj));
+		memset(&cert_der,  0, sizeof(cert_der));
 
 		cert_info.id = obj_info.id;
 		pubkey_info.id = obj_info.id;
@@ -254,7 +264,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 
 		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len, 0);
 
-		if (r) {
+		if (r || !cert_der.value || cert_der.len == 0) {
 			sc_log(card->ctx,  "No cert found,i=%d", i);
 			continue;
 		}
@@ -274,11 +284,13 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 
 		/* following will find the cached cert in cert_info */
 		r =  sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert_out);
-		if (r < 0 || cert_out->key == NULL) {
+		if (r < 0 || cert_out == NULL || cert_out->key == NULL) {
 			sc_log(card->ctx,  "Failed to read/parse the certificate r=%d",r);
 			if (cert_out != NULL)
 				sc_pkcs15_free_certificate(cert_out);
 			free(cert_info.value.value);
+			cert_info.value.value = NULL;
+			cert_der.value = NULL;
 			continue;
 		}
 
@@ -287,8 +299,11 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 			sc_log(card->ctx,  " Failed to add cert obj r=%d",r);
 			sc_pkcs15_free_certificate(cert_out);
 			free(cert_info.value.value);
+			cert_info.value.value = NULL;
+			cert_der.value = NULL;
 			continue;
 		}
+		cert_der.value = NULL;
 		/* set the token name to the name of the CN of the first certificate */
 		if (!token_name) {
 			u8 * cn_name = NULL;
@@ -320,6 +335,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		r = sc_pkcs15_get_bitstring_extension(card->ctx, cert_out, &usage_type, &usage, NULL);
 		if (r < 0) {
 			usage = SC_X509_DATA_ENCIPHERMENT|SC_X509_DIGITAL_SIGNATURE; /* basic default usage */
+			r = SC_SUCCESS;
 		}
 		sc_pkcs15_map_usage(usage, cert_out->key->algorithm, &pubkey_info.usage, &prkey_info.usage, 1);
 		sc_log(card->ctx,   "cert %s: cert_usage=0x%x, pub_usage=0x%x priv_usage=0x%x\n",
@@ -339,6 +355,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 				free(pubkey_info.direct.spki.value);
 				goto fail;
 			}
+			cert_out->key = NULL;
 			pubkey_info.direct.spki.value = NULL; /* moved to the pubkey object on p15card  */
 			pubkey_info.direct.spki.len = 0;
 			r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
@@ -351,12 +368,12 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 fail:
 		sc_pkcs15_free_certificate(cert_out);
 		if (r < 0) {
-			(card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS, &count);
+			sc_card_ctl(card, SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS, &count);
 			LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add object.");
 		}
 
 	}
-	r = (card->ops->card_ctl)(card, SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS, &count);
+	r = sc_card_ctl(card, SC_CARDCTL_CAC_FINAL_GET_CERT_OBJECTS, &count);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize cert objects.");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
