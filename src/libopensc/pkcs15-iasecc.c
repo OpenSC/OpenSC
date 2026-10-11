@@ -55,12 +55,16 @@ _iasecc_md_update_keyinfo(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (!dobj)
+	if (!dobj || !dobj->data)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	private_obj = dobj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
 	rv = sc_pkcs15_read_data_object(p15card, (struct sc_pkcs15_data_info *)dobj->data, private_obj, &ddata);
 	LOG_TEST_RET(ctx, rv, "Failed to read container DATA object data");
+	if (!ddata || !ddata->data) {
+		sc_pkcs15_free_data_object(ddata);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+	}
 
 	/* [0] = 0x01
 	 * [1] = length
@@ -100,6 +104,8 @@ _iasecc_md_update_keyinfo(struct sc_pkcs15_card *p15card, struct sc_pkcs15_objec
 
 	rv = sc_pkcs15_find_prkey_by_id(p15card, &id, &prkey_object);
 	LOG_TEST_RET(ctx, rv, "Find related PrKey error");
+	if (!prkey_object || !prkey_object->data)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
 	prkey_info = (struct sc_pkcs15_prkey_info *)prkey_object->data;
 	if (prkey_info->aux_data == NULL)   {
@@ -136,6 +142,8 @@ _iasecc_cpx_fixup_prkdf(struct sc_pkcs15_card *p15card)
 
 	count = rv;
 	for(ii=0; ii<count; ii++)   {
+		if (!pkobjs[ii])
+			continue;
 		rv = iasecc_pkcs15_encode_supported_algos(p15card, pkobjs[ii]);
 		LOG_TEST_RET(ctx, rv, "Cannot fix suported_algos");
 	}
@@ -196,36 +204,51 @@ _iasecc_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 
 	count = rv;
 	for(ii=0; ii<count; ii++)   {
-		struct sc_pkcs15_data_info *dinfo = (struct sc_pkcs15_data_info *)dobjs[ii]->data;
-		int private_obj = dobjs[ii]->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+		struct sc_pkcs15_data_info *dinfo;
+		int private_obj;
 
-		if (strcmp(dinfo->app_label, IASECC_GEMALTO_MD_APPLICATION_NAME))
+		if (!dobjs[ii] || !dobjs[ii]->data)
+			continue;
+		dinfo = (struct sc_pkcs15_data_info *)dobjs[ii]->data;
+		private_obj = dobjs[ii]->flags & SC_PKCS15_CO_FLAG_PRIVATE;
+
+		if (!dinfo->app_label || strcmp(dinfo->app_label, IASECC_GEMALTO_MD_APPLICATION_NAME))
 			continue;
 
 		if (!strcmp(dobjs[ii]->label, IASECC_GEMALTO_MD_DEFAULT_CONT_LABEL))   {
-			rv = sc_pkcs15_read_data_object(p15card, (struct sc_pkcs15_data_info *)dobjs[ii]->data, private_obj, &default_guid);
-			LOG_TEST_RET(ctx, rv, "Failed to read 'default container' DATA object data");
+			rv = sc_pkcs15_read_data_object(p15card, dinfo, private_obj, &default_guid);
+			if (rv < 0) {
+				sc_log(ctx, "Failed to read 'default container' DATA object data");
+				default_guid = NULL;
+			}
 			break;
 		}
 	}
 
 	for(ii=0; ii<count; ii++)   {
-		struct sc_pkcs15_data_info *dinfo = (struct sc_pkcs15_data_info *)dobjs[ii]->data;
+		struct sc_pkcs15_data_info *dinfo;
 		int default_cont = 0;
 
-		if (strcmp(dinfo->app_label, IASECC_GEMALTO_MD_APPLICATION_NAME))
+		if (!dobjs[ii] || !dobjs[ii]->data)
+			continue;
+		dinfo = (struct sc_pkcs15_data_info *)dobjs[ii]->data;
+
+		if (!dinfo->app_label || strcmp(dinfo->app_label, IASECC_GEMALTO_MD_APPLICATION_NAME))
 			continue;
 
 		if (!strcmp(dobjs[ii]->label, IASECC_GEMALTO_MD_DEFAULT_CONT_LABEL))
 			continue;
 
-		if (default_guid)
+		if (default_guid && default_guid->data)
 			if (strlen(dobjs[ii]->label) == default_guid->data_len)
 				if (!memcmp(dobjs[ii]->label, default_guid->data, default_guid->data_len))
 					default_cont = 1;
 
 		rv = _iasecc_md_update_keyinfo(p15card, dobjs[ii], default_cont);
-		LOG_TEST_RET(ctx, rv, "Cannot update key MD info");
+		if (rv < 0) {
+			sc_log(ctx, "Cannot update key MD info");
+			break;
+		}
 	}
 
 	sc_pkcs15_free_data_object(default_guid);
@@ -256,6 +279,7 @@ sc_pkcs15emu_iasecc_init (struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	LOG_FUNC_CALLED(ctx);
 
 	rv = sc_pkcs15_bind_internal(p15card, aid);
+	LOG_TEST_RET(ctx, rv, "sc_pkcs15_bind_internal failed");
 
 	p15card->ops.parse_df = _iasecc_parse_df;
 
