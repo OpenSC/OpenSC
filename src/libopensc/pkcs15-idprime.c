@@ -69,6 +69,9 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (!p15card->tokeninfo)
+		return SC_ERROR_INTERNAL;
+
 	/* could read this off card if needed */
 	set_string(&p15card->tokeninfo->label, "IDPrime");
 	set_string(&p15card->tokeninfo->manufacturer_id, "Gemalto");
@@ -110,6 +113,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 
 	sc_log(card->ctx,  "IDPrime Adding pin with label=%s", pin_label);
 	strncpy(pin_obj.label, pin_label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+	pin_obj.label[SC_PKCS15_MAX_LABEL_SIZE - 1] = '\0';
 	pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 	r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
@@ -137,6 +141,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 
 		sc_log(card->ctx,  "IDPrime Adding Digital Signature pin with label=%s", sig_pin_label);
 		strncpy(pin_obj.label, sig_pin_label, SC_PKCS15_MAX_LABEL_SIZE - 1);
+		pin_obj.label[SC_PKCS15_MAX_LABEL_SIZE - 1] = '\0';
 		pin_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
@@ -162,7 +167,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 	 * We use those for the pubkey, and priv key objects.
 	 */
 	sc_log(card->ctx,  "IDPrime adding certs, pub and priv keys...");
-	r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_INIT_GET_OBJECTS, &count);
+	r = sc_card_ctl(card, SC_CARDCTL_IDPRIME_INIT_GET_OBJECTS, &count);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not initiate cert objects.");
 
 	for (i = 0; i < count; i++) {
@@ -176,9 +181,9 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		sc_pkcs15_cert_t *cert_out = NULL;
 		const char *pin_id = NULL;
 
-		r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_GET_PIN_ID, (void *) &pin_id);
+		r = sc_card_ctl(card, SC_CARDCTL_IDPRIME_GET_PIN_ID, (void *) &pin_id);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get PIN id of next object ");
-		r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_GET_NEXT_OBJECT, &prkey_info);
+		r = sc_card_ctl(card, SC_CARDCTL_IDPRIME_GET_NEXT_OBJECT, &prkey_info);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Can not get next object");
 
 		memset(&cert_info, 0, sizeof(cert_info));
@@ -207,11 +212,13 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 		/* Differentiate between objects accessible with normal and with digital signature pin */
-		sc_pkcs15_format_id(pin_id, &prkey_obj.auth_id);
-		sc_log(card->ctx,  "Pin ID r=%s", pin_id);
+		if (pin_id) {
+			sc_pkcs15_format_id(pin_id, &prkey_obj.auth_id);
+			sc_log(card->ctx,  "Pin ID r=%s", pin_id);
 
-		if (memcmp(pin_id, sig_pin_id, 2) == 0)
-			prkey_obj.user_consent = 1;
+			if (strcmp(pin_id, sig_pin_id) == 0)
+				prkey_obj.user_consent = 1;
+		}
 
 		r = sc_pkcs15_read_file(p15card, &cert_info.path, &cert_der.value, &cert_der.len, 0);
 
@@ -257,7 +264,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 			static const struct sc_object_id cn_oid = {{ 2, 5, 4, 3, -1 }};
 			r = sc_pkcs15_get_name_from_dn(card->ctx, cert_out->subject,
 				cert_out->subject_len, &cn_oid, &cn_name, &cn_len);
-			if (r == SC_SUCCESS) {
+			if (r == SC_SUCCESS && cn_name && cn_len > 0) {
 				token_name = malloc (cn_len+1);
 				if (!token_name) {
 					free(cn_name);
@@ -265,11 +272,11 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 					goto fail;
 				}
 				memcpy(token_name, cn_name, cn_len);
-				free(cn_name);
 				token_name[cn_len] = '\0';
 				free(p15card->tokeninfo->label);
 				p15card->tokeninfo->label = token_name;
 			}
+			free(cn_name);
 		}
 
 
@@ -297,6 +304,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 				free(pubkey_info.direct.spki.value);
 				goto fail;
 			}
+			cert_out->key = NULL;
 			pubkey_info.direct.spki.value = NULL; /* moved to the pubkey object on p15card  */
 			pubkey_info.direct.spki.len = 0;
 			if (prkey_info.key_reference >= 0) {
@@ -316,6 +324,7 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 				free(pubkey_info.direct.spki.value);
 				goto fail;
 			}
+			cert_out->key = NULL;
 			pubkey_info.direct.spki.value = NULL;
 			pubkey_info.direct.spki.len = 0;
 			if (prkey_info.key_reference >= 0) {
@@ -337,12 +346,12 @@ static int sc_pkcs15emu_idprime_init(sc_pkcs15_card_t *p15card)
 fail:
 		sc_pkcs15_free_certificate(cert_out);
 		if (r < 0) {
-			(card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
+			sc_card_ctl(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
 			LOG_TEST_GOTO_ERR(card->ctx, r, "Failed to add object.");
 		}
 
 	}
-	r = (card->ops->card_ctl)(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
+	r = sc_card_ctl(card, SC_CARDCTL_IDPRIME_FINAL_GET_OBJECTS, &count);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Can not finalize cert objects.");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
