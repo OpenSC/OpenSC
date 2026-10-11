@@ -260,6 +260,9 @@ yk_copy_pubkey_from_tag(sc_cardctl_piv_pubkey_info_t *info, struct sc_pkcs15_u8 
 	if ((tag | cla) != tag_exp) {
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	}
+	if (tag_len > info->pubkey.len - (size_t)(p - info->pubkey.value)) {
+		return SC_ERROR_INVALID_ASN1_OBJECT;
+	}
 	dst->value = malloc(tag_len);
 	if (dst->value == NULL) {
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -681,6 +684,11 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 	int follows_nist_fascn = 0;
 	char *token_name = NULL;
 
+	memset(ckis, 0, sizeof(ckis));
+
+	if (!p15card->tokeninfo)
+		return SC_ERROR_INTERNAL;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	memset(&serial, 0, sizeof(serial));
@@ -731,7 +739,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		strncpy(obj_info.app_label, objects[i].label, SC_PKCS15_MAX_LABEL_SIZE - 1);
 		r = sc_format_oid(&obj_info.app_oid, objects[i].aoid);
 		if (r != SC_SUCCESS)
-			LOG_FUNC_RETURN(card->ctx, r);
+			goto err;
 
 		/* We can not read all the objects, as some need the PIN! */
 		if (objects[i].auth_id)
@@ -744,7 +752,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			&obj_obj, &obj_info);
 
 		if (r < 0)
-			LOG_FUNC_RETURN(card->ctx, r);
+			goto err;
 	}
 
 	/*
@@ -830,7 +838,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 			static const struct sc_object_id cn_oid = {{ 2, 5, 4, 3, -1 }};
 			r = sc_pkcs15_get_name_from_dn(card->ctx, cert_out->subject,
 				cert_out->subject_len, &cn_oid, &cn_name, &cn_len);
-			if (r == SC_SUCCESS) {
+			if (r == SC_SUCCESS && cn_name && cn_len > 0) {
 				token_name = realloc(cn_name, cn_len + 1);
 				if (!token_name) {
 					sc_pkcs15_free_certificate(cert_out);
@@ -843,6 +851,8 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				token_name[cn_len] = '\0';
 				free(p15card->tokeninfo->label);
 				p15card->tokeninfo->label = token_name;
+			} else {
+				free(cn_name);
 			}
 		}
 
@@ -980,6 +990,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
 		if (r < 0) {
 			sc_log(card->ctx,  " Failed to add cert obj r=%d",r);
+			free(cert_info.value.value);
 			continue;
 		}
 	}
@@ -1098,6 +1109,10 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 						sc_log(card->ctx, "Unexpected tag %u received, expected 0x81", (tag | cla));
 						goto next_pubkey;
 					}
+					if (tag_len > info.pubkey.len - (size_t)(p - info.pubkey.value)) {
+						sc_log(card->ctx, "RSA modulus length exceeds buffer");
+						goto next_pubkey;
+					}
 					pubkey.u.rsa.modulus.data = malloc(tag_len);
 					if (pubkey.u.rsa.modulus.data == NULL) {
 						sc_log(card->ctx, "Out of memory");
@@ -1107,13 +1122,17 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					pubkey.u.rsa.modulus.len = tag_len;
 
 					p += tag_len;
-					r = sc_asn1_read_tag(&p, info.pubkey.len - (p - info.pubkey.value), &cla, &tag, &tag_len);
+					r = sc_asn1_read_tag(&p, info.pubkey.len - (size_t)(p - info.pubkey.value), &cla, &tag, &tag_len);
 					if (r != SC_SUCCESS) {
 						sc_log(card->ctx, "Failed to parse RSA exponent: %d", r);
 						goto next_pubkey;
 					}
 					if ((tag | cla) != 0x82) {
 						sc_log(card->ctx, "Unexpected tag %u received, expected 0x82", (tag | cla));
+						goto next_pubkey;
+					}
+					if (tag_len > info.pubkey.len - (size_t)(p - info.pubkey.value)) {
+						sc_log(card->ctx, "RSA exponent length exceeds buffer");
 						goto next_pubkey;
 					}
 					pubkey.u.rsa.exponent.data = malloc(tag_len);
@@ -1170,8 +1189,12 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 				}
 next_pubkey:
 				sc_pkcs15_erase_pubkey(&pubkey);
-				if (!p15_key)
+				if (!p15_key) {
+					free(pubkey_info.direct.spki.value);
+					pubkey_info.direct.spki.value = NULL;
+					pubkey_info.direct.spki.len = 0;
 					continue;
+				}
 			} else {
 				char *filename = NULL;
 
