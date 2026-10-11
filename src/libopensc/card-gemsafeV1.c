@@ -324,10 +324,14 @@ static int gemsafe_process_fci(struct sc_card *card, struct sc_file *file,
 {
 	int        r;
 	size_t     tlen;
-	const u8   *tag = NULL, *p = buf;
+	const u8   *tag = NULL, *p;
 	const char *type;
 	struct sc_context *ctx = card->ctx;
 
+	if (!file || !buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	p = buf;
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	r = iso_ops->process_fci(card, file, buf, len);
@@ -408,9 +412,13 @@ static int gemsafe_set_security_env(struct sc_card *card,
 				    int se_num)
 {
 	u8 alg_ref;
-	struct sc_security_env se_env = *env;
+	struct sc_security_env se_env;
 	struct sc_context *ctx = card->ctx;
 
+	if (!env)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	se_env = *env;
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (!(se_env.flags & SC_SEC_ENV_ALG_REF_PRESENT)) {
@@ -577,6 +585,8 @@ static int gemsafe_logout(sc_card_t *card)
 {
 	gemsafe_exdata *exdata = (gemsafe_exdata *)card->drv_data;
 
+	if (!exdata)
+		return SC_ERROR_INTERNAL;
 	return iso7816_select_aid(card, exdata->aid, exdata->aid_len, NULL, NULL);
 }
 
