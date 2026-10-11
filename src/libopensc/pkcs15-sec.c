@@ -55,11 +55,14 @@ static int sec_env_add_param(sc_security_env_t* se, const sc_sec_env_param_t* p)
 
 static int get_file_path(const struct sc_pkcs15_object* obj, sc_path_t* path)
 {
-	if (!path)
+	const struct sc_pkcs15_prkey_info *prkey;
+	const struct sc_pkcs15_skey_info *skey;
+
+	if (!obj || !obj->data || !path)
 		return SC_ERROR_INCORRECT_PARAMETERS;
 
-	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
-	const struct sc_pkcs15_skey_info *skey = (const struct sc_pkcs15_skey_info *) obj->data;
+	prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+	skey = (const struct sc_pkcs15_skey_info *) obj->data;
 
 	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY) {
 		*path = prkey->path;
@@ -174,8 +177,14 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 		sc_security_env_t *senv_out, sc_algorithm_info_t **alg_info_out)
 {
 	sc_context_t *ctx = p15card->card->ctx;
-	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
-	const struct sc_pkcs15_skey_info *skey = (const struct sc_pkcs15_skey_info *) obj->data;
+	const struct sc_pkcs15_prkey_info *prkey;
+	const struct sc_pkcs15_skey_info *skey;
+
+	if (!obj || !obj->data || !senv_out || !alg_info_out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+	skey = (const struct sc_pkcs15_skey_info *) obj->data;
 
 	memset(senv_out, 0, sizeof(*senv_out));
 
@@ -285,10 +294,15 @@ int sc_pkcs15_decipher(struct sc_pkcs15_card *p15card,
 	int r;
 	sc_algorithm_info_t *alg_info = NULL;
 	sc_security_env_t senv;
-	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+	const struct sc_pkcs15_prkey_info *prkey;
 	unsigned long pad_flags = 0, sec_flags = 0;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!obj || !obj->data || !in || !out)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_DECRYPT|SC_PKCS15_PRKEY_USAGE_UNWRAP)))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for decryption");
@@ -351,10 +365,15 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 	int r;
 	sc_algorithm_info_t *alg_info = NULL;
 	sc_security_env_t senv;
-	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+	const struct sc_pkcs15_prkey_info *prkey;
 	unsigned long pad_flags = 0, sec_flags = 0;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!obj || !obj->data || !in || !poutlen)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_DERIVE)))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for derivation");
@@ -407,9 +426,9 @@ int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 	int r;
 	sc_algorithm_info_t *alg_info = NULL;
 	sc_security_env_t senv;
-	const struct sc_pkcs15_prkey_info *src_prkey = (const struct sc_pkcs15_prkey_info *) key->data;
-	const struct sc_pkcs15_skey_info *src_skey = (const struct sc_pkcs15_skey_info *) key->data;
-	const struct sc_pkcs15_skey_info *tkey = (const struct sc_pkcs15_skey_info *) target_key->data;
+	const struct sc_pkcs15_prkey_info *src_prkey;
+	const struct sc_pkcs15_skey_info *src_skey;
+	const struct sc_pkcs15_skey_info *tkey;
 	unsigned long pad_flags = 0, sec_flags = 0;
 	u8 *out = 0;
 	size_t poutlen = 0;
@@ -417,6 +436,13 @@ int sc_pkcs15_unwrap(struct sc_pkcs15_card *p15card,
 	sc_sec_env_param_t senv_param;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!key || !key->data || !target_key || !target_key->data || !in)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	src_prkey = (const struct sc_pkcs15_prkey_info *) key->data;
+	src_skey = (const struct sc_pkcs15_skey_info *) key->data;
+	tkey = (const struct sc_pkcs15_skey_info *) target_key->data;
 
 	if (key->type == SC_PKCS15_TYPE_PRKEY_RSA) {
 		if (!(src_prkey->usage & (SC_PKCS15_PRKEY_USAGE_UNWRAP)))
@@ -492,16 +518,24 @@ int sc_pkcs15_wrap(struct sc_pkcs15_card *p15card,
 	int r;
 	sc_algorithm_info_t *alg_info = NULL;
 	sc_security_env_t senv;
-	const struct sc_pkcs15_prkey_info *src_prkey = (const struct sc_pkcs15_prkey_info *) key->data;
-	const struct sc_pkcs15_skey_info *src_skey = (const struct sc_pkcs15_skey_info *) key->data;
-	const struct sc_pkcs15_prkey_info *target_prkey = (const struct sc_pkcs15_prkey_info *) target_key->data;
-	const struct sc_pkcs15_skey_info *target_skey = (const struct sc_pkcs15_skey_info *) target_key->data;
+	const struct sc_pkcs15_prkey_info *src_prkey;
+	const struct sc_pkcs15_skey_info *src_skey;
+	const struct sc_pkcs15_prkey_info *target_prkey;
+	const struct sc_pkcs15_skey_info *target_skey;
 	unsigned long pad_flags = 0, sec_flags = 0;
 	sc_path_t tkey_path;
 	sc_path_t path, target_file_id;
 	sc_sec_env_param_t senv_param;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!key || !key->data || !target_key || !target_key->data || !crgram_len)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	src_prkey = (const struct sc_pkcs15_prkey_info *) key->data;
+	src_skey = (const struct sc_pkcs15_skey_info *) key->data;
+	target_prkey = (const struct sc_pkcs15_prkey_info *) target_key->data;
+	target_skey = (const struct sc_pkcs15_skey_info *) target_key->data;
 
 	switch (key->type) {
 		case SC_PKCS15_TYPE_PRKEY_RSA:
@@ -599,12 +633,17 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	int r;
 	sc_security_env_t senv;
 	sc_algorithm_info_t *alg_info;
-	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
+	const struct sc_pkcs15_prkey_info *prkey;
 	u8 *buf = NULL, *tmp;
 	size_t modlen = 0, buflen = 0;
 	unsigned long pad_flags = 0, sec_flags = 0;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!obj || !obj->data || !in || !out)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 
 	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_SIGN|SC_PKCS15_PRKEY_USAGE_SIGNRECOVER|
 					SC_PKCS15_PRKEY_USAGE_NONREPUDIATION)))
@@ -805,7 +844,9 @@ sc_pkcs15_encrypt_sym(struct sc_pkcs15_card *p15card,
 
 	sc_log(ctx, "called with flags 0x%lX", flags);
 
-	skey = (const struct sc_pkcs15_skey_info *)obj->data;
+	skey = (const struct sc_pkcs15_skey_info *)(obj ? obj->data : NULL);
+	if (!obj || !skey || !in)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (!(skey->usage & SC_PKCS15_PRKEY_USAGE_ENCRYPT))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for encryption");
 
@@ -892,7 +933,9 @@ sc_pkcs15_decrypt_sym(struct sc_pkcs15_card *p15card,
 
 	sc_log(ctx, "called with flags 0x%lX", flags);
 
-	skey = (const struct sc_pkcs15_skey_info *)obj->data;
+	skey = (const struct sc_pkcs15_skey_info *)(obj ? obj->data : NULL);
+	if (!obj || !skey || !in)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (!(skey->usage & SC_PKCS15_PRKEY_USAGE_DECRYPT))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for encryption");
 
