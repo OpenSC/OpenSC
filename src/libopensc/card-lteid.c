@@ -63,18 +63,24 @@ lteid_get_can_cache_path(sc_card_t *card, char *buf, size_t buf_len)
 static int
 lteid_get_cached_can(sc_card_t *card, unsigned char *can)
 {
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	char path[PATH_MAX];
+	FILE *fd;
+
+	if (!can)
+		return 0;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	lteid_get_can_cache_path(card, path, sizeof(path));
 
-	FILE *fd = fopen(path, "r");
+	fd = fopen(path, "r");
 
 	if (!fd) {
 		LOG_FUNC_RETURN(card->ctx, 0);
 	}
 
 	if (LTEID_CAN_LENGTH != fread(can, 1, LTEID_CAN_LENGTH, fd)) {
+		fclose(fd);
 		LOG_FUNC_RETURN(card->ctx, 0);
 	}
 
@@ -88,6 +94,10 @@ lteid_cache_can(sc_card_t *card, const char *can)
 {
 	int rv;
 	char path[PATH_MAX];
+	FILE *fd;
+
+	if (!can)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	lteid_get_can_cache_path(card, path, sizeof(path));
 
@@ -460,9 +470,12 @@ lteid_pin_cmd_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 static int
 lteid_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 	int rv;
+
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
@@ -516,6 +529,11 @@ lteid_set_security_env(struct sc_card *card, const struct sc_security_env *env, 
 static int
 lteid_compute_signature(struct sc_card *card, const u8 *data, size_t data_len, u8 *out, size_t outlen)
 {
+	int rv;
+
+	if (!data || !out)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	// Usually this is called with 104 bytes buffer. But we expect card to return 96 byte hash.
@@ -524,7 +542,7 @@ lteid_compute_signature(struct sc_card *card, const u8 *data, size_t data_len, u
 
 	memset(out, 0, outlen);
 
-	const int rv = iso_ops->compute_signature(card, data, data_len, out, 96);
+	rv = iso_ops->compute_signature(card, data, data_len, out, 96);
 
 	LOG_FUNC_RETURN(card->ctx, rv);
 }
@@ -532,9 +550,14 @@ lteid_compute_signature(struct sc_card *card, const u8 *data, size_t data_len, u
 static int
 lteid_process_fci(struct sc_card *card, struct sc_file *file, const u8 *buf, size_t buflen)
 {
+	int rv;
+
+	if (!file || !buf)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	int rv = iso_ops->process_fci(card, file, buf, buflen);
+	rv = iso_ops->process_fci(card, file, buf, buflen);
 
 	if (rv != SC_SUCCESS) {
 		LOG_FUNC_RETURN(card->ctx, rv);
