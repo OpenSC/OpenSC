@@ -78,13 +78,9 @@ static int insert_cert(
 	}
 
 	/* some certificates are prefixed by an OID */
-	if (cert_len > 9 && (size_t)(7 + cert[5]) <= cert_len &&
+	if (cert_len > 9 && (size_t)(9 + cert[5]) < cert_len &&
 			cert[4] == 0x06 && cert[5] < 10 && cert[6 + cert[5]] == 0x30 &&
 			cert[7 + cert[5]] == 0x82) {
-		if ((size_t)(9 + cert[5]) > cert_len) {
-			sc_log(ctx, "Invalid certificate length");
-			return 3;
-		}
 		cert_info.path.index=6+cert[5];
 		cert_info.path.count=(cert[8+cert[5]]<<8) + cert[9+cert[5]] + 4;
 	} else {
@@ -113,7 +109,7 @@ static int insert_key(
 {
 	sc_card_t *card = p15card->card;
 	sc_context_t *ctx = p15card->card->ctx;
-	sc_file_t *f;
+	sc_file_t *f = NULL;
 	struct sc_pkcs15_prkey_info prkey_info;
 	struct sc_pkcs15_object prkey_obj;
 	int r, can_sign, can_crypt;
@@ -167,7 +163,7 @@ static int insert_key(
 		}
 	} else {
 		if (sc_select_file(card, &prkey_info.path, &f) != SC_SUCCESS
-			   	|| !f->prop_attr || f->prop_attr_len < 2){
+			   	|| !f || !f->prop_attr || f->prop_attr_len < 2){
 			sc_log(ctx, "Select(%s) failed", sc_print_path(&prkey_info.path));
 			sc_file_free(f);
 			return 1;
@@ -265,7 +261,7 @@ static int insert_pin(
 		}
 	} else {
 		if (sc_select_file(card, &pin_info.path, &f) != SC_SUCCESS
-			   	|| !f->prop_attr || f->prop_attr_len < 4){
+			   	|| !f || !f->prop_attr || f->prop_attr_len < 4){
 			sc_log(ctx, "Select(%s) failed\n", path);
 			sc_file_free(f);
 			return 1;
@@ -296,7 +292,7 @@ static int detect_netkey(
 ){
 	sc_card_t *card=p15card->card;
 	sc_path_t p;
-	sc_file_t *f;
+	sc_file_t *f = NULL;
 	int keylen;
 	char dir[10];
 	const char *c_auth;
@@ -305,8 +301,8 @@ static int detect_netkey(
 	memset(&p, 0, sizeof(sc_path_t));
 	p.type=SC_PATH_TYPE_DF_NAME;
 	memcpy(p.value, "\xD2\x76\x00\x00\x03\x01\x02", p.len=7);
-	if (sc_select_file(card,&p,&f)!=SC_SUCCESS) return 1;
-	sprintf(dir,"%04X", f->id);
+	if (sc_select_file(card,&p,&f)!=SC_SUCCESS || !f) return 1;
+	snprintf(dir, sizeof(dir), "%04X", f->id);
 	sc_file_free(f);
 
 	set_string(&p15card->tokeninfo->manufacturer_id, "TeleSec GmbH");
@@ -356,8 +352,9 @@ static int detect_netkey(
 	/* SigG-Applikation */
 	p.len=7; p.type=SC_PATH_TYPE_DF_NAME;
 	memcpy(p.value, "\xD2\x76\x00\x00\x66\x01", p.len=6);
-	if (sc_select_file(card,&p,&f)==SC_SUCCESS){
-		sprintf(dir,"%04X", f->id);
+	f = NULL;
+	if (sc_select_file(card,&p,&f)==SC_SUCCESS && f){
+		snprintf(dir, sizeof(dir), "%04X", f->id);
 		sc_file_free(f);
 
 		insert_cert(p15card, dirpath(dir,"C000"), 0x49, 1, "SigG Zertifikat 1");
@@ -529,6 +526,9 @@ int sc_pkcs15emu_tcos_init_ex(
 	/* check if we have the correct card OS unless SC_PKCS15EMU_FLAGS_NO_CHECK */
 	if (card->type!=SC_CARD_TYPE_TCOS_V2 && card->type!=SC_CARD_TYPE_TCOS_V3) return SC_ERROR_WRONG_CARD;
 
+	if (!p15card->tokeninfo)
+		return SC_ERROR_INTERNAL;
+
 	/* get the card serial number */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serialnr);
 	if (r < 0) {
@@ -541,14 +541,21 @@ int sc_pkcs15emu_tcos_init_ex(
 		return SC_ERROR_INTERNAL;
 	}
 
-	serial[19] = '\0';
+	if (strlen(serial) > 19)
+		serial[19] = '\0';
 	set_string(&p15card->tokeninfo->serial_number, serial);
+	if (!p15card->tokeninfo->serial_number)
+		return SC_ERROR_OUT_OF_MEMORY;
 
-	if(!detect_netkey(p15card)) return SC_SUCCESS;
-	if(!detect_idkey(p15card)) return SC_SUCCESS;
-	if(!detect_unicard(p15card)) return SC_SUCCESS;
-	if(!detect_signtrust(p15card)) return SC_SUCCESS;
-	if(!detect_datev(p15card)) return SC_SUCCESS;
+	if (!detect_netkey(p15card)) return SC_SUCCESS;
+	sc_pkcs15_card_clear(p15card);
+	if (!detect_idkey(p15card)) return SC_SUCCESS;
+	sc_pkcs15_card_clear(p15card);
+	if (!detect_unicard(p15card)) return SC_SUCCESS;
+	sc_pkcs15_card_clear(p15card);
+	if (!detect_signtrust(p15card)) return SC_SUCCESS;
+	sc_pkcs15_card_clear(p15card);
+	if (!detect_datev(p15card)) return SC_SUCCESS;
 
 	sc_pkcs15_card_clear(p15card);
 	return SC_ERROR_INTERNAL;
