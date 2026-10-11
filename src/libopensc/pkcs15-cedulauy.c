@@ -93,6 +93,11 @@ sc_pkcs15emu_cedulauy_init(struct sc_pkcs15_card *p15card)
 	}
 	appinfo->aid = aid;
 	appinfo->ddo.aid = aid;
+	if (p15card->app) {
+		free(p15card->app->label);
+		free(p15card->app->ddo.value);
+		free(p15card->app);
+	}
 	p15card->app = appinfo;
 
 	/* Global PIN (reference 0x11, ASCII numeric, zero-padded to 12 bytes). */
@@ -123,7 +128,7 @@ sc_pkcs15emu_cedulauy_init(struct sc_pkcs15_card *p15card)
 
 	/* Set the token label and serial number from the certificate, when
 	 * readable.  The serial number also keys the file cache. */
-	if (sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert) == SC_SUCCESS) {
+	if (sc_pkcs15_read_certificate(p15card, &cert_info, 0, &cert) == SC_SUCCESS && cert) {
 		static const struct sc_object_id cn_oid = {
 				{2, 5, 4, 3, -1}
 		};
@@ -134,7 +139,7 @@ sc_pkcs15emu_cedulauy_init(struct sc_pkcs15_card *p15card)
 
 		sc_pkcs15_get_name_from_dn(ctx, cert->subject, cert->subject_len,
 				&cn_oid, &cn, &cn_len);
-		if (cn_len > 0) {
+		if (cn_len > 0 && p15card->tokeninfo) {
 			char *label = malloc(cn_len + 1);
 			if (label) {
 				memcpy(label, cn, cn_len);
@@ -146,11 +151,11 @@ sc_pkcs15emu_cedulauy_init(struct sc_pkcs15_card *p15card)
 		free(cn);
 
 		/* strip the ASN.1 INTEGER header, if present */
-		if (serial_len > 2 && serial[0] == 0x02 && serial[1] == serial_len - 2) {
+		if (serial && serial_len > 2 && serial[0] == 0x02 && serial[1] == serial_len - 2) {
 			serial += 2;
 			serial_len -= 2;
 		}
-		if (serial_len > 0) {
+		if (serial && serial_len > 0 && p15card->tokeninfo) {
 			char *sn = malloc(serial_len * 2 + 1);
 			if (sn) {
 				sc_bin_to_hex(serial, serial_len, sn, serial_len * 2 + 1, 0);
