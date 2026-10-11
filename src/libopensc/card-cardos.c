@@ -1061,6 +1061,9 @@ do_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	int r;
 	sc_apdu_t apdu;
 
+	if (!data || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
 	 * P1:  0x9E  Resp: Digital Signature
 	 * P2:  0x9A  Cmd: Input for Digital Signature */
@@ -1220,8 +1223,14 @@ cardos_decipher(struct sc_card *card,
 {
 	cardos_data_t* priv = (cardos_data_t*)card->drv_data;
 	int r;
-	size_t card_max_send_size = card->max_send_size;
-	size_t reader_max_send_size = card->reader->max_send_size;
+	size_t card_max_send_size;
+	size_t reader_max_send_size;
+
+	if (!crgram || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	card_max_send_size = card->max_send_size;
+	reader_max_send_size = card->reader ? card->reader->max_send_size : card_max_send_size;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1258,14 +1267,16 @@ cardos_decipher(struct sc_card *card,
 		 * that both, the reader and the card are able to send enough data.
 		 * (data is prefixed with 1 byte padding content indicator) */
 		card->max_send_size = crgram_len + 1;
-		card->reader->max_send_size = crgram_len + 1;
+		if (card->reader)
+			card->reader->max_send_size = crgram_len + 1;
 	}
 
 	r = iso_ops->decipher(card, crgram, crgram_len, out, outlen);
 
 	/* reset whatever we've modified above */
 	card->max_send_size = card_max_send_size;
-	card->reader->max_send_size = reader_max_send_size;
+	if (card->reader)
+		card->reader->max_send_size = reader_max_send_size;
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
@@ -1276,6 +1287,9 @@ cardos_lifecycle_get(sc_card_t *card, int *mode)
 	sc_apdu_t	apdu;
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int		r;
+
+	if (!mode)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -1323,6 +1337,9 @@ cardos_lifecycle_set(sc_card_t *card, int *mode)
 	int current;
 	int target;
 
+	if (!mode)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	target = *mode;
@@ -1357,6 +1374,9 @@ cardos_put_data_oci(sc_card_t *card,
 	sc_apdu_t	apdu;
 	int		r;
 
+	if (!args)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	memset(&apdu, 0, sizeof(apdu));
@@ -1385,6 +1405,9 @@ cardos_put_data_seci(sc_card_t *card,
 	sc_apdu_t	apdu;
 	int		r;
 
+	if (!args)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse = SC_APDU_CASE_3_SHORT;
 	apdu.cla = 0x00;
@@ -1411,6 +1434,9 @@ cardos_generate_key(sc_card_t *card,
 	sc_apdu_t	apdu;
 	u8		data[8];
 	int		r;
+
+	if (!args)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	data[0] = 0x20;		/* store as PSO object */
 	data[1] = args->key_id;
@@ -1443,6 +1469,9 @@ static int cardos_get_serialnr(sc_card_t *card, sc_serial_number_t *serial)
 	int r;
 	sc_apdu_t apdu;
 	u8  rbuf[SC_MAX_APDU_BUFFER_SIZE];
+
+	if (!serial)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x81);
 	apdu.resp = rbuf;
@@ -1512,6 +1541,9 @@ cardos_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 	int rv;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!data)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 	data->pin_reference |= 0x80;
