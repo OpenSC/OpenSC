@@ -1096,6 +1096,10 @@ static int do_create(int argc, char **argv)
 		return usage(do_create);
 
 	file = sc_file_new();
+	if (!file) {
+		fprintf(stderr, "Out of memory.\n");
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
 	file->id = (path.value[0] << 8) | path.value[1];
 	file->type = SC_FILE_TYPE_WORKING_EF;
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
@@ -1128,6 +1132,10 @@ static int do_mkdir(int argc, char **argv)
 	if (sscanf(argv[1], "%u", &size) != 1)
 		return usage(do_mkdir);
 	file = sc_file_new();
+	if (!file) {
+		fprintf(stderr, "Out of memory.\n");
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
 	file->id = (path.value[0] << 8) | path.value[1];
 	file->type = SC_FILE_TYPE_DF;
 	file->size = size;
