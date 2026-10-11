@@ -42,15 +42,26 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 	size_t sn_len;
 	char *buf;
 
+	if (!p15card->tokeninfo)
+		return SC_ERROR_INTERNAL;
+
 	set_string(&p15card->tokeninfo->label, "eID karta");
 	set_string(&p15card->tokeninfo->manufacturer_id, "Atos Information Technology GmbH");
+	if (!p15card->tokeninfo->label || !p15card->tokeninfo->manufacturer_id) {
+		sc_pkcs15_card_clear(p15card);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
 
 	sn_len = p15card->card->serialnr.len;
 	if (sn_len > 0) {
 		buf = malloc(2 * sn_len + 1);
-		if (!buf) return SC_ERROR_OUT_OF_MEMORY;
+		if (!buf) {
+			sc_pkcs15_card_clear(p15card);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		sc_bin_to_hex(p15card->card->serialnr.value, sn_len, buf,
 			2 * sn_len + 1, 0);
+		free(p15card->tokeninfo->serial_number);
 		p15card->tokeninfo->serial_number = buf;
 	}
 
@@ -83,8 +94,10 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 		strlcpy(cert_obj.label, skeid_cert_names[i], sizeof(cert_obj.label));
 
 		r = sc_pkcs15emu_add_x509_cert(p15card, &cert_obj, &cert_info);
-
-		LOG_TEST_RET(p15card->card->ctx, r, "Error adding certificate.");
+		if (r < 0) {
+			sc_pkcs15_card_clear(p15card);
+			LOG_TEST_RET(p15card->card->ctx, r, "Error adding certificate.");
+		}
 	}
 
 	/* add pins */
@@ -124,8 +137,10 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 		sc_format_path(skeid_pin_paths[i], &pin_info.path);
 
 		r = sc_pkcs15emu_add_pin_obj(p15card, &pin_obj, &pin_info);
-
-		LOG_TEST_RET(p15card->card->ctx, r, "Error adding PIN.");
+		if (r < 0) {
+			sc_pkcs15_card_clear(p15card);
+			LOG_TEST_RET(p15card->card->ctx, r, "Error adding PIN.");
+		}
 	}
 
 	/* add private keys */
@@ -171,8 +186,10 @@ static int sc_pkcs15emu_skeid_init(sc_pkcs15_card_t * p15card)
 		prkey_obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 
 		r = sc_pkcs15emu_add_rsa_prkey(p15card, &prkey_obj, &prkey_info);
-
-		LOG_TEST_RET(p15card->card->ctx, r, "Error adding private key.");
+		if (r < 0) {
+			sc_pkcs15_card_clear(p15card);
+			LOG_TEST_RET(p15card->card->ctx, r, "Error adding private key.");
+		}
 	}
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
@@ -182,7 +199,7 @@ int sc_pkcs15emu_skeid_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	int r = SC_ERROR_WRONG_CARD;
 
 	if (p15card->card->type == SC_CARD_TYPE_SKEID_V3
-		&& (aid == NULL || (aid->len == skeid_aid_qes.len && !memcmp(aid->value, &skeid_aid_qes.value, skeid_aid_qes.len))))
+		&& (aid == NULL || (aid->len == skeid_aid_qes.len && !memcmp(aid->value, skeid_aid_qes.value, skeid_aid_qes.len))))
 		r = sc_pkcs15emu_skeid_init(p15card);
 
 	return r;
