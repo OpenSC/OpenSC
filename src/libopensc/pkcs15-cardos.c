@@ -63,6 +63,11 @@ static int cardos_fix_token_info(sc_pkcs15_card_t *p15card)
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
+	if (!p15card->tokeninfo) {
+		free(passed);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
+
 	saa = &(p15card->tokeninfo->supported_algos);
 
 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Original Flags: 0x%8.8lx card->flags:0x%8.8lx", passed->used_flags, passed->card_flags);
