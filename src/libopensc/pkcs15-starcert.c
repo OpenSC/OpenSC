@@ -105,7 +105,7 @@ static int starcert_detect_card(sc_pkcs15_card_t *p15card)
 	sc_card_t *card = p15card->card;
 
 	/* check if we have the correct card OS */
-	if (strcmp(card->name, "STARCOS"))
+	if (!card->name || strcmp(card->name, "STARCOS"))
 		return SC_ERROR_WRONG_CARD;
 	/* read EF_Info file */
 	sc_format_path("3F00FE13", &path);
@@ -161,6 +161,9 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 	sc_card_t *card = p15card->card;
 	sc_serial_number_t serial;
 
+	if (!p15card->tokeninfo)
+		return SC_ERROR_INTERNAL;
+
 	/* get serial number */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
 	if (r != SC_SUCCESS)
@@ -171,7 +174,7 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 
 	set_string(&p15card->tokeninfo->serial_number, buf);
 	if (!p15card->tokeninfo->serial_number)
-		return SC_ERROR_INTERNAL;
+		goto err;
 	/* the manufacturer ID, in this case Giesecke & Devrient GmbH */
 	set_string(&p15card->tokeninfo->manufacturer_id, MANU_ID);
 	if (!p15card->tokeninfo->manufacturer_id)
@@ -265,6 +268,7 @@ static int sc_pkcs15emu_starcert_init(sc_pkcs15_card_t *p15card)
 	return SC_SUCCESS;
 
 err:
+	sc_file_free(file);
 	sc_pkcs15_card_clear(p15card);
 	return SC_ERROR_INTERNAL;
 }
