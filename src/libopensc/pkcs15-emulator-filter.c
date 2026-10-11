@@ -40,7 +40,7 @@ static int add_emul(struct _sc_pkcs15_emulators* filtered_emulators,
 	cp = &filtered_emulators->ccount;
 	max = SC_MAX_PKCS15_EMULATORS;
 
-	if (*cp > max)
+	if (*cp < 0 || *cp > max)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (*cp == max)
 		return SC_ERROR_TOO_MANY_OBJECTS;
@@ -119,7 +119,7 @@ int set_emulators(sc_context_t *ctx, struct _sc_pkcs15_emulators* filtered_emula
 		}
 	}
 out:
-	if (r == SC_SUCCESS || r == SC_ERROR_TOO_MANY_OBJECTS) {
+	if ((r == SC_SUCCESS || r == SC_ERROR_TOO_MANY_OBJECTS) && *cp >= 0 && *cp <= SC_MAX_PKCS15_EMULATORS) {
 		filtered_emulators->list_of_handlers[*cp] = NULL;
 		if (r == SC_ERROR_TOO_MANY_OBJECTS)
 			sc_log(ctx, "Warning: Number of filtered emulators exceeded %d.", SC_MAX_PKCS15_EMULATORS);
