@@ -74,6 +74,9 @@ static int get_cert_len(sc_card_t *card, sc_path_t *path)
 	int r;
 	u8  buf[8];
 
+	if (!path)
+		return 0;
+
 	r = sc_select_file(card, path, NULL);
 	if (r < 0)
 		return 0;
@@ -95,7 +98,7 @@ static int acos_detect_card(sc_pkcs15_card_t *p15card)
 	sc_card_t *card = p15card->card;
 
 	/* check if we have the correct card OS */
-	if (strncmp(card->name, "A-TRUST ACOS", strlen("A-TRUST ACOS")))
+	if (!card->name || strncmp(card->name, "A-TRUST ACOS", strlen("A-TRUST ACOS")))
 		return SC_ERROR_WRONG_CARD;
 	/* read EF_CIN_CSN file */
 	sc_format_path("DF71D001", &path);
@@ -255,6 +258,7 @@ static int sc_pkcs15emu_atrust_acos_init(sc_pkcs15_card_t *p15card)
 	return SC_SUCCESS;
 
 err:
+	sc_file_free(file);
 	sc_pkcs15_card_clear(p15card);
 	return SC_ERROR_INTERNAL;
 }
