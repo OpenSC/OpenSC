@@ -128,11 +128,11 @@ static int load_object(const char * object_id, const char * object_file)
 		goto err;
 	}
 
-	if (0 != stat(object_file, &stat_buf)) {
-		printf("unable to read file %s\n", object_file);
+	if (0 != stat(object_file, &stat_buf) || stat_buf.st_size <= 0 || stat_buf.st_size > 0x00FFFFFF) {
+		printf("unable to read file or invalid size %s\n", object_file);
 		goto err;
 	}
-	derlen = stat_buf.st_size;
+	derlen = (size_t)stat_buf.st_size;
 	der = malloc(derlen);
 	if (der == NULL) {
 		printf("file %s is too big, %lu\n",
@@ -145,7 +145,7 @@ static int load_object(const char * object_id, const char * object_file)
 	}
 	/* check if tag and length are valid */
 	body = (u8 *)sc_asn1_find_tag(card->ctx, der, derlen, 0x53, &bodylen);
-	if (body == NULL || derlen != body - der + bodylen) {
+	if (body == NULL || body < der || derlen < (size_t)(body - der) || derlen - (size_t)(body - der) != bodylen) {
 		fprintf(stderr, "object tag or length not valid\n");
 		goto err;
 	}
@@ -176,7 +176,7 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	X509 * cert = NULL;
 	FILE *fp = NULL;
 	u8 buf[1];
-	size_t buflen = 1;
+	size_t buflen = sizeof(buf);
 	sc_path_t path;
 	u8 *der = NULL;
 	u8 *p;
@@ -196,11 +196,11 @@ static int load_cert(const char * cert_id, const char * cert_file,
 	if (compress) { /* file is gzipped already */
 		struct stat stat_buf;
 
-		if (0 != stat(cert_file, &stat_buf)) {
-			printf("unable to read file %s\n", cert_file);
+		if (0 != stat(cert_file, &stat_buf) || stat_buf.st_size <= 0 || stat_buf.st_size > 0x00FFFFFF) {
+			printf("unable to read file or invalid size %s\n", cert_file);
 			goto err;
 		}
-		derlen = stat_buf.st_size;
+		derlen = (size_t)stat_buf.st_size;
 		der = malloc(derlen);
 		if (der == NULL) {
 			printf("file %s is too big, %lu\n",
@@ -227,7 +227,11 @@ static int load_cert(const char * cert_id, const char * cert_file,
 		p = der;
 		i2d_X509(cert, &p);
 	}
-	sc_hex_to_bin(cert_id, buf,&buflen);
+	if (!cert_id || sc_hex_to_bin(cert_id, buf, &buflen) < 0 || buflen < 1) {
+		fprintf(stderr, "Invalid cert ID\n");
+		r = 2;
+		goto err;
+	}
 
 	switch (buf[0]) {
 		case 0x9a: sc_format_path("0101",&path); break;
@@ -251,6 +255,8 @@ static int load_cert(const char * cert_id, const char * cert_file,
 
 err:
 	free(der);
+	if (cert)
+		X509_free(cert);
 	if (fp)
 		fclose(fp);
 
@@ -293,8 +299,7 @@ static int gen_key(const char * key_info)
 	int nid = -1;
 #endif
 
-	sc_hex_to_bin(key_info, buf, &buflen);
-	if (buflen != 2) {
+	if (!key_info || sc_hex_to_bin(key_info, buf, &buflen) < 0 || buflen != 2) {
 		fprintf(stderr, "<keyref>:<algid> invalid. Example: 9A:07 to create 9A key with RSA 2048\n");
 		return 2;
 	}
@@ -510,8 +515,8 @@ static int gen_key(const char * key_info)
 		const char *group_name;
 #endif
 
-		if (!keydata.ecpoint) {
-			fprintf(stderr, "gen_key failed\n");
+		if (!keydata.ecpoint || keydata.ecpoint_len < 3 || (keydata.ecpoint_len - 1) % 2 != 0 || keydata.ecpoint[0] != 0x04) {
+			fprintf(stderr, "gen_key invalid EC point data\n");
 			r = 1;
 			goto out;
 		}
@@ -678,7 +683,11 @@ static int send_apdu(void)
 
 	for (c = 0; c < opt_apdu_count; c++) {
 		len0 = sizeof(buf);
-		sc_hex_to_bin(opt_apdus[c], buf, &len0);
+		r = sc_hex_to_bin(opt_apdus[c], buf, &len0);
+		if (r < 0 || len0 == 0) {
+			fprintf(stderr, "Could not parse APDU #%d\n", c);
+			return 2;
+		}
 
 		r = sc_bytes2apdu(card->ctx, buf, len0, &apdu);
 		if (r) {
@@ -817,13 +826,17 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
+	bp = BIO_new(BIO_s_file());
+	if (!bp) {
+		fprintf(stderr, "Out of memory creating BIO\n");
+		err = 1;
+		goto end;
+	}
 	if (out_file) {
-		bp = BIO_new(BIO_s_file());
 		if (!BIO_write_filename(bp, (char *)out_file))
 			goto end;
 	} else {
-		bp = BIO_new(BIO_s_file());
-		BIO_set_fp(bp,stdout,BIO_NOCLOSE);
+		BIO_set_fp(bp, stdout, BIO_NOCLOSE);
 	}
 
 	memset(&ctx_param, 0, sizeof(sc_context_param_t));
@@ -849,7 +862,7 @@ int main(int argc, char *argv[])
 		goto end;
 	}
 
-	err = util_connect_card(ctx, &card, opt_reader, opt_wait);
+	err = util_connect_card_ex(ctx, &card, opt_reader, opt_wait, 1);
 	if (err)
 		goto end;
 
