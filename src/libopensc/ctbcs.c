@@ -42,12 +42,14 @@ ctbcs_init_apdu(sc_apdu_t *apdu, int cse, int ins, int p1, int p2)
 }
 
 static int
-ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
+ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data, u8 *buf, size_t buflen)
 {
 	const char *prompt;
-	size_t buflen, count = 0, j = 0, len;
-	static u8 buf[SC_MAX_APDU_BUFFER_SIZE];
+	size_t count = 0, j = 0, len;
 	u8 control;
+
+	if (!apdu || !data || !buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	ctbcs_init_apdu(apdu,
 			SC_APDU_CASE_3_SHORT,
@@ -55,14 +57,13 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 			CTBCS_P1_INTERFACE1,
 			0);
 
-	buflen = sizeof(buf);
 	prompt = data->pin1.prompt;
 	if (prompt && *prompt) {
 		len = strlen(prompt);
-		if (len + 2 > buflen)
+		if (len > 255 || len + 2 > buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		buf[count++] = CTBCS_TAG_PROMPT;
-		buf[count++] = len;
+		buf[count++] = (u8)len;
 		memcpy(buf + count, prompt, len);
 		count += len;
 	}
@@ -84,9 +85,9 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 	else if (data->pin1.encoding != SC_PIN_ENCODING_BCD)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (data->pin1.min_length == data->pin1.max_length)
-		control |= data->pin1.min_length << CTBCS_PIN_CONTROL_LEN_SHIFT;
+		control |= (data->pin1.min_length & 0x1F) << CTBCS_PIN_CONTROL_LEN_SHIFT;
 	buf[j++] = control;
-	buf[j++] = data->pin1.offset+1; /* Looks like offset is 1-based in CTBCS */
+	buf[j++] = (u8)(data->pin1.offset + 1); /* Looks like offset is 1-based in CTBCS */
 	buf[j++] = data->apdu->cla;
 	buf[j++] = data->apdu->ins;
 	buf[j++] = data->apdu->p1;
@@ -94,14 +95,16 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 
 	if (data->flags & SC_PIN_CMD_NEED_PADDING) {
 		len = data->pin1.pad_length;
-		if (2 + j + len > buflen)
+		if (len > 255 || 2 + j + len > buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
-		buf[j++] = len;
+		buf[j++] = (u8)len;
 		memset(buf+j, data->pin1.pad_char, len);
 		j += len;
 	}
 
-	buf[count+1] = j - count - 2;
+	if (j - count - 2 > 255)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	buf[count+1] = (u8)(j - count - 2);
 	count = j;
 
 	apdu->lc = apdu->datalen = count;
@@ -111,12 +114,14 @@ ctbcs_build_perform_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *d
 }
 
 static int
-ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data)
+ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *data, u8 *buf, size_t buflen)
 {
 	const char *prompt;
-	size_t buflen, count = 0, j = 0, len;
-	static u8 buf[SC_MAX_APDU_BUFFER_SIZE];
+	size_t count = 0, j = 0, len;
 	u8 control;
+
+	if (!apdu || !data || !buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	ctbcs_init_apdu(apdu,
 			SC_APDU_CASE_3_SHORT,
@@ -124,14 +129,13 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 			CTBCS_P1_INTERFACE1,
 			0);
 
-	buflen = sizeof(buf);
 	prompt = data->pin1.prompt;
 	if (prompt && *prompt) {
 		len = strlen(prompt);
-		if (len + 2 > buflen)
+		if (len > 255 || len + 2 > buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		buf[count++] = CTBCS_TAG_PROMPT;
-		buf[count++] = len;
+		buf[count++] = (u8)len;
 		memcpy(buf + count, prompt, len);
 		count += len;
 	}
@@ -153,10 +157,10 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 	else if (data->pin1.encoding != SC_PIN_ENCODING_BCD)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (data->pin1.min_length == data->pin1.max_length)
-		control |= data->pin1.min_length << CTBCS_PIN_CONTROL_LEN_SHIFT;
+		control |= (data->pin1.min_length & 0x1F) << CTBCS_PIN_CONTROL_LEN_SHIFT;
 	buf[j++] = control;
-	buf[j++] = data->pin1.offset+1; /* Looks like offset is 1-based in CTBCS */
-	buf[j++] = data->pin2.offset+1;
+	buf[j++] = (u8)(data->pin1.offset + 1); /* Looks like offset is 1-based in CTBCS */
+	buf[j++] = (u8)(data->pin2.offset + 1);
 	buf[j++] = data->apdu->cla;
 	buf[j++] = data->apdu->ins;
 	buf[j++] = data->apdu->p1;
@@ -164,14 +168,16 @@ ctbcs_build_modify_verification_apdu(sc_apdu_t *apdu, struct sc_pin_cmd_data *da
 
 	if (data->flags & SC_PIN_CMD_NEED_PADDING) {
 		len = data->pin1.pad_length + data->pin2.pad_length;
-		if (2 + j + len > buflen)
+		if (len > 255 || 2 + j + len > buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
-		buf[j++] = len;
+		buf[j++] = (u8)len;
 		memset(buf+j, data->pin1.pad_char, len);
 		j += len;
 	}
 
-	buf[count+1] = j - count - 2;
+	if (j - count - 2 > 255)
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	buf[count+1] = (u8)(j - count - 2);
 	count = j;
 
 	apdu->lc = apdu->datalen = count;
@@ -186,17 +192,21 @@ ctbcs_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	sc_card_t dummy_card, *card;
 	sc_apdu_t apdu;
 	struct sc_card_operations ops;
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	int r, s;
+
+	if (!reader || !data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
-		r = ctbcs_build_perform_verification_apdu(&apdu, data);
+		r = ctbcs_build_perform_verification_apdu(&apdu, data, sbuf, sizeof(sbuf));
 		if (r != SC_SUCCESS)
 			return r;
 		break;
 	case SC_PIN_CMD_CHANGE:
 	case SC_PIN_CMD_UNBLOCK:
-		r = ctbcs_build_modify_verification_apdu(&apdu, data);
+		r = ctbcs_build_modify_verification_apdu(&apdu, data, sbuf, sizeof(sbuf));
 		if (r != SC_SUCCESS)
 			return r;
 		break;
@@ -223,6 +233,12 @@ ctbcs_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	}
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
+	/* Calling Function may expect SW1/SW2 in data-apdu set... */
+	if (data->apdu) {
+		data->apdu->sw1 = apdu.sw1;
+		data->apdu->sw2 = apdu.sw2;
+	}
+
 	/* Check CTBCS status word */
 	switch (((unsigned int) apdu.sw1 << 8) | apdu.sw2) {
 	case 0x9000:
@@ -245,12 +261,6 @@ ctbcs_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 		break;
 	}
 	LOG_TEST_RET(card->ctx, r, "PIN command failed");
-
-	/* Calling Function may expect SW1/SW2 in data-apdu set... */
-	if (data->apdu) {
-		data->apdu->sw1 = apdu.sw1;
-		data->apdu->sw2 = apdu.sw2;
-	}
 
 	return 0;
 }
