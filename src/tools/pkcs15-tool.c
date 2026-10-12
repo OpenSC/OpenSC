@@ -332,6 +332,8 @@ print_pem_object(const char *kind, const u8*data, size_t data_len)
 	/* With base64, every 3 bytes yield 4 characters, and with
 	 * 64 chars per line we know almost exactly how large a buffer we
 	 * will need. */
+	if (data_len > (SIZE_MAX - 256) / 2)
+		return 1;
 	buf_len = (data_len + 2) / 3 * 4;
 	buf_len += 2 * (buf_len / 64 + 2); /* certain platforms use CRLF */
 	buf_len += 64;			   /* slack for checksum etc */
@@ -424,7 +426,11 @@ static int read_certificate(void)
 	struct sc_pkcs15_object *objs[32];
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
-	sc_pkcs15_hex_string_to_id(opt_cert, &id);
+	r = sc_pkcs15_hex_string_to_id(opt_cert, &id);
+	if (r < 0) {
+		fprintf(stderr, "Invalid certificate ID '%s'\n", opt_cert);
+		return 1;
+	}
 
 	r = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, 32);
 	if (r < 0) {
@@ -672,8 +678,10 @@ static void print_prkey_info(const struct sc_pkcs15_object *obj)
 		printf("\tAuth ID        : %s\n", sc_pkcs15_print_id(&obj->auth_id));
 	printf("\tID             : %s\n", sc_pkcs15_print_id(&prkey->id));
 
-	guid_len = sizeof(guid);
+	guid_len = sizeof(guid) - 1;
+	memset(guid, 0, sizeof(guid));
 	if (!sc_pkcs15_get_object_guid(p15card, obj, 1, guid, &guid_len))   {
+		guid[guid_len] = '\0';
 		printf("\tMD:guid        : ");
 		if (strlen((char *)guid) == guid_len)   {
 			printf("%s\n", (char *)guid);
@@ -802,7 +810,11 @@ static int read_public_key(void)
 	pem_key.len = 0;
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
-	sc_pkcs15_hex_string_to_id(opt_pubkey, &id);
+	r = sc_pkcs15_hex_string_to_id(opt_pubkey, &id);
+	if (r < 0) {
+		fprintf(stderr, "Invalid public key ID '%s'\n", opt_pubkey);
+		return 1;
+	}
 
 	r = sc_pkcs15_find_pubkey_by_id(p15card, &id, &obj);
 	if (r >= 0) {
@@ -884,9 +896,19 @@ static void print_skey_info(const struct sc_pkcs15_object *obj)
 	if (skey->path.len || skey->path.aid.len)
 		printf("\tPath           : %s\n", sc_print_path(&skey->path));
 
-	guid_len = sizeof(guid);
+	guid_len = sizeof(guid) - 1;
+	memset(guid, 0, sizeof(guid));
 	if (!sc_pkcs15_get_object_guid(p15card, obj, 1, guid, &guid_len))   {
-		printf("\tGUID           : %s\n", (char *)guid);
+		guid[guid_len] = '\0';
+		printf("\tGUID           : ");
+		if (strlen((char *)guid) == guid_len)   {
+			printf("%s\n", (char *)guid);
+		}
+		else  {
+			printf("0x'");
+			util_hex_dump(stdout, guid, guid_len, "");
+			printf("'\n");
+		}
 	}
 
 }
@@ -916,14 +938,18 @@ static int list_skeys(void)
 
 static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object *obj, unsigned char * buf, size_t len) {
 	unsigned char *uu;
+	size_t uu_len;
 	int r;
 
-	uu = malloc(len*2); // Way over - even if we have extra LFs; as each 6 bits take one byte.
+	if (len > (SIZE_MAX - 128) / 2)
+		return;
+	uu_len = (len + 2) / 3 * 4 + 64;
+	uu = malloc(uu_len);
 	if (!uu)
 		return;
 
 	if (opt_rfc4716) {
-		r = sc_base64_encode(buf, len, uu, 2*len, 64);
+		r = sc_base64_encode(buf, len, uu, uu_len, 64);
 		if (r < 0) {
 			free(uu);
 			return;
@@ -939,7 +965,7 @@ static void print_ssh_key(FILE *outf, const char * alg, struct sc_pkcs15_object 
 	} else {
 		// Old style openssh - [<quote protected options> <whitespace> <keytype> <whitespace> <key> [<whitespace> anything else]
 		//
-		r = sc_base64_encode(buf, len, uu, 2*len, 0);
+		r = sc_base64_encode(buf, len, uu, uu_len, 0);
 		if (r < 0) {
 			free(uu);
 			return;
@@ -975,7 +1001,13 @@ static int read_ssh_key(void)
 	}
 
 	id.len = SC_PKCS15_MAX_ID_SIZE;
-	sc_pkcs15_hex_string_to_id(opt_pubkey, &id);
+	r = sc_pkcs15_hex_string_to_id(opt_pubkey, &id);
+	if (r < 0) {
+		if (opt_outfile != NULL && outf != NULL)
+			fclose(outf);
+		fprintf(stderr, "Invalid public key ID '%s'\n", opt_pubkey);
+		return 1;
+	}
 
 	r = sc_pkcs15_find_pubkey_by_id(p15card, &id, &obj);
 	if (r >= 0) {
@@ -1103,11 +1135,13 @@ static int read_ssh_key(void)
 
 		if (len + 4 + 9 > (int)sizeof(buf))
 			goto fail2;
+		tmp = snprintf((char *) buf+len+4, sizeof(buf) - len - 4, "nistp%zu", n);
+		if (tmp < 0 || tmp > 255 || len + 4 + tmp > (int)sizeof(buf))
+			goto fail2;
 		buf[len++] = 0;
 		buf[len++] = 0;
 		buf[len++] = 0;
-		tmp = snprintf((char *) buf+len+1, 9, "nistp%zu", n);
-		buf[len++] = tmp;
+		buf[len++] = (unsigned char)tmp;
 		len += tmp;
 
 		n = pubkey->u.ec.ecpointQ.len;
@@ -1142,7 +1176,7 @@ static int read_ssh_key(void)
 		buf[2]=0;
 		buf[3]=7;
 
-		len = sprintf((char *) buf+4,"ssh-rsa");
+		len = snprintf((char *) buf+4, sizeof(buf)-4, "ssh-rsa");
 		len+=4;
 
 		if (sizeof(buf)-len < 5+pubkey->u.rsa.exponent.len)
@@ -1223,7 +1257,11 @@ get_pin_info(void)
 	} else {
 		struct sc_pkcs15_id auth_id;
 
-		sc_pkcs15_hex_string_to_id(opt_auth_id, &auth_id);
+		r = sc_pkcs15_hex_string_to_id(opt_auth_id, &auth_id);
+		if (r < 0) {
+			fprintf(stderr, "Invalid auth ID: %s\n", opt_auth_id);
+			return NULL;
+		}
 		r = sc_pkcs15_find_pin_by_auth_id(p15card, &auth_id, &obj);
 		if (r) {
 			fprintf(stderr, "Unable to find PIN code: %s\n", sc_strerror(r));
@@ -1254,18 +1292,34 @@ static u8 * get_pin(const char *prompt, sc_pkcs15_object_t *pin_obj)
 
 	while (1) {
 		r = util_getpass(&pincode, &len, stdin);
-		if (r < 0)
+		if (r < 0) {
+			if (pincode) {
+				sc_mem_clear(pincode, len);
+				free(pincode);
+			}
 			return NULL;
+		}
 		if (!pincode || strlen(pincode) == 0) {
-			free(pincode);
+			if (pincode) {
+				sc_mem_clear(pincode, len);
+				free(pincode);
+			}
 			return NULL;
 		}
 		if (strlen(pincode) < pinfo->attrs.pin.min_length) {
 			printf("PIN code too short, try again.\n");
+			sc_mem_clear(pincode, len);
+			free(pincode);
+			pincode = NULL;
+			len = 0;
 			continue;
 		}
 		if (strlen(pincode) > pinfo->attrs.pin.max_length) {
 			printf("PIN code too long, try again.\n");
+			sc_mem_clear(pincode, len);
+			free(pincode);
+			pincode = NULL;
+			len = 0;
 			continue;
 		}
 		return (u8 *) pincode;
@@ -1385,8 +1439,10 @@ static int verify_pin(void)
 
 
 	r = sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin ? strlen((char *) pin) : 0);
-	if (opt_pin == NULL)
+	if (opt_pin == NULL && pin != NULL) {
+		sc_mem_clear(pin, strlen((char *) pin));
 		free(pin);
+	}
 	if (r < 0)   {
 		fprintf(stderr, "Operation failed: %s\n", sc_strerror(r));
 		return -1;
@@ -1449,14 +1505,18 @@ static int test_session_pin(void)
 
 	r = sc_pkcs15_verify_pin_with_session_pin(p15card, pin_obj, pin, pin ? strlen((char *) pin) : 0,
 			sessionpin, &sessionpinlen);
-	if (opt_pin == NULL)
+	if (opt_pin == NULL && pin != NULL) {
+		sc_mem_clear(pin, strlen((char *) pin));
 		free(pin);
+	}
 	if (r < 0)   {
+		sc_mem_clear(sessionpin, sizeof(sessionpin));
 		fprintf(stderr, "Operation failed: %s\n", sc_strerror(r));
 		return -1;
 	}
 
 	if (!sessionpinlen)   {
+		sc_mem_clear(sessionpin, sizeof(sessionpin));
 		fprintf(stderr, "Could not generate session PIN\n");
 		return -1;
 	}
@@ -1472,6 +1532,7 @@ static int test_session_pin(void)
 	r = sc_pkcs15_verify_pin(p15card, pin_obj, sessionpin, sessionpinlen);
 	/* restore the pin type */
 	auth_info->auth_method = auth_method;
+	sc_mem_clear(sessionpin, sizeof(sessionpin));
 	if (r < 0)   {
 		fprintf(stderr, "Could not verify session PIN: %s\n", sc_strerror(r));
 		return -1;
@@ -1501,8 +1562,10 @@ static int authenticate(sc_pkcs15_object_t *obj)
 
 	r = sc_pkcs15_verify_pin(p15card, pin_obj, pin, pin? strlen((char *) pin) : 0);
 
-	if (opt_pin == NULL)
+	if (opt_pin == NULL && pin != NULL) {
+		sc_mem_clear(pin, strlen((char *) pin));
 		free(pin);
+	}
 
 	return r;
 }
@@ -1785,21 +1848,38 @@ static int unblock_pin(void)
 			break;
 		}
 		if (pin == NULL || strlen((char *) pin) == 0) {
-			free(pin);
+			if (pin) {
+				sc_mem_clear(pin, strlen((char *) pin));
+				free(pin);
+			}
+			if (NULL == opt_puk && puk != NULL) {
+				sc_mem_clear(puk, strlen((char *) puk));
+				free(puk);
+			}
 			return 2;
 		}
 
 		pin2 = get_pin("Enter new PIN again", pin_obj);
 		if (pin2 == NULL || strlen((char *) pin2) == 0) {
+			sc_mem_clear(pin, strlen((char *) pin));
 			free(pin);
-			free(pin2);
+			if (pin2) {
+				sc_mem_clear(pin2, strlen((char *) pin2));
+				free(pin2);
+			}
+			if (NULL == opt_puk && puk != NULL) {
+				sc_mem_clear(puk, strlen((char *) puk));
+				free(puk);
+			}
 			return 2;
 		}
 		if (strcmp((char *) pin, (char *) pin2) != 0) {
 			printf("PIN codes do not match, try again.\n");
+			sc_mem_clear(pin, strlen((char *) pin));
 			free(pin);
 			pin = NULL;
 		}
+		sc_mem_clear(pin2, strlen((char *) pin2));
 		free(pin2);
 	}
 
@@ -1807,10 +1887,14 @@ static int unblock_pin(void)
 			puk, puk ? strlen((char *) puk) : 0,
 			pin, pin ? strlen((char *) pin) : 0);
 
-	if (NULL == opt_puk)
+	if (NULL == opt_puk && puk != NULL) {
+		sc_mem_clear(puk, strlen((char *) puk));
 		free(puk);
-	if (NULL == opt_pin && NULL == opt_newpin)
+	}
+	if (NULL == opt_pin && NULL == opt_newpin && pin != NULL) {
+		sc_mem_clear(pin, strlen((char *) pin));
 		free(pin);
+	}
 
 	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 		fprintf(stderr, "PUK code incorrect; tries left: %d\n", pinfo->tries_left);
@@ -1861,8 +1945,10 @@ static int change_pin(void)
 
 	if (pincode && strlen((char *) pincode) == 0) {
 		fprintf(stderr, "No PIN code supplied.\n");
-		if (opt_pin == NULL)
+		if (opt_pin == NULL) {
+			sc_mem_clear(pincode, strlen((char *) pincode));
 			free(pincode);
+		}
 		return 2;
 	}
 
@@ -1881,27 +1967,47 @@ static int change_pin(void)
 		}
 		if (newpin == NULL || strlen((char *) newpin) == 0)   {
 			fprintf(stderr, "No new PIN value supplied.\n");
-			free(newpin);
-			if (opt_pin == NULL)
+			if (newpin) {
+				sc_mem_clear(newpin, strlen((char *) newpin));
+				free(newpin);
+			}
+			if (opt_pin == NULL && pincode != NULL) {
+				sc_mem_clear(pincode, strlen((char *) pincode));
 				free(pincode);
+			}
 			return 2;
 		}
 
 		newpin2 = get_pin("Enter new PIN again", pin_obj);
 		if (newpin2 && strlen((char *) newpin2) &&
 				strcmp((char *) newpin, (char *) newpin2) == 0) {
+			sc_mem_clear(newpin2, strlen((char *) newpin2));
 			free(newpin2);
 			break;
 		}
 		printf("PIN codes do not match, try again.\n");
+		sc_mem_clear(newpin, strlen((char *) newpin));
 		free(newpin);
-		free(newpin2);
-		newpin=NULL;
+		newpin = NULL;
+		if (newpin2) {
+			sc_mem_clear(newpin2, strlen((char *) newpin2));
+			free(newpin2);
+		}
 	}
 
 	r = sc_pkcs15_change_pin(p15card, pin_obj,
 			pincode, pincode ? strlen((char *) pincode) : 0,
 			newpin, newpin ? strlen((char *) newpin) : 0);
+
+	if (opt_pin == NULL && pincode != NULL) {
+		sc_mem_clear(pincode, strlen((char *) pincode));
+		free(pincode);
+	}
+	if (opt_newpin == NULL && newpin != NULL) {
+		sc_mem_clear(newpin, strlen((char *) newpin));
+		free(newpin);
+	}
+
 	if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 		fprintf(stderr, "PIN code incorrect; tries left: %d\n", pinfo->tries_left);
 		return 3;
@@ -1911,11 +2017,6 @@ static int change_pin(void)
 	}
 	if (verbose)
 		printf("PIN code changed successfully.\n");
-
-	if (opt_pin == NULL)
-		free(pincode);
-	if (opt_newpin == NULL)
-		free(newpin);
 
 	return 0;
 }
@@ -1982,11 +2083,15 @@ static int test_update(sc_card_t *in_card)
 
 	{
 		size_t i=0;
-		while(i < rbuf[1]) {
+		while(i < (size_t)rbuf[1]) {
+			if (2 + i >= apdu.resplen)
+				break;
 			if (rbuf[2+i] == 0x86) { /* found our buffer */
 				break;
 			}
 			/* other tag */
+			if (2 + i + 1 >= apdu.resplen)
+				break;
 			i += 2 + rbuf[2+i+1]; /* length of this tag*/
 			if (2+i+1 >= apdu.resplen) {
 				break;
