@@ -317,7 +317,7 @@ for ax_pthread_try_flag in $ax_pthread_flags; do
 #                       if $ax_pthread_check_cond
 #                        error "$ax_pthread_check_macro must be defined"
 #                       endif
-                        static void *volatile some_global = NULL;
+                        static void *some_global = NULL;
                         static void routine(void *a)
                           {
                              /* To avoid any unused-parameter or
