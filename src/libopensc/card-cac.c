@@ -1032,6 +1032,8 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 
 	if (card == NULL || in_path == NULL)
 		return SC_ERROR_INTERNAL;
+	if (in_path->len > sizeof(pathbuf))
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	priv = CAC_DATA(card);
 	ctx = card->ctx;
