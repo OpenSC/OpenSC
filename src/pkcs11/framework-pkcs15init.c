@@ -52,7 +52,10 @@ static CK_RV pkcs15init_unbind(struct sc_pkcs11_card *p11card)
 	if (!p11card)
 		return CKR_TOKEN_NOT_RECOGNIZED;
 	profile = (struct sc_profile *) p11card->fws_data[0];
-	sc_pkcs15init_unbind(profile);
+	if (profile) {
+		sc_pkcs15init_unbind(profile);
+		p11card->fws_data[0] = NULL;
+	}
 	return CKR_OK;
 }
 
@@ -67,6 +70,8 @@ pkcs15init_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app
 	if (!p11card)
 		return CKR_TOKEN_NOT_RECOGNIZED;
 	profile = (struct sc_profile *) p11card->fws_data[0];
+	if (!profile)
+		return CKR_DEVICE_ERROR;
 
 	rc = slot_allocate(&slot, p11card);
 	if (rc == CKR_OK) {
@@ -133,16 +138,19 @@ pkcs15init_initialize(struct sc_pkcs11_slot *pslot, void *ptr,
 		CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen,
 		CK_UTF8CHAR_PTR pLabel)
 {
-	struct sc_pkcs11_card *p11card = pslot->p11card;
+	struct sc_pkcs11_card *p11card;
 	struct sc_profile *profile;
 	struct sc_pkcs15init_initargs args;
 	struct sc_pkcs11_slot *slot;
-    CK_RV rv;
+	CK_RV rv;
 	int		rc, id;
 
-	if (!p11card)
+	if (!pslot || !pslot->p11card)
 		return CKR_TOKEN_NOT_RECOGNIZED;
+	p11card = pslot->p11card;
 	profile = (struct sc_profile *) p11card->fws_data[0];
+	if (!profile)
+		return CKR_DEVICE_ERROR;
 	memset(&args, 0, sizeof(args));
 	args.so_pin = pPin;
 	args.so_pin_len = ulPinLen;
@@ -169,13 +177,15 @@ pkcs15init_initialize(struct sc_pkcs11_slot *pslot, void *ptr,
 	 * the flags.
 	 */
 	for (id = 0; slot_get_slot(id, &slot) == CKR_OK; id++) {
-		if (slot->p11card == p11card)
+		if (slot && slot->p11card == p11card) {
 			slot->token_info.flags |= CKF_TOKEN_INITIALIZED;
-		if (slot->p11card->card->caps & SC_CARD_CAP_RNG)
-			slot->token_info.flags |= CKF_RNG;
+			if (p11card->card->caps & SC_CARD_CAP_RNG)
+				slot->token_info.flags |= CKF_RNG;
+		}
 	}
 
 	sc_pkcs15init_unbind(profile);
+	p11card->fws_data[0] = NULL;
 	return CKR_OK;
 }
 
