@@ -470,8 +470,13 @@ sc_pkcs11_md_final(struct sc_pkcs11_session *session,
 		*pulDataLen = 0;
 
 	rv = op->type->md_final(op, pData, pulDataLen);
-	if (rv == CKR_BUFFER_TOO_SMALL)
-		LOG_FUNC_RETURN(context,  pData == NULL ? CKR_OK : CKR_BUFFER_TOO_SMALL);
+	/* application is requesting buffer size ? */
+	if (pData == NULL) {
+		/* do not terminate session for CKR_OK */
+		if (rv == CKR_BUFFER_TOO_SMALL || rv == CKR_OK)
+			LOG_FUNC_RETURN(context, CKR_OK);
+	} else if (rv == CKR_BUFFER_TOO_SMALL)
+		LOG_FUNC_RETURN(context, CKR_BUFFER_TOO_SMALL);
 
 	session_stop_operation(session, SC_PKCS11_OPERATION_DIGEST);
 	LOG_FUNC_RETURN(context, (int) rv);
