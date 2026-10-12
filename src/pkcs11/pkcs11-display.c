@@ -115,7 +115,19 @@ print_enum(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg
 {
 	enum_spec *spec = (enum_spec*)arg;
 	CK_ULONG i;
-	CK_ULONG ctype = *((CK_ULONG_PTR)value);
+	CK_ULONG ctype;
+
+	if (!f)
+		return;
+	if (!spec || !spec->specs) {
+		fprintf(f, "Unknown (no spec)\n");
+		return;
+	}
+	if (!value || size < sizeof(CK_ULONG)) {
+		fprintf(f, "INVALID (size: %lu)\n", (unsigned long)size);
+		return;
+	}
+	ctype = *((CK_ULONG_PTR)value);
 
 	for(i = 0; i < spec->size; i++) {
 		if(spec->specs[i].type == ctype) {
@@ -123,13 +135,21 @@ print_enum(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg
 			return;
 		}
 	}
-	fprintf(f, "Value %lX not found for type %s\n", ctype, spec->name);
+	fprintf(f, "Value %lX not found for type %s\n", ctype, spec->name ? spec->name : "unknown");
 }
 
 void
 print_boolean(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
-	CK_BYTE i = *((CK_BYTE *)value);
+	CK_BYTE i;
+
+	if (!f)
+		return;
+	if (!value || size < sizeof(CK_BYTE)) {
+		fprintf(f, "INVALID (size: %lu)\n", (unsigned long)size);
+		return;
+	}
+	i = *((CK_BYTE *)value);
 	fprintf(f, i ? "True\n" : "False\n");
 }
 
@@ -138,6 +158,8 @@ print_generic(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR 
 {
 	CK_ULONG i;
 
+	if (!f)
+		return;
 	if((long)size != -1 && value != NULL) {
 		char hex[16*3+1] = {0};
 		char ascii[16+1];
@@ -188,19 +210,24 @@ print_generic(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR 
 static void
 print_dn(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg, CK_KEY_TYPE key_type)
 {
+	if (!f)
+		return;
 	print_generic(f, type, value, size, arg, key_type);
-	if(size && value) {
+	if(size && value && size <= LONG_MAX) {
 		X509_NAME *name;
 		const unsigned char *tmp = value;
 
-		name = d2i_X509_NAME(NULL, &tmp, size);
+		name = d2i_X509_NAME(NULL, &tmp, (long)size);
 		if(name) {
 			BIO *bio = BIO_new(BIO_s_file());
-			BIO_set_fp(bio, f, 0);
-			fprintf(f, "    DN: ");
-			X509_NAME_print_ex(bio, name, 0, XN_FLAG_RFC2253);
-			fprintf(f, "\n");
-			BIO_free(bio);
+			if (bio) {
+				BIO_set_fp(bio, f, 0);
+				fprintf(f, "    DN: ");
+				X509_NAME_print_ex(bio, name, 0, XN_FLAG_RFC2253);
+				fprintf(f, "\n");
+				BIO_free(bio);
+			}
+			X509_NAME_free(name);
 		}
 	}
 }
@@ -249,6 +276,8 @@ void
 print_parameter_set(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR arg,
 		CK_KEY_TYPE key_type)
 {
+	if (!f)
+		return;
 	switch (key_type) {
 	case CKK_ML_DSA:
 		print_enum(f, type, value, size, ck_ml_dsa_t, key_type);
@@ -271,7 +300,9 @@ print_print(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR ar
 	CK_ULONG i, j=0;
 	CK_BYTE  c;
 
-	if((long)size != -1) {
+	if (!f)
+		return;
+	if((long)size != -1 && value != NULL) {
 		fprintf(f, "%s\n    ", buf_spec(value, size));
 		for(i = 0; i < size; i += j) {
 			for(j = 0; ((i + j < size) && (j < 32)); j++) {
@@ -296,7 +327,10 @@ print_print(FILE *f, long type, CK_VOID_PTR value, CK_ULONG size, CK_VOID_PTR ar
 			fprintf(f, "\n    ");
 	}
 	else {
-		fprintf(f, "EMPTY");
+		if (value != NULL)
+			fprintf(f, "EMPTY");
+		else
+			fprintf(f, "NULL [size : 0x%lX (%ld)]", size, (long)size);
 	}
 	fprintf(f, "\n");
 }
@@ -1337,6 +1371,9 @@ lookup_enum_spec(enum_spec *spec, CK_ULONG value)
 {
 	CK_ULONG i;
 
+	if (!spec || !spec->specs)
+		return NULL;
+
 	for(i = 0; i < spec->size; i++)
 		if(spec->specs[i].type == value)
 			return spec->specs[i].name;
@@ -1359,14 +1396,20 @@ lookup_enum(CK_ULONG type, CK_ULONG value)
 void
 show_error( FILE *f, char *str, CK_RV rc )
 {
-	fprintf(f, "%s returned:  %ld %s", str, (unsigned long) rc, lookup_enum (RV_T, rc ));
-	fprintf(f, "\n");
+	const char *name;
+
+	if (!f)
+		return;
+	name = lookup_enum(RV_T, rc);
+	fprintf(f, "%s returned:  %ld %s\n", str ? str : "", (unsigned long) rc, name ? name : "Unknown");
 }
 
 
 void
 print_ck_info(FILE *f, CK_INFO *info)
 {
+	if (!f || !info)
+		return;
 	fprintf(f, "      cryptokiVersion:         %d.%d\n",    info->cryptokiVersion.major, info->cryptokiVersion.minor );
 	fprintf(f, "      manufacturerID:         '%32.32s'\n",  info->manufacturerID );
 	fprintf(f, "      flags:                   %0lx\n",     info->flags );
@@ -1380,6 +1423,8 @@ print_slot_list(FILE *f, CK_SLOT_ID_PTR pSlotList, CK_ULONG ulCount)
 {
 	CK_ULONG i;
 
+	if (!f)
+		return;
 	if(pSlotList) {
 		for (i = 0; i < ulCount; i++)
 			fprintf(f, "Slot %ld\n", pSlotList[i]);
@@ -1399,6 +1444,9 @@ print_slot_info(FILE *f, CK_SLOT_INFO *info)
 		{ CKF_REMOVABLE_DEVICE , "CKF_REMOVABLE_DEVICE             " },
 		{ CKF_HW_SLOT          , "CKF_HW_SLOT                      " },
 	};
+
+	if (!f || !info)
+		return;
 
 	fprintf(f, "      slotDescription:        '%32.32s'\n",  info->slotDescription );
 	fprintf(f, "                              '%32.32s'\n",  info->slotDescription+32 );
@@ -1441,6 +1489,9 @@ print_token_info(FILE *f, CK_TOKEN_INFO *info)
 		{ CKF_ASYNC_SESSION_SUPPORTED      , "CKF_ASYNC_SESSION_SUPPORTED      " },
 	};
 
+	if (!f || !info)
+		return;
+
 	fprintf(f, "      label:                  '%32.32s'\n",  info->label );
 	fprintf(f, "      manufacturerID:         '%32.32s'\n",  info->manufacturerID );
 	fprintf(f, "      model:                  '%16.16s'\n",  info->model );
@@ -1471,6 +1522,8 @@ print_mech_list(FILE *f, CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG ulMechCo
 {
 	CK_ULONG          imech;
 
+	if (!f)
+		return;
 	if(pMechanismList) {
 		for (imech = 0; imech < ulMechCount; imech++) {
 			const char *name = lookup_enum(MEC_T, pMechanismList[imech]);
@@ -1489,7 +1542,7 @@ print_mech_list(FILE *f, CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG ulMechCo
 void
 print_mech_info(FILE *f, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR minfo)
 {
-	const char *name = lookup_enum(MEC_T, type);
+	const char *name;
 	CK_ULONG known_flags = CKF_HW | CKF_MESSAGE_ENCRYPT | CKF_MESSAGE_DECRYPT |
 			       CKF_MESSAGE_SIGN | CKF_MESSAGE_VERIFY | CKF_MULTI_MESSAGE |
 			       CKF_FIND_OBJECTS | CKF_ENCRYPT | CKF_DECRYPT | CKF_DIGEST |
@@ -1499,6 +1552,9 @@ print_mech_info(FILE *f, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR minfo)
 			       CKF_EC_OID | CKF_EC_UNCOMPRESS | CKF_EC_CURVENAME |
 			       CKF_EC_NAMEDCURVE | CKF_ENCAPSULATE | CKF_DECAPSULATE;
 
+	if (!f || !minfo)
+		return;
+	name = lookup_enum(MEC_T, type);
 	if (name)
 		fprintf(f, "%s : ", name);
 	else
@@ -1547,13 +1603,14 @@ print_attribute_list(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 	CK_KEY_TYPE key_type = -1;
 	int found;
 
-	if (!pTemplate)
+	if (!f || !pTemplate)
 		return;
 
 	/* Some attributes are key type specific -- first check if we have a key type
 	 * in the template and if so, store it */
 	for (j = 0; j < ulCount; j++) {
-		if (pTemplate[j].type == CKA_KEY_TYPE && pTemplate[j].pValue) {
+		if (pTemplate[j].type == CKA_KEY_TYPE && pTemplate[j].pValue &&
+		    pTemplate[j].ulValueLen >= sizeof(CK_KEY_TYPE)) {
 			key_type = *(CK_KEY_TYPE *)pTemplate[j].pValue;
 			break;
 		}
@@ -1591,7 +1648,7 @@ print_attribute_list_req(FILE *f, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG  ulCount)
 	CK_ULONG j, k;
 	int found;
 
-	if (!pTemplate)
+	if (!f || !pTemplate)
 		return;
 
 	for(j = 0; j < ulCount ; j++) {
@@ -1623,6 +1680,9 @@ print_session_info(FILE *f, CK_SESSION_INFO *info)
 			{CKF_ASYNC_SESSION  , "CKF_ASYNC_SESSION                "},
 	};
 
+	if (!f || !info)
+		return;
+
 	fprintf(f, "      slotID:                  %ld\n",       info->slotID );
 	fprintf(f, "      state:                   %0lx (%32.32s)\n", info->state, lookup_enum(STA_T, info->state));
 	fprintf(f, "      flags:                   %0lx\n",     info->flags );
@@ -1640,13 +1700,16 @@ print_interfaces_list(FILE *f, CK_INTERFACE_PTR pInterfacesList, CK_ULONG ulCoun
 {
 	CK_ULONG i;
 
+	if (!f)
+		return;
+
 	if (pInterfacesList) {
 		for (i = 0; i < ulCount; i++) {
 			CK_INTERFACE_PTR in = &pInterfacesList[i];
 			fprintf(f, "Interface '%s' version=%d.%d flags=%lx\n",
-					in->pInterfaceName,
-					((CK_VERSION *)(in->pFunctionList))->major,
-					((CK_VERSION *)(in->pFunctionList))->minor,
+					in->pInterfaceName ? (const char *)in->pInterfaceName : "(null)",
+					in->pFunctionList ? ((CK_VERSION *)(in->pFunctionList))->major : 0,
+					in->pFunctionList ? ((CK_VERSION *)(in->pFunctionList))->minor : 0,
 					in->flags);
 		}
 	}
