@@ -126,7 +126,7 @@ static int cardos_info(void)
 	}
 	if (check_apdu(&apdu))
 		return 1;
-	printf("Info : %s\n", apdu.resp);
+	printf("Info : %.*s\n", (int)apdu.resplen, (char *)apdu.resp);
 
 	apdu.p2 = 0x82;
 	apdu.resplen = sizeof(rbuf);
@@ -138,7 +138,7 @@ static int cardos_info(void)
 	}
 	if (check_apdu(&apdu))
 		return 1;
-	if (apdu.resp[0] == 0xc9)
+	if (apdu.resplen > 0 && apdu.resp[0] == 0xc9)
 		is_cardos5 = 1;
 
 	apdu.p2 = 0x81;
@@ -151,11 +151,11 @@ static int cardos_info(void)
 	}
 	if (check_apdu(&apdu))
 		return 1;
-	if (is_cardos5)	{
+	if (is_cardos5 && apdu.resplen >= 8)	{
 		printf("Serial number: %02x %02x %02x %02x %02x %02x %02x %02x\n",
 			apdu.resp[0], apdu.resp[1], apdu.resp[2], apdu.resp[3],
 			apdu.resp[4], apdu.resp[5], apdu.resp[6], apdu.resp[7]);
-	} else	{
+	} else if (!is_cardos5 && apdu.resplen >= 16)	{
 		printf("Chip type: %d\n", apdu.resp[8]);
 		printf("Serial number: %02x %02x %02x %02x %02x %02x\n",
 			   apdu.resp[10], apdu.resp[11], apdu.resp[12],
@@ -175,34 +175,36 @@ static int cardos_info(void)
 	}
 	if (check_apdu(&apdu))
 		return 1;
-	printf("OS Version: %d.%d", apdu.resp[0], apdu.resp[1]);
-	if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x02) {
-		printf(" (that's CardOS M4.0)\n");
-	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x03) {
-		printf(" (that's CardOS M4.01)\n");
-	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x04) {
-		printf(" (that's CardOS M4.01a)\n");
-	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x06) {
-		printf(" (that's CardOS M4.2)\n");
-	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x07) {
-		printf(" (that's CardOS M4.3)\n");
-	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x08) {
-		printf(" (that's CardOS M4.3B)\n");
-	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x09) {
-		printf(" (that's CardOS M4.2B)\n");
-	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x0B) {
-		printf(" (that's CardOS M4.2C)\n");
-	} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x0D) {
-		printf(" (that's CardOS M4.4)\n");
-	} else if (apdu.resp[0] == 0xc9 && apdu.resp[1] == 0x01) {
-		printf(" (that's CardOS V5.0)\n");
-	} else if (apdu.resp[0] == 0xc9 &&
-			(apdu.resp[1] == 0x02 || apdu.resp[1] == 0x03)) {
-		printf(" (that's CardOS V5.3)\n");
-	} else if (apdu.resp[0] == 0xc9 && apdu.resp[1] == 0x04) {
-		printf(" (that's CardOS V5.4)\n");
-	} else {
-		printf(" (unknown Version)\n");
+	if (apdu.resplen >= 2) {
+		printf("OS Version: %d.%d", apdu.resp[0], apdu.resp[1]);
+		if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x02) {
+			printf(" (that's CardOS M4.0)\n");
+		} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x03) {
+			printf(" (that's CardOS M4.01)\n");
+		} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x04) {
+			printf(" (that's CardOS M4.01a)\n");
+		} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x06) {
+			printf(" (that's CardOS M4.2)\n");
+		} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x07) {
+			printf(" (that's CardOS M4.3)\n");
+		} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x08) {
+			printf(" (that's CardOS M4.3B)\n");
+		} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x09) {
+			printf(" (that's CardOS M4.2B)\n");
+		} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x0B) {
+			printf(" (that's CardOS M4.2C)\n");
+		} else if (apdu.resp[0] == 0xc8 && apdu.resp[1] == 0x0D) {
+			printf(" (that's CardOS M4.4)\n");
+		} else if (apdu.resp[0] == 0xc9 && apdu.resp[1] == 0x01) {
+			printf(" (that's CardOS V5.0)\n");
+		} else if (apdu.resp[0] == 0xc9 &&
+				(apdu.resp[1] == 0x02 || apdu.resp[1] == 0x03)) {
+			printf(" (that's CardOS V5.3)\n");
+		} else if (apdu.resp[0] == 0xc9 && apdu.resp[1] == 0x04) {
+			printf(" (that's CardOS V5.4)\n");
+		} else {
+			printf(" (unknown Version)\n");
+		}
 	}
 
 	apdu.p2 = 0x83;
@@ -216,28 +218,30 @@ static int cardos_info(void)
 	if (check_apdu(&apdu))
 		return 1;
 
-	printf("Current life cycle: ");
-	if (rbuf[0] == 0x34) {
-		printf("%d (manufacturing)\n", rbuf[0]);
-	} else if (rbuf[0] == 0x26) {
-		if (is_cardos5)
-			printf("%d (physinit)\n", rbuf[0]);
-		else
-			printf("%d (initialization)\n", rbuf[0]);
-	} else if (rbuf[0] == 0x23) {
-		printf("%d (physpers)\n", rbuf[0]);
-	} else if (rbuf[0] == 0x24) {
-		printf("%d (personalization)\n", rbuf[0]);
-	} else if (rbuf[0] == 0x20) {
-		printf("%d (administration)\n", rbuf[0]);
-	} else if (rbuf[0] == 0x10) {
-		printf("%d (operational)\n", rbuf[0]);
-	} else if (rbuf[0] == 0x29) {
-		printf("%d (erase in progress)\n", rbuf[0]);
-	} else if (rbuf[0] == 0x3F) {
-		printf("%d (death)\n", rbuf[0]);
-	} else {
-		printf("%d (unknown)\n", rbuf[0]);
+	if (apdu.resplen >= 1) {
+		printf("Current life cycle: ");
+		if (rbuf[0] == 0x34) {
+			printf("%d (manufacturing)\n", rbuf[0]);
+		} else if (rbuf[0] == 0x26) {
+			if (is_cardos5)
+				printf("%d (physinit)\n", rbuf[0]);
+			else
+				printf("%d (initialization)\n", rbuf[0]);
+		} else if (rbuf[0] == 0x23) {
+			printf("%d (physpers)\n", rbuf[0]);
+		} else if (rbuf[0] == 0x24) {
+			printf("%d (personalization)\n", rbuf[0]);
+		} else if (rbuf[0] == 0x20) {
+			printf("%d (administration)\n", rbuf[0]);
+		} else if (rbuf[0] == 0x10) {
+			printf("%d (operational)\n", rbuf[0]);
+		} else if (rbuf[0] == 0x29) {
+			printf("%d (erase in progress)\n", rbuf[0]);
+		} else if (rbuf[0] == 0x3F) {
+			printf("%d (death)\n", rbuf[0]);
+		} else {
+			printf("%d (unknown)\n", rbuf[0]);
+		}
 	}
 
 	apdu.p2 = 0x84;
@@ -265,7 +269,8 @@ static int cardos_info(void)
 	if (check_apdu(&apdu))
 		return 1;
 
-	printf("Free memory : %d\n", rbuf[0]<<8|rbuf[1]);
+	if (apdu.resplen >= 2)
+		printf("Free memory : %d\n", rbuf[0]<<8|rbuf[1]);
 
 	apdu.p2 = 0x86;
 	apdu.resplen = sizeof(rbuf);
@@ -278,12 +283,14 @@ static int cardos_info(void)
 	if (check_apdu(&apdu))
 		return 1;
 
-	if (rbuf[0] == 0x00) {
-		printf("ATR Status: 0x%d ROM-ATR\n",rbuf[0]);
-	} else if (rbuf[0] == 0x80)	{
-		printf("ATR Status: 0x%d EEPROM-ATR\n",rbuf[0]);
-	} else {
-		printf("ATR Status: 0x%d unknown\n",rbuf[0]);
+	if (apdu.resplen >= 1) {
+		if (rbuf[0] == 0x00) {
+			printf("ATR Status: 0x%d ROM-ATR\n",rbuf[0]);
+		} else if (rbuf[0] == 0x80)	{
+			printf("ATR Status: 0x%d EEPROM-ATR\n",rbuf[0]);
+		} else {
+			printf("ATR Status: 0x%d unknown\n",rbuf[0]);
+		}
 	}
 
 	apdu.p2 = 0x88;
@@ -311,10 +318,10 @@ static int cardos_info(void)
 	if (check_apdu(&apdu))
 		return 1;
 
-	if (is_cardos5)
+	if (is_cardos5 && apdu.resplen >= 8)
 		printf("Ram size: %d, Eeprom size: %d, cpu type: %x, chip config: %d, chip manufacturer: %d\n",
 			rbuf[0]<<8|rbuf[1], rbuf[2]<<8|rbuf[3], rbuf[4], rbuf[6], rbuf[7]);
-	else
+	else if (!is_cardos5 && apdu.resplen >= 6)
 		printf("Ram size: %d, Eeprom size: %d, cpu type: %x, chip config: %d\n",
 			rbuf[0]<<8|rbuf[1], rbuf[2]<<8|rbuf[3], rbuf[4], rbuf[5]);
 
@@ -329,9 +336,9 @@ static int cardos_info(void)
 	if (check_apdu(&apdu))
 		return 1;
 
-	if (is_cardos5)
+	if (is_cardos5 && apdu.resplen >= 4)
 		printf("Free eeprom memory: %d\n", rbuf[0]<<24|rbuf[1]<<16|rbuf[2]<<8|rbuf[3]);
-	else
+	else if (!is_cardos5 && apdu.resplen >= 2)
 		printf("Free eeprom memory: %d\n", rbuf[0]<<8|rbuf[1]);
 
 	apdu.p2 = 0x8d;
@@ -345,7 +352,8 @@ static int cardos_info(void)
 	if (check_apdu(&apdu))
 		return 1;
 
-	printf("Current Maximum Data Field Length: %d\n", rbuf[0]<<8|rbuf[1]);
+	if (apdu.resplen >= 2)
+		printf("Current Maximum Data Field Length: %d\n", rbuf[0]<<8|rbuf[1]);
 
 	if (is_cardos5)	{
 		apdu.p2 = 0x8B;
@@ -374,10 +382,12 @@ static int cardos_info(void)
 	if (check_apdu(&apdu))
 		return 1;
 
-	printf("System keys: PackageLoadKey (version 0x%02x, retries %d)\n",
-			rbuf[0], rbuf[1]);
-	printf("System keys: StartKey (version 0x%02x, retries %d)\n",
-			rbuf[2], rbuf[3]);
+	if (apdu.resplen >= 4) {
+		printf("System keys: PackageLoadKey (version 0x%02x, retries %d)\n",
+				rbuf[0], rbuf[1]);
+		printf("System keys: StartKey (version 0x%02x, retries %d)\n",
+				rbuf[2], rbuf[3]);
+	}
 
 	apdu.p2 = 0x87;
 	apdu.resplen = sizeof(rbuf);
@@ -419,8 +429,11 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 		return 0;	/* failed, apdu too short */
 	if (inlen <= 5)
 		plain_lc = 0;
-	if (inlen > 5)
+	if (inlen > 5) {
 		plain_lc = in[4];
+		if (plain_lc > (int)inlen - 5)
+			return 0;
+	}
 
 	/* 4 + plain_lc plus 0..7 bytes of padding */
 	mac_input_len = 4 + plain_lc;
@@ -575,6 +588,7 @@ static int cardos_sm4h(const unsigned char *in, size_t inlen, unsigned char
 	out[4] = enc_input_len;	/* lc */
 
 	/* encrypt first block */
+	EVP_CIPHER_CTX_free(cctx);
 	cctx = EVP_CIPHER_CTX_new();
 	if (!cctx ||
 		!EVP_EncryptInit_ex(cctx, EVP_des_ede_ecb(), NULL, key, NULL) ||
@@ -757,6 +771,8 @@ static int cardos_format(const char *opt_startkey)
 	}
 	if (check_apdu(&apdu))
 		return 1;
+	if (apdu.resplen < 1)
+		return 1;
 
 	if (apdu.resp[0] == 0x34) {
 		printf("card in manufacturing state\n");
@@ -823,6 +839,8 @@ static int cardos_format(const char *opt_startkey)
 		return 1;
 	}
 	if (check_apdu(&apdu))
+		return 1;
+	if (apdu.resplen < 1)
 		return 1;
 	if (apdu.resp[0] != 0x20) {
 		printf("card not in administrative state, failed\n");
@@ -1049,7 +1067,7 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 	}
 
 	if (apdu.resp[2] != 0x00) {
-		printf("startkey version is 0x%02x, currently we support only 0x00\n", (int) apdu.resp[3]);
+		printf("startkey version is 0x%02x, currently we support only 0x00\n", (int) apdu.resp[2]);
 		printf("aborting\n");
 		return 1;
 	}
@@ -1062,6 +1080,10 @@ static int cardos_change_startkey(const char *change_startkey_apdu)
 	/* now check if the correct APDU was passed */
 	if (sc_hex_to_bin(change_startkey_apdu, apdu_bin, &apdu_len) != 0) {
 		printf("can't convert startkey apdu to binary format: aborting\n");
+		return 1;
+	}
+	if (apdu_len < 5 || (size_t)apdu_bin[4] + 5 > apdu_len) {
+		printf("invalid change startkey apdu length, aborting\n");
 		return 1;
 	}
 	SHA1(apdu_bin, apdu_len, checksum);
@@ -1257,5 +1279,11 @@ end:
 		sc_disconnect_card(card);
 	}
 	sc_release_context(ctx);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (legacy_provider) {
+		OSSL_PROVIDER_unload(legacy_provider);
+		legacy_provider = NULL;
+	}
+#endif
 	return err;
 }
