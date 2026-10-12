@@ -140,10 +140,15 @@ int sc_compress(u8* out, size_t* outLen, const u8* in, size_t inLen, int method)
 	unsigned long zlib_outlen;
 	int rc;
 
+	if (out == NULL || outLen == NULL || in == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (*outLen > ULONG_MAX || inLen > ULONG_MAX)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	switch(method) {
 	case COMPRESSION_ZLIB:
-		zlib_outlen = *outLen;
-		rc = zerr_to_opensc(compress(out, &zlib_outlen, in, inLen));
+		zlib_outlen = (unsigned long)*outLen;
+		rc = zerr_to_opensc(compress(out, &zlib_outlen, in, (unsigned long)inLen));
 		*outLen = zlib_outlen;
 		return rc;
 	case COMPRESSION_GZIP:
@@ -158,9 +163,11 @@ int sc_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int metho
 	unsigned long zlib_outlen;
 	int rc;
 
-	if (in == NULL || out == NULL) {
-		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+	if (in == NULL || out == NULL || outLen == NULL) {
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
+	if (*outLen > ULONG_MAX || inLen > ULONG_MAX)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (method == COMPRESSION_AUTO) {
 		method = detect_method(in, inLen);
@@ -171,8 +178,8 @@ int sc_decompress(u8* out, size_t* outLen, const u8* in, size_t inLen, int metho
 	}
 	switch (method) {
 	case COMPRESSION_ZLIB:
-		zlib_outlen = *outLen;
-		rc = zerr_to_opensc(uncompress(out, &zlib_outlen, in, inLen));
+		zlib_outlen = (unsigned long)*outLen;
+		rc = zerr_to_opensc(uncompress(out, &zlib_outlen, in, (unsigned long)inLen));
 		*outLen = zlib_outlen;
 		return rc;
 	case COMPRESSION_GZIP:
@@ -187,15 +194,20 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 	z_stream gz;
 	int err;
 	int window_size = 15;
-	const size_t startSize = inLen < 1024 ? 2048 : inLen * 2;
+	const size_t startSize = inLen < 1024 ? 2048 : (inLen > SIZE_MAX / 2 ? SIZE_MAX : inLen * 2);
 	const size_t blockSize = inLen < 1024 ? 512 : inLen / 2;
 	size_t bufferSize = startSize;
 	if (gzip)
 		window_size += 0x20;
 	memset(&gz, 0, sizeof(gz));
 
-	if (!out || !outLen)
+	if (!out || !outLen || !in)
 		return SC_ERROR_INVALID_ARGUMENTS;
+	if (inLen > UINT_MAX)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	*out = NULL;
+	*outLen = 0;
 
 	gz.next_in = (u8*)in;
 	gz.avail_in = (unsigned)inLen;
@@ -203,8 +215,6 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 	err = inflateInit2(&gz, window_size);
 	if (err != Z_OK)
 		return zerr_to_opensc(err);
-
-	*outLen = 0;
 
 	while (1) {
 		/* Setup buffer... */
@@ -229,6 +239,12 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 		num = *outLen + gz.avail_out;
 		if (bufferSize > num) {
 			*outLen += bufferSize - num;
+			if (bufferSize > SIZE_MAX - (bufferSize - num + blockSize)) {
+				free(*out);
+				*out = NULL;
+				inflateEnd(&gz);
+				return SC_ERROR_OUT_OF_MEMORY;
+			}
 			bufferSize += bufferSize - num + blockSize;
 		}
 		if (err == Z_STREAM_END) {
@@ -252,7 +268,7 @@ static int sc_decompress_zlib_alloc(u8** out, size_t* outLen, const u8* in, size
 
 int sc_decompress_alloc(u8** out, size_t* outLen, const u8* in, size_t inLen, int method)
 {
-	if (in == NULL || out == NULL) {
+	if (in == NULL || out == NULL || outLen == NULL) {
 		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
 	}
 
