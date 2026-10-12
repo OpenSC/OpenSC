@@ -412,7 +412,7 @@ int sc_disconnect_card(sc_card_t *card)
 			sc_log(ctx, "card driver finish() failed: %s", sc_strerror(r));
 	}
 
-	if (card->reader->ops->disconnect) {
+	if (card->reader && card->reader->ops->disconnect) {
 		int r = card->reader->ops->disconnect(card->reader);
 		if (r)
 			sc_log(ctx, "disconnect() failed: %s", sc_strerror(r));
@@ -433,7 +433,7 @@ int sc_reset(sc_card_t *card, int do_cold_reset)
 
 	if (card == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (card->reader->ops->reset == NULL)
+	if (card->reader == NULL || card->reader->ops->reset == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
 
 	r = sc_mutex_lock(card->ctx, card->mutex);
@@ -466,7 +466,7 @@ int sc_lock(sc_card_t *card)
 	if (r != SC_SUCCESS)
 		return r;
 	if (card->lock_count == 0) {
-		if (card->reader->ops->lock != NULL) {
+		if (card->reader != NULL && card->reader->ops->lock != NULL) {
 			r = card->reader->ops->lock(card->reader);
 			while (r == SC_ERROR_CARD_RESET || r == SC_ERROR_READER_REATTACHED) {
 				if (was_reset++ > 4) /* TODO retry a few times */
@@ -520,7 +520,7 @@ int sc_unlock(sc_card_t *card)
 	}
 	if (--card->lock_count == 0) {
 		/* release reader lock */
-		if (card->reader->ops->unlock != NULL)
+		if (card->reader != NULL && card->reader->ops->unlock != NULL)
 			r = card->reader->ops->unlock(card->reader);
 	}
 	r2 = sc_mutex_unlock(card->ctx, card->mutex);
@@ -984,7 +984,7 @@ int sc_write_record(sc_card_t *card, unsigned int rec_nr, const u8 * buf,
 {
 	int r;
 
-	if (card == NULL) {
+	if (card == NULL || buf == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
@@ -1005,7 +1005,7 @@ int sc_append_record(sc_card_t *card, const u8 * buf, size_t count,
 {
 	int r;
 
-	if (card == NULL) {
+	if (card == NULL || buf == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
@@ -1375,38 +1375,48 @@ scconf_block *_sc_match_atr_block(sc_context_t *ctx, struct sc_card_driver *driv
 int _sc_add_atr(sc_context_t *ctx, struct sc_card_driver *driver, struct sc_atr_table *src)
 {
 	struct sc_atr_table *map, *dst;
+	char *atr = NULL, *atrmask = NULL, *name = NULL;
+
+	if (!ctx || !driver || !src || !src->atr)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	atr = strdup(src->atr);
+	if (!atr)
+		return SC_ERROR_OUT_OF_MEMORY;
+
+	if (src->atrmask) {
+		atrmask = strdup(src->atrmask);
+		if (!atrmask) {
+			free(atr);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
+	}
+
+	if (src->name) {
+		name = strdup(src->name);
+		if (!name) {
+			free(atr);
+			free(atrmask);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
+	}
 
 	map = (struct sc_atr_table *) realloc(driver->atr_map,
 			(driver->natrs + 2) * sizeof(struct sc_atr_table));
-	if (!map)
+	if (!map) {
+		free(atr);
+		free(atrmask);
+		free(name);
 		return SC_ERROR_OUT_OF_MEMORY;
+	}
 	driver->atr_map = map;
 
 	dst = &driver->atr_map[driver->natrs++];
 	memset(dst, 0, sizeof(*dst));
 	memset(&driver->atr_map[driver->natrs], 0, sizeof(struct sc_atr_table));
-	dst->atr = strdup(src->atr);
-	if (!dst->atr)
-		return SC_ERROR_OUT_OF_MEMORY;
-
-	if (src->atrmask) {
-		dst->atrmask = strdup(src->atrmask);
-		if (!dst->atrmask)
-			return SC_ERROR_OUT_OF_MEMORY;
-	}
-	else {
-		dst->atrmask = NULL;
-	}
-
-	if (src->name) {
-		dst->name = strdup(src->name);
-		if (!dst->name)
-			return SC_ERROR_OUT_OF_MEMORY;
-	}
-	else {
-		dst->name = NULL;
-	}
-
+	dst->atr = atr;
+	dst->atrmask = atrmask;
+	dst->name = name;
 	dst->type = src->type;
 	dst->flags = src->flags;
 	dst->card_atr = src->card_atr;
@@ -1486,6 +1496,7 @@ int sc_copy_ec_params(struct sc_ec_parameters *dst, struct sc_ec_parameters *src
 		dst->der.value = malloc(src->der.len);
 		if (!dst->der.value) {
 			free(dst->named_curve);
+			dst->named_curve = NULL;
 			return SC_ERROR_OUT_OF_MEMORY;
 		}
 		memcpy(dst->der.value, src->der.value, src->der.len);
@@ -1589,7 +1600,7 @@ sc_card_sm_load(struct sc_card *card, const char *module_path, const char *in_mo
 			sc_log(ctx, "SM handler 'module_cleanup' not exported -- ignored");
 
 		mod_ops->test  = sc_dlsym(mod_handle, "test");
-		if (mod_ops->test)
+		if (!mod_ops->test)
 			sc_log(ctx, "SM handler 'test' not exported -- ignored");
 
 		rv = 0;
