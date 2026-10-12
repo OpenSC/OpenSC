@@ -248,6 +248,39 @@ static int format_senv(struct sc_pkcs15_card *p15card,
 			senv_out->flags |= SC_SEC_ENV_ALG_REF_PRESENT;
 			senv_out->algorithm_ref = prkey->field_length;
 			break;
+		case SC_PKCS15_TYPE_PRKEY_ML_DSA:
+			*alg_info_out = sc_card_find_mldsa_alg(p15card->card, prkey->field_length, prkey->parameter_set);
+			if (*alg_info_out == NULL) {
+				sc_log(ctx, "Card does not support ML-DSA with parameter set %lu",
+						prkey->parameter_set);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+			senv_out->key_size_bits = prkey->field_length;
+			senv_out->algorithm = SC_ALGORITHM_MLDSA;
+			senv_out->algorithm_flags = prkey->parameter_set;
+			break;
+		case SC_PKCS15_TYPE_PRKEY_ML_KEM:
+			*alg_info_out = sc_card_find_mlkem_alg(p15card->card, prkey->field_length, prkey->parameter_set);
+			if (*alg_info_out == NULL) {
+				sc_log(ctx, "Card does not support ML-KEM with parameter set %lu",
+						prkey->parameter_set);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+			senv_out->key_size_bits = prkey->field_length;
+			senv_out->algorithm = SC_ALGORITHM_MLKEM;
+			senv_out->algorithm_flags = prkey->parameter_set;
+			break;
+		case SC_PKCS15_TYPE_PRKEY_SLH_DSA:
+			*alg_info_out = sc_card_find_slhdsa_alg(p15card->card, prkey->field_length, prkey->parameter_set);
+			if (*alg_info_out == NULL) {
+				sc_log(ctx, "Card does not support SLH-DSA with parameter set %lu",
+						prkey->parameter_set);
+				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+			}
+			senv_out->key_size_bits = prkey->field_length;
+			senv_out->algorithm = SC_ALGORITHM_SLHDSA;
+			senv_out->algorithm_flags = prkey->parameter_set;
+			break;
 		case SC_PKCS15_TYPE_SKEY_GENERIC:
 			if (skey->key_type != CKK_AES)
 				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");
@@ -375,6 +408,59 @@ int sc_pkcs15_derive(struct sc_pkcs15_card *p15card,
 	r = format_senv(p15card, obj, &senv, &alg_info);
 	LOG_TEST_RET(ctx, r, "Could not initialize security environment");
 	senv.operation = SC_SEC_OPERATION_DERIVE;
+
+	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
+	LOG_TEST_RET(ctx, r, "cannot encode security operation flags");
+	senv.algorithm_flags = sec_flags;
+
+	r = use_key(p15card, obj, &senv, sc_decipher, in, inlen, out,
+			*poutlen);
+	LOG_TEST_RET(ctx, r, "use_key() failed");
+
+	/* If card stores derived key on card, then no data is returned
+	 * and the key must be used on the card. */
+	*poutlen = r;
+	LOG_FUNC_RETURN(ctx, r);
+}
+
+/* Decapsulate encapsulated shared secret. ML-KEM only so far.
+ * Since the value may be returned, and the call is expected to provide
+ * the buffer, we used the PKCS#11 convention of outlen == 0 and out == NULL
+ * to indicate that this is a request for the size.
+ * In that case r = 0, and *poutlen = expected size
+ */
+int
+sc_pkcs15_decapsulate(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_object *obj,
+		unsigned long flags, const u8 *in, size_t inlen, u8 *out, size_t *poutlen)
+{
+	sc_context_t *ctx = p15card->card->ctx;
+	int r;
+	sc_algorithm_info_t *alg_info = NULL;
+	sc_security_env_t senv;
+	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *)obj->data;
+	unsigned long pad_flags = 0, sec_flags = 0;
+
+	LOG_FUNC_CALLED(ctx);
+
+	if (!(prkey->usage & (SC_PKCS15_PRKEY_USAGE_DECAPSULATE)))
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "This key cannot be used for decapsulation");
+
+	switch (obj->type) {
+	case SC_PKCS15_TYPE_PRKEY_ML_KEM:
+		if (out == NULL || *poutlen < 32) {
+			*poutlen = 32;
+			r = 0; /* say no data to return */
+			LOG_FUNC_RETURN(ctx, r);
+		}
+		break;
+	default:
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");
+	}
+
+	r = format_senv(p15card, obj, &senv, &alg_info);
+	LOG_TEST_RET(ctx, r, "Could not initialize security environment");
+	senv.operation = SC_SEC_OPERATION_DECAPSULATE;
+	flags = senv.algorithm_flags;
 
 	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
 	LOG_TEST_RET(ctx, r, "cannot encode security operation flags");
@@ -601,7 +687,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	sc_algorithm_info_t *alg_info;
 	const struct sc_pkcs15_prkey_info *prkey = (const struct sc_pkcs15_prkey_info *) obj->data;
 	u8 *buf = NULL, *tmp;
-	size_t modlen = 0, buflen = 0;
+	size_t siglen = 0, buflen = 0;
 	unsigned long pad_flags = 0, sec_flags = 0;
 
 	LOG_FUNC_CALLED(ctx);
@@ -615,26 +701,67 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	senv.operation = SC_SEC_OPERATION_SIGN;
 
 	switch (obj->type) {
-		case SC_PKCS15_TYPE_PRKEY_RSA:
-			modlen = BYTES4BITS(prkey->modulus_length);
+	case SC_PKCS15_TYPE_PRKEY_RSA:
+		siglen = BYTES4BITS(prkey->modulus_length);
+		break;
+	case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
+		siglen = BYTES4BITS(prkey->modulus_length) * 2;
+		break;
+	case SC_PKCS15_TYPE_PRKEY_EC:
+	case SC_PKCS15_TYPE_PRKEY_EDDSA:
+	case SC_PKCS15_TYPE_PRKEY_XEDDSA:
+		siglen = BYTES4BITS(prkey->field_length) * 2; /* 2*nLen */
+		break;
+	case SC_PKCS15_TYPE_PRKEY_ML_DSA:
+		switch (prkey->parameter_set) {
+		case SC_ALGORITHM_MLDSA_44:
+			siglen = 2420;
 			break;
-		case SC_PKCS15_TYPE_PRKEY_GOSTR3410:
-			modlen = BYTES4BITS(prkey->modulus_length) * 2;
+		case SC_ALGORITHM_MLDSA_65:
+			siglen = 3309;
 			break;
-		case SC_PKCS15_TYPE_PRKEY_EC:
-		case SC_PKCS15_TYPE_PRKEY_EDDSA:
-		case SC_PKCS15_TYPE_PRKEY_XEDDSA:
-			modlen = BYTES4BITS(prkey->field_length) * 2;  /* 2*nLen */
+		case SC_ALGORITHM_MLDSA_87:
+			siglen = 4627;
 			break;
-		default:
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");
+		}
+		break;
+	case SC_PKCS15_TYPE_PRKEY_SLH_DSA:
+		switch (prkey->parameter_set) {
+		case SC_ALGORITHM_SLHDSA_SHA2_128S:
+		case SC_ALGORITHM_SLHDSA_SHAKE_128S:
+			siglen = 7856;
+			break;
+		case SC_ALGORITHM_SLHDSA_SHA2_128F:
+		case SC_ALGORITHM_SLHDSA_SHAKE_128F:
+			siglen = 17088;
+			break;
+		case SC_ALGORITHM_SLHDSA_SHA2_192S:
+		case SC_ALGORITHM_SLHDSA_SHAKE_192S:
+			siglen = 16224;
+			break;
+		case SC_ALGORITHM_SLHDSA_SHA2_192F:
+		case SC_ALGORITHM_SLHDSA_SHAKE_192F:
+			siglen = 35664;
+			break;
+		case SC_ALGORITHM_SLHDSA_SHA2_256S:
+		case SC_ALGORITHM_SLHDSA_SHAKE_256S:
+			siglen = 29792;
+			break;
+		case SC_ALGORITHM_SLHDSA_SHA2_256F:
+		case SC_ALGORITHM_SLHDSA_SHAKE_256F:
+			siglen = 49856;
+			break;
+		}
+		break;
+	default:
+		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Key type not supported");
 	}
 
 	/* Probably never happens, but better make sure */
-	if (outlen < modlen)
+	if (outlen < siglen)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 
-	buflen = inlen + modlen;
+	buflen = inlen + siglen;
 	buf = sc_mem_secure_alloc(buflen);
 	if (buf == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
@@ -667,7 +794,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				r = sc_pkcs15_decipher(p15card, obj, flags, in, inlen, out, outlen, NULL);
 				goto err;
 			}
-			if (modlen > tmplen)
+			if (siglen > tmplen)
 				LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ALLOWED, "Buffer too small, needs recompile!");
 
 			/* XXX Assuming RSA key here */
@@ -680,7 +807,7 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 
 			LOG_TEST_GOTO_ERR(ctx, r, "Unable to add padding");
 
-			r = sc_pkcs15_decipher(p15card, obj, flags, buf, modlen, out, outlen, NULL);
+			r = sc_pkcs15_decipher(p15card, obj, flags, buf, siglen, out, outlen, NULL);
 			goto err;
 		}
 
@@ -721,6 +848,12 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 		}
 	}
 
+	/* There is really nothing to do for these keys -- all is set up in the format_senv().
+	 * Just rely it from `senv.algorithm_flags` to `flags` which overrides the former below. */
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_ML_DSA || obj->type == SC_PKCS15_TYPE_PRKEY_SLH_DSA) {
+		flags |= senv.algorithm_flags;
+	}
+
 	r = sc_get_encoding_flags(ctx, flags, alg_info->flags, &pad_flags, &sec_flags);
 	if (r != SC_SUCCESS) {
 		goto err;
@@ -744,15 +877,15 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	else if ( senv.algorithm == SC_ALGORITHM_RSA &&
 	          (flags & SC_ALGORITHM_RSA_PADS) == SC_ALGORITHM_RSA_PAD_NONE) {
 		/* Add zero-padding if input is shorter than the modulus */
-		if (inlen < modlen) {
-			if (modlen > buflen) {
+		if (inlen < siglen) {
+			if (siglen > buflen) {
 				r = SC_ERROR_BUFFER_TOO_SMALL;
 				goto err;
 			}
-			memmove(tmp+modlen-inlen, tmp, inlen);
-			memset(tmp, 0, modlen-inlen);
+			memmove(tmp + siglen - inlen, tmp, inlen);
+			memset(tmp, 0, siglen - inlen);
 		}
-		inlen = modlen;
+		inlen = siglen;
 	}
 	/* PKCS#11 MECHANISMS V2.30: 6.3.1 EC Signatures
 	 * If the length of the hash value is larger than the bit length of n, only
@@ -771,11 +904,11 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 	LOG_TEST_GOTO_ERR(ctx, r, "use_key() failed");
 
 	/* Some cards may return RSA signature as integer without leading zero bytes */
-	/* Already know outlen >= modlen and r >= 0 */
-	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA && (unsigned)r < modlen) {
-		memmove(out + modlen - r, out, r);
-		memset(out, 0, modlen - r);
-		r = (int)modlen;
+	/* Already know outlen >= siglen and r >= 0 */
+	if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA && (unsigned)r < siglen) {
+		memmove(out + siglen - r, out, r);
+		memset(out, 0, siglen - r);
+		r = (int)siglen;
 	}
 
 err:

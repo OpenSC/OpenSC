@@ -113,7 +113,6 @@ struct sc_pkcs11_object_ops {
 			CK_MECHANISM_PTR,
 			CK_BYTE_PTR pSeedData, CK_ULONG ulSeedDataLen,
 			CK_BYTE_PTR pDerived, CK_ULONG_PTR pulDerivedLen);
-
 	/* Check compatibility of PKCS#15 object usage and an asked PKCS#11 mechanism. */
 	CK_RV (*can_do)(struct sc_pkcs11_session *, void *, CK_MECHANISM_TYPE, unsigned int);
 
@@ -124,6 +123,10 @@ struct sc_pkcs11_object_ops {
 			CK_MECHANISM_PTR,
 			void*,
 			CK_BYTE_PTR pData, CK_ULONG_PTR ulDataLen);
+	CK_RV (*decapsulate)(struct sc_pkcs11_session *, void *,
+			CK_MECHANISM_PTR,
+			CK_BYTE_PTR pSeedData, CK_ULONG ulSeedDataLen,
+			CK_BYTE_PTR pDerived, CK_ULONG_PTR pulDerivedLen);
 
 	/* Others to be added when implemented */
 };
@@ -275,6 +278,7 @@ enum {
 	SC_PKCS11_OPERATION_DERIVE,
 	SC_PKCS11_OPERATION_WRAP,
 	SC_PKCS11_OPERATION_UNWRAP,
+	SC_PKCS11_OPERATION_DECAPSULATE,
 	SC_PKCS11_OPERATION_MAX
 };
 
@@ -343,6 +347,10 @@ struct sc_pkcs11_mechanism_type {
 					struct sc_pkcs11_object *,
 					CK_BYTE_PTR, CK_ULONG,
 					struct sc_pkcs11_object *);
+	CK_RV		  (*decapsulate)(sc_pkcs11_operation_t *,
+					struct sc_pkcs11_object *,
+					CK_BYTE_PTR, CK_ULONG,
+					CK_BYTE_PTR, CK_ULONG_PTR);
 
 	/* mechanism specific data */
 	const void *  mech_data;
@@ -499,6 +507,9 @@ CK_RV sc_pkcs11_unwrap(struct sc_pkcs11_session *,CK_MECHANISM_PTR, struct sc_pk
 CK_RV sc_pkcs11_deri(struct sc_pkcs11_session *, CK_MECHANISM_PTR,
 				struct sc_pkcs11_object *, CK_KEY_TYPE,
 				CK_SESSION_HANDLE, CK_OBJECT_HANDLE, struct sc_pkcs11_object *);
+CK_RV sc_pkcs11_decaps(struct sc_pkcs11_session *, CK_MECHANISM_PTR, struct sc_pkcs11_object *, CK_KEY_TYPE,
+		CK_SESSION_HANDLE, CK_OBJECT_HANDLE, struct sc_pkcs11_object *, CK_BYTE_PTR, CK_ULONG);
+
 sc_pkcs11_mechanism_type_t *sc_pkcs11_find_mechanism(struct sc_pkcs11_card *,
 				CK_MECHANISM_TYPE, CK_FLAGS);
 sc_pkcs11_mechanism_type_t *sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE,

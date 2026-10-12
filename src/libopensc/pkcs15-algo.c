@@ -476,6 +476,30 @@ static struct sc_asn1_pkcs15_algorithm_info algorithm_table[] = {
 			asn1_encode_ec_params,
 			asn1_free_ec_params}, /* X448 */
 #endif
+#ifdef SC_ALGORITHM_MLDSA
+		{SC_ALGORITHM_MLDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 17, -1}}, NULL, NULL, NULL}, /* ML-DSA-44 */
+		{SC_ALGORITHM_MLDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 18, -1}}, NULL, NULL, NULL}, /* ML-DSA-65 */
+		{SC_ALGORITHM_MLDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 19, -1}}, NULL, NULL, NULL}, /* ML-DSA-87 */
+#endif
+#ifdef SC_ALGORITHM_MLKEM
+		{SC_ALGORITHM_MLKEM, {{2, 16, 840, 1, 101, 3, 4, 4, 1, -1}}, NULL, NULL, NULL}, /* ML-KEM-512 */
+		{SC_ALGORITHM_MLKEM, {{2, 16, 840, 1, 101, 3, 4, 4, 2, -1}}, NULL, NULL, NULL}, /* ML-KEM-768 */
+		{SC_ALGORITHM_MLKEM, {{2, 16, 840, 1, 101, 3, 4, 4, 3, -1}}, NULL, NULL, NULL}, /* ML-KEM-1024 */
+#endif
+#ifdef SC_ALGORITHM_SLHDSA
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 20, -1}}, NULL, NULL, NULL}, /* SLH-DSA sha2-128s */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 21, -1}}, NULL, NULL, NULL}, /* SLH-DSA sha2-128f */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 22, -1}}, NULL, NULL, NULL}, /* SLH-DSA sha2-192s */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 23, -1}}, NULL, NULL, NULL}, /* SLH-DSA sha2-192f */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 24, -1}}, NULL, NULL, NULL}, /* SLH-DSA sha2-256s */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 25, -1}}, NULL, NULL, NULL}, /* SLH-DSA sha2-256f */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 26, -1}}, NULL, NULL, NULL}, /* SLH-DSA shake-128s */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 27, -1}}, NULL, NULL, NULL}, /* SLH-DSA shake-128f */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 28, -1}}, NULL, NULL, NULL}, /* SLH-DSA shake-192s */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 29, -1}}, NULL, NULL, NULL}, /* SLH-DSA shake-192f */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 30, -1}}, NULL, NULL, NULL}, /* SLH-DSA shake-256s */
+		{SC_ALGORITHM_SLHDSA, {{2, 16, 840, 1, 101, 3, 4, 3, 31, -1}}, NULL, NULL, NULL}, /* SLH-DSA shake-256f */
+#endif
 		{-1, {{-1}}, NULL, NULL, NULL}
 };
 
@@ -572,13 +596,22 @@ sc_asn1_encode_algorithm_id(struct sc_context *ctx, u8 **buf, size_t *len,
 	sc_format_asn1_entry(asn1_alg_id + 0, (void *) &id->oid, NULL, 1);
 
 	/* no parameters, write NULL tag */
-	/* If it's EDDSA/XEDDSA, according to RFC8410, params
-	 * MUST be absent */
 	/* PKCS11 3.0 list them under ec_params */
-	if (id->algorithm != SC_ALGORITHM_EDDSA &&
-	    id->algorithm != SC_ALGORITHM_XEDDSA &&
-	    (!id->params || !alg_info->encode))
-		asn1_alg_id[1].flags |= SC_ASN1_PRESENT;
+	switch (id->algorithm) {
+	case SC_ALGORITHM_EDDSA:
+	case SC_ALGORITHM_XEDDSA:
+		/* If it's EDDSA/XEDDSA, according to RFC8410, params MUST be absent */
+	case SC_ALGORITHM_MLDSA:
+	case SC_ALGORITHM_MLKEM:
+	case SC_ALGORITHM_SLHDSA:
+		/* If it's ML-DSA/ML-KEM/SLH-DSA, according to RFC9881, params MUST be absent */
+		break;
+	default:
+		if (!id->params || !alg_info->encode) {
+			asn1_alg_id[1].flags |= SC_ASN1_PRESENT;
+		}
+		break;
+	}
 
 	r = _sc_asn1_encode(ctx, asn1_alg_id, buf, len, depth + 1);
 	LOG_TEST_RET(ctx, r, "ASN.1 encode of algorithm failed");

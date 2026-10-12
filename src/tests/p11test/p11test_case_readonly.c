@@ -628,7 +628,7 @@ int verify_message_openssl(test_cert_t *o, token_info_t *info, CK_BYTE *message,
 		EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_from_pkey(NULL, o->key, NULL);
 		if (ctx == NULL) {
 			fprintf(stderr, " [FAIL %s ] EVP_PKEY_CTX_new_from_pkey: %s\n", o->id_str,
-				ERR_error_string(ERR_peek_last_error(), NULL));
+					ERR_error_string(ERR_peek_last_error(), NULL));
 			return -1;
 		}
 
