@@ -103,7 +103,7 @@ itacns_match_cns_model(sc_card_t *card)
 		return 0;
 
 	if (apdu.resplen < sizeof model ||
-	    memcmp(rbuf, model, sizeof model) != 0)
+			memcmp(rbuf, model, sizeof model) != 0)
 		return 0;
 
 	card->type = SC_CARD_TYPE_ITACNS_CNS_JSIGN4;
@@ -167,7 +167,7 @@ static int itacns_match_card(sc_card_t *card)
 
 	if (itacns_match_cns_card(card)) {
 		if (card->type == SC_CARD_TYPE_ITACNS_CNS &&
-		    card->reader->atr_info.hist_bytes[3] == ITACNS_MASKMAN_STINCARD) {
+				card->reader->atr_info.hist_bytes[3] == ITACNS_MASKMAN_STINCARD) {
 			r = itacns_match_cns_model(card);
 			if (r == 0)
 				itacns_match_cns_aid(card);
@@ -175,7 +175,8 @@ static int itacns_match_card(sc_card_t *card)
 		return 1;
 	}
 	if (itacns_match_cie_card(card)) return 1;
-	if (itacns_match_cns_aid(card)) return 1;
+	if (itacns_match_cns_aid(card))
+		return 1;
 
 	/* No card type was matched. */
 	return 0;
@@ -199,7 +200,7 @@ static int itacns_init(sc_card_t *card)
 		return SC_ERROR_OUT_OF_MEMORY;
 
 	if (card->type == SC_CARD_TYPE_ITACNS_CNS ||
-	    card->type == SC_CARD_TYPE_ITACNS_CNS_JSIGN4)
+			card->type == SC_CARD_TYPE_ITACNS_CNS_JSIGN4)
 		itacns_init_cns_card(card);
 
 	if (card->reader->atr_info.hist_bytes_len >= 6) {
@@ -392,8 +393,8 @@ static int
 itacns_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	if (data->cmd == SC_PIN_CMD_GET_INFO &&
-	    card->type == SC_CARD_TYPE_ITACNS_CNS_JSIGN4 &&
-	    data->pin_reference == 0x10)
+			card->type == SC_CARD_TYPE_ITACNS_CNS_JSIGN4 &&
+			data->pin_reference == 0x10)
 		return itacns_pin_get_info(card, data);
 
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
