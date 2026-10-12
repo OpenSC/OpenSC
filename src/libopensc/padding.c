@@ -97,9 +97,11 @@ static int sc_pkcs1_add_01_padding(const u8 *in, size_t in_len,
 {
 	size_t i;
 
+	if (in == NULL || out == NULL || out_len == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	if (*out_len < mod_length)
 		return SC_ERROR_BUFFER_TOO_SMALL;
-	if (in_len + 11 > mod_length)
+	if (mod_length < 11 || in_len > mod_length - 11)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	i = mod_length - in_len;
 	memmove(out + i, in, in_len);
@@ -131,15 +133,18 @@ sc_pkcs1_strip_01_padding(struct sc_context *ctx, const u8 *in_dat, size_t in_le
 	len = in_len;
 	if (*tmp != 0x01)
 		return SC_ERROR_WRONG_PADDING;
-	for (tmp++, len--; *tmp == 0xff && len != 0; tmp++, len--)
+	for (tmp++, len--; len != 0 && *tmp == 0xff; tmp++, len--)
 		;
 	if (!len || (in_len - len) < 9 || *tmp++ != 0x00)
 		return SC_ERROR_WRONG_PADDING;
 	len--;
-	if (out == NULL)
+	if (out == NULL) {
 		/* just check the padding */
+		if (out_len != NULL)
+			*out_len = len;
 		return SC_SUCCESS;
-	if (*out_len < len)
+	}
+	if (out_len == NULL || *out_len < len)
 		return SC_ERROR_INTERNAL;
 	memmove(out, tmp, len);
 	*out_len = len;
@@ -158,7 +163,7 @@ sc_pkcs1_strip_02_padding_constant_time(sc_context_t *ctx, unsigned int n, const
 	unsigned int zero_index = 0, msg_index, mlen = -1, len = 0;
 	LOG_FUNC_CALLED(ctx);
 
-	if (data == NULL || data_len <= 0 || data_len > n ||
+	if (data == NULL || out == NULL || data_len <= 0 || data_len > n ||
 			n < SC_PKCS1_PADDING_MIN_SIZE || out_len == NULL)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 
@@ -381,6 +386,9 @@ static int sc_pkcs1_add_digest_info_prefix(unsigned int algorithm,
 {
 	int i;
 
+	if (in == NULL || out == NULL || out_len == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	for (i = 0; digest_info_prefix[i].algorithm != 0; i++) {
 		if (algorithm == digest_info_prefix[i].algorithm) {
 			const u8 *hdr      = digest_info_prefix[i].hdr;
@@ -406,6 +414,9 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 {
 	int i;
 
+	if (in_dat == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	for (i = 0; digest_info_prefix[i].algorithm != 0; i++) {
 		size_t    hdr_len  = digest_info_prefix[i].hdr_len,
 		          hash_len = digest_info_prefix[i].hash_len;
@@ -415,10 +426,13 @@ int sc_pkcs1_strip_digest_info_prefix(unsigned int *algorithm,
 		    !memcmp(in_dat, hdr, hdr_len)) {
 			if (algorithm)
 				*algorithm = digest_info_prefix[i].algorithm;
-			if (out_dat == NULL)
+			if (out_dat == NULL) {
 				/* just check the DigestInfo prefix */
+				if (out_len != NULL)
+					*out_len = hash_len;
 				return SC_SUCCESS;
-			if (*out_len < hash_len)
+			}
+			if (out_len == NULL || *out_len < hash_len)
 				return SC_ERROR_INTERNAL;
 			memmove(out_dat, in_dat + hdr_len, hash_len);
 			*out_len = hash_len;
@@ -481,6 +495,9 @@ static int sc_pkcs1_add_pss_padding(sc_context_t *scctx, unsigned int hash, unsi
 	u8 buf[8];
 	u8 salt[PSS_MAX_SALT_SIZE], mask[EVP_MAX_MD_SIZE];
 	size_t mod_length = BYTES4BITS(mod_bits);
+
+	if (in == NULL || out == NULL || out_len == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (*out_len < mod_length)
 		return SC_ERROR_BUFFER_TOO_SMALL;
@@ -611,7 +628,7 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 	const u8 *in, size_t in_len, u8 *out, size_t *out_len, size_t mod_bits, void *pMechanism)
 {
 	int    rv, i;
-	size_t tmp_len = *out_len;
+	size_t tmp_len;
 	const u8    *tmp = in;
 	unsigned int hash_algo, pad_algo;
 	size_t mod_len = BYTES4BITS(mod_bits);
@@ -622,6 +639,11 @@ int sc_pkcs1_encode(sc_context_t *ctx, unsigned long flags,
 #endif
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (out == NULL || out_len == NULL || (in_len > 0 && in == NULL))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	tmp_len = *out_len;
 
 	hash_algo = flags & SC_ALGORITHM_RSA_HASHES;
 	pad_algo  = flags & SC_ALGORITHM_RSA_PADS;
