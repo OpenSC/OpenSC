@@ -443,6 +443,10 @@ awp_update_container(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	if (rv)
 		goto done;
 	private_path = file->path;
+	if (private_path.len < 2) {
+		rv = SC_ERROR_INVALID_DATA;
+		goto done;
+	}
 	sc_file_free(file), file=NULL;
 
 	rv = awp_new_file(p15card, profile, COSM_CONTAINER_LIST, 0, &clist, NULL);
