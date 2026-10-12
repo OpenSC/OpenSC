@@ -42,6 +42,9 @@ size_t sc_apdu_get_length(const sc_apdu_t *apdu, unsigned int proto)
 {
 	size_t ret = 4;
 
+	if (apdu == NULL)
+		return 0;
+
 	switch (apdu->cse) {
 	case SC_APDU_CASE_1:
 		if (proto == SC_PROTO_T0)
@@ -83,11 +86,18 @@ int sc_apdu2bytes(sc_context_t *ctx, const sc_apdu_t *apdu,
 	unsigned int proto, u8 *out, size_t outlen)
 {
 	u8     *p = out;
+	size_t len;
 
-	size_t len = sc_apdu_get_length(apdu, proto);
-
-	if (out == NULL || outlen < len)
+	if (apdu == NULL || out == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	len = sc_apdu_get_length(apdu, proto);
+	if (len == 0 || outlen < len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (apdu->lc > 0 && apdu->data == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* CLA, INS, P1 and P2 */
 	*p++ = apdu->cla;
 	*p++ = apdu->ins;
@@ -200,9 +210,9 @@ int sc_apdu_get_octets(sc_context_t *ctx, const sc_apdu_t *apdu, u8 **buf,
 int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
 	size_t len)
 {
-	if (len < 2) {
+	if (apdu == NULL || buf == NULL || len < 2) {
 		/* no SW1 SW2 ... something went terrible wrong */
-		sc_log(ctx, "invalid response: SW1 SW2 missing");
+		sc_log(ctx, "invalid response: SW1 SW2 missing or invalid parameters");
 		return SC_ERROR_INTERNAL;
 	}
 	/* set the SW1 and SW2 status bytes (the last two bytes of
@@ -214,8 +224,11 @@ int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
 	if (len <= apdu->resplen)
 		apdu->resplen = len;
 
-	if (apdu->resplen != 0)
+	if (apdu->resplen != 0) {
+		if (apdu->resp == NULL)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		memcpy(apdu->resp, buf, apdu->resplen);
+	}
 
 	return SC_SUCCESS;
 }
@@ -254,6 +267,9 @@ int sc_apdu_set_resp(sc_context_t *ctx, sc_apdu_t *apdu, const u8 *buf,
 int
 sc_check_apdu(sc_card_t *card, const sc_apdu_t *apdu)
 {
+	if (apdu == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if ((apdu->cse & ~SC_APDU_SHORT_MASK) == 0) {
 		/* length check for short APDU */
 		if (apdu->le > 256 || (apdu->lc > 255 && (apdu->flags & SC_APDU_FLAGS_CHAINING) == 0))   {
@@ -338,6 +354,9 @@ error:
 static void
 sc_detect_apdu_cse(const sc_card_t *card, sc_apdu_t *apdu)
 {
+	if (apdu == NULL)
+		return;
+
 	if (apdu->cse == SC_APDU_CASE_2 || apdu->cse == SC_APDU_CASE_3 ||
 	    apdu->cse == SC_APDU_CASE_4) {
 		int btype = apdu->cse & SC_APDU_SHORT_MASK;
@@ -360,7 +379,7 @@ sc_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	if (card->reader->ops->transmit == NULL)
+	if (card->reader == NULL || card->reader->ops == NULL || card->reader->ops->transmit == NULL)
 		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "cannot transmit APDU");
 
 	sc_log(ctx, "CLA:%X, INS:%X, P1:%X, P2:%X, data(%zu) %p",
@@ -431,11 +450,11 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 	}
 
 	/* this should _never_ happen */
-	if (!card->ops->get_response)
+	if (!card->ops || !card->ops->get_response)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "no GET RESPONSE command");
 
-	/* call GET RESPONSE until we have read all data requested or until the card returns 0x9000,
-	 * whatever happens first. */
+	if (apdu->resp == NULL || olen < apdu->resplen)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "invalid response buffer");
 
 	/* if there are already data in response append a new data to the end of the buffer */
 	buf = apdu->resp + apdu->resplen;
@@ -450,7 +469,7 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 
 	do {
 		unsigned char resp[256];
-		size_t resp_len = le;
+		size_t resp_len = le > sizeof(resp) ? sizeof(resp) : le;
 
 		/* we have all the data the caller requested even if the card has more data */
 		if (buflen == 0)
@@ -470,6 +489,9 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 			LOG_TEST_RET(ctx, rv, "GET RESPONSE error");
 		}
 
+		if (resp_len > sizeof(resp))
+			resp_len = sizeof(resp);
+
 		le = resp_len;
 		/* copy as much as will fit in requested buffer */
 		if (buflen < le)
@@ -480,12 +502,17 @@ sc_get_response(struct sc_card *card, struct sc_apdu *apdu, size_t olen)
 		buflen -= le;
 
 		minlen -= le;
-		if (rv != 0)
+		if (rv != 0) {
 			le = minlen = (size_t)rv;
-		else
+			if (le > sizeof(resp))
+				le = sizeof(resp);
+		} else {
 			/* if the card has returned 0x9000 but we still expect data ask for more
 			 * until we have read enough bytes */
 			le = minlen;
+			if (le > sizeof(resp))
+				le = sizeof(resp);
+		}
 	} while (rv != 0 && minlen != 0);
 
 	/* we've read all data, let's return 0x9000 */
@@ -575,6 +602,11 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 		const u8  *buf = apdu->data;
 		size_t    max_send_size = sc_get_max_send_size(card);
 
+		if (max_send_size == 0) {
+			sc_unlock(card);
+			return SC_ERROR_NOT_SUPPORTED;
+		}
+
 		while (len != 0) {
 			size_t    plen;
 			sc_apdu_t tapdu;
@@ -634,7 +666,7 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 
 	if (r == SC_ERROR_CARD_RESET || r == SC_ERROR_READER_REATTACHED) {
 		/* give card driver a chance to react on resets */
-		if (card->ops->card_reader_lock_obtained)
+		if (card->ops && card->ops->card_reader_lock_obtained)
 			card->ops->card_reader_lock_obtained(card, 1);
 	}
 
