@@ -132,13 +132,19 @@ DES_cbc_cksum_3des_emv96(struct sc_context *ctx,
 			   sm_const_des_cblock *ivec)
 {
 	register long l=length;
-	unsigned char *out = &(*output)[0];
-	const unsigned char *iv = &(*ivec)[0];
+	unsigned char *out;
+	const unsigned char *iv;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	register unsigned int tout0,tout1,tin0,tin1;
 	unsigned int tin[2];
 	sm_des_cblock kk, k2;
 	DES_key_schedule ks,ks2;
+
+	if (!key || !ivec || length < 0 || (length > 0 && !in))
+		return 0;
+
+	out = output ? &(*output)[0] : NULL;
+	iv = &(*ivec)[0];
 
 	memcpy(&kk, key, 8);
 	memcpy(&k2, key + 8, 8);
@@ -195,6 +201,12 @@ DES_cbc_cksum_3des_emv96(struct sc_context *ctx,
 	EVP_CIPHER *alg = NULL;
 	unsigned char outv[8], tmpout[4];
 	int tmplen;
+
+	if (!key || !ivec || length < 0 || (length > 0 && !in))
+		return 0;
+
+	out = output ? &(*output)[0] : NULL;
+	iv = &(*ivec)[0];
 
 	/* Prepare IV */
 	memcpy(outv, iv, sizeof outv);
@@ -272,13 +284,19 @@ DES_cbc_cksum_3des(struct sc_context *ctx,
 		       sm_const_des_cblock *ivec)
 {
 	register long l=length;
-	unsigned char *out = &(*output)[0];
-	const unsigned char *iv = &(*ivec)[0];
+	unsigned char *out;
+	const unsigned char *iv;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	register unsigned int tout0,tout1,tin0,tin1;
 	unsigned int tin[2];
 	sm_des_cblock kk, k2;
 	DES_key_schedule ks,ks2;
+
+	if (!key || !ivec || length < 0 || (length > 0 && !in))
+		return 0;
+
+	out = output ? &(*output)[0] : NULL;
+	iv = &(*ivec)[0];
 
 	memcpy(&kk, key, 8);
 	memcpy(&k2, key + 8, 8);
@@ -325,6 +343,12 @@ DES_cbc_cksum_3des(struct sc_context *ctx,
 	EVP_CIPHER *alg = NULL;
 	unsigned char outv[8];
 	int tmplen = 0;
+
+	if (!key || !ivec || length < 0 || (length > 0 && !in))
+		return 0;
+
+	out = output ? &(*output)[0] : NULL;
+	iv = &(*ivec)[0];
 
 	/* Prepare IV */
 	memcpy(outv, iv, sizeof outv);
@@ -381,7 +405,10 @@ sm_encrypt_des_ecb3(struct sc_context *ctx,
 	int tmplen;
 #endif
 
-	if (!out || !out_len)
+	if (!out || !out_len || !key || (data_len > 0 && !data) || data_len < 0)
+		return -1;
+
+	if (data_len > INT_MAX - 7)
 		return -1;
 
 	*out_len = data_len + 7;
@@ -457,8 +484,11 @@ sm_decrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	unsigned char *decrypted;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_SM);
-	if (!out || !out_len)
+	if (!out || !out_len || !key || (data_len > 0 && !data))
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "SM decrypt_des_cbc3: invalid input arguments");
+
+	if (data_len > SIZE_MAX - 7)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "SM decrypt_des_cbc3: data length too large");
 
 	decrypted_len = data_len + 7;
 	decrypted_len -= decrypted_len % 8;
@@ -537,11 +567,14 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_SM);
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM encrypt_des_cbc3: not_force_pad:%i,in_len:%zu",
 			not_force_pad, in_len);
-	if (!out || !out_len)
+	if (!out || !out_len || !key)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "SM encrypt_des_cbc3: invalid input arguments");
 
 	if (!in)
 		in_len = 0;
+
+	if (in_len > SIZE_MAX - 8)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "SM encrypt_des_cbc3: input length too large");
 
 	*out = NULL;
 	*out_len = 0;
@@ -581,6 +614,8 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	if (!EVP_EncryptInit_ex2(cctx, alg, key, icv, NULL)) {
 		sc_log_openssl(ctx);
 		free(*out);
+		*out = NULL;
+		*out_len = 0;
 		free(data);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
@@ -591,6 +626,8 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	if (!EVP_EncryptUpdate(cctx, *out, &tmplen, data, (int)data_len)) {
 		sc_log_openssl(ctx);
 		free(*out);
+		*out = NULL;
+		*out_len = 0;
 		free(data);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
@@ -601,6 +638,8 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 	if (!EVP_EncryptFinal_ex(cctx, *out + *out_len, &tmplen)) {
 		sc_log_openssl(ctx);
 		free(*out);
+		*out = NULL;
+		*out_len = 0;
 		free(data);
 		EVP_CIPHER_CTX_free(cctx);
 		sc_evp_cipher_free(alg);
@@ -619,14 +658,14 @@ sm_encrypt_des_cbc3(struct sc_context *ctx, unsigned char *key,
 void
 sm_incr_ssc(unsigned char *ssc, size_t ssc_len)
 {
-	long ii;
+	size_t ii;
 
-	if (!ssc)
+	if (!ssc || ssc_len == 0)
 		return;
 
-	for (ii = (long)ssc_len - 1; ii >= 0; ii--) {
-		*(ssc + ii) += 1;
-		if (*(ssc + ii) != 0)
+	for (ii = ssc_len; ii > 0; ii--) {
+		ssc[ii - 1]++;
+		if (ssc[ii - 1] != 0)
 			break;
 	}
 }
