@@ -280,7 +280,8 @@ init_spy(void)
 			RegCloseKey( hKey );
 		}
 
-		spy_output = fopen(output, "a");
+		if (output)
+			spy_output = fopen(output, "a");
 	}
 #endif
 	if (!spy_output)
@@ -356,12 +357,20 @@ init_spy(void)
 		CK_INTERFACE_PTR interface = C_GetModuleInterface(modhandle);
 		if (interface == NULL) {
 			free(po);
+			po = NULL;
 			fprintf(spy_output, "Error: Could not get interface from \"%s\".\n", module);
 			rv = CKR_DEVICE_ERROR;
 			goto err;
 		}
 
 		funcs = interface->pFunctionList;
+		if (funcs == NULL) {
+			free(po);
+			po = NULL;
+			fprintf(spy_output, "Error: Interface has NULL function list from \"%s\".\n", module);
+			rv = CKR_DEVICE_ERROR;
+			goto err;
+		}
 		if (funcs->version.minor < 2) {
 			memcpy(po, (CK_FUNCTION_LIST_3_0_PTR)funcs, sizeof(CK_FUNCTION_LIST_3_0));
 		} else {
@@ -373,7 +382,10 @@ init_spy(void)
 	return CKR_OK;
 
 err:
-	po = NULL;
+	if (po) {
+		free(po);
+		po = NULL;
+	}
 	C_UnloadModule(modhandle);
 	modhandle = NULL;
 	free(pkcs11_spy);
@@ -399,7 +411,10 @@ enter(const char *function)
 	char time_string[40];
 #endif
 
-	fprintf(spy_output, "\n%d: %s\n", count++, function);
+	if (!spy_output)
+		spy_output = stderr;
+
+	fprintf(spy_output, "\n%d: %s\n", count++, function ? function : "unknown");
 #ifdef _WIN32
 	GetLocalTime(&st);
 	fprintf(spy_output, "P:%lu; T:%lu %i-%02i-%02i %02i:%02i:%02i.%03i\n",
@@ -408,7 +423,10 @@ enter(const char *function)
 #else
 	gettimeofday (&tv, NULL);
 	tm = localtime (&tv.tv_sec);
-	strftime (time_string, sizeof(time_string), "%F %H:%M:%S", tm);
+	if (tm)
+		strftime (time_string, sizeof(time_string), "%F %H:%M:%S", tm);
+	else
+		snprintf (time_string, sizeof(time_string), "unknown");
 	fprintf(spy_output, "P:%lu; T:0x%lu %s.%03ld\n",
 			(unsigned long)getpid(), (unsigned long)pthread_self(),
 			time_string, (long)tv.tv_usec / 1000);
@@ -419,7 +437,12 @@ enter(const char *function)
 static CK_RV
 retne(CK_RV rv)
 {
-	fprintf(spy_output, "Returned:  %ld %s\n", (unsigned long) rv, lookup_enum (RV_T, rv ));
+	const char *name;
+
+	if (!spy_output)
+		spy_output = stderr;
+	name = lookup_enum(RV_T, rv);
+	fprintf(spy_output, "Returned:  %ld %s\n", (unsigned long) rv, name ? name : "Unknown");
 	fflush(spy_output);
 	return rv;
 }
@@ -501,15 +524,8 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism, bool is_c_m
 	mec_name = lookup_enum(MEC_T, pMechanism->mechanism);
 	if (mec_name)
 		fprintf(spy_output, "[in] %s->type = %s\n", name, mec_name);
-	else {
-		size_t needed = snprintf(NULL, 0, "0x%08lX", pMechanism->mechanism) + 1;
-		char *buffer = malloc(needed);
-		if (buffer) {
-			sprintf(buffer, "0x%08lX", pMechanism->mechanism);
-			fprintf(spy_output, "[in] %s->type = %s\n", name, buffer);
-			free(buffer);
-		}
-	}
+	else
+		fprintf(spy_output, "[in] %s->type = 0x%08lX\n", name, (unsigned long)pMechanism->mechanism);
 
 	/* This is common case for all mechanisms */
 	if (pMechanism->pParameter == NULL) {
@@ -590,15 +606,15 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism, bool is_c_m
 
 		CK_ECMQV_DERIVE_PARAMS *param = (CK_ECMQV_DERIVE_PARAMS *)pMechanism->pParameter;
 		fprintf(spy_output, "[in] %s->pParameter->kdf = %s\n", name, lookup_enum(CKD_T, param->kdf));
-		fprintf(spy_output, "%s->pParameter->pSharedData[ulSharedDataLen] = ", name);
+		fprintf(spy_output, "[in] %s->pParameter->pSharedData[ulSharedDataLen] = ", name);
 		print_generic(spy_output, 0, param->pSharedData, param->ulSharedDataLen, NULL, -1);
-		fprintf(spy_output, "%s->pParameter->pPublicData[ulPublicDataLen] = ", name);
+		fprintf(spy_output, "[in] %s->pParameter->pPublicData[ulPublicDataLen] = ", name);
 		print_generic(spy_output, 0, param->pPublicData, param->ulPublicDataLen, NULL, -1);
-		fprintf(spy_output, "%s->pParameter->ulPrivateDataLen = %lu", name, param->ulPrivateDataLen);
-		fprintf(spy_output, "%s->pParameter->hPrivateData = %lu", name, param->hPrivateData);
-		fprintf(spy_output, "%s->pParameter->pPublicData2[ulPublicDataLen2] = ", name);
+		fprintf(spy_output, "[in] %s->pParameter->ulPrivateDataLen = %lu\n", name, param->ulPrivateDataLen);
+		fprintf(spy_output, "[in] %s->pParameter->hPrivateData = %lu\n", name, param->hPrivateData);
+		fprintf(spy_output, "[in] %s->pParameter->pPublicData2[ulPublicDataLen2] = ", name);
 		print_generic(spy_output, 0, param->pPublicData2, param->ulPublicDataLen2, NULL, -1);
-		fprintf(spy_output, "%s->pParameter->publicKey = %lu", name, param->publicKey);
+		fprintf(spy_output, "[in] %s->pParameter->publicKey = %lu\n", name, param->publicKey);
 		break;
 	}
 	case CKM_RSA_PKCS_OAEP: {
@@ -666,7 +682,7 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism, bool is_c_m
 		CK_SIGN_ADDITIONAL_CONTEXT *param = (CK_SIGN_ADDITIONAL_CONTEXT *)pMechanism->pParameter;
 		fprintf(spy_output, "[in] %s->pParameter->hedgeVariant = %s\n", name,
 				lookup_enum(HG_T, param->hedgeVariant));
-		fprintf(spy_output, "%s->pParameter->pContent[ulContextLen] = ", name);
+		fprintf(spy_output, "[in] %s->pParameter->pContext[ulContextLen] = ", name);
 		print_generic(spy_output, 0, param->pContext, param->ulContextLen, NULL, 1);
 		break;
 	}
@@ -681,7 +697,7 @@ spy_dump_mechanism_in(const char *name, CK_MECHANISM_PTR pMechanism, bool is_c_m
 		CK_HASH_SIGN_ADDITIONAL_CONTEXT *param = (CK_HASH_SIGN_ADDITIONAL_CONTEXT *)pMechanism->pParameter;
 		fprintf(spy_output, "[in] %s->pParameter->hedgeVariant = %s\n", name,
 				lookup_enum(HG_T, param->hedgeVariant));
-		fprintf(spy_output, "%s->pParameter->pContent[ulContextLen] = ", name);
+		fprintf(spy_output, "[in] %s->pParameter->pContext[ulContextLen] = ", name);
 		print_generic(spy_output, 0, param->pContext, param->ulContextLen, NULL, -1);
 		fprintf(spy_output, "[in] %s->pParameter->hash = %s\n", name,
 				lookup_enum(MEC_T, param->hash));
@@ -702,18 +718,14 @@ print_ptr_in(const char *name, CK_VOID_PTR ptr)
 
 #define FPRINTF_LOOKUP_ENUM(fmt, category, type)\
 do {\
-        const char *name = lookup_enum((category), (type));\
-        if (name)\
-                fprintf(spy_output, (fmt), (name));\
-        else {\
-                size_t needed = snprintf(NULL, 0, "0x%08lX", (type)) + 1;\
-                char *buffer = malloc(needed);\
-                if (buffer) {\
-                        sprintf(buffer, "0x%08lX", (type));\
-                        fprintf(spy_output, (fmt), buffer);\
-                        free(buffer);\
-                }\
-        }\
+	const char *enum_str = lookup_enum((category), (type));\
+	if (enum_str)\
+		fprintf(spy_output, (fmt), (enum_str));\
+	else {\
+		char enum_buf[32];\
+		snprintf(enum_buf, sizeof(enum_buf), "0x%08lX", (unsigned long)(type));\
+		fprintf(spy_output, (fmt), enum_buf);\
+	}\
 } while(0)
 
 CK_RV C_GetFunctionList
@@ -971,7 +983,7 @@ C_GetOperationState(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pOperationState,
 	enter("C_GetOperationState");
 	spy_dump_ulong_in("hSession", hSession);
 	rv = po->C_GetOperationState(hSession, pOperationState, pulOperationStateLen);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK && pulOperationStateLen)
 		spy_dump_string_out("pOperationState[*pulOperationStateLen]", pOperationState, *pulOperationStateLen);
 	return retne(rv);
 }
@@ -1026,7 +1038,7 @@ C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG 
 	spy_dump_ulong_in("hSession", hSession);
 	spy_attribute_list_in("pTemplate", pTemplate, ulCount);
 	rv = po->C_CreateObject(hSession, pTemplate, ulCount, phObject);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK && phObject)
 		spy_dump_ulong_out("*phObject", *phObject);
 	return retne(rv);
 }
@@ -1045,7 +1057,7 @@ C_CopyObject(CK_SESSION_HANDLE hSession,
 	spy_dump_ulong_in("hObject", hObject);
 	spy_attribute_list_in("pTemplate", pTemplate, ulCount);
 	rv = po->C_CopyObject(hSession, hObject, pTemplate, ulCount, phNewObject);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK && phNewObject)
 		spy_dump_ulong_out("*phNewObject", *phNewObject);
 
 	return retne(rv);
@@ -1072,7 +1084,7 @@ C_GetObjectSize(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ULONG_P
 	spy_dump_ulong_in("hSession", hSession);
 	spy_dump_ulong_in("hObject", hObject);
 	rv = po->C_GetObjectSize(hSession, hObject, pulSize);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK && pulSize)
 		spy_dump_ulong_out("*pulSize", *pulSize);
 
 	return retne(rv);
@@ -1138,11 +1150,13 @@ C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULON
 	spy_dump_ulong_in("hSession", hSession);
 	spy_dump_ulong_in("ulMaxObjectCount", ulMaxObjectCount);
 	rv = po->C_FindObjects(hSession, phObject, ulMaxObjectCount, pulObjectCount);
-	if (rv == CKR_OK) {
+	if (rv == CKR_OK && pulObjectCount) {
 		CK_ULONG          i;
 		spy_dump_ulong_out("ulObjectCount", *pulObjectCount);
-		for (i = 0; i < *pulObjectCount; i++)
-			fprintf(spy_output, "Object 0x%lx matches\n", phObject[i]);
+		if (phObject) {
+			for (i = 0; i < *pulObjectCount; i++)
+				fprintf(spy_output, "Object 0x%lx matches\n", phObject[i]);
+		}
 	}
 	return retne(rv);
 }
@@ -1760,13 +1774,20 @@ spy_interface_function_list(CK_INTERFACE_PTR pInterface, CK_INTERFACE_PTR_PTR re
 {
 	CK_VERSION *version;
 
+	if (!pInterface || !retInterface || !*retInterface)
+		return;
+
 	/* Do not touch unknown interfaces. We can not do anything with these */
-	if (strcmp((char *)pInterface->pInterfaceName, "PKCS 11") != 0) {
+	if (!pInterface->pInterfaceName || strcmp((char *)pInterface->pInterfaceName, "PKCS 11") != 0) {
 		*retInterface = pInterface;
 		return;
 	}
 
 	version = (CK_VERSION *)pInterface->pFunctionList;
+	if (!version) {
+		(*retInterface)->pFunctionList = pkcs11_spy;
+		return;
+	}
 	if (version->major == 3 && version->minor >= 2) {
 		(*retInterface)->pFunctionList = pkcs11_spy_3_2;
 	} else if (version->major == 3) {
@@ -1817,9 +1838,9 @@ C_GetInterfaceList(CK_INTERFACE_PTR pInterfacesList, CK_ULONG_PTR pulCount)
 	rv = po->C_GetInterfaceList(pInterfacesList, pulCount);
 	if (rv == CKR_OK) {
 		spy_dump_desc_out("pInterfacesList (original)");
-		print_interfaces_list(spy_output, pInterfacesList, *pulCount);
+		print_interfaces_list(spy_output, pInterfacesList, pulCount ? *pulCount : 0);
 
-		if (pInterfacesList != NULL) {
+		if (pInterfacesList != NULL && pulCount != NULL) {
 			unsigned long i;
 			/* Record the module interface so we can transparently proxy the GetInterface calls */
 			free(orig_interfaces);
@@ -1839,8 +1860,9 @@ C_GetInterfaceList(CK_INTERFACE_PTR pInterfacesList, CK_ULONG_PTR pulCount)
 		}
 
 		spy_dump_desc_out("pInterfacesList (faked)");
-		print_interfaces_list(spy_output, pInterfacesList, *pulCount);
-		spy_dump_ulong_out("*pulCount", *pulCount);
+		print_interfaces_list(spy_output, pInterfacesList, pulCount ? *pulCount : 0);
+		if (pulCount)
+			spy_dump_ulong_out("*pulCount", *pulCount);
 	}
 	return retne(rv);
 }
@@ -1862,7 +1884,7 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 		fprintf(spy_output, "[compat]\n");
 	}
 	if (pInterfaceName != NULL) {
-		spy_dump_string_in("pInterfaceName", pInterfaceName, strlen((char *)pInterfaceName));
+		spy_dump_string_in("pInterfaceName", pInterfaceName, (CK_ULONG)strlen((char *)pInterfaceName));
 	} else {
 		fprintf(spy_output, "[in] pInterfaceName = NULL\n");
 	}
@@ -1890,7 +1912,7 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 			for (unsigned long i = 0; i < num_orig_interfaces; i++) {
 				CK_VERSION *v = (CK_VERSION *)orig_interfaces[i].pFunctionList;
 				/* We found the same major version. Copy the minor and call it a day */
-				if (v->major == pVersion->major) {
+				if (v && v->major == pVersion->major) {
 					in_version.major = v->major;
 					in_version.minor = v->minor;
 					fprintf(spy_output, "[in] fakeVersion = %d.%d (faked pVersion)\n",
@@ -1903,14 +1925,17 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 
 		rv = po->C_GetInterface(pInterfaceName, fakeVersion, &rInterface, flags);
 		if (rv == CKR_OK && rInterface != NULL) {
-			*ppInterface = &spy_interface;
-			spy_interface_function_list(rInterface, ppInterface);
+			if (ppInterface) {
+				*ppInterface = &spy_interface;
+				spy_interface_function_list(rInterface, ppInterface);
+			}
 		}
 	} else {
 		if ((pInterfaceName == NULL_PTR || strcmp((char *)pInterfaceName, "PKCS 11") == 0) &&
 			(pVersion == NULL_PTR || (pVersion->major == 2 && pVersion->minor == 11)) &&
 			flags == 0) {
-			*ppInterface = &compat_interfaces[0];
+			if (ppInterface)
+				*ppInterface = &compat_interfaces[0];
 			return retne(CKR_OK);
 		}
 		/* We can not serve this particular interface */
@@ -2312,7 +2337,7 @@ C_DecapsulateKey(CK_SESSION_HANDLE hSession,
 			pCiphertext, ulCiphertextLen);
 	rv = po->C_DecapsulateKey(hSession, pMechanism, hPrivateKey, pTemplate, ulAttributeCount,
 			pCiphertext, ulCiphertextLen, phKey);
-	if (rv == CKR_OK) {
+	if (rv == CKR_OK && phKey) {
 		spy_dump_ulong_out("phKey", *phKey);
 	}
 	return retne(rv);
@@ -2384,7 +2409,7 @@ C_GetSessionValidationFlags(CK_SESSION_HANDLE hSession,
 	spy_dump_ulong_in("hSession", hSession);
 	spy_dump_ulong_in("type", type);
 	rv = po->C_GetSessionValidationFlags(hSession, type, pFlags);
-	if (rv == CKR_OK) {
+	if (rv == CKR_OK && pFlags) {
 		spy_dump_ulong_out("pFlags", *pFlags);
 	}
 	return retne(rv);
@@ -2399,7 +2424,7 @@ C_AsyncComplete(CK_SESSION_HANDLE hSession,
 
 	enter("C_AsyncComplete");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_string_in("pFunctionName", pFunctionName, strlen((char *)pFunctionName));
+	spy_dump_string_in("pFunctionName", pFunctionName, pFunctionName ? (CK_ULONG)strlen((char *)pFunctionName) : 0);
 	rv = po->C_AsyncComplete(hSession, pFunctionName, pResult);
 	if (rv == CKR_OK) {
 		if (pResult == NULL) {
@@ -2424,9 +2449,9 @@ C_AsyncGetID(CK_SESSION_HANDLE hSession,
 
 	enter("C_AsyncGetID");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_string_in("pFunctionName", pFunctionName, strlen((char *)pFunctionName));
+	spy_dump_string_in("pFunctionName", pFunctionName, pFunctionName ? (CK_ULONG)strlen((char *)pFunctionName) : 0);
 	rv = po->C_AsyncGetID(hSession, pFunctionName, pulID);
-	if (rv == CKR_OK) {
+	if (rv == CKR_OK && pulID) {
 		spy_dump_ulong_out("pulID", *pulID);
 	}
 	return retne(rv);
@@ -2443,7 +2468,7 @@ C_AsyncJoin(CK_SESSION_HANDLE hSession,
 
 	enter("C_AsyncJoin");
 	spy_dump_ulong_in("hSession", hSession);
-	spy_dump_string_in("pFunctionName", pFunctionName, strlen((char *)pFunctionName));
+	spy_dump_string_in("pFunctionName", pFunctionName, pFunctionName ? (CK_ULONG)strlen((char *)pFunctionName) : 0);
 	spy_dump_ulong_in("ulID", ulID);
 	rv = po->C_AsyncJoin(hSession, pFunctionName, ulID, pData, ulData);
 	if (rv == CKR_OK) {
@@ -2473,9 +2498,9 @@ C_WrapKeyAuthenticated(CK_SESSION_HANDLE hSession,
 			pAssociatedData, ulAssociatedDataLen);
 	rv = po->C_WrapKeyAuthenticated(hSession, pMechanism, hWrappingKey, hKey,
 			pAssociatedData, ulAssociatedDataLen, pWrappedKey, pulWrappedKeyLen);
-	if (rv == CKR_OK) {
+	if (rv == CKR_OK && pulWrappedKeyLen) {
 		spy_dump_string_out("pWrappedKey[*pulWrappedKeyLen]", pWrappedKey, *pulWrappedKeyLen);
-	} else if (rv == CKR_BUFFER_TOO_SMALL) {
+	} else if (rv == CKR_BUFFER_TOO_SMALL && pulWrappedKeyLen) {
 		spy_dump_ulong_out("pulWrappedKeyLen", *pulWrappedKeyLen);
 	}
 
@@ -2507,7 +2532,7 @@ C_UnwrapKeyAuthenticated(CK_SESSION_HANDLE hSession,
 	rv = po->C_UnwrapKeyAuthenticated(hSession, pMechanism, hUnwrappingKey,
 			pWrappedKey, ulWrappedKeyLen, pTemplate, ulAttributeCount,
 			pAssociatedData, ulAssociatedDataLen, phKey);
-	if (rv == CKR_OK)
+	if (rv == CKR_OK && phKey)
 		spy_dump_ulong_out("hKey", *phKey);
 	return retne(rv);
 }
