@@ -68,7 +68,7 @@ static int generate_cache_filename(struct sc_pkcs15_card *p15card,
 	unsigned u;
 	size_t change_counter;
 
-	if (p15card == NULL || p15card->tokeninfo == NULL || p15card->card == NULL || p15card->card->ctx) {
+	if (p15card == NULL || p15card->tokeninfo == NULL || p15card->card == NULL || p15card->card->ctx == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
