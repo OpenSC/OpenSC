@@ -44,6 +44,9 @@ gids_select_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
                                sc_pkcs15_prkey_info_t *key_info)
 {
 	sc_card_t *card = p15card->card;
+
+	if (!key_info)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	LOG_FUNC_RETURN(card->ctx, sc_card_ctl(card, SC_CARDCTL_GIDS_SELECT_KEY_REFERENCE, key_info));
 }
 
@@ -54,6 +57,9 @@ static int
 gids_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_object_t *obj)
 {
 	sc_card_t *card = p15card->card;
+
+	if (!obj)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	LOG_FUNC_RETURN(card->ctx, sc_card_ctl(card, SC_CARDCTL_GIDS_CREATE_KEY, obj));
 }
 
@@ -67,7 +73,12 @@ gids_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
                        sc_pkcs15_pubkey_t *pubkey)
 {
 	sc_card_t *card = p15card->card;
-	struct sc_cardctl_gids_genkey call = {obj, pubkey};
+	struct sc_cardctl_gids_genkey call;
+
+	if (!obj || !pubkey)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	call.object = obj;
+	call.pubkey = pubkey;
 	LOG_FUNC_RETURN(card->ctx, sc_card_ctl(card, SC_CARDCTL_GIDS_GENERATE_KEY, &call));
 }
 
@@ -79,8 +90,12 @@ gids_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_objec
                     sc_pkcs15_prkey_t *key)
 {
 	sc_card_t *card = p15card->card;
+	struct sc_cardctl_gids_importkey call;
 
-	struct sc_cardctl_gids_importkey call = {object, key};
+	if (!object || !key)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	call.object = object;
+	call.key = key;
 	LOG_FUNC_RETURN(card->ctx, sc_card_ctl(card, SC_CARDCTL_GIDS_IMPORT_KEY, &call));
 }
 
@@ -88,6 +103,9 @@ static int
 gids_delete_object(struct sc_profile *profile, struct sc_pkcs15_card * p15card,
 			struct sc_pkcs15_object *object, const struct sc_path *path) {
 	sc_card_t *card = p15card->card;
+
+	if (!object)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	switch(object->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_PRKEY:
 		LOG_FUNC_RETURN(card->ctx, sc_card_ctl(card, SC_CARDCTL_GIDS_DELETE_KEY, object));
@@ -114,8 +132,16 @@ static int gids_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15_c
 static int gids_save_certificate(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *object, struct sc_path *path) {
 	int r;
 	sc_card_t *card = p15card->card;
-	struct sc_cardctl_gids_save_cert call = {object, NULL, path};
-	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) object->data;
+	struct sc_cardctl_gids_save_cert call;
+	struct sc_pkcs15_cert_info *cert_info;
+
+	if (!object || !object->data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	call.certobject = object;
+	call.privkeyobject = NULL;
+	call.path = path;
+	cert_info = (struct sc_pkcs15_cert_info *) object->data;
 
 	r = sc_pkcs15_find_object_by_id(p15card, SC_PKCS15_TYPE_PRKEY, &cert_info->id , &(call.privkeyobject));
 	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
@@ -134,6 +160,9 @@ static int gids_emu_store_data(struct sc_pkcs15_card *p15card, struct sc_profile
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!object)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	switch (object->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_PRKEY:
