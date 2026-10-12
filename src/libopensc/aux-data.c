@@ -86,6 +86,7 @@ sc_aux_data_set_md_guid(struct sc_context *ctx, struct sc_auxiliary_data *aux_da
 	case SC_AUX_DATA_TYPE_MD_CMAP_RECORD:
 		rec = &aux_data->data.cmap_record;
 		memcpy(rec->guid, guid, strlen(guid));
+		rec->guid[strlen(guid)] = '\0';
 		rec->guid_len = strlen(guid);
 		sc_log(ctx, "set MD container GUID '%s'", aux_data->data.cmap_record.guid);
 		rv = SC_SUCCESS;
@@ -151,7 +152,7 @@ sc_aux_data_get_md_guid(struct sc_context *ctx, struct sc_auxiliary_data *aux_da
 	*guid = '\0';
 	if (!flags)
 		strncpy(guid, "{", sizeof guid);
-	strlcat(guid, (char *)cmap_record->guid, sizeof(guid)-1);
+	strlcat(guid, (char *)cmap_record->guid, sizeof(guid));
 	if (!flags)
 		strlcat(guid, "}", sizeof(guid));
 
@@ -194,14 +195,7 @@ sc_aux_data_free(struct sc_auxiliary_data **data)
 	if (data == NULL || *data == NULL)
 		return;
 
-	switch((*data)->type) {
-	case SC_AUX_DATA_TYPE_MD_CMAP_RECORD:
-		free(*data);
-		break;
-	default:
-		break;
-	}
-
+	free(*data);
 	*data = NULL;
 }
 
