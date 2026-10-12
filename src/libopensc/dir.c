@@ -150,6 +150,13 @@ parse_dir_record(sc_card_t *card, u8 ** buf, size_t *buflen, int rec_nr)
 		app->ddo.len = 0;
 	}
 
+	if (card->app_count < 0 || card->app_count >= SC_MAX_CARD_APPS) {
+		free(app->label);
+		free(app->ddo.value);
+		free(app);
+		LOG_TEST_RET(ctx, SC_ERROR_TOO_MANY_OBJECTS, "Too many applications on card");
+	}
+
 	app->rec_nr = rec_nr;
 	card->app[card->app_count] = app;
 	card->app_count++;
@@ -178,7 +185,7 @@ int sc_enum_apps(sc_card_t *card)
 		sc_file_free(ef_dir);
 	LOG_TEST_RET(ctx, r, "Cannot select EF.DIR file");
 
-	if (ef_dir->type != SC_FILE_TYPE_WORKING_EF) {
+	if (!ef_dir || ef_dir->type != SC_FILE_TYPE_WORKING_EF) {
 		sc_file_free(ef_dir);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_CARD, "EF(DIR) is not a working EF.");
 	}
@@ -269,9 +276,12 @@ void sc_free_apps(sc_card_t *card)
 	int	i;
 
 	for (i = 0; i < card->app_count; i++) {
-		free(card->app[i]->label);
-		free(card->app[i]->ddo.value);
-		free(card->app[i]);
+		if (card->app[i]) {
+			free(card->app[i]->label);
+			free(card->app[i]->ddo.value);
+			free(card->app[i]);
+			card->app[i] = NULL;
+		}
 	}
 	card->app_count = -1;
 }
@@ -400,13 +410,16 @@ static int update_records(sc_card_t *card)
 int sc_update_dir(sc_card_t *card, sc_app_info_t *app)
 {
 	sc_path_t path;
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 	int r;
 
 	sc_format_path("3F002F00", &path);
 
 	r = sc_select_file(card, &path, &file);
 	LOG_TEST_RET(card->ctx, r, "unable to select EF(DIR)");
+
+	if (!file)
+		return SC_ERROR_INVALID_DATA;
 
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT)
 		r = update_transparent(card, file);
