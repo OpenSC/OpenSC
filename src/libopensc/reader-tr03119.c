@@ -139,7 +139,7 @@ int escape_pace_input_to_buf(sc_context_t *ctx,
 		const struct establish_pace_channel_input *input,
 		unsigned char **asn1, size_t *asn1_len)
 {
-	size_t pin_id_len = sizeof input->pin_id;
+	size_t pin_id_len;
 	struct sc_asn1_entry EstablishPACEChannelInput_data[
 		sizeof g_EstablishPACEChannelInput_data/
 		sizeof *g_EstablishPACEChannelInput_data];
@@ -155,6 +155,10 @@ int escape_pace_input_to_buf(sc_context_t *ctx,
 	struct sc_asn1_entry cHAT[
 		sizeof g_octet_string/
 		sizeof *g_octet_string];
+
+	if (!input || !asn1 || !asn1_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	pin_id_len = sizeof input->pin_id;
 
 	sc_copy_asn1_entry(g_EstablishPACEChannel,
 			EstablishPACEChannel);
@@ -206,7 +210,11 @@ int escape_buf_to_pace_input(sc_context_t *ctx,
 		const unsigned char *asn1, size_t asn1_len,
 		struct establish_pace_channel_input *input)
 {
-	size_t pin_id_len = sizeof input->pin_id;
+	size_t pin_id_len;
+
+	if (!input || !asn1)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	pin_id_len = sizeof input->pin_id;
 	struct sc_asn1_entry EstablishPACEChannelInput_data[
 		sizeof g_EstablishPACEChannelInput_data/
 		sizeof *g_EstablishPACEChannelInput_data];
@@ -277,9 +285,8 @@ int escape_pace_output_to_buf(sc_context_t *ctx,
 		const struct establish_pace_channel_output *output,
 		unsigned char **asn1, size_t *asn1_len)
 {
-	uint16_t status_mse_set_at = ((output->mse_set_at_sw1 & 0xff) << 8) | output->mse_set_at_sw2;
-	size_t result_len = sizeof output->result,
-		   status_mse_set_at_len = sizeof status_mse_set_at;
+	uint16_t status_mse_set_at;
+	size_t result_len, status_mse_set_at_len;
 	struct sc_asn1_entry EstablishPACEChannelOutput_data[
 		sizeof g_EstablishPACEChannelOutput_data/
 		sizeof *g_EstablishPACEChannelOutput_data];
@@ -301,6 +308,13 @@ int escape_pace_output_to_buf(sc_context_t *ctx,
 	struct sc_asn1_entry prevCAR[
 		sizeof g_octet_string/
 		sizeof *g_octet_string];
+
+	if (!output || !asn1 || !asn1_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	status_mse_set_at = ((output->mse_set_at_sw1 & 0xff) << 8) | output->mse_set_at_sw2;
+	result_len = sizeof output->result;
+	status_mse_set_at_len = sizeof status_mse_set_at;
 
 	sc_copy_asn1_entry(g_EstablishPACEChannel,
 			EstablishPACEChannel);
@@ -364,8 +378,12 @@ int escape_buf_to_pace_output(sc_context_t *ctx,
 		struct establish_pace_channel_output *output)
 {
 	uint16_t status_mse_set_at;
-	size_t result_len = sizeof output->result,
-		   status_mse_set_at_len = sizeof status_mse_set_at;
+	size_t result_len, status_mse_set_at_len;
+
+	if (!output || !asn1)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	result_len = sizeof output->result;
+	status_mse_set_at_len = sizeof status_mse_set_at;
 	struct sc_asn1_entry EstablishPACEChannelOutput_data[
 		sizeof g_EstablishPACEChannelOutput_data/
 		sizeof *g_EstablishPACEChannelOutput_data];
@@ -585,12 +603,12 @@ static int escape_pin_cmd_to_buf(sc_context_t *ctx,
 			modify->bmPINBlockString = bmPINBlockString;
 			modify->bmPINLengthFormat = bmPINLengthFormat;
 			if (!(data->flags & SC_PIN_CMD_IMPLICIT_CHANGE)
-					&& data->pin1.offset) {
+					&& data->pin1.offset >= 5) {
 				modify->bInsertionOffsetOld = (uint8_t) data->pin1.offset - 5;
 			} else {
 				modify->bInsertionOffsetOld = 0;
 			}
-			modify->bInsertionOffsetNew = data->pin2.offset ? (uint8_t) data->pin2.offset - 5 : 0;
+			modify->bInsertionOffsetNew = data->pin2.offset >= 5 ? (uint8_t) data->pin2.offset - 5 : 0;
 			modify->wPINMaxExtraDigit = wPINMaxExtraDigit;
 			modify->bConfirmPIN = CCID_PIN_CONFIRM_NEW
 				| (data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ? 0 : CCID_PIN_INSERT_OLD);
@@ -634,6 +652,7 @@ static int escape_buf_to_verify_result(sc_context_t *ctx,
 {
 	RDR_to_PC_DataBlock_t *datablock =
 		(RDR_to_PC_DataBlock_t *) rdr_to_pc_datablock;
+	uint32_t dwLength;
 
 	if (!rdr_to_pc_datablock
 			|| rdr_to_pc_datablock_len < sizeof *datablock
@@ -643,9 +662,13 @@ static int escape_buf_to_verify_result(sc_context_t *ctx,
 	if (datablock->bStatus != CCID_BSTATUS_OK_ACTIVE)
 		return SC_ERROR_TRANSMIT_FAILED;
 
+	dwLength = htole32(datablock->dwLength);
+	if (dwLength > rdr_to_pc_datablock_len - sizeof *datablock)
+		return SC_ERROR_UNKNOWN_DATA_RECEIVED;
+
 	return sc_apdu_set_resp(ctx, apdu,
 			rdr_to_pc_datablock + sizeof *datablock,
-			htole32(datablock->dwLength));
+			dwLength);
 }
 
 static int escape_perform_verify(struct sc_reader *reader,
@@ -665,7 +688,7 @@ static int escape_perform_verify(struct sc_reader *reader,
 	apdu.resplen = sizeof rbuf;
 	apdu.le      = sizeof rbuf;
 
-	if (!reader || !reader->ops || !reader->ops->transmit) {
+	if (!reader || !reader->ops || !reader->ops->transmit || !data || !data->apdu) {
 		r = SC_ERROR_NOT_SUPPORTED;
 		goto err;
 	}
@@ -724,7 +747,7 @@ static int escape_perform_pace(struct sc_reader *reader,
 	apdu.resplen = sizeof rbuf;
 	apdu.le      = sizeof rbuf;
 
-	if (!reader || !reader->ops || !reader->ops->transmit) {
+	if (!reader || !reader->ops || !reader->ops->transmit || !input || !output) {
 		r = SC_ERROR_NOT_SUPPORTED;
 		goto err;
 	}
@@ -786,6 +809,7 @@ int escape_buf_to_pace_capabilities(sc_context_t *ctx,
 	struct sc_asn1_entry PACECapabilities_data[
 		sizeof g_PACECapabilities_data/
 		sizeof *g_PACECapabilities_data];
+
 	struct sc_asn1_entry PACECapabilities[
 		sizeof g_PACECapabilities/
 		sizeof *g_PACECapabilities];
@@ -801,6 +825,9 @@ int escape_buf_to_pace_capabilities(sc_context_t *ctx,
 	struct sc_asn1_entry capabilityDestroy[
 		sizeof g_boolean/
 		sizeof *g_boolean];
+
+	if (!asn1 || !sc_reader_t_capabilities)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_copy_asn1_entry(g_PACECapabilities,
 			PACECapabilities);
@@ -885,6 +912,9 @@ int escape_pace_capabilities_to_buf(sc_context_t *ctx,
 		sizeof g_boolean/
 		sizeof *g_boolean];
 
+	if (!asn1 || !asn1_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_copy_asn1_entry(g_EstablishPACEChannel,
 			PACECapabilities);
 	sc_format_asn1_entry(PACECapabilities,
@@ -935,6 +965,7 @@ void sc_detect_escape_cmds(sc_reader_t *reader)
 	u8 rbuf[MAX_RESPLEN + 1];
 	sc_apdu_t apdu;
 	unsigned long capabilities;
+	size_t rlen;
 
 	if (reader && reader->ops && reader->ops->transmit) {
 		memset(&apdu, 0, sizeof(apdu));
@@ -981,7 +1012,8 @@ void sc_detect_escape_cmds(sc_reader_t *reader)
 				&& apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 			if (!reader->vendor) {
 				/* add NUL termination, just in case... */
-				rbuf[apdu.resplen] = '\0';
+				rlen = apdu.resplen > MAX_RESPLEN ? MAX_RESPLEN : apdu.resplen;
+				rbuf[rlen] = '\0';
 				reader->vendor = strdup((const char *) rbuf);
 			}
 		} else {
@@ -996,7 +1028,8 @@ void sc_detect_escape_cmds(sc_reader_t *reader)
 			if (!reader->version_major && !reader->version_minor) {
 				unsigned int major = 0, minor = 0;
 				/* add NUL termination, just in case... */
-				rbuf[apdu.resplen] = '\0';
+				rlen = apdu.resplen > MAX_RESPLEN ? MAX_RESPLEN : apdu.resplen;
+				rbuf[rlen] = '\0';
 				sscanf((const char *) rbuf, "%u.%u", &major, &minor);
 				reader->version_major = major>0xff ? 0xff : major;
 				reader->version_minor = minor>0xff ? 0xff : minor;
