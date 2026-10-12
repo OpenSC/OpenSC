@@ -146,6 +146,11 @@ static int opensc_get_conf_entry(const char *config)
 	char *key = NULL;
 	int r = 0;
 
+	if (config == NULL || strlen(config) < 3) {
+		r = EINVAL;
+		goto cleanup;
+	}
+
 	if (ctx->conf == NULL) {
 		r = ENOENT;
 		goto cleanup;
@@ -157,14 +162,18 @@ static int opensc_get_conf_entry(const char *config)
 	}
 
 	section = buffer;
-	name = strchr(section+1, ':');
-	key = name == NULL ? NULL : strchr(name+1, ':');
-	if (key == NULL) {
+	name = strchr(section, ':');
+	if (name == NULL || name == section) {
 		r = EINVAL;
 		goto cleanup;
 	}
 	*name = '\0';
 	name++;
+	key = strchr(name, ':');
+	if (key == NULL || key == name) {
+		r = EINVAL;
+		goto cleanup;
+	}
 	*key = '\0';
 	key++;
 
@@ -200,6 +209,11 @@ static int opensc_set_conf_entry(const char *config)
 	char *value = NULL;
 	int r = 0;
 
+	if (config == NULL || strlen(config) < 4) {
+		r = EINVAL;
+		goto cleanup;
+	}
+
 	if (ctx->conf == NULL) {
 		r = ENOENT;
 		goto cleanup;
@@ -211,17 +225,25 @@ static int opensc_set_conf_entry(const char *config)
 	}
 
 	section = buffer;
-	name = strchr(section+1, ':');
-	key = name == NULL ? NULL : strchr(name+1, ':');
-	value = key == NULL ? NULL : strchr(key+1, ':');
-	if (value == NULL) {
+	name = strchr(section, ':');
+	if (name == NULL || name == section) {
 		r = EINVAL;
 		goto cleanup;
 	}
 	*name = '\0';
 	name++;
+	key = strchr(name, ':');
+	if (key == NULL || key == name) {
+		r = EINVAL;
+		goto cleanup;
+	}
 	*key = '\0';
 	key++;
+	value = strchr(key, ':');
+	if (value == NULL || value == key) {
+		r = EINVAL;
+		goto cleanup;
+	}
 	*value = '\0';
 	value++;
 
@@ -404,24 +426,24 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 	}
 	printf("\n\n");
 
-	if (file->type == SC_FILE_TYPE_DF)
-		return 0;
-
 	if (file->ef_structure == SC_FILE_EF_TRANSPARENT) {
 		unsigned char *buf;
 
+		if (file->size == 0)
+			return 0;
+
 		if (!(buf = malloc(file->size))) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			return 1;
 		}
 
-		r = sc_lock(card);
+		r = sc_lock(in_card);
 		if (r == SC_SUCCESS) {
 			r = sc_read_binary(in_card, 0, buf, file->size, 0);
 			if (r > 0)
 				util_hex_dump_asc(stdout, buf, r, 0);
+			sc_unlock(in_card);
 		}
-		sc_unlock(card);
 		free(buf);
 	} else {
 		unsigned char buf[256];
@@ -429,13 +451,13 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 
 		for (rec_nr = 1; rec_nr <= file->record_count; rec_nr++) {
 			printf("Record %u\n", rec_nr);
-			r = sc_lock(card);
+			r = sc_lock(in_card);
 			if (r == SC_SUCCESS) {
 				r = sc_read_record(in_card, rec_nr, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
 				if (r > 0)
 					util_hex_dump_asc(stdout, buf, r, 0);
+				sc_unlock(in_card);
 			}
-			sc_unlock(card);
 		}
 	}
 	return 0;
@@ -443,15 +465,21 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 
 static int enum_dir(sc_path_t path, int depth)
 {
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 	int r, file_type;
 	u8 files[SC_MAX_EXT_APDU_BUFFER_SIZE];
 
+	if (depth >= 32) {
+		fprintf(stderr, "Maximum directory depth reached\n");
+		return 1;
+	}
+
 	r = sc_lock(card);
-	if (r == SC_SUCCESS)
+	if (r == SC_SUCCESS) {
 		r = sc_select_file(card, &path, &file);
-	sc_unlock(card);
-	if (r) {
+		sc_unlock(card);
+	}
+	if (r || !file) {
 		fprintf(stderr, "SELECT FILE failed: %s\n", sc_strerror(r));
 		return 1;
 	}
@@ -462,9 +490,10 @@ static int enum_dir(sc_path_t path, int depth)
 		int i;
 
 		r = sc_lock(card);
-		if (r == SC_SUCCESS)
+		if (r == SC_SUCCESS) {
 			r = sc_list_files(card, files, sizeof(files));
-		sc_unlock(card);
+			sc_unlock(card);
+		}
 		if (r < 0) {
 			fprintf(stderr, "sc_list_files() failed: %s\n", sc_strerror(r));
 			return 1;
@@ -475,6 +504,8 @@ static int enum_dir(sc_path_t path, int depth)
 			for (i = 0; i < r/2; i++) {
 				sc_path_t tmppath;
 
+				if (path.len + 2 > sizeof(tmppath.value))
+					continue;
 				memset(&tmppath, 0, sizeof(tmppath));
 				memcpy(&tmppath, &path, sizeof(path));
 				memcpy(tmppath.value + tmppath.len, files + 2*i, 2);
@@ -522,9 +553,10 @@ static int send_apdu(void)
 			printf("%02X ", buf[r]);
 		printf("\n");
 		rc = sc_lock(card);
-		if (rc == SC_SUCCESS)
+		if (rc == SC_SUCCESS) {
 			rc = sc_transmit_apdu(card, &apdu);
-		sc_unlock(card);
+			sc_unlock(card);
+		}
 		if (rc) {
 			fprintf(stderr, "APDU transmit failed: %s\n", sc_strerror(rc));
 			return 1;
@@ -542,10 +574,11 @@ static void print_serial(sc_card_t *in_card)
 	int r;
 	sc_serial_number_t serial;
 
-	r = sc_lock(card);
-	if (r == SC_SUCCESS)
+	r = sc_lock(in_card);
+	if (r == SC_SUCCESS) {
 		r = sc_card_ctl(in_card, SC_CARDCTL_GET_SERIALNR, &serial);
-	sc_unlock(card);
+		sc_unlock(in_card);
+	}
 	if (r)
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GET_SERIALNR, *) failed\n");
 	else
@@ -673,9 +706,10 @@ static int card_reset(const char *reset_type)
 	cold_reset = !reset_type || strcmp(reset_type, "cold") == 0;
 
 	r = sc_lock(card);
-	if (r == SC_SUCCESS)
+	if (r == SC_SUCCESS) {
 		r = sc_reset(card, cold_reset);
-	sc_unlock(card);
+		sc_unlock(card);
+	}
 	if (r) {
 		fprintf(stderr, "sc_reset(%s) failed: %d\n",
 			cold_reset ? "cold" : "warm", r);
@@ -905,7 +939,7 @@ int main(int argc, char *argv[])
 	if (do_print_name) {
 		if (verbose)
 			printf("Card name: ");
-		printf("%s\n", card->name);
+		printf("%s\n", card->name ? card->name : "Unknown");
 		action_count--;
 	}
 	if (do_send_apdu) {
@@ -932,6 +966,7 @@ int main(int argc, char *argv[])
 		action_count--;
 	}
 end:
+	free(opt_apdus);
 	sc_disconnect_card(card);
 	sc_release_context(ctx);
 	return err;
