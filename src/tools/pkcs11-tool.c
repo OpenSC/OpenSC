@@ -1850,7 +1850,7 @@ static void list_interfaces(void)
 			interfaces[i].pFunctionList,
 			interfaces[i].flags);
 	}
-
+	free(interfaces);
 }
 static void list_slots(int tokens, int refresh, int print)
 {
@@ -1928,8 +1928,11 @@ copy_key_value_to_uri(const char *key, const char *value, CK_BBOOL last)
 	if (key && value && !last && shift < sizeof(URI)) {
 		URI[shift++] = ';';
 	}
-	if (last && shift < sizeof(URI)) {
-		URI[shift] = '\0';
+	if (last) {
+		if (shift < sizeof(URI))
+			URI[shift] = '\0';
+		else
+			URI[sizeof(URI) - 1] = '\0';
 		shift = 0;
 	}
 	return URI;
@@ -2163,15 +2166,22 @@ static int login(CK_SESSION_HANDLE session, int login_type)
 
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH)
 			&& (!pin || !*pin)
-			&& login_type != CKU_CONTEXT_SPECIFIC)
+			&& login_type != CKU_CONTEXT_SPECIFIC) {
+		if (pin_allocated) {
+			sc_mem_clear(pin, len);
+			free(pin);
+		}
 		return 1;
+	}
 
 	rv = p11->C_Login(session, login_type,
 			(CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin));
+	if (pin_allocated) {
+		sc_mem_clear(pin, len);
+		free(pin);
+	}
 	if (rv != CKR_OK && rv != CKR_USER_ALREADY_LOGGED_IN)
 		p11_fatal("C_Login", rv);
-	if (pin_allocated)
-		free(pin);
 
 	return 0;
 }
@@ -2184,6 +2194,8 @@ static void init_token(CK_SLOT_ID slot)
 	int pin_allocated = 0, r;
 	CK_TOKEN_INFO	info;
 	CK_RV rv;
+
+	memset(new_buf, 0, sizeof(new_buf));
 
 	if (!opt_object_label)
 		util_fatal("The token label must be specified using --label");
@@ -2199,29 +2211,47 @@ static void init_token(CK_SLOT_ID slot)
 			r = util_getpass(&new_pin, &len, stdin);
 			if (r < 0)
 				util_fatal("No PIN entered");
-			if (!new_pin || !*new_pin || strlen(new_pin) > 20)
+			if (!new_pin || !*new_pin || strlen(new_pin) > 20) {
+				if (new_pin) {
+					sc_mem_clear(new_pin, len);
+					free(new_pin);
+				}
 				util_fatal("Invalid SO PIN");
+			}
 			strlcpy(new_buf, new_pin, sizeof new_buf);
-			free(new_pin); new_pin = NULL;
+			sc_mem_clear(new_pin, len);
+			free(new_pin);
+			new_pin = NULL;
+			len = 0;
 			printf("Please enter the new SO PIN (again): ");
 			r = util_getpass(&new_pin, &len, stdin);
-			if (r < 0)
+			if (r < 0) {
+				sc_mem_clear(new_buf, sizeof(new_buf));
 				util_fatal("No PIN entered");
+			}
 			if (!new_pin || !*new_pin ||
-					strcmp(new_buf, new_pin) != 0)
+					strcmp(new_buf, new_pin) != 0) {
+				if (new_pin) {
+					sc_mem_clear(new_pin, len);
+					free(new_pin);
+				}
+				sc_mem_clear(new_buf, sizeof(new_buf));
 				util_fatal("Different new SO PINs");
+			}
 			pin_allocated = 1;
 		}
 	}
 
 	rv = p11->C_InitToken(slot, (CK_UTF8CHAR *) new_pin,
 			new_pin == NULL ? 0 : strlen(new_pin), token_label);
+	if (pin_allocated) {
+		sc_mem_clear(new_pin, len);
+		free(new_pin);
+	}
+	sc_mem_clear(new_buf, sizeof(new_buf));
 	if (rv != CKR_OK)
 		p11_fatal("C_InitToken", rv);
 	printf("Token successfully initialized\n");
-
-	if (pin_allocated)
-		free(new_pin);
 }
 
 static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
@@ -2241,15 +2271,30 @@ static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 			r = util_getpass(&new_pin1,&len1,stdin);
 			if (r < 0)
 				util_fatal("No PIN entered");
-			if (!new_pin1 || !*new_pin1 || strlen(new_pin1) > 20)
+			if (!new_pin1 || !*new_pin1 || strlen(new_pin1) > 20) {
+				if (new_pin1) {
+					sc_mem_clear(new_pin1, len1);
+					free(new_pin1);
+				}
 				util_fatal("Invalid User PIN");
+			}
 			printf("Please enter the new PIN again: ");
 			r = util_getpass(&new_pin2, &len2, stdin);
-			if (r < 0)
+			if (r < 0) {
+				sc_mem_clear(new_pin1, len1);
+				free(new_pin1);
 				util_fatal("No PIN entered");
+			}
 			if (!new_pin2 || !*new_pin2 ||
-					strcmp(new_pin1, new_pin2) != 0)
+					strcmp(new_pin1, new_pin2) != 0) {
+				sc_mem_clear(new_pin1, len1);
+				free(new_pin1);
+				if (new_pin2) {
+					sc_mem_clear(new_pin2, len2);
+					free(new_pin2);
+				}
 				util_fatal("Different new User PINs");
+			}
 		}
 	}
 
@@ -2260,11 +2305,11 @@ static void init_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 	rv = p11->C_InitPIN(sess, (CK_UTF8CHAR *) pin, pin == NULL ? 0 : strlen(pin));
 
 	if (new_pin1) {
-		memset(new_pin1, 0, len1);
+		sc_mem_clear(new_pin1, len1);
 		free(new_pin1);
 	}
 	if (new_pin2) {
-		memset(new_pin2,0, len2);
+		sc_mem_clear(new_pin2, len2);
 		free(new_pin2);
 	}
 
@@ -2277,46 +2322,76 @@ static int change_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess)
 {
 	char old_buf[21], *old_pin = opt_so_pin ? (char*)opt_so_pin : (char*)opt_pin;
 	char new_buf[21], *new_pin = (char *)opt_new_pin;
+	char *pin_alloc = NULL;
 	CK_TOKEN_INFO	info;
 	CK_RV rv;
 	int r;
 	size_t		len = 0;
+	CK_FLAGS hasReaderPinPad;
+
+	memset(old_buf, 0, sizeof(old_buf));
+	memset(new_buf, 0, sizeof(new_buf));
 
 	get_token_info(slot, &info);
-	const CK_FLAGS hasReaderPinPad = info.flags & CKF_PROTECTED_AUTHENTICATION_PATH;
+	hasReaderPinPad = info.flags & CKF_PROTECTED_AUTHENTICATION_PATH;
 
 	if (!hasReaderPinPad && !old_pin) {
 		printf("Please enter the current PIN: ");
-		r = util_getpass(&old_pin, &len, stdin);
-		if (r < 0)
+		r = util_getpass(&pin_alloc, &len, stdin);
+		if (r < 0 || !pin_alloc || !*pin_alloc || strlen(pin_alloc) > 20) {
+			if (pin_alloc) {
+				sc_mem_clear(pin_alloc, len);
+				free(pin_alloc);
+			}
 			return 1;
-		if (!old_pin || !*old_pin || strlen(old_pin) > 20)
-			return 1;
-		strcpy(old_buf, old_pin);
+		}
+		strlcpy(old_buf, pin_alloc, sizeof(old_buf));
+		sc_mem_clear(pin_alloc, len);
+		free(pin_alloc);
+		pin_alloc = NULL;
+		len = 0;
 		old_pin = old_buf;
 	}
 	if (!hasReaderPinPad && !new_pin) {
 		printf("Please enter the new PIN: ");
-		r = util_getpass(&new_pin, &len, stdin);
-		if (r < 0)
-			return 1;
-		if (!new_pin || !*new_pin || strlen(new_pin) > 20)
-			return 1;
-		strcpy(new_buf, new_pin);
-
-		printf("Please enter the new PIN again: ");
-		r = util_getpass(&new_pin, &len, stdin);
-		if (r < 0)
-			return 1;
-		if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
-			free(new_pin);
+		r = util_getpass(&pin_alloc, &len, stdin);
+		if (r < 0 || !pin_alloc || !*pin_alloc || strlen(pin_alloc) > 20) {
+			if (pin_alloc) {
+				sc_mem_clear(pin_alloc, len);
+				free(pin_alloc);
+			}
+			sc_mem_clear(old_buf, sizeof(old_buf));
 			return 1;
 		}
+		strlcpy(new_buf, pin_alloc, sizeof(new_buf));
+		sc_mem_clear(pin_alloc, len);
+		free(pin_alloc);
+		pin_alloc = NULL;
+		len = 0;
+
+		printf("Please enter the new PIN again: ");
+		r = util_getpass(&pin_alloc, &len, stdin);
+		if (r < 0 || !pin_alloc || !*pin_alloc || strcmp(new_buf, pin_alloc) != 0) {
+			if (pin_alloc) {
+				sc_mem_clear(pin_alloc, len);
+				free(pin_alloc);
+			}
+			sc_mem_clear(old_buf, sizeof(old_buf));
+			sc_mem_clear(new_buf, sizeof(new_buf));
+			return 1;
+		}
+		sc_mem_clear(pin_alloc, len);
+		free(pin_alloc);
+		pin_alloc = NULL;
+		len = 0;
+		new_pin = new_buf;
 	}
 
 	rv = p11->C_SetPIN(sess,
 		(CK_UTF8CHAR *) old_pin, old_pin == NULL ? 0 : strlen(old_pin),
 		(CK_UTF8CHAR *) new_pin, new_pin == NULL ? 0 : strlen(new_pin));
+	sc_mem_clear(old_buf, sizeof(old_buf));
+	sc_mem_clear(new_buf, sizeof(new_buf));
 	if (rv != CKR_OK)
 		p11_fatal("C_SetPIN", rv);
 	printf("PIN successfully changed\n");
@@ -2329,10 +2404,14 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 {
 	char unlock_buf[21], *unlock_code = NULL;
 	char new_buf[21], *new_pin = NULL;
+	char *pin_alloc = NULL;
 	CK_TOKEN_INFO info;
 	CK_RV rv;
 	int r;
 	size_t len = 0;
+
+	memset(unlock_buf, 0, sizeof(unlock_buf));
+	memset(new_buf, 0, sizeof(new_buf));
 
 	get_token_info(slot, &info);
 
@@ -2349,45 +2428,65 @@ static int unlock_pin(CK_SLOT_ID slot, CK_SESSION_HANDLE sess, int login_type)
 		else if (login_type == -1)
 			printf("Please enter unblock code for User PIN: ");
 
-		r = util_getpass(&unlock_code, &len, stdin);
-		if (r < 0)
+		r = util_getpass(&pin_alloc, &len, stdin);
+		if (r < 0 || !pin_alloc || !*pin_alloc || strlen(pin_alloc) > 20) {
+			if (pin_alloc) {
+				sc_mem_clear(pin_alloc, len);
+				free(pin_alloc);
+			}
 			return 1;
-		if (!unlock_code || !*unlock_code || strlen(unlock_code) > 20)
-			return 1;
+		}
 
-		strcpy(unlock_buf, unlock_code);
+		strlcpy(unlock_buf, pin_alloc, sizeof(unlock_buf));
+		sc_mem_clear(pin_alloc, len);
+		free(pin_alloc);
+		pin_alloc = NULL;
+		len = 0;
 		unlock_code = unlock_buf;
 	}
 
 	new_pin = (char *) opt_new_pin;
 	if (!(info.flags & CKF_PROTECTED_AUTHENTICATION_PATH) && !new_pin)   {
 		printf("Please enter the new PIN: ");
-		r = util_getpass(&new_pin, &len, stdin);
-		if (r < 0)
+		r = util_getpass(&pin_alloc, &len, stdin);
+		if (r < 0 || !pin_alloc || !*pin_alloc || strlen(pin_alloc) > 20) {
+			if (pin_alloc) {
+				sc_mem_clear(pin_alloc, len);
+				free(pin_alloc);
+			}
+			sc_mem_clear(unlock_buf, sizeof(unlock_buf));
 			return 1;
-		strlcpy(new_buf, new_pin, sizeof new_buf);
+		}
+		strlcpy(new_buf, pin_alloc, sizeof(new_buf));
+		sc_mem_clear(pin_alloc, len);
+		free(pin_alloc);
+		pin_alloc = NULL;
+		len = 0;
 
 		printf("Please enter the new PIN again: ");
-		r = util_getpass(&new_pin, &len, stdin);
-		if (r < 0)
-			return 1;
-		if (!new_pin || !*new_pin || strcmp(new_buf, new_pin) != 0) {
-			if (new_pin != opt_new_pin)
-				free(new_pin);
+		r = util_getpass(&pin_alloc, &len, stdin);
+		if (r < 0 || !pin_alloc || !*pin_alloc || strcmp(new_buf, pin_alloc) != 0) {
+			if (pin_alloc) {
+				sc_mem_clear(pin_alloc, len);
+				free(pin_alloc);
+			}
+			sc_mem_clear(unlock_buf, sizeof(unlock_buf));
+			sc_mem_clear(new_buf, sizeof(new_buf));
 			printf("  different new PINs, exiting\n");
 			return -1;
 		}
-
-		if (strlen(new_pin) > 20) {
-			if (new_pin != opt_new_pin)
-				free(new_pin);
-			return 1;
-		}
+		sc_mem_clear(pin_alloc, len);
+		free(pin_alloc);
+		pin_alloc = NULL;
+		len = 0;
+		new_pin = new_buf;
 	}
 
 	rv = p11->C_SetPIN(sess,
 		(CK_UTF8CHAR *) unlock_code, unlock_code == NULL ? 0 : strlen(unlock_code),
 		(CK_UTF8CHAR *) new_pin, new_pin == NULL ? 0 : strlen(new_pin));
+	sc_mem_clear(unlock_buf, sizeof(unlock_buf));
+	sc_mem_clear(new_buf, sizeof(new_buf));
 	if (rv != CKR_OK)
 		p11_fatal("C_SetPIN", rv);
 	printf("PIN successfully changed\n");
@@ -4476,8 +4575,10 @@ static void	parse_certificate(struct x509cert_info *cert,
 		util_fatal("OpenSSL error during X509 certificate parsing");
 	}
 	/* convert only (if needed) */
-	if (cert == NULL)
+	if (cert == NULL) {
+		X509_free(x);
 		return;
+	}
 
 	/* check length first */
 	n = i2d_X509_NAME(X509_get_subject_name(x), NULL);
@@ -4518,9 +4619,13 @@ static void	parse_certificate(struct x509cert_info *cert,
 static int
 do_read_key(unsigned char *data, size_t data_len, int private, EVP_PKEY **key)
 {
-	BIO *mem = BIO_new_mem_buf(data, (int)data_len);
+	BIO *mem;
 
-	if (!key)
+	if (!key || !data || data_len == 0)
+		return -1;
+
+	mem = BIO_new_mem_buf(data, (int)data_len);
+	if (!mem)
 		return -1;
 
 	if (private) {
@@ -5155,7 +5260,10 @@ general_key_info_free(struct generalkey_info key_info)
 #endif
 	OPENSSL_free(key_info.param_oid.value);
 	OPENSSL_free(key_info.public.value);
-	OPENSSL_free(key_info.private.value);
+	if (key_info.private.value) {
+		OPENSSL_cleanse(key_info.private.value, key_info.private.len);
+		OPENSSL_free(key_info.private.value);
+	}
 }
 
 static void
@@ -5163,12 +5271,30 @@ rsa_info_free(struct rsakey_info rsa)
 {
 	OPENSSL_free(rsa.modulus);
 	OPENSSL_free(rsa.public_exponent);
-	OPENSSL_free(rsa.private_exponent);
-	OPENSSL_free(rsa.prime_1);
-	OPENSSL_free(rsa.prime_2);
-	OPENSSL_free(rsa.exponent_1);
-	OPENSSL_free(rsa.exponent_2);
-	OPENSSL_free(rsa.coefficient);
+	if (rsa.private_exponent) {
+		OPENSSL_cleanse(rsa.private_exponent, rsa.private_exponent_len);
+		OPENSSL_free(rsa.private_exponent);
+	}
+	if (rsa.prime_1) {
+		OPENSSL_cleanse(rsa.prime_1, rsa.prime_1_len);
+		OPENSSL_free(rsa.prime_1);
+	}
+	if (rsa.prime_2) {
+		OPENSSL_cleanse(rsa.prime_2, rsa.prime_2_len);
+		OPENSSL_free(rsa.prime_2);
+	}
+	if (rsa.exponent_1) {
+		OPENSSL_cleanse(rsa.exponent_1, rsa.exponent_1_len);
+		OPENSSL_free(rsa.exponent_1);
+	}
+	if (rsa.exponent_2) {
+		OPENSSL_cleanse(rsa.exponent_2, rsa.exponent_2_len);
+		OPENSSL_free(rsa.exponent_2);
+	}
+	if (rsa.coefficient) {
+		OPENSSL_cleanse(rsa.coefficient, rsa.coefficient_len);
+		OPENSSL_free(rsa.coefficient);
+	}
 }
 #endif
 
@@ -5177,8 +5303,14 @@ static void
 pqc_key_info_free(struct pqckey_info pqc)
 {
 	OPENSSL_free(pqc.public.value);
-	OPENSSL_free(pqc.private.value);
-	OPENSSL_free(pqc.seed.value);
+	if (pqc.private.value) {
+		OPENSSL_cleanse(pqc.private.value, pqc.private.len);
+		OPENSSL_free(pqc.private.value);
+	}
+	if (pqc.seed.value) {
+		OPENSSL_cleanse(pqc.seed.value, pqc.seed.len);
+		OPENSSL_free(pqc.seed.value);
+	}
 }
 #endif /* ENABLE_OPENSSL */
 
@@ -5796,6 +5928,10 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	EVP_PKEY_free(evp_key);
 #endif /* ENABLE_OPENSSL */
 
+	if (opt_object_class == CKO_PRIVATE_KEY || opt_object_class == CKO_SECRET_KEY) {
+		if (contents && contents_len > 0)
+			sc_mem_clear(contents, (size_t)contents_len);
+	}
 	free(contents);
 	free(certdata);
 	if (oid_buf)
@@ -9687,12 +9823,15 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 	}
 	if (i == num_mechs) {
 		fprintf(stderr, "ERR: no \"CKM_RSA_PKCS_KEY_PAIR_GEN\" found in the mechanism list\n");
+		free(mech_type);
 		return session;
 	}
 
 	f = fopen(opt_file_to_write, "rb");
-	if (f == NULL)
+	if (f == NULL) {
+		free(mech_type);
 		util_fatal("Couldn't open file \"%s\"", opt_file_to_write);
+	}
 	fclose(f);
 
 	/* Get for a not-yet-existing ID */
@@ -9703,25 +9842,33 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 
 	if (!gen_keypair(slot, session, &pub_key, &priv_key, opt_key_type)) {
 		printf("ERR: cannot generate new key pair\n");
+		free(mech_type);
 		return session;
 	}
 
 	tmp = getID(session, priv_key, &i);
 	if (i == 0) {
 		fprintf(stderr, "ERR: newly generated private key has no (or an empty) CKA_ID\n");
+		free(tmp);
+		free(mech_type);
 		return session;
 	}
 	if ((size_t)i > sizeof(opt_object_id)) {
 		fprintf(stderr, "ERR: object ID too long\n");
+		free(tmp);
+		free(mech_type);
 		return session;
 	}
 	opt_object_id_len = (size_t)i;
 	memcpy(opt_object_id, tmp, opt_object_id_len);
+	free(tmp);
 
 	/* This is done in NSS */
-	getMODULUS(session, priv_key, &mod_len);
+	tmp = getMODULUS(session, priv_key, &mod_len);
+	free(tmp);
 	if (mod_len < 5 || mod_len > 10000) { /* should be reasonable limits */
 		fprintf(stderr, "ERR: GetAttribute(privkey, CKA_MODULUS) doesn't seem to work\n");
+		free(mech_type);
 		return session;
 	}
 
@@ -9752,6 +9899,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
 	if (rv != CKR_BUFFER_TOO_SMALL) {
 		fprintf(stderr, "ERR: C_Sign() didn't return CKR_BUFFER_TO_SMALL but %s\n", CKR2Str(rv));
+		free(mech_type);
 		return session;
 	}
 	rv = p11->C_Sign(session, data, data_len, sig, &sig_len);
@@ -9816,8 +9964,10 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 	printf("\n*** Loading the pkcs11 lib, opening a session and logging in ***\n");
 
 	module = C_LoadModule(opt_module, &p11_v2);
-	if (module == NULL)
+	if (module == NULL) {
+		free(mech_type);
 		util_fatal("Failed to load pkcs11 module");
+	}
 	p11 = (CK_FUNCTION_LIST_3_0_PTR ) p11_v2;
 
 	rv = p11->C_Initialize(c_initialize_args_ptr);
@@ -9844,6 +9994,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 	if (!delete_object(session))
 		util_fatal("Failed to delete certificate");
 
+	free(mech_type);
 	printf("\n==> OK, successful! Should work with Mozilla\n");
 	return session;
 }
@@ -9891,34 +10042,45 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	}
 
 	printf("*** Generating EC key pair ***\n");
-	if (!gen_keypair(slot, session, &pub_key, &priv_key, opt_key_type))
+	if (!gen_keypair(slot, session, &pub_key, &priv_key, opt_key_type)) {
+		free(mech_type);
 		return;
+	}
 
 	tmp = getID(session, priv_key, &i);
 	if (i == 0) {
 		printf("ERR: newly generated private key has no (or an empty) CKA_ID\n");
+		free(tmp);
+		free(mech_type);
 		return;
 	}
 	if ((size_t)i > sizeof(opt_object_id)) {
 		fprintf(stderr, "ERR: object ID too long\n");
+		free(tmp);
+		free(mech_type);
 		return;
 	}
 	opt_object_id_len = (size_t)i;
 	memcpy(opt_object_id, tmp, opt_object_id_len);
+	free(tmp);
 
 	/* This is done in NSS */
-	getEC_PARAMS(session, priv_key, &ec_params_len);
+	tmp = getEC_PARAMS(session, priv_key, &ec_params_len);
+	free(tmp);
 	if (ec_params_len < 5 || ec_params_len > 10000) {
 		printf("ERR: GetAttribute(privkey, CKA_EC_PARAMS) doesn't seem to work\n");
+		free(mech_type);
 		return;
 	}
-	getEC_POINT(session, pub_key, &ec_point_len);
+	tmp = getEC_POINT(session, pub_key, &ec_point_len);
+	free(tmp);
 	/* TODO if this routine us expanded to test EDDSA keys the following may be needed.
 	 * a per 3.0 errata and 3.1 Edwards and Montgomery EC_POINT is just a byte string.
 	 * Accept either BIT STRING, OCTET STRING or raw byte string.
 	 */
 	if (ec_point_len < 5 || ec_point_len > 10000) {
 		printf("ERR: GetAttribute(pubkey, CKA_EC_POINT) doesn't seem to work\n");
+		free(mech_type);
 		return;
 	}
 
@@ -9976,6 +10138,7 @@ static void test_ec(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (rv != CKR_OK)
 		p11_fatal("C_DestroyObject()", rv);
 
+	free(mech_type);
 	printf("==> OK\n");
 }
 
@@ -10167,8 +10330,12 @@ static const char *
 percent_encode(CK_UTF8CHAR *string, size_t len)
 {
 	static char buffer[1024];
-	memset(buffer, 0, 1024);
 	size_t output_index, input_index;
+
+	if (!string)
+		return "";
+
+	memset(buffer, 0, sizeof(buffer));
 
 	while (len && string[len - 1] == ' ')
 		len--;
@@ -10179,7 +10346,7 @@ percent_encode(CK_UTF8CHAR *string, size_t len)
 			break;
 		}
 		if (p11_is_percent_format_reserved_char(string[input_index])) {
-			snprintf(&buffer[output_index], 4, "%%%x", string[input_index]);
+			snprintf(&buffer[output_index], 4, "%%%02X", (unsigned char)string[input_index]);
 			output_index += 2;
 		} else {
 			buffer[output_index] = string[input_index];
@@ -10218,6 +10385,9 @@ hex_string_to_byte_array(const char *hex_input, size_t *input_size, const char *
 	CK_BYTE_PTR array;
 	size_t size = 0;
 
+	if (!input_size)
+		return NULL;
+
 	/* no hex string supplied on command line */
 	if (!hex_input) {
 		*input_size = 0;
@@ -10227,8 +10397,8 @@ hex_string_to_byte_array(const char *hex_input, size_t *input_size, const char *
 	/* If no length is provided, determine the length of the hex string */
 	if (*input_size == 0) {
 		size = strnlen(hex_input, MAX_HEX_STR_LEN);
-		if (size % 2 != 0) {
-			fprintf(stderr, "Odd length, provided %s is an invalid hex string.\n", buffer_name);
+		if (size % 2 != 0 || size == MAX_HEX_STR_LEN) {
+			fprintf(stderr, "Odd length or oversized, provided %s is an invalid hex string.\n", buffer_name);
 			return NULL;
 		}
 		*input_size = size / 2;
