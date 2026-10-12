@@ -215,6 +215,10 @@ _dtrust_match_profile(sc_card_t *card)
 			return SC_ERROR_WRONG_CARD;
 	}
 
+	if (card->name != NULL) {
+		free((char *)card->name);
+		card->name = NULL;
+	}
 	name = malloc(plen + 1);
 	if (name == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -418,17 +422,25 @@ dtrust_finish(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	drv_data = card->drv_data;
+	if (drv_data != NULL) {
+		if (drv_data->p15card != NULL) {
+			sc_pkcs15_unbind(drv_data->p15card);
+			drv_data->p15card = NULL;
+		}
 
-	if (drv_data->p15card != NULL) {
-		sc_pkcs15_unbind(drv_data->p15card);
+		if (drv_data->can_value != NULL) {
+			sc_mem_secure_free(drv_data->can_value, strlen(drv_data->can_value) + 1);
+			drv_data->can_value = NULL;
+		}
+
+		free(card->drv_data);
+		card->drv_data = NULL;
 	}
 
-	if (drv_data->can_value != NULL) {
-		sc_mem_secure_free(drv_data->can_value, strlen(drv_data->can_value) + 1);
+	if (card->name != NULL) {
+		free((char *)card->name);
+		card->name = NULL;
 	}
-
-	free((char *)card->name);
-	free(card->drv_data);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -946,6 +958,8 @@ dtrust_compute_signature(struct sc_card *card, const u8 *data,
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	drv_data = card->drv_data;
+	if (data == NULL || out == NULL || drv_data == NULL || drv_data->env == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	flags = drv_data->env->algorithm_flags;
 
 	/*
@@ -994,6 +1008,9 @@ dtrust_decipher(struct sc_card *card, const u8 *data,
 		size_t data_len, u8 *out, size_t outlen)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (data == NULL || out == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	switch (card->type) {
 	/* No special handling necessary for RSA cards. */
