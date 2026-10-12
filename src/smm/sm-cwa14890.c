@@ -54,12 +54,18 @@ sm_cwa_get_mac(struct sc_context *ctx, unsigned char *key, sm_des_cblock *icv,
 	LOG_FUNC_CALLED(ctx);
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "sm_cwa_get_mac() data length %i", in_len);
 
+	if (!key || !icv || !out || in_len < 0)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	if (in_len > 0 && !in)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	buf = malloc(in_len + 8);
 	if (!buf)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "sm_cwa_get_mac() in_data(%i) %s", in_len, sc_dump_hex(in, in_len));
-	memcpy(buf, in, in_len);
+	if (in_len > 0)
+		memcpy(buf, in, in_len);
 	memcpy(buf + in_len, padding, 8);
 
 	if (force_padding)
@@ -81,6 +87,8 @@ static int
 sm_cwa_encode_external_auth_data(struct sc_context *ctx, struct sm_cwa_session *session_data,
 		unsigned char *out, size_t out_len)
 {
+	if (!session_data || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	if (out_len < 16)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
@@ -98,6 +106,8 @@ int
 sm_cwa_encode_mutual_auth_data(struct sc_context *ctx, struct sm_cwa_session *session_data,
 		unsigned char *out, size_t out_len)
 {
+	if (!session_data || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	if (out_len < 64)
 		return SC_ERROR_BUFFER_TOO_SMALL;
 
@@ -129,6 +139,11 @@ sm_cwa_decode_authentication_data(struct sc_context *ctx, struct sm_cwa_keyset *
 
 	LOG_FUNC_CALLED(ctx);
 
+	if (!keyset || !session_data)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	if (session_data->mdata_len < 0x48)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+
 	memset(icv, 0, sizeof(icv));
 	rv = sm_cwa_get_mac(ctx, keyset->mac, &icv, session_data->mdata, 0x40, &cblock, 1);
 	LOG_TEST_RET(ctx, rv, "Decode authentication data:  sm_ecc_get_mac failed");
@@ -142,6 +157,11 @@ sm_cwa_decode_authentication_data(struct sc_context *ctx, struct sm_cwa_keyset *
 
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "sm_ecc_decode_auth_data() decrypted(%zu) %s",
 			decrypted_len, sc_dump_hex(decrypted, decrypted_len));
+
+	if (decrypted_len < 64) {
+		free(decrypted);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
+	}
 
 	if (memcmp(decrypted, session_data->icc.rnd, 8)) {
 		free(decrypted);
@@ -177,6 +197,9 @@ sm_cwa_init_session_keys(struct sc_context *ctx, struct sm_cwa_session *session_
 	unsigned char xored[36];
 	unsigned char buff[SHA256_DIGEST_LENGTH];
 	int ii;
+
+	if (!session_data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	memset(xored, 0, sizeof(xored));
 
@@ -220,10 +243,10 @@ sm_cwa_init_session_keys(struct sc_context *ctx, struct sm_cwa_session *session_
 int
 sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_data *rdata)
 {
-	struct sm_cwa_session *cwa_session = &sm_info->session.cwa;
-	struct sm_cwa_keyset *cwa_keyset = &sm_info->session.cwa.cwa_keyset;
-	struct sc_serial_number sn = sm_info->serialnr;
-	size_t icc_sn_len = sizeof(cwa_session->icc.sn);
+	struct sm_cwa_session *cwa_session;
+	struct sm_cwa_keyset *cwa_keyset;
+	struct sc_serial_number sn;
+	size_t icc_sn_len;
 	struct sc_remote_apdu *new_rapdu = NULL;
 	struct sc_apdu *apdu = NULL;
 	unsigned char buf[0x100], *encrypted = NULL;
@@ -232,13 +255,18 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 	int rv, offs;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!sm_info || !rdata || !rdata->alloc)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	cwa_session = &sm_info->session.cwa;
+	cwa_keyset = &sm_info->session.cwa.cwa_keyset;
+	sn = sm_info->serialnr;
+	icc_sn_len = sizeof(cwa_session->icc.sn);
+
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC initialize: serial %s", sc_dump_hex(sm_info->serialnr.value, sm_info->serialnr.len));
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC initialize: card challenge %s", sc_dump_hex(cwa_session->card_challenge, 8));
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC initialize: current_df_path %s", sc_print_path(&sm_info->current_path_df));
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM IAS/ECC initialize: CRT_AT reference 0x%X", cwa_session->params.crt_at.refs[0]);
-
-	if (!rdata || !rdata->alloc)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	rv = rdata->alloc(rdata, &new_rapdu);
 	LOG_TEST_RET(ctx, rv, "SM GP decode card answer: cannot allocate remote APDU");
@@ -269,12 +297,21 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "ENCed(%zu) %s", encrypted_len, sc_dump_hex(encrypted, encrypted_len));
 
+	if (encrypted_len > sizeof(buf)) {
+		free(encrypted);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+	}
 	memcpy(buf, encrypted, encrypted_len);
 	offs = (int)encrypted_len;
 
 	rv = sm_cwa_get_mac(ctx, cwa_keyset->mac, &icv, buf, offs, &cblock, 1);
 	LOG_TEST_GOTO_ERR(ctx, rv, "sm_ecc_get_mac() failed");
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "MACed(%zu) %s", sizeof(cblock), sc_dump_hex(cblock, sizeof(cblock)));
+
+	if (encrypted_len + sizeof(cblock) > sizeof(new_rapdu->sbuf)) {
+		rv = SC_ERROR_BUFFER_TOO_SMALL;
+		goto err;
+	}
 
 	apdu->cse = SC_APDU_CASE_4_SHORT;
 	apdu->cla = 0x00;
@@ -286,6 +323,7 @@ sm_cwa_initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_rem
 	apdu->datalen = encrypted_len + sizeof(cblock);
 	memcpy(new_rapdu->sbuf, encrypted, encrypted_len);
 	memcpy(new_rapdu->sbuf + encrypted_len, cblock, sizeof(cblock));
+	apdu->data = new_rapdu->sbuf;
 	rv = SC_SUCCESS;
 
 err:
@@ -297,8 +335,8 @@ err:
 int
 sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_apdu *rapdu)
 {
-	struct sm_cwa_session *session_data = &sm_info->session.cwa;
-	struct sc_apdu *apdu = &rapdu->apdu;
+	struct sm_cwa_session *session_data;
+	struct sc_apdu *apdu;
 	unsigned char sbuf[0x400];
 	sm_des_cblock cblock, icv;
 	unsigned char *encrypted = NULL, edfb_data[0x200], mac_data[0x200];
@@ -306,6 +344,12 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 	int rv, mac_len = 0;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!sm_info || !rapdu)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	session_data = &sm_info->session.cwa;
+	apdu = &rapdu->apdu;
+
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "securize APDU (cla:%X,ins:%X,p1:%X,p2:%X,data(%zu):%p)",
 			apdu->cla, apdu->ins, apdu->p1, apdu->p2, apdu->datalen, apdu->data);
 
@@ -330,6 +374,10 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 		edfb_data[offs++] = encrypted_len + 1;
 		edfb_data[offs++] = 0x01;
 	}
+	if (offs + encrypted_len > sizeof(edfb_data)) {
+		free(encrypted);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+	}
 	memcpy(edfb_data + offs, encrypted, encrypted_len);
 	offs += encrypted_len;
 	edfb_len = offs;
@@ -338,6 +386,9 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 
 	free(encrypted);
 	encrypted = NULL;
+
+	if (16 + edfb_len + 3 > sizeof(mac_data))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 
 	offs = 0;
 	memcpy(mac_data + offs, session_data->ssc, 8);
@@ -369,6 +420,9 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 	LOG_TEST_RET(ctx, rv, "securize APDU: MAC calculation error");
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "securize APDU: MAC:%s", sc_dump_hex(cblock, sizeof(cblock)));
 
+	if (edfb_len + 3 + 10 > sizeof(sbuf))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+
 	offs = 0;
 	if (edfb_len)   {
 		memcpy(sbuf + offs, edfb_data, edfb_len);
@@ -394,7 +448,8 @@ sm_cwa_securize_apdu(struct sc_context *ctx, struct sm_info *sm_info, struct sc_
 	apdu->cla |= 0x0C;
 	apdu->lc = offs;
 	apdu->datalen = offs;
-	memcpy((unsigned char *)apdu->data, sbuf, offs);
+	memcpy(rapdu->sbuf, sbuf, offs);
+	apdu->data = rapdu->sbuf;
 
 	sm_incr_ssc(session_data->ssc, sizeof(session_data->ssc));
 
