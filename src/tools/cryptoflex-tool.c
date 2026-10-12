@@ -107,7 +107,7 @@ static char *getpin(const char *prompt)
 			pass[i] = 0;
 	if (strlen(pass) == 0)
 		return NULL;
-	buf = malloc(8);
+	buf = calloc(1, 9);
 	if (buf == NULL)
 		return NULL;
 	if (strlen(pass) > 8) {
@@ -115,8 +115,7 @@ static char *getpin(const char *prompt)
 		free(buf);
 		return NULL;
 	}
-	memset(buf, 0, 8);
-	strlcpy(buf, pass, 8);
+	memcpy(buf, pass, strlen(pass));
 	return buf;
 }
 
@@ -147,7 +146,7 @@ static int verify_pin(int pin)
 static int select_app_df(void)
 {
 	sc_path_t path;
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 	char str[80];
 	int r;
 
@@ -160,8 +159,9 @@ static int select_app_df(void)
 		fprintf(stderr, "Unable to select application DF: %s\n", sc_strerror(r));
 		return -1;
 	}
-	if (file->type != SC_FILE_TYPE_DF) {
+	if (!file || file->type != SC_FILE_TYPE_DF) {
 		fprintf(stderr, "Selected application DF is not a DF.\n");
+		sc_file_free(file);
 		return -1;
 	}
 	sc_file_free(file);
@@ -183,6 +183,9 @@ static BIGNUM * cf2bn(const u8 *buf, size_t bufsize, BIGNUM *num)
 {
 	u8 tmp[512];
 
+	if (bufsize > sizeof(tmp))
+		return NULL;
+
 	invert_buf(tmp, buf, bufsize);
 
 	return BN_bin2bn(tmp, (int)bufsize, num);
@@ -193,6 +196,9 @@ static int bn2cf(const BIGNUM *num, u8 *buf)
 	u8 tmp[512];
 	int r;
 
+	if (BN_num_bytes(num) > (int)sizeof(tmp))
+		return -1;
+
 	r = BN_bn2bin(num, tmp);
 	if (r <= 0)
 		return r;
@@ -201,18 +207,25 @@ static int bn2cf(const BIGNUM *num, u8 *buf)
 	return r;
 }
 
-static int parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
+static int parse_public_key(const u8 *key, size_t keysize, EVP_PKEY **pkey_out)
 {
 	const u8 *p = key;
-	BIGNUM *n, *e;
+	BIGNUM *n = NULL, *e = NULL;
 	size_t base;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA *rsa = NULL;
+	EVP_PKEY *pkey = NULL;
 #else
+	EVP_PKEY *pkey = NULL;
 	EVP_PKEY_CTX *cctx = NULL;
 	OSSL_PARAM *params = NULL;
 	OSSL_PARAM_BLD *bld = NULL;
 #endif
+
+	if (!pkey_out)
+		return -1;
+	*pkey_out = NULL;
+
 	base = (keysize - 7) / 5;
 	if (base != 32 && base != 48 && base != 64 && base != 128) {
 		fprintf(stderr, "Invalid public key.\n");
@@ -229,8 +242,10 @@ static int parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	p += base;
 	p += 2 * base;
 	e = BN_new();
-	if (e == NULL)
+	if (e == NULL) {
+		BN_free(n);
 		return -1;
+	}
 	cf2bn(p, 4, e);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -241,8 +256,11 @@ static int parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 		sc_log_openssl(ctx);
 		RSA_free(rsa);
 		EVP_PKEY_free(pkey);
+		BN_free(n);
+		BN_free(e);
 		return -1;
 	}
+	*pkey_out = pkey;
 #else
 	cctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL);
 	if (!cctx ||
@@ -254,17 +272,24 @@ static int parse_public_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 		OSSL_PARAM_BLD_free(bld);
 		EVP_PKEY_CTX_free(cctx);
 		OSSL_PARAM_free(params);
+		BN_free(n);
+		BN_free(e);
 		return -1;
 	}
 	OSSL_PARAM_BLD_free(bld);
+	BN_free(n);
+	BN_free(e);
 
 	if (EVP_PKEY_fromdata_init(cctx) != 1 ||
 			EVP_PKEY_fromdata(cctx, &pkey, EVP_PKEY_PUBLIC_KEY, params) != 1) {
 		sc_log_openssl(ctx);
+		OSSL_PARAM_free(params);
+		EVP_PKEY_CTX_free(cctx);
 		return -1;
 	}
 	OSSL_PARAM_free(params);
 	EVP_PKEY_CTX_free(cctx);
+	*pkey_out = pkey;
 #endif
 	return 0;
 }
@@ -296,27 +321,30 @@ static int gen_d(BIGNUM **rsa_d_new, const BIGNUM *rsa_p, const BIGNUM *rsa_q, c
 	return 0;
 }
 
-static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
+static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY **pkey_out)
 {
 	const u8 *p = key;
-	BIGNUM *bn_p, *q, *dmp1, *dmq1, *iqmp;
+	BIGNUM *bn_p = NULL, *q = NULL, *dmp1 = NULL, *dmq1 = NULL, *iqmp = NULL;
 	size_t base;
 	BIGNUM *rsa_d = NULL;
 	int rv = 0;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	const BIGNUM *rsa_n, *rsa_e;
-	BIGNUM *rsa_n_new, *rsa_e_new ;
+	BIGNUM *rsa_n_new, *rsa_e_new;
 	RSA *rsa = NULL;
-	if (!(rsa = EVP_PKEY_get0_RSA(pkey))) {
+	if (!pkey_out || !*pkey_out || !(rsa = EVP_PKEY_get0_RSA(*pkey_out))) {
 		sc_log_openssl(ctx);
 		return -1;
 	}
 #else
 	OSSL_PARAM *params = NULL, *pkey_params = NULL, *new_params = NULL;
 	const OSSL_PARAM *e = NULL, *n = NULL;
-	BIGNUM *rsa_n, *rsa_e;
+	BIGNUM *rsa_n = NULL, *rsa_e = NULL;
 	OSSL_PARAM_BLD *bld = NULL;
 	EVP_PKEY_CTX *cctx = NULL;
+	EVP_PKEY *pkey = NULL;
+	if (!pkey_out || !*pkey_out)
+		return -1;
 #endif
 
 	base = (keysize - 3) / 5;
@@ -336,6 +364,7 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	q = BN_new();
 	if (q == NULL) {
 		sc_log_openssl(ctx);
+		BN_free(bn_p);
 		return -1;
 	}
 	cf2bn(p, base, q);
@@ -344,6 +373,8 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	iqmp = BN_new();
 	if (iqmp == NULL) {
 		sc_log_openssl(ctx);
+		BN_free(bn_p);
+		BN_free(q);
 		return -1;
 	}
 	cf2bn(p, base, iqmp);
@@ -352,6 +383,9 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	dmp1 = BN_new();
 	if (dmp1 == NULL) {
 		sc_log_openssl(ctx);
+		BN_free(bn_p);
+		BN_free(q);
+		BN_free(iqmp);
 		return -1;
 	}
 	cf2bn(p, base, dmp1);
@@ -360,6 +394,10 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	dmq1 = BN_new();
 	if (dmq1 == NULL) {
 		sc_log_openssl(ctx);
+		BN_free(bn_p);
+		BN_free(q);
+		BN_free(iqmp);
+		BN_free(dmp1);
 		return -1;
 	}
 	cf2bn(p, base, dmq1);
@@ -371,6 +409,7 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 			RSA_set0_crt_params(rsa, dmp1, dmq1, iqmp) != 1 ||
 			gen_d(&rsa_d, bn_p, q, rsa_n, rsa_e) != 0) {
 		sc_log_openssl(ctx);
+		BN_free(rsa_d);
 		return -1;
 	}
 
@@ -382,12 +421,16 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	if (!rsa_n_new || !rsa_e_new ||
 			RSA_set0_key(rsa, rsa_n_new, rsa_e_new, rsa_d) != 1) {
 		sc_log_openssl(ctx);
+		BN_free(rsa_n_new);
+		BN_free(rsa_e_new);
+		BN_free(rsa_d);
 		return -1;
 	}
 #else
 	/* Extract parameters from pkey */
-	if (EVP_PKEY_todata(pkey, EVP_PKEY_PUBLIC_KEY, &pkey_params) != 1) {
+	if (EVP_PKEY_todata(*pkey_out, EVP_PKEY_PUBLIC_KEY, &pkey_params) != 1) {
 		sc_log_openssl(ctx);
+		BN_free(bn_p); BN_free(q); BN_free(iqmp); BN_free(dmp1); BN_free(dmq1);
 		return -1;
 	}
 	e = OSSL_PARAM_locate_const(pkey_params, "e");
@@ -395,11 +438,17 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 	if (!e || !n) {
 		sc_log_openssl(ctx);
 		OSSL_PARAM_free(pkey_params);
+		BN_free(bn_p); BN_free(q); BN_free(iqmp); BN_free(dmp1); BN_free(dmq1);
 		return -1;
 	}
 	OSSL_PARAM_get_BN(e, &rsa_e);
 	OSSL_PARAM_get_BN(n, &rsa_n);
-	gen_d(&rsa_d, bn_p, q, rsa_n, rsa_e);
+	if (gen_d(&rsa_d, bn_p, q, rsa_n, rsa_e) != 0) {
+		OSSL_PARAM_free(pkey_params);
+		BN_free(bn_p); BN_free(q); BN_free(iqmp); BN_free(dmp1); BN_free(dmq1);
+		BN_free(rsa_e); BN_free(rsa_n);
+		return -1;
+	}
 	/* Merge params*/
 	if (!(bld = OSSL_PARAM_BLD_new()) ||
 			OSSL_PARAM_BLD_push_BN(bld, "d", rsa_d) != 1 ||
@@ -412,15 +461,22 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 		sc_log_openssl(ctx);
 		OSSL_PARAM_free(pkey_params);
 		OSSL_PARAM_BLD_free(bld);
+		BN_free(bn_p); BN_free(q); BN_free(iqmp); BN_free(dmp1); BN_free(dmq1);
+		BN_free(rsa_d); BN_free(rsa_e); BN_free(rsa_n);
 		return -1;
 	}
 	OSSL_PARAM_BLD_free(bld);
+	BN_free(bn_p); BN_free(q); BN_free(iqmp); BN_free(dmp1); BN_free(dmq1);
+	BN_free(rsa_d); BN_free(rsa_e); BN_free(rsa_n);
+
 	if (!(params = OSSL_PARAM_merge(pkey_params, new_params))) {
 		sc_log_openssl(ctx);
 		OSSL_PARAM_free(pkey_params);
 		OSSL_PARAM_free(new_params);
 		return -1;
 	}
+	OSSL_PARAM_free(pkey_params);
+	OSSL_PARAM_free(new_params);
 
 	/* Create pkey from params */
 	if (!(cctx = EVP_PKEY_CTX_new_from_name(NULL, "RSA", NULL)) ||
@@ -428,21 +484,27 @@ static int parse_private_key(const u8 *key, size_t keysize, EVP_PKEY *pkey)
 			EVP_PKEY_fromdata(cctx, &pkey, EVP_PKEY_KEYPAIR, params) != 1) {
 		rv = -1;
 		sc_log_openssl(ctx);
+	} else {
+		EVP_PKEY_free(*pkey_out);
+		*pkey_out = pkey;
 	}
-	OSSL_PARAM_free(pkey_params);
-	OSSL_PARAM_free(new_params);
+	OSSL_PARAM_free(params);
 	EVP_PKEY_CTX_free(cctx);
 #endif
 	return rv;
 }
 
-static int read_public_key(EVP_PKEY *pkey)
+static int read_public_key(EVP_PKEY **pkey_out)
 {
 	int r;
 	sc_path_t path;
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 	u8 buf[2048], *p = buf;
 	size_t bufsize, keysize;
+
+	if (!pkey_out)
+		return 1;
+	*pkey_out = NULL;
 
 	r = select_app_df();
 	if (r)
@@ -453,6 +515,8 @@ static int read_public_key(EVP_PKEY *pkey)
 		fprintf(stderr, "Unable to select public key file: %s\n", sc_strerror(r));
 		return 2;
 	}
+	if (!file)
+		return 2;
 	bufsize = MIN(file->size, sizeof buf);
 	sc_file_free(file);
 	r = sc_read_binary(card, 0, buf, bufsize, 0);
@@ -467,7 +531,7 @@ static int read_public_key(EVP_PKEY *pkey)
 		keysize = (p[0] << 8) | p[1];
 		if (keysize == 0)
 			break;
-		if (keysize < 3)
+		if (keysize < 3 || keysize > bufsize)
 			return 3;
 		if (p[2] == opt_key_num)
 			break;
@@ -478,19 +542,22 @@ static int read_public_key(EVP_PKEY *pkey)
 		printf("Key number %d not found.\n", opt_key_num);
 		return 2;
 	}
-	return parse_public_key(p, keysize, pkey);
+	return parse_public_key(p, keysize, pkey_out);
 }
 
 
-static int read_private_key(EVP_PKEY *pkey)
+static int read_private_key(EVP_PKEY **pkey_out)
 {
 	int r;
 	sc_path_t path;
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 	const sc_acl_entry_t *e;
 
 	u8 buf[2048], *p = buf;
 	size_t bufsize, keysize;
+
+	if (!pkey_out || !*pkey_out)
+		return 1;
 
 	r = select_app_df();
 	if (r)
@@ -501,9 +568,13 @@ static int read_private_key(EVP_PKEY *pkey)
 		fprintf(stderr, "Unable to select private key file: %s\n", sc_strerror(r));
 		return 2;
 	}
+	if (!file)
+		return 2;
 	e = sc_file_get_acl_entry(file, SC_AC_OP_READ);
-	if (e == NULL || e->method == SC_AC_NEVER)
+	if (e == NULL || e->method == SC_AC_NEVER) {
+		sc_file_free(file);
 		return 10;
+	}
 	bufsize = MIN(file->size, sizeof buf);
 	sc_file_free(file);
 	r = sc_read_binary(card, 0, buf, bufsize, 0);
@@ -518,7 +589,7 @@ static int read_private_key(EVP_PKEY *pkey)
 		keysize = (p[0] << 8) | p[1];
 		if (keysize == 0)
 			break;
-		if (keysize < 3)
+		if (keysize < 3 || keysize > bufsize)
 			return 3;
 		if (p[2] == opt_key_num)
 			break;
@@ -529,7 +600,7 @@ static int read_private_key(EVP_PKEY *pkey)
 		printf("Key number %d not found.\n", opt_key_num);
 		return 2;
 	}
-	return parse_private_key(p, keysize, pkey);
+	return parse_private_key(p, keysize, pkey_out);
 }
 
 static int read_key(void)
@@ -539,7 +610,7 @@ static int read_key(void)
 	u8 b64buf[2048];
 	int r;
 
-	r = read_public_key(pkey);
+	r = read_public_key(&pkey);
 	if (r)
 		return r;
 
@@ -547,28 +618,35 @@ static int read_key(void)
 	if (r <= 0) {
 		sc_log_openssl(ctx);
 		fprintf(stderr, "Error encoding public key.\n");
+		EVP_PKEY_free(pkey);
 		return -1;
 	}
 	r = sc_base64_encode(buf, r, b64buf, sizeof(b64buf), 64);
 	if (r < 0) {
 		fprintf(stderr, "Error in Base64 encoding: %s\n", sc_strerror(r));
+		EVP_PKEY_free(pkey);
 		return -1;
 	}
 	printf("-----BEGIN PUBLIC KEY-----\n%s-----END PUBLIC KEY-----\n", b64buf);
 
-	r = read_private_key(pkey);
-	if (r == 10)
+	r = read_private_key(&pkey);
+	if (r == 10) {
+		EVP_PKEY_free(pkey);
 		return 0;
-	else if (r)
+	} else if (r) {
+		EVP_PKEY_free(pkey);
 		return r;
+	}
 	p = buf;
 	r = i2d_PrivateKey(pkey, &p);
 	if (r <= 0) {
 		sc_log_openssl(ctx);
 		fprintf(stderr, "Error encoding private key.\n");
+		EVP_PKEY_free(pkey);
 		return -1;
 	}
 	r = sc_base64_encode(buf, r, b64buf, sizeof(b64buf), 64);
+	EVP_PKEY_free(pkey);
 	if (r < 0) {
 		fprintf(stderr, "Error in Base64 encoding: %s\n", sc_strerror(r));
 		return -1;
@@ -604,10 +682,12 @@ static int list_keys(void)
 			fprintf(stderr, "Unable to read public key file: %s\n", sc_strerror(r));
 			return 2;
 		}
+		if (r < 3)
+			break;
 		keysize = (p[0] << 8) | p[1];
 		if (keysize == 0)
 			break;
-		idx += keysize;
+		idx += (int)keysize;
 		for (i = 0; i < sizeof(sizes)/sizeof(sizes[ 0]); i++)
 			if (sizes[i] == keysize)
 				mod_len = mod_lens[i];
@@ -761,28 +841,42 @@ static int read_rsa_privkey(EVP_PKEY **pkey_out)
 	int r;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA *rsa = NULL;
-	pkey = EVP_PKEY_new();
 #else
-	OSSL_DECODER_CTX *dctx;
+	OSSL_DECODER_CTX *dctx = NULL;
 #endif
 
-	in = BIO_new(BIO_s_file());
+	if (!pkey_out)
+		return 1;
+	*pkey_out = NULL;
+
 	if (opt_prkeyf == NULL) {
-		sc_log_openssl(ctx);
 		fprintf(stderr, "Private key file must be set.\n");
+		return 2;
+	}
+	in = BIO_new(BIO_s_file());
+	if (in == NULL) {
+		sc_log_openssl(ctx);
 		return 2;
 	}
 	r = BIO_read_filename(in, opt_prkeyf);
 	if (r <= 0) {
 		sc_log_openssl(ctx);
 		perror(opt_prkeyf);
+		BIO_free(in);
 		return 2;
 	}
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
+	pkey = EVP_PKEY_new();
+	if (pkey == NULL) {
+		sc_log_openssl(ctx);
+		BIO_free(in);
+		return 2;
+	}
 	rsa = PEM_read_bio_RSAPrivateKey(in, NULL, NULL, NULL);
 	if (rsa == NULL) {
 		sc_log_openssl(ctx);
 		fprintf(stderr, "Unable to load private key.\n");
+		EVP_PKEY_free(pkey);
 		BIO_free(in);
 		return 2;
 	}
@@ -790,6 +884,7 @@ static int read_rsa_privkey(EVP_PKEY **pkey_out)
 		sc_log_openssl(ctx);
 		fprintf(stderr, "Unable to set private key.\n");
 		RSA_free(rsa);
+		EVP_PKEY_free(pkey);
 		BIO_free(in);
 		return 2;
 	}
@@ -802,6 +897,7 @@ static int read_rsa_privkey(EVP_PKEY **pkey_out)
 		BIO_free(in);
 		return 2;
 	}
+	OSSL_DECODER_CTX_free(dctx);
 #endif
 	BIO_free(in);
 	*pkey_out = pkey;
@@ -817,10 +913,13 @@ static int encode_private_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 	int rv = 0;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	const BIGNUM *rsa_p, *rsa_q, *rsa_dmp1, *rsa_dmq1, *rsa_iqmp;
-	RSA *rsa = EVP_PKEY_get1_RSA(pkey);
+	RSA *rsa = NULL;
 #else
 	BIGNUM *rsa_p = NULL, *rsa_q = NULL, *rsa_dmp1 = NULL, *rsa_dmq1 = NULL, *rsa_iqmp = NULL;
 #endif
+
+	if (!pkey || !key || !keysize)
+		return 2;
 
 	switch (EVP_PKEY_bits(pkey)) {
 	case 512:
@@ -845,6 +944,12 @@ static int encode_private_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 	*p++ = opt_key_num;
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
+	rsa = EVP_PKEY_get1_RSA(pkey);
+	if (!rsa) {
+		sc_log_openssl(ctx);
+		fprintf(stderr, "Invalid private key.\n");
+		return 2;
+	}
 	RSA_get0_factors(rsa, &rsa_p, &rsa_q);
 #else
 	if (EVP_PKEY_get_bn_param(pkey, "rsa-factor1", &rsa_p) != 1 ||
@@ -943,6 +1048,9 @@ static int encode_public_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 	BIGNUM *rsa_n = NULL, *rsa_e = NULL;
 #endif
 
+	if (!pkey || !key || !keysize)
+		return 2;
+
 	switch (EVP_PKEY_bits(pkey)) {
 	case 512:
 		base = 32;
@@ -966,6 +1074,12 @@ static int encode_public_key(EVP_PKEY *pkey, u8 *key, size_t *keysize)
 	*p++ = opt_key_num;
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
+	rsa = EVP_PKEY_get1_RSA(pkey);
+	if (!rsa) {
+		sc_log_openssl(ctx);
+		fprintf(stderr, "Invalid public key.\n");
+		return 2;
+	}
 	RSA_get0_key(rsa, &rsa_n, &rsa_e, NULL);
 #else
 	if (EVP_PKEY_get_bn_param(pkey, "n", &rsa_n) != 1 ||
@@ -1069,9 +1183,12 @@ static int store_key(void)
 	if (r)
 		return r;
 	r = encode_private_key(pkey, prv, &prvsize);
-	if (r)
+	if (r) {
+		EVP_PKEY_free(pkey);
 		return r;
+	}
 	r = encode_public_key(pkey, pub, &pubsize);
+	EVP_PKEY_free(pkey);
 	if (r)
 		return r;
 	if (verbose)
@@ -1331,11 +1448,11 @@ int main(int argc, char *argv[])
 			goto end;
 		action_count--;
 	}
+end:
 	if (pincode != NULL) {
 		memset(pincode, 0, 8);
 		free(pincode);
 	}
-end:
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card);
