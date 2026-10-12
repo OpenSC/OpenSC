@@ -56,7 +56,8 @@ static struct sc_card_driver * sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
 
-	default_ops = *iso_drv->ops;
+	if (iso_drv != NULL && iso_drv->ops != NULL)
+		default_ops = *iso_drv->ops;
 	default_ops.match_card = default_match_card;
 	default_ops.init = default_init;
 
