@@ -78,6 +78,9 @@ get_tries_left(sc_pkcs15_card_t *p15card, u8 pin_reference, int *pin_tries_left)
 	int rv, i;
 	struct sc_pkcs15_object *objs[32];
 
+	if (!pin_tries_left)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	*pin_tries_left = -1;
 
 	rv = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_AUTH, objs, 32);
@@ -87,9 +90,16 @@ get_tries_left(sc_pkcs15_card_t *p15card, u8 pin_reference, int *pin_tries_left)
 	}
 
 	for (i = 0; i < rv; i++) {
+		const struct sc_pkcs15_auth_info *auth_info;
+
+		if (!objs[i])
+			continue;
+
 		sc_pkcs15_get_pin_info(p15card, objs[i]);
 
-		const struct sc_pkcs15_auth_info *auth_info = (const struct sc_pkcs15_auth_info *)objs[i]->data;
+		auth_info = (const struct sc_pkcs15_auth_info *)objs[i]->data;
+		if (!auth_info)
+			continue;
 
 		if (auth_info->auth_id.len == 1 && auth_info->auth_id.value[0] == pin_reference) {
 			*pin_tries_left = auth_info->tries_left;
@@ -121,8 +131,11 @@ display_pin_tries_left(sc_pkcs15_card_t *p15card)
 static int
 display_basic_details(sc_pkcs15_card_t *p15card)
 {
-	printf("\nCard label: %s\n", p15card->tokeninfo->label);
-	printf("Serial number: %s\n", p15card->tokeninfo->serial_number);
+	const char *label = (p15card->tokeninfo && p15card->tokeninfo->label) ? p15card->tokeninfo->label : "(unknown)";
+	const char *serial = (p15card->tokeninfo && p15card->tokeninfo->serial_number) ? p15card->tokeninfo->serial_number : "(unknown)";
+
+	printf("\nCard label: %s\n", label);
+	printf("Serial number: %s\n", serial);
 
 	display_pin_tries_left(p15card);
 
@@ -133,9 +146,15 @@ int
 input_number(const char *description, size_t min_len, size_t max_len, const char *provided_via_cli, char **number)
 {
 	size_t number_len = 0;
+	size_t i;
+
+	if (!description || !number)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (provided_via_cli && strlen(provided_via_cli) >= min_len && strlen(provided_via_cli) <= max_len) {
 		*number = strdup(provided_via_cli);
+		if (!*number)
+			return SC_ERROR_OUT_OF_MEMORY;
 
 		printf("Using %s provided via command line arguments.\n", description);
 
@@ -152,14 +171,18 @@ input_number(const char *description, size_t min_len, size_t max_len, const char
 
 	number_len = util_getpass(number, NULL, stdin);
 
-	if (number_len < min_len || number_len > max_len) {
-		free(*number);
-		*number = NULL;
+	if (number_len < min_len || number_len > max_len || !*number) {
+		if (*number) {
+			sc_mem_clear(*number, number_len);
+			free(*number);
+			*number = NULL;
+		}
 		return SC_ERROR_INTERNAL;
 	}
 
-	for (size_t i = 0; i < number_len; i++) {
+	for (i = 0; i < number_len; i++) {
 		if ((*number)[i] < '0' || (*number)[i] > '9') {
+			sc_mem_clear(*number, number_len);
 			free(*number);
 			*number = NULL;
 			return SC_ERROR_INTERNAL;
@@ -175,6 +198,7 @@ verify_and_cache_pace_can(sc_card_t *card, const char *opt_can)
 	int rv;
 	struct sc_path path;
 	char *can = NULL;
+	struct sc_pin_cmd_data can_verify_cmd = {0};
 
 	rv = input_number("number from the bottom right corner of the card", 6, 6, opt_can, &can);
 
@@ -187,10 +211,9 @@ verify_and_cache_pace_can(sc_card_t *card, const char *opt_can)
 	rv = sc_select_file(card, &path, NULL);
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "Failed to select MF.\n");
-		return rv;
+		goto end;
 	}
 
-	struct sc_pin_cmd_data can_verify_cmd = {0};
 	can_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
 	can_verify_cmd.pin_type = SC_AC_CHV;
 	can_verify_cmd.pin_reference = PACE_PIN_ID_CAN;
@@ -201,13 +224,20 @@ verify_and_cache_pace_can(sc_card_t *card, const char *opt_can)
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "CAN number verification failed: %s\nCheck the number and try again.\n", sc_strerror(rv));
-		return SC_ERROR_PIN_CODE_INCORRECT;
+		rv = SC_ERROR_PIN_CODE_INCORRECT;
+		goto end;
 	}
 
 	printf("\nThe new CAN code is now persisted.\n");
 	printf("\nIf you are about to use the card in your web browser - you may have to remove and re-insert it.\n");
+	rv = SC_SUCCESS;
 
-	return SC_SUCCESS;
+end:
+	if (can) {
+		sc_mem_clear(can, strlen(can));
+		free(can);
+	}
+	return rv;
 }
 
 /*
@@ -227,22 +257,25 @@ change_pin(sc_card_t *card, const char *opt_pin)
 	char *new_pin = NULL;
 	char *new_pin_repeated = NULL;
 	unsigned char pace_pin_changed = 0, qes_pin_changed = 0;
+	struct sc_pin_cmd_data pin_verify_cmd = {0};
+	struct sc_pin_cmd_data pace_pin_cmd = {0};
+	struct sc_pin_cmd_data qes_pin_cmd = {0};
 
 	rv = input_number("Current PIN", 6, 12, opt_pin, &pin);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PIN number blank, too short or too long.\n");
-		return SC_ERROR_PIN_CODE_INCORRECT;
+		rv = SC_ERROR_PIN_CODE_INCORRECT;
+		goto end;
 	}
 
 	sc_format_path("3F00", &path);
 	rv = sc_select_file(card, &path, NULL);
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "Failed to select MF.\n");
-		return rv;
+		goto end;
 	}
 
-	struct sc_pin_cmd_data pin_verify_cmd = {0};
 	pin_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
 	pin_verify_cmd.pin_type = SC_AC_CHV;
 	pin_verify_cmd.pin_reference = PACE_PIN_ID_PIN;
@@ -253,26 +286,28 @@ change_pin(sc_card_t *card, const char *opt_pin)
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(rv));
-		return SC_ERROR_PIN_CODE_INCORRECT;
+		rv = SC_ERROR_PIN_CODE_INCORRECT;
+		goto end;
 	}
 
 	rv = input_number("New PIN", 6, 12, NULL, &new_pin);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PIN number blank, too short or too long.\n");
-		return SC_ERROR_PIN_CODE_INCORRECT;
+		rv = SC_ERROR_PIN_CODE_INCORRECT;
+		goto end;
 	}
 
 	input_number("New PIN (repeat)", 6, 12, NULL, &new_pin_repeated);
 
 	if (new_pin_repeated == NULL || strcmp(new_pin, new_pin_repeated) != 0) {
 		fprintf(stderr, "New PIN and repeated entry do not match. PIN was not changed.\n");
-		return SC_ERROR_INTERNAL;
+		rv = SC_ERROR_INTERNAL;
+		goto end;
 	}
 
 	printf("\n");
 
-	struct sc_pin_cmd_data pace_pin_cmd = {0};
 	pace_pin_cmd.cmd = SC_PIN_CMD_CHANGE;
 	pace_pin_cmd.pin_type = SC_AC_CHV;
 	pace_pin_cmd.pin_reference = PACE_PIN_ID_PIN;
@@ -292,10 +327,9 @@ change_pin(sc_card_t *card, const char *opt_pin)
 	rv = sc_select_file(card, &path, NULL);
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "Failed to select 3F:00:DF:02.\n");
-		return rv;
+		goto end;
 	}
 
-	struct sc_pin_cmd_data qes_pin_cmd = {0};
 	qes_pin_cmd.cmd = SC_PIN_CMD_CHANGE;
 	qes_pin_cmd.pin_type = SC_AC_CHV;
 	qes_pin_cmd.pin_reference = 0x81;
@@ -313,7 +347,22 @@ change_pin(sc_card_t *card, const char *opt_pin)
 		qes_pin_changed = 1;
 	}
 
-	return (pace_pin_changed && qes_pin_changed) ? SC_SUCCESS : SC_ERROR_INTERNAL;
+	rv = (pace_pin_changed && qes_pin_changed) ? SC_SUCCESS : SC_ERROR_INTERNAL;
+
+end:
+	if (pin) {
+		sc_mem_clear(pin, strlen(pin));
+		free(pin);
+	}
+	if (new_pin) {
+		sc_mem_clear(new_pin, strlen(new_pin));
+		free(new_pin);
+	}
+	if (new_pin_repeated) {
+		sc_mem_clear(new_pin_repeated, strlen(new_pin_repeated));
+		free(new_pin_repeated);
+	}
+	return rv;
 }
 
 int
@@ -326,6 +375,7 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 	struct sc_path path;
 	char *pin = NULL;
 	int tries_left;
+	struct sc_pin_cmd_data can_verify_cmd = {0};
 
 	rv = get_tries_left(p15card, PACE_PIN_ID_PIN, &tries_left);
 
@@ -355,10 +405,9 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 	rv = sc_select_file(card, &path, NULL);
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "Failed to select MF.\n");
-		return rv;
+		goto end;
 	}
 
-	struct sc_pin_cmd_data can_verify_cmd = {0};
 	can_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
 	can_verify_cmd.pin_type = SC_AC_CHV;
 	can_verify_cmd.pin_reference = PACE_PIN_ID_CAN;
@@ -370,8 +419,8 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "CAN code verification failed: %s\n", sc_strerror(rv));
-		free(pin);
-		return SC_ERROR_PIN_CODE_INCORRECT;
+		rv = SC_ERROR_PIN_CODE_INCORRECT;
+		goto end;
 	}
 
 	pace_input.pin_id = PACE_PIN_ID_PIN;
@@ -379,15 +428,21 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 	pace_input.pin_length = strlen(pin);
 
 	rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
-	free(pin);
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(rv));
-		return SC_ERROR_PIN_CODE_INCORRECT;
+		rv = SC_ERROR_PIN_CODE_INCORRECT;
+		goto end;
 	}
 
 	printf("PIN for authentication unblocked.\n");
+	rv = SC_SUCCESS;
 
-	return SC_SUCCESS;
+end:
+	if (pin) {
+		sc_mem_clear(pin, strlen(pin));
+		free(pin);
+	}
+	return rv;
 }
 
 int
@@ -398,6 +453,7 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 	struct sc_path path;
 	char *puk = NULL;
 	int pace_pin_tries_left, qes_pin_tries_left;
+	struct sc_pin_cmd_data puk_verify_cmd = {0};
 
 	get_tries_left(p15card, PACE_PIN_ID_PIN, &pace_pin_tries_left);
 	get_tries_left(p15card, 0x81, &qes_pin_tries_left);
@@ -418,10 +474,9 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 	rv = sc_select_file(card, &path, NULL);
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "Failed to select MF.\n");
-		return rv;
+		goto end;
 	}
 
-	struct sc_pin_cmd_data puk_verify_cmd = {0};
 	puk_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
 	puk_verify_cmd.pin_type = SC_AC_CHV;
 	puk_verify_cmd.pin_reference = PACE_PIN_ID_PUK;
@@ -432,7 +487,8 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PUK code verification failed: %s\n", sc_strerror(rv));
-		return SC_ERROR_PIN_CODE_INCORRECT;
+		rv = SC_ERROR_PIN_CODE_INCORRECT;
+		goto end;
 	}
 
 	if (pace_pin_tries_left == 0) {
@@ -445,7 +501,7 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 
 		if (rv != SC_SUCCESS) {
 			fprintf(stderr, "PIN for authentication reset failed: %s\n", sc_strerror(rv));
-			return rv;
+			goto end;
 		}
 	}
 
@@ -459,20 +515,26 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 		rv = sc_select_file(card, &path, NULL);
 		if (rv != SC_SUCCESS) {
 			fprintf(stderr, "Failed to select 3F:00:DF:02.\n");
-			return rv;
+			goto end;
 		}
 
 		rv = card->ops->pin_cmd(card, &qes_pin_cmd);
 
 		if (rv != SC_SUCCESS) {
 			fprintf(stderr, "PIN for signature reset failed: %s\n", sc_strerror(rv));
-			return rv;
+			goto end;
 		}
 	}
 
 	printf("PIN unblocked.\n");
+	rv = SC_SUCCESS;
 
-	return SC_SUCCESS;
+end:
+	if (puk) {
+		sc_mem_clear(puk, strlen(puk));
+		free(puk);
+	}
+	return rv;
 }
 
 int
@@ -582,10 +644,12 @@ main(int argc, char *argv[])
 	}
 
 cleanup:
+	if (p15card)
+		sc_pkcs15_unbind(p15card);
 	if (card) {
 		sc_unlock(card);
 		sc_disconnect_card(card);
 	}
 	sc_release_context(ctx);
-	return err;
+	return err ? 1 : 0;
 }
