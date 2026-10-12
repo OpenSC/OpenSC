@@ -348,6 +348,10 @@ cflex_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		goto out;
 
 	keybits = key_info->modulus_length;
+	if (keybits == 0 || (keybits % 8) != 0 || (keybits / 8) > sizeof(raw_pubkey)) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto out;
+	}
 
 	/* Perform key generation */
 	memset(&args, 0, sizeof(args));
@@ -364,6 +368,14 @@ cflex_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	pubkey->u.rsa.modulus.data  = malloc(keybits / 8);
 	pubkey->u.rsa.exponent.len  = 3;
 	pubkey->u.rsa.exponent.data = malloc(3);
+	if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.exponent.data) {
+		free(pubkey->u.rsa.modulus.data);
+		free(pubkey->u.rsa.exponent.data);
+		pubkey->u.rsa.modulus.data = NULL;
+		pubkey->u.rsa.exponent.data = NULL;
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto out;
+	}
 	memcpy(pubkey->u.rsa.exponent.data, "\x01\x00\x01", 3);
 	if ((r = sc_select_file(card, &pukf->path, NULL)) < 0
 	 || (r = sc_read_binary(card, 3, raw_pubkey, keybits / 8, 0)) < 0)
