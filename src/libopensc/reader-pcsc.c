@@ -257,6 +257,12 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 	SCARDHANDLE card;
 
 	LOG_FUNC_CALLED(reader->ctx);
+
+	if (!priv || !priv->gpriv || !recvbuf || !recvsize)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (sendsize > 0 && !sendbuf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	card = priv->pcsc_card;
 
 	// Ensure send buffer fits into a DWORD
@@ -276,6 +282,8 @@ static int pcsc_internal_transmit(sc_reader_t *reader,
 	dwRecvLength = (DWORD)*recvsize;
 
 	if (!control) {
+		if (!priv->gpriv->SCardTransmit)
+			return SC_ERROR_NOT_SUPPORTED;
 		rv = priv->gpriv->SCardTransmit(card, &sSendPci, sendbuf, dwSendLength,
 				   &sRecvPci, recvbuf, &dwRecvLength);
 	} else {
@@ -325,6 +333,9 @@ static int pcsc_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 	size_t ssize, rsize, rbuflen = 0;
 	u8 *sbuf = NULL, *rbuf = NULL;
 	int r;
+
+	if (!apdu || apdu->resplen > SIZE_MAX - 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* we always use a at least 258 byte size big return buffer
 	 * to mimic the behaviour of the old implementation (some readers
@@ -381,6 +392,9 @@ static int refresh_attributes(sc_reader_t *reader)
 	LONG rv;
 
 	sc_log(reader->ctx, "%s check", reader->name);
+
+	if (!priv || !priv->gpriv || !priv->gpriv->SCardGetStatusChange)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
@@ -577,6 +591,9 @@ static int pcsc_reconnect(sc_reader_t * reader, DWORD action)
 	struct pcsc_private_data *priv = reader->drv_data;
 	int r;
 
+	if (!priv || !priv->gpriv || !priv->gpriv->SCardReconnect)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_log(reader->ctx, "Reconnecting to the card...");
 
 	r = refresh_attributes(reader);
@@ -651,6 +668,9 @@ static int pcsc_connect(sc_reader_t *reader)
 
 	LOG_FUNC_CALLED(reader->ctx);
 
+	if (!priv || !priv->gpriv)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	r = refresh_attributes(reader);
 	if (r != SC_SUCCESS)
 		LOG_FUNC_RETURN(reader->ctx, r);
@@ -703,7 +723,7 @@ static int pcsc_disconnect(sc_reader_t * reader)
 {
 	struct pcsc_private_data *priv = reader->drv_data;
 
-	if (!priv->gpriv->cardmod && !(reader->ctx->flags & SC_CTX_FLAG_TERMINATE)) {
+	if (priv && priv->gpriv && !priv->gpriv->cardmod && !(reader->ctx->flags & SC_CTX_FLAG_TERMINATE)) {
 		LONG rv = priv->gpriv->SCardDisconnect(priv->pcsc_card, priv->gpriv->disconnect_action);
 		PCSC_TRACE(reader, "SCardDisconnect returned", rv);
 		if (rv == SCARD_S_SUCCESS) {
@@ -720,6 +740,9 @@ static int pcsc_lock(sc_reader_t *reader)
 	LONG rv;
 	int r;
 	struct pcsc_private_data *priv = reader->drv_data;
+
+	if (!priv || !priv->gpriv)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (priv->gpriv->cardmod)
 		return SC_SUCCESS;
@@ -763,6 +786,9 @@ static int pcsc_unlock(sc_reader_t *reader)
 	LONG rv;
 	struct pcsc_private_data *priv = reader->drv_data;
 
+	if (!priv || !priv->gpriv)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (priv->gpriv->cardmod)
 		return SC_SUCCESS;
 
@@ -785,7 +811,10 @@ static int pcsc_release(sc_reader_t *reader)
 {
 	struct pcsc_private_data *priv = reader->drv_data;
 
-	free(priv);
+	if (priv) {
+		free(priv);
+		reader->drv_data = NULL;
+	}
 	return SC_SUCCESS;
 }
 
@@ -820,6 +849,9 @@ static int pcsc_cancel(sc_context_t *ctx)
 
 	if (ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
+
+	if (!gpriv || !gpriv->SCardCancel || !gpriv->SCardReleaseContext)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	for (i = 0; i < ARRAY_SIZE(gpriv->pcsc_wait_ctx); i++) {
 		if (gpriv->pcsc_wait_ctx[i] != (SCARDCONTEXT)-1) {
@@ -1172,6 +1204,9 @@ static void detect_reader_features(sc_reader_t *reader, SCARDHANDLE card_handle)
 
 	LOG_FUNC_CALLED(ctx);
 
+	if (!priv || !gpriv)
+		return;
+
 	sc_log(ctx, "Requesting reader features ... ");
 
 	if (gpriv->SCardControl) {
@@ -1365,8 +1400,13 @@ int pcsc_add_reader(sc_context_t *ctx,
 {
 	int ret = SC_ERROR_INTERNAL;
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
-	struct pcsc_private_data *priv;
-	sc_reader_t *reader;
+	struct pcsc_private_data *priv = NULL;
+	sc_reader_t *reader = NULL;
+
+	if (!reader_name || !out_reader)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	*out_reader = NULL;
 
 	sc_log(ctx, "Adding new PC/SC reader '%s'", reader_name);
 
@@ -1374,7 +1414,6 @@ int pcsc_add_reader(sc_context_t *ctx,
 		ret = SC_ERROR_OUT_OF_MEMORY;
 		goto err1;
 	}
-	*out_reader = reader;
 	if ((priv = calloc(1, sizeof(struct pcsc_private_data))) == NULL) {
 		ret = SC_ERROR_OUT_OF_MEMORY;
 		goto err1;
@@ -1391,10 +1430,10 @@ int pcsc_add_reader(sc_context_t *ctx,
 	}
 
 	/* max send/receive sizes: with default values only short APDU supported */
-	reader->max_send_size = priv->gpriv->force_max_send_size ?
+	reader->max_send_size = (priv->gpriv && priv->gpriv->force_max_send_size) ?
 		priv->gpriv->force_max_send_size :
 		SC_READER_SHORT_APDU_MAX_SEND_SIZE;
-	reader->max_recv_size = priv->gpriv->force_max_recv_size ?
+	reader->max_recv_size = (priv->gpriv && priv->gpriv->force_max_recv_size) ?
 		priv->gpriv->force_max_recv_size :
 		SC_READER_SHORT_APDU_MAX_RECV_SIZE;
 
@@ -1402,9 +1441,16 @@ int pcsc_add_reader(sc_context_t *ctx,
 
 	if (ret == SC_SUCCESS) {
 		refresh_attributes(reader);
+		*out_reader = reader;
+		return SC_SUCCESS;
 	}
 
 err1:
+	if (reader) {
+		free(reader->name);
+		free(reader);
+	}
+	free(priv);
 	return ret;
 }
 
@@ -1617,8 +1663,9 @@ pcsc_reader_states_free(sc_context_t *ctx, struct pcsc_reader_states *states)
 	if (states) {
 		if (ctx) {
 			struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *)ctx->reader_drv_data;
-			if (states->pcsc_wait_ctx_index < ARRAY_SIZE(gpriv->pcsc_wait_ctx)) {
-				gpriv->SCardReleaseContext(gpriv->pcsc_wait_ctx[states->pcsc_wait_ctx_index]);
+			if (gpriv && states->pcsc_wait_ctx_index < ARRAY_SIZE(gpriv->pcsc_wait_ctx)) {
+				if (gpriv->SCardReleaseContext && gpriv->pcsc_wait_ctx[states->pcsc_wait_ctx_index] != (SCARDCONTEXT)-1)
+					gpriv->SCardReleaseContext(gpriv->pcsc_wait_ctx[states->pcsc_wait_ctx_index]);
 				gpriv->pcsc_wait_ctx[states->pcsc_wait_ctx_index] = -1;
 			}
 		}
@@ -1655,6 +1702,9 @@ static int pcsc_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_re
 	struct pcsc_reader_states *states;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!gpriv)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (!event_reader && !event && reader_states) {
 		/* delete reader states and release all associated resources */
@@ -1977,11 +2027,17 @@ out:
 static int part10_build_verify_pin_block(struct sc_reader *reader, u8 * buf, size_t * size, struct sc_pin_cmd_data *data)
 {
 	int offset = 0, count = 0;
-	sc_apdu_t *apdu = data->apdu;
+	sc_apdu_t *apdu;
 	u8 tmp;
 	uint16_t tmp16;
 	size_t off;
-	PIN_VERIFY_STRUCTURE *pin_verify = (PIN_VERIFY_STRUCTURE *)buf;
+	PIN_VERIFY_STRUCTURE *pin_verify;
+
+	if (!buf || !size || !data || !data->apdu)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	apdu = data->apdu;
+	pin_verify = (PIN_VERIFY_STRUCTURE *)buf;
 
 	/* PIN verification control message */
 	pin_verify->bTimerOut = SC_CCID_PIN_TIMEOUT;
@@ -2077,12 +2133,18 @@ static int part10_build_verify_pin_block(struct sc_reader *reader, u8 * buf, siz
 static int part10_build_modify_pin_block(struct sc_reader *reader, u8 * buf, size_t * size, struct sc_pin_cmd_data *data)
 {
 	int offset = 0, count = 0;
-	sc_apdu_t *apdu = data->apdu;
+	sc_apdu_t *apdu;
 	u8 tmp;
 	uint16_t tmp16;
-	PIN_MODIFY_STRUCTURE *pin_modify = (PIN_MODIFY_STRUCTURE *)buf;
-	struct sc_pin_cmd_pin *pin_ref =
-		data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ?
+	PIN_MODIFY_STRUCTURE *pin_modify;
+	struct sc_pin_cmd_pin *pin_ref;
+
+	if (!buf || !size || !data || !data->apdu)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	apdu = data->apdu;
+	pin_modify = (PIN_MODIFY_STRUCTURE *)buf;
+	pin_ref = data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ?
 		&data->pin2 : &data->pin1;
 
 	/* PIN verification control message */
@@ -2181,37 +2243,35 @@ part10_find_property_by_tag(unsigned char buffer[], DWORD length,
 		int tag_searched)
 {
 	unsigned char *p;
-	int found = 0, len, value = -1;
+	int found = 0, len = 0, value = -1;
+
+	if (!buffer)
+		return -1;
 
 	p = buffer;
-	while (p - buffer < (long)length) {
-		if (*p++ == tag_searched) {
+	while ((size_t)(p - buffer) + 2 <= length) {
+		int tag = *p++;
+		len = *p++;
+		if (tag == tag_searched) {
 			found = 1;
 			break;
 		}
-
-		/* go to next tag */
-		len = *p++;
 		p += len;
 	}
 
-	if (found && p - buffer < (long)length) {
-		len = *p++;
-
-		if (p - buffer + len <= (long)length) {
-			switch (len) {
-			case 1:
-				value = *p;
-				break;
-			case 2:
-				value = *p + (*(p+1)<<8);
-				break;
-			case 4:
-				value = *p + (*(p+1)<<8) + (*(p+2)<<16) + (*(p+3)<<24);
-				break;
-			default:
-				value = -1;
-			}
+	if (found && (size_t)(p - buffer) + len <= length) {
+		switch (len) {
+		case 1:
+			value = *p;
+			break;
+		case 2:
+			value = *p | (*(p+1) << 8);
+			break;
+		case 4:
+			value = *p | (*(p+1) << 8) | (*(p+2) << 16) | (*(p+3) << 24);
+			break;
+		default:
+			value = -1;
 		}
 	}
 
@@ -2226,10 +2286,18 @@ part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	int r;
 	unsigned char buffer[256];
 	size_t length = sizeof buffer;
-	struct pcsc_private_data *priv = reader->drv_data;
-	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) reader->ctx->reader_drv_data;
-	struct sc_pin_cmd_pin *pin_ref =
-		data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ?
+	struct pcsc_private_data *priv;
+	struct pcsc_global_private_data *gpriv;
+	struct sc_pin_cmd_pin *pin_ref;
+
+	if (!reader || !data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	priv = reader->drv_data;
+	gpriv = (struct pcsc_global_private_data *) reader->ctx->reader_drv_data;
+	if (!priv || !gpriv)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	pin_ref = data->flags & SC_PIN_CMD_IMPLICIT_CHANGE ?
 		&data->pin2 : &data->pin1;
 
 	if (gpriv->fixed_pinlength != 0) {
@@ -2247,7 +2315,7 @@ part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 		"PC/SC v2 part 10: Get TLV properties failed!");
 
 	/* minimum pin size */
-	r = part10_find_property_by_tag(buffer, length,
+	r = part10_find_property_by_tag(buffer, (DWORD)length,
 		PCSCv2_PART10_PROPERTY_bMinPINSize);
 	if (r >= 0)
 	{
@@ -2258,7 +2326,7 @@ part10_check_pin_min_max(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	}
 
 	/* maximum pin size */
-	r = part10_find_property_by_tag(buffer, length,
+	r = part10_find_property_by_tag(buffer, (DWORD)length,
 		PCSCv2_PART10_PROPERTY_bMaxPINSize);
 	if (r > 0)
 	{
@@ -2288,17 +2356,14 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 
 	LOG_FUNC_CALLED(reader->ctx);
 
+	if (!priv || !priv->gpriv || !data || !data->apdu)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	if (priv->gpriv->SCardControl == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
-
-	/* The APDU must be provided by the card driver */
-	if (!data->apdu) {
-		sc_log(reader->ctx, "No APDU provided for PC/SC v2 pinpad verification!");
-		return SC_ERROR_NOT_SUPPORTED;
-	}
 
 	apdu = data->apdu;
 	switch (data->cmd) {
@@ -2391,10 +2456,23 @@ static int transform_pace_input(struct establish_pace_channel_input *pace_input,
 	if (!pace_input || !sbuf || !scount)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	lengthInputData = 5 + pace_input->pin_length + pace_input->chat_length
-		+ pace_input->certificate_description_length;
+	if ((pace_input->pin_length > 0 && !pace_input->pin) ||
+	    (pace_input->chat_length > 0 && !pace_input->chat) ||
+	    (pace_input->certificate_description_length > 0 && !pace_input->certificate_description))
+		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if ((unsigned)(lengthInputData + 3) > *scount)
+	if (pace_input->pin_length > 255 || pace_input->chat_length > 255 ||
+	    pace_input->certificate_description_length > 0xFFFF)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if ((size_t)pace_input->pin_length + pace_input->chat_length
+		+ pace_input->certificate_description_length > 0xFFFF - 8)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	lengthInputData = (uint16_t)(5 + pace_input->pin_length + pace_input->chat_length
+		+ pace_input->certificate_description_length);
+
+	if ((size_t)(lengthInputData + 3) > *scount)
 		return SC_ERROR_OUT_OF_MEMORY;
 
 	/* idxFunction */
@@ -2407,29 +2485,35 @@ static int transform_pace_input(struct establish_pace_channel_input *pace_input,
 	*(p++) = pace_input->pin_id;
 
 	/* length CHAT */
-	lengthCHAT = pace_input->chat_length;
+	lengthCHAT = (uint8_t)pace_input->chat_length;
 	*(p++) = lengthCHAT;
 	/* CHAT */
-	memcpy(p, pace_input->chat, lengthCHAT);
-	p += lengthCHAT;
+	if (lengthCHAT > 0) {
+		memcpy(p, pace_input->chat, lengthCHAT);
+		p += lengthCHAT;
+	}
 
 	/* length PIN */
-	lengthPIN = pace_input->pin_length;
+	lengthPIN = (uint8_t)pace_input->pin_length;
 	*(p++) = lengthPIN;
 
 	/* PIN */
-	memcpy(p, pace_input->pin, lengthPIN);
-	p += lengthPIN;
+	if (lengthPIN > 0) {
+		memcpy(p, pace_input->pin, lengthPIN);
+		p += lengthPIN;
+	}
 
 	/* lengthCertificateDescription */
-	lengthCertificateDescription = pace_input->certificate_description_length;
+	lengthCertificateDescription = (uint16_t)pace_input->certificate_description_length;
 	memcpy(p, &lengthCertificateDescription,
 			sizeof lengthCertificateDescription);
 	p += sizeof lengthCertificateDescription;
 
 	/* certificate description */
-	memcpy(p, pace_input->certificate_description,
-			lengthCertificateDescription);
+	if (lengthCertificateDescription > 0) {
+		memcpy(p, pace_input->certificate_description,
+				lengthCertificateDescription);
+	}
 
 	*scount = lengthInputData + 3;
 
@@ -2587,11 +2671,11 @@ pcsc_perform_pace(struct sc_reader *reader, void *input_pace, void *output_pace)
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t rcount = sizeof rbuf, scount = sizeof sbuf;
 
-	if (!reader || !(reader->capabilities & SC_READER_CAP_PACE_GENERIC))
+	if (!reader || !(reader->capabilities & SC_READER_CAP_PACE_GENERIC) || !input_pace || !output_pace)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	priv = reader->drv_data;
-	if (!priv)
+	if (!priv || !priv->gpriv)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_TEST_RET(reader->ctx,
@@ -2614,9 +2698,18 @@ static void detect_protocol(sc_reader_t *reader, SCARDHANDLE card_handle)
 {
 	DWORD readers_len = 0, state, prot, atr_len = SC_MAX_ATR_SIZE;
 	unsigned char atr[SC_MAX_ATR_SIZE];
-	struct pcsc_private_data *priv = reader->drv_data;
+	struct pcsc_private_data *priv;
+	DWORD rv;
+
+	if (!reader)
+		return;
+
+	priv = reader->drv_data;
+	if (!priv || !priv->gpriv || !priv->gpriv->SCardStatus)
+		return;
+
 	/* attempt to detect protocol in use T0/T1/RAW */
-	DWORD rv = priv->gpriv->SCardStatus(card_handle, NULL,
+	rv = priv->gpriv->SCardStatus(card_handle, NULL,
 			&readers_len, &state, &prot, atr, &atr_len);
 	if (rv != SCARD_S_SUCCESS) {
 		prot = SCARD_PROTOCOL_T0;
@@ -2627,13 +2720,17 @@ static void detect_protocol(sc_reader_t *reader, SCARDHANDLE card_handle)
 int
 pcsc_check_reader_handles(sc_context_t *ctx, sc_reader_t *reader, void * pcsc_context_handle, void * pcsc_card_handle)
 {
+	struct pcsc_private_data *priv;
 	char reader_name[128];
 	DWORD reader_name_size = sizeof(reader_name);
 
-	if (NULL == reader)
+	if (!reader || !pcsc_card_handle || !reader->name)
 		return 1;
 
-	struct pcsc_private_data *priv = reader->drv_data;
+	priv = reader->drv_data;
+	if (!priv || !priv->gpriv || !priv->gpriv->SCardGetAttrib)
+		return 1;
+
 	memset(reader_name, 0, sizeof(reader_name));
 
 	/* check if new handles are for the same reader as old handles */
@@ -2659,8 +2756,8 @@ int pcsc_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_c
 
 	LOG_FUNC_CALLED(ctx);
 
-	if (!gpriv) {
-		ret = SC_ERROR_NO_READERS_FOUND;
+	if (!gpriv || !pcsc_context_handle || !pcsc_card_handle || !gpriv->SCardGetAttrib) {
+		ret = SC_ERROR_INVALID_ARGUMENTS;
 		goto out;
 	}
 
@@ -2675,9 +2772,9 @@ int pcsc_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_c
 		sc_log(ctx, "Reusing the reader");
 		sc_reader_t *reader = list_get_at(&ctx->readers, 0);
 
-		if (reader) {
+		if (reader && reader->drv_data) {
 			struct pcsc_private_data *priv = reader->drv_data;
-			priv->pcsc_card =*(SCARDHANDLE *)pcsc_card_handle;
+			priv->pcsc_card = *(SCARDHANDLE *)pcsc_card_handle;
 			gpriv->pcsc_ctx = *(SCARDCONTEXT *)pcsc_context_handle;
 			ret = SC_SUCCESS;
 			goto out;
@@ -2699,14 +2796,16 @@ int pcsc_use_reader(sc_context_t *ctx, void * pcsc_context_handle, void * pcsc_c
 		sc_reader_t *reader = NULL;
 
 		ret = pcsc_add_reader(ctx, reader_name, reader_name_size, &reader);
-		if (ret == SC_SUCCESS) {
+		if (ret == SC_SUCCESS && reader && reader->drv_data) {
 			struct pcsc_private_data *priv = reader->drv_data;
 			priv->pcsc_card = card_handle;
 			detect_protocol(reader, card_handle);
 			detect_reader_features(reader, card_handle);
 			gpriv->attached_reader = reader;
 		} else {
-			_sc_delete_reader(ctx, reader);
+			if (reader)
+				_sc_delete_reader(ctx, reader);
+			ret = SC_ERROR_INTERNAL;
 		}
 	}
 
