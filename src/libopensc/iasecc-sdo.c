@@ -154,6 +154,7 @@ iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 
 	free(sdo->docp.tries_maximum.value);
 	free(sdo->docp.tries_remaining.value);
+	free(sdo->docp.usage_maximum.value);
 	free(sdo->docp.usage_remaining.value);
 	free(sdo->docp.non_repudiation.value);
 	free(sdo->docp.acls_contact.value);
@@ -182,6 +183,11 @@ iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 		free(sdo->data.chv.size_min.value);
 		free(sdo->data.chv.value.value);
 	}
+	else if (sdo->sdo_class == IASECC_SDO_CLASS_KEYSET)   {
+		free(sdo->data.keyset.mac.value);
+		free(sdo->data.keyset.enc.value);
+		free(sdo->data.keyset.compulsory.value);
+	}
 	/* invalidate all the other members too */
 	memset(sdo, 0, sizeof(struct iasecc_sdo));
 }
@@ -202,14 +208,16 @@ iasecc_crt_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 	struct sc_crt crt;
 	int ii, offs, len, parsed_len = -1;
 
-	sc_log(ctx, "iasecc_crt_parse(0x%X) called", *data);
-
-	if (data_len < 2)
+	if (!data || data_len < 2)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+
+	sc_log(ctx, "iasecc_crt_parse(0x%X) called", *data);
 
 	memset(&crt, 0, sizeof(crt));
 	crt.tag = *(data + 0);
 	len = *(data + 1);
+	if ((size_t)len + 2 > data_len)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
 	for(offs = 2; offs < len + 2; offs += 3)   {
 		if ((size_t) offs + 2 >= data_len)
@@ -409,10 +417,11 @@ iasecc_parse_get_tlv(struct sc_card *card, unsigned char *data, size_t data_len,
 	struct sc_context *ctx = card->ctx;
 	int size_len, tag_len;
 
+	if (!data || data_len < 1 || !tlv)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+
 	memset(tlv, 0, sizeof(*tlv));
 	sc_log(ctx, "iasecc_parse_get_tlv() called for tag 0x%X", *data);
-	if (data_len < 1)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 	if ((*data == 0x7F) || (*data == 0x5F))   {
 		if (data_len < 2)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
@@ -431,7 +440,7 @@ iasecc_parse_get_tlv(struct sc_card *card, unsigned char *data, size_t data_len,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 	}
 
-	tlv->value = calloc(1, tlv->size);
+	tlv->value = calloc(1, tlv->size ? tlv->size : 1);
 	if (!tlv->value)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	memcpy(tlv->value, data + size_len + tag_len, tlv->size);
@@ -799,7 +808,7 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 	offs = 3 + size_size;
 	for (; offs < data_len;)   {
 		rv = iasecc_sdo_parse_data(card, data + offs, data_len - offs, sdo);
-		if (rv != SC_SUCCESS) {
+		if (rv < 0) {
 			iasecc_sdo_free_fields(card, sdo);
 			LOG_TEST_RET(ctx, rv, "parse error: invalid SDO data");
 		}
@@ -829,40 +838,56 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 
 	LOG_FUNC_CALLED(ctx);
 
+	if (!out)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	*out = NULL;
+
 	if (data_len < 3 || !data || *data != IASECC_SDO_TAG_HEADER)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
 	sdo = calloc(1, sizeof(struct iasecc_sdo));
 	if (!sdo)
 		return SC_ERROR_OUT_OF_MEMORY;
-	*out = sdo;
 
 	sdo->sdo_class = *(data + 1) & 0x7F;
 	sdo->sdo_ref = *(data + 2) & 0x3F;
 
 	sc_log(ctx, "sdo_class 0x%X, sdo_ref 0x%X", sdo->sdo_class, sdo->sdo_ref);
-	if (data_len == 3)
+	if (data_len == 3) {
+		*out = sdo;
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	}
 
 	size_size = iasecc_parse_size(data + 3, data_len - 3, &size);
-	LOG_TEST_RET(ctx, size_size, "parse error: invalid size data");
+	if (size_size < 0) {
+		iasecc_sdo_free(card, sdo);
+		LOG_TEST_RET(ctx, size_size, "parse error: invalid size data");
+	}
 
-	if (data_len != size + size_size + 3)
+	if (data_len != size + size_size + 3) {
+		iasecc_sdo_free(card, sdo);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalid SDO data size");
+	}
 
 	sc_log(ctx, "sz %zu, sz_size %d", size, size_size);
 
 	offs = 3 + size_size;
 	for (; offs < data_len;)   {
 		rv = iasecc_sdo_parse_data(card, data + offs, data_len - offs, sdo);
-		LOG_TEST_RET(ctx, rv, "parse error: invalid SDO data");
+		if (rv < 0) {
+			iasecc_sdo_free(card, sdo);
+			LOG_TEST_RET(ctx, rv, "parse error: invalid SDO data");
+		}
 
 		offs += rv;
 	}
 
-	if (offs != data_len)
+	if (offs != data_len) {
+		iasecc_sdo_free(card, sdo);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totally parsed");
+	}
 
+	*out = sdo;
 	sc_log(ctx, "docp.acls_contact.size %zu; docp.size.size %zu",
 			sdo->docp.acls_contact.size, sdo->docp.size.size);
 
@@ -1054,6 +1079,7 @@ iasecc_sdo_encode_create(struct sc_context *ctx, struct iasecc_sdo *sdo, unsigne
 	sc_format_asn1_entry(asn1_create_data + 0, asn1_docp_data, NULL, 1);
 
 	rv = sc_asn1_encode(ctx, asn1_create_data, out, &out_len);
+	free(blob);
 	LOG_TEST_RET(ctx, rv, "Encode create data error");
 	if (out)
 		sc_debug(ctx, SC_LOG_DEBUG_ASN1,"Create data: %s", sc_dump_hex(*out, out_len));
@@ -1334,36 +1360,53 @@ iasecc_docp_copy(struct sc_context *ctx, struct iasecc_sdo_docp *in, struct iase
 	memset(out, 0, sizeof(struct iasecc_sdo_docp));
 
 	rv = iasecc_tlv_copy(ctx, &in->name, &out->name);
-	LOG_TEST_RET(ctx, rv, "TLV copy error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "TLV copy error");
 
 	rv = iasecc_tlv_copy(ctx, &in->tries_maximum, &out->tries_maximum);
-	LOG_TEST_RET(ctx, rv, "TLV copy error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "TLV copy error");
 
 	rv = iasecc_tlv_copy(ctx, &in->tries_remaining, &out->tries_remaining);
-	LOG_TEST_RET(ctx, rv, "TLV copy error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "TLV copy error");
 
 	rv = iasecc_tlv_copy(ctx, &in->usage_maximum, &out->usage_maximum);
-	LOG_TEST_RET(ctx, rv, "TLV copy error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "TLV copy error");
 
 	rv = iasecc_tlv_copy(ctx, &in->usage_remaining, &out->usage_remaining);
-	LOG_TEST_RET(ctx, rv, "TLV copy error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "TLV copy error");
 
 	rv = iasecc_tlv_copy(ctx, &in->non_repudiation, &out->non_repudiation);
-	LOG_TEST_RET(ctx, rv, "TLV copy error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "TLV copy error");
 
 	rv = iasecc_tlv_copy(ctx, &in->size, &out->size);
-	LOG_TEST_RET(ctx, rv, "TLV copy error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "TLV copy error");
 
 	rv = iasecc_tlv_copy(ctx, &in->acls_contact, &out->acls_contact);
-	LOG_TEST_RET(ctx, rv, "TLV copy error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "TLV copy error");
 
 	rv = iasecc_tlv_copy(ctx, &in->acls_contactless, &out->acls_contactless);
-	LOG_TEST_RET(ctx, rv, "TLV copy error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "TLV copy error");
+
+	rv = iasecc_tlv_copy(ctx, &in->issuer_data, &out->issuer_data);
+	LOG_TEST_GOTO_ERR(ctx, rv, "TLV copy error");
 
 	out->amb = in->amb;
 	memcpy(out->scbs, in->scbs, sizeof(out->scbs));
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+err:
+	free(out->name.value);
+	free(out->tries_maximum.value);
+	free(out->tries_remaining.value);
+	free(out->usage_maximum.value);
+	free(out->usage_remaining.value);
+	free(out->non_repudiation.value);
+	free(out->size.value);
+	free(out->acls_contact.value);
+	free(out->acls_contactless.value);
+	free(out->issuer_data.value);
+	memset(out, 0, sizeof(*out));
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 #else
