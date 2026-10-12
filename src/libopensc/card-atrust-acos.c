@@ -242,6 +242,9 @@ static int atrust_acos_select_aid(struct sc_card *card,
 	int r;
 	size_t i = 0;
 
+	if (!aid || len == 0 || len > 16)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
 	apdu.lc = len;
 	apdu.data = (u8*)aid;
@@ -259,6 +262,10 @@ static int atrust_acos_select_aid(struct sc_card *card,
 		sc_file_t *file = sc_file_new();
 		if (!file)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		if (len > sizeof(file->name)) {
+			sc_file_free(file);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
 		file->type = SC_FILE_TYPE_DF;
 		file->ef_structure = SC_FILE_EF_UNKNOWN;
 		file->path.len = 0;
@@ -381,6 +388,8 @@ static int atrust_acos_select_file(struct sc_card *card,
 	} else if (in_path->type == SC_PATH_TYPE_DF_NAME) {
 		/* SELECT DF with AID */
 		/* Select with 1-16byte Application-ID */
+		if (pathlen == 0 || pathlen > 16)
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 		return atrust_acos_select_aid(card, pathbuf, pathlen, file_out);
 	} else if (in_path->type == SC_PATH_TYPE_PATH) {
 		u8 n_pathbuf[SC_MAX_PATH_SIZE];
@@ -444,15 +453,19 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 
 	operation = env->operation;
 	ex_data = (atrust_acos_ex_data *)card->drv_data;
+	if (!ex_data)
+		return SC_ERROR_INTERNAL;
 	p     = sbuf;
 
 	/* copy key reference, if present */
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+		if (env->key_ref_len == 0 || env->key_ref_len > sizeof(env->key_ref) || env->key_ref_len > sizeof(sbuf) - 10)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
 			*p++ = 0x83;
 		else
 			*p++ = 0x84;
-		*p++ = env->key_ref_len;
+		*p++ = (u8)env->key_ref_len;
 		memcpy(p, env->key_ref, env->key_ref_len);
 		p += env->key_ref_len;
 	}
@@ -665,10 +678,10 @@ static int atrust_acos_decipher(struct sc_card *card,
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
-	if (card == NULL || crgram == NULL || out == NULL)
-		return SC_ERROR_INTERNAL;
+	if (crgram == NULL || out == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
-	if (crgram_len > 255)
+	if (crgram_len == 0 || crgram_len > 255)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
@@ -714,7 +727,9 @@ static int atrust_acos_check_sw(struct sc_card *card, unsigned int sw1,
 	}
 
 	/* iso error */
-	return iso_ops->check_sw(card, sw1, sw2);
+	if (iso_ops && iso_ops->check_sw)
+		return iso_ops->check_sw(card, sw1, sw2);
+	return sc_check_sw(card, sw1, sw2);
 }
 
 /*****************************************************************************/
@@ -798,10 +813,12 @@ static int atrust_acos_logout(struct sc_card *card)
 static struct sc_card_driver * sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
-	if (iso_ops == NULL)
-		iso_ops = iso_drv->ops;
+	if (iso_drv && iso_drv->ops) {
+		if (iso_ops == NULL)
+			iso_ops = iso_drv->ops;
 
-	atrust_acos_ops = *iso_drv->ops;
+		atrust_acos_ops = *iso_drv->ops;
+	}
 	atrust_acos_ops.match_card = atrust_acos_match_card;
 	atrust_acos_ops.init   = atrust_acos_init;
 	atrust_acos_ops.finish = atrust_acos_finish;
