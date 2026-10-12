@@ -226,6 +226,24 @@ static int itacns_init(sc_card_t *card)
 	return SC_SUCCESS;
 }
 
+static int
+itacns_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r;
+
+	if (card->type != SC_CARD_TYPE_ITACNS_CNS_JSIGN4)
+		return SC_SUCCESS;
+
+	r = itacns_match_cns_model(card);
+	if (r < 0)
+		return r;
+	if (r > 0)
+		return SC_SUCCESS;
+
+	return iso7816_select_aid(card, itacns_cns_aid, sizeof itacns_cns_aid,
+			NULL, NULL);
+}
+
 static int itacns_finish(struct sc_card *card)
 {
 	if(card->drv_data) {
@@ -560,6 +578,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	itacns_ops.match_card = itacns_match_card;
 	itacns_ops.init = itacns_init;
 	itacns_ops.finish = itacns_finish;
+	itacns_ops.card_reader_lock_obtained = itacns_card_reader_lock_obtained;
 	itacns_ops.set_security_env = itacns_set_security_env;
 	itacns_ops.restore_security_env = itacns_restore_security_env;
 	itacns_ops.pin_cmd = itacns_pin_cmd;
