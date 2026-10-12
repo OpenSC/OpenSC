@@ -46,7 +46,7 @@ static void write_line(scconf_writer * writer, const char *data)
 {
 	int i;
 
-	if (writer->error) {
+	if (!writer || writer->error || !writer->f) {
 		return;
 	}
 	if (!((data) == NULL || (data)[0] == '\0')) {
@@ -62,6 +62,9 @@ static void write_line(scconf_writer * writer, const char *data)
 
 static int string_need_quotes(const char *str)
 {
+	if (!str) {
+		return 0;
+	}
 	/* quote only if there's any non-normal characters */
 	while (*str != '\0') {
 		if (!isalnum((int) ((unsigned char) *str)) && *str != '!' &&
@@ -83,17 +86,21 @@ static char *scconf_list_get_string(scconf_list * list)
 	}
 	len = 0;
 	alloc_len = 1024;
-	tmp = (char *) realloc(buffer, alloc_len);
+	tmp = (char *) malloc(alloc_len);
 	if (!tmp) {
-		free(buffer);
 		return strdup("");
 	}
 	buffer = tmp;
-	memset(buffer, 0, alloc_len);
+	buffer[0] = '\0';
 	while (list) {
+		if (!list->data) {
+			list = list->next;
+			continue;
+		}
 		datalen = strlen(list->data);
-		if (len + datalen + 4 > alloc_len) {
-			alloc_len += datalen + 2;
+		quote = string_need_quotes(list->data);
+		if (len + datalen + 6 > alloc_len) {
+			alloc_len = len + datalen + 1024;
 			tmp = (char *) realloc(buffer, alloc_len);
 			if (!tmp) {
 				free(buffer);
@@ -105,7 +112,6 @@ static char *scconf_list_get_string(scconf_list * list)
 			memcpy(buffer + len, ", ", 2);
 			len += 2;
 		}
-		quote = string_need_quotes(list->data);
 		if (quote) {
 			buffer[len++] = '"';
 		}
@@ -114,6 +120,7 @@ static char *scconf_list_get_string(scconf_list * list)
 		if (quote) {
 			buffer[len++] = '"';
 		}
+		buffer[len] = '\0';
 		list = list->next;
 	}
 	buffer[len] = '\0';
@@ -127,21 +134,27 @@ static void scconf_write_items(scconf_writer * writer, const scconf_block * bloc
 	char *data = NULL, *name = NULL;
 	size_t datalen;
 
+	if (!writer || !block)
+		return;
+
 	for (item = block->items; item; item = item->next) {
 		switch (item->type) {
 		case SCCONF_ITEM_TYPE_COMMENT:
-			write_line(writer, item->value.comment);
+			if (item->value.comment)
+				write_line(writer, item->value.comment);
 			break;
 		case SCCONF_ITEM_TYPE_BLOCK:
 			subblock = item->value.block;
 
-			if (!subblock) {
+			if (!subblock || !item->key) {
 				fprintf(stderr, "scconf_write_items: Skipping invalid block!\n");
 				continue;
 			}
 
 			/* header */
 			name = scconf_list_get_string(subblock->name);
+			if (!name)
+				continue;
 			datalen = strlen(item->key) + strlen(name) + 6;
 			data = malloc(datalen);
 			if (!data) {
@@ -162,7 +175,11 @@ static void scconf_write_items(scconf_writer * writer, const scconf_block * bloc
 			write_line(writer, "}");
 			break;
 		case SCCONF_ITEM_TYPE_VALUE:
+			if (!item->key)
+				continue;
 			name = scconf_list_get_string(item->value.list);
+			if (!name)
+				continue;
 			datalen = strlen(item->key) + strlen(name) + 6;
 			data = malloc(datalen);
 			if (!data) {
@@ -182,8 +199,14 @@ int scconf_write(scconf_context * config, const char *filename)
 {
 	scconf_writer writer;
 
+	if (!config) {
+		return EINVAL;
+	}
 	if (!filename) {
 		filename = config->filename;
+	}
+	if (!filename) {
+		return EINVAL;
 	}
 	writer.f = fopen(filename, "w");
 	if (!writer.f) {
@@ -193,7 +216,8 @@ int scconf_write(scconf_context * config, const char *filename)
 	writer.indent_pos = 0;
 	writer.indent_level = INDENT_LEVEL;
 	writer.error = 0;
-	scconf_write_items(&writer, config->root);
+	if (config->root)
+		scconf_write_items(&writer, config->root);
 	fclose(writer.f);
 	return writer.error;
 }
