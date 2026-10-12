@@ -202,7 +202,7 @@ size_t sc_get_max_recv_size(const sc_card_t *card)
 
 	/*  Override card limitations with reader limitations. */
 	if (card->reader->max_recv_size != 0
-			&& (card->reader->max_recv_size < card->max_recv_size))
+			&& (card->reader->max_recv_size < max_recv_size))
 		max_recv_size = card->reader->max_recv_size;
 
 	return max_recv_size;
@@ -230,7 +230,7 @@ size_t sc_get_max_send_size(const sc_card_t *card)
 
 	/*  Override card limitations with reader limitations. */
 	if (card->reader->max_send_size != 0
-			&& (card->reader->max_send_size < card->max_send_size))
+			&& (card->reader->max_send_size < max_send_size))
 		max_send_size = card->reader->max_send_size;
 
 	return max_send_size;
