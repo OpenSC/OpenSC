@@ -31,16 +31,22 @@
 
 void *sc_dlopen(const char *filename)
 {
-	DWORD flags = PathIsRelativeA(filename) ? 0 : LOAD_WITH_ALTERED_SEARCH_PATH;
+	DWORD flags;
+
+	if (!filename)
+		return NULL;
+	flags = PathIsRelativeA(filename) ? 0 : LOAD_WITH_ALTERED_SEARCH_PATH;
 	return (void *)LoadLibraryExA(filename, NULL, flags);
 }
 
 void *sc_dlsym(void *handle, const char *symbol)
 {
-	return GetProcAddress((HMODULE)handle, symbol);
+	if (!handle || !symbol)
+		return NULL;
+	return (void *)GetProcAddress((HMODULE)handle, symbol);
 }
 
-const char *sc_dlerror()
+const char *sc_dlerror(void)
 {
 	static char msg[1024];
 	DWORD err = GetLastError();
@@ -61,7 +67,9 @@ const char *sc_dlerror()
 
 int sc_dlclose(void *handle)
 {
-	return FreeLibrary((HMODULE)handle);
+	if (!handle)
+		return 0;
+	return FreeLibrary((HMODULE)handle) ? 0 : -1;
 }
 
 #else
@@ -83,11 +91,15 @@ void *sc_dlopen(const char *filename)
 		flags |= RTLD_DEEPBIND;
 	}
 #endif
+	if (!filename)
+		return NULL;
 	return dlopen(filename, flags);
 }
 
 void *sc_dlsym(void *handle, const char *symbol)
 {
+	if (!handle || !symbol)
+		return NULL;
 	return dlsym(handle, symbol);
 }
 
@@ -98,6 +110,8 @@ const char *sc_dlerror(void)
 
 int sc_dlclose(void *handle)
 {
+	if (!handle)
+		return 0;
 	return dlclose(handle);
 }
 #endif
