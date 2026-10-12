@@ -141,6 +141,9 @@ iso7816_read_binary(struct sc_card *card, unsigned int idx, u8 *buf, size_t coun
 	struct sc_apdu apdu;
 	int r;
 
+	if (buf == NULL && count > 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (idx > 0x7FFF) {
 		sc_log(ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
 		return SC_ERROR_OFFSET_TOO_LARGE;
@@ -229,6 +232,9 @@ iso7816_read_record(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
 	unsigned char *encoded_data = NULL, *decoded_data = NULL;
 	size_t encoded_data_len = 0, decoded_data_len = 0;
 
+	if (buf == NULL && count > 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (rec_nr > 0xFF)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
@@ -286,6 +292,9 @@ iso7816_write_record(struct sc_card *card, unsigned int rec_nr,
 	struct sc_apdu apdu;
 	int r;
 
+	if (buf == NULL && count > 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xD2, rec_nr, 0);
 	apdu.lc = count;
 	apdu.datalen = count;
@@ -311,6 +320,9 @@ iso7816_append_record(struct sc_card *card,
 	struct sc_apdu apdu;
 	int r;
 
+	if (buf == NULL && count > 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3, 0xE2, 0, 0);
 	apdu.lc = count;
 	apdu.datalen = count;
@@ -335,6 +347,9 @@ iso7816_update_record(struct sc_card *card, unsigned int rec_nr, unsigned int id
 	int r;
 	unsigned char *encoded_data = NULL;
 	size_t encoded_data_len = 0;
+
+	if (buf == NULL && count > 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (rec_nr > 0xFF)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -376,6 +391,9 @@ iso7816_write_binary(struct sc_card *card,
 	struct sc_apdu apdu;
 	int r;
 
+	if (buf == NULL && count > 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (idx > 0x7fff) {
 		sc_log(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
 		return SC_ERROR_OFFSET_TOO_LARGE;
@@ -403,6 +421,9 @@ iso7816_update_binary(struct sc_card *card,
 {
 	struct sc_apdu apdu;
 	int r;
+
+	if (buf == NULL && count > 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (idx > 0x7fff) {
 		sc_log(card->ctx, "invalid EF offset: 0x%X > 0x7FFF", idx);
@@ -432,6 +453,9 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 	const unsigned char *p, *end;
 	unsigned int cla = 0, tag = 0;
 	size_t length;
+
+	if (file == NULL || buf == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	file->status = SC_FILE_STATUS_UNKNOWN;
 
@@ -760,7 +784,7 @@ iso7816_select_file(struct sc_card *card, const struct sc_path *in_path, struct 
 		if (file == NULL)
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		file->path = *in_path;
-		if (card->ops->process_fci == NULL) {
+		if (card->ops == NULL || card->ops->process_fci == NULL) {
 			sc_file_free(file);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 		}
@@ -785,6 +809,9 @@ iso7816_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 {
 	int r;
 	struct sc_apdu apdu;
+
+	if (rnd == NULL && len > 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0x84, 0x00, 0x00);
 	apdu.le = len;
@@ -811,6 +838,9 @@ iso7816_construct_fci(struct sc_card *card, const sc_file_t *file,
 {
 	u8 *p = out;
 	u8 buf[64];
+
+	if (file == NULL || out == NULL || outlen == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (*outlen < 2)
 		return SC_ERROR_BUFFER_TOO_SMALL;
@@ -877,9 +907,12 @@ iso7816_create_file(struct sc_card *card, sc_file_t *file)
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_apdu apdu;
 
+	if (file == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	len = SC_MAX_APDU_BUFFER_SIZE;
 
-	if (card->ops->construct_fci == NULL)
+	if (card->ops == NULL || card->ops->construct_fci == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->construct_fci(card, file, sbuf, &len);
 	LOG_TEST_RET(card->ctx, r, "construct_fci() failed");
@@ -904,6 +937,9 @@ iso7816_get_response(struct sc_card *card, size_t *count, u8 *buf)
 	struct sc_apdu apdu = {0};
 	int r;
 	size_t rlen;
+
+	if (count == NULL || (buf == NULL && *count > 0))
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* request at most max_recv_size bytes */
 	if (*count > sc_get_max_recv_size(card))
@@ -947,6 +983,8 @@ iso7816_delete_file(struct sc_card *card, const sc_path_t *path)
 	struct sc_apdu apdu;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (path == NULL)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	if (path->type != SC_PATH_TYPE_FILE_ID || (path->len != 0 && path->len != 2)) {
 		sc_log(card->ctx, "File type has to be SC_PATH_TYPE_FILE_ID");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -1183,6 +1221,9 @@ iso7816_build_pin_apdu(struct sc_card *card, struct sc_apdu *apdu,
 	int r, len = 0, pad = 0, use_pin_pad = 0, ins, p1 = 0;
 	int cse = SC_APDU_CASE_3_SHORT;
 
+	if (apdu == NULL || data == NULL || buf == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	switch (data->pin_type) {
 	case SC_AC_CHV:
 		/* fall through */
@@ -1282,6 +1323,9 @@ iso7816_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 	struct sc_apdu local_apdu, *apdu;
 	int r;
 	u8  sbuf[SC_MAX_APDU_BUFFER_SIZE];
+
+	if (data == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	data->pin1.tries_left = -1;
 
@@ -1397,6 +1441,9 @@ iso7816_select_aid(struct sc_card *card, const u8 *req,
 	int rv;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (reqlen > 0 && req == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_format_apdu(card, &apdu, resp == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, 0xA4, 0x04, resp == NULL ? 0x0C : 0x00);
 	apdu.lc = reqlen;
@@ -1558,7 +1605,7 @@ int iso7816_write_binary_sfid(sc_card_t *card, unsigned char sfid,
 	size_t write, wrote = 0;
 	sc_apdu_t apdu;
 
-	if (!card) {
+	if (ef == NULL && ef_len > 0) {
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto err;
 	}
@@ -1615,7 +1662,7 @@ int iso7816_update_binary_sfid(sc_card_t *card, unsigned char sfid,
 	struct iso_sm_ctx *iso_sm_ctx;
 #endif
 
-	if (!card) {
+	if (ef == NULL && ef_len > 0) {
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto err;
 	}
@@ -1624,6 +1671,8 @@ int iso7816_update_binary_sfid(sc_card_t *card, unsigned char sfid,
 	iso_sm_ctx = card->sm_ctx.info.cmd_data;
 	if (write > SC_MAX_APDU_BUFFER_SIZE-2
 			|| (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
+				&& iso_sm_ctx != NULL
+				&& iso_sm_ctx->block_length > 0
 				&& write > (((SC_MAX_APDU_BUFFER_SIZE-2
 					/* for encrypted APDUs we usually get authenticated status
 					 * bytes (4B), a MAC (11B) and a cryptogram with padding
