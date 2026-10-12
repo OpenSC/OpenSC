@@ -178,11 +178,11 @@ void sc_pkcs11_print_attrs(int level, const char *file, unsigned int line,
 			const char *info,
 			CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
 {
-	if (ulCount == 0) {
+	if (!pTemplate || ulCount == 0) {
 		sc_do_log(context, level,
 			file, line, function,
 			"%s: empty template\n",
-			info);
+			info ? info : "(null)");
 		return;
 	}
 
@@ -199,6 +199,9 @@ static void sc_pkcs11_print_attr(int level, const char *file, unsigned int line,
 	struct fmap	*fm;
 	const char *	value;
 
+	if (!attr)
+		return;
+
 	fm = sc_pkcs11_map_ulong(level, p11_attr_names, attr->type);
 
 	if (attr->pValue == NULL) {
@@ -212,12 +215,12 @@ static void sc_pkcs11_print_attr(int level, const char *file, unsigned int line,
 		sc_do_log(context, level,
 			  file, line, function,
 			  "%s: Attribute 0x%lx = %s\n",
-			  info, attr->type, value);
+			  info ? info : "", attr->type, value ? value : "");
 	} else {
 		sc_do_log(context, level,
 			  file, line, function,
 			  "%s: %s = %s\n",
-			  info, fm->name, value);
+			  info ? info : "", fm->name, value ? value : "");
 	}
 }
 
@@ -225,6 +228,9 @@ static const char *sc_pkcs11_print_value(int level, struct fmap *fm,
 			void *ptr, size_t count)
 {
 	static char buffer[4 * DUMP_TEMPLATE_MAX + 1] = "";
+
+	if (!ptr)
+		return "<null>";
 
 	if (count == (CK_ULONG)-1)
 		return "<error>";
@@ -236,8 +242,12 @@ static const char *sc_pkcs11_print_value(int level, struct fmap *fm,
 		if (count > DUMP_TEMPLATE_MAX)
 			count = DUMP_TEMPLATE_MAX;
 
-		for (p = buffer; count--; value++)
+		p = buffer;
+		*p = '\0';
+		while (count--) {
 			p += sprintf(p, "%02X", *value);
+			value++;
+		}
 		return buffer;
 	}
 
@@ -250,9 +260,12 @@ static const char *sc_pkcs11_print_ulong(int level, struct fmap *fm,
 	static char	buffer[64];
 	CK_ULONG	value;
 
+	if (!ptr)
+		return "<null>";
+
 	if (count == sizeof(CK_ULONG)) {
 		memcpy(&value, ptr, count);
-		if ((fm = sc_pkcs11_map_ulong(level, fm->map, value)) != NULL)
+		if (fm && (fm = sc_pkcs11_map_ulong(level, fm->map, value)) != NULL)
 			return fm->name;
 		sprintf(buffer, "0x%lx", (unsigned long) value);
 		return buffer;
@@ -265,6 +278,9 @@ static const char *sc_pkcs11_print_bool(int level, struct fmap *fm,
 		void *ptr, size_t count)
 {
 	CK_BBOOL	value;
+
+	if (!ptr)
+		return "<null>";
 
 	if (count == sizeof(CK_BBOOL)) {
 		memcpy(&value, ptr, count);
@@ -280,6 +296,9 @@ static const char *sc_pkcs11_print_string(int level, struct fmap *fm,
 		void *ptr, size_t count)
 {
 	static char	buffer[128];
+
+	if (!ptr)
+		return "<null>";
 
 	if (count >= sizeof(buffer))
 		count = sizeof(buffer)-1;
