@@ -368,7 +368,7 @@ static int do_info(sc_card_t *card, const struct ef_name_map *map)
 
 	for (i = 0; map[i].ef != NULL; i++) {
 		sc_path_t path;
-		sc_file_t *file;
+		sc_file_t *file = NULL;
 		size_t count;
 		int r;
 
@@ -380,6 +380,7 @@ static int do_info(sc_card_t *card, const struct ef_name_map *map)
 		}
 
 		count = file->size;
+		sc_file_free(file);
 		if (!count)
 			continue;
 
@@ -397,9 +398,15 @@ static int do_info(sc_card_t *card, const struct ef_name_map *map)
 			util_error("%s: expecting %zd bytes, got only %d", map[i].ef, count, r);
 			return EXIT_FAILURE;
 		}
+
 		if (map[i].offset > 0) {
-			memmove(buf, buf + map[i].offset, map[i].length);
-			count -= map[i].offset;
+			if (count <= (size_t)map[i].offset)
+				continue;
+			else {
+				size_t copy_len = map[i].length ? map[i].length : count - map[i].offset;
+				memmove(buf, buf + map[i].offset, copy_len);
+				count -= map[i].offset;
+			}
 		}
 		if (map[i].length > 0 && count > map[i].length)
 			count = map[i].length;
@@ -422,6 +429,11 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 	if (tag < 0x101 || tag > 0x104) {
 		util_error("illegal DO identifier %04X", tag);
 		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
+	if (!priv || priv->max_specialDO_size == 0) {
+		util_error("driver data not initialized");
+		return SC_ERROR_INTERNAL;
 	}
 
 	buffer = calloc(priv->max_specialDO_size, sizeof(unsigned char));
@@ -450,19 +462,24 @@ static int do_dump_do(sc_card_t *card, unsigned int tag)
 #else
 		tmp = _dup(_fileno(stdout));
 #endif
-		if (tmp < 0)
+		if (tmp < 0) {
+			free(buffer);
 			return EXIT_FAILURE;
+		}
 		fp = freopen(NULL, "wb", stdout);
+		r = 0;
 		if (fp) {
 			r = (int) fwrite(buffer, sizeof(char), length, fp);
 		}
 #ifndef _WIN32
 		dup2(tmp, fileno(stdout));
-#else
-		_dup2(tmp, _fileno(stdout));
-#endif
 		clearerr(stdout);
 		close(tmp);
+#else
+		_dup2(tmp, _fileno(stdout));
+		clearerr(stdout);
+		_close(tmp);
+#endif
 
 		if (length != (size_t) r) {	/* fail on write errors */
 			free(buffer);
@@ -540,6 +557,12 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 		key_info.u.rsa.exponent_len = expolen;
 		key_info.u.rsa.exponent = calloc(1, BYTES4BITS(expolen));
 		key_info.u.rsa.keyformat = keyformat;
+		if (!key_info.u.rsa.modulus || !key_info.u.rsa.exponent) {
+			free(key_info.u.rsa.modulus);
+			free(key_info.u.rsa.exponent);
+			util_error("out of memory allocating RSA parameters");
+			return EXIT_FAILURE;
+		}
 
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
 		free(key_info.u.rsa.modulus);
@@ -555,6 +578,7 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 		return EXIT_FAILURE;
 	}
 
+	memset(fingerprints, 0, sizeof(fingerprints));
 	sc_format_path("006E007300C5", &path);
 	r = sc_select_file(card, &path, &file);
 	sc_file_free(file);
@@ -563,8 +587,8 @@ int do_genkey(sc_card_t *card, u8 in_key_id, const char *keytype)
 		return EXIT_FAILURE;
 	}
 	r = sc_read_binary(card, 0, fingerprints, 60, 0);
-	if (r < 0) {
-		util_error("failed to retrieve fingerprints: %s", sc_strerror(r));
+	if (r < 20 * in_key_id) {
+		util_error("failed to retrieve fingerprints: %s", r < 0 ? sc_strerror(r) : "truncated data");
 		return EXIT_FAILURE;
 	}
 	printf("Fingerprint:\n%s\n", (char *)sc_dump_hex(fingerprints + 20*(in_key_id - 1), 20));
@@ -623,7 +647,11 @@ int delete_key_openpgp(sc_card_t *card, u8 in_key_id)
 			apdustring = del_creationtime;
 		/* Convert the string to binary array */
 		len0 = sizeof(buf);
-		sc_hex_to_bin(apdustring, buf, &len0);
+		r = sc_hex_to_bin(apdustring, buf, &len0);
+		if (r < 0 || len0 < 4) {
+			util_error("failed to parse APDU string");
+			return SC_ERROR_INTERNAL;
+		}
 
 		/* Replace DO tag, subject to key ID */
 		buf[3] = buf[3] + in_key_id;
@@ -720,7 +748,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	r = util_connect_card(ctx, &card, opt_reader, opt_wait);
+	r = util_connect_card_ex(ctx, &card, opt_reader, opt_wait, 1);
 	if (r) {
 		sc_release_context(ctx);
 		util_fatal("failed to connect to card: %s", sc_strerror(r));
@@ -782,6 +810,9 @@ int main(int argc, char **argv)
 		#endif
 		/* we should not get here */
 		perror("execv()");
+		free(verifytype);
+		free(opt_keytype);
+		free(exec_program);
 		exit(EXIT_FAILURE);
 	}
 
@@ -795,6 +826,10 @@ out:
 	sc_unlock(card);
 	sc_disconnect_card(card);
 	sc_release_context(ctx);
+
+	free(verifytype);
+	free(opt_keytype);
+	free(exec_program);
 
 	exit(exit_status);
 }
