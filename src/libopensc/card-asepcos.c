@@ -741,6 +741,9 @@ static int asepcos_delete_file(sc_card_t *card, const sc_path_t *path)
 	sc_apdu_t apdu;
 	u8        buf[SC_MAX_APDU_BUFFER_SIZE];
 
+	if (!path || path->len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* use GET DATA to determine whether it is a DF or EF */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xca, 0x01, 0x84);
 	apdu.le      = 256;

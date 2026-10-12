@@ -434,6 +434,9 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 		 sc_pkcs15_print_id(&key_info->id),
 		 sc_print_path(&key_info->path));
 
+	if (key_info->path.len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* allocate key object */
 	r = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA,
 			  key_info->key_reference, &file);
@@ -542,6 +545,11 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 			r = SC_ERROR_INVALID_ARGUMENTS;
 			goto err;
 		}
+	}
+
+	if (key_info->path.len < 2) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto err;
 	}
 
 	path = key_info->path;
