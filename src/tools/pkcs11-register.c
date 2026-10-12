@@ -42,17 +42,25 @@ get_profiles_ini(const char *home, const char *basedir, char **profiles_ini)
 {
 	size_t profiles_ini_len = 0;
 	char profiles_ini_path[PATH_MAX];
-	if (home && basedir
-			&& 0 <= snprintf(profiles_ini_path, sizeof profiles_ini_path,
-				"%s%c%s%c%s", home, path_sep, basedir, path_sep, "profiles.ini")
+	int r;
+
+	if (!home || !basedir || !profiles_ini)
+		return 0;
+
+	*profiles_ini = NULL;
+	r = snprintf(profiles_ini_path, sizeof(profiles_ini_path),
+			"%s%c%s%c%s", home, path_sep, basedir, path_sep, "profiles.ini");
+	if (r >= 0 && (size_t)r < sizeof(profiles_ini_path)
 			&& fread_to_eof(profiles_ini_path,
-			   	(unsigned char **) profiles_ini, &profiles_ini_len)) {
-		char *p = realloc(*profiles_ini, profiles_ini_len+1);
+				(unsigned char **) profiles_ini, &profiles_ini_len)) {
+		char *p = realloc(*profiles_ini, profiles_ini_len + 1);
 		if (p) {
 			p[profiles_ini_len] = '\0';
 			*profiles_ini = p;
 			return 1;
 		}
+		free(*profiles_ini);
+		*profiles_ini = NULL;
 	}
 	return 0;
 }
@@ -67,23 +75,31 @@ get_next_profile_path(const char **profiles_ini, const char *home, const char *b
 
 	while (*profiles_ini) {
 		const char *this_profile = strstr(*profiles_ini, "[");
+		const char *next_profile;
+		const char *is_relative;
+		const char *path;
+		char *p;
+		size_t p_len;
+		char format[32];
+		int r, r_fmt;
+
 		if (!this_profile) {
 			return NULL;
 		}
 
-		const char *next_profile = strstr(this_profile + 1, "[");
-		const char *is_relative = strstr(this_profile, "IsRelative=1");
-		const char *path = strstr(this_profile, "Path=");
+		next_profile = strstr(this_profile + 1, "[");
+		is_relative = strstr(this_profile, "IsRelative=1");
+		path = strstr(this_profile, "Path=");
 
 		/* advance profile_ini for the next iteration */
 		if (next_profile) {
 			*profiles_ini = next_profile;
-			
-			if (next_profile < path) {
+
+			if (path && next_profile < path) {
 				/* path belongs to the next profile */
 				path = NULL;
 			}
-			if (next_profile < is_relative) {
+			if (is_relative && next_profile < is_relative) {
 				/* IsRelative belongs to the next profile */
 				is_relative = NULL;
 			}
@@ -95,18 +111,23 @@ get_next_profile_path(const char **profiles_ini, const char *home, const char *b
 			continue;
 
 		/* build the path to the profile */
-		char *p = profile_path;
-		size_t p_len = sizeof profile_path;
+		p = profile_path;
+		p_len = sizeof(profile_path);
 		if (is_relative) {
-			size_t l = strlen(home) + sizeof path_sep + strlen(basedir) + sizeof path_sep;
-			if (0 > snprintf(p, p_len, "%s%c%s%c", home, path_sep, basedir, path_sep))
+			if (!basedir)
 				continue;
-			p_len -= l;
-			p += l;
+			r = snprintf(p, p_len, "%s%c%s%c", home, path_sep, basedir, path_sep);
+			if (r < 0 || (size_t)r >= p_len)
+				continue;
+			p_len -= (size_t)r;
+			p += (size_t)r;
 		}
+		if (p_len <= 1)
+			continue;
+
 		/* adjust format to respect the maximum length of profile_path */
-		char format[32];
-		if (0 > snprintf(format, sizeof(format), "Path=%%%d[^\n]", (int)(p_len-1))
+		r_fmt = snprintf(format, sizeof(format), "Path=%%%d[^\n]", (int)(p_len - 1));
+		if (r_fmt < 0 || (size_t)r_fmt >= sizeof(format)
 				|| 1 != sscanf(path, format, p))
 			continue;
 
@@ -124,15 +145,20 @@ add_module_pkcs11_txt(const char *profile_dir,
 	char *pkcs11_txt = NULL;
 	size_t pkcs11_txt_len = 0;
 	unsigned char *txt = NULL;
+	char *p;
+	int r;
 
-	if (!profile_dir
-			|| snprintf(pkcs11_txt_path, sizeof pkcs11_txt_path,
-				"%s%c%s", profile_dir, path_sep, "pkcs11.txt") < 0
+	if (!profile_dir || !module_path || !module_name)
+		return;
+
+	r = snprintf(pkcs11_txt_path, sizeof(pkcs11_txt_path),
+			"%s%c%s", profile_dir, path_sep, "pkcs11.txt");
+	if (r < 0 || (size_t)r >= sizeof(pkcs11_txt_path)
 			|| !fread_to_eof(pkcs11_txt_path, &txt, &pkcs11_txt_len)) {
 		goto err;
 	}
 	pkcs11_txt = (char *)txt;
-	char *p = realloc(pkcs11_txt, pkcs11_txt_len+1);
+	p = realloc(pkcs11_txt, pkcs11_txt_len + 1);
 	if (!p)
 		goto err;
 	p[pkcs11_txt_len] = '\0';
@@ -195,26 +221,34 @@ get_module_name(const char *module_path)
 {
 	const char *name = NULL;
 	CK_FUNCTION_LIST_PTR p11 = NULL;
-	void *module = C_LoadModule(module_path, &p11);
+	void *module;
+
+	if (!module_path)
+		return NULL;
+
+	module = C_LoadModule(module_path, &p11);
 	if (module) {
-		CK_INFO info;
-		if (CKR_OK == p11->C_Initialize(NULL)
-				&& CKR_OK == p11->C_GetInfo(&info)) {
-			static char module_name[32+sizeof " (255.255)"];
-			int libraryDescription_len = 32;
+		if (p11 && p11->C_Initialize && p11->C_GetInfo && p11->C_Finalize) {
+			CK_INFO info;
+			if (CKR_OK == p11->C_Initialize(NULL)) {
+				if (CKR_OK == p11->C_GetInfo(&info)) {
+					static char module_name[32+sizeof " (255.255)"];
+					int libraryDescription_len = 32;
 
-			while (libraryDescription_len > 0
-					&& info.libraryDescription[libraryDescription_len-1] == ' ')
-				libraryDescription_len--;
+					while (libraryDescription_len > 0
+							&& info.libraryDescription[libraryDescription_len-1] == ' ')
+						libraryDescription_len--;
 
-			snprintf(module_name, sizeof module_name,
-					"%.*s (%d.%d)",
-					libraryDescription_len, info.libraryDescription,
-					info.libraryVersion.major, info.libraryVersion.minor);
+					snprintf(module_name, sizeof module_name,
+							"%.*s (%d.%d)",
+							libraryDescription_len, info.libraryDescription,
+							info.libraryVersion.major, info.libraryVersion.minor);
 
-			name = module_name;
+					name = module_name;
+				}
+				p11->C_Finalize(NULL);
+			}
 		}
-		p11->C_Finalize(NULL);
 		C_UnloadModule(module);
 	}
 	return name;
@@ -286,60 +320,82 @@ add_module_chrome(const char *module_path, const char *module_name, const char *
 #else
 	char profile_path[PATH_MAX];
 	const char *home = getenv("HOME");
+	int r;
 
 	if (0 == strcmp(module_path, default_pkcs11_provider)) {
 		module_path = default_onepin_pkcs11_provider;
 		exclude_module_path = default_pkcs11_provider;
 	}
 
-	if (home && 0 <= snprintf(profile_path, sizeof profile_path,
-				"%s%c%s", home, path_sep, ".pki/nssdb")) {
-		add_module_pkcs11_txt(profile_path, module_path, module_name, exclude_module_path);
+	if (home) {
+		r = snprintf(profile_path, sizeof(profile_path),
+				"%s%c%s", home, path_sep, ".pki/nssdb");
+		if (r >= 0 && (size_t)r < sizeof(profile_path))
+			add_module_pkcs11_txt(profile_path, module_path, module_name, exclude_module_path);
 	}
 
 	/* Chrome M146+ uses XDG_DATA_HOME/pki/nssdb when ~/.pki doesn't exist */
 	const char *xdg_data_home = getenv("XDG_DATA_HOME");
-	if (xdg_data_home && 0 <= snprintf(profile_path, sizeof profile_path,
-						  "%s%c%s", xdg_data_home, path_sep, "pki/nssdb")) {
-		add_module_pkcs11_txt(profile_path, module_path, module_name, exclude_module_path);
-	} else if (home && 0 <= snprintf(profile_path, sizeof profile_path,
-						"%s%c%s", home, path_sep, ".local/share/pki/nssdb")) {
-		add_module_pkcs11_txt(profile_path, module_path, module_name, exclude_module_path);
+	if (xdg_data_home) {
+		r = snprintf(profile_path, sizeof(profile_path),
+				"%s%c%s", xdg_data_home, path_sep, "pki/nssdb");
+		if (r >= 0 && (size_t)r < sizeof(profile_path))
+			add_module_pkcs11_txt(profile_path, module_path, module_name, exclude_module_path);
+	} else if (home) {
+		r = snprintf(profile_path, sizeof(profile_path),
+				"%s%c%s", home, path_sep, ".local/share/pki/nssdb");
+		if (r >= 0 && (size_t)r < sizeof(profile_path))
+			add_module_pkcs11_txt(profile_path, module_path, module_name, exclude_module_path);
 	}
 #endif
 }
 
 #define expand(path, expanded, len) \
-	len = ExpandEnvironmentStringsA(path, \
-			expanded, sizeof expanded); \
-	if (0 < len && len < sizeof expanded) \
-		path = expanded;
+	do { \
+		if (path) { \
+			len = ExpandEnvironmentStringsA(path, \
+					expanded, sizeof(expanded)); \
+			if (0 < len && len < sizeof(expanded)) \
+				path = expanded; \
+		} \
+	} while (0)
 
 int
 main(int argc, char **argv)
 {
 	struct gengetopt_args_info cmdline;
 	const char *exclude_module_path = NULL;
+	const char *module_path;
+	const char *module_name;
+#ifdef _WIN32
+	DWORD expanded_len;
+	char module_path_expanded[PATH_MAX], default_expanded[PATH_MAX], onepin_expanded[PATH_MAX];
+#endif
 
 	if (cmdline_parser(argc, argv, &cmdline) != 0)
 		return 1;
 
-	const char *module_path = cmdline.module_arg;
+	module_path = cmdline.module_arg;
 	if (!cmdline.module_given) {
 		module_path = default_pkcs11_provider;
 		exclude_module_path = default_onepin_pkcs11_provider;
 	}
+
+	if (!module_path) {
+		fprintf(stderr, "No module path specified\n");
+		cmdline_parser_free(&cmdline);
+		return 1;
+	}
+
 #ifdef _WIN32
-	DWORD expanded_len;
-	char module_path_expanded[PATH_MAX], default_expanded[PATH_MAX], onepin_expanded[PATH_MAX];
 	expand(module_path, module_path_expanded, expanded_len);
 	expand(default_pkcs11_provider, default_expanded, expanded_len);
 	expand(default_onepin_pkcs11_provider, onepin_expanded, expanded_len);
 #endif
 
-	const char *module_name = get_module_name(module_path);
+	module_name = get_module_name(module_path);
 	if (!module_name) {
-		fprintf(stderr, "Could not load initialize %s\n", module_path);
+		fprintf(stderr, "Could not load/initialize %s\n", module_path);
 		cmdline_parser_free (&cmdline);
 		return 1;
 	}
