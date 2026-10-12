@@ -35,6 +35,9 @@ sc_parse_ef_gdo_content(const unsigned char *gdo, size_t gdo_len,
 	const unsigned char *p = gdo;
 	size_t left = gdo_len;
 
+	if (!gdo)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	while (left >= 2) {
 		unsigned int cla, tag;
 		size_t tag_len;
@@ -49,6 +52,10 @@ sc_parse_ef_gdo_content(const unsigned char *gdo, size_t gdo_len,
 		}
 		if (p == NULL) {
 			/* done parsing */
+			break;
+		}
+		if (tag_len > (size_t)(gdo + gdo_len - p)) {
+			r = SC_ERROR_INVALID_DATA;
 			break;
 		}
 
@@ -92,13 +99,10 @@ sc_parse_ef_gdo(struct sc_card *card,
 {
 	struct sc_context *ctx;
 	struct sc_path path;
-	struct sc_file *file;
+	struct sc_file *file = NULL;
 	unsigned char *gdo = NULL;
 	size_t gdo_len = 0;
 	int r;
-
-	if (!card)
-		return SC_ERROR_INVALID_ARGUMENTS;
 
 	ctx = card->ctx;
 
@@ -108,7 +112,7 @@ sc_parse_ef_gdo(struct sc_card *card,
 	r = sc_select_file(card, &path, &file);
 	LOG_TEST_GOTO_ERR(ctx, r, "Cannot select EF(GDO) file");
 
-	if (file->size) {
+	if (file && file->size) {
 		gdo_len = file->size;
 	} else {
 		gdo_len = 64;
@@ -121,6 +125,10 @@ sc_parse_ef_gdo(struct sc_card *card,
 
 	r = sc_read_binary(card, 0, gdo, gdo_len, 0);
 	LOG_TEST_GOTO_ERR(ctx, r, "Cannot read EF(GDO) file");
+	if (r <= 0) {
+		r = r < 0 ? r : SC_ERROR_INTERNAL;
+		LOG_TEST_GOTO_ERR(ctx, r, "Empty EF(GDO) file");
+	}
 
 	r = sc_parse_ef_gdo_content(gdo, r, iccsn, iccsn_len, chn, chn_len);
 
