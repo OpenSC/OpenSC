@@ -124,7 +124,7 @@ static int skeid_init(sc_card_t *card)
 	card->max_send_size = data_field_length - 6;
 #ifdef _WIN32
 	/* see card-cardos.c */
-	if (card->reader->max_send_size == 255 && card->reader->max_recv_size == 256) {
+	if (card->reader && card->reader->max_send_size == 255 && card->reader->max_recv_size == 256) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "resetting reader to use data_field_length");
 		card->reader->max_send_size = data_field_length - 6;
 		card->reader->max_recv_size = data_field_length - 3;
@@ -147,8 +147,8 @@ static int skeid_set_security_env(sc_card_t *card,
 	int key_id;
 	int r;
 
-	if (card == NULL || env == NULL)
-		return SC_ERROR_INTERNAL;
+	if (!env)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT) || env->key_ref_len != 1) {
 		sc_log(card->ctx, "No or invalid key reference");
@@ -177,8 +177,12 @@ static int skeid_logout(sc_card_t *card)
 
 struct sc_card_driver * sc_get_skeid_driver(void)
 {
-	if (iso_ops == NULL) iso_ops = sc_get_iso7816_driver()->ops;
-	skeid_ops = *iso_ops;
+	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
+
+	if (iso_ops == NULL && iso_drv != NULL)
+		iso_ops = iso_drv->ops;
+	if (iso_ops != NULL)
+		skeid_ops = *iso_ops;
 	skeid_ops.match_card = skeid_match_card;
 	skeid_ops.init = skeid_init;
 	skeid_ops.set_security_env = skeid_set_security_env;
