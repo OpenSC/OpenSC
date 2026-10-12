@@ -58,10 +58,15 @@ sm_oberthur_diversify_keyset(struct sc_context *ctx, struct sm_info *sm_info,
 	unsigned char *tmp;
 	int rv = 0, ii, tmp_len;
 
+	if (!sm_info)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (gp_keyset->kmc_len == 48) {
 		for (ii=0; ii<3; ii++)
 			memcpy(keys[ii], gp_keyset->kmc + 16*ii, 16);
 	} else if (gp_keyset->kmc_len == 16 || gp_keyset->kmc_len == 0) {
+		if (!idata || idata_len < 10)
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "GP init session: invalid idata length");
 		if (gp_keyset->kmc_len == 16)
 			memcpy(master_key, gp_keyset->kmc, 16);
 		sc_debug(ctx, SC_LOG_DEBUG_SM, "KMC: %s", sc_dump_hex(master_key, sizeof(master_key)));
@@ -80,6 +85,10 @@ sm_oberthur_diversify_keyset(struct sc_context *ctx, struct sm_info *sm_info,
 			rv = sm_encrypt_des_ecb3(ctx, master_key, key_buff, sizeof(key_buff), &tmp, &tmp_len);
 			LOG_TEST_RET(ctx, rv, "GP init session: cannot derive key");
 
+			if (tmp_len < (int)sizeof(gp_keyset->enc)) {
+				free(tmp);
+				LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "GP init session: derived key too short");
+			}
 			memcpy(keys[ii], tmp, sizeof(gp_keyset->enc));
 			free(tmp);
 		}
@@ -105,8 +114,13 @@ sm_oberthur_diversify_keyset(struct sc_context *ctx, struct sm_info *sm_info,
 static int
 sm_authentic_encode_apdu(struct sc_context *ctx, struct sm_info *sm_info)
 {
-	struct sc_apdu *apdu = (struct sc_apdu *) sm_info->cmd_data;
+	struct sc_apdu *apdu;
 	int rv = SC_ERROR_INVALID_ARGUMENTS;
+
+	if (!sm_info || !sm_info->cmd_data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	apdu = (struct sc_apdu *) sm_info->cmd_data;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM encode APDU: offset:");
