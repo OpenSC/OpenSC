@@ -28,35 +28,47 @@
 int fread_to_eof(const char *file, unsigned char **buf, size_t *buflen)
 {
 	FILE *input = NULL;
-	int r = 0;
-	unsigned char *p;
+	unsigned char *p = NULL;
+	size_t allocated = 0, len = 0, n = 0;
 
 	if (!buflen || !buf || !file)
-		goto err;
-
-#define MAX_READ_LEN 0xfff
-	p = realloc(*buf, MAX_READ_LEN);
-	if (!p)
-		goto err;
-	*buf = p;
+		return 0;
 
 	input = fopen(file, "rb");
-	if (!input) {
-		goto err;
-	}
+	if (!input)
+		return 0;
 
-	*buflen = 0;
-	while (feof(input) == 0 && *buflen < MAX_READ_LEN) {
-		*buflen += fread(*buf+*buflen, 1, MAX_READ_LEN-*buflen, input);
-		if (ferror(input)) {
-			goto err;
-		}
-	}
-
-	r = 1;
-err:
-	if (input)
+	allocated = 4096;
+	p = (unsigned char *)realloc(*buf, allocated);
+	if (!p) {
 		fclose(input);
+		return 0;
+	}
+	*buf = p;
 
-	return r;
+	while (!feof(input)) {
+		if (len == allocated) {
+			if (allocated > ((size_t)-1) / 2) {
+				fclose(input);
+				return 0;
+			}
+			allocated *= 2;
+			p = (unsigned char *)realloc(*buf, allocated);
+			if (!p) {
+				fclose(input);
+				return 0;
+			}
+			*buf = p;
+		}
+		n = fread(*buf + len, 1, allocated - len, input);
+		if (ferror(input)) {
+			fclose(input);
+			return 0;
+		}
+		len += n;
+	}
+
+	fclose(input);
+	*buflen = len;
+	return 1;
 }
