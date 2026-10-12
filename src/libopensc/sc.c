@@ -165,21 +165,12 @@ int sc_bin_to_hex(const u8 *in, size_t in_len, char *out, size_t out_len,
  * Right trim all non-printable characters
  */
 size_t sc_right_trim(u8 *buf, size_t len) {
-
-	size_t i;
-
 	if (!buf)
 		return 0;
 
-	if (len > 0) {
-		for(i = len-1; i > 0; i--) {
-			if(!isprint(buf[i])) {
-				buf[i] = '\0';
-				len--;
-				continue;
-			}
-			break;
-		}
+	while (len > 0 && !isprint((unsigned char)buf[len - 1])) {
+		buf[len - 1] = '\0';
+		len--;
 	}
 	return len;
 }
@@ -335,8 +326,11 @@ int sc_valid_oid(const struct sc_object_id *oid)
 int sc_detect_card_presence(sc_reader_t *reader)
 {
 	int r;
+
+	if (reader == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(reader->ctx);
-	if (reader->ops->detect_card_presence == NULL)
+	if (reader->ops == NULL || reader->ops->detect_card_presence == NULL)
 		LOG_FUNC_RETURN(reader->ctx, SC_ERROR_NOT_SUPPORTED);
 
 	r = reader->ops->detect_card_presence(reader);
@@ -369,18 +363,19 @@ void sc_format_path(const char *str, sc_path_t *path)
 {
 	int type = SC_PATH_TYPE_PATH;
 
-	if (path) {
-		memset(path, 0, sizeof(*path));
-		if (*str == 'i' || *str == 'I') {
-			type = SC_PATH_TYPE_FILE_ID;
-			str++;
-		}
-		path->len = sizeof(path->value);
-		if (sc_hex_to_bin(str, path->value, &path->len) >= 0) {
-			path->type = type;
-		}
-		path->count = -1;
+	if (path == NULL || str == NULL)
+		return;
+
+	memset(path, 0, sizeof(*path));
+	if (*str == 'i' || *str == 'I') {
+		type = SC_PATH_TYPE_FILE_ID;
+		str++;
 	}
+	path->len = sizeof(path->value);
+	if (sc_hex_to_bin(str, path->value, &path->len) >= 0) {
+		path->type = type;
+	}
+	path->count = -1;
 }
 
 int sc_append_path(sc_path_t *dest, const sc_path_t *src)
@@ -390,9 +385,10 @@ int sc_append_path(sc_path_t *dest, const sc_path_t *src)
 
 int sc_append_path_id(sc_path_t *dest, const u8 *id, size_t idlen)
 {
-	if (dest->len + idlen > SC_MAX_PATH_SIZE)
+	if (dest == NULL || (idlen > 0 && id == NULL) || dest->len + idlen > SC_MAX_PATH_SIZE)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	memcpy(dest->value + dest->len, id, idlen);
+	if (idlen > 0)
+		memcpy(dest->value + dest->len, id, idlen);
 	dest->len += idlen;
 	return SC_SUCCESS;
 }
@@ -471,6 +467,8 @@ int sc_path_print(char *buf, size_t buflen, const sc_path_t *path)
 
 int sc_compare_path(const sc_path_t *path1, const sc_path_t *path2)
 {
+	if (path1 == NULL || path2 == NULL)
+		return 0;
 	return path1->len == path2->len
 		&& !memcmp(path1->value, path2->value, path1->len);
 }
@@ -479,7 +477,7 @@ int sc_compare_path_prefix(const sc_path_t *prefix, const sc_path_t *path)
 {
 	sc_path_t tpath;
 
-	if (prefix->len > path->len)
+	if (prefix == NULL || path == NULL || prefix->len > path->len)
 		return 0;
 
 	tpath     = *path;
@@ -823,8 +821,8 @@ int sc_file_valid(const sc_file_t *file) {
 
 int _sc_parse_atr(sc_reader_t *reader)
 {
-	u8 *p = reader->atr.value;
-	int atr_len = (int) reader->atr.len;
+	u8 *p;
+	int atr_len;
 	int n_hist, x;
 	int tx[4] = {-1, -1, -1, -1};
 	int i, FI, DI;
@@ -838,11 +836,17 @@ int _sc_parse_atr(sc_reader_t *reader)
 		-1, 1, 2, 4, 8, 16, 32, -1,
 		12, 20, -1, -1, -1, -1, -1, -1 };
 
+	if (reader == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	p = reader->atr.value;
+	atr_len = (int) reader->atr.len;
+
 	reader->atr_info.hist_bytes_len = 0;
 	reader->atr_info.hist_bytes = NULL;
 
-	if (atr_len == 0) {
-		sc_log(reader->ctx, "empty ATR - card not present?\n");
+	if (atr_len < 2) {
+		sc_log(reader->ctx, "ATR too short - card not present?\n");
 		return SC_ERROR_INTERNAL;
 	}
 
