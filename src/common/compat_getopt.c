@@ -50,6 +50,8 @@ int my_getopt(int argc, char * argv[], const char *opts)
   char mode, colon_mode;
   int off = 0, opt = -1;
 
+  if(!argv || !opts || argc <= 0) return -1;
+
   if(getenv("POSIXLY_CORRECT")) colon_mode = mode = '+';
   else {
     if((colon_mode = *opts) == ':') off ++;
@@ -146,6 +148,8 @@ int _my_getopt_internal(int argc, char * argv[], const char *shortopts,
   char mode, colon_mode;
   int shortoff = 0, opt = -1;
 
+  if(!argv || !shortopts || argc <= 0) return -1;
+
   if(getenv("POSIXLY_CORRECT")) colon_mode = mode = '+';
   else {
     if((colon_mode = *shortopts) == ':') shortoff ++;
@@ -210,12 +214,12 @@ int _my_getopt_internal(int argc, char * argv[], const char *shortopts,
         (argv[my_optind][charind] != '\0') &&
           (argv[my_optind][charind] != '=');
         charind++);
-    for(ind = 0; longopts[ind].name && !hits; ind++)
+    for(ind = 0; longopts && longopts[ind].name && !hits; ind++)
       if((strlen(longopts[ind].name) == (size_t) (charind - offset)) &&
          (strncmp(longopts[ind].name,
                   argv[my_optind] + offset, charind - offset) == 0))
         found = ind, hits++;
-    if(!hits) for(ind = 0; longopts[ind].name; ind++)
+    if(!hits && longopts) for(ind = 0; longopts[ind].name; ind++)
       if(strncmp(longopts[ind].name,
                  argv[my_optind] + offset, charind - offset) == 0)
         found = ind, hits++;
