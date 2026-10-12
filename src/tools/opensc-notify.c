@@ -72,7 +72,8 @@ void notify_daemon()
 	}
 
 	while (run_daemon) {
-
+		event_reader = NULL;
+		event = 0;
 		r = sc_wait_for_event(ctx, event_mask,
 				&event_reader, &event, timeout, &reader_states);
 		if (r < 0) {
@@ -80,6 +81,9 @@ void notify_daemon()
 				Sleep(timeout);
 				continue;
 			}
+			if (!run_daemon)
+				break;
+			continue;
 		}
 
 		if (event_reader) {
@@ -93,6 +97,7 @@ void notify_daemon()
 				sc_card_t card;
 				memset(&card, 0, sizeof card);
 				card.reader = event_reader;
+				card.ctx = ctx;
 				memset(&p15card, 0, sizeof p15card);
 				p15card.card = &card;
 				sc_notify_id(ctx, &event_reader->atr, &p15card, NOTIFY_CARD_REMOVED);
@@ -106,6 +111,7 @@ void notify_daemon()
 				sc_card_t card;
 				memset(&card, 0, sizeof card);
 				card.reader = event_reader;
+				card.ctx = ctx;
 				memset(&p15card, 0, sizeof p15card);
 				p15card.card = &card;
 				sc_notify_id(ctx, &event_reader->atr, &p15card, NOTIFY_CARD_INSERTED);
@@ -129,7 +135,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	if (message == WM_CLOSE || message == WM_QUIT) {
 		run_daemon = 0;
-		sc_cancel(ctx);
+		if (ctx)
+			sc_cancel(ctx);
 		return TRUE;
 	}
 
@@ -149,14 +156,17 @@ int WINAPI
 WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
 	LPCTSTR lpszClassName = "OPENSC_NOTIFY_CLASS";
-	HWND hwnd = create_invisible_window(lpszClassName, WndProc, hInstance);
+	HWND hwnd;
+	HANDLE hThread;
+	MSG msg;
+	BOOL bRet = FALSE;
+
+	hwnd = create_invisible_window(lpszClassName, WndProc, hInstance);
 
 	sc_notify_init();
 	run_daemon = 1;
-	HANDLE hThread = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
+	hThread = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
 
-	MSG msg;
-	BOOL bRet = FALSE;
 	while((bRet = GetMessage( &msg, NULL, 0, 0 )) != 0) {
 		if (bRet == -1) {
 			// handle the error and possibly exit
@@ -169,7 +179,13 @@ WinMain(HINSTANCE hInstance, HINSTANCE prevInstance, LPSTR lpCmdLine, int nShowC
 		}
 	}
 
-	CloseHandle(hThread);
+	run_daemon = 0;
+	if (ctx)
+		sc_cancel(ctx);
+	if (hThread) {
+		WaitForSingleObject(hThread, 5000);
+		CloseHandle(hThread);
+	}
 	sc_notify_close();
 
 	delete_invisible_window(hwnd, lpszClassName, hInstance);
@@ -189,10 +205,12 @@ static int cancellation_fd[] = {-1, -1};
 
 void sig_handler(int sig) {
 	run_daemon = 0;
+	if (cancellation_fd[1] >= 0) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
-	(void)write(cancellation_fd[1], &sig, sizeof sig);
+		(void)write(cancellation_fd[1], &sig, sizeof sig);
 #pragma GCC diagnostic pop
+	}
 }
 
 static void *cancellation_proc(void *arg)
@@ -200,11 +218,12 @@ static void *cancellation_proc(void *arg)
 	(void)arg;
 	while (run_daemon) {
 		int sig;
-		if (sizeof sig == read(cancellation_fd[0], &sig, sizeof sig)) {
+		if (cancellation_fd[0] >= 0 && sizeof sig == read(cancellation_fd[0], &sig, sizeof sig)) {
 			break;
 		}
 	}
-	sc_cancel(ctx);
+	if (ctx)
+		sc_cancel(ctx);
 	return NULL;
 }
 
@@ -238,12 +257,16 @@ int
 main (int argc, char **argv)
 {
 	struct gengetopt_args_info cmdline;
+	int ret = 0;
+
 	memset(&cmdline, 0, sizeof cmdline);
 
 	sc_notify_init();
 
-	if (cmdline_parser(argc, argv, &cmdline) != 0)
+	if (cmdline_parser(argc, argv, &cmdline) != 0) {
+		ret = 1;
 		goto err;
+	}
 
 	if (cmdline.customized_mode_counter) {
 		sc_notify(cmdline.title_arg, cmdline.message_arg);
@@ -278,6 +301,6 @@ err:
 	sc_notify_close();
 	cmdline_parser_free (&cmdline);
 
-	return 0;
+	return ret;
 }
 #endif
