@@ -182,7 +182,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	if (opt_operation & (OP_GET_DATA | OP_GET_IDESP | OP_GET_VERSION | OP_GET_SERIALNR)) {
+	if (opt_operation & (OP_GET_DATA | OP_GET_IDESP | OP_GET_VERSION)) {
 		r = sc_card_ctl(card, SC_CARDCTL_DNIE_GET_INFO, data);
 		if ( r != SC_SUCCESS ) {
 			fprintf(stderr, "Error: Get info failed: %s\n", sc_strerror(r));
@@ -191,44 +191,49 @@ int main(int argc, char* argv[])
 		}
 
 		if (opt_operation & OP_GET_DATA) {
-			printf("DNIe Number:   %s\n",data[0]);
-			printf("Surname:       %s\n",data[1]);
-			printf("Name:	  %s\n",data[2]);
+			printf("DNIe Number:   %s\n", data[0] ? data[0] : "(Not available)");
+			printf("Surname:       %s\n", data[1] ? data[1] : "(Not available)");
+			printf("Name:          %s\n", data[2] ? data[2] : "(Not available)");
 		}
 		if (opt_operation & OP_GET_IDESP) {
-			if (data[3]==NULL)
-				printf("IDESP:	 (Not available)\n");
-			else 	printf("IDESP:	 %s\n",data[3]);
+			if (data[3] == NULL)
+				printf("IDESP:         (Not available)\n");
+			else
+				printf("IDESP:         %s\n", data[3]);
 		}
 		if (opt_operation & OP_GET_VERSION) {
-			if (data[4]==NULL)
+			if (data[4] == NULL)
 				printf("DNIe Version:  (Not available)\n");
-			else 	printf("DNIe Version:  %s\n",data[4]);
-		}
-		if (opt_operation & OP_GET_SERIALNR) {
-			r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
-			if ( r != SC_SUCCESS ) {
-				fprintf(stderr,"Error: Get serial failed: %s\n",sc_strerror(r));
-				err = -1;
-				goto dnie_tool_end;
-			}
-			printf("Serial number: ");
-			util_hex_dump(stdout, serial.value, serial.len, NULL);
-			putchar('\n');
+			else
+				printf("DNIe Version:  %s\n", data[4]);
 		}
 	}
-	else {
-                fprintf(stderr,"Error: No operation specified");
-                err = -1;
+	if (opt_operation & OP_GET_SERIALNR) {
+		r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
+		if ( r != SC_SUCCESS ) {
+			fprintf(stderr, "Error: Get serial failed: %s\n", sc_strerror(r));
+			err = -1;
+			goto dnie_tool_end;
+		}
+		printf("Serial number: ");
+		util_hex_dump(stdout, serial.value, serial.len, NULL);
+		putchar('\n');
+	}
+	if (opt_operation == OP_NONE) {
+		fprintf(stderr, "Error: No operation specified\n");
+		err = -1;
 	}
 
 dnie_tool_end:
+	for (c = 0; c < 5; c++) {
+		free(data[c]);
+	}
 	if (card) {
 		/*  sc_lock  and  sc_connect_card  in  util_connect_card  */
 		sc_unlock(card);
 		sc_disconnect_card(card);
 	}
 	sc_release_context(ctx);
-	return err;
+	return err ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
