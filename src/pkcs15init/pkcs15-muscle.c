@@ -68,9 +68,12 @@ static int
 muscle_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 {
 	int	r;
-	struct sc_file *file;
+	struct sc_file *file = NULL;
 	struct sc_path path;
-	memset(&file, 0, sizeof(file));
+
+	if (!df)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_format_path("3F00", &path);
 	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
@@ -97,9 +100,14 @@ muscle_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	const unsigned char *pin, size_t pin_len,
 	const unsigned char *puk, size_t puk_len)
 {
-	sc_file_t *file;
-	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
+	sc_file_t *file = NULL;
+	sc_pkcs15_auth_info_t *auth_info;
 	int r;
+
+	if (!df || !pin_obj || !pin_obj->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 
 	if ((r = sc_select_file(p15card->card, &df->path, &file)) < 0)
 		return r;
@@ -118,6 +126,9 @@ muscle_select_pin_reference(sc_profile_t *profike, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_auth_info_t *auth_info)
 {
 	int	preferred;
+
+	if (!auth_info)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
@@ -146,6 +157,9 @@ static int
 muscle_select_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_prkey_info_t *key_info)
 {
+	if (!key_info)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (key_info->key_reference < MUSCLE_KEY_ID_MIN)
 		key_info->key_reference = MUSCLE_KEY_ID_MIN;
 	if (key_info->key_reference > MUSCLE_KEY_ID_MAX)
@@ -173,11 +187,16 @@ muscle_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_prkey_t *key)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *key_info;
 	sc_file_t* prkf;
 	struct sc_pkcs15_prkey_rsa *rsa;
 	sc_cardctl_muscle_key_info_t info;
 	int		r;
+
+	if (!obj || !obj->data || !key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_log(ctx,  "Muscle supports RSA keys only.");
@@ -199,6 +218,8 @@ muscle_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE,r);
 	}
 	rsa = &key->u.rsa;
+	if (!rsa->p.data || !rsa->q.data || !rsa->iqmp.data || !rsa->dmp1.data || !rsa->dmq1.data)
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	info.keySize = rsa->modulus.len << 3;
 	info.keyType = 0x03; /* CRT type */
@@ -232,11 +253,16 @@ muscle_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	sc_cardctl_muscle_gen_key_info_t args;
 	sc_cardctl_muscle_key_info_t extArgs;
-	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *key_info;
 	sc_card_t *card = p15card->card;
 	sc_file_t* prkf;
 	size_t	keybits;
 	int		r;
+
+	if (!obj || !obj->data || !pubkey)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_log(card->ctx,  "Muscle supports only RSA keys (for now).");
