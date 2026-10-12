@@ -4,7 +4,6 @@
 typedef struct {
 	u8 ic_manufacturer_code;
 	u8 mask_manufacturer_code;
-	int is_nfc;
 } itacns_drv_data_t;
 
 #define ITACNS_ICMAN_INFINEON		0x05
