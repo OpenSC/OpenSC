@@ -97,7 +97,7 @@ static int GetMonitorScalingRatio(void)
 		goto err;
 	if (!EnumDisplaySettings(info.szDevice, ENUM_CURRENT_SETTINGS, &devmode))
 		goto err;
-	if (info.rcMonitor.left == info.rcMonitor.right)
+	if (info.rcMonitor.left == info.rcMonitor.right || devmode.dmPelsWidth <= 0)
 		goto err;
 	return 100*devmode.dmPelsWidth/(info.rcMonitor.right - info.rcMonitor.left);
 err:
@@ -132,7 +132,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
 				case WM_CONTEXTMENU:
 					{
 						int scaling = GetMonitorScalingRatio();
-						POINT const pt = { 100*LOWORD(wParam)/scaling, 100*HIWORD(wParam)/scaling };
+						POINT pt;
+						if (scaling <= 0)
+							scaling = 100;
+						pt.x = 100 * LOWORD(wParam) / scaling;
+						pt.y = 100 * HIWORD(wParam) / scaling;
 						ShowContextMenu(hwnd, pt);
 					}
 					break;
@@ -155,6 +159,10 @@ static BOOL AddNotificationIcon(void)
 	BOOL r;
 	HMODULE hComctl = NULL;
 	HRESULT(WINAPI * pfnLoadIconMetric)(HINSTANCE, PCWSTR, int, HICON *) = NULL;
+
+	if (sc_notify_hwnd) {
+		return TRUE;
+	}
 
 	sc_notify_hwnd = create_invisible_window(lpszClassName, WndProc,
 			sc_notify_instance);
@@ -238,17 +246,17 @@ static BOOL RestoreTooltip()
 
 void ShowContextMenu(HWND hwnd, POINT pt)
 {
-	HMENU hMenu;
-	hMenu=CreatePopupMenu();
+	HMENU hMenu = CreatePopupMenu();
 
-    if (hMenu) {
+	if (hMenu) {
+		UINT uFlags = TPM_RIGHTBUTTON;
+
 		AppendMenu(hMenu, MF_STRING, WMAPP_EXIT, ui_get_str(NULL, NULL, NULL, NOTIFY_EXIT));
 
 		// our window must be foreground before calling TrackPopupMenu or the menu will not disappear when the user clicks away
 		SetForegroundWindow(hwnd);
 
 		// respect menu drop alignment
-		UINT uFlags = TPM_RIGHTBUTTON;
 		if (GetSystemMetrics(SM_MENUDROPALIGNMENT) != 0) {
 			uFlags |= TPM_RIGHTALIGN;
 		} else {
@@ -256,6 +264,7 @@ void ShowContextMenu(HWND hwnd, POINT pt)
 		}
 
 		TrackPopupMenuEx(hMenu, uFlags, pt.x, pt.y, hwnd, NULL);
+		DestroyMenu(hMenu);
 	}
 }
 
@@ -278,7 +287,12 @@ static void notify_shell(struct sc_context *ctx,
 		strlcpy(nid.szInfo, text, ARRAYSIZE(nid.szInfo));
 	}
 	if (icon_path) {
-		ExtractIconEx(icon_path, icon_index, &icon, NULL, 1);
+		TCHAR expanded_path[MAX_PATH];
+		if (ExpandEnvironmentStrings(icon_path, expanded_path, ARRAYSIZE(expanded_path))) {
+			ExtractIconEx(expanded_path, icon_index, &icon, NULL, 1);
+		} else {
+			ExtractIconEx(icon_path, icon_index, &icon, NULL, 1);
+		}
 		if (icon) {
 			nid.dwInfoFlags = NIIF_USER | NIIF_LARGE_ICON;
 			nid.hBalloonIcon = icon;
