@@ -42,6 +42,9 @@ static scconf_item *scconf_get_last_item(scconf_block *root)
 	scconf_block *block = root;
 	scconf_item *item;
 
+	if (!root)
+		return NULL;
+
 	for (item = root->items; item; item = item->next) {
 		if (!item->next) {
 			return item;
@@ -81,19 +84,25 @@ static scconf_item *scconf_item_find(scconf_parser * parser)
 {
 	scconf_item *item;
 
+	if (!parser || !parser->block || !parser->key)
+		return NULL;
+
 	for (item = parser->block->items; item; item = item->next) {
 		if (item && item->type == SCCONF_ITEM_TYPE_VALUE
-			   	&& item->key && parser->key
+			   	&& item->key
 			   	&& strcasecmp(item->key, parser->key) == 0) {
 			return item;
 		}
 	}
-	return item;
+	return NULL;
 }
 
 static scconf_item *scconf_item_add_internal(scconf_parser * parser, int type)
 {
 	scconf_item *item;
+
+	if (!parser || !parser->block)
+		return NULL;
 
 	if (type == SCCONF_ITEM_TYPE_VALUE) {
 		/* if item with same key already exists, use it */
@@ -130,19 +139,25 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 
 	if (!config && !block)
 		return NULL;
-	if (!data)
+	if (!block && config)
+		block = config->root;
+	if (!block || !data)
 		return NULL;
 
 	memset(&parser, 0, sizeof(scconf_parser));
 	parser.config = config ? config : NULL;
 	parser.key = key ? strdup(key) : NULL;
-	parser.block = block ? block : config->root;
+	parser.block = block;
 	parser.name = NULL;
 	parser.last_item = scconf_get_last_item(parser.block);
 	parser.current_item = item;
 
 	if (type == SCCONF_ITEM_TYPE_BLOCK) {
 		scconf_block_copy((const scconf_block *) data, &dst);
+		if (!dst) {
+			free(parser.key);
+			return NULL;
+		}
 		scconf_list_copy(dst->name, &parser.name);
 	}
 	if (scconf_item_add_internal(&parser, type)) {
@@ -165,6 +180,10 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 		/* FIXME is it an error if item is NULL? */
 		free(parser.key);
 		parser.key = NULL;
+		if (type == SCCONF_ITEM_TYPE_BLOCK) {
+			scconf_block_destroy(dst);
+			scconf_list_destroy(parser.name);
+		}
 	}
 	return parser.current_item;
 }
@@ -200,13 +219,17 @@ scconf_block *scconf_block_add(scconf_context * config, scconf_block * block, co
 {
 	scconf_parser parser;
 
-	if (!config)
+	if (!config && !block)
+		return NULL;
+	if (!block && config)
+		block = config->root;
+	if (!block)
 		return NULL;
 
 	memset(&parser, 0, sizeof(scconf_parser));
 	parser.config = config;
 	parser.key = key ? strdup(key) : NULL;
-	parser.block = block ? block : config->root;
+	parser.block = block;
 	scconf_list_copy(name, &parser.name);
 	parser.last_item = scconf_get_last_item(parser.block);
 	parser.current_item = parser.block->items;
@@ -217,6 +240,9 @@ scconf_block *scconf_block_add(scconf_context * config, scconf_block * block, co
 
 static void scconf_parse_parent(scconf_parser * parser)
 {
+	if (!parser || !parser->block || !parser->block->parent)
+		return;
+
 	parser->block = parser->block->parent;
 
 	parser->last_item = parser->block->items;
@@ -298,13 +324,15 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 			}
 			if (parser->state == 0) {
 				/* key */
+				if (parser->key)
+					free(parser->key);
 				parser->key = stoken ? strdup(stoken) : NULL;
 				parser->state = STATE_NAME;
 			} else if (parser->state == STATE_NAME) {
 				/* name */
 				parser->state |= STATE_SET;
 				scconf_list_add(&parser->name, stoken);
-			} else if (parser->state == STATE_VALUE && parser->current_item->type == SCCONF_ITEM_TYPE_VALUE) {
+			} else if (parser->state == STATE_VALUE && parser->current_item && parser->current_item->type == SCCONF_ITEM_TYPE_VALUE) {
 				/* value */
 				parser->state |= STATE_SET;
 				scconf_list_add(&parser->current_item->value.list,
@@ -331,7 +359,8 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 			scconf_parse_reset_state(parser);
 			break;
 		case '}':
-			parser->nested_blocks--;
+			if (parser->nested_blocks > 0)
+				parser->nested_blocks--;
 			if (parser->state != 0) {
 				if ((parser->state & STATE_VALUE) == 0 ||
 				    (parser->state & STATE_SET) == 0) {
@@ -343,7 +372,7 @@ void scconf_parse_token(scconf_parser * parser, int token_type, const char *toke
 				scconf_parse_warning_expect(parser, ";");
 				scconf_parse_reset_state(parser);
 			}
-			if (!parser->block->parent) {
+			if (!parser->block || !parser->block->parent) {
 				/* too many '}' */
 				scconf_parse_error(parser,
 						   "missing matching '{'");
@@ -385,6 +414,14 @@ int scconf_parse(scconf_context * config)
 	scconf_parser p;
 	int r = 1;
 
+	if (!config || !config->filename)
+		return -1;
+	if (!config->root) {
+		config->root = calloc(1, sizeof(scconf_block));
+		if (!config->root)
+			return 0;
+	}
+
 	memset(&p, 0, sizeof(p));
 	p.config = config;
 	p.block = config->root;
@@ -403,6 +440,8 @@ int scconf_parse(scconf_context * config)
 		r = 1;
 	}
 
+	scconf_parse_reset_state(&p);
+
 	if (r <= 0)
 		config->errmsg = buffer;
 	return r;
@@ -413,6 +452,14 @@ int scconf_parse_string(scconf_context * config, const char *string)
 	static char buffer[256];
 	scconf_parser p;
 	int r;
+
+	if (!config || !string)
+		return -1;
+	if (!config->root) {
+		config->root = calloc(1, sizeof(scconf_block));
+		if (!config->root)
+			return 0;
+	}
 
 	memset(&p, 0, sizeof(p));
 	p.config = config;
