@@ -49,6 +49,8 @@ int
 gp_select_aid(struct sc_card *card, const struct sc_aid *aid)
 {
 	int rv;
+	if (!aid)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
 	rv = iso7816_select_aid(card, aid->value, aid->len, NULL, NULL);
 	LOG_FUNC_RETURN(card->ctx, rv);
@@ -84,6 +86,9 @@ gp_get_cplc_data(struct sc_card *card, global_platform_cplc_data_t *cplc_data)
 	u8 *receive_buf = (u8 *)cplc_data;
 	struct sc_apdu apdu;
 	int rc;
+
+	if (!cplc_data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, ISO7816_INS_GET_DATA, 0x9f, 0x7f);
 	apdu.cla = GLOBAL_PLATFORM_CLASS;
