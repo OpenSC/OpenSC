@@ -69,14 +69,16 @@ const scconf_block *scconf_find_block(const scconf_context * config, const sccon
 	scconf_item *item;
 
 	if (!block) {
+		if (!config)
+			return NULL;
 		block = config->root;
 	}
-	if (!item_name) {
+	if (!block || !item_name) {
 		return NULL;
 	}
 	for (item = block->items; item; item = item->next) {
 		if (item->type == SCCONF_ITEM_TYPE_BLOCK &&
-		    strcasecmp(item_name, item->key) == 0) {
+		    item->key && strcasecmp(item_name, item->key) == 0) {
 			return item->value.block;
 		}
 	}
@@ -90,9 +92,11 @@ scconf_block **scconf_find_blocks(const scconf_context * config, const scconf_bl
 	scconf_item *item;
 
 	if (!block) {
+		if (!config)
+			return NULL;
 		block = config->root;
 	}
-	if (!item_name) {
+	if (!block || !item_name) {
 		return NULL;
 	}
 	size = 0;
@@ -106,11 +110,14 @@ scconf_block **scconf_find_blocks(const scconf_context * config, const scconf_bl
 
 	for (item = block->items; item; item = item->next) {
 		if (item->type == SCCONF_ITEM_TYPE_BLOCK &&
-		    strcasecmp(item_name, item->key) == 0) {
+		    item->key && strcasecmp(item_name, item->key) == 0) {
 			if (!item->value.block)
 				continue;
-			if (key && strcasecmp(key, item->value.block->name->data)) {
-				continue;
+			if (key) {
+				if (!item->value.block->name || !item->value.block->name->data ||
+				    strcasecmp(key, item->value.block->name->data)) {
+					continue;
+				}
 			}
 			if (size + 1 >= alloc_size) {
 				alloc_size *= 2;
@@ -132,11 +139,11 @@ const scconf_list *scconf_find_list(const scconf_block * block, const char *opti
 {
 	scconf_item *item;
 
-	if (!block)
+	if (!block || !option)
 		return NULL;
 
 	for (item = block->items; item; item = item->next)
-		if (item->type == SCCONF_ITEM_TYPE_VALUE && strcasecmp(option, item->key) == 0)
+		if (item->type == SCCONF_ITEM_TYPE_VALUE && item->key && strcasecmp(option, item->key) == 0)
 			return item->value.list;
 	return NULL;
 }
@@ -146,7 +153,7 @@ const char *scconf_get_str(const scconf_block * block, const char *option, const
 	const scconf_list *list;
 
 	list = scconf_find_list(block, option);
-	if (!list)
+	if (!list || !list->data)
 		return def;
 
 	/* ignore non 'auto-configured' values */
@@ -159,14 +166,16 @@ const char *scconf_get_str(const scconf_block * block, const char *option, const
 int scconf_get_int(const scconf_block * block, const char *option, int def)
 {
 	const scconf_list *list;
+	char *endptr = NULL;
 	long res;
 
 	list = scconf_find_list(block, option);
-	if (!list) {
+	if (!list || !list->data || !*list->data) {
 		return def;
 	}
-	res = strtol(list->data, NULL, 0);
-	if (res <= INT_MAX) {
+	errno = 0;
+	res = strtol(list->data, &endptr, 0);
+	if (errno == 0 && endptr != list->data && res >= INT_MIN && res <= INT_MAX) {
 		return (int)res;
 	}
 	return def;
@@ -177,17 +186,21 @@ int scconf_get_bool(const scconf_block * block, const char *option, int def)
 	const scconf_list *list;
 
 	list = scconf_find_list(block, option);
-	if (!list) {
+	if (!list || !list->data || !*list->data) {
 		return def;
 	}
-	return toupper((int) *list->data) == 'T' || toupper((int) *list->data) == 'Y';
+	return toupper((int)(unsigned char)*list->data) == 'T' || toupper((int)(unsigned char)*list->data) == 'Y';
 }
 
 const char *scconf_put_str(scconf_block * block, const char *option, const char *value)
 {
 	scconf_list *list = NULL;
 
-	scconf_list_add(&list, value);
+	if (!block || !option)
+		return NULL;
+
+	if (!scconf_list_add(&list, value))
+		return NULL;
 	scconf_item_add(NULL, block, NULL, SCCONF_ITEM_TYPE_VALUE, option, list);
 	scconf_list_destroy(list);
 	return value;
@@ -195,62 +208,62 @@ const char *scconf_put_str(scconf_block * block, const char *option, const char 
 
 int scconf_put_int(scconf_block * block, const char *option, int value)
 {
-	char *str;
+	char str[64];
 
-	str = malloc(64);
-	if (!str) {
+	if (!block || !option)
 		return value;
-	}
-	snprintf(str, 64, "%i", value);
+	snprintf(str, sizeof(str), "%d", value);
 	scconf_put_str(block, option, str);
-	free(str);
 	return value;
 }
 
 int scconf_put_bool(scconf_block * block, const char *option, int value)
 {
+	if (!block || !option)
+		return value;
 	scconf_put_str(block, option, !value ? "false" : "true");
 	return value;
 }
 
 scconf_item *scconf_item_copy(const scconf_item * src, scconf_item ** dst)
 {
-	scconf_item *ptr, *_dst = NULL, *next = NULL;
+	scconf_item *head = NULL, *tail = NULL;
+	const scconf_item *curr;
 
-	next = calloc(1, sizeof(scconf_item));
-	if (!next) {
+	if (!dst)
 		return NULL;
-	}
-	ptr = next;
-	_dst = next;
-	while (src) {
-		if (!next) {
-			next = calloc(1, sizeof(scconf_item));
-			if (!next) {
-				scconf_item_destroy(ptr);
-				return NULL;
-			}
-			_dst->next = next;
+	*dst = NULL;
+	if (!src)
+		return NULL;
+
+	for (curr = src; curr; curr = curr->next) {
+		scconf_item *item = calloc(1, sizeof(scconf_item));
+		if (!item) {
+			scconf_item_destroy(head);
+			*dst = NULL;
+			return NULL;
 		}
-		next->type = src->type;
-		switch (src->type) {
+		item->type = curr->type;
+		switch (curr->type) {
 		case SCCONF_ITEM_TYPE_COMMENT:
-			next->value.comment = src->value.comment ? strdup(src->value.comment) : NULL;
+			item->value.comment = curr->value.comment ? strdup(curr->value.comment) : NULL;
 			break;
 		case SCCONF_ITEM_TYPE_BLOCK:
-			scconf_block_copy(src->value.block, &next->value.block);
+			scconf_block_copy(curr->value.block, &item->value.block);
 			break;
 		case SCCONF_ITEM_TYPE_VALUE:
-			scconf_list_copy(src->value.list, &next->value.list);
+			scconf_list_copy(curr->value.list, &item->value.list);
 			break;
 		}
-		next->key = src->key ? strdup(src->key) : NULL;
-		_dst = next;
-		next = NULL;
-		src = src->next;
+		item->key = curr->key ? strdup(curr->key) : NULL;
+		if (!head)
+			head = item;
+		else
+			tail->next = item;
+		tail = item;
 	}
-	*dst = ptr;
-	return ptr;
+	*dst = head;
+	return head;
 }
 
 void scconf_item_destroy(scconf_item * item)
@@ -286,14 +299,14 @@ void scconf_item_destroy(scconf_item * item)
 
 scconf_block *scconf_block_copy(const scconf_block * src, scconf_block ** dst)
 {
+	if (!dst)
+		return NULL;
+	*dst = NULL;
 	if (src) {
-		scconf_block *_dst = NULL;
-
-		_dst = calloc(1, sizeof(scconf_block));
+		scconf_block *_dst = calloc(1, sizeof(scconf_block));
 		if (!_dst) {
 			return NULL;
 		}
-		memset(_dst, 0, sizeof(scconf_block));
 		if (src->name) {
 			scconf_list_copy(src->name, &_dst->name);
 		}
@@ -319,6 +332,9 @@ scconf_list *scconf_list_add(scconf_list ** list, const char *value)
 {
 	scconf_list *rec, **tmp;
 
+	if (!list)
+		return NULL;
+
 	rec = calloc(1, sizeof(scconf_list));
 	if (!rec) {
 		return NULL;
@@ -338,6 +354,9 @@ scconf_list *scconf_list_copy(const scconf_list * src, scconf_list ** dst)
 {
 	scconf_list *next;
 
+	if (!dst)
+		return NULL;
+	*dst = NULL;
 	while (src) {
 		next = src->next;
 		scconf_list_add(dst, src->data);
@@ -375,8 +394,9 @@ int scconf_list_strings_length(const scconf_list * list)
 {
 	int len = 0;
 
-	while (list && list->data) {
-		len += strlen(list->data) + 1;
+	while (list) {
+		if (list->data)
+			len += (int)strlen(list->data) + 1;
 		list = list->next;
 	}
 	return len;
@@ -388,13 +408,16 @@ const char **scconf_list_toarray(const scconf_list * list)
 	const char **tp;
 	int len = 0;
 
+	if (!list)
+		return NULL;
+
 	while (lp) {
 		len++;
 		lp = lp->next;
 	}
 	tp = malloc(sizeof(char *) * (len + 1));
 	if (!tp)
-		return tp;
+		return NULL;
 	lp = list;
 	len = 0;
 	while (lp) {
@@ -410,28 +433,35 @@ char *scconf_list_strdup(const scconf_list * list, const char *filler)
 {
 	char *buf = NULL;
 	int len = 0;
+	size_t filler_len = 0;
 
 	if (!list) {
 		return NULL;
 	}
 	len = scconf_list_strings_length(list);
 	if (filler) {
-		len += scconf_list_array_length(list) * (strlen(filler) + 1);
+		filler_len = strlen(filler);
+		len += scconf_list_array_length(list) * ((int)filler_len + 1);
 	}
 	if (len == 0)
 		return NULL;
-	buf = calloc(1, len);
+	buf = calloc(1, len + 1);
 	if (!buf) {
 		return NULL;
 	}
-	while (list && list->data) {
-		strlcat(buf, list->data, len);
-		if (filler) {
-			strlcat(buf, filler, len);
+	while (list) {
+		if (list->data) {
+			strlcat(buf, list->data, len + 1);
+			if (filler) {
+				strlcat(buf, filler, len + 1);
+			}
 		}
 		list = list->next;
 	}
-	if (filler)
-		buf[strlen(buf) - strlen(filler)] = '\0';
+	if (filler && filler_len > 0) {
+		size_t blen = strlen(buf);
+		if (blen >= filler_len)
+			buf[blen - filler_len] = '\0';
+	}
 	return buf;
 }
