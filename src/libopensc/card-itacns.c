@@ -355,6 +355,32 @@ static int itacns_set_security_env(sc_card_t *card,
 	SC_FUNC_RETURN(card->ctx, 1, r);
 }
 
+static int
+itacns_pin_get_info(sc_card_t *card, struct sc_pin_cmd_data *data)
+{
+	sc_apdu_t apdu;
+	int r;
+
+	data->pin1.max_tries = 3;
+	data->pin1.tries_left = -1;
+	data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x20, 0x00, data->pin_reference);
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "PIN status query failed");
+
+	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xf0) == 0xc0) {
+		data->pin1.tries_left = apdu.sw2 & 0x0f;
+		data->pin1.logged_in = SC_PIN_STATE_LOGGED_OUT;
+	} else if (apdu.sw1 == 0x69 && (apdu.sw2 == 0x83 || apdu.sw2 == 0x84)) {
+		data->pin1.tries_left = 0;
+		data->pin1.logged_in = SC_PIN_STATE_LOGGED_OUT;
+	} else if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00) {
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
+	return SC_SUCCESS;
+}
+
 /*
  * The 0x80 thing tells the card it's okay to search parent
  * directories as well for the referenced object.
@@ -365,6 +391,11 @@ static int itacns_set_security_env(sc_card_t *card,
 static int
 itacns_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
+	if (data->cmd == SC_PIN_CMD_GET_INFO &&
+	    card->type == SC_CARD_TYPE_ITACNS_CNS_JSIGN4 &&
+	    data->pin_reference == 0x10)
+		return itacns_pin_get_info(card, data);
+
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 	/* Enable backtracking for STIncard cards. */
 	if(DRVDATA(card)->mask_manufacturer_code == ITACNS_MASKMAN_STINCARD) {

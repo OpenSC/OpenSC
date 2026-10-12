@@ -350,6 +350,8 @@ static int itacns_add_pin(sc_pkcs15_card_t *p15card,
 	pin_info.attrs.pin.max_length = 8;
 	pin_info.attrs.pin.pad_char = 0xff;
 	pin_info.logged_in = SC_PIN_STATE_UNKNOWN;
+	if (p15card->card->type == SC_CARD_TYPE_ITACNS_CNS_JSIGN4)
+		pin_info.tries_left = -1;
 	if(path)
         pin_info.path = *path;
 
