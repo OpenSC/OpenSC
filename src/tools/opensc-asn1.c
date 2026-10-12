@@ -32,13 +32,17 @@ main (int argc, char **argv)
 	struct gengetopt_args_info cmdline;
 	unsigned char *buf = NULL;
 	size_t buflen = 0, i;
+	int ret = 0;
 
 	if (cmdline_parser(argc, argv, &cmdline) != 0)
 		return 1;
 
 	for (i = 0; i < cmdline.inputs_num; i++) {
-		if (!fread_to_eof(cmdline.inputs[i], &buf, &buflen))
+		if (!fread_to_eof(cmdline.inputs[i], &buf, &buflen)) {
+			fprintf(stderr, "Failed to read '%s'\n", cmdline.inputs[i]);
+			ret = 1;
 			continue;
+		}
 
 		printf("Parsing '%s' (%zu byte%s)\n", cmdline.inputs[i], buflen, buflen == 1 ? "" : "s");
 		sc_asn1_print_tags(buf, buflen);
@@ -47,5 +51,5 @@ main (int argc, char **argv)
 	free(buf);
 	cmdline_parser_free (&cmdline);
 
-	return 0;
+	return ret;
 }
