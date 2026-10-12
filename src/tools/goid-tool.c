@@ -163,7 +163,8 @@ soc_info(sc_context_t *ctx, sc_card_t *card)
                         p += length, length = end - p) {
                     size_t i;
                     if (SC_SUCCESS != sc_asn1_read_tag(&p, length, &cla, &tag, &length)
-                            || p == NULL || cla != SC_ASN1_TAG_CONTEXT) {
+                            || p == NULL || cla != SC_ASN1_TAG_CONTEXT
+                            || length > (size_t)(end - p)) {
                         break;
                     }
                     putchar('\t');
@@ -356,7 +357,7 @@ int soc_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_info
     if (cmdline->new_pin_given) {
         sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                 "Initialize the PIN on the card.");
-        if (!soc_change(card, 0x00, SOCM_AUTHOBJECT_BIO))
+        if (!soc_change(card, 0x00, SOCM_AUTHOBJECT_PIN))
             goto err;
     }
     if (cmdline->new_bio_given) {
@@ -376,6 +377,7 @@ int soc_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_info
 err:
     if (soc_reset_authobject)
         soc_reset(card, soc_reset_authobject);
+    sc_file_free(file);
 
     return ok;
 }
@@ -384,32 +386,44 @@ static int
 paccess_construct_fci(struct sc_card *card, const sc_file_t *file,
 		u8 *out, size_t *outlen)
 {
-	u8 *p = out;
-	u8 buf[64];
+	u8 *p;
+	u8 buf[2];
+	int r;
 
-	if (*outlen < 2)
+	if (!file || !out || !outlen || *outlen < 2)
 		return SC_ERROR_BUFFER_TOO_SMALL;
+
+	p = out;
 	*p++ = 0x62;
 	p++;
 
-	buf[0] = (file->size >> 8) & 0xFF;
-	buf[1] = file->size & 0xFF;
-	sc_asn1_put_tag(0x80, buf, 2, p, *outlen - (p - out), &p);
+	buf[0] = (u8)((file->size >> 8) & 0xFF);
+	buf[1] = (u8)(file->size & 0xFF);
+	r = sc_asn1_put_tag(0x80, buf, 2, p, *outlen - (p - out), &p);
+	if (r != SC_SUCCESS)
+		return r;
 
-	buf[0] = (file->id >> 8) & 0xFF;
-	buf[1] = file->id & 0xFF;
-	sc_asn1_put_tag(0x83, buf, 2, p, *outlen - (p - out), &p);
+	buf[0] = (u8)((file->id >> 8) & 0xFF);
+	buf[1] = (u8)(file->id & 0xFF);
+	r = sc_asn1_put_tag(0x83, buf, 2, p, *outlen - (p - out), &p);
+	if (r != SC_SUCCESS)
+		return r;
 
-    memcpy(buf, file->sec_attr, file->sec_attr_len);
-    sc_asn1_put_tag(0x86, buf, file->sec_attr_len,
-            p, *outlen - (p - out), &p);
+	if (file->sec_attr && file->sec_attr_len) {
+		r = sc_asn1_put_tag(0x86, file->sec_attr, file->sec_attr_len,
+				p, *outlen - (p - out), &p);
+		if (r != SC_SUCCESS)
+			return r;
+	}
 
-    buf[0] = file->sid & 0xFF;
-	sc_asn1_put_tag(0x88, buf, 1, p, *outlen - (p - out), &p);
+	buf[0] = (u8)(file->sid & 0xFF);
+	r = sc_asn1_put_tag(0x88, buf, 1, p, *outlen - (p - out), &p);
+	if (r != SC_SUCCESS)
+		return r;
 
-	out[1] = p - out - 2;
+	out[1] = (u8)(p - out - 2);
 
-	*outlen = p - out;
+	*outlen = (size_t)(p - out);
 	return 0;
 }
 
@@ -424,8 +438,10 @@ paccess_create_file(struct sc_card *card, size_t size, int fid, u8 *sec_attr, si
     file->size = size;
     file->id = fid;
     file->sid = sfid;
-	file->sec_attr = sec_attr;
-	file->sec_attr_len = sec_attr_len;
+    if (sec_attr && sec_attr_len) {
+        if (sc_file_set_sec_attr(file, sec_attr, sec_attr_len) != SC_SUCCESS)
+            goto err;
+    }
 
     card->ops->construct_fci = paccess_construct_fci;
     SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
@@ -433,6 +449,7 @@ paccess_create_file(struct sc_card *card, size_t size, int fid, u8 *sec_attr, si
 
     ok = 1;
 err:
+    sc_file_free(file);
     return ok;
 }
 
@@ -456,6 +473,8 @@ int
 paccess_get_security_attributes(struct sc_context *ctx, const char *ac, short *chatbits, size_t chatbits_len, u8 sec_attr[2])
 {
     int ok = 0;
+    if (!sec_attr)
+        return 0;
     memset(sec_attr, 0, 2);
     if (!ac || 0 == strcmp(ac, "never")) {
         sec_attr[0] |= 0xFF;
@@ -472,11 +491,12 @@ paccess_get_security_attributes(struct sc_context *ctx, const char *ac, short *c
                     SC_ERROR_INVALID_ARGUMENTS, "unknown access condition.");
         }
         for (i = 0; i < chatbits_len; i++) {
-            u8 byte = chatbits[i] / 8;
-            u8 bit = chatbits[i] % 8 + 1;
-            if (byte > 5)
+            u8 byte, bit;
+            if (!chatbits || chatbits[i] < 0 || chatbits[i] > 39)
                 SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
                         SC_ERROR_INVALID_ARGUMENTS, "Only CHAT bits with index 0..39 are available.");
+            byte = (u8)(chatbits[i] / 8);
+            bit = (u8)(chatbits[i] % 8 + 1);
             sec_attr[0] |= 0x8 | byte;
             sec_attr[1] |= bit;
         }
@@ -680,7 +700,11 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
             if (cmdline->out_file_given == cmdline->read_dg_given) {
                 FILE *f = fopen(cmdline->out_file_arg[i], "wb");
                 if (f) {
-                    fwrite(ef, ef_len, 1, f);
+                    if (ef_len > 0 && fwrite(ef, 1, ef_len, f) != ef_len) {
+                        sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+                                "Error writing %s\n", cmdline->out_file_arg[i]);
+                        r = SC_ERROR_INTERNAL;
+                    }
                     fclose(f);
                 } else {
                     sc_debug(ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
@@ -714,7 +738,7 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
                     && (tag | cla) == 0x13) {
                 const unsigned char *cardid = (const unsigned char *) p;
                 while (cardid && ef_len) {
-                    if (isprint(*cardid)) {
+                    if (isprint((unsigned char)*cardid)) {
                         printf("%c", *cardid);
                     } else {
                         printf(".");
@@ -748,7 +772,7 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
                     && (tag | cla) == 0x13) {
                 const unsigned char *paccessid = (const unsigned char *) p;
                 while (paccessid && ef_len) {
-                    if (isprint(*paccessid)) {
+                    if (isprint((unsigned char)*paccessid)) {
                         printf("%c", *paccessid);
                     } else {
                         printf(".");
@@ -789,14 +813,14 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
     if (cmdline->write_cardid_arg) {
         size_t cardid_len = strlen(cmdline->write_cardid_arg);
         u8 ef[256];
-        if (cardid_len > (sizeof ef) - 4) {
+        if (cardid_len > (sizeof ef) - 4 || cardid_len > 125) {
             SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE_TOOL, SC_ERROR_INVALID_ARGUMENTS,
                     "Card ID too long.");
         }
         ef[0] = 0x7E;
-        ef[1] = 2 + cardid_len;
+        ef[1] = (u8)(2 + cardid_len);
         ef[2] = 0x13;
-        ef[3] = cardid_len;
+        ef[3] = (u8)cardid_len;
         memcpy(ef + 4, cmdline->write_cardid_arg, cardid_len);
         r = iso7816_update_binary_sfid(card, 0x1E, ef, 4 + cardid_len);
         SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE_TOOL, r,
@@ -806,14 +830,14 @@ int paccess_main(struct sc_context *ctx, sc_card_t *card, struct gengetopt_args_
     if (cmdline->write_paccessid_arg) {
         size_t paccessid_len = strlen(cmdline->write_paccessid_arg);
         u8 ef[256];
-        if (paccessid_len > (sizeof ef) - 4) {
+        if (paccessid_len > (sizeof ef) - 4 || paccessid_len > 125) {
             SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE_TOOL, SC_ERROR_INVALID_ARGUMENTS,
                     "Card ID too long.");
         }
         ef[0] = 0x66;
-        ef[1] = 2 + paccessid_len;
+        ef[1] = (u8)(2 + paccessid_len);
         ef[2] = 0x13;
-        ef[3] = paccessid_len;
+        ef[3] = (u8)paccessid_len;
         memcpy(ef + 4, cmdline->write_paccessid_arg, paccessid_len);
         r = iso7816_update_binary_sfid(card, 0x06, ef, 4 + paccessid_len);
         SC_TEST_GOTO_ERR(ctx, SC_LOG_DEBUG_VERBOSE_TOOL, r,
@@ -826,8 +850,8 @@ err:
     if (pxs_reset_authobjects)
         sc_reset(card, 0);
     if (certs) {
-        for (i = 0; certs[i]; i++) {
-            free((unsigned char *) certs[i]);
+        for (i = 0; i < cmdline->certificate_given; i++) {
+            free(certs[i]);
         }
         free(certs);
     }
@@ -861,6 +885,7 @@ main(int argc, char **argv)
     r = sc_context_create(&ctx, &ctx_param);
     if (r) {
         fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
+        cmdline_parser_free(&cmdline);
         exit(1);
     }
 
@@ -886,10 +911,13 @@ main(int argc, char **argv)
     fail = 0;
 
 err:
-    sc_disconnect_card(card);
-    sc_release_context(ctx);
+    if (card) {
+        sc_unlock(card);
+        sc_disconnect_card(card);
+    }
+    if (ctx)
+        sc_release_context(ctx);
     cmdline_parser_free (&cmdline);
 
     return fail;
 }
-/*printf("%s:%d\n", __FILE__, __LINE__);*/
