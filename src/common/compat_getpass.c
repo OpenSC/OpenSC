@@ -40,16 +40,25 @@ int _getch(void)
 char *getpass(const char *prompt)
 {
 	static char buf[128];
-	size_t i;
+	size_t i = 0;
+	int c;
 
-	fputs(prompt, stderr);
-	fflush(stderr);
-	for (i = 0; i < sizeof(buf) - 1; i++) {
-		buf[i] = _getch();
-		if (buf[i] == '\r')
-			break;
+	if (prompt) {
+		fputs(prompt, stderr);
+		fflush(stderr);
 	}
-	buf[i] = 0;
+	while (i < sizeof(buf) - 1) {
+		c = _getch();
+		if (c == '\r' || c == '\n' || c == EOF)
+			break;
+		if (c == '\b' || c == 127) {
+			if (i > 0)
+				i--;
+			continue;
+		}
+		buf[i++] = (char) c;
+	}
+	buf[i] = '\0';
 	fputs("\n", stderr);
 	return buf;
 }
