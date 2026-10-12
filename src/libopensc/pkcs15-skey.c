@@ -25,7 +25,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 
 /*
  * in src/libopensc/types.h SC_MAX_SUPPORTED_ALGORITHMS  defined as 16

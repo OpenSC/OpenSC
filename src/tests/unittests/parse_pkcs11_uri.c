@@ -184,14 +184,15 @@ torture_spec_token_object_serial_pin(void **state)
 }
 
 static void
-torture_spec_unsupported_module_name(void **state)
+torture_spec_module_name(void **state)
 {
 	char *uri = "pkcs11:object=my-sign-key;"
 		    "type=private"
 		    "?module-name=mypkcs11";
 	struct pkcs11_uri *result = pkcs11_uri_new();
 	int rv = parse_pkcs11_uri(uri, result);
-	assert_int_equal(rv, 1);
+	assert_int_equal(rv, 0);
+	assert_string_equal("mypkcs11", result->module_name);
 	pkcs11_uri_free(result);
 }
 
@@ -250,6 +251,89 @@ torture_pin_pin_source(void **state)
 	pkcs11_uri_free(result);
 }
 
+static void
+torture_path_invalid_space(void **state)
+{
+	char *uri = "pkcs11:token=Soft Token";
+	struct pkcs11_uri *result = pkcs11_uri_new();
+	int rv = parse_pkcs11_uri(uri, result);
+	assert_int_equal(rv, 1);
+	pkcs11_uri_free(result);
+}
+
+static void
+torture_path_invalid_slash(void **state)
+{
+	char *uri = "pkcs11:object=a/b";
+	struct pkcs11_uri *result = pkcs11_uri_new();
+	int rv = parse_pkcs11_uri(uri, result);
+	assert_int_equal(rv, 1);
+	pkcs11_uri_free(result);
+}
+
+static void
+torture_path_invalid_percent(void **state)
+{
+	char *uri = "pkcs11:id=%ZZ";
+	struct pkcs11_uri *result = pkcs11_uri_new();
+	int rv = parse_pkcs11_uri(uri, result);
+	assert_int_equal(rv, 1);
+	pkcs11_uri_free(result);
+}
+
+static void
+torture_path_invalid_control_char(void **state)
+{
+	char *uri = "pkcs11:token=test\x07label";
+	struct pkcs11_uri *result = pkcs11_uri_new();
+	int rv = parse_pkcs11_uri(uri, result);
+	assert_int_equal(rv, 1);
+	pkcs11_uri_free(result);
+}
+
+static void
+torture_query_invalid_space(void **state)
+{
+	char *uri = "pkcs11:object=my-key?pin-value=my pin";
+	struct pkcs11_uri *result = pkcs11_uri_new();
+	int rv = parse_pkcs11_uri(uri, result);
+	assert_int_equal(rv, 1);
+	pkcs11_uri_free(result);
+}
+
+static void
+torture_query_invalid_percent(void **state)
+{
+	char *uri = "pkcs11:object=my-key?pin-value=%GG";
+	struct pkcs11_uri *result = pkcs11_uri_new();
+	int rv = parse_pkcs11_uri(uri, result);
+	assert_int_equal(rv, 1);
+	pkcs11_uri_free(result);
+}
+
+static void
+torture_query_valid_slash_question(void **state)
+{
+	char *uri = "pkcs11:object=my-key?pin-source=file:/etc/pin?query";
+	struct pkcs11_uri *result = pkcs11_uri_new();
+	int rv = parse_pkcs11_uri(uri, result);
+	assert_int_equal(rv, 0);
+	assert_string_equal("file:/etc/pin?query", result->pin_source);
+	pkcs11_uri_free(result);
+}
+
+static void
+torture_query_ampersand_delimiter(void **state)
+{
+	char *uri = "pkcs11:object=my-key?pin-value=1234&module-name=test";
+	struct pkcs11_uri *result = pkcs11_uri_new();
+	int rv = parse_pkcs11_uri(uri, result);
+	assert_int_equal(rv, 0);
+	assert_string_equal("1234", result->pin_value);
+	assert_string_equal("test", result->module_name);
+	pkcs11_uri_free(result);
+}
+
 int
 main(void)
 {
@@ -267,10 +351,19 @@ main(void)
 			cmocka_unit_test(torture_spec_object_label),
 			cmocka_unit_test(torture_spec_type_pin),
 			cmocka_unit_test(torture_spec_token_object_serial_pin),
-			cmocka_unit_test(torture_spec_unsupported_module_name),
+			cmocka_unit_test(torture_spec_module_name),
 			cmocka_unit_test(torture_module_path),
 			cmocka_unit_test(torture_pin_value),
 			cmocka_unit_test(torture_encoded_semicolon),
-			cmocka_unit_test(torture_pin_pin_source)};
+			cmocka_unit_test(torture_pin_pin_source),
+			cmocka_unit_test(torture_path_invalid_space),
+			cmocka_unit_test(torture_path_invalid_slash),
+			cmocka_unit_test(torture_path_invalid_percent),
+			cmocka_unit_test(torture_path_invalid_control_char),
+			cmocka_unit_test(torture_query_invalid_space),
+			cmocka_unit_test(torture_query_invalid_percent),
+			cmocka_unit_test(torture_query_valid_slash_question),
+			cmocka_unit_test(torture_query_ampersand_delimiter),
+	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

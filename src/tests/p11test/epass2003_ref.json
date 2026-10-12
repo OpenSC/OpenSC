@@ -1741,5 +1741,15 @@
 		"UNWRAP WORKS"
 	]],
 	"result": "pass"
+},
+{
+	"test_id": "kem_tests",
+	"data": [
+	[
+		"KEY ID",
+		"MECHANISM",
+		"KEM WORKS"
+	]],
+	"result": "pass"
 }]
 }

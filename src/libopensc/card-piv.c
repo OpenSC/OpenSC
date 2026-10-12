@@ -386,6 +386,17 @@ static const struct sc_card_error piv_sm_errors[] = {
 
 #define PIV_PAIRING_CODE_LEN	 8
 
+#define PIV_NUM_YK_SLOT_INFO 26
+
+typedef struct yk_slot_info_st {
+	u8 slot;
+	u8 invalid;
+	u8 policy;
+	u8 touch;
+	u8 algorithm;
+	struct sc_lv_data pubkey;
+} yk_slot_info_t;
+
 typedef struct piv_private_data {
 	struct sc_lv_data aid_der; /* previous aid response to compare */
 	int enumtag;
@@ -418,11 +429,7 @@ typedef struct piv_private_data {
 	unsigned int card_issues; /* card_issues flags for this card */
 	int object_test_verify; /* Can test this object to set verification state of card */
 	int yubico_version; /* 3 byte version number of NEO or Yubikey4  as integer */
-	struct {
-		u8 slot;
-		u8 policy;
-		u8 touch;
-	} yk_pin[26];
+	yk_slot_info_t yk_slot_info[PIV_NUM_YK_SLOT_INFO];
 	unsigned int ccc_flags;	    /* From  CCC indicate if CAC card */
 	unsigned int pin_policy; /* from discovery */
 	unsigned int init_flags;
@@ -595,6 +602,7 @@ static struct piv_aid piv_aids[] = {
 
 #define CI_NO_EC384			    0x00000400U /* does not have EC 384 */
 #define CI_NO_EC			    0x00000800U /* No EC at all */
+#define CI_ENFORCES_EC_HASH_EQ_KEYSIZE	    0x00001000U /* Applet enforces hash size == EC field size for ECDSA. Windows issue */
 
 /* PIV and PIV like cards are know to support these asymmetric algorithm identifiers used in alg_ids */
 #define AI_RSA_1024			    0x00000001U
@@ -632,6 +640,7 @@ static struct {
 	int al_labellen;
 } al_map[] = {
 		{ SC_CARD_TYPE_PIV_II_PIVAPPLET, (u8 *)"PivApplet v", 11 },
+		{ SC_CARD_TYPE_PIV_II_OPENFIPS201, (u8 *)"OpenFIPS201", 11 },
 		{ 0, NULL, 0 }
 	};
 
@@ -1792,7 +1801,7 @@ piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 		const u8 *sendbuf, size_t sendbuflen, u8 *recvbuf,
 		size_t recvbuflen)
 {
-	int r;
+	int r, cse;
 	sc_apdu_t apdu;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -1801,16 +1810,19 @@ piv_general_io(sc_card_t *card, int ins, int p1, int p2,
 	if (r != SC_SUCCESS)
 		LOG_FUNC_RETURN(card->ctx, r);
 
-	sc_format_apdu(card, &apdu,
-			recvbuf ? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_3_SHORT,
-			ins, p1, p2);
-	apdu.flags |= SC_APDU_FLAGS_CHAINING;
+	cse = recvbuf ? (sendbuf ? SC_APDU_CASE_4_SHORT : SC_APDU_CASE_2_SHORT) :
+			(sendbuf ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_1);
+
+	sc_format_apdu(card, &apdu, cse, ins, p1, p2);
+	if (sendbuflen > 255) {
+		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 #ifdef ENABLE_PIV_SM
-	if (card->sm_ctx.sm_mode != SM_MODE_NONE && sendbuflen > 255) {
-		/* tell apdu.c to not do the chaining, let the SM get_apdu do it */
-		apdu.flags |= SC_APDU_FLAGS_SM_CHAINING;
-	}
+		if (card->sm_ctx.sm_mode != SM_MODE_NONE) {
+			/* tell apdu.c to not do the chaining, let the SM get_apdu do it */
+			apdu.flags |= SC_APDU_FLAGS_SM_CHAINING;
+		}
 #endif
+	}
 	apdu.lc = sendbuflen;
 	apdu.datalen = sendbuflen;
 	apdu.data = sendbuf;
@@ -2982,6 +2994,7 @@ piv_find_aid(sc_card_t *card)
 			al_label = sc_asn1_find_tag(card->ctx, tag, taglen, 0x50, &al_labellen);
 			if (al_label != NULL) {
 				sc_log_hex(card->ctx, "Application Label", al_label, al_labellen);
+				free(priv->al_label);
 				if ((priv->al_label = malloc(al_labellen)) == NULL) {
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 				}
@@ -4500,55 +4513,116 @@ piv_yk_metadata_get_policy(sc_context_t *ctx, u8 *buf, size_t buflen, u8 *pin, u
 }
 
 static int
-piv_yk_get_metadata(sc_card_t *card, u8 slot, u8 *pin_policy, u8 *touch_policy)
+piv_yk_metadata_get_pubkey_info(sc_context_t *ctx, u8 *buf, size_t buflen, yk_slot_info_t *info)
 {
-	sc_apdu_t apdu;
-	u8 resp[100];
+	size_t tag_len = 0;
+	const u8 *pk = NULL;
+
+	/*  Tag 0x01: Algorithm/type of key */
+	pk = sc_asn1_find_tag(ctx, buf, buflen, 0x01, &tag_len);
+	if (pk && tag_len == 1) {
+		info->algorithm = pk[0];
+	} else {
+		sc_log(ctx, "Yubikey algorithm not found");
+		return SC_ERROR_DATA_OBJECT_NOT_FOUND;
+	}
+
+	/*  Tag 0x04: Public key */
+	pk = sc_asn1_find_tag(ctx, buf, buflen, 0x04, &tag_len);
+	if (pk && tag_len > 0) {
+		info->pubkey.value = malloc(tag_len);
+		if (info->pubkey.value == NULL) {
+			return SC_ERROR_MEMORY_FAILURE;
+		}
+		memcpy(info->pubkey.value, pk, tag_len);
+		info->pubkey.len = tag_len;
+	} else {
+		sc_log(ctx, "Yubikey public key not found");
+		return SC_ERROR_DATA_OBJECT_NOT_FOUND;
+	}
+
+	return SC_SUCCESS;
+}
+
+static int
+piv_yk_get_metadata(sc_card_t *card, u8 slot, u8 *pin_policy, u8 *touch_policy, sc_cardctl_piv_pubkey_info_t *info)
+{
+	u8 resp[3072]; /* Should be enough to fit ML-DSA-87 key */
+	int resplen = 0;
 	size_t i;
 	piv_private_data_t *priv = PIV_DATA(card);
+	int rc;
 
 	/* initialize with the default behaviour */
 	if (pin_policy)
-		*pin_policy = 0x00;
+		*pin_policy = 0x00; /* i.e. use NIST defined */
 	if (touch_policy)
 		*touch_policy = 0x00;
+	if (info) {
+		info->algorithm = 0;
+		info->pubkey.value = NULL;
+		info->pubkey.len = 0;
+	}
 
 	if (priv->yubico_version < 0x00050300) {
 		if (priv->yubico_version != 0)
-			sc_log(card->ctx, "Yubikey's PIN and touch policy not available");
+			sc_log(card->ctx, "Yubikey's Get metadata extension not available");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	for (i = 0; i < (sizeof(priv->yk_pin) / sizeof(*priv->yk_pin) - 1); i++) {
-		if (priv->yk_pin[i].slot == 0x00)
+	for (i = 0; i < (PIV_NUM_YK_SLOT_INFO - 1); i++) {
+		if (priv->yk_slot_info[i].slot == 0x00)
 			/* reached the last initialized entry */
 			break;
 
-		if (priv->yk_pin[i].slot == slot)
+		if (priv->yk_slot_info[i].slot == slot) {
 			/* metadata already initialized */
+			if (priv->yk_slot_info[i].invalid)
+				/* already failed don't try again */
+				return SC_ERROR_NOT_SUPPORTED;
 			break;
+		}
 	}
 
-	if (priv->yk_pin[i].slot == 0x00) {
+	if (priv->yk_slot_info[i].slot == 0x00) {
 		/* initialize this entry */
-		sc_format_apdu_ex(&apdu, 0x00, 0xF7, 0x00, slot, NULL, 0, resp, sizeof resp);
-		if (SC_SUCCESS == sc_transmit_apdu(card, &apdu) && SC_SUCCESS == sc_check_sw(card, apdu.sw1, apdu.sw2) && SC_SUCCESS == piv_yk_metadata_get_policy(card->ctx, resp, apdu.resplen, &priv->yk_pin[i].policy, &priv->yk_pin[i].touch)) {
-			sc_log(card->ctx, "PIN policy for slot 0x%02X: 0x%02X (touch 0x%02X)",
-					slot, priv->yk_pin[i].policy, priv->yk_pin[i].touch);
-			priv->yk_pin[i].slot = slot;
+		rc = piv_general_io(card, 0xF7, 0x00, slot, NULL, 0, resp, sizeof(resp));
+
+		if (rc >= 0) { /* set defaults */
+			priv->yk_slot_info[i].slot = slot;
+		}
+
+		if (rc > 2) { /* at least 1 TLV */
+			resplen = rc;
+			rc = piv_yk_metadata_get_policy(card->ctx, resp, resplen,
+					&priv->yk_slot_info[i].policy, &priv->yk_slot_info[i].touch);
+			if (SC_SUCCESS == rc) {
+				sc_log(card->ctx, "PIN policy for slot 0x%02X: 0x%02X (touch 0x%02X)",
+						slot, priv->yk_slot_info[i].policy, priv->yk_slot_info[i].touch);
+			}
+			rc = piv_yk_metadata_get_pubkey_info(card->ctx, resp, resplen, &priv->yk_slot_info[i]);
+			if (SC_SUCCESS == rc) {
+				sc_log(card->ctx, "Public key for slot 0x%02X: present", slot);
+			}
 		} else {
 			sc_log(card->ctx, "Could not get Yubikey's PIN and touch policy");
-			return SC_ERROR_INVALID_DATA;
+			priv->yk_slot_info[i].invalid = 1;
+			return SC_ERROR_NOT_SUPPORTED;
 		}
-	} else if (priv->yk_pin[i].slot != slot) {
+	} else if (priv->yk_slot_info[i].slot != slot) {
 		sc_log(card->ctx, "No free slot found");
 		return SC_ERROR_INTERNAL;
 	}
 
 	if (pin_policy)
-		*pin_policy = priv->yk_pin[i].policy;
+		*pin_policy = priv->yk_slot_info[i].policy;
 	if (touch_policy)
-		*touch_policy = priv->yk_pin[i].touch;
+		*touch_policy = priv->yk_slot_info[i].touch;
+	if (info) {
+		info->algorithm = priv->yk_slot_info[i].algorithm;
+		info->pubkey.value = priv->yk_slot_info[i].pubkey.value;
+		info->pubkey.len = priv->yk_slot_info[i].pubkey.len;
+	}
 
 	return SC_SUCCESS;
 }
@@ -4557,7 +4631,22 @@ static int
 piv_yk_pin_policy(sc_card_t *card, u8 *ptr)
 {
 	u8 slot = *ptr;
-	LOG_FUNC_RETURN(card->ctx, piv_yk_get_metadata(card, slot, ptr, NULL));
+	LOG_FUNC_RETURN(card->ctx, piv_yk_get_metadata(card, slot, ptr, NULL, NULL));
+}
+
+static int
+piv_yk_get_pubkey(sc_card_t *card, sc_cardctl_piv_pubkey_info_t *info)
+{
+	int rc;
+	u8 slot = info->slot;
+
+	rc = piv_yk_get_metadata(card, slot, NULL, NULL, info);
+	LOG_TEST_RET(card->ctx, rc, "piv_yk_get_metadata failed");
+	if (info->pubkey.value == NULL || info->pubkey.len == 0 || info->algorithm == 0) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_DATA_OBJECT_NOT_FOUND);
+	}
+
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 static int
@@ -4600,6 +4689,9 @@ piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 		break;
 	case SC_CARDCTL_PIV_YK_PIN_POLICY:
 		return piv_yk_pin_policy(card, ptr);
+		break;
+	case SC_CARDCTL_PIV_YK_GET_PUBKEY_INFO:
+		return piv_yk_get_pubkey(card, ptr);
 		break;
 	}
 
@@ -4724,7 +4816,7 @@ piv_yk_notify_touch_policy(sc_card_t *card, u8 key_ref)
 	u8 touch_policy;
 	const char *title = "Touch your Yubikey to continue";
 
-	piv_yk_get_metadata(card, key_ref, NULL, &touch_policy);
+	piv_yk_get_metadata(card, key_ref, NULL, &touch_policy, NULL);
 	switch (touch_policy) {
 	case 0x02:
 		sc_notify(title, "Touching the token is required for unlocking the key");
@@ -4839,6 +4931,9 @@ piv_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 {
 	piv_private_data_t *priv = PIV_DATA(card);
 	int r;
+	u8 *ecdata = NULL;
+	size_t ecdatalen = 0;
+	size_t ecpadlen = 0;
 	size_t nLen;
 	u8 rbuf[128]; /* For EC conversions  384 will fit */
 
@@ -4853,6 +4948,28 @@ piv_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 
 	if (priv->alg_id == 0x11 || priv->alg_id == 0x14) {
 		nLen = BYTES4BITS(priv->key_size);
+
+		/* One applet is known to enforce the hash size
+		 * must match the field_length in bytes. But Windows
+		 * may try ECDSA without a hash when offline
+		 * So we will pad input to hash size.
+		 */
+		if (priv->card_issues & CI_ENFORCES_EC_HASH_EQ_KEYSIZE &&
+				!strcmp(card->ctx->app_name, "cardmod") &&
+				(datalen < nLen)) {
+			ecpadlen = nLen - datalen;
+		} else {
+			ecpadlen = 0;
+		}
+
+		ecdatalen = datalen + ecpadlen;
+		ecdata = calloc(ecdatalen, sizeof(u8));
+		if (ecdata == NULL) {
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
+		}
+		memcpy(ecdata + ecpadlen, data, datalen);
+
 		if (outlen < 2 * nLen) {
 			sc_log(card->ctx, " output too small for EC signature %zu < %zu",
 					outlen, 2 * nLen);
@@ -4860,7 +4977,7 @@ piv_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 			goto err;
 		}
 
-		r = piv_validate_general_authentication(card, data, datalen, rbuf, sizeof rbuf);
+		r = piv_validate_general_authentication(card, ecdata, ecdatalen, rbuf, sizeof rbuf);
 		if (r < 0)
 			goto err;
 
@@ -4881,6 +4998,7 @@ piv_compute_signature(sc_card_t *card, const u8 *data, size_t datalen,
 	}
 
 err:
+	free(ecdata);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
@@ -5491,6 +5609,9 @@ piv_finish(sc_card_t *card)
 		for (i = 0; i < PIV_OBJ_LAST_ENUM - 1; i++) {
 			piv_obj_cache_free_entry(card, i, 0);
 		}
+		for (i = 0; i < PIV_NUM_YK_SLOT_INFO; i++) {
+			free(priv->yk_slot_info[i].pubkey.value);
+		}
 #ifdef ENABLE_PIV_SM
 		piv_clear_cvc_content(&priv->sm_cvc);
 		piv_clear_cvc_content(&priv->sm_in_cvc);
@@ -5530,6 +5651,7 @@ piv_match_card(sc_card_t *card)
 	case SC_CARD_TYPE_PIV_II_NITROKEY:
 	case SC_CARD_TYPE_PIV_II_TOKEN2:
 	case SC_CARD_TYPE_PIV_II_PIVAPPLET:
+	case SC_CARD_TYPE_PIV_II_OPENFIPS201:
 		break;
 	default:
 		return 0; /* can not handle the card */
@@ -5584,6 +5706,8 @@ piv_match_card_continued(sc_card_t *card)
 	case SC_CARD_TYPE_PIV_II_NITROKEY:
 	case SC_CARD_TYPE_PIV_II_TOKEN2:
 	case SC_CARD_TYPE_PIV_II_PIVAPPLET:
+	case SC_CARD_TYPE_PIV_II_OPENFIPS201:
+
 		type = card->type;
 		break;
 	default:
@@ -5769,6 +5893,7 @@ piv_match_card_continued(sc_card_t *card)
 	case SC_CARD_TYPE_PIV_II_NITROKEY:
 	case SC_CARD_TYPE_PIV_II_TOKEN2:
 	case SC_CARD_TYPE_PIV_II_PIVAPPLET:
+	case SC_CARD_TYPE_PIV_II_OPENFIPS201:
 	case SC_CARD_TYPE_PIV_II_GENERIC:
 	case SC_CARD_TYPE_PIV_II_BASE: /* unknown PIV card */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xFD, 0x00, 0x00);
@@ -5782,6 +5907,10 @@ piv_match_card_continued(sc_card_t *card)
 		if (r2 == SC_SUCCESS && apdu.resplen == 3) {
 			priv->yubico_version = (yubico_version_buf[0] << 16) | (yubico_version_buf[1] << 8) | yubico_version_buf[2];
 			sc_log(card->ctx, "Yubikey version test card->type=%d, r=0x%08x version=0x%08x", card->type, r, priv->yubico_version);
+			if (priv->yubico_version == 1) {
+				sc_log(card->ctx, "Detected Alpha/development version of yubikey. Assuming v6");
+				priv->yubico_version = 0x060000;
+			}
 		}
 		break;
 	}
@@ -5856,6 +5985,8 @@ piv_match_card_continued(sc_card_t *card)
 		case SC_CARD_TYPE_PIV_II_NITROKEY:
 		case SC_CARD_TYPE_PIV_II_TOKEN2:
 		case SC_CARD_TYPE_PIV_II_PIVAPPLET:
+		case SC_CARD_TYPE_PIV_II_OPENFIPS201:
+
 			r2 = piv_find_aid(card);
 		}
 	}
@@ -5914,6 +6045,13 @@ piv_match_card_continued(sc_card_t *card)
 				     CI_NFC_EXPOSE_TOO_MUCH;
 		if (priv->yubico_version < 0x00040302)
 			priv->card_issues |= CI_VERIFY_LC0_FAIL;
+		break;
+
+	case SC_CARD_TYPE_PIV_II_OPENFIPS201:
+		/* also supports using yubico-piv-tool */
+		priv->card_issues |= CI_ENFORCES_EC_HASH_EQ_KEYSIZE |
+				     CI_OTHER_AID_LOSE_STATE |
+				     CI_LEAKS_FILE_NOT_FOUND;
 		break;
 
 	case SC_CARD_TYPE_PIV_II_YUBIKEY4:

@@ -52,6 +52,9 @@
 #define FLAGS_WRAP_SYM		0x040
 #define FLAGS_UNWRAP		0x080
 #define FLAGS_UNWRAP_SYM	0x100
+#define FLAGS_KEM		0x200
+#define FLAGS_KEM_OPENSSL	0x400
+#define FLAGS_KEM_ANY		(FLAGS_KEM | FLAGS_KEM_OPENSSL)
 
 typedef struct {
 	char *outfile;
@@ -76,7 +79,7 @@ typedef struct {
 } test_mech_t;
 
 typedef struct {
-	CK_FUNCTION_LIST_PTR function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR function_pointer;
 	CK_SLOT_ID slot_id;
 	CK_SESSION_HANDLE session_handle;
 	CK_UTF8CHAR* pin;

@@ -153,6 +153,8 @@ static BOOL AddNotificationIcon(void)
 	NOTIFYICONDATA nid = {0};
 	TCHAR path[MAX_PATH]={0};
 	BOOL r;
+	HMODULE hComctl = NULL;
+	HRESULT(WINAPI * pfnLoadIconMetric)(HINSTANCE, PCWSTR, int, HICON *) = NULL;
 
 	sc_notify_hwnd = create_invisible_window(lpszClassName, WndProc,
 			sc_notify_instance);
@@ -160,14 +162,20 @@ static BOOL AddNotificationIcon(void)
 		return FALSE;
 	}
 
+	if (NULL == (hComctl = LoadLibraryA("comctl32.dll")) || NULL == (pfnLoadIconMetric = (HRESULT(WINAPI *)(HINSTANCE, PCWSTR, int, HICON *))(void (*)(void))GetProcAddress(hComctl, "LoadIconMetric")) || S_OK != pfnLoadIconMetric(sc_notify_instance, MAKEINTRESOURCEW(IDI_SMARTCARD), LIM_SMALL, &nid.hIcon)) {
+		nid.hIcon = (HICON)LoadImage(sc_notify_instance, MAKEINTRESOURCE(IDI_SMARTCARD), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
+	}
+	if (hComctl) {
+		FreeLibrary(hComctl);
+	}
+
 	nid.cbSize = sizeof(NOTIFYICONDATA);
 	nid.hWnd = sc_notify_hwnd;
 	// add the icon, setting the icon, tooltip, and callback message.
 	// the icon will be identified with the GUID
 	nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE | NIF_SHOWTIP | NIF_GUID;
-	nid.guidItem = myGUID; 
+	nid.guidItem = myGUID;
 	nid.uCallbackMessage = WMAPP_NOTIFYCALLBACK;
-	LoadIconMetric(sc_notify_instance, MAKEINTRESOURCEW(IDI_SMARTCARD), LIM_SMALL, &nid.hIcon);
 	if (GetModuleFileName(NULL, path, ARRAYSIZE(path))) {
 		const char *basename = strrchr(path, '\\');
 		if (basename) {

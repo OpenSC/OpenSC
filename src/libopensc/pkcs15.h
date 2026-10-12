@@ -722,6 +722,8 @@ int sc_pkcs15_pubkey_from_cert(struct sc_context *, struct sc_pkcs15_der *,
 		struct sc_pkcs15_pubkey **);
 int sc_pkcs15_pubkey_from_spki_file(struct sc_context *,
 		char *, struct sc_pkcs15_pubkey ** );
+int sc_pkcs15_pubkey_from_spki_sequence(struct sc_context *,
+		const unsigned char *, size_t, struct sc_pkcs15_pubkey **);
 int sc_pkcs15_pubkey_from_spki_fields(struct sc_context *,
 		struct sc_pkcs15_pubkey **, u8 *, size_t, int);
 int sc_pkcs15_encode_prkey(struct sc_context *,
@@ -892,6 +894,9 @@ int sc_pkcs15_decode_skdf_entry(struct sc_pkcs15_card *p15card,
 				 struct sc_pkcs15_object *obj,
 				 const u8 **buf, size_t *bufsize);
 
+/* `obj` is copied to `p15card` including all buffers contained within `obj`.
+ * On `SC_SUCCESS`, those buffers are set to `NULL` to avoid duplicate
+ * references */
 int sc_pkcs15_add_object(struct sc_pkcs15_card *p15card,
 			 struct sc_pkcs15_object *obj);
 void sc_pkcs15_remove_object(struct sc_pkcs15_card *p15card,

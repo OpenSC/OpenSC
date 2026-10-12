@@ -24,7 +24,6 @@
 
 #include <memory.h>
 #include <stdio.h>
-#include <assert.h>
 
 #include "libopensc/muscle-filesystem.h"
 #include "libopensc/errors.h"

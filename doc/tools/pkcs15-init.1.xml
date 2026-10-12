@@ -763,18 +763,6 @@
 
 				<varlistentry>
 					<term>
-						<option>--output-file</option> <replaceable>filename</replaceable>
-						<option>-o</option> <replaceable>filename</replaceable>,
-					</term>
-					<listitem>
-						<para>
-							Output public portion of generated key to file
-						</para>
-					</listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
 						<option>--passphrase</option> <replaceable>PASSPHRASE</replaceable>
 					</term>
 					<listitem>

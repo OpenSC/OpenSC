@@ -25,7 +25,6 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <stdarg.h>
 
 #include "../libopensc/log.h"
@@ -80,12 +79,12 @@ gids_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_objec
                     sc_pkcs15_prkey_t *key)
 {
 	sc_card_t *card = p15card->card;
-	
+
 	struct sc_cardctl_gids_importkey call = {object, key};
 	LOG_FUNC_RETURN(card->ctx, sc_card_ctl(card, SC_CARDCTL_GIDS_IMPORT_KEY, &call));
 }
 
-static int 
+static int
 gids_delete_object(struct sc_profile *profile, struct sc_pkcs15_card * p15card,
 			struct sc_pkcs15_object *object, const struct sc_path *path) {
 	sc_card_t *card = p15card->card;

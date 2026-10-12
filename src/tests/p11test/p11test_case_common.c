@@ -1177,7 +1177,7 @@ int search_objects(test_certs_t *objects, token_info_t *info,
 	int (*callback)(test_certs_t *, CK_ATTRIBUTE[], unsigned long, CK_OBJECT_HANDLE))
 {
 	CK_RV rv;
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_ULONG object_count;
 	CK_OBJECT_HANDLE object_handle = CK_INVALID_HANDLE;
 	CK_OBJECT_HANDLE_PTR object_handles = NULL;
@@ -1820,6 +1820,6 @@ int is_pss_mechanism(CK_MECHANISM_TYPE mech)
 CK_RV
 destroy_tmp_object(token_info_t *info, CK_OBJECT_HANDLE h)
 {
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	return fp->C_DestroyObject(info->session_handle, h);
 }

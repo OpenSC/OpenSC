@@ -112,15 +112,6 @@
 
 				<varlistentry>
 					<term>
-						<option>--pubkey-file</option> <replaceable>id</replaceable>,
-						<option>-u</option> <replaceable>id</replaceable>
-					</term>
-					<listitem><para>Specifies the public key file id, <replaceable>id</replaceable>,
-					to use</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
 						<option>--read-key</option>,
 						<option>-R</option>
 					</term>

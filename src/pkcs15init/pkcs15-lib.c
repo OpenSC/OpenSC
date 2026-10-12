@@ -44,7 +44,6 @@
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
 #endif
-#include <assert.h>
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
 #include <openssl/bn.h>
@@ -1578,9 +1577,13 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
 
-	r = _pkcd15init_set_aux_md_data(p15card, &key_info->aux_data,
-			keygen_args->prkey_args.guid, keygen_args->prkey_args.guid_len);
-	LOG_TEST_GOTO_ERR(ctx, r, "Failed to set aux MD data");
+	if (keygen_args->prkey_args.guid) {
+		r = _pkcd15init_set_aux_md_data(p15card, &key_info->aux_data,
+				keygen_args->prkey_args.guid, keygen_args->prkey_args.guid_len);
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to set aux MD data");
+	} else {
+		key_info->aux_data = keygen_args->prkey_args.aux_data;
+	}
 
 	/* Set up the PuKDF info. The public key will be filled in
 	 * by the card driver's generate_key function called below.
@@ -3968,6 +3971,18 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 	if (!r && pin_obj)   {
 		memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
 		sc_log(ctx, "found PIN object '%.*s'", (int) sizeof pin_obj->label, pin_obj->label);
+
+		/* Check if the PIN has been already verified and the access condition
+		 * is still open on card to avoid needless card operations and user
+		 * prompts. */
+		if (pinsize == 0) {
+			r = sc_pkcs15_get_pin_info(p15card, pin_obj);
+			/* update local copy of auth info */
+			memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
+
+			if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN)
+				LOG_FUNC_RETURN(ctx, r);
+		}
 	}
 
 	if (pin_obj)   {
@@ -4019,23 +4034,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 	}
 
 found:
-	if (pin_obj)   {
-		/*
-		 * If pin cache is disabled or the reader is using pinpad, we can get here
-		 * with no PIN data. This is ok as we can not asynchronously invoke the prompt
-		 * (unless the pinpad is in use).
-		 * In this case, check if the PIN has been already verified and
-		 * the access condition is still open on card.
-		 */
-		if (pinsize == 0) {
-			r = sc_pkcs15_get_pin_info(p15card, pin_obj);
-			/* update local copy of auth info */
-			memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
-
-			if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN)
-				LOG_FUNC_RETURN(ctx, r);
-		}
-
+	if (pin_obj) {
 		r = sc_pkcs15_verify_pin(p15card, pin_obj, use_pinpad || pinsize == 0 ? NULL : pinbuf, use_pinpad ? 0 : pinsize);
 		LOG_TEST_RET(ctx, r, "Cannot validate pkcs15 PIN");
 	}

@@ -23,7 +23,7 @@
 void wait_test(void **state) {
 
 	token_info_t *info = (token_info_t *) *state;
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_RV rv;
 	CK_SLOT_ID slot_id;
 	CK_SLOT_INFO slot_info;

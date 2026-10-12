@@ -25,7 +25,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>

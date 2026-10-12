@@ -25,7 +25,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 #include <ctype.h>
 
 #include "cardctl.h"
@@ -1690,11 +1689,12 @@ compare_obj_key(struct sc_pkcs15_object *obj, void *arg)
 		return 0;
 	if (sk->path && !compare_obj_path(obj, sk->path))
 		return 0;
-	if (
-		sk->app_label && sk->label &&
-		!compare_obj_data_name(obj, sk->app_label, sk->label)
-	) {
-		return 0;
+	if (sk->app_label) {
+		if (sk->label && !compare_obj_data_name(obj, sk->app_label, sk->label))
+			return 0;
+	} else {
+		if (sk->label && strncmp(sk->label, obj->label, sizeof(obj->label)) != 0)
+			return 0;
 	}
 
 	return 1;

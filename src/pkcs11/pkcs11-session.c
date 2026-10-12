@@ -143,11 +143,12 @@ CK_RV sc_pkcs11_close_all_sessions(CK_SLOT_ID slotID)
 	struct sc_pkcs11_session *session;
 	unsigned int i;
 	sc_log(context, "real C_CloseAllSessions(0x%lx) %d", slotID, list_size(&sessions));
-	for (i = 0; i < list_size(&sessions); i++) {
-		session = list_get_at(&sessions, i);
-		if (session->slot->id == slotID)
+	for (i = list_size(&sessions); i > 0; i--) {
+		session = list_get_at(&sessions, i - 1);
+		if (session && session->slot && session->slot->id == slotID) {
 			if ((error = sc_pkcs11_close_session(session->handle)) != CKR_OK)
 				rv = error;
+		}
 	}
 	return rv;
 }

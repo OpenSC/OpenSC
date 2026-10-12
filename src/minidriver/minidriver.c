@@ -20,7 +20,9 @@
  */
 
 /*
- * This module requires "cardmod.h" from CNG SDK or platform SDK to build.
+ * This module requires "cardmod.h" from the Microsoft Cryptographic Provider
+ * Development Kit (CPDK) to build. It is not part of the Windows SDK, WDK or
+ * EWDK. See win32/Make.rules.mak (CPDK_INCL_DIR) for the install location.
  */
 
 #include "config.h"
@@ -3070,6 +3072,8 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	int rv = 0;
 	BOOL checked, user_checked;
 	VENDOR_SPECIFIC* pv = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
+	static HMODULE hComctl = NULL;
+	HRESULT(WINAPI * pfnTaskDialogIndirect)(const TASKDIALOGCONFIG *, int *, int *, BOOL *) = NULL;
 
 	/* stack the parameters */
 	parameter[0] = (LONG_PTR)operation;
@@ -3086,6 +3090,12 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	parameter[11] = 0; /* place holder for end of timer */
 
 	/* launch the function to perform in the same thread context */
+	if (displayUI) {
+		if (NULL == (hComctl = LoadLibraryA("comctl32.dll")) || NULL == (pfnTaskDialogIndirect = (HRESULT(WINAPI *)(const TASKDIALOGCONFIG *, int *, int *, BOOL *))(void (*)(void))GetProcAddress(hComctl, "TaskDialogIndirect"))) {
+			displayUI = FALSE;
+		}
+	}
+
 	if (!displayUI) {
 		rv = md_dialog_perform_pin_operation_thread(parameter);
 		SecureZeroMemory(parameter, sizeof(parameter));
@@ -3159,7 +3169,7 @@ md_dialog_perform_pin_operation(PCARD_DATA pCardData, int operation, struct sc_p
 	tc.lpCallbackData = (LONG_PTR)parameter;
 	tc.cbSize = sizeof(tc);
 
-	result = TaskDialogIndirect(&tc, NULL, NULL, &user_checked);
+	result = pfnTaskDialogIndirect(&tc, NULL, NULL, &user_checked);
 
 	if (user_checked != checked) {
 		if (pv && pv->ctx && pv->ctx->exe_path) {
@@ -4940,6 +4950,48 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 				logprintf(pCardData, 0, "unsupported paddingtype\n");
 				dwret = SCARD_E_INVALID_PARAMETER;
 				goto err;
+		}
+	}
+
+	/* Check if the selected padding algorithm is supported */
+	sc_algorithm_info_t *alg_info = NULL;
+	if (prkey_info->modulus_length > 0) {
+		alg_info = sc_card_find_rsa_alg(vs->p15card->card, (unsigned int) prkey_info->modulus_length);
+	} else if (prkey_info->field_length > 0) {
+		alg_info = sc_card_find_ec_alg(vs->p15card->card, prkey_info->field_length, NULL);
+	}
+
+	if (!alg_info) {
+		logprintf(pCardData, 2, "Cannot get appropriate card algorithm for key\n");
+		dwret = SCARD_E_UNSUPPORTED_FEATURE;
+		goto err;
+	}
+
+	if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PSS) {
+		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PSS)) {
+#ifdef ENABLE_OPENSSL
+			if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+				logprintf(pCardData, 2, "PSS padding requires native PSS or RAW RSA support\n");
+				dwret = SCARD_E_UNSUPPORTED_FEATURE;
+				goto err;
+			}
+#else
+			logprintf(pCardData, 2, "PSS padding requires native PSS support\n");
+			dwret = SCARD_E_UNSUPPORTED_FEATURE;
+			goto err;
+#endif
+		}
+	} else if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01) {
+		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1) && !(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+			logprintf(pCardData, 2, "PKCS1 padding requires native PKCS1 or RAW RSA support\n");
+			dwret = SCARD_E_UNSUPPORTED_FEATURE;
+			goto err;
+		}
+	} else if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_NONE) {
+		if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+			logprintf(pCardData, 2, "No padding requires RAW RSA support\n");
+			dwret = SCARD_E_UNSUPPORTED_FEATURE;
+			goto err;
 		}
 	}
 

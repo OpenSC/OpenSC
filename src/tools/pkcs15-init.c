@@ -34,7 +34,6 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdarg.h>
-#include <assert.h>
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
@@ -58,6 +57,7 @@
 #ifndef OPENSSL_NO_EC
 #include <openssl/ec.h>
 #endif /* OPENSSL_NO_EC */
+#include <assert.h>
 
 #include "common/compat_strlcpy.h"
 #include "libopensc/internal.h"
@@ -193,7 +193,6 @@ const struct option	options[] = {
 	{ "application-name",	required_argument, NULL,	OPT_APPLICATION_NAME },
 	{ "application-id",	required_argument, NULL,	OPT_APPLICATION_ID },
 	{ "aid",		required_argument, NULL,        OPT_BIND_TO_AID },
-	{ "output-file",	required_argument, NULL,	'o' },
 	{ "format",		required_argument, NULL,	'f' },
 	{ "passphrase",		required_argument, NULL,	OPT_PASSPHRASE },
 	{ "authority",		no_argument,	   NULL,	OPT_AUTHORITY },
@@ -259,7 +258,6 @@ static const char *		option_help[] = {
 	"Specify application name of data object (use with --store-data-object)",
 	"Specify application id of data object (use with --store-data-object)",
 	"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
-	"Output public portion of generated key to file",
 	"Specify key/cert file format: PEM (=default), DER or PKCS12",
 	"Specify passphrase for unlocking secret key",
 	"Mark certificate as a CA certificate",
@@ -283,6 +281,7 @@ static const char *		option_help[] = {
 	"Display this message",
 	"Verbose operation, may be used several times",
 
+	NULL,
 	NULL,
 	NULL,
 };
@@ -378,7 +377,6 @@ static char *			pins[4];
 static char *			opt_serial = NULL;
 static const char *		opt_passphrase = NULL;
 static char *			opt_newkey = NULL;
-static char *			opt_outkey = NULL;
 static char *			opt_application_id = NULL;
 static char *			opt_application_name = NULL;
 static char *			opt_bind_to_aid = NULL;
@@ -452,6 +450,9 @@ main(int argc, char **argv)
 	int					r = 0;
 	struct sc_pkcs15_card *tmp_p15_data = NULL;
 
+	static_assert(sizeof(options) / sizeof(options[0]) == sizeof(option_help) / sizeof(option_help[0]),
+			"Inconsistent size of the options and options_help structures!");
+
 #ifdef RANDOM_POOL
 	if (!RAND_load_file(RANDOM_POOL, 32))
 		util_fatal("Unable to seed random number pool for key generation");
@@ -516,7 +517,9 @@ main(int argc, char **argv)
 				r = sc_pkcs15_bind(g_card, &aid, &g_p15card);
 			}
 			else   {
-				r = sc_pkcs15_bind(g_card, NULL, &g_p15card);
+				struct sc_app_info *app_generic = sc_pkcs15_get_application_by_type(g_card, "generic");
+				struct sc_aid *aid = app_generic ? &app_generic->aid : NULL;
+				r = sc_pkcs15_bind(g_card, aid, &g_p15card);
 			}
 			if (r) {
 				fprintf(stderr, "PKCS#15 binding failed: %s\n", sc_strerror(r));
@@ -749,7 +752,7 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 {
 	int i, types_idx = -1, algorithm = -1;
 	unsigned int user_keybits = 0;
-	char *end;
+	char *end = NULL;
 
 	for (i = 0; types[i].spec; i++) {
 		if (!strncasecmp(spec, types[i].spec, strlen(types[i].spec))) {
@@ -783,7 +786,7 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 			if ((prkey->u.ec.params.named_curve = strdup(types[types_idx].spec)) == NULL) /* copy correct case */
 				return SC_ERROR_OUT_OF_MEMORY;
 			user_keybits = (unsigned)strtoul(spec, &end, 10);
-			if (*end) {
+			if (end == NULL || *end) {
 				util_error("Invalid number of key bits \"%s\"", spec);
 				return SC_ERROR_INVALID_ARGUMENTS;
 			}
@@ -793,7 +796,7 @@ parse_alg_spec(const struct alg_spec *types, const char *spec, unsigned int *key
 			}
 		} else { /* rsa or symmetric key */
 			*keybits = (unsigned)strtoul(spec, &end, 10);
-			if (*end) {
+			if (end == NULL || *end) {
 				util_error("Invalid number of key bits \"%s\"", spec);
 				return SC_ERROR_INVALID_ARGUMENTS;
 			}
@@ -2851,9 +2854,6 @@ handle_option(const struct option *opt)
 		break;
 	case 'l':
 		opt_label = optarg;
-		break;
-	case 'o':
-		opt_outkey = optarg;
 		break;
 	case 'p':
 		opt_profile = optarg;

@@ -274,6 +274,8 @@ srbeid_enum_certs(sc_card_t *card, cert_entry_t **certs_out)
 					goto out;
 				}
 				certs = tmp;
+				/* realloc() leaves the new tail uninitialised */
+				memset(certs + cap, 0, (size_t)cap * sizeof(cert_entry_t));
 				cap *= 2;
 			}
 

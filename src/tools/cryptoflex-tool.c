@@ -52,7 +52,7 @@ static int opt_key_count = 1;
 static int opt_pin_attempts = 10;
 static int opt_puk_attempts = 10;
 
-static const char *opt_appdf = NULL, *opt_prkeyf = NULL, *opt_pubkeyf = NULL;
+static const char *opt_appdf = NULL, *opt_prkeyf = NULL;
 static u8 *pincode = NULL;
 
 static const struct option options[] = {
@@ -65,7 +65,6 @@ static const struct option options[] = {
 	{ "key-num",		1, NULL,		'k' },
 	{ "app-df",		1, NULL,		'a' },
 	{ "prkey-file",		1, NULL,		'p' },
-	{ "pubkey-file",	1, NULL,		'u' },
 	{ "exponent",		1, NULL,		'e' },
 	{ "modulus-length",	1, NULL,		'm' },
 	{ "reader",		1, NULL,		'r' },
@@ -84,7 +83,6 @@ static const char *option_help[] = {
 	"Selects which key number to operate on [1]",
 	"Selects the DF to operate in",
 	"Private key file",
-	"Public key file",
 	"The RSA exponent to use in key generation [3]",
 	"Modulus length to use in key generation [1024]",
 	"Uses reader <arg>",
@@ -1213,7 +1211,7 @@ int main(int argc, char *argv[])
 	sc_context_param_t ctx_param;
 
 	while (1) {
-		c = getopt_long(argc, argv, "P:Vslgc:Rk:r:p:u:e:m:vwa:", options, &long_optind);
+		c = getopt_long(argc, argv, "P:Vslgc:Rk:r:p:e:m:vwa:", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
@@ -1263,9 +1261,6 @@ int main(int argc, char *argv[])
 			break;
 		case 'p':
 			opt_prkeyf = optarg;
-			break;
-		case 'u':
-			opt_pubkeyf = optarg;
 			break;
 		case 'r':
 			opt_reader = optarg;
