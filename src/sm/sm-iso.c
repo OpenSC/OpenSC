@@ -60,7 +60,10 @@ add_iso_pad(const u8 *data, size_t datalen, size_t block_size, u8 **padded)
 	u8 *p;
 	int p_len;
 
-	if (!padded)
+	if (!padded || block_size == 0 || (datalen > 0 && !data))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (datalen > INT_MAX - block_size)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* calculate length of padded message */
@@ -87,6 +90,9 @@ add_padding(const struct iso_sm_ctx *ctx, const u8 *data, size_t datalen,
 		u8 **padded)
 {
 	u8 *p;
+
+	if (!ctx || !padded || (datalen > 0 && !data))
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	switch (ctx->padding_indicator) {
 		case SM_NO_PADDING:
@@ -181,7 +187,12 @@ static int format_le(size_t le, struct sc_asn1_entry *le_entry,
 static int prefix_buf(u8 prefix, u8 *buf, size_t buflen, u8 **cat)
 {
 	u8 *p = NULL;
-	int ptr_same = *cat == buf;
+	int ptr_same;
+
+	if (!cat || (buflen > 0 && !buf) || buflen > SIZE_MAX - 1)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	ptr_same = *cat == buf;
 
 	p = realloc(*cat, buflen + 1);
 	if (!p)
@@ -285,7 +296,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	int r;
 	sc_apdu_t *sm_apdu = NULL;
 
-	if (!apdu || !ctx || !card || !card->reader || !psm_apdu) {
+	if (!apdu || !ctx || !card || !card->reader || !psm_apdu || !ctx->encrypt || !ctx->authenticate || ctx->block_length == 0) {
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto err;
 	}
@@ -518,9 +529,12 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	struct sc_asn1_entry my_sm_rapdu[5];
 	u8 sw[2], mac[8], fdata[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t sw_len = sizeof sw, mac_len = sizeof mac, fdata_len = sizeof fdata,
-		   buf_len, asn1_len, fdata_offset = 0;
+		   buf_len = 0, asn1_len, fdata_offset = 0;
 	const u8 *buf;
 	u8 *data = NULL, *mac_data = NULL, *asn1 = NULL;
+
+	if (!ctx || !sm_apdu || !apdu || !sm_apdu->resp || !ctx->verify_authentication || !ctx->decrypt)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	sc_copy_asn1_entry(c_sm_rapdu, sm_rapdu);
 	sc_format_asn1_entry(sm_rapdu + 0, fdata, &fdata_len, 0);
@@ -563,7 +577,7 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 
 
 	if (sm_rapdu[1].flags & SC_ASN1_PRESENT) {
-		if (ctx->padding_indicator != fdata[0]) {
+		if (fdata_len < 1 || ctx->padding_indicator != fdata[0]) {
 			r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
 			goto err;
 		}
@@ -571,6 +585,10 @@ static int sm_decrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 	}
 	if (sm_rapdu[0].flags & SC_ASN1_PRESENT
 			|| sm_rapdu[1].flags & SC_ASN1_PRESENT) {
+		if (fdata_len < fdata_offset) {
+			r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+			goto err;
+		}
 		r = ctx->decrypt(card, ctx, fdata + fdata_offset,
 				fdata_len - fdata_offset, &data);
 		if (r < 0)
@@ -630,7 +648,7 @@ err:
 static int iso_add_sm(struct iso_sm_ctx *sctx, sc_card_t *card,
 		sc_apdu_t *apdu, sc_apdu_t **sm_apdu)
 {
-	if (!card || !sctx)
+	if (!card || !sctx || !apdu || !sm_apdu)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if ((apdu->cla & 0x0C) == 0x0C) {
@@ -652,9 +670,8 @@ static int iso_add_sm(struct iso_sm_ctx *sctx, sc_card_t *card,
 static int iso_rm_sm(struct iso_sm_ctx *sctx, sc_card_t *card,
 		sc_apdu_t *sm_apdu, sc_apdu_t *apdu)
 {
-	if (!sctx)
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
-			"Invalid SM context. No SM processing performed.");
+	if (!sctx || !card || !sm_apdu || !apdu)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (sctx->post_transmit)
 		LOG_TEST_RET(card->ctx, sctx->post_transmit(card, sctx, sm_apdu),
