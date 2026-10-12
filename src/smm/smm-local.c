@@ -57,15 +57,19 @@ static int
 sm_gp_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 {
 	scconf_block *sm_conf_block = NULL, **blocks;
-	struct sm_gp_keyset *gp_keyset = &sm_info->session.gp.gp_keyset;
-
+	struct sm_gp_keyset *gp_keyset;
 	const char *kmc = NULL;
 	unsigned char hex[48];
 	size_t hex_len = sizeof(hex);
 	int rv, ii;
 
+	if (!sm_info)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	gp_keyset = &sm_info->session.gp.gp_keyset;
+
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM get KMC from config section '%s'", sm_info->config_section);
-	for (ii = 0; ctx->conf_blocks[ii]; ii++) {
+	for (ii = 0; ctx->conf_blocks && ctx->conf_blocks[ii]; ii++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[ii], "secure_messaging", sm_info->config_section);
 		if (blocks) {
 			sm_conf_block = blocks[0];
@@ -101,17 +105,25 @@ sm_gp_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 static int
 sm_cwa_config_get_keyset(struct sc_context *ctx, struct sm_info *sm_info)
 {
-	struct sm_cwa_session *cwa_session = &sm_info->session.cwa;
-	struct sm_cwa_keyset *cwa_keyset = &sm_info->session.cwa.cwa_keyset;
+	struct sm_cwa_session *cwa_session;
+	struct sm_cwa_keyset *cwa_keyset;
 	scconf_block *sm_conf_block = NULL, **blocks;
-	struct sc_crt *crt_at = &sm_info->session.cwa.params.crt_at;
+	struct sc_crt *crt_at;
 	const char *value = NULL;
 	char name[128];
 	unsigned char hex[48];
 	size_t hex_len = sizeof(hex);
-	int rv, ii, ref = crt_at->refs[0] & IASECC_OBJECT_REF_MAX;
+	int rv, ii, ref;
 
-	for (ii = 0; ctx->conf_blocks[ii]; ii++) {
+	if (!sm_info)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	cwa_session = &sm_info->session.cwa;
+	cwa_keyset = &sm_info->session.cwa.cwa_keyset;
+	crt_at = &sm_info->session.cwa.params.crt_at;
+	ref = crt_at->refs[0] & IASECC_OBJECT_REF_MAX;
+
+	for (ii = 0; ctx->conf_blocks && ctx->conf_blocks[ii]; ii++) {
 		blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[ii], "secure_messaging", sm_info->config_section);
 		if (blocks) {
 			sm_conf_block = blocks[0];
@@ -240,7 +252,7 @@ initialize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_dat
 	int rv = SC_ERROR_NOT_SUPPORTED;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!sm_info)
+	if (!sm_info || !out)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "Current AID: %s", sc_dump_hex(sm_info->current_aid.value, sm_info->current_aid.len));
@@ -280,7 +292,7 @@ get_apdus(struct sc_context *ctx, struct sm_info *sm_info, unsigned char *init_d
 	int rv = SC_ERROR_NOT_SUPPORTED;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!sm_info)
+	if (!sm_info || !out)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM get APDUs: out:%p", out);
@@ -316,6 +328,9 @@ finalize(struct sc_context *ctx, struct sm_info *sm_info, struct sc_remote_data 
 	sc_debug(ctx, SC_LOG_DEBUG_SM, "SM finalize: out buffer(%zu) %p", out_len, out);
 	if (!sm_info || !rdata)
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+
+	if (out_len > 0 && !out)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (sm_info->sm_type == SM_TYPE_GP_SCP01)
 		rv = sm_gp_decode_card_answer(ctx, rdata, out, out_len);
