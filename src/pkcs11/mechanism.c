@@ -65,19 +65,23 @@ static CK_RV
 signature_data_buffer_append(struct operation_data *data,
 		const CK_BYTE *in, CK_ULONG in_len)
 {
+	CK_ULONG new_len;
+	CK_BYTE *new_buffer;
+
 	if (!data)
 		return CKR_ARGUMENTS_BAD;
 	if (in_len == 0)
 		return CKR_OK;
+	if (!in)
+		return CKR_ARGUMENTS_BAD;
 
-	CK_ULONG new_len;
 	if (__builtin_uaddl_overflow(data->buffer_len, in_len, &new_len))
 		return CKR_ARGUMENTS_BAD;
-	CK_BYTE *new_buffer = sc_mem_secure_alloc(new_len);
+	new_buffer = sc_mem_secure_alloc(new_len);
 	if (!new_buffer)
 		return CKR_HOST_MEMORY;
 
-	if (data->buffer_len != 0)
+	if (data->buffer_len != 0 && data->buffer != NULL)
 		memcpy(new_buffer, data->buffer, data->buffer_len);
 	memcpy(new_buffer+data->buffer_len, in, in_len);
 
@@ -88,6 +92,8 @@ signature_data_buffer_append(struct operation_data *data,
 }
 
 void _update_mech_info(CK_MECHANISM_INFO_PTR mech_info, CK_MECHANISM_INFO_PTR new_mech_info) {
+	if (!mech_info || !new_mech_info)
+		return;
 	if (new_mech_info->ulMaxKeySize > mech_info->ulMaxKeySize)
 		mech_info->ulMaxKeySize = new_mech_info->ulMaxKeySize;
 	if (new_mech_info->ulMinKeySize < mech_info->ulMinKeySize)
@@ -104,6 +110,9 @@ sc_pkcs11_copy_mechanism(sc_pkcs11_mechanism_type_t *mt,
 {
 	CK_RV rv;
 
+	if (!mt || !new_mt)
+		return CKR_ARGUMENTS_BAD;
+
 	*new_mt = calloc(1, sizeof(sc_pkcs11_mechanism_type_t));
 	if (!(*new_mt))
 		return CKR_HOST_MEMORY;
@@ -113,6 +122,7 @@ sc_pkcs11_copy_mechanism(sc_pkcs11_mechanism_type_t *mt,
 	if (mt->copy_mech_data
 		&& (rv = mt->copy_mech_data(mt->mech_data, (void **) &(*new_mt)->mech_data)) != CKR_OK) {
 		free(*new_mt);
+		*new_mt = NULL;
 		return rv;
 	}
 
@@ -185,6 +195,8 @@ sc_pkcs11_register_mechanism(struct sc_pkcs11_card *p11card,
 CK_RV
 _validate_key_type(sc_pkcs11_mechanism_type_t *mech, CK_KEY_TYPE key_type) {
 	int i;
+	if (!mech)
+		return CKR_ARGUMENTS_BAD;
 	for (i = 0; i < MAX_KEY_TYPES; i++) {
 		if (mech->key_types[i] < 0)
 			break;
@@ -230,6 +242,8 @@ sc_pkcs11_get_mechanism_list(struct sc_pkcs11_card *p11card,
 
 	if (!p11card)
 		return CKR_TOKEN_NOT_PRESENT;
+	if (!pulCount)
+		return CKR_ARGUMENTS_BAD;
 
 	for (n = 0; n < p11card->nmechanisms; n++) {
 		if (!(mt = p11card->mechanisms[n]))
@@ -253,6 +267,8 @@ sc_pkcs11_get_mechanism_info(struct sc_pkcs11_card *p11card,
 {
 	sc_pkcs11_mechanism_type_t *mt;
 
+	if (!pInfo)
+		return CKR_ARGUMENTS_BAD;
 	if (!(mt = sc_pkcs11_find_mechanism(p11card, mechanism, 0)))
 		return CKR_MECHANISM_INVALID;
 	memcpy(pInfo, &mt->mech_info, sizeof(*pInfo));
@@ -268,6 +284,8 @@ sc_pkcs11_new_operation(sc_pkcs11_session_t *session,
 {
 	sc_pkcs11_operation_t *res;
 
+	if (!type)
+		return NULL;
 	res = calloc(1, type->obj_size);
 	if (res) {
 		res->session = session;
@@ -279,10 +297,11 @@ sc_pkcs11_new_operation(sc_pkcs11_session_t *session,
 void
 sc_pkcs11_release_operation(sc_pkcs11_operation_t **ptr)
 {
-	sc_pkcs11_operation_t *operation = *ptr;
+	sc_pkcs11_operation_t *operation;
 
-	if (!operation)
+	if (!ptr || !*ptr)
 		return;
+	operation = *ptr;
 	if (operation->type && operation->type->release)
 		operation->type->release(operation);
 	memset(operation, 0, sizeof(*operation));
@@ -300,12 +319,12 @@ sc_pkcs11_md_init(struct sc_pkcs11_session *session,
 	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
-	if (!session || !session->slot || !(p11card = session->slot->p11card))
+	if (!session || !session->slot || !(p11card = session->slot->p11card) || !pMechanism)
 		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
 
 	/* See if we support this mechanism type */
 	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_DIGEST);
-	if (mt == NULL)
+	if (mt == NULL || mt->md_init == NULL)
 		LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_DIGEST, mt, &operation);
@@ -329,9 +348,17 @@ sc_pkcs11_md_update(struct sc_pkcs11_session *session,
 	sc_pkcs11_operation_t *op;
 	CK_RV rv;
 
+	if (ulDataLen > 0 && !pData)
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_DIGEST, &op);
 	if (rv != CKR_OK)
 		goto done;
+
+	if (!op || !op->type || !op->type->md_update) {
+		rv = CKR_MECHANISM_INVALID;
+		goto done;
+	}
 
 	rv = op->type->md_update(op, pData, ulDataLen);
 
@@ -349,9 +376,17 @@ sc_pkcs11_md_final(struct sc_pkcs11_session *session,
 	sc_pkcs11_operation_t *op;
 	CK_RV rv;
 
+	if (!pulDataLen)
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_DIGEST, &op);
 	if (rv != CKR_OK)
 		LOG_FUNC_RETURN(context, (int) rv);
+
+	if (!op || !op->type || !op->type->md_final) {
+		session_stop_operation(session, SC_PKCS11_OPERATION_DIGEST);
+		LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
+	}
 
 	/* This is a request for the digest length */
 	if (pData == NULL)
@@ -379,14 +414,14 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
-	if (!session || !session->slot || !(p11card = session->slot->p11card))
+	if (!session || !session->slot || !(p11card = session->slot->p11card) || !pMechanism)
 		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
 
 	/* See if we support this mechanism type */
 	sc_log(context, "mechanism 0x%lX, key-type 0x%lX",
 	       pMechanism->mechanism, key_type);
 	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_SIGN);
-	if (mt == NULL)
+	if (mt == NULL || mt->sign_init == NULL)
 		LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
 
 	/* See if compatible with key type */
@@ -395,7 +430,7 @@ sc_pkcs11_sign_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechani
 		LOG_FUNC_RETURN(context, (int) rv);
 
 	if (pMechanism->pParameter &&
-			pMechanism->ulParameterLen > sizeof(operation->mechanism_params))
+			pMechanism->ulParameterLen > sizeof(((sc_pkcs11_operation_t *)0)->mechanism_params))
 		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_SIGN, mt, &operation);
@@ -423,11 +458,14 @@ sc_pkcs11_sign_update(struct sc_pkcs11_session *session,
 	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
+	if (ulDataLen > 0 && !pData)
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_SIGN, &op);
 	if (rv != CKR_OK)
 		LOG_FUNC_RETURN(context, (int) rv);
 
-	if (op->type->sign_update == NULL) {
+	if (!op || !op->type || op->type->sign_update == NULL) {
 		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto done;
 	}
@@ -449,12 +487,15 @@ sc_pkcs11_sign_final(struct sc_pkcs11_session *session,
 	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
+	if (!pulSignatureLen)
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_SIGN, &op);
 	if (rv != CKR_OK)
 		LOG_FUNC_RETURN(context, (int) rv);
 
 	/* Bail out for signature mechanisms that don't do hashing */
-	if (op->type->sign_final == NULL) {
+	if (!op || !op->type || op->type->sign_final == NULL) {
 		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto done;
 	}
@@ -474,12 +515,15 @@ sc_pkcs11_sign_size(struct sc_pkcs11_session *session, CK_ULONG_PTR pLength)
 	sc_pkcs11_operation_t *op;
 	CK_RV rv;
 
+	if (!pLength)
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_SIGN, &op);
 	if (rv != CKR_OK)
 		LOG_FUNC_RETURN(context, (int) rv);
 
 	/* Bail out for signature mechanisms that don't do hashing */
-	if (op->type->sign_size == NULL) {
+	if (!op || !op->type || op->type->sign_size == NULL) {
 		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto done;
 	}
@@ -506,6 +550,9 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 	int can_do_it = 0;
 
 	LOG_FUNC_CALLED(context);
+	if (!operation || !key || !key->ops || !operation->type)
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	if (!(data = new_operation_data()))
 		LOG_FUNC_RETURN(context, CKR_HOST_MEMORY);
 	data->info = NULL;
@@ -544,6 +591,10 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 	info = (struct hash_signature_info *)operation->type->mech_data;
 	if (info != NULL && !can_do_it) {
 		/* Initialize hash operation */
+		if (!info->hash_type || !info->hash_type->md_init) {
+			operation_data_release(data);
+			LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
+		}
 
 		data->md = sc_pkcs11_new_operation(operation->session, info->hash_type);
 		if (data->md == NULL)
@@ -571,8 +622,13 @@ sc_pkcs11_signature_update(sc_pkcs11_operation_t *operation,
 
 	LOG_FUNC_CALLED(context);
 	sc_log(context, "data part length %li", ulPartLen);
+	if (!operation || !operation->priv_data)
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	data = (struct operation_data *)operation->priv_data;
 	if (data->md) {
+		if (!data->md->type || !data->md->type->md_update)
+			LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
 		rv = data->md->type->md_update(data->md, pPart, ulPartLen);
 		LOG_FUNC_RETURN(context, (int) rv);
 	}
@@ -590,11 +646,17 @@ sc_pkcs11_signature_final(sc_pkcs11_operation_t *operation,
 	CK_RV rv;
 
 	LOG_FUNC_CALLED(context);
+	if (!operation || !operation->priv_data)
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	data = (struct operation_data *)operation->priv_data;
 	if (data->md) {
 		sc_pkcs11_operation_t	*md = data->md;
 		CK_BYTE hash[64];
 		CK_ULONG len = sizeof(hash);
+
+		if (!md->type || !md->type->md_final)
+			LOG_FUNC_RETURN(context, CKR_MECHANISM_INVALID);
 
 		rv = md->type->md_final(md, hash, &len);
 		if (rv == CKR_BUFFER_TOO_SMALL)
@@ -605,6 +667,9 @@ sc_pkcs11_signature_final(sc_pkcs11_operation_t *operation,
 		if (rv != CKR_OK)
 			LOG_FUNC_RETURN(context, (int) rv);
 	}
+
+	if (!data->key || !data->key->ops || !data->key->ops->sign)
+		LOG_FUNC_RETURN(context, CKR_FUNCTION_FAILED);
 
 	rv = data->key->ops->sign(operation->session, data->key, &operation->mechanism,
 			data->buffer, data->buffer_len, pSignature, pulSignatureLen);
@@ -620,7 +685,13 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 	CK_ATTRIBUTE attr_key_type = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
 	CK_RV rv;
 
+	if (!operation || !operation->priv_data || !pLength)
+		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
+
 	key = ((struct operation_data *)operation->priv_data)->key;
+	if (!key || !key->ops || !key->ops->get_attribute)
+		LOG_FUNC_RETURN(context, CKR_FUNCTION_FAILED);
+
 	/*
 	 * EC and GOSTR do not have CKA_MODULUS_BITS attribute.
 	 * But other code in framework treats them as if they do.
@@ -680,12 +751,12 @@ sc_pkcs11_verif_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechan
 	CK_RV rv;
 
 	if (!session || !session->slot
-	 || !(p11card = session->slot->p11card))
+	 || !(p11card = session->slot->p11card) || !pMechanism)
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
 	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_VERIFY);
-	if (mt == NULL)
+	if (mt == NULL || mt->verif_init == NULL)
 		return CKR_MECHANISM_INVALID;
 
 	/* See if compatible with key type */
@@ -694,7 +765,7 @@ sc_pkcs11_verif_init(struct sc_pkcs11_session *session, CK_MECHANISM_PTR pMechan
 		LOG_FUNC_RETURN(context, (int) rv);
 
 	if (pMechanism->pParameter &&
-			pMechanism->ulParameterLen > sizeof(operation->mechanism_params))
+			pMechanism->ulParameterLen > sizeof(((sc_pkcs11_operation_t *)0)->mechanism_params))
 		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_VERIFY, mt, &operation);
@@ -724,11 +795,14 @@ sc_pkcs11_verif_update(struct sc_pkcs11_session *session,
 	sc_pkcs11_operation_t *op;
 	CK_RV rv;
 
+	if (ulDataLen > 0 && !pData)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_VERIFY, &op);
 	if (rv != CKR_OK)
 		return rv;
 
-	if (op->type->verif_update == NULL) {
+	if (!op || !op->type || op->type->verif_update == NULL) {
 		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto done;
 	}
@@ -749,11 +823,14 @@ sc_pkcs11_verif_final(struct sc_pkcs11_session *session,
 	sc_pkcs11_operation_t *op;
 	CK_RV rv;
 
+	if (!pSignature)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_VERIFY, &op);
 	if (rv != CKR_OK)
 		return rv;
 
-	if (op->type->verif_final == NULL) {
+	if (!op || !op->type || op->type->verif_final == NULL) {
 		rv = CKR_KEY_TYPE_INCONSISTENT;
 		goto done;
 	}
@@ -776,6 +853,9 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 	struct operation_data *data;
 	CK_RV rv;
 
+	if (!operation || !key || !key->ops || !operation->type)
+		return CKR_ARGUMENTS_BAD;
+
 	if (!(data = new_operation_data()))
 		return CKR_HOST_MEMORY;
 
@@ -789,7 +869,7 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 		}
 		else {
 			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
-			free(data);
+			operation_data_release(data);
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
@@ -799,7 +879,7 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 		rv = key->ops->init_params(operation->session, &operation->mechanism);
 		if (rv != CKR_OK) {
 			/* Probably bad arguments */
-			free(data);
+			operation_data_release(data);
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
@@ -808,6 +888,11 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 	 * hash operation */
 	info = (struct hash_signature_info *) operation->type->mech_data;
 	if (info != NULL) {
+		if (!info->hash_type || !info->hash_type->md_init) {
+			operation_data_release(data);
+			return CKR_MECHANISM_INVALID;
+		}
+
 		/* Initialize hash operation */
 		data->md = sc_pkcs11_new_operation(operation->session,
 						   info->hash_type);
@@ -817,7 +902,7 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 			rv = info->hash_type->md_init(data->md);
 		if (rv != CKR_OK) {
 			sc_pkcs11_release_operation(&data->md);
-			free(data);
+			operation_data_release(data);
 			return rv;
 		}
 		data->info = info;
@@ -832,16 +917,22 @@ sc_pkcs11_verify_update(sc_pkcs11_operation_t *operation,
 		    CK_BYTE_PTR pPart, CK_ULONG ulPartLen)
 {
 	struct operation_data *data;
+	CK_RV rv;
+
+	if (!operation || !operation->priv_data)
+		return CKR_ARGUMENTS_BAD;
 
 	data = (struct operation_data *)operation->priv_data;
 	if (data->md) {
 		sc_pkcs11_operation_t	*md = data->md;
 
+		if (!md->type || !md->type->md_update)
+			return CKR_MECHANISM_INVALID;
 		return md->type->md_update(md, pPart, ulPartLen);
 	}
 
 	/* This verification mechanism operates on the raw data */
-	CK_RV rv = signature_data_buffer_append(data, pPart, ulPartLen);
+	rv = signature_data_buffer_append(data, pPart, ulPartLen);
 	LOG_FUNC_RETURN(context, (int) rv);
 }
 
@@ -859,12 +950,14 @@ sc_pkcs11_verify_final(sc_pkcs11_operation_t *operation,
 	CK_ATTRIBUTE attr_key_params = {CKA_GOSTR3410_PARAMS, &params, sizeof(params)};
 	CK_RV rv;
 
-	data = (struct operation_data *)operation->priv_data;
-
-	if (pSignature == NULL)
+	if (!operation || !operation->priv_data || !pSignature)
 		return CKR_ARGUMENTS_BAD;
 
+	data = (struct operation_data *)operation->priv_data;
+
 	key = data->key;
+	if (!key || !key->ops || !key->ops->get_attribute)
+		return CKR_ARGUMENTS_BAD;
 	rv = key->ops->get_attribute(operation->session, key, &attr_key_type);
 	if (rv != CKR_OK)
 		return rv;
@@ -917,12 +1010,12 @@ sc_pkcs11_encr_init(struct sc_pkcs11_session *session,
 	sc_pkcs11_mechanism_type_t *mt;
 	CK_RV rv;
 
-	if (!session || !session->slot || !(p11card = session->slot->p11card))
+	if (!session || !session->slot || !(p11card = session->slot->p11card) || !pMechanism)
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
 	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_ENCRYPT);
-	if (mt == NULL)
+	if (mt == NULL || mt->encrypt_init == NULL)
 		return CKR_MECHANISM_INVALID;
 
 	/* See if compatible with key type */
@@ -931,7 +1024,7 @@ sc_pkcs11_encr_init(struct sc_pkcs11_session *session,
 		LOG_FUNC_RETURN(context, (int)rv);
 
 	if (pMechanism->pParameter &&
-			pMechanism->ulParameterLen > sizeof(operation->mechanism_params))
+			pMechanism->ulParameterLen > sizeof(((sc_pkcs11_operation_t *)0)->mechanism_params))
 		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_ENCRYPT, mt, &operation);
@@ -947,7 +1040,7 @@ sc_pkcs11_encr_init(struct sc_pkcs11_session *session,
 	rv = mt->encrypt_init(operation, key);
 
 	/* Validate the mechanism parameters */
-	if (rv == CKR_OK && key->ops->init_params) {
+	if (rv == CKR_OK && key->ops && key->ops->init_params) {
 		rv = key->ops->init_params(operation->session, &operation->mechanism);
 	}
 
@@ -965,9 +1058,17 @@ sc_pkcs11_encr(struct sc_pkcs11_session *session,
 	sc_pkcs11_operation_t *op;
 	CK_RV rv;
 
+	if (pEncryptedData && !pulEncryptedDataLen)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_ENCRYPT, &op);
 	if (rv != CKR_OK)
 		return rv;
+
+	if (!op || !op->type || !op->type->encrypt) {
+		session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+		return CKR_MECHANISM_INVALID;
+	}
 
 	rv = op->type->encrypt(op, pData, ulDataLen,
 			pEncryptedData, pulEncryptedDataLen);
@@ -992,9 +1093,17 @@ sc_pkcs11_encr_update(struct sc_pkcs11_session *session,
 	sc_pkcs11_operation_t *op;
 	CK_RV rv;
 
+	if (pEncryptedData && !pulEncryptedDataLen)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_ENCRYPT, &op);
 	if (rv != CKR_OK)
 		return rv;
+
+	if (!op || !op->type || !op->type->encrypt_update) {
+		session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+		return CKR_MECHANISM_INVALID;
+	}
 
 	rv = op->type->encrypt_update(op, pData, ulDataLen,
 			pEncryptedData, pulEncryptedDataLen);
@@ -1012,9 +1121,17 @@ sc_pkcs11_encr_final(struct sc_pkcs11_session *session,
 	sc_pkcs11_operation_t *op;
 	CK_RV rv;
 
+	if (!pulEncryptedDataLen)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_ENCRYPT, &op);
 	if (rv != CKR_OK)
 		return rv;
+
+	if (!op || !op->type || !op->type->encrypt_final) {
+		session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+		return CKR_MECHANISM_INVALID;
+	}
 
 	rv = op->type->encrypt_final(op, pEncryptedData, pulEncryptedDataLen);
 
@@ -1046,12 +1163,12 @@ sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 	CK_RV rv;
 
 	if (!session || !session->slot
-	 || !(p11card = session->slot->p11card))
+	 || !(p11card = session->slot->p11card) || !pMechanism)
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
 	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_DECRYPT);
-	if (mt == NULL)
+	if (mt == NULL || mt->decrypt_init == NULL)
 		return CKR_MECHANISM_INVALID;
 
 	/* See if compatible with key type */
@@ -1060,7 +1177,7 @@ sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 		LOG_FUNC_RETURN(context, (int) rv);
 
 	if (pMechanism->pParameter &&
-			pMechanism->ulParameterLen > sizeof(operation->mechanism_params))
+			pMechanism->ulParameterLen > sizeof(((sc_pkcs11_operation_t *)0)->mechanism_params))
 		LOG_FUNC_RETURN(context, CKR_ARGUMENTS_BAD);
 
 	rv = session_start_operation(session, SC_PKCS11_OPERATION_DECRYPT, mt, &operation);
@@ -1076,7 +1193,7 @@ sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 	rv = mt->decrypt_init(operation, key);
 
 	/* Validate the mechanism parameters */
-	if (rv == CKR_OK && key->ops->init_params) {
+	if (rv == CKR_OK && key->ops && key->ops->init_params) {
 		rv = key->ops->init_params(operation->session, &operation->mechanism);
 	}
 
@@ -1094,9 +1211,17 @@ sc_pkcs11_decr(struct sc_pkcs11_session *session,
 	sc_pkcs11_operation_t *op;
 	CK_RV rv;
 
+	if (pData && !pulDataLen)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_DECRYPT, &op);
 	if (rv != CKR_OK)
 		return rv;
+
+	if (!op || !op->type || !op->type->decrypt) {
+		session_stop_operation(session, SC_PKCS11_OPERATION_DECRYPT);
+		return CKR_MECHANISM_INVALID;
+	}
 
 	rv = op->type->decrypt(op, pEncryptedData, ulEncryptedDataLen,
 	                       pData, pulDataLen);
@@ -1117,9 +1242,17 @@ sc_pkcs11_decr_update(struct sc_pkcs11_session *session,
 	sc_pkcs11_operation_t *op;
 	CK_RV rv;
 
+	if (pData && !pulDataLen)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_DECRYPT, &op);
 	if (rv != CKR_OK)
 		return rv;
+
+	if (!op || !op->type || !op->type->decrypt_update) {
+		session_stop_operation(session, SC_PKCS11_OPERATION_DECRYPT);
+		return CKR_MECHANISM_INVALID;
+	}
 
 	rv = op->type->decrypt_update(op, pEncryptedData, ulEncryptedDataLen,
 			pData, pulDataLen);
@@ -1139,9 +1272,17 @@ sc_pkcs11_decr_final(struct sc_pkcs11_session *session,
 	sc_pkcs11_operation_t *op;
 	CK_RV rv;
 
+	if (!pulDataLen)
+		return CKR_ARGUMENTS_BAD;
+
 	rv = session_get_operation(session, SC_PKCS11_OPERATION_DECRYPT, &op);
 	if (rv != CKR_OK)
 		return rv;
+
+	if (!op || !op->type || !op->type->decrypt_final) {
+		session_stop_operation(session, SC_PKCS11_OPERATION_DECRYPT);
+		return CKR_MECHANISM_INVALID;
+	}
 
 	rv = op->type->decrypt_final(op, pData, pulDataLen);
 
@@ -1171,12 +1312,12 @@ sc_pkcs11_wrap(struct sc_pkcs11_session *session,
 	sc_pkcs11_mechanism_type_t *mt;
 	CK_RV rv;
 
-	if (!session || !session->slot || !(p11card = session->slot->p11card))
+	if (!session || !session->slot || !(p11card = session->slot->p11card) || !pMechanism)
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
 	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_UNWRAP);
-	if (mt == NULL)
+	if (mt == NULL || mt->wrap == NULL)
 		return CKR_MECHANISM_INVALID;
 
 	/* See if compatible with key type */
@@ -1217,12 +1358,12 @@ sc_pkcs11_unwrap(struct sc_pkcs11_session *session,
 
 	CK_RV rv;
 
-	if (!session || !session->slot || !(p11card = session->slot->p11card))
+	if (!session || !session->slot || !(p11card = session->slot->p11card) || !pMechanism)
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
 	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_UNWRAP);
-	if (mt == NULL)
+	if (mt == NULL || mt->unwrap == NULL)
 		return CKR_MECHANISM_INVALID;
 
 	/* See if compatible with key type */
@@ -1277,12 +1418,12 @@ sc_pkcs11_deri(struct sc_pkcs11_session *session,
 
 
 	if (!session || !session->slot
-	 || !(p11card = session->slot->p11card))
+	 || !(p11card = session->slot->p11card) || !pMechanism)
 		return CKR_ARGUMENTS_BAD;
 
 	/* See if we support this mechanism type */
 	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_DERIVE);
-	if (mt == NULL)
+	if (mt == NULL || mt->derive == NULL)
 		return CKR_MECHANISM_INVALID;
 
 	/* See if compatible with key type */
@@ -1337,7 +1478,8 @@ sc_pkcs11_deri(struct sc_pkcs11_session *session,
 	    template[0].pValue = keybuf;
 	    template[0].ulValueLen = ulDataLen;
 
-	    dkey->ops->set_attribute(session, dkey, &template[0]);
+	    if (dkey && dkey->ops && dkey->ops->set_attribute)
+	        dkey->ops->set_attribute(session, dkey, &template[0]);
 
 	    memset(keybuf,0,ulDataLen);
 	}
@@ -1360,18 +1502,21 @@ sc_pkcs11_encrypt_init(sc_pkcs11_operation_t *operation,
 	struct operation_data *data;
 	CK_RV rv;
 
+	if (!operation || !key || !key->ops || !key->ops->encrypt)
+		return CKR_ARGUMENTS_BAD;
+
 	if (!(data = new_operation_data()))
 		return CKR_HOST_MEMORY;
 
 	data->key = key;
 
 	if (key->ops->can_do) {
-		rv = key->ops->can_do(operation->session, key, operation->type->mech, CKF_ENCRYPT);
+		rv = key->ops->can_do(operation->session, key, operation->type ? operation->type->mech : 0, CKF_ENCRYPT);
 		if ((rv == CKR_OK) || (rv == CKR_FUNCTION_NOT_SUPPORTED)) {
 			/* Mechanism recognized and can be performed by pkcs#15 card or algorithm references not supported */
 		} else {
 			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
-			free(data);
+			operation_data_release(data);
 			LOG_FUNC_RETURN(context, (int)rv);
 		}
 	}
@@ -1393,6 +1538,9 @@ sc_pkcs11_encrypt(sc_pkcs11_operation_t *operation,
 	CK_RV rv;
 	CK_ULONG ulEncryptedDataLen, ulLastEncryptedPartLen;
 
+	if (!operation || !operation->priv_data)
+		return CKR_ARGUMENTS_BAD;
+
 	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
 	if (pEncryptedData && !pulEncryptedDataLen)
 		return CKR_ARGUMENTS_BAD;
@@ -1403,6 +1551,8 @@ sc_pkcs11_encrypt(sc_pkcs11_operation_t *operation,
 	data = (struct operation_data *)operation->priv_data;
 
 	key = data->key;
+	if (!key || !key->ops || !key->ops->encrypt)
+		return CKR_FUNCTION_FAILED;
 
 	/* Encrypt (Update) */
 	rv = key->ops->encrypt(operation->session, key, &operation->mechanism,
@@ -1441,6 +1591,9 @@ sc_pkcs11_encrypt_update(sc_pkcs11_operation_t *operation,
 	CK_RV rv;
 	CK_ULONG ulEncryptedPartLen;
 
+	if (!operation || !operation->priv_data)
+		return CKR_ARGUMENTS_BAD;
+
 	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
 	if (pEncryptedPart && !pulEncryptedPartLen)
 		return CKR_ARGUMENTS_BAD;
@@ -1450,6 +1603,8 @@ sc_pkcs11_encrypt_update(sc_pkcs11_operation_t *operation,
 	data = (struct operation_data *)operation->priv_data;
 
 	key = data->key;
+	if (!key || !key->ops || !key->ops->encrypt)
+		return CKR_FUNCTION_FAILED;
 
 	rv = key->ops->encrypt(operation->session, key, &operation->mechanism,
 			pPart, ulPartLen, pEncryptedPart, &ulEncryptedPartLen);
@@ -1469,6 +1624,9 @@ sc_pkcs11_encrypt_final(sc_pkcs11_operation_t *operation,
 	CK_RV rv;
 	CK_ULONG ulLastEncryptedPartLen;
 
+	if (!operation || !operation->priv_data)
+		return CKR_ARGUMENTS_BAD;
+
 	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
 	if (pLastEncryptedPart && !pulLastEncryptedPartLen)
 		return CKR_ARGUMENTS_BAD;
@@ -1478,6 +1636,8 @@ sc_pkcs11_encrypt_final(sc_pkcs11_operation_t *operation,
 	data = (struct operation_data *)operation->priv_data;
 
 	key = data->key;
+	if (!key || !key->ops || !key->ops->encrypt)
+		return CKR_FUNCTION_FAILED;
 
 	rv = key->ops->encrypt(operation->session, key, &operation->mechanism,
 			NULL, 0, pLastEncryptedPart, &ulLastEncryptedPartLen);
@@ -1497,19 +1657,22 @@ sc_pkcs11_decrypt_init(sc_pkcs11_operation_t *operation,
 	struct operation_data *data;
 	CK_RV rv;
 
+	if (!operation || !key || !key->ops || !key->ops->decrypt)
+		return CKR_ARGUMENTS_BAD;
+
 	if (!(data = new_operation_data()))
 		return CKR_HOST_MEMORY;
 
 	data->key = key;
 
 	if (key->ops->can_do)   {
-		rv = key->ops->can_do(operation->session, key, operation->type->mech, CKF_DECRYPT);
+		rv = key->ops->can_do(operation->session, key, operation->type ? operation->type->mech : 0, CKF_DECRYPT);
 		if ((rv == CKR_OK) || (rv == CKR_FUNCTION_NOT_SUPPORTED))   {
 			/* Mechanism recognized and can be performed by pkcs#15 card or algorithm references not supported */
 		}
 		else {
 			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
-			free(data);
+			operation_data_release(data);
 			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
@@ -1530,6 +1693,9 @@ sc_pkcs11_decrypt(sc_pkcs11_operation_t *operation,
 	CK_RV rv;
 	CK_ULONG ulDataLen, ulLastDataLen;
 
+	if (!operation || !operation->priv_data)
+		return CKR_ARGUMENTS_BAD;
+
 	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
 	if (pData && !pulDataLen)
 		return CKR_ARGUMENTS_BAD;
@@ -1540,6 +1706,8 @@ sc_pkcs11_decrypt(sc_pkcs11_operation_t *operation,
 	data = (struct operation_data *)operation->priv_data;
 
 	key = data->key;
+	if (!key || !key->ops || !key->ops->decrypt)
+		return CKR_FUNCTION_FAILED;
 
 	/* Decrypt */
 	rv = key->ops->decrypt(operation->session, key, &operation->mechanism,
@@ -1580,6 +1748,9 @@ sc_pkcs11_decrypt_update(sc_pkcs11_operation_t *operation,
 	CK_RV rv;
 	CK_ULONG ulPartLen;
 
+	if (!operation || !operation->priv_data)
+		return CKR_ARGUMENTS_BAD;
+
 	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
 	if (pPart && !pulPartLen)
 		return CKR_ARGUMENTS_BAD;
@@ -1589,6 +1760,8 @@ sc_pkcs11_decrypt_update(sc_pkcs11_operation_t *operation,
 	data = (struct operation_data *)operation->priv_data;
 
 	key = data->key;
+	if (!key || !key->ops || !key->ops->decrypt)
+		return CKR_FUNCTION_FAILED;
 
 	rv = key->ops->decrypt(operation->session,
 			key, &operation->mechanism,
@@ -1610,6 +1783,9 @@ sc_pkcs11_decrypt_final(sc_pkcs11_operation_t *operation,
 	CK_RV rv;
 	CK_ULONG ulLastPartLen;
 
+	if (!operation || !operation->priv_data)
+		return CKR_ARGUMENTS_BAD;
+
 	/* PKCS#11: If pBuf is not NULL_PTR, then *pulBufLen must contain the size in bytes.. */
 	if (pLastPart && !pulLastPartLen)
 		return CKR_ARGUMENTS_BAD;
@@ -1619,6 +1795,8 @@ sc_pkcs11_decrypt_final(sc_pkcs11_operation_t *operation,
 	data = (struct operation_data *)operation->priv_data;
 
 	key = data->key;
+	if (!key || !key->ops || !key->ops->decrypt)
+		return CKR_FUNCTION_FAILED;
 
 	rv = key->ops->decrypt(operation->session,
 			key, &operation->mechanism,
@@ -1636,6 +1814,8 @@ sc_pkcs11_derive(sc_pkcs11_operation_t *operation,
 	    CK_BYTE_PTR pmechParam, CK_ULONG ulmechParamLen,
 	    CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
 {
+	if (!operation || !basekey || !basekey->ops || !basekey->ops->derive)
+		return CKR_ARGUMENTS_BAD;
 
 	return basekey->ops->derive(operation->session,
 		    basekey,
@@ -1690,6 +1870,9 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 				CK_RV (*copy_priv_data)(const void *mech_data, void **new_data))
 {
 	sc_pkcs11_mechanism_type_t *mt;
+
+	if (!pInfo)
+		return NULL;
 
 	mt = calloc(1, sizeof(*mt));
 	if (mt == NULL)
@@ -1799,7 +1982,7 @@ sc_pkcs11_register_sign_and_hash_mechanism(struct sc_pkcs11_card *p11card,
 	LOG_FUNC_CALLED(p11card->card->ctx);
 	sc_log(p11card->card->ctx, "mech = 0x%lx, hash_mech = 0x%lx", mech, hash_mech);
 
-	if (!sign_type)
+	if (!sign_type || sign_type->key_types[0] < 0)
 		LOG_FUNC_RETURN(p11card->card->ctx, CKR_MECHANISM_INVALID);
 	mech_info = sign_type->mech_info;
 
