@@ -2041,9 +2041,10 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 	len -= (len % block_size);
 
 	/* application can request buffer size or actual buffer size is too small */
-	*outlen = len;
-	if (out == NULL)
+	if (out == NULL) {
+		*outlen = len;
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	}
 	/* application buffer is too small */
 	if (*outlen < len)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
