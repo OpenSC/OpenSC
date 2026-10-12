@@ -51,12 +51,14 @@ mscfs_t *mscfs_new(void) {
 }
 
 void mscfs_free(mscfs_t *fs) {
+	if (!fs)
+		return;
 	mscfs_clear_cache(fs);
 	free(fs);
 }
 
 void mscfs_clear_cache(mscfs_t* fs) {
-	if(!fs->cache.array) {
+	if(!fs || !fs->cache.array) {
 		return;
 	}
 	free(fs->cache.array);
@@ -80,21 +82,19 @@ static int mscfs_is_ignored(mscfs_t* fs, msc_id objectId)
 #define MAX_FILES 10000
 int mscfs_push_file(mscfs_t* fs, mscfs_file_t *file)
 {
-	mscfs_cache_t *cache = &fs->cache;
+	mscfs_cache_t *cache;
+	if (!fs || !file)
+		return MSCFS_INVALID_ARGS;
+	cache = &fs->cache;
 	if (cache->size >= MAX_FILES)
 		return SC_ERROR_INTERNAL;
 	if(!cache->array || cache->size == cache->totalSize) {
 		int length = cache->totalSize + MSCFS_CACHE_INCREMENT;
-		mscfs_file_t *oldArray;
-		cache->totalSize = length;
-		oldArray = cache->array;
-		cache->array = malloc(sizeof(mscfs_file_t) * length);
-		if(!cache->array)
+		mscfs_file_t *newArray = realloc(cache->array, sizeof(mscfs_file_t) * length);
+		if(!newArray)
 			return MSCFS_NO_MEMORY;
-		if(oldArray) {
-			memcpy(cache->array, oldArray, sizeof(mscfs_file_t) * cache->size);
-			free(oldArray);
-		}
+		cache->array = newArray;
+		cache->totalSize = length;
 	}
 	cache->array[cache->size] = *file;
 	cache->size++;
@@ -104,6 +104,8 @@ int mscfs_push_file(mscfs_t* fs, mscfs_file_t *file)
 int mscfs_update_cache(mscfs_t* fs) {
 	mscfs_file_t file;
 	int r;
+	if (!fs || !fs->listFile)
+		return MSCFS_INVALID_ARGS;
 	mscfs_clear_cache(fs);
 	r = fs->listFile(&file, 1, fs->udata);
 	if(r == 0)
@@ -140,6 +142,8 @@ int mscfs_update_cache(mscfs_t* fs) {
 int mscfs_check_cache(mscfs_t* fs)
 {
 	int r = SC_SUCCESS;
+	if (!fs)
+		return MSCFS_INVALID_ARGS;
 	if(!fs->cache.array) {
 		r = mscfs_update_cache(fs);
 	}
@@ -148,7 +152,10 @@ int mscfs_check_cache(mscfs_t* fs)
 
 int mscfs_lookup_path(mscfs_t* fs, const u8 *path, size_t pathlen, msc_id* objectId, int isDirectory)
 {
-	u8* oid = objectId->id;
+	u8* oid;
+	if (!fs || !path || !objectId)
+		return MSCFS_INVALID_ARGS;
+	oid = objectId->id;
 	if ((pathlen & 1) != 0) /* not divisible by 2 */
 		return MSCFS_INVALID_ARGS;
 	if(isDirectory) {
@@ -158,6 +165,7 @@ int mscfs_lookup_path(mscfs_t* fs, const u8 *path, size_t pathlen, msc_id* objec
 			oid[0] = path[pathlen - 2];
 			oid[1] = path[pathlen - 1];
 			oid[2] = oid[3] = 0;
+			return 0;
 		} else {
 			return MSCFS_INVALID_ARGS;
 		}
@@ -193,7 +201,10 @@ int mscfs_lookup_path(mscfs_t* fs, const u8 *path, size_t pathlen, msc_id* objec
 
 int mscfs_lookup_local(mscfs_t* fs, const int id, msc_id* objectId)
 {
-	u8* oid = objectId->id;
+	u8* oid;
+	if (!fs || !objectId)
+		return MSCFS_INVALID_ARGS;
+	oid = objectId->id;
 	oid[0] = fs->currentPath[0];
 	oid[1] = fs->currentPath[1];
 	oid[2] = (id >> 8) & 0xFF;
@@ -204,6 +215,8 @@ int mscfs_lookup_local(mscfs_t* fs, const int id, msc_id* objectId)
 /* -1 any, 0 DF, 1 EF */
 int mscfs_check_selection(mscfs_t *fs, int requiredItem)
 {
+	if (!fs)
+		return MSCFS_INVALID_ARGS;
 	if(fs->currentPath[0] == 0 && fs->currentPath[1] == 0)
 		return MSCFS_INVALID_ARGS;
 	if(requiredItem == 1 && fs->currentFile[0] == 0 && fs->currentFile[1] == 0)
@@ -227,7 +240,7 @@ int mscfs_loadFileInfo(mscfs_t* fs, const u8 *path, size_t pathlen, mscfs_file_t
 	if (rc < 0)
 		return rc;
 	if(idx) *idx = -1;
-	for(x = 0; x < fs->cache.size; x++) {
+	for(x = 0; x < fs->cache.size && fs->cache.array != NULL; x++) {
 		*file_data = &fs->cache.array[x];
 		if (*file_data) {
 			msc_id objectId;
