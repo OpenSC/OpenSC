@@ -348,6 +348,10 @@ cflex_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		goto out;
 
 	keybits = key_info->modulus_length;
+	if (keybits == 0 || (keybits % 8) != 0 || (keybits / 8) > sizeof(raw_pubkey)) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto out;
+	}
 
 	/* Perform key generation */
 	memset(&args, 0, sizeof(args));
