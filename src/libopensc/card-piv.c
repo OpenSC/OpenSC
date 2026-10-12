@@ -1877,7 +1877,7 @@ Q2OS(int fsize, u8 *Q, size_t Qlen, u8 *OS, size_t *OSlen)
 
 	i = (Qlen - 1) / 2;
 
-	if (!OS || *OSlen < f * 2 || !Q || i > f)
+	if (Qlen % 2 != 1 || !OS || *OSlen < f * 2 || !Q || i > f)
 		return SC_ERROR_INTERNAL;
 
 	memset(OS, 0, f * 2);
@@ -1885,7 +1885,7 @@ Q2OS(int fsize, u8 *Q, size_t Qlen, u8 *OS, size_t *OSlen)
 	 * In UNCOMPRESSED FORMAT, x and Y must be same length, to tell when
 	 * one ends and the other starts */
 	memcpy(OS + f - i, Q + 1, i);
-	memcpy(OS + 2 * f - i, Q + f + 1, i);
+	memcpy(OS + 2 * f - i, Q + 1 + i, i);
 	*OSlen = f * 2;
 	return 0;
 }
@@ -5039,6 +5039,9 @@ piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (in_path->len < 2)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
+
 	path = in_path->value;
 	pathlen = in_path->len;
 
@@ -5057,6 +5060,9 @@ piv_select_file(sc_card_t *card, const sc_path_t *in_path,
 			pathlen -= 2;
 		}
 	}
+
+	if (pathlen < 2)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 
 	i = piv_find_obj_by_containerid(card, path);
 

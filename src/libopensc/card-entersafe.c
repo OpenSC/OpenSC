@@ -538,6 +538,8 @@ static int entersafe_select_aid(sc_card_t *card,
 		sc_file_t *file = *file_out;
 		if (file == NULL)
 			return SC_ERROR_INTERNAL;
+		if (in_path->len > sizeof(file->name))
+			return SC_ERROR_INVALID_ARGUMENTS;
 
 		file->type = SC_FILE_TYPE_DF;
 		file->ef_structure = SC_FILE_EF_UNKNOWN;
