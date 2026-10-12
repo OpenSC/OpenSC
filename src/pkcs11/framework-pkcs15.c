@@ -5774,6 +5774,7 @@ pkcs15_skey_encrypt(struct sc_pkcs11_session *session, void *obj,
 		return sc_to_cryptoki_error(rv, "C_Encrypt...");
 
 	/* pointer CK_ULONG_PTR to size_t conversion */
+	lEncryptedDataLen = pulEncryptedDataLen ? *pulEncryptedDataLen : 0;
 	lpEncryptedDataLen = pulEncryptedDataLen ? &lEncryptedDataLen : NULL;
 
 	rv = sc_pkcs15_encrypt_sym(fw_data->p15_card, skey->prv_p15obj, flags,
