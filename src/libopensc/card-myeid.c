@@ -1169,7 +1169,10 @@ myeid_compute_raw_2048_signature(struct sc_card *card, const u8 * data, size_t d
 	apdu.data = sbuf;
 
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (r < 0) {
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	}
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
 /* prepare 2nd part of data */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x86);
@@ -1183,14 +1186,22 @@ myeid_compute_raw_2048_signature(struct sc_card *card, const u8 * data, size_t d
 		apdu.data = sbuf;
 
 		r = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		if (r < 0) {
+			sc_mem_clear(rbuf, sizeof(rbuf));
+			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		}
 
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
-			memcpy(out, apdu.resp, len);
-			LOG_FUNC_RETURN(card->ctx, (int)len);
+			if (outlen < apdu.resplen) {
+				sc_mem_clear(rbuf, sizeof(rbuf));
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+			}
+			memcpy(out, apdu.resp, apdu.resplen);
+			sc_mem_clear(rbuf, sizeof(rbuf));
+			LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 		}
 	}
+	sc_mem_clear(rbuf, sizeof(rbuf));
 	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
@@ -1207,8 +1218,8 @@ myeid_compute_signature(struct sc_card *card, const u8 * data, size_t datalen,
 	size_t field_length = 0;
 	size_t pad_chars = 0;
 
-	if (card == NULL || data == NULL || out == NULL)
-		return SC_ERROR_INTERNAL;
+	if (data == NULL || out == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
 
@@ -1403,17 +1414,29 @@ static int myeid_transmit_decipher(struct sc_card *card, u8 p1, u8 p2,
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 		r = sc_transmit_apdu(card, &apdu);
 	}
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	sc_mem_clear(sbuf, sizeof(sbuf));
+	if (r < 0) {
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	}
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "DECIPHER returned error");
+	if (r < 0) {
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		LOG_TEST_RET(card->ctx, r, "DECIPHER returned error");
+	}
 
 	if (out && outlen) {
-		outlen = MIN(apdu.resplen, outlen);
-		memcpy(out, apdu.resp, outlen);
+		if (outlen < apdu.resplen) {
+			sc_mem_clear(rbuf, sizeof(rbuf));
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+		}
+		memcpy(out, apdu.resp, apdu.resplen);
+		outlen = apdu.resplen;
 	} else {
 		outlen = 0;
 	}
+	sc_mem_clear(rbuf, sizeof(rbuf));
 	LOG_FUNC_RETURN(card->ctx, (int)outlen);
 }
 
@@ -1423,8 +1446,8 @@ static int myeid_decipher(struct sc_card *card, const u8 * crgram,
 	int r;
 	myeid_private_data_t* priv;
 
-	if (card == NULL || crgram == NULL || out == NULL)
-		return SC_ERROR_INTERNAL;
+	if (crgram == NULL || out == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1894,7 +1917,11 @@ static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 static int myeid_finish(sc_card_t * card)
 {
 	struct myeid_private_data *priv = (struct myeid_private_data *) card->drv_data;
-	free(priv);
+	if (priv) {
+		sc_mem_clear(priv, sizeof(struct myeid_private_data));
+		free(priv);
+		card->drv_data = NULL;
+	}
 	return SC_SUCCESS;
 }
 
@@ -1917,14 +1944,11 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 
 	size_t max_apdu_datalen;
 	size_t apdu_datalen;
-
-	if (card == NULL)
-		return SC_ERROR_INTERNAL;
+	myeid_private_data_t *priv;
 
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
 
-	myeid_private_data_t *priv;
 	priv = (myeid_private_data_t *)card->drv_data;
 
 	/* How many cipher blocks will fit in the APDU. We do not use the APDU chaining
@@ -2124,6 +2148,7 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 
 		} else
 			priv->sym_plain_buffer_len = 0;
+		sc_mem_clear(tmp_buf, sizeof(tmp_buf));
 	}
 	/* save rest of data for next run */
 	priv->sym_crypt_buffer_len = datalen;
@@ -2132,6 +2157,7 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 		memcpy(priv->sym_crypt_buffer, data, datalen);
 	sc_log(ctx, "return data len = %zu", return_len);
 	*outlen = return_len;
+	sc_mem_clear(rbuf, sizeof(rbuf));
 	return SC_SUCCESS;
 }
 
