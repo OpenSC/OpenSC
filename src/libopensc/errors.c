@@ -186,7 +186,7 @@ const char *sc_strerror(int error)
 		err_base = rdr_base;
 	}
 	error_index -= err_base;
-	if (error_index >= count)
+	if (!errors || error_index >= count || !errors[error_index])
 		return misc_errors[0];
 	return errors[error_index];
 }
