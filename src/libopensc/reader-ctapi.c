@@ -86,6 +86,9 @@ static int ctapi_reset(sc_reader_t *reader)
 	u8 cmd[5], rbuf[256], sad, dad;
 	unsigned short lr;
 
+	if (!priv || !priv->funcs.CT_data)
+		return SC_ERROR_INTERNAL;
+
 	cmd[0] = CTBCS_CLA;
 	cmd[1] = CTBCS_INS_RESET;
 	cmd[2] = priv->slot ? CTBCS_P1_INTERFACE1 + priv->slot : CTBCS_P1_CT_KERNEL;
@@ -93,10 +96,10 @@ static int ctapi_reset(sc_reader_t *reader)
 	cmd[4] = 0x00;
 	dad = 1;
 	sad = 2;
-	lr = 256;
+	lr = sizeof(rbuf);
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
-	if (rv || (lr < 2)) {
+	if (rv || lr < 2 || lr > sizeof(rbuf)) {
 		sc_log(reader->ctx, "Error getting status of terminal: %d, using defaults", rv);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
@@ -115,6 +118,9 @@ static int refresh_attributes(sc_reader_t *reader)
 	u8 cmd[5], rbuf[256], sad, dad;
 	unsigned short lr;
 
+	if (!priv || !priv->funcs.CT_data)
+		return SC_ERROR_INTERNAL;
+
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
@@ -125,13 +131,13 @@ static int refresh_attributes(sc_reader_t *reader)
 	cmd[4] = 0x00;
 	dad = 1;
 	sad = 2;
-	lr = 256;
+	lr = sizeof(rbuf);
 
 	reader->flags = 0;
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
-	if (rv || (lr < 3) || (rbuf[lr-2] != 0x90)) {
-		sc_log(reader->ctx, "Error getting status of terminal: %d/%d/0x%x", rv, lr, rbuf[lr-2]);
+	if (rv || lr < 3 || lr > sizeof(rbuf) || rbuf[lr-2] != 0x90) {
+		sc_log(reader->ctx, "Error getting status of terminal: %d/%d/0x%x", rv, lr, (lr >= 2 && lr <= sizeof(rbuf)) ? rbuf[lr-2] : 0);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
 	if (lr < 4) {
@@ -141,7 +147,7 @@ static int refresh_attributes(sc_reader_t *reader)
 		if (rbuf[0] != CTBCS_P2_STATUS_ICC) {
 			/* Should we be more tolerant here? I do not think so... */
 			sc_log(reader->ctx, "Invalid data object returned on CTBCS_P2_STATUS_ICC: 0x%x", rbuf[0]);
-		return SC_ERROR_TRANSMIT_FAILED;
+			return SC_ERROR_TRANSMIT_FAILED;
 		}
 		/* Fixme - should not be reached */
 		sc_log(reader->ctx, "Returned status for  %d slots", rbuf[1]);
@@ -161,8 +167,14 @@ static int ctapi_internal_transmit(sc_reader_t *reader,
 	unsigned short lr;
 	char rv;
 
+	if (!priv || !priv->funcs.CT_data || !recvbuf || !recvsize)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
+
+	if (*recvsize > 0xFFFF || sendsize > 0xFFFF)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (control)
 		dad = 1;
@@ -170,7 +182,7 @@ static int ctapi_internal_transmit(sc_reader_t *reader,
 		dad = 0;
 
 	sad = 2;
-	lr = *recvsize;
+	lr = (unsigned short)*recvsize;
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, (unsigned short)sendsize, (u8 *) sendbuf, &lr, recvbuf);
 	if (rv != 0) {
@@ -187,6 +199,9 @@ static int ctapi_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 	size_t ssize, rsize, rbuflen = 0;
 	u8 *sbuf = NULL, *rbuf = NULL;
 	int r;
+
+	if (!apdu || apdu->resplen > SIZE_MAX - 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	rsize = rbuflen = apdu->resplen + 2;
 	rbuf = malloc(rbuflen);
@@ -239,6 +254,9 @@ static int ctapi_connect(sc_reader_t *reader)
 	u8 cmd[9], rbuf[256], sad, dad;
 	unsigned short lr;
 
+	if (!priv || !priv->funcs.CT_data)
+		return SC_ERROR_INTERNAL;
+
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
@@ -249,15 +267,13 @@ static int ctapi_connect(sc_reader_t *reader)
 	cmd[4] = 0x00;
 	dad = 1;
 	sad = 2;
-	lr = 256;
+	lr = sizeof(rbuf);
 
 	rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
-	if (rv || rbuf[lr-2] != 0x90) {
+	if (rv || lr < 2 || lr > sizeof(rbuf) || rbuf[lr-2] != 0x90) {
 		sc_log(reader->ctx, "Error activating card: %d", rv);
 		return SC_ERROR_TRANSMIT_FAILED;
 	}
-	if (lr < 2)
-		LOG_FUNC_RETURN(reader->ctx, SC_ERROR_INTERNAL);
 	lr -= 2;
 	if (lr > SC_MAX_ATR_SIZE)
 		return SC_ERROR_INTERNAL;
@@ -287,11 +303,13 @@ static int ctapi_release(sc_reader_t *reader)
 {
 	struct ctapi_private_data *priv = GET_PRIV_DATA(reader);
 
+	if (priv) {
+		if (!(reader->ctx->flags & SC_CTX_FLAG_TERMINATE) && priv->funcs.CT_close)
+			priv->funcs.CT_close(priv->ctn);
 
-	if (!(reader->ctx->flags & SC_CTX_FLAG_TERMINATE))
-		priv->funcs.CT_close(priv->ctn);
-
-	free(priv);
+		free(priv);
+		reader->drv_data = NULL;
+	}
 	return 0;
 }
 
@@ -310,6 +328,9 @@ static struct ctapi_module * add_module(struct ctapi_global_private_data *gpriv,
 	int i;
 	struct ctapi_module *p;
 
+	if (!gpriv || !name)
+		return NULL;
+
 	i = gpriv->module_count;
 	p = (struct ctapi_module *) realloc(gpriv->modules, sizeof(struct ctapi_module) * (i+1));
 	if (!p) {
@@ -317,6 +338,8 @@ static struct ctapi_module * add_module(struct ctapi_global_private_data *gpriv,
 	}
 	gpriv->modules = p;
 	gpriv->modules[i].name = strdup(name);
+	if (!gpriv->modules[i].name)
+		return NULL;
 	gpriv->modules[i].dlhandle = dlhandle;
 	gpriv->modules[i].ctn_count = 0;
 	gpriv->module_count++;
@@ -336,6 +359,9 @@ static int ctapi_load_module(sc_context_t *ctx,
 	int r, i, NumUnits;
 	u8 cmd[5], rbuf[256], sad, dad;
 	unsigned short lr;
+
+	if (!conf || !conf->name || !conf->name->data)
+		return -1;
 
 	list = scconf_find_list(conf, "ports");
 	if (list == NULL) {
@@ -392,6 +418,12 @@ static int ctapi_load_module(sc_context_t *ctx,
 		reader->driver = &ctapi_drv;
 		snprintf(namebuf, sizeof(namebuf), "CT-API %s, port %d", mod->name, port);
 		reader->name = strdup(namebuf);
+		if (!reader->name) {
+			funcs.CT_close((unsigned short)mod->ctn_count);
+			free(priv);
+			free(reader);
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		priv->funcs = funcs;
 		priv->ctn = mod->ctn_count;
 
@@ -424,23 +456,23 @@ static int ctapi_load_module(sc_context_t *ctx,
 		cmd[4] = 0x00;
 		dad = 1;
 		sad = 2;
-		lr = 256;
+		lr = sizeof(rbuf);
 
 		rv = priv->funcs.CT_data(priv->ctn, &dad, &sad, 5, cmd, &lr, rbuf);
-		if (rv || (lr < 4) || (rbuf[lr-2] != 0x90)) {
+		priv->ctapi_functional_units = 0;
+		if (rv || (lr < 4) || (lr > sizeof(rbuf)) || (rbuf[lr-2] != 0x90)) {
 			sc_log(reader->ctx, "Error getting status of terminal: %d, using defaults", rv);
-		}
-		if (rbuf[0] != CTBCS_P2_STATUS_TFU) {
+		} else if (rbuf[0] != CTBCS_P2_STATUS_TFU) {
 			/* Number of slots might also detected by using CTBCS_P2_STATUS_ICC.
 			   If you think that's important please do it... ;) */
 			sc_log(reader->ctx, "Invalid data object returned on CTBCS_P2_STATUS_TFU: 0x%x", rbuf[0]);
-		}
-		NumUnits = rbuf[1];
-		if (NumUnits + 4 > lr) {
-			sc_log(reader->ctx, "Invalid data returned: %d functional units, size %d", NumUnits, rv);
-		}
-		priv->ctapi_functional_units = 0;
-		for(i = 0; i < NumUnits; i++) {
+		} else {
+			NumUnits = rbuf[1];
+			if (NumUnits + 4 > lr) {
+				sc_log(reader->ctx, "Invalid data returned: %d functional units, size %d", NumUnits, lr);
+				NumUnits = 0;
+			}
+			for(i = 0; i < NumUnits; i++) {
 			switch(rbuf[i+2]) {
 				case CTBCS_P1_INTERFACE1:
 				case CTBCS_P1_INTERFACE2:
