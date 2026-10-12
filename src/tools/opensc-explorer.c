@@ -233,16 +233,23 @@ static char *path_to_filename(const sc_path_t *path, const char sep, size_t rec)
 	static char buf[2*SC_MAX_PATH_STRING_SIZE+10];
 	size_t i, j;
 
+	buf[0] = '\0';
+	j = 0;
 	/* build file name from path elements */
-	for (i = 0, j = 0; path != NULL && i < path->len; i++) {
-		if (sep != '\0' && i > 0 && (i & 1) == 0)
-			j += sprintf(buf+j, "%c", sep);
-		j += sprintf(buf+j, "%02X", path->value[i]);
+	for (i = 0; path != NULL && i < path->len && j + 3 < sizeof(buf); i++) {
+		if (sep != '\0' && i > 0 && (i & 1) == 0) {
+			if (j + 1 >= sizeof(buf))
+				break;
+			buf[j++] = sep;
+		}
+		if (j + 2 >= sizeof(buf))
+			break;
+		j += snprintf(buf + j, sizeof(buf) - j, "%02X", path->value[i]);
 	}
 	/* single record: append record-number */
-	if (rec > 0)
-		j += sprintf(buf + j, "%c%zu", (sep == '-') ? '_' : '-', rec);
-	buf[j] = '\0';
+	if (rec > 0 && j + 1 < sizeof(buf)) {
+		snprintf(buf + j, sizeof(buf) - j, "%c%zu", (sep == '-') ? '_' : '-', rec);
+	}
 
 	return buf;
 }
@@ -280,6 +287,8 @@ static int usage(int (*func)(int, char **))
 	return -1;
 }
 
+static FILE *script_file = NULL;
+
 static void die(int ret)
 {
 	sc_file_free(current_file);
@@ -288,6 +297,10 @@ static void die(int ret)
 	}
 	if (ctx)
 		sc_release_context(ctx);
+	if (script_file != NULL && script_file != stdin) {
+		fclose(script_file);
+		script_file = NULL;
+	}
 	exit(ret);
 }
 
@@ -437,8 +450,12 @@ static void print_file(const sc_file_t *file)
 		break;
 	}
 	printf(format, file->id >> 8, file->id & 0xFF);
-	if (st == NULL)
-		printf("\t0x%02X", *file->type_attr);
+	if (st == NULL) {
+		if (file->type_attr && file->type_attr_len > 0)
+			printf("\t0x%02X", *file->type_attr);
+		else
+			printf("\t ???");
+	}
 	else
 		printf("\t%4s", st);
 	printf(" %5lu", (unsigned long)file->size);
@@ -872,6 +889,10 @@ static int do_cat(int argc, char **argv)
 			}
 		}
 	}
+	if (!file) {
+		fprintf(stderr, "No file selected\n");
+		goto err;
+	}
 	if (file->type != SC_FILE_TYPE_WORKING_EF &&
 		!(file->type == SC_FILE_TYPE_DF && sfi)) {
 		fprintf(stderr, "only working EFs may be read\n");
@@ -943,6 +964,11 @@ static int do_info(int argc, char **argv)
 		}
 	} else
 		return usage(do_info);
+
+	if (!file) {
+		fprintf(stderr, "No file selected\n");
+		return -1;
+	}
 
 	if (!file->type_attr_len)
 		st = "Unknown File";
@@ -1314,6 +1340,7 @@ static int do_verify(int argc, char **argv)
 	if (r == SC_SUCCESS)
 		r = sc_pin_cmd(card, &data);
 	sc_unlock(card);
+	sc_mem_clear(buf, sizeof(buf));
 
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
@@ -1379,6 +1406,8 @@ static int do_change(int argc, char **argv)
 	if (r == SC_SUCCESS)
 		r = sc_pin_cmd(card, &data);
 	sc_unlock(card);
+	sc_mem_clear(oldpin, sizeof(oldpin));
+	sc_mem_clear(newpin, sizeof(newpin));
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT) {
 			if (data.pin1.tries_left >= 0)
@@ -1444,6 +1473,8 @@ static int do_unblock(int argc, char **argv)
 	if (r == SC_SUCCESS)
 		r = sc_pin_cmd(card, &data);
 	sc_unlock(card);
+	sc_mem_clear(puk, sizeof(puk));
+	sc_mem_clear(newpin, sizeof(newpin));
 	if (r) {
 		if (r == SC_ERROR_PIN_CODE_INCORRECT)
 			fprintf(stderr, "Incorrect code.\n");
@@ -1592,7 +1623,10 @@ static int do_get_record(int argc, char **argv)
 		goto err;
 	}
 
-	r = sc_read_record(card, (unsigned)rec, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_read_record(card, (unsigned)rec, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+	sc_unlock(card);
 	if (r < 0)   {
 		fprintf(stderr, "Cannot read record %lu; return %i\n", rec, r);
 		goto err;
@@ -1719,7 +1753,10 @@ static int do_update_record(int argc, char **argv)
 		goto err;
 	}
 
-	r = sc_read_record(card, (unsigned)rec, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+	r = sc_lock(card);
+	if (r == SC_SUCCESS)
+		r = sc_read_record(card, (unsigned)rec, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+	sc_unlock(card);
 	if (r < 0) {
 		fprintf(stderr, "Cannot read record %zu of %04X: %s\n",
 				rec, file->id, sc_strerror(r));
@@ -1794,12 +1831,14 @@ static int do_put(int argc, char **argv)
 		size_t c = count > sizeof(buf) ? sizeof(buf) : count;
 
 		sz = fread(buf, 1, c, inf);
-		if (sz < 0) {
+		if (sz < 0 || (sz == 0 && ferror(inf))) {
 			perror("fread");
 			goto err;
 		}
 		if ((size_t)sz != c)
 			count = c = sz;
+		if (c == 0)
+			break;
 		r = sc_lock(card);
 		if (r == SC_SUCCESS)
 			r = sc_update_binary(card, idx, buf, c, 0);
@@ -2478,6 +2517,7 @@ int main(int argc, char *argv[])
 		}
 		break;
 	}
+	script_file = script;
 
 	while (!feof(script)) {
 		char *line;
@@ -2487,14 +2527,19 @@ int main(int argc, char *argv[])
 		struct command *cmd;
 		char prompt[3*SC_MAX_PATH_STRING_SIZE];
 
-		sprintf(prompt, "OpenSC [%s]> ", path_to_filename(&current_path, '/', 0));
+		snprintf(prompt, sizeof(prompt), "OpenSC [%s]> ", path_to_filename(&current_path, '/', 0));
 		line = read_cmdline(script, prompt);
 		if (line == NULL)
 			break;
 
 		cargc = parse_cmdline(line, cargv, DIM(cargv));
-		if ((cargc < 1) || (*cargv[0] == '#'))
+		if ((cargc < 1) || (*cargv[0] == '#')) {
+#if defined(ENABLE_READLINE)
+			if (interactive)
+				free(line);
+#endif
 			continue;
+		}
 
 		cmd = ambiguous_match(cmds, cargv[0], &multiple);
 		if (cmd == NULL) {
@@ -2506,6 +2551,10 @@ int main(int argc, char *argv[])
 		} else {
 			err = cmd->func(cargc-1, cargv+1);
 		}
+#if defined(ENABLE_READLINE)
+		if (interactive)
+			free(line);
+#endif
 	}
 end:
 	die(err);
