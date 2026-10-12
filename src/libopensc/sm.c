@@ -77,6 +77,8 @@ sc_sm_parse_answer(struct sc_card *card, unsigned char *resp_data, size_t resp_l
 		out->sw2 = status[1];
 	}
 	if (asn1_sm_response[2].flags & SC_ASN1_PRESENT)   {
+		if (mac_len > sizeof(out->mac))
+			return SC_ERROR_INVALID_DATA;
 		memcpy(out->mac, mac, mac_len);
 		out->mac_len = mac_len;
 	}
@@ -139,6 +141,8 @@ sc_sm_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	if (rv == SC_ERROR_SM_NOT_APPLIED)   {
 		/* SM wrap of this APDU is ignored by card driver.
 		 * Send plain APDU to the reader driver */
+		if (card->reader == NULL || card->reader->ops == NULL || card->reader->ops->transmit == NULL)
+			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 		rv = card->reader->ops->transmit(card->reader, apdu);
 		LOG_FUNC_RETURN(ctx, rv);
 	} else {
@@ -146,6 +150,11 @@ sc_sm_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 			sc_sm_stop(card);
 	}
 	LOG_TEST_RET(ctx, rv, "get SM APDU error");
+
+	if (sm_apdu == NULL) {
+		sc_sm_stop(card);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
+	}
 
 	/* check if SM APDU is still valid */
 	rv = sc_check_apdu(card, sm_apdu);
