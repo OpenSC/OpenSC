@@ -502,11 +502,15 @@ int dnie_read_file(sc_card_t * card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(card->ctx);
-	if (!buffer || !length || !path)	/* check received arguments */
+	if (!buffer || !length || !path || !file)	/* check received arguments */
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	*buffer = NULL;
+	*length = 0;
+	if (!card->ops || !card->ops->select_file)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 	/* select file by mean of iso7816 ops */
 	res = card->ops->select_file(card, path, file);
-	if (res != SC_SUCCESS || !file || !(*file)) {
+	if (res != SC_SUCCESS || !(*file)) {
 		msg = "select_file failed";
 		goto dnie_read_file_err;
 	}
@@ -580,6 +584,9 @@ static int dnie_read_certificate(sc_card_t * card, char *certpath, X509 ** cert)
 	size_t bufferlen = 0;
 	int res = SC_SUCCESS;
 
+	if (!cert)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	*cert = NULL;
 	LOG_FUNC_CALLED(card->ctx);
 	sc_format_path(certpath, &path);
 	res = dnie_read_file(card, &path, &file, &buffer, &bufferlen);
@@ -622,7 +629,10 @@ static int dnie_read_certificate(sc_card_t * card, char *certpath, X509 ** cert)
 static int dnie_get_channel_data(sc_card_t * card, dnie_channel_data_t ** data) {
 	dnie_private_data_t *priv_data = GET_DNIE_PRIV_DATA(card);
 	LOG_FUNC_CALLED(card->ctx);
-	if (!priv_data->channel_data) {
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	*data = NULL;
+	if (!priv_data || !priv_data->channel_data) {
 		sc_log(card->ctx, "Data channel configuration was not initialized");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
@@ -642,10 +652,14 @@ static int dnie_get_channel_data(sc_card_t * card, dnie_channel_data_t ** data) 
  */
 static int dnie_set_channel_data(sc_card_t * card, X509 * icc_intermediate_ca_cert) {
 	char *buf = NULL;
+	const X509_NAME *issuer;
 	dnie_private_data_t *priv_data = GET_DNIE_PRIV_DATA(card);
 	LOG_FUNC_CALLED(card->ctx);
 
-	const X509_NAME *issuer = X509_get_issuer_name(icc_intermediate_ca_cert);
+	if (!priv_data || !icc_intermediate_ca_cert)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	issuer = X509_get_issuer_name(icc_intermediate_ca_cert);
 	if (issuer) {
 		buf = X509_NAME_oneline(issuer, buf, 0);
 		if (!buf) {
@@ -683,6 +697,10 @@ static int dnie_get_root_ca_pubkey(sc_card_t * card, EVP_PKEY ** root_ca_key)
 	int res = SC_SUCCESS;
 	BIGNUM *root_ca_rsa_n = NULL, *root_ca_rsa_e = NULL;
 	dnie_channel_data_t *data;
+
+	if (!root_ca_key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	*root_ca_key = NULL;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	RSA *root_ca_rsa = NULL;
 	root_ca_rsa = RSA_new();
@@ -792,6 +810,8 @@ static int dnie_get_cvc_ca_cert(sc_card_t * card, u8 ** cert, size_t * length)
 	int res;
 	dnie_channel_data_t *data;
 	LOG_FUNC_CALLED(card->ctx);
+	if (!cert || !length)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* obtain the data channel info for the card */
 	res = dnie_get_channel_data(card, &data);
@@ -821,6 +841,8 @@ static int dnie_get_cvc_ifd_cert(sc_card_t * card, u8 ** cert, size_t * length)
 	int res;
 	dnie_channel_data_t *data;
 	LOG_FUNC_CALLED(card->ctx);
+	if (!cert || !length)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* obtain the data channel info for the card */
 	res = dnie_get_channel_data(card, &data);
@@ -851,6 +873,8 @@ static int dnie_get_cvc_ifd_cert_pin(sc_card_t * card, u8 ** cert, size_t * leng
 	int res;
 	dnie_channel_data_t *data;
 	LOG_FUNC_CALLED(card->ctx);
+	if (!cert || !length)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* obtain the data channel info for the card */
 	res = dnie_get_channel_data(card, &data);
@@ -881,6 +905,10 @@ static int dnie_get_privkey(sc_card_t * card, EVP_PKEY ** ifd_privkey,
                             u8 * private_exponent, size_t private_exponent_len)
 {
 	BIGNUM *ifd_rsa_n = NULL, *ifd_rsa_e = NULL, *ifd_rsa_d = NULL;
+
+	if (!ifd_privkey || !modulus || modulus_len <= 0 || !public_exponent || !private_exponent)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	*ifd_privkey = NULL;
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	int res = SC_ERROR_INTERNAL;
@@ -1029,10 +1057,14 @@ static int dnie_get_ifd_privkey_pin(sc_card_t * card, EVP_PKEY ** ifd_privkey)
  */
 static int dnie_get_icc_intermediate_ca_cert(sc_card_t * card, X509 ** cert)
 {
+	int res;
 	dnie_private_data_t *priv_data = GET_DNIE_PRIV_DATA(card);
 
-	int res = dnie_read_certificate(card, "3F006020", cert);
-	if (res == SC_SUCCESS && !priv_data->channel_data) {
+	if (!cert)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	*cert = NULL;
+	res = dnie_read_certificate(card, "3F006020", cert);
+	if (res == SC_SUCCESS && priv_data && !priv_data->channel_data) {
 		/* initialize the secure channel data using the issuer cert */
 		res = dnie_set_channel_data(card, *cert);
 	}
@@ -1048,6 +1080,9 @@ static int dnie_get_icc_intermediate_ca_cert(sc_card_t * card, X509 ** cert)
  */
 static int dnie_get_icc_cert(sc_card_t * card, X509 ** cert)
 {
+	if (!cert)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	*cert = NULL;
 	return dnie_read_certificate(card, "3F00601F", cert);
 }
 
@@ -1065,6 +1100,11 @@ static int dnie_get_root_ca_pubkey_ref(sc_card_t * card, u8 ** buf,
 {
 	int res;
 	dnie_channel_data_t *data;
+
+	if (!buf || !len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	*buf = NULL;
+	*len = 0;
 
 	/* obtain the data channel info for the card */
 	res = dnie_get_channel_data(card, &data);
@@ -1092,6 +1132,11 @@ static int dnie_get_intermediate_ca_pubkey_ref(sc_card_t * card, u8 ** buf,
 	int res;
 	dnie_channel_data_t *data;
 
+	if (!buf || !len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	*buf = NULL;
+	*len = 0;
+
 	/* obtain the data channel info for the card */
 	res = dnie_get_channel_data(card, &data);
 	LOG_TEST_RET(card->ctx, res, "Error getting the card channel data");
@@ -1117,6 +1162,11 @@ static int dnie_get_ifd_pubkey_ref(sc_card_t * card, u8 ** buf, size_t * len)
 {
 	int res;
 	dnie_channel_data_t *data;
+
+	if (!buf || !len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	*buf = NULL;
+	*len = 0;
 
 	/* obtain the data channel info for the card */
 	res = dnie_get_channel_data(card, &data);
@@ -1145,6 +1195,11 @@ static int dnie_get_ifd_pubkey_ref_pin(sc_card_t * card, u8 ** buf, size_t * len
 	dnie_channel_data_t *data;
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!buf || !len)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	*buf = NULL;
+	*len = 0;
+
 	/* obtain the data channel info for the card */
 	res = dnie_get_channel_data(card, &data);
 	LOG_TEST_RET(card->ctx, res, "Error getting the card channel data");
@@ -1170,6 +1225,11 @@ static int dnie_get_icc_privkey_ref(sc_card_t * card, u8 ** buf, size_t * len)
 	int res;
 	dnie_channel_data_t *data;
 
+	if (!buf || !len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	*buf = NULL;
+	*len = 0;
+
 	/* obtain the data channel info for the card */
 	res = dnie_get_channel_data(card, &data);
 	LOG_TEST_RET(card->ctx, res, "Error getting the card channel data");
@@ -1194,12 +1254,15 @@ static int dnie_get_sn_ifd(sc_card_t * card)
 	int res;
 	dnie_channel_data_t *data;
 	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
+	size_t sn_len;
 
 	/* obtain the data channel info for the card */
 	res = dnie_get_channel_data(card, &data);
 	LOG_TEST_RET(card->ctx, res, "Error getting the card channel data");
 
-	memcpy(sm->ifd.sn, data->sn_ifd.value, data->sn_ifd.len);
+	sn_len = data->sn_ifd.len > sizeof(sm->ifd.sn) ? sizeof(sm->ifd.sn) : data->sn_ifd.len;
+	memset(sm->ifd.sn, 0, sizeof(sm->ifd.sn));
+	memcpy(sm->ifd.sn, data->sn_ifd.value, sn_len);
 	return res;
 }
 
@@ -1218,12 +1281,15 @@ static int dnie_get_sn_ifd_pin(sc_card_t * card)
 	int res;
 	dnie_channel_data_t *data;
 	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
+	size_t sn_len;
 
 	/* obtain the data channel info for the card */
 	res = dnie_get_channel_data(card, &data);
 	LOG_TEST_RET(card->ctx, res, "Error getting the card channel data");
 
-	memcpy(sm->ifd.sn, data->sn_ifd_pin.value, data->sn_ifd_pin.len);
+	sn_len = data->sn_ifd_pin.len > sizeof(sm->ifd.sn) ? sizeof(sm->ifd.sn) : data->sn_ifd_pin.len;
+	memset(sm->ifd.sn, 0, sizeof(sm->ifd.sn));
+	memcpy(sm->ifd.sn, data->sn_ifd_pin.value, sn_len);
 	return res;
 }
 
@@ -1240,12 +1306,14 @@ static int dnie_get_sn_icc(sc_card_t * card)
 	int res=SC_SUCCESS;
 	sc_serial_number_t serial;
 	struct sm_cwa_session * sm = &card->sm_ctx.info.session.cwa;
+	size_t sn_len;
 
 	res = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
 	LOG_TEST_RET(card->ctx, res, "Error in getting serial number");
 	/* copy into sn_icc buffer.Remember that dnie sn has 7 bytes length */
+	sn_len = serial.len > 7 ? 7 : serial.len;
 	memset(sm->icc.sn, 0, sizeof(sm->icc.sn));
-	memcpy(&sm->icc.sn[1], serial.value, 7);
+	memcpy(&sm->icc.sn[1], serial.value, sn_len);
 	return SC_SUCCESS;
 }
 
@@ -1339,7 +1407,12 @@ cwa_provider_t *dnie_get_cwa_provider(sc_card_t * card)
  */
 void dnie_change_cwa_provider_to_secure(sc_card_t * card)
 {
-	cwa_provider_t * res = GET_DNIE_PRIV_DATA(card)->cwa_provider;
+	dnie_private_data_t *priv = GET_DNIE_PRIV_DATA(card);
+	cwa_provider_t * res;
+
+	if (!priv || !priv->cwa_provider)
+		return;
+	res = priv->cwa_provider;
 
 	/* redefine different IFD data for secure channel */
 	res->cwa_get_cvc_ifd_cert = dnie_get_cvc_ifd_cert;
@@ -1356,7 +1429,12 @@ void dnie_change_cwa_provider_to_secure(sc_card_t * card)
  */
 void dnie_change_cwa_provider_to_pin(sc_card_t * card)
 {
-	cwa_provider_t * res = GET_DNIE_PRIV_DATA(card)->cwa_provider;
+	dnie_private_data_t *priv = GET_DNIE_PRIV_DATA(card);
+	cwa_provider_t * res;
+
+	if (!priv || !priv->cwa_provider)
+		return;
+	res = priv->cwa_provider;
 
 	/* redefine different IFD data for PIN channel */
 	res->cwa_get_cvc_ifd_cert = dnie_get_cvc_ifd_cert_pin;
@@ -1370,6 +1448,8 @@ void dnie_format_apdu(sc_card_t *card, sc_apdu_t *apdu,
 			unsigned char * resp, size_t resplen,
 			const unsigned char * data, size_t datalen)
 {
+	if (!apdu)
+		return;
 	sc_format_apdu(card, apdu, cse, ins, p1, p2);
 	apdu->le = le;
 	apdu->lc = lc;
