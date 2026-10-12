@@ -37,15 +37,15 @@ cardos_ec_compute_shared_value(struct sc_card *card,
 	struct sc_apdu apdu;
 	u8 *sbuf = NULL;
 
-	if (card == NULL || crgram == NULL || out == NULL) {
+	if (crgram == NULL || out == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
 	sc_log(card->ctx, "CardOS compute shared value: in-len %zu, out-len %zu", crgram_len, outlen);
 
 	/* Ensure public key is provided in uncompressed format (indicator byte
-	 * 0x04 followed by X and Y coordinate. */
-	if (crgram_len % 2 == 0 || crgram[0] != 0x04) {
+	 * 0x04 followed by X and Y coordinate). */
+	if (crgram_len < 3 || crgram_len % 2 == 0 || crgram[0] != 0x04 || crgram_len - 1 > 255) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
