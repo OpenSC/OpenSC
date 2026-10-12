@@ -41,7 +41,7 @@ static const char *app_name = "iasecc-tool";
 
 static char * opt_bind_to_aid = NULL;
 static char * opt_reader = NULL;
-static char * opt_sdo_tag = 0;
+static char * opt_sdo_tag = NULL;
 static int opt_wait = 0;
 static int verbose = 0;
 
@@ -79,17 +79,17 @@ static sc_card_t *card = NULL;
 static struct sc_pkcs15_card *p15card = NULL;
 
 static void
-_iasecc_print_tlv(char *label, int format_text, struct iasecc_extended_tlv *tlv)
+_iasecc_print_tlv(const char *label, int format_text, struct iasecc_extended_tlv *tlv)
 {
 	unsigned ii;
 
-	if (!tlv->value)
+	if (!label || !tlv || !tlv->value)
 		return;
 
 	printf("%s:\t", label);
 	for(ii=0; ii<tlv->size; ii++)   {
 		if (format_text)   {
-			printf("%c", *(tlv->value + ii));
+			printf("%c", isprint((unsigned char)*(tlv->value + ii)) ? *(tlv->value + ii) : '.');
 		}
 		else   {
 			if (ii) printf(":");
@@ -126,19 +126,21 @@ static int list_sdos(char *sdo_tag)
 	struct iasecc_se_info se;
 	unsigned char sdo_class = 0;
 	long sdo_class_l;
+	char *endptr = NULL;
 	int rv, ii, jj;
 
-	if (!sdo_tag)
+	if (!sdo_tag || !*sdo_tag)
 		goto usage;
 
 	if (*sdo_tag == 'x' || *sdo_tag == 'X')
-		sdo_class_l = strtol(sdo_tag + 1, NULL, 16);
-	else if ((strlen(sdo_tag) > 2) && (*(sdo_tag + 1) == 'x' || *(sdo_tag + 1) == 'X'))
-		sdo_class_l = strtol(sdo_tag + 2, NULL, 16);
+		sdo_class_l = strtol(sdo_tag + 1, &endptr, 16);
 	else
-		sdo_class_l = strtol(sdo_tag, NULL, 10);
+		sdo_class_l = strtol(sdo_tag, &endptr, 0);
 
-	sdo_class = sdo_class_l & 0x7F;
+	if (!endptr || *endptr != '\0' || sdo_class_l < 0 || sdo_class_l > 0x7F)
+		goto usage;
+
+	sdo_class = (unsigned char)(sdo_class_l & 0x7F);
 	if (sdo_class == IASECC_SDO_CLASS_SE)   {
 		for (ii=1; ii<0x20; ii++)   {
 			memset(&se, 0, sizeof(se));
@@ -177,10 +179,16 @@ static int list_apps(FILE *fout)
 	unsigned j;
 	int i;
 
+	if (!fout)
+		return -1;
+
 	for (i=0; i < card->app_count; i++)   {
 		struct sc_app_info *info = card->app[i];
 
-		fprintf(fout, "Application '%s':\n", info->label);
+		if (!info)
+			continue;
+
+		fprintf(fout, "Application '%s':\n", info->label ? info->label : "(unknown)");
 		fprintf(fout, "\tAID: ");
 		for(j=0;j<info->aid.len;j++)
 			fprintf(fout, "%02X", info->aid.value[j]);
@@ -207,26 +215,29 @@ int main(int argc, char *argv[])
 	sc_context_param_t ctx_param;
 
 	while (1) {
-		c = getopt_long(argc, argv, "v", options, &long_optind);
+		c = getopt_long(argc, argv, "vw", options, &long_optind);
 		if (c == -1)
 			break;
 		if (c == '?')
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		switch (c) {
-                case OPT_LIST_SDOS:
-                        do_list_sdos = 1;
-                        opt_sdo_tag = optarg;
-                        action_count++;
-                        break;
+		case OPT_LIST_SDOS:
+			do_list_sdos = 1;
+			opt_sdo_tag = optarg;
+			action_count++;
+			break;
 		case OPT_LIST_APPLICATIONS:
 			do_list_apps = 1;
 			action_count++;
 			break;
-                case OPT_BIND_TO_AID:
+		case OPT_BIND_TO_AID:
 			opt_bind_to_aid = optarg;
 			break;
 		case OPT_READER:
 			opt_reader = optarg;
+			break;
+		case 'w':
+			opt_wait = 1;
 			break;
 		case 'v':
 			verbose++;
@@ -261,16 +272,21 @@ int main(int argc, char *argv[])
 		aid.len = sizeof(aid.value);
 		if (sc_hex_to_bin(opt_bind_to_aid, aid.value, &aid.len))   {
 			fprintf(stderr, "Invalid AID value: '%s'\n", opt_bind_to_aid);
-			return 1;
+			err = 1;
+			goto end;
 		}
 
 		r = sc_pkcs15_bind(card, &aid, &p15card);
 	}
-	else   if (!do_list_sdos) {
+	else if (!do_list_sdos) {
 		r = sc_pkcs15_bind(card, NULL, &p15card);
+	}
+	else {
+		r = SC_SUCCESS;
 	}
 	if (r != SC_SUCCESS) {
 		fprintf(stderr, "Failed to bind card: %s\n", sc_strerror(r));
+		err = 1;
 		goto end;
 	}
 
@@ -294,5 +310,5 @@ end:
 	}
 	sc_release_context(ctx);
 
-	return err;
+	return err ? 1 : 0;
 }
