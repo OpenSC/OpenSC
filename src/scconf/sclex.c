@@ -83,10 +83,11 @@ static int buf_nextch(BUFHAN * bp)
 			return EOF;
 		saved = (unsigned char) (*(bp->saved_string++));
 		return saved;
-	} else {
+	} else if (bp->fp) {
 		saved = fgetc(bp->fp);
 		return saved;
 	}
+	return EOF;
 }
 
 static void buf_finished(BUFHAN * bp)
@@ -159,7 +160,9 @@ static int scconf_lex_engine(scconf_parser * parser, BUFHAN * bp)
 			continue;
 		case '"':
 			buf_eat_till(bp, (char) this_char, "\"\r\n");
-			buf_addch(bp, (char) buf_nextch(bp));
+			if (bp->saved_char == '"') {
+				buf_addch(bp, (char) buf_nextch(bp));
+			}
 			scconf_parse_token(parser, TOKEN_TYPE_STRING, bp->buf);
 			buf_zero(bp);
 			continue;
@@ -183,6 +186,9 @@ int scconf_lex_parse(scconf_parser * parser, const char *filename)
 	BUFHAN bhan;
 	int ret;
 
+	if (!parser || !filename)
+		return 0;
+
 	fp = fopen(filename, "r");
 	if (!fp) {
 		parser->error = 1;
@@ -200,6 +206,9 @@ int scconf_lex_parse_string(scconf_parser * parser, const char *string)
 {
 	BUFHAN bhan;
 	int ret;
+
+	if (!parser || !string)
+		return 0;
 
 	buf_init(&bhan, (FILE *) NULL, string);
 	ret = scconf_lex_engine(parser, &bhan);
