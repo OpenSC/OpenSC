@@ -44,12 +44,12 @@ static const char *get_inserted_text(struct sc_pkcs15_card *p15card, struct sc_a
 		return p15card->card->reader->name;
 	}
 
-	if (!atr)
+	if (!atr || atr->len == 0)
 		return NULL;
 
 	strcpy(text, prefix);
-	sc_bin_to_hex(atr->value, atr->len, text + (sizeof prefix) - 1,
-			sizeof(text) - (sizeof prefix) - 1, ':');
+	sc_bin_to_hex(atr->value, atr->len, text + (sizeof(prefix) - 1),
+			sizeof(text) - (sizeof(prefix) - 1), ':');
 
 	return text;
 }
@@ -163,13 +163,16 @@ const char *ui_get_str(struct sc_context *ctx, struct sc_atr *atr,
 			|| !find_lang_str(p15card->tokeninfo->preferred_language, &lang)) {
 #ifdef _WIN32
 		WCHAR language_wc[LOCALE_NAME_MAX_LENGTH];
+		char *language;
+
 		LCIDToLocaleName(
 				MAKELCID(GetUserDefaultUILanguage(), SORT_DEFAULT),
 				language_wc, LOCALE_NAME_MAX_LENGTH, 0);
-		char *language = char_str_from_wchar(language_wc);
+		language = char_str_from_wchar(language_wc);
 		if (find_lang_str(language, &lang))
 			sc_log(ctx, "Using the system's native environment locale for user messages (%s).", language);
-		LocalFree(language);
+		if (language)
+			LocalFree(language);
 #else
 		const char *language = getenv("LANGUAGE");
 		/* LANGUAGE supersedes locale */
