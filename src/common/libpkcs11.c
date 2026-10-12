@@ -54,16 +54,17 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 	sc_pkcs11_module_t *mod;
 	CK_RV rv, (*c_get_function_list)(CK_FUNCTION_LIST_PTR_PTR);
 	CK_RV (*c_get_interface)(CK_UTF8CHAR_PTR, CK_VERSION_PTR, CK_INTERFACE_PTR_PTR, CK_FLAGS);
+
+	if (mspec == NULL || funcs == NULL) {
+		return NULL;
+	}
+
 	mod = calloc(1, sizeof(*mod));
 	if (mod == NULL) {
 		return NULL;
 	}
 	mod->_magic = MAGIC;
 
-	if (mspec == NULL) {
-		free(mod);
-		return NULL;
-	}
 	mod->handle = sc_dlopen(mspec);
 	if (mod->handle == NULL) {
 		fprintf(stderr, "sc_dlopen failed: %s\n", sc_dlerror());
@@ -75,7 +76,7 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 	if (c_get_interface) {
 		/* Get default PKCS #11 interface */
 		rv = c_get_interface((CK_UTF8CHAR_PTR) "PKCS 11", NULL, &mod->interface, 0);
-		if (rv == CKR_OK) {
+		if (rv == CKR_OK && mod->interface && mod->interface->pFunctionList) {
 			/* PKCS#11 2.* compatible API */
 			mod->function_list = mod->interface->pFunctionList;
 			mod->version = mod->function_list->version;
@@ -95,7 +96,7 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 	if (!c_get_function_list)
 		goto failed;
 	rv = c_get_function_list(funcs);
-	if (rv == CKR_OK) {
+	if (rv == CKR_OK && *funcs) {
 		mod->version = (*funcs)->version;
 		if (mod->version.major > 2) {
 			/* SoftHSM bug: The version in function list SHOULD NOT be > 2. Override with last
@@ -107,15 +108,15 @@ C_LoadModule(const char *mspec, CK_FUNCTION_LIST_PTR_PTR funcs)
 		}
 		return (void *)mod;
 	} else {
-		fprintf(stderr, "C_GetFunctionList failed %lx", rv);
-		rv = C_UnloadModule((void *) mod);
-		if (rv == CKR_OK)
-			mod = NULL; /* already freed */
+		fprintf(stderr, "C_GetFunctionList failed %lx\n", (unsigned long)rv);
+		goto failed;
 	}
 failed:
-	if (mod && mod->handle)
-		sc_dlclose(mod->handle);
-	free(mod);
+	if (mod) {
+		if (mod->handle)
+			sc_dlclose(mod->handle);
+		free(mod);
+	}
 	return NULL;
 }
 
@@ -131,6 +132,9 @@ C_GetModuleVersion(void *module)
 {
 	sc_pkcs11_module_t *mod = (sc_pkcs11_module_t *)module;
 
+	if (!mod || mod->_magic != MAGIC)
+		return NULL;
+
 	return &mod->version;
 }
 
@@ -143,6 +147,9 @@ CK_INTERFACE_PTR
 C_GetModuleInterface(void *module)
 {
 	sc_pkcs11_module_t *mod = (sc_pkcs11_module_t *)module;
+
+	if (!mod || mod->_magic != MAGIC)
+		return NULL;
 
 	if (mod->version.major > 2) {
 		return mod->interface;
@@ -163,8 +170,11 @@ C_UnloadModule(void *module)
 	if (!mod || mod->_magic != MAGIC)
 		return CKR_ARGUMENTS_BAD;
 
-	if (mod->handle != NULL && sc_dlclose(mod->handle) < 0)
+	mod->_magic = 0;
+	if (mod->handle != NULL && sc_dlclose(mod->handle) != 0) {
+		free(mod);
 		return CKR_FUNCTION_FAILED;
+	}
 
 	free(mod);
 	return CKR_OK;
