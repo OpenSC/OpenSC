@@ -146,7 +146,7 @@ int sc_parse_ef_atr(struct sc_card *card)
 	rv = sc_select_file(card, &path, &file);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot select EF(ATR) file");
 
-	if (file->size) {
+	if (file && file->size) {
 		size = file->size;
 	} else {
 		size = 1024;
@@ -158,6 +158,10 @@ int sc_parse_ef_atr(struct sc_card *card)
 	}
 	rv = sc_read_binary(card, 0, buf, size, 0);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot read EF(ATR) file");
+	if (rv <= 0) {
+		rv = SC_ERROR_INTERNAL;
+		LOG_TEST_GOTO_ERR(ctx, rv, "Empty EF(ATR) file");
+	}
 
 	/* Workaround: Some cards seem to have a buggy storage of the EF.ATR */
 	if ((card->type == SC_CARD_TYPE_IASECC_CPX) ||
