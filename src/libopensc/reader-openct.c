@@ -123,7 +123,8 @@ openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
 	if (info) {
 		data->info = *info;
 	} else {
-		strcpy(data->info.ct_name, "OpenCT reader (detached)");
+		strncpy(data->info.ct_name, "OpenCT reader (detached)", sizeof(data->info.ct_name) - 1);
+		data->info.ct_name[sizeof(data->info.ct_name) - 1] = '\0';
 		data->info.ct_slots = 1;
 	}
 	data->num = num;
@@ -132,6 +133,11 @@ openct_add_reader(sc_context_t *ctx, unsigned int num, ct_info_t *info)
 	reader->ops = &openct_ops;
 	reader->drv_data = data;
 	reader->name = strdup(data->info.ct_name);
+	if (!reader->name) {
+		free(data);
+		free(reader);
+		return SC_ERROR_OUT_OF_MEMORY;
+	}
 
 	conf_block = sc_get_conf_block(ctx, "reader_driver", "openct", 1);
 	if (conf_block) {
@@ -196,6 +202,9 @@ static int openct_reader_detect_card_presence(sc_reader_t *reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (!data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
@@ -222,6 +231,9 @@ openct_reader_connect(sc_reader_t *reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (!data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
@@ -247,6 +259,9 @@ openct_reader_connect(sc_reader_t *reader)
 		return SC_ERROR_READER;
 	}
 
+	if ((size_t) rc > sizeof(reader->atr.value))
+		return SC_ERROR_WRONG_LENGTH;
+
 	reader->atr.len = rc;
 	return SC_SUCCESS;
 }
@@ -256,6 +271,9 @@ openct_reader_reconnect(sc_reader_t *reader)
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int	rc;
+
+	if (!data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (data->h != NULL)
 		return 0;
@@ -270,9 +288,11 @@ static int openct_reader_disconnect(sc_reader_t *reader)
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
-	if (data->h && !(reader->ctx->flags & SC_CTX_FLAG_TERMINATE))
-		ct_reader_disconnect(data->h);
-	data->h = NULL;
+	if (data) {
+		if (data->h && !(reader->ctx->flags & SC_CTX_FLAG_TERMINATE))
+			ct_reader_disconnect(data->h);
+		data->h = NULL;
+	}
 	return SC_SUCCESS;
 }
 
@@ -283,6 +303,9 @@ openct_reader_internal_transmit(sc_reader_t *reader,
 {
 	struct driver_data *data = (struct driver_data *) reader->drv_data;
 	int rc;
+
+	if (!data || !recvsize)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
@@ -312,6 +335,9 @@ static int openct_reader_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 	size_t       ssize, rsize, rbuflen = 0;
 	u8           *sbuf = NULL, *rbuf = NULL;
 	int          r;
+
+	if (!apdu || apdu->resplen > SIZE_MAX - 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	rsize = rbuflen = apdu->resplen + 2;
 	rbuf     = malloc(rbuflen);
@@ -355,17 +381,15 @@ static int openct_reader_perform_verify(sc_reader_t *reader, struct sc_pin_cmd_d
 	u8 buf[254];
 	int rc;
 
+	if (!data || !info || !info->apdu)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
 	/* Hotplug check */
 	if ((rc = openct_reader_reconnect(reader)) < 0)
 		return rc;
-
-	if (info->apdu == NULL) {
-		/* complain */
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
 
 	buf[j++] = info->apdu->cla;
 	buf[j++] = info->apdu->ins;
@@ -375,9 +399,9 @@ static int openct_reader_perform_verify(sc_reader_t *reader, struct sc_pin_cmd_d
 	if (info->apdu->lc) {
 		size_t len = info->apdu->lc;
 
-		if (j + 1 + len > sizeof(buf))
+		if (j + 1 + len > sizeof(buf) || !info->apdu->data)
 			return SC_ERROR_BUFFER_TOO_SMALL;
-		buf[j++] = len;
+		buf[j++] = (u8) len;
 		memcpy(buf+j, info->apdu->data, len);
 		j += len;
 	}
@@ -416,6 +440,9 @@ static int openct_reader_lock(sc_reader_t *reader)
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (!data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
 
@@ -444,6 +471,9 @@ static int openct_reader_unlock(sc_reader_t *reader)
 	int rc;
 
 	SC_FUNC_CALLED(reader->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (reader->ctx->flags & SC_CTX_FLAG_TERMINATE)
 		return SC_ERROR_NOT_ALLOWED;
