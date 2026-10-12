@@ -516,6 +516,7 @@ int sc_unlock(sc_card_t *card)
 		LOG_FUNC_RETURN(card->ctx, r);
 
 	if (card->lock_count < 1) {
+		sc_mutex_unlock(card->ctx, card->mutex);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	if (--card->lock_count == 0) {
