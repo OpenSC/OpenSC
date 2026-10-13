@@ -366,22 +366,34 @@ static int entersafe_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 							   sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
-	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *kinfo;
 	sc_card_t *card = p15card->card;
 	sc_entersafe_wkey_data data;
 	sc_file_t              *tfile;
 	const sc_acl_entry_t   *acl_entry;
 	int r;
-
-	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)obj->data;
-	size_t keybits = key_info->modulus_length;
+	struct sc_pkcs15_prkey_info *key_info;
+	size_t keybits;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if ( key->algorithm != SC_ALGORITHM_RSA )
-	{
-		 /* ignore non-RSA keys */
-		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INVALID_ARGUMENTS);
+	if (!obj || !obj->data || !key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	kinfo = (sc_pkcs15_prkey_info_t *)obj->data;
+	key_info = (struct sc_pkcs15_prkey_info *)obj->data;
+	keybits = key_info->modulus_length;
+
+	if (key->algorithm != SC_ALGORITHM_RSA ||
+			!key->u.rsa.p.len || !key->u.rsa.p.data ||
+			!key->u.rsa.q.len || !key->u.rsa.q.data ||
+			!key->u.rsa.dmp1.len || !key->u.rsa.dmp1.data ||
+			!key->u.rsa.dmq1.len || !key->u.rsa.dmq1.data ||
+			!key->u.rsa.iqmp.len || !key->u.rsa.iqmp.data ||
+			!key->u.rsa.modulus.len || !key->u.rsa.modulus.data ||
+			!key->u.rsa.exponent.len || !key->u.rsa.exponent.data) {
+		/* ignore non-RSA or incomplete keys */
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
 	/* Disable RSA:512bits */
@@ -475,7 +487,9 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 	/* get the modulus via READ PUBLIC KEY */
 	if (pubkey) {
 		u8 *buf;
-		struct sc_pkcs15_pubkey_rsa *rsa = &pubkey->u.rsa;
+		struct sc_pkcs15_pubkey_rsa *rsa;
+
+		rsa = &pubkey->u.rsa;
 		/* set the modulus */
 		rsa->modulus.data = gendat.modulus;
 		rsa->modulus.len  = kinfo->modulus_length >> 3;
