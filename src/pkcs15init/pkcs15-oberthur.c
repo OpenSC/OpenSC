@@ -670,29 +670,33 @@ cosm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, rv, "cosm_generate_key() CARDCTL_OBERTHUR_GENERATE_KEY failed");
 
 	/* extract public key */
-	pubkey->algorithm = SC_ALGORITHM_RSA;
-	pubkey->u.rsa.modulus.len   = key_info->modulus_length / 8;
-	pubkey->u.rsa.modulus.data  = malloc(key_info->modulus_length / 8);
-	if (!pubkey->u.rsa.modulus.data) {
-		sc_file_free(prkf);
-		sc_file_free(tmpf);
-		free(args.pubkey);
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot allocate modulus buf");
-	}
+	if (pubkey != NULL) {
+		pubkey->algorithm = SC_ALGORITHM_RSA;
+		pubkey->u.rsa.modulus.len   = key_info->modulus_length / 8;
+		pubkey->u.rsa.modulus.data  = malloc(key_info->modulus_length / 8);
+		if (!pubkey->u.rsa.modulus.data) {
+			sc_file_free(prkf);
+			sc_file_free(tmpf);
+			free(args.pubkey);
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot allocate modulus buf");
+		}
 
-	/* FIXME and if the exponent length is not 3? */
-	pubkey->u.rsa.exponent.len  = 3;
-	pubkey->u.rsa.exponent.data = malloc(3);
-	if (!pubkey->u.rsa.exponent.data) {
-		sc_file_free(prkf);
-		sc_file_free(tmpf);
-		free(args.pubkey);
-		free(pubkey->u.rsa.modulus.data);
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot allocate exponent buf");
+		/* FIXME and if the exponent length is not 3? */
+		pubkey->u.rsa.exponent.len  = 3;
+		pubkey->u.rsa.exponent.data = malloc(3);
+		if (!pubkey->u.rsa.exponent.data) {
+			sc_file_free(prkf);
+			sc_file_free(tmpf);
+			free(args.pubkey);
+			free(pubkey->u.rsa.modulus.data);
+			pubkey->u.rsa.modulus.data = NULL;
+			pubkey->u.rsa.modulus.len = 0;
+			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "cosm_generate_key() cannot allocate exponent buf");
+		}
+		memcpy(pubkey->u.rsa.exponent.data, "\x01\x00\x01", 3);
+		memcpy(pubkey->u.rsa.modulus.data, args.pubkey, args.pubkey_len);
+		pubkey->u.rsa.modulus.len = args.pubkey_len;
 	}
-	memcpy(pubkey->u.rsa.exponent.data, "\x01\x00\x01", 3);
-	memcpy(pubkey->u.rsa.modulus.data, args.pubkey, args.pubkey_len);
-	pubkey->u.rsa.modulus.len = args.pubkey_len;
 
 	key_info->key_reference = prkf->path.value[prkf->path.len - 1] & 0xFF;
 	key_info->path = prkf->path;
@@ -781,6 +785,12 @@ cosm_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA || prkey->algorithm != SC_ALGORITHM_RSA)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Store key failed: RSA only supported");
 
+	if (!prkey->u.rsa.p.data || !prkey->u.rsa.q.data || !prkey->u.rsa.iqmp.data
+			|| !prkey->u.rsa.dmp1.data || !prkey->u.rsa.dmq1.data
+			|| !prkey->u.rsa.p.len || !prkey->u.rsa.q.len || !prkey->u.rsa.iqmp.len
+			|| !prkey->u.rsa.dmp1.len || !prkey->u.rsa.dmq1.len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_log(ctx,  "store key with ID:%s and path:%s", sc_pkcs15_print_id(&key_info->id),
 		       	sc_print_path(&key_info->path));
 
@@ -788,10 +798,15 @@ cosm_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, rv, "Cannot store key: select key file failed");
 
 	rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-	LOG_TEST_RET(ctx, rv, "No authorisation to store private key");
+	if (rv < 0) {
+		sc_file_free(file);
+		LOG_TEST_RET(ctx, rv, "No authorisation to store private key");
+	}
 
-	if (key_info->id.len > sizeof(update_info.id))
-		 LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	if (key_info->id.len > sizeof(update_info.id)) {
+		sc_file_free(file);
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
 
 	memset(&update_info, 0, sizeof(update_info));
 	update_info.type = SC_CARDCTL_OBERTHUR_KEY_RSA_CRT;
@@ -801,9 +816,8 @@ cosm_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	memcpy(update_info.id, key_info->id.value, update_info.id_len);
 
 	rv = sc_card_ctl(p15card->card, SC_CARDCTL_OBERTHUR_UPDATE_KEY, &update_info);
-	LOG_TEST_RET(ctx, rv, "Cannot update private key");
-
 	sc_file_free(file);
+	LOG_TEST_RET(ctx, rv, "Cannot update private key");
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
