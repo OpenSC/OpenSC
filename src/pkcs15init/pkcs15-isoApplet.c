@@ -416,6 +416,7 @@ isoApplet_generate_key_rsa(sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
 	pubkey->u.rsa.modulus.data	= args.pubkey.rsa.modulus.value;
 	pubkey->u.rsa.exponent.len	= args.pubkey.rsa.exponent.len;
 	pubkey->u.rsa.exponent.data	= args.pubkey.rsa.exponent.value;
+	sc_mem_clear(&args, sizeof(args));
 	rv = SC_SUCCESS;
 	LOG_FUNC_RETURN(card->ctx, rv);
 err:
@@ -431,6 +432,7 @@ err:
 		pubkey->u.rsa.exponent.data = NULL;
 		pubkey->u.rsa.exponent.len = 0;
 	}
+	sc_mem_clear(&args, sizeof(args));
 	LOG_FUNC_RETURN(card->ctx, rv);
 }
 
@@ -583,6 +585,7 @@ out:
 		free(args.pubkey.ec.ecPointQ.value);
 		args.pubkey.ec.ecPointQ.value = NULL;
 	}
+	sc_mem_clear(&args, sizeof(args));
 	if(r < 0)
 	{
 		if(alg_id_params)
@@ -634,9 +637,17 @@ isoApplet_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_prkey_info_t *key_info;
 	sc_file_t *privKeyFile=NULL;
 	sc_card_t *card = p15card->card;
+	sc_pkcs15_pubkey_t local_pubkey, *pk = pubkey;
 
-	if (!profile || !obj || !obj->data || !pubkey)
+	if (!profile || !obj || !obj->data)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (pk == NULL) {
+		memset(&local_pubkey, 0, sizeof(local_pubkey));
+		pk = &local_pubkey;
+	} else {
+		memset(pk, 0, sizeof(*pk));
+	}
 
 	key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 
@@ -660,16 +671,20 @@ isoApplet_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	switch(obj->type)
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
-		r = isoApplet_generate_key_rsa(key_info, card, pubkey);
+		r = isoApplet_generate_key_rsa(key_info, card, pk);
 		break;
 
 	case SC_PKCS15_TYPE_PRKEY_EC:
-		r = isoApplet_generate_key_ec(key_info, card, pubkey);
+		r = isoApplet_generate_key_ec(key_info, card, pk);
 		break;
 
 	default:
 		r = SC_ERROR_NOT_SUPPORTED;
 		sc_log(card->ctx, "%s: Key generation failed: Unknown/unsupported key type.", sc_strerror(r));
+	}
+
+	if (pubkey == NULL) {
+		sc_pkcs15_free_pubkey(pk);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -751,11 +766,11 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
 		args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_2048;
-		if(!key->u.rsa.p.data
-		        ||!key->u.rsa.q.data
-		        ||!key->u.rsa.iqmp.data
-		        ||!key->u.rsa.dmp1.data
-		        ||!key->u.rsa.dmq1.data)
+		if(!key->u.rsa.p.data || !key->u.rsa.p.len
+		        ||!key->u.rsa.q.data || !key->u.rsa.q.len
+		        ||!key->u.rsa.iqmp.data || !key->u.rsa.iqmp.len
+		        ||!key->u.rsa.dmp1.data || !key->u.rsa.dmp1.len
+		        ||!key->u.rsa.dmq1.data || !key->u.rsa.dmq1.len)
 		{
 			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Only CRT RSA keys may be imported.");
 		}
@@ -814,6 +829,7 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 	args.priv_key_ref = key_info->key_reference;
 
 	r = sc_card_ctl(card, SC_CARDCTL_ISOAPPLET_IMPORT_KEY, &args);
+	sc_mem_clear(&args, sizeof(args));
 	if (r < 0)
 	{
 		sc_log(card->ctx, "%s: Error in card_ctl", sc_strerror(r));
