@@ -193,14 +193,15 @@ cardos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *d
 		const u8 *pin, size_t pin_len,
 		const u8 *puk, size_t puk_len)
 {
-	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info;
 	struct sc_card *card = p15card->card;
 	unsigned int	puk_id = CARDOS_AC_NEVER;
 	int		r;
 
-	if (!pin || !pin_len)
+	if (!pin_obj || !pin_obj->data || !pin || !pin_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
+	auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
 
@@ -261,9 +262,14 @@ cardos_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_prkey_t *key)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *key_info;
 	struct sc_file *file = NULL;
 	int		algorithm = 0, r;
+
+	if (!obj || !obj->data || !key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_log(ctx,  "CardOS supports RSA keys only.");
@@ -325,7 +331,7 @@ cardos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_pubkey_t *pubkey)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_prkey_info *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	struct sc_pkcs15_prkey_info *key_info;
 	struct sc_pkcs15_prkey_rsa key_obj;
 	struct sc_cardctl_cardos_genkey_info args;
 	struct sc_file	*temp;
@@ -334,9 +340,13 @@ cardos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	size_t		keybits, rsa_max_size;
 	int             pin_id = -1;
 
+	if (!obj || !obj->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		return SC_ERROR_NOT_SUPPORTED;
 
+	key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 	rsa_max_size = (sc_card_find_rsa_alg(p15card->card, 2048) != NULL) ? 2048 : 1024;
 	keybits = key_info->modulus_length & ~7UL;
 	if (keybits > rsa_max_size) {
@@ -390,18 +400,27 @@ cardos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (r < 0)
 		goto out;
 
-	r = cardos_extract_pubkey(p15card->card, pubkey, temp, use_ext_rsa);
+	if (pubkey != NULL)
+		r = cardos_extract_pubkey(p15card->card, pubkey, temp, use_ext_rsa);
 out:
 	if (delete_it != 0)
 		sc_pkcs15init_rmdir(p15card, profile, temp);
 	sc_file_free(temp);
 
-	if (r < 0) {
-		if (pubkey->u.rsa.modulus.data)
+	if (r < 0 && pubkey != NULL) {
+		if (pubkey->u.rsa.modulus.data) {
 			free (pubkey->u.rsa.modulus.data);
-		if (pubkey->u.rsa.exponent.data)
+			pubkey->u.rsa.modulus.data = NULL;
+			pubkey->u.rsa.modulus.len = 0;
+		}
+		if (pubkey->u.rsa.exponent.data) {
 			free (pubkey->u.rsa.exponent.data);
+			pubkey->u.rsa.exponent.data = NULL;
+			pubkey->u.rsa.exponent.len = 0;
+		}
 	}
+	sc_mem_clear(&args, sizeof(args));
+	sc_mem_clear(abignum, sizeof(abignum));
 	return r;
 }
 
@@ -421,10 +440,16 @@ cardos_delete_object(sc_profile_t *profile, struct sc_pkcs15_card *p15card,
 	uint8_t abignum[SC_MAX_RSA_KEY_SIZE / 8];
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!obj)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/*
 	 * If we are deleting a private key, overwrite it so it can't be used.
 	 */
 	if ((obj->type & SC_PKCS15_TYPE_CLASS_MASK) == SC_PKCS15_TYPE_PRKEY) {
+		if (!obj->data)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		key_info = obj->data;
 		keybits = key_info->modulus_length & ~7UL;
 		if (keybits == 0 || keybits > SC_MAX_RSA_KEY_SIZE) {
@@ -440,6 +465,7 @@ cardos_delete_object(sc_profile_t *profile, struct sc_pkcs15_card *p15card,
 
 		r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
 		sc_file_free(file);
+		file = NULL;
 		LOG_TEST_RET(ctx, r, "Failed to store key: UPDATE authentication failed");
 
 		r = cardos_put_key(profile, p15card, algorithm, key_info, &key_obj);
@@ -447,17 +473,20 @@ cardos_delete_object(sc_profile_t *profile, struct sc_pkcs15_card *p15card,
 	}
 
 	/* Delete object from the PKCS15 file system. */
-	if (path->len || path->aid.len)   {
+	if (path && (path->len || path->aid.len)) {
 		r = sc_select_file(p15card->card, path, &file);
-		if (r != SC_ERROR_FILE_NOT_FOUND)
+		if (r != SC_SUCCESS && r != SC_ERROR_FILE_NOT_FOUND)
 			LOG_TEST_RET(ctx, r, "select object path failed");
 
-		stored_in_ef = (file->type != SC_FILE_TYPE_DF);
-		sc_file_free(file);
+		if (r == SC_SUCCESS && file) {
+			stored_in_ef = (file->type != SC_FILE_TYPE_DF);
+			sc_file_free(file);
+			file = NULL;
+		}
 	}
 
 	/* If the object is stored in a normal EF, try to delete the EF. */
-	if (r == SC_SUCCESS && stored_in_ef) {
+	if (r == SC_SUCCESS && stored_in_ef && path) {
 		r = sc_pkcs15init_delete_by_path(profile, p15card, path);
 		LOG_TEST_RET(ctx, r, "Failed to delete object by path");
 	}
@@ -479,10 +508,12 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	struct tlv	tlv;
 	unsigned int	attempts, maxlen;
 	u8 minlen;
-	int		r, hasverifyrc;
+	int		r = SC_ERROR_INTERNAL, hasverifyrc;
 
-	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
-		return SC_ERROR_OBJECT_NOT_VALID;
+	if (!auth_info || auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN || !pin)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	memset(&args, 0, sizeof(args));
 
 	/* We need to do padding because pkcs15-lib.c does it.
 	 * Would be nice to have a flag in the profile that says
@@ -506,23 +537,23 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	if (tlv_next(&tlv, 0x83) != SC_SUCCESS
 	    || tlv_add(&tlv, 0x00) != SC_SUCCESS /* class byte: usage TEST, k=0 */
 	    || tlv_add(&tlv, auth_info->attrs.pin.reference & 0x7f) != SC_SUCCESS)
-		return SC_ERROR_INTERNAL;
+		goto out;
 
 	/* parameters */
 	if (tlv_next(&tlv, 0x85)
 	    || tlv_add(&tlv, 0x02) /* options byte */)
-		return SC_ERROR_INTERNAL;
+		goto out;
 
 	hasverifyrc = cardos_have_verifyrc_package(card);
 	if (hasverifyrc == 1)
 		/* Use 9 byte OCI parameters to be able to set VerifyRC bit	*/
 		if (tlv_add(&tlv, 0x04) != SC_SUCCESS /* options_2 byte with bit 2 set to return CurrentErrorCounter */)
-			return SC_ERROR_INTERNAL;
+			goto out;
 
 	if (tlv_add(&tlv, attempts & 0xf) != SC_SUCCESS /* flags byte */
 	    || tlv_add(&tlv, CARDOS_ALGO_PIN) != SC_SUCCESS /* algorithm = pin-test */
 	    || tlv_add(&tlv, attempts & 0xf) != SC_SUCCESS /* errcount = attempts */)
-		return SC_ERROR_INTERNAL;
+		goto out;
 
 	/* usecount: not documented, but seems to work like this:
 	 *  -	value of 0xff means pin can be presented any number
@@ -530,11 +561,11 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	 *  -	anything less: max # of times before BS object is blocked.
 	 */
 	if (tlv_add(&tlv, 0xff) != SC_SUCCESS)
-		return SC_ERROR_INTERNAL;
+		goto out;
 
 	/* DEK: not documented, no idea what it means */
 	if (tlv_add(&tlv, 0xff) != SC_SUCCESS)
-		return SC_ERROR_INTERNAL;
+		goto out;
 
 	/* ARA counter: number of times the test object can be used before
 	 *              another verification is required (~ user consent)
@@ -542,21 +573,21 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	 */
 	if (tlv_add(&tlv, 0x00) != SC_SUCCESS
 	    || tlv_add(&tlv, minlen) != SC_SUCCESS /* minlen */)
-		return SC_ERROR_INTERNAL;
+		goto out;
 
 	/* AC conditions */
 	if (tlv_next(&tlv, 0x86) != SC_SUCCESS
 	    || tlv_add(&tlv, 0x00) != SC_SUCCESS /* use: always */
 	    || tlv_add(&tlv, auth_info->attrs.pin.reference) != SC_SUCCESS /* change: PIN */
 	    || tlv_add(&tlv, puk_id) != SC_SUCCESS /* unblock: PUK */)
-		return SC_ERROR_INTERNAL;
+		goto out;
 
 	/* data: PIN */
 	if (tlv_next(&tlv, 0x8f) != SC_SUCCESS)
-		return SC_ERROR_INTERNAL;
+		goto out;
 	while (pin_len--)
 		if (tlv_add(&tlv, *pin++) != SC_SUCCESS)
-			return SC_ERROR_INTERNAL;
+			goto out;
 
 	args.data = buffer;
 	args.len = tlv_len(&tlv);
@@ -564,9 +595,15 @@ cardos_store_pin(sc_profile_t *profile, sc_card_t *card,
 	/* ensure we are in the correct lifecycle */
 	r = sc_pkcs15init_set_lifecycle(card, SC_CARDCTRL_LIFECYCLE_ADMIN);
 	if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
-		return r;
+		goto out;
 
-	return sc_card_ctl(card, SC_CARDCTL_CARDOS_PUT_DATA_OCI, &args);
+	r = sc_card_ctl(card, SC_CARDCTL_CARDOS_PUT_DATA_OCI, &args);
+
+out:
+	sc_mem_clear(pinpadded, sizeof(pinpadded));
+	sc_mem_clear(buffer, sizeof(buffer));
+	sc_mem_clear(&args, sizeof(args));
+	return r;
 }
 
 /*
@@ -656,7 +693,12 @@ cardos_store_key_component(sc_card_t *card,
 #ifdef SET_SM_BYTES
 	unsigned int	n;
 #endif
-	int		r;
+	int		r = SC_ERROR_INTERNAL;
+
+	if (len && !data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	memset(&args, 0, sizeof(args));
 
 	/* Initialize the TLV encoder */
 	tlv_init(&tlv, buffer, sizeof(buffer));
@@ -665,7 +707,7 @@ cardos_store_key_component(sc_card_t *card,
 	if (tlv_next(&tlv, 0x83) != SC_SUCCESS
 	    || tlv_add(&tlv, 0x20|num) != SC_SUCCESS /* PSO, n-th component */
 	    || tlv_add(&tlv, key_id) != SC_SUCCESS)
-		return SC_ERROR_INTERNAL;
+		goto out;
 
 	/* Object parameters */
 	if (tlv_next(&tlv, 0x85) != SC_SUCCESS
@@ -677,7 +719,7 @@ cardos_store_key_component(sc_card_t *card,
 	    || tlv_add(&tlv, 0xFF) != SC_SUCCESS /* DEK (whatever this is) */
 	    || tlv_add(&tlv, 0x00) != SC_SUCCESS
 	    || tlv_add(&tlv, 0x00) != SC_SUCCESS)
-		return SC_ERROR_INTERNAL;
+		goto out;
 
 	/* AC bytes */
 	if (tlv_next(&tlv, 0x86) != SC_SUCCESS
@@ -688,29 +730,29 @@ cardos_store_key_component(sc_card_t *card,
 	    || tlv_add(&tlv, 0) != SC_SUCCESS /* rfu */
 	    || tlv_add(&tlv, 0) != SC_SUCCESS /* rfu */
 	    || tlv_add(&tlv, 0) != SC_SUCCESS)
-		return SC_ERROR_INTERNAL;
+		goto out;
 
 #ifdef SET_SM_BYTES
 	/* it shouldn't be necessary to set the default value */
 	/* SM bytes */
 	if (tlv_next(&tlv, 0x8B) != SC_SUCCESS)
-		return SC_ERROR_INTERNAL;
+		goto out;
 	for (n = 0; n < 16; n++)
 		if (tlv_add(&tlv, 0xFF) != SC_SUCCESS)
-			return SC_ERROR_INTERNAL;
+			goto out;
 #endif
 
 	/* key component */
 	if (tlv_next(&tlv, 0x8f) != SC_SUCCESS)
-		return SC_ERROR_INTERNAL;
+		goto out;
 	if (use_prefix != 0) {
 		if (tlv_add(&tlv, len+1) != SC_SUCCESS
 		|| tlv_add(&tlv, 0) != SC_SUCCESS)
-			return SC_ERROR_INTERNAL;
+			goto out;
 	}
 	while (len--)
 		if (tlv_add(&tlv, *data++) != SC_SUCCESS)
-			return SC_ERROR_INTERNAL;
+			goto out;
 
 	args.data = buffer;
 	args.len = tlv_len(&tlv);
@@ -718,9 +760,14 @@ cardos_store_key_component(sc_card_t *card,
 	/* ensure we are in the correct lifecycle */
 	r = sc_pkcs15init_set_lifecycle(card, SC_CARDCTRL_LIFECYCLE_ADMIN);
 	if (r < 0 && r != SC_ERROR_NOT_SUPPORTED)
-		return r;
+		goto out;
 
-	return sc_card_ctl(card, SC_CARDCTL_CARDOS_PUT_DATA_OCI, &args);
+	r = sc_card_ctl(card, SC_CARDCTL_CARDOS_PUT_DATA_OCI, &args);
+
+out:
+	sc_mem_clear(buffer, sizeof(buffer));
+	sc_mem_clear(&args, sizeof(args));
+	return r;
 }
 
 
@@ -781,7 +828,7 @@ static int parse_ext_pubkey_file(sc_card_t *card, const u8 *data, size_t len,
 	const u8     *p;
 	size_t       ilen = 0, tlen = 0;
 
-	if (data == NULL || len < 32)
+	if (data == NULL || len < 32 || pubkey == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	data = sc_asn1_find_tag(card->ctx, data, len, 0x7f49, &ilen);
 	if (data == NULL) {
@@ -802,13 +849,20 @@ static int parse_ext_pubkey_file(sc_card_t *card, const u8 *data, size_t len,
 
 	p = sc_asn1_find_tag(card->ctx, data, ilen, 0x82, &tlen);
 	if (p == NULL) {
+		free(pubkey->u.rsa.modulus.data);
+		pubkey->u.rsa.modulus.data = NULL;
+		pubkey->u.rsa.modulus.len = 0;
 		sc_log(card->ctx,  "invalid public key data: missing exponent");
 		return SC_ERROR_INTERNAL;
 	}
 	pubkey->u.rsa.exponent.len  = tlen;
 	pubkey->u.rsa.exponent.data = malloc(tlen);
-	if (pubkey->u.rsa.exponent.data == NULL)
+	if (pubkey->u.rsa.exponent.data == NULL) {
+		free(pubkey->u.rsa.modulus.data);
+		pubkey->u.rsa.modulus.data = NULL;
+		pubkey->u.rsa.modulus.len = 0;
 		return SC_ERROR_OUT_OF_MEMORY;
+	}
 	memcpy(pubkey->u.rsa.exponent.data, p, tlen);
 
 	return SC_SUCCESS;
@@ -841,6 +895,9 @@ static int cardos_extract_pubkey(sc_card_t *card, sc_pkcs15_pubkey_t *pubkey,
 {
 	int r;
 
+	if (!pubkey || !tfile)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	memset(pubkey, 0, sizeof(*pubkey));
 
 	r = sc_select_file(card, &tfile->path, NULL);
@@ -852,6 +909,12 @@ static int cardos_extract_pubkey(sc_card_t *card, sc_pkcs15_pubkey_t *pubkey,
 		if (r != SC_SUCCESS)
 			return r;
 		r = do_cardos_extract_pubkey(card, 2, 0x11, &pubkey->u.rsa.exponent);
+		if (r != SC_SUCCESS) {
+			free(pubkey->u.rsa.modulus.data);
+			pubkey->u.rsa.modulus.data = NULL;
+			pubkey->u.rsa.modulus.len = 0;
+			return r;
+		}
 	} else {
 		u8 *buf;
 
@@ -861,7 +924,11 @@ static int cardos_extract_pubkey(sc_card_t *card, sc_pkcs15_pubkey_t *pubkey,
 		r = sc_read_binary(card, 0, buf, tfile->size, 0);
 		if (r > 0)
 			r = parse_ext_pubkey_file(card, buf, (size_t)r, pubkey);
+		else if (r == 0)
+			r = SC_ERROR_INTERNAL;
 		free(buf);
+		if (r != SC_SUCCESS)
+			return r;
 	}
 
 	pubkey->algorithm = SC_ALGORITHM_RSA;
