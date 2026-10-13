@@ -177,8 +177,8 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 df_data.data.df.create_ac=0x10;
 		 df_data.data.df.append_ac=0xC0;
 		 df_data.data.df.lock_ac=0x10;
-		 if (df->namelen > 0 && df->name)
-			  memcpy(df_data.data.df.aid,df->name,df->namelen);
+		 if (df->namelen > 0)
+			  memcpy(df_data.data.df.aid, df->name, df->namelen);
 
 		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &df_data);
 		 LOG_TEST_RET(card->ctx,ret,"Create DF failed");
@@ -384,9 +384,16 @@ static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	key_info = (struct sc_pkcs15_prkey_info *)obj->data;
 	keybits = key_info->modulus_length;
 
-	if ( key->algorithm != SC_ALGORITHM_RSA )
+	if ( key->algorithm != SC_ALGORITHM_RSA ||
+		 !key->u.rsa.p.len || !key->u.rsa.p.data ||
+		 !key->u.rsa.q.len || !key->u.rsa.q.data ||
+		 !key->u.rsa.dmp1.len || !key->u.rsa.dmp1.data ||
+		 !key->u.rsa.dmq1.len || !key->u.rsa.dmq1.data ||
+		 !key->u.rsa.iqmp.len || !key->u.rsa.iqmp.data ||
+		 !key->u.rsa.modulus.len || !key->u.rsa.modulus.data ||
+		 !key->u.rsa.exponent.len || !key->u.rsa.exponent.data )
 	{
-		 /* ignore non-RSA keys */
+		 /* ignore non-RSA or incomplete keys */
 		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INVALID_ARGUMENTS);
 	}
 
@@ -481,7 +488,9 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 	/* get the modulus via READ PUBLIC KEY */
 	if (pubkey) {
 		u8 *buf;
-		struct sc_pkcs15_pubkey_rsa *rsa = &pubkey->u.rsa;
+		struct sc_pkcs15_pubkey_rsa *rsa;
+
+		rsa = &pubkey->u.rsa;
 		/* set the modulus */
 		rsa->modulus.data = gendat.modulus;
 		rsa->modulus.len  = kinfo->modulus_length >> 3;
