@@ -2672,10 +2672,19 @@ iasecc_sdo_put_data(struct sc_card *card, struct iasecc_sdo_update *update)
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 
 		rv = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+		if (rv < 0) {
+			sc_mem_clear(encoded, encoded_len);
+			free(encoded);
+			LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+		}
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		LOG_TEST_RET(ctx, rv, "SDO put data error");
+		if (rv < 0) {
+			sc_mem_clear(encoded, encoded_len);
+			free(encoded);
+			LOG_TEST_RET(ctx, rv, "SDO put data error");
+		}
 
+		sc_mem_clear(encoded, encoded_len);
 		free(encoded);
 	}
 
