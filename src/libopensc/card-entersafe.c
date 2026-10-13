@@ -1127,6 +1127,9 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 	{ /* Write 'x'; */
 		u8 sbuff[SC_MAX_APDU_BUFFER_SIZE];
 
+		if (!data.data || data.len == 0 || data.len > sizeof(sbuff))
+			return SC_ERROR_INVALID_ARGUMENTS;
+
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x46, factor, 0x00);
 
 		memcpy(sbuff, data.data, data.len);
@@ -1160,6 +1163,7 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 		apdu.lc = apdu.datalen = data.len;
 
 		r = entersafe_transmit_apdu(card, &apdu, 0, 0, 0, 0);
+		sc_mem_clear(sbuff, sizeof(sbuff));
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "Write prkey factor failed");
 	}
@@ -1189,6 +1193,9 @@ static int entersafe_write_large_rsa_key(sc_card_t *card,u8 key_id,struct sc_pkc
 		u8 sbuff[SC_MAX_APDU_BUFFER_SIZE];
 		sc_apdu_t apdu;
 
+		if (!rsa->modulus.data || rsa->modulus.len < 0x100)
+			return SC_ERROR_INVALID_ARGUMENTS;
+
 		/* first 64(0x40) bytes of N */
 		sbuff[0] = 0x83;
 		sbuff[1] = 0x02;
@@ -1203,6 +1210,7 @@ static int entersafe_write_large_rsa_key(sc_card_t *card,u8 key_id,struct sc_pkc
 		apdu.lc = apdu.datalen = 0x46;
 
 		r = entersafe_transmit_apdu(card, &apdu, 0, 0, 0, 0);
+		sc_mem_clear(sbuff, sizeof(sbuff));
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "Write pukey N(1) failed");
 
@@ -1246,6 +1254,7 @@ static int entersafe_write_symmetric_key(sc_card_t *card,
 	apdu.lc = apdu.datalen = len + 2;
 
 	r = entersafe_transmit_apdu(card, &apdu, key_maintain, sizeof(key_maintain), 1, 1);
+	sc_mem_clear(sbuff, sizeof(sbuff));
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "Write prkey failed");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
