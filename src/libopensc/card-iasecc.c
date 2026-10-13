@@ -1423,6 +1423,7 @@ iasecc_finish(struct sc_card *card)
 	while (se_info)   {
 		sc_file_free(se_info->df);
 		next = se_info->next;
+		iasecc_docp_free_fields(&se_info->docp);
 		free(se_info);
 		se_info = next;
 	}
@@ -1546,6 +1547,7 @@ iasecc_se_cache_info(struct sc_card *card, struct iasecc_se_info *se)
 	rv = iasecc_docp_copy(ctx, &se->docp, &se_info->docp);
 	if (rv < 0)   {
 		free(se_info->df);
+		iasecc_docp_free_fields(&se_info->docp);
 		free(se_info);
 		LOG_TEST_RET(ctx, rv, "Cannot make copy of DOCP");
 	}
@@ -1695,22 +1697,26 @@ iasecc_set_security_env(struct sc_card *card,
 	rv = iasecc_sdo_get_data(card, &sdo);
 	LOG_TEST_RET(ctx, rv, "Cannot get RSA PRIVATE SDO data");
 
-	if (sdo.docp.size.size < 2)
+	if (sdo.docp.size.size < 2) {
+		iasecc_sdo_free_fields(card, &sdo);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+	}
 	/* To made by iasecc_sdo_convert_to_file() */
 	prv->key_size = *(sdo.docp.size.value + 0) * 0x100 + *(sdo.docp.size.value + 1);
 	sc_log(ctx, "prv->key_size 0x%zX", prv->key_size);
 
 	rv = iasecc_sdo_convert_acl(card, &sdo, SC_AC_OP_PSO_COMPUTE_SIGNATURE, &sign_meth, &sign_ref);
-	LOG_TEST_RET(ctx, rv, "Cannot convert SC_AC_OP_SIGN acl");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot convert SC_AC_OP_SIGN acl");
 
 	rv = iasecc_sdo_convert_acl(card, &sdo, SC_AC_OP_INTERNAL_AUTHENTICATE, &auth_meth, &auth_ref);
-	LOG_TEST_RET(ctx, rv, "Cannot convert SC_AC_OP_INT_AUTH acl");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot convert SC_AC_OP_INT_AUTH acl");
 
 	aflags = env->algorithm_flags;
 
-	if (!(aflags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01))
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Only supported signature with PKCS1 padding");
+	if (!(aflags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)) {
+		rv = SC_ERROR_NOT_SUPPORTED;
+		LOG_TEST_GOTO_ERR(ctx, rv, "Only supported signature with PKCS1 padding");
+	}
 
 	if (operation == SC_SEC_OPERATION_SIGN)   {
 		if (!(aflags & (SC_ALGORITHM_RSA_HASH_SHA1 | SC_ALGORITHM_RSA_HASH_SHA256)))   {
@@ -1718,7 +1724,8 @@ iasecc_set_security_env(struct sc_card *card,
 			operation = SC_SEC_OPERATION_AUTHENTICATE;
 		}
 		else if (sign_meth == SC_AC_NEVER)   {
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "PSO_DST not allowed for this key");
+			rv = SC_ERROR_NOT_SUPPORTED;
+			LOG_TEST_GOTO_ERR(ctx, rv, "PSO_DST not allowed for this key");
 		}
 	}
 
@@ -1727,8 +1734,10 @@ iasecc_set_security_env(struct sc_card *card,
 		prv->op_ref = sign_ref;
 	}
 	else if (operation == SC_SEC_OPERATION_AUTHENTICATE)   {
-		if (auth_meth == SC_AC_NEVER)
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_ALLOWED, "INTERNAL_AUTHENTICATE is not allowed for this key");
+		if (auth_meth == SC_AC_NEVER) {
+			rv = SC_ERROR_NOT_ALLOWED;
+			LOG_TEST_GOTO_ERR(ctx, rv, "INTERNAL_AUTHENTICATE is not allowed for this key");
+		}
 
 		prv->op_method = auth_meth;
 		prv->op_ref = auth_ref;
@@ -1739,39 +1748,50 @@ iasecc_set_security_env(struct sc_card *card,
 			se_num, operation, env->algorithm, env->algorithm_ref, env->algorithm_flags, prv->key_size);
 	switch (operation)  {
 	case SC_SEC_OPERATION_SIGN:
-		if (!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01))
-			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Need RSA_PKCS1 specified");
+		if (!(env->algorithm_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01)) {
+			rv = SC_ERROR_INVALID_ARGUMENTS;
+			LOG_TEST_GOTO_ERR(ctx, rv, "Need RSA_PKCS1 specified");
+		}
 
 		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256)   {
 			algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_HASH, CKM_SHA256);
-			if (!algo_ref)
-				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Card application do not supports HASH:SHA256");
+			if (!algo_ref) {
+				rv = SC_ERROR_NOT_SUPPORTED;
+				LOG_TEST_GOTO_ERR(ctx, rv, "Card application do not supports HASH:SHA256");
+			}
 
 			cse_crt_ht[2] = algo_ref; /* IASECC_ALGORITHM_SHA2 */
 
 			algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE,  CKM_SHA256_RSA_PKCS);
-			if (!algo_ref)
-				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Card application do not supports SIGNATURE:SHA1_RSA_PKCS");
+			if (!algo_ref) {
+				rv = SC_ERROR_NOT_SUPPORTED;
+				LOG_TEST_GOTO_ERR(ctx, rv, "Card application do not supports SIGNATURE:SHA1_RSA_PKCS");
+			}
 
 			cse_crt_dst[2] = env->key_ref[0] | IASECC_OBJECT_REF_LOCAL;
 			cse_crt_dst[5] = algo_ref;   /* IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA2 */
 		}
 		else if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)   {
 			algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_HASH,  CKM_SHA_1);
-			if (!algo_ref)
-				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Card application do not supports HASH:SHA1");
+			if (!algo_ref) {
+				rv = SC_ERROR_NOT_SUPPORTED;
+				LOG_TEST_GOTO_ERR(ctx, rv, "Card application do not supports HASH:SHA1");
+			}
 
 			cse_crt_ht[2] = algo_ref;	/* IASECC_ALGORITHM_SHA1 */
 
 			algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE,  CKM_SHA1_RSA_PKCS);
-			if (!algo_ref)
-				LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Card application do not supports SIGNATURE:SHA1_RSA_PKCS");
+			if (!algo_ref) {
+				rv = SC_ERROR_NOT_SUPPORTED;
+				LOG_TEST_GOTO_ERR(ctx, rv, "Card application do not supports SIGNATURE:SHA1_RSA_PKCS");
+			}
 
 			cse_crt_dst[2] = env->key_ref[0] | IASECC_OBJECT_REF_LOCAL;
 			cse_crt_dst[5] = algo_ref;   /* IASECC_ALGORITHM_RSA_PKCS | IASECC_ALGORITHM_SHA1 */
 		}
 		else   {
-			LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Need RSA_HASH_SHA[1,256] specified");
+			rv = SC_ERROR_INVALID_ARGUMENTS;
+			LOG_TEST_GOTO_ERR(ctx, rv, "Need RSA_HASH_SHA[1,256] specified");
 		}
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, IASECC_CRT_TAG_HT);
@@ -1780,9 +1800,9 @@ iasecc_set_security_env(struct sc_card *card,
 		apdu.lc = sizeof(cse_crt_ht);
 
 		rv = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+		LOG_TEST_GOTO_ERR(ctx, rv, "APDU transmit failed");
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		LOG_TEST_RET(ctx, rv, "MSE restore error");
+		LOG_TEST_GOTO_ERR(ctx, rv, "MSE restore error");
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, IASECC_CRT_TAG_DST);
 		apdu.data = cse_crt_dst;
@@ -1791,8 +1811,10 @@ iasecc_set_security_env(struct sc_card *card,
 		break;
 	case SC_SEC_OPERATION_AUTHENTICATE:
 		algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_COMPUTE_SIGNATURE,  CKM_RSA_PKCS);
-		if (!algo_ref)
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Application do not supports SIGNATURE:RSA_PKCS");
+		if (!algo_ref) {
+			rv = SC_ERROR_NOT_SUPPORTED;
+			LOG_TEST_GOTO_ERR(ctx, rv, "Application do not supports SIGNATURE:RSA_PKCS");
+		}
 
 		cse_crt_at[2] = env->key_ref[0] | IASECC_OBJECT_REF_LOCAL;
 		cse_crt_at[5] = algo_ref;	/* IASECC_ALGORITHM_RSA_PKCS */
@@ -1804,10 +1826,12 @@ iasecc_set_security_env(struct sc_card *card,
 		break;
 	case SC_SEC_OPERATION_DECIPHER:
 		rv = iasecc_sdo_convert_acl(card, &sdo, SC_AC_OP_PSO_DECRYPT, &prv->op_method, &prv->op_ref);
-		LOG_TEST_RET(ctx, rv, "Cannot convert SC_AC_OP_PSO_DECRYPT acl");
+		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot convert SC_AC_OP_PSO_DECRYPT acl");
 		algo_ref = iasecc_get_algorithm(ctx, env, SC_PKCS15_ALGO_OP_DECIPHER,  CKM_RSA_PKCS);
-		if (!algo_ref)
-			LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Application do not supports DECIPHER:RSA_PKCS");
+		if (!algo_ref) {
+			rv = SC_ERROR_NOT_SUPPORTED;
+			LOG_TEST_GOTO_ERR(ctx, rv, "Application do not supports DECIPHER:RSA_PKCS");
+		}
 
 		cse_crt_ct[2] = env->key_ref[0] | IASECC_OBJECT_REF_LOCAL;
 		cse_crt_ct[5] = algo_ref;	/* IASECC_ALGORITHM_RSA_PKCS_DECRYPT | IASECC_ALGORITHM_SHA1 */
@@ -1818,18 +1842,22 @@ iasecc_set_security_env(struct sc_card *card,
 		apdu.lc = sizeof(cse_crt_ct);
 		break;
 	default:
-		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+		rv = SC_ERROR_NOT_SUPPORTED;
+		goto err;
 	}
 
 	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "MSE restore error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "MSE restore error");
 
 	prv->security_env = *env;
 	prv->security_env.operation = operation;
+	rv = 0;
 
-	LOG_FUNC_RETURN(ctx, 0);
+err:
+	iasecc_sdo_free_fields(card, &sdo);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -2088,7 +2116,6 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 
 	sc_log(ctx, "PIN policy: size max/min %i/%i, tries max/left %i/%i",
 	       pin->max_length, pin->min_length, pin->tries_maximum, pin->tries_remaining);
-	iasecc_sdo_free_fields(card, &sdo);
 
 	if (save_current_df)   {
 		sc_log(ctx, "iasecc_pin_get_policy() restore current DF");
@@ -2103,6 +2130,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 	}
 
 err:
+	iasecc_sdo_free_fields(card, &sdo);
 	sc_file_free(save_current_df);
 	sc_file_free(save_current_ef);
 
@@ -2244,8 +2272,10 @@ iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 	rv = iasecc_sdo_get_data(card, &sdo);
 	LOG_TEST_RET(ctx, rv, "Cannot get keyset data");
 
-	if (sdo.docp.acls_contact.size == 0)
+	if (sdo.docp.acls_contact.size == 0) {
+		iasecc_sdo_free_fields(card, &sdo);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Bewildered ... there are no ACLs");
+	}
 	scb = sdo.docp.scbs[IASECC_ACLS_KEYSET_PUT_DATA];
 
 	memset(&update, 0, sizeof(update));
@@ -2855,11 +2885,18 @@ iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo)
 
 	rv = iasecc_sdo_get_tagged_data(card, sdo_tag, sdo);
 	/* When there is no public data 'GET DATA' returns error */
-	if (rv != SC_ERROR_INCORRECT_PARAMETERS)
-		LOG_TEST_RET(ctx, rv, "cannot parse ECC SDO data");
+	if (rv != SC_ERROR_INCORRECT_PARAMETERS) {
+		if (rv < 0) {
+			iasecc_sdo_free_fields(card, sdo);
+			LOG_TEST_RET(ctx, rv, "cannot parse ECC SDO data");
+		}
+	}
 
 	rv = iasecc_sdo_get_tagged_data(card, IASECC_DOCP_TAG, sdo);
-	LOG_TEST_RET(ctx, rv, "cannot parse ECC DOCP data");
+	if (rv < 0) {
+		iasecc_sdo_free_fields(card, sdo);
+		LOG_TEST_RET(ctx, rv, "cannot parse ECC DOCP data");
+	}
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -3578,6 +3615,9 @@ iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_refer
 	}
 
 	ctl_data->index = idx;
+
+	if (sdo)
+		iasecc_sdo_free(card, sdo);
 
 	if (idx > IASECC_OBJECT_REF_MAX)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_DATA_OBJECT_NOT_FOUND);
