@@ -1535,6 +1535,12 @@ authentic_manage_sdo_encode_prvkey(struct sc_card *card, struct sc_pkcs15_prkey 
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid SDO operation");
 
 	rsa = prvkey->u.rsa;
+	if (!rsa.p.len || !rsa.p.data || !rsa.q.len || !rsa.q.data ||
+			!rsa.iqmp.len || !rsa.iqmp.data || !rsa.dmp1.len || !rsa.dmp1.data ||
+			!rsa.dmq1.len || !rsa.dmq1.data || !rsa.modulus.len || !rsa.modulus.data ||
+			!rsa.exponent.len || !rsa.exponent.data)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Incomplete RSA key components");
+
 	/* Encode private RSA key part */
 	rv = authentic_update_blob(ctx, AUTHENTIC_TAG_RSA_PRIVATE_P, rsa.p.data, rsa.p.len, &blob, &blob_len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "SDO RSA P encode error");
@@ -1554,9 +1560,12 @@ authentic_manage_sdo_encode_prvkey(struct sc_card *card, struct sc_pkcs15_prkey 
 	rv = authentic_update_blob(ctx, AUTHENTIC_TAG_RSA_PRIVATE, blob, blob_len, &blob01, &blob01_len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "SDO RSA Private encode error");
 
-	free (blob);
-	blob = NULL;
-	blob_len = 0;
+	if (blob) {
+		sc_mem_clear(blob, blob_len);
+		free(blob);
+		blob = NULL;
+		blob_len = 0;
+	}
 
 	/* Encode public RSA key part */
 	sc_log(ctx, "modulus.len:%zu blob_len:%zu", rsa.modulus.len, blob_len);
@@ -1570,16 +1579,26 @@ authentic_manage_sdo_encode_prvkey(struct sc_card *card, struct sc_pkcs15_prkey 
 	rv = authentic_update_blob(ctx, AUTHENTIC_TAG_RSA_PUBLIC, blob, blob_len, &blob01, &blob01_len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "SDO RSA Private encode error");
 
-	free (blob);
-	blob = NULL;
-	blob_len = 0;
+	if (blob) {
+		sc_mem_clear(blob, blob_len);
+		free(blob);
+		blob = NULL;
+		blob_len = 0;
+	}
 
 	rv = authentic_update_blob(ctx, AUTHENTIC_TAG_RSA, blob01, blob01_len, out, out_len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "SDO RSA encode error");
 
 err:
-	free(blob01);
-	free(blob);
+	if (blob01) {
+		sc_mem_clear(blob01, blob01_len);
+		free(blob01);
+	}
+	if (blob) {
+		sc_mem_clear(blob, blob_len);
+		free(blob);
+	}
+	sc_mem_clear(&rsa, sizeof(rsa));
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -1661,6 +1680,7 @@ authentic_manage_sdo_encode(struct sc_card *card, struct sc_authentic_sdo *sdo, 
 	sc_log_hex(ctx, "encoded SDO operation data", *out, *out_len);
 
 err:
+	sc_mem_clear(data, data_len);
 	free(data);
 
 	LOG_FUNC_RETURN(ctx, rv);
@@ -1693,13 +1713,14 @@ authentic_manage_sdo_generate(struct sc_card *card, struct sc_authentic_sdo *sdo
 	apdu.le = 0x100;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "authentic_sdo_create() SDO put data error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "authentic_sdo_create() SDO put data error");
 
 	rv = authentic_decode_pubkey_rsa(ctx, apdu.resp, apdu.resplen, &sdo->data.prvkey);
-	LOG_TEST_RET(card->ctx, rv, "cannot decode public key");
+	LOG_TEST_GOTO_ERR(card->ctx, rv, "cannot decode public key");
 
+err:
 	free(data);
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -1718,7 +1739,7 @@ authentic_manage_sdo(struct sc_card *card, struct sc_authentic_sdo *sdo, unsigne
 	sc_log(ctx, "SDO(cmd:%lX,mech:%X,id:%X)", cmd, sdo->docp.mech, sdo->docp.id);
 
 	rv = authentic_manage_sdo_encode(card, sdo, cmd, &data, &data_len);
-	LOG_TEST_RET(ctx, rv, "Cannot encode SDO data");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot encode SDO data");
 	sc_log(ctx, "encoded SDO length %zu", data_len);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDB, 0x3F, 0xFF);
@@ -1732,14 +1753,16 @@ authentic_manage_sdo(struct sc_card *card, struct sc_authentic_sdo *sdo, unsigne
 
 	rv = sc_transmit_apdu(card, &apdu);
 	card->max_send_size = save_max_send;
-	free(data);
 	if (rv != SC_SUCCESS) {
-		LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+		LOG_TEST_GOTO_ERR(ctx, rv, "APDU transmit failed");
 	}
 
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "authentic_sdo_create() SDO put data error");
+	LOG_TEST_GOTO_ERR(ctx, rv, "authentic_sdo_create() SDO put data error");
 
+err:
+	sc_mem_clear(data, data_len);
+	free(data);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
