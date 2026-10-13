@@ -622,9 +622,20 @@ isoApplet_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
                        sc_pkcs15_pubkey_t *pubkey)
 {
 	int r;
-	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *key_info;
 	sc_file_t *privKeyFile=NULL;
 	sc_card_t *card = p15card->card;
+	sc_pkcs15_pubkey_t local_pubkey, *pk = pubkey;
+
+	if (!profile || !obj || !obj->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (pk == NULL) {
+		memset(&local_pubkey, 0, sizeof(local_pubkey));
+		pk = &local_pubkey;
+	}
+
+	key_info = (sc_pkcs15_prkey_info_t *)obj->data;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -646,16 +657,20 @@ isoApplet_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	switch(obj->type)
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
-		r = isoApplet_generate_key_rsa(key_info, card, pubkey);
+		r = isoApplet_generate_key_rsa(key_info, card, pk);
 		break;
 
 	case SC_PKCS15_TYPE_PRKEY_EC:
-		r = isoApplet_generate_key_ec(key_info, card, pubkey);
+		r = isoApplet_generate_key_ec(key_info, card, pk);
 		break;
 
 	default:
 		r = SC_ERROR_NOT_SUPPORTED;
-		sc_log(card->ctx, "%s: Key generation failed: Unknown/unsupported key type.", strerror(r));
+		sc_log(card->ctx, "%s: Key generation failed: Unknown/unsupported key type.", sc_strerror(r));
+	}
+
+	if (pubkey == NULL) {
+		sc_pkcs15_erase_pubkey(pk);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -736,12 +751,7 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 	switch(object->type)
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
-		if(!key->u.rsa.p.data
-		        ||!key->u.rsa.q.data
-		        ||!key->u.rsa.iqmp.data
-		        ||!key->u.rsa.dmp1.data
-		        ||!key->u.rsa.dmq1.data)
-		{
+		if (!key->u.rsa.p.data || !key->u.rsa.p.len || !key->u.rsa.q.data || !key->u.rsa.q.len || !key->u.rsa.iqmp.data || !key->u.rsa.iqmp.len || !key->u.rsa.dmp1.data || !key->u.rsa.dmp1.len || !key->u.rsa.dmq1.data || !key->u.rsa.dmq1.len) {
 			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Only CRT RSA keys may be imported.");
 		}
 		switch (key_info->modulus_length) {
@@ -810,6 +820,7 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 	args.priv_key_ref = key_info->key_reference;
 
 	r = sc_card_ctl(card, SC_CARDCTL_ISOAPPLET_IMPORT_KEY, &args);
+	sc_mem_clear(&args, sizeof(args));
 	if (r < 0)
 	{
 		sc_log(card->ctx, "%s: Error in card_ctl", sc_strerror(r));
