@@ -93,6 +93,8 @@ static int sc_hsm_update_ef(sc_pkcs15_card_t *p15card, u8 prefix, u8 id, int era
 
 	if (r == SC_ERROR_FILE_NOT_FOUND) {
 		file = sc_file_new();
+		if (!file)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		file->id = (path.value[0] << 8) | path.value[1];
 		file->type = SC_FILE_TYPE_WORKING_EF;
 		file->ef_structure = SC_FILE_EF_TRANSPARENT;
@@ -183,6 +185,9 @@ static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, 
 
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
+	if (!ecparams || !ecparams->der.value)
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	curveoid = ecparams->der.value;
 	if ((ecparams->der.len < 3) || (*curveoid++ != 0x06)) {
 		sc_log(p15card->card->ctx, "EC_PARAMS does not contain curve object identifier");
@@ -190,6 +195,10 @@ static int sc_hsm_encode_gakp_ec(struct sc_pkcs15_card *p15card, sc_cvc_t *cvc, 
 	}
 
 	curveoidlen = *curveoid++;
+	if (curveoidlen <= 0 || (size_t)curveoidlen > ecparams->der.len - 2) {
+		sc_log(p15card->card->ctx, "Invalid curve object identifier length");
+		LOG_FUNC_RETURN(p15card->card->ctx, SC_ERROR_INVALID_DATA);
+	}
 
 	r = sc_pkcs15emu_sc_hsm_get_curve(&curve, curveoid, curveoidlen);
 	LOG_TEST_RET(p15card->card->ctx, r, "Unsupported named curve");
@@ -252,7 +261,7 @@ sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	sc_cardctl_sc_hsm_keygen_info_t sc_hsm_keyinfo;
 	sc_hsm_keygen_data_t *keygen_data;
 	sc_cvc_t cvc;
-	u8 *cvcbin, *cvcpo;
+	u8 *cvcbin = NULL, *cvcpo;
 	unsigned int cla,tag;
 	size_t taglen, cvclen;
 	u8 gakp[512];
@@ -260,10 +269,14 @@ sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	LOG_FUNC_CALLED(p15card->card->ctx);
 
+	if (!key_info)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	memset(&sc_hsm_keyinfo, 0, sizeof(sc_hsm_keyinfo));
+	memset(&cvc, 0, sizeof(cvc));
+
 	key_info->key_reference = sc_hsm_determine_free_id(p15card, KEY_PREFIX);
 	LOG_TEST_RET(card->ctx, key_info->key_reference, "Could not determine key reference");
-
-	memset(&cvc, 0, sizeof(cvc));
 
 	strlcpy(cvc.car, "UTCA00001", sizeof cvc.car);
 	cvc.carLen = strlen(cvc.car);
@@ -293,10 +306,14 @@ sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(p15card->card->ctx, r, "Could not encode GAKP cdata");
 
 	cvcpo = cvcbin;
-	sc_asn1_read_tag((const u8 **)&cvcpo, cvclen, &cla, &tag, &taglen);
-	sc_asn1_read_tag((const u8 **)&cvcpo, cvclen, &cla, &tag, &taglen);
+	r = sc_asn1_read_tag((const u8 **)&cvcpo, cvclen, &cla, &tag, &taglen);
+	if (r < 0)
+		goto out;
+	r = sc_asn1_read_tag((const u8 **)&cvcpo, cvclen - (cvcpo - cvcbin), &cla, &tag, &taglen);
+	if (r < 0)
+		goto out;
 
-	if (taglen > sizeof(gakp)) {
+	if (taglen > sizeof(gakp) || taglen > cvclen - (cvcpo - cvcbin)) {
 		r = SC_ERROR_BUFFER_TOO_SMALL;
 		goto out;
 	}
@@ -304,11 +321,11 @@ sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	memcpy(gakp, cvcpo, taglen);
 	cvcpo = gakp + taglen;
 
-	if (key_info->aux_data && key_info->aux_data->type == SC_AUX_DATA_TYPE_PROP_KEY_GEN_PARAM) {
+	if (key_info->aux_data && key_info->aux_data->type == SC_AUX_DATA_TYPE_PROP_KEY_GEN_PARAM && key_info->aux_data->data.proprietary_key_gen_params) {
 		keygen_data = (sc_hsm_keygen_data_t *)key_info->aux_data->data.proprietary_key_gen_params;
 
 		if (keygen_data->key_use_counter) {
-			if (taglen + 6 > sizeof(gakp)) {
+			if (sizeof(gakp) - taglen < 6) {
 				r = SC_ERROR_BUFFER_TOO_SMALL;
 				goto out;
 			}
@@ -323,7 +340,7 @@ sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		}
 
 		if (keygen_data->key_algorithms) {
-			if (taglen + 2 + keygen_data->key_algorithms_len > sizeof(gakp)) {
+			if (sizeof(gakp) - taglen < 2 || keygen_data->key_algorithms_len > sizeof(gakp) - taglen - 2) {
 				r = SC_ERROR_BUFFER_TOO_SMALL;
 				goto out;
 			}
@@ -335,7 +352,7 @@ sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		}
 
 		if (keygen_data->key_domain) {
-			if (taglen + 3 > sizeof(gakp)) {
+			if (sizeof(gakp) - taglen < 3) {
 				r = SC_ERROR_BUFFER_TOO_SMALL;
 				goto out;
 			}
@@ -412,6 +429,9 @@ static int sc_hsm_emu_store_cert(struct sc_pkcs15_card *p15card, struct sc_profi
 	u8 id[2];
 	int r;
 
+	if (!cert_info || !data || !data->value)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	r = sc_pkcs15_find_object_by_id(p15card, SC_PKCS15_TYPE_PRKEY, &cert_info->id , &prkey);
 
 	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
@@ -422,6 +442,8 @@ static int sc_hsm_emu_store_cert(struct sc_pkcs15_card *p15card, struct sc_profi
 		id[1] = r;
 	} else {
 		LOG_TEST_RET(p15card->card->ctx, r, "Error locating matching private key");
+		if (!prkey || !prkey->data)
+			return SC_ERROR_INTERNAL;
 
 		id[0] = EE_CERTIFICATE_PREFIX;
 		id[1] = ((struct sc_pkcs15_prkey_info *)prkey->data)->key_reference;
@@ -442,6 +464,9 @@ static int sc_hsm_emu_delete_cert(struct sc_pkcs15_card *p15card, struct sc_prof
 {
 	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) object->data;
 
+	if (!cert_info || cert_info->path.len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	return sc_hsm_delete_ef(p15card, cert_info->path.value[0], cert_info->path.value[1]);
 }
 
@@ -456,6 +481,9 @@ static int sc_hsm_emu_store_binary(struct sc_pkcs15_card *p15card, struct sc_pro
 	sc_path_t path;
 	u8 id[2];
 	int r;
+
+	if (!data_info || !data || !data->value)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	r = sc_hsm_determine_free_id(p15card, DCOD_PREFIX);
 	LOG_TEST_RET(p15card->card->ctx, r, "Out of identifier to store data description");
@@ -517,6 +545,8 @@ static int sc_hsm_emu_delete_object(struct sc_profile *profile, struct sc_pkcs15
 
 	switch (object->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_PRKEY:
+		if (!object->data)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		r = sc_hsm_delete_ef(p15card, KEY_PREFIX, ((struct sc_pkcs15_prkey_info *)object->data)->key_reference);
 		break;
 	case SC_PKCS15_TYPE_CERT:
@@ -546,6 +576,9 @@ static int sc_hsm_emu_update_prkd(struct sc_profile *profile, struct sc_pkcs15_c
 	size_t buflen;
 	int r;
 
+	if (!key_info)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	// Don't save AID in PRKD
 	key_info->path.aid.len = 0;
 
@@ -567,6 +600,9 @@ static int sc_hsm_emu_update_dcod(struct sc_profile *profile, struct sc_pkcs15_c
 	size_t buflen;
 	int r;
 
+	if (!data_info || data_info->path.len == 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	r = sc_pkcs15_encode_dodf_entry(p15card->card->ctx, object, &buf, &buflen);
 	LOG_TEST_RET(p15card->card->ctx, r, "Error encoding DCOD entry");
 
@@ -584,6 +620,9 @@ static int sc_hsm_emu_update_cd(struct sc_profile *profile, struct sc_pkcs15_car
 	u8 *buf;
 	size_t buflen;
 	int r;
+
+	if (!cert_info)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if ((cert_info->path.len < 2) ||
 		((cert_info->path.value[cert_info->path.len - 2]) != CA_CERTIFICATE_PREFIX)) {
@@ -606,6 +645,9 @@ static int sc_hsm_emu_delete_cd(struct sc_profile *profile, struct sc_pkcs15_car
 {
 	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) object->data;
 
+	if (!cert_info)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if ((cert_info->path.len < 2) ||
 		((cert_info->path.value[cert_info->path.len - 2]) != CA_CERTIFICATE_PREFIX)) {
 		// Certificates associated with stored private keys don't get a separate CD entry
@@ -621,6 +663,7 @@ static int sc_hsm_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15
 		unsigned op, struct sc_pkcs15_object *object)
 {
 	struct sc_context *ctx = p15card->card->ctx;
+	struct sc_pkcs15_data_info *data_info;
 	int rv = SC_ERROR_NOT_SUPPORTED;
 
 	SC_FUNC_CALLED(ctx, 1);
@@ -629,6 +672,8 @@ static int sc_hsm_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15
 		sc_log(ctx, "Update DF; erase object('%s',type:%X)", object->label, object->type);
 		switch(object->type & SC_PKCS15_TYPE_CLASS_MASK) {
 		case SC_PKCS15_TYPE_PRKEY:
+			if (!object->data)
+				return SC_ERROR_INVALID_ARGUMENTS;
 			rv = sc_hsm_delete_ef(p15card, PRKD_PREFIX, ((struct sc_pkcs15_prkey_info *)object->data)->key_reference);
 			break;
 		case SC_PKCS15_TYPE_PUBKEY:
@@ -638,7 +683,12 @@ static int sc_hsm_emu_update_any_df(struct sc_profile *profile, struct sc_pkcs15
 			rv = sc_hsm_emu_delete_cd(profile, p15card, object);
 			break;
 		case SC_PKCS15_TYPE_DATA_OBJECT:
-			rv = sc_hsm_delete_ef(p15card, DCOD_PREFIX, ((struct sc_pkcs15_data_info *)object->data)->path.value[1]);
+			data_info = (struct sc_pkcs15_data_info *)object->data;
+			if (!data_info || data_info->path.len < 2) {
+				rv = SC_ERROR_INVALID_ARGUMENTS;
+				break;
+			}
+			rv = sc_hsm_delete_ef(p15card, DCOD_PREFIX, data_info->path.value[1]);
 			break;
 		}
 		break;
