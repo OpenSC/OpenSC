@@ -65,7 +65,11 @@ static void npa_drv_data_free(struct npa_drv_data *drv_data)
 		free(drv_data->ef_cardsecurity);
 		free(drv_data->st_certificate);
 		free(drv_data->st_dv_certificate);
+		if (drv_data->st_key && drv_data->st_key_len) {
+			sc_mem_clear(drv_data->st_key, drv_data->st_key_len);
+		}
 		free(drv_data->st_key);
+		sc_mem_clear(drv_data, sizeof *drv_data);
 		free(drv_data);
 	}
 }
@@ -103,7 +107,7 @@ static int npa_load_options(sc_context_t *ctx, struct npa_drv_data *drv_data)
 			if (!drv_data->st_dv_certificate
 					|| !drv_data->st_dv_certificate_len) {
 				file = scconf_get_str(block, "st_dv_certificate", NULL);
-				if (!fread_to_eof(file,
+				if (file && !fread_to_eof(file,
 							(unsigned char **) &drv_data->st_dv_certificate,
 							&drv_data->st_dv_certificate_len))
 					sc_log(ctx, "Warning: Could not read %s.\n", file);
@@ -112,7 +116,7 @@ static int npa_load_options(sc_context_t *ctx, struct npa_drv_data *drv_data)
 			if (!drv_data->st_certificate
 					|| !drv_data->st_certificate_len) {
 				file = scconf_get_str(block, "st_certificate", NULL);
-				if (!fread_to_eof(file,
+				if (file && !fread_to_eof(file,
 							(unsigned char **) &drv_data->st_certificate,
 							&drv_data->st_certificate_len))
 					sc_log(ctx, "Warning: Could not read %s.\n", file);
@@ -121,7 +125,7 @@ static int npa_load_options(sc_context_t *ctx, struct npa_drv_data *drv_data)
 			if (!drv_data->st_key
 					|| !drv_data->st_key_len) {
 				file = scconf_get_str(block, "st_key", NULL);
-				if (!fread_to_eof(file,
+				if (file && !fread_to_eof(file,
 							(unsigned char **) &drv_data->st_key,
 							&drv_data->st_key_len))
 					sc_log(ctx, "Warning: Could not read %s.\n", file);
@@ -243,6 +247,7 @@ static void npa_cache_or_free(sc_card_t *card,
 
 		if (ef_cardaccess && ef_cardaccess_length
 				&& *ef_cardaccess && *ef_cardaccess_length) {
+			free(drv_data->ef_cardaccess);
 			drv_data->ef_cardaccess = *ef_cardaccess;
 			drv_data->ef_cardaccess_length = *ef_cardaccess_length;
 			*ef_cardaccess = NULL;
@@ -250,6 +255,7 @@ static void npa_cache_or_free(sc_card_t *card,
 		}
 		if (ef_cardsecurity && ef_cardsecurity_length
 				&& *ef_cardsecurity && *ef_cardsecurity_length) {
+			free(drv_data->ef_cardsecurity);
 			drv_data->ef_cardsecurity = *ef_cardsecurity;
 			drv_data->ef_cardsecurity_length = *ef_cardsecurity_length;
 			*ef_cardsecurity = NULL;
@@ -314,7 +320,7 @@ static int npa_unlock_esign(sc_card_t *card)
 		goto err;
 	}
 
-	if (card->reader->capabilities & SC_READER_CAP_PACE_ESIGN) {
+	if (card->reader && (card->reader->capabilities & SC_READER_CAP_PACE_ESIGN)) {
 		sc_log(card->ctx, "Proved Access rights to eSign application with comfort reader (CAT-K).\n");
 	} else {
 		r = perform_terminal_authentication(card, certs, certs_lens, st_key,
@@ -636,7 +642,7 @@ npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
 	int r;
 
 	if (ask_for_secret && (!new || !new_len)) {
-		if (!(SC_READER_CAP_PIN_PAD & card->reader->capabilities)) {
+		if (!(card->reader && (SC_READER_CAP_PIN_PAD & card->reader->capabilities))) {
 #ifdef ENABLE_OPENSSL
 			p = malloc(EAC_MAX_PIN_LEN+1);
 			if (!p) {
@@ -653,6 +659,7 @@ npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
 			}
 			new_len = strlen(p);
 			if (new_len > EAC_MAX_PIN_LEN) {
+				sc_mem_clear(p, new_len);
 				free(p);
 				return SC_ERROR_INVALID_PIN_LENGTH;
 			}
@@ -678,15 +685,19 @@ npa_reset_retry_counter(sc_card_t *card, enum s_type pin_id,
 
 	if (ask_for_secret && !new_len) {
 		struct sc_pin_cmd_data data;
-		data.apdu = &apdu;
-		data.cmd = SC_PIN_CMD_CHANGE;
-		data.flags = SC_PIN_CMD_IMPLICIT_CHANGE;
-		data.pin2.encoding = SC_PIN_ENCODING_ASCII;
-		data.pin2.offset = 5;
-		data.pin2.max_length = EAC_MAX_PIN_LEN;
-		data.pin2.min_length = EAC_MIN_PIN_LEN;
-		data.pin2.pad_length = 0;
-		r = card->reader->ops->perform_verify(card->reader, &data);
+		if (!card->reader || !card->reader->ops || !card->reader->ops->perform_verify) {
+			r = SC_ERROR_NOT_SUPPORTED;
+		} else {
+			data.apdu = &apdu;
+			data.cmd = SC_PIN_CMD_CHANGE;
+			data.flags = SC_PIN_CMD_IMPLICIT_CHANGE;
+			data.pin2.encoding = SC_PIN_ENCODING_ASCII;
+			data.pin2.offset = 5;
+			data.pin2.max_length = EAC_MAX_PIN_LEN;
+			data.pin2.min_length = EAC_MIN_PIN_LEN;
+			data.pin2.pad_length = 0;
+			r = card->reader->ops->perform_verify(card->reader, &data);
+		}
 	} else
 		r = sc_transmit_apdu(card, &apdu);
 
@@ -794,7 +805,7 @@ static int npa_logout(sc_card_t *card)
 
 	sc_sm_stop(card);
 
-	if (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC) {
+	if (card->reader && (card->reader->capabilities & SC_READER_CAP_PACE_GENERIC)) {
 		/* If PACE is done between reader and card, SM is transparent to us as
 		 * it ends at the reader. With CLA=0x0C we provoke a SM error to
 		 * disable SM on the reader. */
