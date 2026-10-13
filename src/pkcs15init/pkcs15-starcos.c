@@ -181,6 +181,9 @@ static int starcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	u8		*p = df_data.data.df.header, tmp = 0;
 	sc_pkcs15_auth_info_t sopin = {0};
 
+	if (!df || df->namelen > 16)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_profile_get_pin_info(profile, SC_PKCS15INIT_SO_PIN, &sopin);
 
 	/* get p15_isf profile */
@@ -354,15 +357,19 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	size_t	akd;
 	sc_file_t            *tfile;
 	const sc_acl_entry_t *acl_entry;
-	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info;
 	sc_starcos_wkey_data  pin_d, puk_d;
 	u8		      tpin[8];
 
-	if (!pin || !pin_len || pin_len > 8)
+	if (!pin_obj || !pin_obj->data || !pin || !pin_len || pin_len > 8)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
+	auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
+
+	memset(&pin_d, 0, sizeof(pin_d));
+	memset(&puk_d, 0, sizeof(puk_d));
 
 	is_local = 0x80 & auth_info->attrs.pin.reference;
 	if (is_local)
@@ -424,13 +431,15 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	/* create/write PIN */
 	r = sc_card_ctl(card, SC_CARDCTL_STARCOS_WRITE_KEY, &pin_d);
 	if (r != SC_SUCCESS)
-		return r;
+		goto out;
 
 	if (puk && puk_len) {
 		sc_pkcs15_auth_info_t puk_info = {0};
 
-		if (puk_len > 8)
-			return SC_ERROR_INVALID_ARGUMENTS;
+		if (puk_len > 8) {
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			goto out;
+		}
 		memset(tpin, 0, 8);
 		memcpy(tpin, puk, puk_len);
 
@@ -456,14 +465,14 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		/* create/write PUK */
 		r = sc_card_ctl(card, SC_CARDCTL_STARCOS_WRITE_KEY, &puk_d);
 		if (r != SC_SUCCESS)
-			return r;
+			goto out;
 	}
 
 	/* in case of a global pin: write dummy entry in df isf */
 	if (!is_local) {
 		r = sc_select_file(card, &df->path, NULL);
 		if (r < 0)
-			return r;
+			goto out;
 		pin_d.key     = NULL;
 		pin_d.key_len = 0;
 		pin_d.key_header[1] = 0;
@@ -471,7 +480,7 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		/* create/write dummy PIN */
 		r = sc_card_ctl(card, SC_CARDCTL_STARCOS_WRITE_KEY, &pin_d);
 		if (r != SC_SUCCESS)
-			return r;
+			goto out;
 	}
 
 	/* in case of a SOPIN: if AC WRITE KEY is protected by the
@@ -479,6 +488,10 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	if (need_finalize)
 		 r = starcos_finalize_card(card);
 
+out:
+	sc_mem_clear(tpin, sizeof(tpin));
+	sc_mem_clear(&pin_d, sizeof(pin_d));
+	sc_mem_clear(&puk_d, sizeof(puk_d));
 	return r;
 }
 
@@ -513,6 +526,8 @@ static int starcos_encode_prkey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf)
 
 	if (rsa->p.len && rsa->q.len && rsa->dmp1.len &&
 		rsa->dmq1.len && rsa->iqmp.len) {
+		if (!rsa->p.data || !rsa->q.data || !rsa->dmp1.data || !rsa->dmq1.data || !rsa->iqmp.data)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		/* CRT RSA key     */
 		len = 13 + rsa->q.len + rsa->p.len + 16 + rsa->dmq1.len + 16 + rsa->dmp1.len + rsa->p.len;
 		if (len > STARCOS_MAX_PR_KEYSIZE) {
@@ -555,6 +570,8 @@ static int starcos_encode_prkey(struct sc_pkcs15_prkey_rsa *rsa, u8 *buf)
 		for (i = rsa->p.len - rsa->iqmp.len; i != 0; i--)
 			*p++ = 0x00;
 	} else if (rsa->modulus.len && rsa->d.len) {
+		if (!rsa->modulus.data || !rsa->d.data)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		/* normal RSA key  */
 		len = 7 + rsa->modulus.len + 16 + rsa->d.len;
 		if (len > STARCOS_MAX_PR_KEYSIZE) {
@@ -734,7 +751,13 @@ static int starcos_write_pukey(sc_profile_t *profile, sc_card_t *card,
 	}
 	endpos = starcos_ipf_get_lastpos(buf, len);
 	free(buf);
-	return sc_update_binary(card, (unsigned)endpos, key, keylen + 12, 0);
+	if (endpos == 0 && num_keys > 1)
+		return SC_ERROR_INVALID_DATA;
+	if (endpos + keylen + 12 > len)
+		return SC_ERROR_NOT_ENOUGH_MEMORY;
+	r = sc_update_binary(card, (unsigned)endpos, key, keylen + 12, 0);
+	sc_mem_clear(key, sizeof(key));
+	return r;
 }
 
 static int starcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
@@ -746,8 +769,14 @@ static int starcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	sc_file_t              *tfile;
 	const sc_acl_entry_t   *acl_entry;
-	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *)obj->data;
+	sc_pkcs15_prkey_info_t *kinfo;
 	sc_starcos_wkey_data    tkey;
+
+	if (!obj || !obj->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	kinfo = (sc_pkcs15_prkey_info_t *)obj->data;
+	memset(&tkey, 0, sizeof(tkey));
 
 	/* get and verify sopin if necessary */
 	r = sc_profile_get_file(profile, "p15_isf", &tfile);
@@ -811,32 +840,45 @@ static int starcos_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	int     r;
 	u8	key_buf[STARCOS_MAX_PR_KEYSIZE];
-
-	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *kinfo;
 	const sc_acl_entry_t   *acl_entry;
 	sc_file_t              *tfile;
-	struct sc_pkcs15_prkey_rsa *rsa = &key->u.rsa;
+	struct sc_pkcs15_prkey_rsa *rsa;
 	sc_starcos_wkey_data tkey;
+
+	if (!obj || !obj->data || !key)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (key->algorithm != SC_ALGORITHM_RSA)
 		/* ignore non-RSA keys */
 		return SC_ERROR_INVALID_ARGUMENTS;
 
+	kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	rsa = &key->u.rsa;
+	memset(&tkey, 0, sizeof(tkey));
+
 	/* create sc_starcos_wkey_data */
-	if (starcos_encode_prkey(rsa, key_buf))
-		return SC_ERROR_INTERNAL;
+	r = starcos_encode_prkey(rsa, key_buf);
+	if (r != SC_SUCCESS) {
+		sc_mem_clear(key_buf, sizeof(key_buf));
+		return r;
+	}
 
 	/* get and verify sopin if necessary */
 	r = sc_profile_get_file(profile, "p15_isf", &tfile);
-        if (r < 0)
-                return r;
+	if (r < 0) {
+		sc_mem_clear(key_buf, sizeof(key_buf));
+		return r;
+	}
 	acl_entry = sc_file_get_acl_entry(tfile, SC_AC_OP_WRITE);
 	if (acl_entry->method  != SC_AC_NONE) {
 		r = sc_pkcs15init_authenticate(profile, p15card, tfile, SC_AC_OP_WRITE);
 	}
 	sc_file_free(tfile);
-	if (r < 0)
+	if (r < 0) {
+		sc_mem_clear(key_buf, sizeof(key_buf));
 		return r;
+	}
 
 	tkey.mode    = 0x01;	/* update key */
 	tkey.kid     = (u8) kinfo->key_reference;
@@ -844,6 +886,8 @@ static int starcos_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	tkey.key_len = STARCOS_MAX_PR_KEYSIZE;
 
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_STARCOS_WRITE_KEY, &tkey);
+	sc_mem_clear(key_buf, sizeof(key_buf));
+	sc_mem_clear(&tkey, sizeof(tkey));
 	if (r != SC_SUCCESS)
 		return r;
 	/* store public key in the IPF */
@@ -857,10 +901,16 @@ static int starcos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	const sc_acl_entry_t   *acl_entry;
 	sc_file_t              *tfile;
 	sc_starcos_gen_key_data	gendat;
-	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *kinfo;
+
+	if (!obj || !obj->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		return SC_ERROR_NOT_SUPPORTED;
+
+	kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	memset(&gendat, 0, sizeof(gendat));
 
 	/* get and verify sopin if necessary */
 	r = sc_profile_get_file(profile, "p15_isf", &tfile);
@@ -894,24 +944,30 @@ static int starcos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	if (pubkey) {
 		u8 *buf;
 		struct sc_pkcs15_pubkey_rsa *rsa = &pubkey->u.rsa;
-		/* set the modulus */
-		rsa->modulus.data = gendat.modulus;
-		rsa->modulus.len  = kinfo->modulus_length >> 3;
 		/* set the exponent (always 0x10001) */
 		buf = malloc(3);
-		if (!buf)
+		if (!buf) {
+			free(gendat.modulus);
+			gendat.modulus = NULL;
 			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		buf[0] = 0x01;
 		buf[1] = 0x00;
 		buf[2] = 0x01;
 		rsa->exponent.data = buf;
 		rsa->exponent.len  = 3;
+		/* set the modulus */
+		rsa->modulus.data = gendat.modulus;
+		rsa->modulus.len  = kinfo->modulus_length >> 3;
 
 		pubkey->algorithm = SC_ALGORITHM_RSA;
-	} else
+	} else {
 		/* free public key */
 		free(gendat.modulus);
+		gendat.modulus = NULL;
+	}
 
+	sc_mem_clear(&gendat, sizeof(gendat));
 	return SC_SUCCESS;
 }
 
