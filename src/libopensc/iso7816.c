@@ -424,9 +424,11 @@ iso7816_update_binary(struct sc_card *card,
 }
 
 
+#define ISO7816_MAX_FCI_TEMPLATE_NESTING 32
+
 static int
-iso7816_process_fci(struct sc_card *card, struct sc_file *file,
-		const unsigned char *buf, size_t buflen)
+iso7816_process_fci_nested(struct sc_card *card, struct sc_file *file,
+		const unsigned char *buf, size_t buflen, unsigned int depth)
 {
 	struct sc_context *ctx = card->ctx;
 	const unsigned char *p, *end;
@@ -613,13 +615,25 @@ iso7816_process_fci(struct sc_card *card, struct sc_file *file,
 			case 0x64:
 			case 0x6F:
 				/* allow nested FCP/FMD/FCI templates */
-				iso7816_process_fci(card, file, p, length);
+				if (depth >= ISO7816_MAX_FCI_TEMPLATE_NESTING) {
+					sc_log(ctx, "FCP/FMD/FCI template nesting too deep, skipping");
+					break;
+				}
+				iso7816_process_fci_nested(card, file, p, length, depth + 1);
 		}
 	}
 
 	file->magic = SC_FILE_MAGIC;
 
 	return SC_SUCCESS;
+}
+
+
+static int
+iso7816_process_fci(struct sc_card *card, struct sc_file *file,
+		const unsigned char *buf, size_t buflen)
+{
+	return iso7816_process_fci_nested(card, file, buf, buflen, 0);
 }
 
 
