@@ -733,6 +733,9 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 	CK_RV rv;
 	unsigned int i;
 
+	if (pLabel == NULL_PTR || (pPin == NULL_PTR && ulPinLen > 0))
+		return CKR_ARGUMENTS_BAD;
+
 	/* Strip trailing whitespace and null terminate the label.
 	 * Keep the fixed-length buffer though as some other layers or drivers (SC-HSM)
 	 * might expect the length is fixed! */
@@ -803,7 +806,7 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	int r;
 
 	if (pReserved != NULL_PTR)
-		return  CKR_ARGUMENTS_BAD;
+		return CKR_ARGUMENTS_BAD;
 
 	sc_log(context, "C_WaitForSlotEvent(block=%d)", !(flags & CKF_DONT_BLOCK));
 	rv = sc_pkcs11_lock();
