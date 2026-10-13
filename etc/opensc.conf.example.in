@@ -972,6 +972,14 @@ app default {
 		# Default: internal;
 		# builtin_emulators = old, internal;
 
+		# Allow duplicate object IDs.
+		# OpenSC maps the PKCS#11 CKA_ID value directly to the PKCS#15/ISO7816-15 iD. There is a contradiction regarding uniqueness
+		# of the ID between these standards. PKCS#11 does not enfore that CKA_IDs should be unique, even for the same object type on a token.
+		# ISO 7816-15 however states that iD's should be unique. Some PKCS#11 applications expect the Cryptoki-library to allow duplicate CKA_IDs.
+		# With this option, duplicate object IDs can be allowed.
+		# Default: no
+		# allow_duplicate_object_ids = no;
+
 		# additional settings per driver
 		#
 		# For pkcs15 emulators loaded from an external shared
