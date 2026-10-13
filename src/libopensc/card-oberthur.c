@@ -1296,7 +1296,7 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 	int rv, len;
 
 	LOG_FUNC_CALLED(card->ctx);
-	if (args->len > sizeof(sbuf) || args->len > 0x100)
+	if (!args || !args->data || args->len > sizeof(sbuf) - 2 || args->len > 0x100)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_log(card->ctx, "nn %i; len %zu", args->component, args->len);
@@ -1317,12 +1317,16 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 		EVP_CIPHER_CTX  * ctx = NULL;
 		EVP_CIPHER *alg = NULL;
 
-		if (args->len!=8 && args->len!=24)
+		if (args->len!=8 && args->len!=24) {
+			sc_mem_clear(sbuf, sizeof(sbuf));
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		}
 
 		ctx = EVP_CIPHER_CTX_new();
-		if (ctx == NULL)
-		    LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		if (ctx == NULL) {
+			sc_mem_clear(sbuf, sizeof(sbuf));
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 
 		p2 = 0;
 		if (args->len == 24)
@@ -1332,6 +1336,7 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 		rv = EVP_EncryptInit_ex(ctx, alg, NULL, args->data, NULL);
 		if (rv == 0) {
 			sc_evp_cipher_free(alg);
+			sc_mem_clear(sbuf, sizeof(sbuf));
 			sc_log_openssl(card->ctx);
 			sc_log(card->ctx, "OpenSSL encryption error.");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
@@ -1340,6 +1345,7 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 		EVP_CIPHER_CTX_free(ctx);
 		sc_evp_cipher_free(alg);
 		if (rv == 0) {
+			sc_mem_clear(sbuf, sizeof(sbuf));
 			sc_log_openssl(card->ctx);
 			sc_log(card->ctx, "OpenSSL encryption error.");
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
@@ -1368,7 +1374,10 @@ auth_update_component(struct sc_card *card, struct auth_update_component_info *a
 		apdu.lc = 0x23;
 		rv = sc_transmit_apdu(card, &apdu);
 		apdu.cla &= ~0x10;
-		LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
+		if (rv < 0) {
+			sc_mem_clear(sbuf, sizeof(sbuf));
+			LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
+		}
 
 		sbuf[0] = args->type;
 		sbuf[1] = 0xE0;
@@ -1403,6 +1412,9 @@ auth_update_key(struct sc_card *card, struct sc_cardctl_oberthur_updatekey_info 
 		struct sc_pkcs15_bignum bn[5];
 
 		sc_log(card->ctx, "Import RSA CRT");
+		if (!rsa->p.data || !rsa->q.data || !rsa->iqmp.data || !rsa->dmp1.data || !rsa->dmq1.data ||
+		    !rsa->p.len || !rsa->q.len || !rsa->iqmp.len || !rsa->dmp1.len || !rsa->dmq1.len)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		bn[0] = rsa->p;
 		bn[1] = rsa->q;
 		bn[2] = rsa->iqmp;
