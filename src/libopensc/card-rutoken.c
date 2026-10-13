@@ -885,6 +885,7 @@ static int rutoken_key_gen(sc_card_t *card, sc_DOHdrV2_t *pHdr)
 		apdu.data = data;
 		apdu.datalen = apdu.lc = data_len;
 		ret = sc_transmit_apdu(card, &apdu);
+		sc_mem_clear(data, sizeof(data));
 		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
@@ -919,8 +920,10 @@ static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 	else
 	{
 		rutoken_set_do_hdr(data, &data_len, &pDO->HDR);
-		if (sizeof(data) < data_len + pDO->HDR.wDOBodyLen + 2)
+		if (sizeof(data) < data_len + pDO->HDR.wDOBodyLen + 2) {
+			sc_mem_clear(data, sizeof(data));
 			return SC_ERROR_INTERNAL;
+		}
 		ret = sc_asn1_put_tag(0xA5, pDO->abyDOBody, pDO->HDR.wDOBodyLen,
 				data + data_len, sizeof(data) - data_len, NULL);
 		if (ret == SC_SUCCESS)
@@ -929,6 +932,7 @@ static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 		apdu.data = data;
 		apdu.datalen = apdu.lc = data_len;
 		ret = sc_transmit_apdu(card, &apdu);
+		sc_mem_clear(data, sizeof(data));
 		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
