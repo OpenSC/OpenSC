@@ -400,6 +400,7 @@ sc_hsm_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	out:
 
 	sc_pkcs15emu_sc_hsm_free_cvc(&cvc);
+	sc_mem_clear(gakp, sizeof(gakp));
 
 	if (cvcbin) {
 		free(cvcbin);
