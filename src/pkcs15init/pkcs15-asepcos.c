@@ -689,7 +689,8 @@ static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *pro
 	sc_path_t tpath;
 	sc_cardctl_asepcos_change_key_t	ckdata;
 
-	if (!key || !key->exponent.data || !key->p.data || !key->q.data)
+	if (!key || !key->exponent.data || !key->exponent.len ||
+	    !key->p.data || !key->p.len || !key->q.data || !key->q.len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (key->exponent.len > sizeof(buf) || key->p.len > sizeof(buf) || key->q.len > sizeof(buf) ||
@@ -841,6 +842,7 @@ static int asepcos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	}
 
 	if (pubkey) {
+		memset(pubkey, 0, sizeof(*pubkey));
 		pubkey->u.rsa.modulus.len  = apdu.resplen;
 		pubkey->u.rsa.modulus.data = malloc(apdu.resplen);
 		if (pubkey->u.rsa.modulus.data == NULL)
