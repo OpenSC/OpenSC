@@ -895,8 +895,10 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		struct sc_file *file = NULL;
 		struct sc_path ppath;
 
-		if (lpath.aid.len > sizeof(ppath.value))
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_ARGUMENTS, "AID length too large");
+		if (lpath.aid.len > sizeof(ppath.value)) {
+			rv = SC_ERROR_INVALID_ARGUMENTS;
+			LOG_TEST_GOTO_ERR(ctx, rv, "AID length too large");
+		}
 
 		sc_log(ctx, "iasecc_select_file() select parent AID:%p/%zu", lpath.aid.value, lpath.aid.len);
 		sc_log(ctx, "iasecc_select_file() select parent AID:%s", sc_dump_hex(lpath.aid.value, lpath.aid.len));
@@ -2672,10 +2674,19 @@ iasecc_sdo_put_data(struct sc_card *card, struct iasecc_sdo_update *update)
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 
 		rv = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+		if (rv < 0) {
+			sc_mem_clear(encoded, encoded_len);
+			free(encoded);
+			LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+		}
 		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		LOG_TEST_RET(ctx, rv, "SDO put data error");
+		if (rv < 0) {
+			sc_mem_clear(encoded, encoded_len);
+			free(encoded);
+			LOG_TEST_RET(ctx, rv, "SDO put data error");
+		}
 
+		sc_mem_clear(encoded, encoded_len);
 		free(encoded);
 	}
 
