@@ -1836,6 +1836,7 @@ awp_update_df_delete_cert(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	sc_log(ctx,  "info file-id:%X", info_file->id);
 
 	rv = cosm_delete_file(p15card, profile, info_file);
+	sc_file_free(info_file);
 	if (rv != SC_ERROR_FILE_NOT_FOUND)
 		LOG_TEST_RET(ctx, rv, "AWP 'delete cert' update DF failed: delete info file error");
 
@@ -1872,6 +1873,7 @@ awp_update_df_delete_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	sc_log(ctx,  "info file-id:%X", info_file->id);
 
 	rv = cosm_delete_file(p15card, profile, info_file);
+	sc_file_free(info_file);
 	if (rv != SC_ERROR_FILE_NOT_FOUND)
 		LOG_TEST_RET(ctx, rv, "AWP 'delete prkey' update DF failed: delete info file error");
 
@@ -1908,6 +1910,7 @@ awp_update_df_delete_pubkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 	sc_log(ctx,  "info file-id:%X", info_file->id);
 
 	rv = cosm_delete_file(p15card, profile, info_file);
+	sc_file_free(info_file);
 	if (rv != SC_ERROR_FILE_NOT_FOUND)
 		LOG_TEST_RET(ctx, rv, "AWP 'delete pubkey' update DF failed: delete info file error");
 
@@ -1944,6 +1947,7 @@ awp_update_df_delete_data(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 	sc_log(ctx,  "info file-id:%X", info_file->id);
 
 	rv = cosm_delete_file(p15card, profile, info_file);
+	sc_file_free(info_file);
 	if (rv != SC_ERROR_FILE_NOT_FOUND)
 		LOG_TEST_RET(ctx, rv, "AWP 'delete DATA' update DF failed: delete info file error");
 
