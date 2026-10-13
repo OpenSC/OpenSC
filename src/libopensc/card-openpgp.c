@@ -3018,6 +3018,8 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	pgp_blob_t *fpseq_blob = NULL;
 	u8 *newdata = NULL;
 	int r;
+	u8 *oidv = NULL;
+	size_t oidv_len = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -3031,7 +3033,8 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 			|| (key_info->u.rsa.exponent_len) == 0) {
 
 			sc_log(card->ctx, "Null data (modulus or exponent)");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			goto err;
 		}
 
 		/* https://tools.ietf.org/html/rfc4880  page 41, 72 */
@@ -3050,7 +3053,15 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 			key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
 		if (key_info->u.ec.ecpointQ == NULL || (key_info->u.ec.ecpointQ_len) == 0) {
 			sc_log(card->ctx, "Error: ecpoint required!");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			goto err;
+		}
+
+		/* TODO check if we need OID conversion similar as in `pgp_update_new_algo_attr()` */
+		if (SC_SUCCESS == sc_asn1_encode_object_id(&oidv, &oidv_len, &key_info->u.ec.oidv)) {
+			key_info->u.ec.oidv_len = oidv_len;
+		} else {
+			key_info->u.ec.oidv_len = 0;
 		}
 
 		/* https://tools.ietf.org/html/rfc4880  page 41, 72
@@ -3070,14 +3081,18 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 					 + 1	/* KDF algo */
 					 + 1;	/* KEK algo */
 		}
-	} else
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	} else {
+		r = SC_ERROR_NOT_SUPPORTED;
+		goto err;
+	}
 	sc_log(card->ctx, "pk_packet_len is %zu", pk_packet_len);
 
 	fp_buffer_len = 3 + pk_packet_len;
 	p = fp_buffer = calloc(1, fp_buffer_len);
-	if (p == NULL)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+	if (p == NULL) {
+		r = SC_ERROR_NOT_ENOUGH_MEMORY;
+		goto err;
+	}
 
 	/* constructing public-key packet */
 	p[0] = 0x99;   /* http://tools.ietf.org/html/rfc4880  page 71 */
@@ -3115,10 +3130,12 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 		/* Algorithm ID, see https://tools.ietf.org/html/rfc6637#section-5 */
 		*p = key_info->algorithm + 6;
 		p += 1;
-		*p = key_info->u.ec.oidv_len;
+		*p = oidv_len;
 		p += 1;
-		memcpy(p, key_info->u.ec.oidv.value, key_info->u.ec.oidv_len);
-		p += key_info->u.ec.oidv_len;
+		if (oidv != NULL) {
+			memcpy(p, oidv, oidv_len);
+			p += oidv_len;
+		}
 		memcpy(p, key_info->u.ec.ecpointQ, key_info->u.ec.ecpointQ_len);
 
 		/* KDF parameters for ECDH */
@@ -3141,19 +3158,20 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 				*(p+1) = 0x09;	/* KEK algo */
 			}
 		}
-	} else
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	} else {
+		r = SC_ERROR_NOT_SUPPORTED;
+		goto err;
+	}
 
 	p = NULL;
 
 	/* hash with SHA-1 */
 	SHA1(fp_buffer, fp_buffer_len, fingerprint);
-	free(fp_buffer);
 
 	/* store to DO */
 	sc_log(card->ctx, "Writing to DO %04X.", tag);
 	r = pgp_put_data(card, tag, fingerprint, SHA_DIGEST_LENGTH);
-	LOG_TEST_RET(card->ctx, r, "Cannot write to DO");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Cannot write to DO");
 
 	/* update the blob containing fingerprints (00C5) */
 	sc_log(card->ctx, "Updating fingerprint blob 00C5.");
@@ -3181,9 +3199,11 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	memcpy(p, fingerprint, 20);
 	/* set blob's data */
 	pgp_set_blob(fpseq_blob, newdata, fpseq_blob->len);
-	free(newdata);
 
 err:
+	free(fp_buffer);
+	free(newdata);
+	free(oidv);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -3635,6 +3655,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 	size_t comp_to_add;
 	u8 i;
 	int r;
+	u8 *exponent[BYTES4BITS(SC_OPENPGP_MAX_EXP_BITS)];
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -3685,17 +3706,8 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 		/* We need to right justify the exponent with allowed exponent length,
 		 * e.g. from '01 00 01' to '00 01 00 01' */
 		if (key_info->u.rsa.exponent_len < SC_OPENPGP_MAX_EXP_BITS) {
-			/* create new buffer */
-			p = calloc(1, max_e_len_bytes);
-			if (!p)
-				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
-
-			memcpy(p + (max_e_len_bytes - e_len_bytes), key_info->u.rsa.exponent, e_len_bytes);
-			/* set key_info->u.rsa.e to new buffer */
-			free(key_info->u.rsa.exponent);
-			key_info->u.rsa.exponent = p;
-			components[0] = p;
-			key_info->u.rsa.exponent_len = SC_OPENPGP_MAX_EXP_BITS; /* we store info in bits */
+			memcpy(exponent + (max_e_len_bytes - e_len_bytes), key_info->u.rsa.exponent, e_len_bytes);
+			components[0] = (u8 *)exponent;
 			componentlens[0] = max_e_len_bytes; /* ... but in bytes for header list */
 		}
 	}
