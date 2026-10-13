@@ -371,7 +371,7 @@ itacns_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	if (data->cmd == SC_PIN_CMD_GET_INFO &&
 			card->type == SC_CARD_TYPE_ITACNS_CNS_JSIGN4 &&
-			data->pin_reference != 0x10) {
+			data->pin_reference != 0x10 && data->pin_reference != 0x11) {
 		data->pin1.tries_left = -1;
 		return SC_ERROR_NOT_SUPPORTED;
 	}
