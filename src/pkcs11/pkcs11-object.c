@@ -1922,7 +1922,7 @@ CK_RV sc_pkcs11_any_cmp_attribute(struct sc_pkcs11_session *session, void *ptr, 
 	u8 *temp2 = NULL;	/* dynamic allocation for large attributes */
 	CK_ATTRIBUTE temp_attr;
 
-	if (!attr || !attr->pValue || !ptr)
+	if (!attr || (attr->pValue == NULL && attr->ulValueLen > 0) || !ptr)
 		return 0;
 
 	object = (struct sc_pkcs11_object *)ptr;

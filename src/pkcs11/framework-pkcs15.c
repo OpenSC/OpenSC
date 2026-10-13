@@ -1302,7 +1302,7 @@ _pkcs15_create_typed_objects(struct pkcs15_fw_data *fw_data)
 
 	/* Match up related keys and certificates */
 	pkcs15_bind_related_objects(fw_data);
-	sc_log(context, "found %i FW objects", fw_data->num_objects);
+	sc_log(context, "found %u FW objects", fw_data->num_objects);
 
 	return rv;
 }
@@ -1487,10 +1487,10 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 {
 	struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
 	int public_certificates = 1;
-	unsigned i;
+	unsigned int i;
 
 	sc_log(context, "Add objects related to PIN('%.*s',ID:%s)", (int) sizeof pin_obj->label, pin_obj->label, sc_pkcs15_print_id(&pin_info->auth_id));
-	for (i=0; i < fw_data->num_objects; i++) {
+	for (i = 0; i < fw_data->num_objects; i++) {
 		struct pkcs15_any_object *obj = fw_data->objects[i];
 
 		/* "Fake" objects we've generated */
@@ -1503,29 +1503,29 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 		sc_log(context, "ObjID(%p,%.*s,%x):%s", obj, (int) sizeof obj->p15_object->label, obj->p15_object->label,
 				obj->p15_object->type, sc_pkcs15_print_id(&obj->p15_object->auth_id));
 		if (!sc_pkcs15_compare_id(&pin_info->auth_id, &obj->p15_object->auth_id))   {
-			sc_log(context, "Ignoring object %d", i);
+			sc_log(context, "Ignoring object %u", i);
 			continue;
 		}
 
 		if (is_privkey(obj)) {
-			sc_log(context, "Slot:%p, obj:%p  Adding private key %d to PIN '%.*s'", slot, obj, i, (int) sizeof pin_obj->label, pin_obj->label);
+			sc_log(context, "Slot:%p, obj:%p  Adding private key %u to PIN '%.*s'", slot, obj, i, (int)sizeof pin_obj->label, pin_obj->label);
 			pkcs15_add_object(slot, obj, NULL);
 		}
 		else if (is_data(obj)) {
-			sc_log(context, "Slot:%p Adding data object %d to PIN '%.*s'", slot, i, (int) sizeof pin_obj->label, pin_obj->label);
+			sc_log(context, "Slot:%p Adding data object %u to PIN '%.*s'", slot, i, (int)sizeof pin_obj->label, pin_obj->label);
 			pkcs15_add_object(slot, obj, NULL);
 		}
 		else if (is_cert(obj)) {
-			sc_log(context, "Slot:%p Adding cert object %d to PIN '%.*s'", slot, i, (int) sizeof pin_obj->label, pin_obj->label);
+			sc_log(context, "Slot:%p Adding cert object %u to PIN '%.*s'", slot, i, (int)sizeof pin_obj->label, pin_obj->label);
 			pkcs15_add_object(slot, obj, NULL);
 			public_certificates = 0;
 		}
 		else if (is_skey(obj)) {
-			sc_log(context, "Slot:%p Adding secret key object %d to PIN '%.*s'", slot, i, (int) sizeof pin_obj->label, pin_obj->label);
+			sc_log(context, "Slot:%p Adding secret key object %u to PIN '%.*s'", slot, i, (int)sizeof pin_obj->label, pin_obj->label);
 			pkcs15_add_object(slot, obj, NULL);
 		}
 		else   {
-			sc_log(context, "Slot:%p Object %d skipped", slot, i);
+			sc_log(context, "Slot:%p Object %u skipped", slot, i);
 			continue;
 		}
 
@@ -1533,8 +1533,8 @@ _add_pin_related_objects(struct sc_pkcs11_slot *slot, struct sc_pkcs15_object *p
 			int tail = fw_data->num_objects - i - 1;
 
 			move_to_fw->objects[move_to_fw->num_objects++] = obj;
-			if (tail)
-				memcpy(&fw_data->objects[i], &fw_data->objects[i + 1], sizeof(fw_data->objects[0]) * tail);
+			if (tail > 0)
+				memmove(&fw_data->objects[i], &fw_data->objects[i + 1], sizeof(fw_data->objects[0]) * tail);
 			i--;
 			fw_data->num_objects--;
 		}
@@ -1552,7 +1552,7 @@ _add_public_objects(struct sc_pkcs11_slot *slot, struct pkcs15_fw_data *fw_data)
 	if (slot == NULL || fw_data == NULL)
 		return;
 
-	sc_log(context, "%i public objects to process", fw_data->num_objects);
+	sc_log(context, "%u public objects to process", fw_data->num_objects);
 	for (i=0; i < fw_data->num_objects; i++) {
 		struct pkcs15_any_object *obj = fw_data->objects[i];
 
@@ -1647,7 +1647,7 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 	rc = _pkcs15_create_typed_objects(fw_data);
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, NULL);
-	sc_log(context, "Found %d FW objects objects", fw_data->num_objects);
+	sc_log(context, "Found %u FW objects objects", fw_data->num_objects);
 
 	/* Create slots for all non-unblock, non-so PINs if:
 	 *  - 'UserPIN' cannot be identified (VT: for some cards with incomplete PIN flags);
@@ -2384,8 +2384,10 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 				ec->params.der.value = NULL;
 				goto out;
 			}
-			if (sc_pkcs15_fix_ec_parameters(p11card->card->ctx, &ec->params) != SC_SUCCESS)
-				return CKR_ATTRIBUTE_VALUE_INVALID;
+			if (sc_pkcs15_fix_ec_parameters(p11card->card->ctx, &ec->params) != SC_SUCCESS) {
+				rv = CKR_ATTRIBUTE_VALUE_INVALID;
+				goto out;
+			}
 			break;
 		case CKA_SIGN:
 			args.usage |= pkcs15_check_bool_cka(attr, SC_PKCS15_PRKEY_USAGE_SIGN);
@@ -2415,7 +2417,8 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 
 		if (bn) {
 			if (attr->ulValueLen > 1024)   {
-				return CKR_ATTRIBUTE_VALUE_INVALID;
+				rv = CKR_ATTRIBUTE_VALUE_INVALID;
+				goto out;
 			}
 			bn->len = attr->ulValueLen;
 			bn->data = (u8 *) attr->pValue;
@@ -2432,7 +2435,8 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 	else if (key_type == CKK_GOSTR3410)   {
 		if (!gost->d.len)   {
 			sc_log(context, "Template to store the GOST key is incomplete");
-			return CKR_ATTRIBUTE_VALUE_INVALID;
+			rv = CKR_ATTRIBUTE_VALUE_INVALID;
+			goto out;
 		}
 		/* CKA_VALUE arrives in little endian form. pkcs15init framework expects it in a big endian one. */
 		rc = sc_mem_reverse(gost->d.data, gost->d.len);
@@ -2445,18 +2449,12 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 			key_type == CKK_EC_MONTGOMERY) {
 		if (!ec->privateD.len || !ec->params.field_length) {
 			sc_log(context, "Template to store the EC private key is incomplete");
-			return CKR_TEMPLATE_INCOMPLETE;
+			rv = CKR_TEMPLATE_INCOMPLETE;
+			goto out;
 		}
 	}
 
 	rc = sc_pkcs15init_store_private_key(fw_data->p15_card, profile, &args, &key_obj);
-	/* free args now */
-	if (key_type == CKK_EC ||
-			key_type == CKK_EC_EDWARDS ||
-			key_type == CKK_EC_MONTGOMERY) {
-		sc_clear_ec_params(&ec->params);
-		/* allocated above */
-	}
 	if (rc < 0) {
 		rv = sc_to_cryptoki_error(rc, "C_CreateObject");
 		goto out;
@@ -2469,6 +2467,11 @@ pkcs15_create_private_key(struct sc_pkcs11_slot *slot, struct sc_profile *profil
 	rv = CKR_OK;
 
 out:
+	if (key_type == CKK_EC ||
+			key_type == CKK_EC_EDWARDS ||
+			key_type == CKK_EC_MONTGOMERY) {
+		sc_clear_ec_params(&ec->params);
+	}
 	return rv;
 }
 
@@ -3096,6 +3099,7 @@ pkcs15_create_object(struct sc_pkcs11_slot *slot, CK_ATTRIBUTE_PTR pTemplate, CK
 		rc = sc_pkcs15init_finalize_profile(p11card->card, profile, aid);
 		if (rc != CKR_OK) {
 			sc_log(context, "Cannot finalize profile: %i", rc);
+			sc_pkcs15init_unbind(profile);
 			sc_unlock(p11card->card);
 			return sc_to_cryptoki_error(rc, "C_CreateObject");
 		}
@@ -3936,6 +3940,8 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 	size_t	len, _len;
 
 	sc_log(context, "pkcs15_cert_cmp_attribute() called");
+	if (!attr)
+		return 0;
 	if (!p11card)
 		return sc_to_cryptoki_error(SC_ERROR_INVALID_CARD, "C_GetAttributeValue");
 	fw_data = (struct pkcs15_fw_data *) p11card->fws_data[session->slot->fw_data_idx];
@@ -3951,6 +3957,8 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 	 * in the ASN.1 encoded SEQUENCE OF SET,
 	 * while OpenSC just keeps the SET in the issuer/subject field. */
 	case CKA_ISSUER:
+		if (!attr->pValue)
+			return 0;
 		if (check_cert_data_read(fw_data, cert) != 0)
 			break;
 		if (cert->cert_data->issuer_len == 0)
@@ -3967,6 +3975,8 @@ pkcs15_cert_cmp_attribute(struct sc_pkcs11_session *session,
 		}
 		break;
 	case CKA_SUBJECT:
+		if (!attr->pValue)
+			return 0;
 		if (check_cert_data_read(fw_data, cert) != 0)
 			break;
 		if (cert->cert_data->subject_len == 0)
