@@ -422,7 +422,9 @@ setcos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Store key failed: RSA only supported");
 
-	if (!prkey->u.rsa.exponent.data || !prkey->u.rsa.p.data || !prkey->u.rsa.q.data)
+	if (!prkey->u.rsa.exponent.data || prkey->u.rsa.exponent.len == 0
+			|| !prkey->u.rsa.p.data || prkey->u.rsa.p.len == 0
+			|| !prkey->u.rsa.q.data || prkey->u.rsa.q.len == 0)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	key_info = (struct sc_pkcs15_prkey_info *)object->data;
@@ -519,6 +521,7 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	/* Key pair generation -> collect public key info */
 	if (pubkey != NULL) {
+		memset(pubkey, 0, sizeof(*pubkey));
 		pubkey->algorithm		= SC_ALGORITHM_RSA;
 		pubkey->u.rsa.modulus.len	= BYTES4BITS(keybits);
 		pubkey->u.rsa.modulus.data	= malloc(pubkey->u.rsa.modulus.len);
@@ -541,13 +544,8 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		r = sc_select_file(p15card->card, &file->path, NULL);
 		sc_file_free(file);
 		if (r < 0) {
-			free(pubkey->u.rsa.modulus.data);
-			pubkey->u.rsa.modulus.data = NULL;
-			pubkey->u.rsa.modulus.len = 0;
-			free(pubkey->u.rsa.exponent.data);
-			pubkey->u.rsa.exponent.data = NULL;
-			pubkey->u.rsa.exponent.len = 0;
-			LOG_TEST_RET(ctx, r, "Cannot get key modulus: select key file failed");
+			sc_log(ctx, "Cannot get key modulus: select key file failed");
+			goto err;
 		}
 
 		data_obj.P1 = 0x01;
@@ -557,43 +555,42 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_GETDATA, &data_obj);
 		if (r < 0) {
-			free(pubkey->u.rsa.modulus.data);
-			pubkey->u.rsa.modulus.data = NULL;
-			pubkey->u.rsa.modulus.len = 0;
-			free(pubkey->u.rsa.exponent.data);
-			pubkey->u.rsa.exponent.data = NULL;
-			pubkey->u.rsa.exponent.len = 0;
-			LOG_TEST_RET(ctx, r, "Cannot get key modulus: 'SETCOS_GETDATA' failed");
+			sc_log(ctx, "Cannot get key modulus: 'SETCOS_GETDATA' failed");
+			goto err;
 		}
 
 		if (data_obj.DataLen < pubkey->u.rsa.modulus.len + 2) {
-			free(pubkey->u.rsa.modulus.data);
-			pubkey->u.rsa.modulus.data = NULL;
-			pubkey->u.rsa.modulus.len = 0;
-			free(pubkey->u.rsa.exponent.data);
-			pubkey->u.rsa.exponent.data = NULL;
-			pubkey->u.rsa.exponent.len = 0;
-			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Cannot get key modulus: wrong length of raw key");
+			sc_log(ctx, "Cannot get key modulus: wrong length of raw key");
+			r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+			goto err;
 		}
 
 		keybits = ((raw_pubkey[0] * 256) + raw_pubkey[1]);  /* modulus bit length */
 		if (keybits != key_info->modulus_length)  {
-			free(pubkey->u.rsa.modulus.data);
-			pubkey->u.rsa.modulus.data = NULL;
-			pubkey->u.rsa.modulus.len = 0;
-			free(pubkey->u.rsa.exponent.data);
-			pubkey->u.rsa.exponent.data = NULL;
-			pubkey->u.rsa.exponent.len = 0;
 			sc_log(ctx, "key-size from card[%zu] does not match[%zu]",
 					keybits, key_info->modulus_length);
-			LOG_TEST_RET(ctx, SC_ERROR_PKCS15INIT, "Failed to generate key");
+			r = SC_ERROR_PKCS15INIT;
+			goto err;
 		}
 		memcpy(pubkey->u.rsa.modulus.data, &raw_pubkey[2], pubkey->u.rsa.modulus.len);
 	} else {
 		sc_file_free(file);
 	}
 
+	sc_mem_clear(raw_pubkey, sizeof(raw_pubkey));
 	return r;
+
+err:
+	if (pubkey != NULL) {
+		free(pubkey->u.rsa.modulus.data);
+		pubkey->u.rsa.modulus.data = NULL;
+		pubkey->u.rsa.modulus.len = 0;
+		free(pubkey->u.rsa.exponent.data);
+		pubkey->u.rsa.exponent.data = NULL;
+		pubkey->u.rsa.exponent.len = 0;
+	}
+	sc_mem_clear(raw_pubkey, sizeof(raw_pubkey));
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
