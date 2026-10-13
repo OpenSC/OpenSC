@@ -1228,11 +1228,17 @@ iasecc_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15ca
 	size_t keybits = key_info->modulus_length;
 	struct iasecc_sdo *sdo_prvkey;
 	struct iasecc_sdo *sdo_pubkey = NULL;
-	struct sc_pkcs15_prkey_rsa *rsa = &prvkey->u.rsa;
+	struct sc_pkcs15_prkey_rsa *rsa;
 	struct sc_file	*file = NULL;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!prvkey || prvkey->algorithm != SC_ALGORITHM_RSA)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	rsa = &prvkey->u.rsa;
+	if (!rsa->modulus.data || !rsa->exponent.data || !rsa->p.data || !rsa->q.data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_log(ctx, "Store IAS/ECC key(keybits:%zu,AuthID:%s,path:%s)",
 			keybits, sc_pkcs15_print_id(&object->auth_id), sc_print_path(&key_info->path));
 
@@ -1267,6 +1273,7 @@ err:
 	sc_file_free(file);
 	/* sdo_prvkey is freed while object is freeing */
 	iasecc_sdo_free(card, sdo_pubkey);
+	LOG_TEST_RET(ctx, rv, "cannot store SDO PRIVATE/PUBLIC KEYs");
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
