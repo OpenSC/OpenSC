@@ -88,7 +88,7 @@ int sc_wrap(sc_card_t *card,
 {
 	int r;
 
-	if (card == NULL || out == NULL) {
+	if (card == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);

@@ -929,7 +929,7 @@ void sc_mem_secure_free(void *ptr, size_t len)
 
 void sc_mem_clear(void *ptr, size_t len)
 {
-	if (len > 0)   {
+	if (ptr && len > 0) {
 #ifdef HAVE_MEMSET_S
 		memset_s(ptr, len, 0, len);
 #elif _WIN32
