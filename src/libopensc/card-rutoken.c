@@ -95,7 +95,9 @@ static int rutoken_finish(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (!card->drv_data)
 		return SC_ERROR_INTERNAL;
+	sc_mem_clear(card->drv_data, sizeof(auth_senv_t));
 	free(card->drv_data);
+	card->drv_data = NULL;
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -883,6 +885,7 @@ static int rutoken_key_gen(sc_card_t *card, sc_DOHdrV2_t *pHdr)
 		apdu.data = data;
 		apdu.datalen = apdu.lc = data_len;
 		ret = sc_transmit_apdu(card, &apdu);
+		sc_mem_clear(data, sizeof(data));
 		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
@@ -917,8 +920,10 @@ static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 	else
 	{
 		rutoken_set_do_hdr(data, &data_len, &pDO->HDR);
-		if (sizeof(data) < data_len + pDO->HDR.wDOBodyLen + 2)
+		if (sizeof(data) < data_len + pDO->HDR.wDOBodyLen + 2) {
+			sc_mem_clear(data, sizeof(data));
 			return SC_ERROR_INTERNAL;
+		}
 		ret = sc_asn1_put_tag(0xA5, pDO->abyDOBody, pDO->HDR.wDOBodyLen,
 				data + data_len, sizeof(data) - data_len, NULL);
 		if (ret == SC_SUCCESS)
@@ -927,6 +932,7 @@ static int rutoken_create_do(sc_card_t *card, sc_DO_V2_t * pDO)
 		apdu.data = data;
 		apdu.datalen = apdu.lc = data_len;
 		ret = sc_transmit_apdu(card, &apdu);
+		sc_mem_clear(data, sizeof(data));
 		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
@@ -1039,12 +1045,19 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 		apdu.resp = buf;
 
 		ret = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
+		if (ret < 0) {
+			sc_mem_clear(buf, sizeof(buf));
+			LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
+		}
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (ret == SC_SUCCESS)
 		{
 			if (isIV)
 			{
+				if (apdu.resplen < 8) {
+					ret = SC_ERROR_WRONG_LENGTH;
+					break;
+				}
 				apdu.resp += 8;
 				apdu.resplen -= 8;
 				isIV = 0;
@@ -1059,6 +1072,7 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 			}
 		}
 	} while (ret == SC_SUCCESS  &&  crgram_len != 0);
+	sc_mem_clear(buf, sizeof(buf));
 	sc_log(card->ctx, "len out cipher %zu\n", outlen - outlen_tail);
 	if (ret == SC_SUCCESS)
 		ret = (outlen_tail == 0) ? (int)outlen : SC_ERROR_WRONG_LENGTH;

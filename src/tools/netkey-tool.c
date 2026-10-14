@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
 
@@ -70,22 +71,25 @@ static struct {
 static void show_pin(sc_card_t *card, int pin)
 {
 	sc_path_t p;
-	sc_file_t *f;
+	sc_file_t *f = NULL;
 	struct sc_apdu a;
 	int i, max;
+
+	if (pin < 0 || (size_t)pin >= sizeof(pinlist)/sizeof(pinlist[0]))
+		return;
 
 	sc_format_path(pinlist[pin].path,&p);
 	if((i=sc_select_file(card,&p,&f))<0){
 		printf("\nCannot select PIN-file %s, is this a NetKey-Card ??\n", pinlist[pin].path);
 		return;
 	}
-	if(f->type!=SC_FILE_TYPE_WORKING_EF || f->ef_structure!=SC_FILE_EF_LINEAR_VARIABLE_TLV ||
-	   f->prop_attr_len!=5 || f->prop_attr[0]!=0x01 || f->prop_attr[1]!=0x80
+	if(!f || f->type!=SC_FILE_TYPE_WORKING_EF || f->ef_structure!=SC_FILE_EF_LINEAR_VARIABLE_TLV ||
+	   !f->prop_attr || f->prop_attr_len<5 || f->prop_attr[0]!=0x01 || f->prop_attr[1]!=0x80
 	){
-		printf("\nInvalid PIN-file: Type=%d, EF-Structure=%d, Prop-Len=%lu %02X:%02X:%02X\n",
-			f->type, f->ef_structure, (unsigned long) f->prop_attr_len,
-			f->prop_attr[0], f->prop_attr[1], f->prop_attr[2]
+		printf("\nInvalid PIN-file: Type=%d, EF-Structure=%d, Prop-Len=%lu\n",
+			f ? f->type : 0, f ? f->ef_structure : 0, (unsigned long)(f ? f->prop_attr_len : 0)
 		);
+		sc_file_free(f);
 		return;
 	}
 	pinlist[pin].tries=f->prop_attr[3], max=f->prop_attr[4];
@@ -96,6 +100,8 @@ static void show_pin(sc_card_t *card, int pin)
 	} else {
 		sc_format_apdu(card, &a, SC_APDU_CASE_1, 0x20, 0x00, f->prop_attr[2] | (pin>1 ? 0x80 : 0x00) );
 	}
+	sc_file_free(f);
+
 	if((i=sc_transmit_apdu(card, &a))<0){
 		printf("\nsc_transmit_apdu() failed, %s\n", sc_strerror(i));
 		return;
@@ -111,7 +117,7 @@ static void show_pin(sc_card_t *card, int pin)
 static void show_certs(sc_card_t *card)
 {
 	sc_path_t p;
-	sc_file_t *f;
+	sc_file_t *f = NULL;
 	X509 *c;
 	u8 buf[2000];
 	const u8 *q;
@@ -130,24 +136,31 @@ static void show_certs(sc_card_t *card)
 			);
 			continue;
 		}
-		if(f->type!=SC_FILE_TYPE_WORKING_EF || f->ef_structure!=SC_FILE_EF_TRANSPARENT){
-			printf(", Invalid Cert-file: Type=%d, EF-Structure=%d\n", f->type, f->ef_structure);
+		if(!f || f->type!=SC_FILE_TYPE_WORKING_EF || f->ef_structure!=SC_FILE_EF_TRANSPARENT){
+			printf(", Invalid Cert-file: Type=%d, EF-Structure=%d\n", f ? f->type : 0, f ? f->ef_structure : 0);
+			sc_file_free(f);
 			continue;
 		}
 		if (f->size > sizeof(buf)) {
 			printf(", Certificate too large for buffer (%zu > %zu)\n", f->size, sizeof(buf));
+			sc_file_free(f);
 			continue;
 		}
 		if((j=sc_read_binary(card,0,buf,f->size,0))<0){
 			printf(", Cannot read Cert-file, %s\n", sc_strerror(j));
+			sc_file_free(f);
 			continue;
 		}
 		printf(", Maxlen=%lu", (unsigned long) f->size);
 		q=buf;
-		if(q[0]==0x30 && q[1]==0x82){
-			if(q[4]==6 && q[5]<10 && q[q[5]+6]==0x30 && q[q[5]+7]==0x82) q+=q[5]+6;
+		if(f->size >= 8 && q[0]==0x30 && q[1]==0x82){
+			size_t cert_len = f->size;
+			if(cert_len >= 8 && q[4]==6 && q[5]<10 && (size_t)(q[5]+8) <= cert_len && q[q[5]+6]==0x30 && q[q[5]+7]==0x82){
+				q += q[5]+6;
+				cert_len -= q[5]+6;
+			}
 			printf(", Len=%d\n", (q[2]<<8)|q[3]);
-			if((c=d2i_X509(NULL,&q,f->size))){
+			if((c=d2i_X509(NULL,&q,(long)cert_len))){
 				int idx;
 				const X509_NAME_ENTRY *ne = NULL; /* no free */
 				const ASN1_STRING *a_str = NULL;  /* no free */
@@ -182,13 +195,14 @@ static void show_certs(sc_card_t *card)
 				X509_free(c);
 			}
 		} else printf(", empty\n");
+		sc_file_free(f);
 	}
 }
 
 static void show_initial_puk(sc_card_t *card)
 {
 	sc_path_t p;
-	sc_file_t *f;
+	sc_file_t *f = NULL;
 	struct sc_apdu a;
 	u8 buf1[128], buf2[128];
 	int i;
@@ -199,6 +213,8 @@ static void show_initial_puk(sc_card_t *card)
 		printf("Cannot select encrypted Initial-PUK-file, %s\n", sc_strerror(i));
 		return;
 	}
+	sc_file_free(f);
+	f = NULL;
 	if((i=sc_read_binary(card,0,buf1,128,0))!=128){
 		printf("Cannot read encrypted Initial-PUK-file, %s\n", sc_strerror(i));
 		return;
@@ -210,6 +226,7 @@ static void show_initial_puk(sc_card_t *card)
 		printf("Cannot select DF01, %s\n", sc_strerror(i));
 		return;
 	}
+	sc_file_free(f);
 	sc_format_apdu(card, &a, SC_APDU_CASE_3_SHORT, 0x22, 0xC1, 0xB8);
 	buf2[0]=0x80, buf2[1]=0x01, buf2[2]=0x10, buf2[3]=0x84, buf2[4]=0x01, buf2[5]=0x81;
 	a.data=buf2, a.lc=a.datalen=6;
@@ -232,13 +249,17 @@ static void show_initial_puk(sc_card_t *card)
 		printf("PSO=%02X%02X\n", a.sw1, a.sw2);
 		return;
 	}
-	printf("OK ==> Initial-PUK:"); for(i=120;i<128;++i) printf("%c",buf2[i]); printf("\n");
+	printf("OK ==> Initial-PUK:");
+	for(i=120;i<128;++i) printf("%c", isprint((unsigned char)buf2[i]) ? buf2[i] : '.');
+	printf("\n");
+	sc_mem_clear(buf1, sizeof(buf1));
+	sc_mem_clear(buf2, sizeof(buf2));
 }
 
 static void show_card(sc_card_t    *card)
 {
 	sc_path_t path;
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 	u8 buf[100];
 	int i, len;
 
@@ -247,20 +268,21 @@ static void show_card(sc_card_t    *card)
 		printf("\nCannot select Serial-Number 2F02, is this a NetKey-Card ??\n");
 		return;
 	}
-	if(file->type!=SC_FILE_TYPE_WORKING_EF || file->ef_structure!=SC_FILE_EF_TRANSPARENT ||
+	if(!file || file->type!=SC_FILE_TYPE_WORKING_EF || file->ef_structure!=SC_FILE_EF_TRANSPARENT ||
 	   file->size!=12 || (len=sc_read_binary(card,0,buf,12,0))!=12 || buf[0]!=0x5A || buf[1]!=0x0A
 	){
 		printf("\nInvalid Serial-Number: Type=%d, EF-Structure=%d, Size=%lu\n",
-			file->type, file->ef_structure, (unsigned long) file->size
+			file ? file->type : 0, file ? file->ef_structure : 0, (unsigned long)(file ? file->size : 0)
 		);
+		sc_file_free(file);
 		return;
 	}
+	sc_file_free(file);
 	printf("\nSerial-Number: ");
 	for(i=2;i<11;++i) printf("%02X", buf[i]);
 	printf("%X\n\n", buf[11]>>4);
 
 	for(i=0;i<4;++i) show_pin(card, i);
-	/* printf("%s: %u tries left, %u tries max, %s\n", pinlist[i].label, pinlist[i].tries, max, status); */
 
 	if(pinlist[0].len) show_initial_puk(card);
 }
@@ -270,10 +292,14 @@ static void
 handle_change(sc_card_t *card, long pin1, long pin2, int do_change, u8 *newpin, size_t newlen)
 {
 	sc_path_t p;
-	sc_file_t *f;
+	sc_file_t *f = NULL;
 	struct sc_apdu a;
 	u8 ref;
 	int i;
+
+	if (pin1 < 0 || (size_t)pin1 >= sizeof(pinlist)/sizeof(pinlist[0]) ||
+	    pin2 < 0 || (size_t)pin2 >= sizeof(pinlist)/sizeof(pinlist[0]))
+		return;
 
 	printf("\n%s %s with %s: ", do_change ? "Changing" : "Unblocking", pinlist[pin1].label, pinlist[pin2].label);
 
@@ -282,7 +308,13 @@ handle_change(sc_card_t *card, long pin1, long pin2, int do_change, u8 *newpin, 
 		printf("\nCannot select %s, %s\n", pinlist[pin1].label, sc_strerror(i));
 		return;
 	}
+	if (!f || !f->prop_attr || f->prop_attr_len < 3) {
+		printf("\nInvalid file attribute for %s\n", pinlist[pin1].label);
+		sc_file_free(f);
+		return;
+	}
 	ref=f->prop_attr[2] | (strlen(pinlist[pin1].path)>8 ? 0x80 : 0x00);
+	sc_file_free(f);
 
 	if(do_change){
 		sc_format_apdu(card, &a, SC_APDU_CASE_3_SHORT, 0x24, 0x01, ref);
@@ -305,11 +337,16 @@ handle_change(sc_card_t *card, long pin1, long pin2, int do_change, u8 *newpin, 
 static void handle_nullpin(sc_card_t *card, u8 *newpin, size_t newlen)
 {
 	sc_path_t p;
-	sc_file_t *f;
+	sc_file_t *f = NULL;
 	struct sc_apdu a;
 	u8 ref, buf[40];
 	size_t i;
 	int r;
+
+	if (newlen > sizeof(buf) - 6) {
+		printf("PIN too long\n");
+		return;
+	}
 
 	printf("\nSetting initial PIN-value: ");
 
@@ -318,9 +355,15 @@ static void handle_nullpin(sc_card_t *card, u8 *newpin, size_t newlen)
 		printf("\nCannot select %s, %s\n", pinlist[0].label, sc_strerror(r));
 		return;
 	}
+	if (!f || !f->prop_attr || f->prop_attr_len < 3) {
+		printf("\nInvalid file attribute for %s\n", pinlist[0].label);
+		sc_file_free(f);
+		return;
+	}
 	ref=f->prop_attr[2];
+	sc_file_free(f);
 
-	sc_format_apdu(card, &a, SC_APDU_CASE_1, 0x20, 0x00, f->prop_attr[2]);
+	sc_format_apdu(card, &a, SC_APDU_CASE_1, 0x20, 0x00, ref);
 	if ((r = sc_transmit_apdu(card, &a)) < 0) {
 		printf("sc_transmit_apdu() failed, %s\n", sc_strerror(r));
 		return;
@@ -331,13 +374,15 @@ static void handle_nullpin(sc_card_t *card, u8 *newpin, size_t newlen)
 	}
 
 	sc_format_apdu(card, &a, SC_APDU_CASE_3_SHORT, 0x24, 0x00, ref);
-	for(i=0;i<6;++i) buf[i]=0;
+	memset(buf, 0, sizeof(buf));
 	for(i=0;i<newlen;++i) buf[6+i]=newpin[i];
 	a.data=buf, a.lc=a.datalen=6+newlen;
 	if ((r = sc_transmit_apdu(card, &a)) < 0) {
 		printf("sc_transmit_apdu() failed, %s\n", sc_strerror(r));
+		sc_mem_clear(buf, sizeof(buf));
 		return;
 	}
+	sc_mem_clear(buf, sizeof(buf));
 	if(a.sw1!=0x90 && a.sw2!=0x00){
 		printf("Error %02X%02X\n", a.sw1, a.sw2);
 		return;
@@ -349,12 +394,15 @@ static void handle_nullpin(sc_card_t *card, u8 *newpin, size_t newlen)
 static void handle_readcert(sc_card_t *card, long cert, char *file)
 {
 	sc_path_t p;
-	sc_file_t *f;
+	sc_file_t *f = NULL;
 	FILE *fp;
 	X509 *c;
 	u8 buf[1536];
 	const u8 *q;
 	int i, len;
+
+	if (cert < 0 || (size_t)cert >= sizeof(certlist)/sizeof(certlist[0]) || !file)
+		return;
 
 	printf("\nReading Card-Certificate %ld: ", cert); fflush(stdout);
 
@@ -363,16 +411,27 @@ static void handle_readcert(sc_card_t *card, long cert, char *file)
 		printf("cannot select certfile, %s\n", sc_strerror(i));
 		return;
 	}
+	if (!f || f->type!=SC_FILE_TYPE_WORKING_EF || f->ef_structure!=SC_FILE_EF_TRANSPARENT){
+		printf("invalid certfile\n");
+		sc_file_free(f);
+		return;
+	}
 	if (f->size > sizeof(buf)) {
 		printf("Certificate too large for buffer (%zu > %zu)\n", f->size, sizeof(buf));
+		sc_file_free(f);
 		return;
 	}
 	if((len=sc_read_binary(card,0,buf,f->size,0))<0){
 		printf("Cannot read Cert, %s\n", sc_strerror(len));
+		sc_file_free(f);
 		return;
 	}
+	sc_file_free(f);
 	q=buf;
-	if(q[0]==0x30 && q[1]==0x82 && q[4]==6 && q[5]<10 && q[q[5]+6]==0x30 && q[q[5]+7]==0x82) q+=q[5]+6;
+	if(len >= 8 && q[0]==0x30 && q[1]==0x82 && q[4]==6 && q[5]<10 && (q[5]+8)<=len && q[q[5]+6]==0x30 && q[q[5]+7]==0x82){
+		q+=q[5]+6;
+		len-=q[5]+6;
+	}
 	if((c=d2i_X509(NULL,&q,len))==NULL){
 		sc_log_openssl(card->ctx);
 		printf("cardfile contains %d bytes which are not a certificate\n", len);
@@ -388,6 +447,7 @@ static void handle_readcert(sc_card_t *card, long cert, char *file)
 		} else {
 			printf("OK\n");
 		}
+		fclose(fp);
 	}
 	X509_free(c);
 }
@@ -396,11 +456,14 @@ static void handle_readcert(sc_card_t *card, long cert, char *file)
 static void handle_writecert(sc_card_t *card, long cert, char *file)
 {
 	sc_path_t p;
-	sc_file_t *f;
+	sc_file_t *f = NULL;
 	FILE *fp;
 	X509 *c;
 	u8 buf[1536], *q;
 	int i, len;
+
+	if (cert < 0 || (size_t)cert >= sizeof(certlist)/sizeof(certlist[0]) || !file)
+		return;
 
 	printf("\nReading Cert from %s: ", file); fflush(stdout);
 
@@ -430,6 +493,7 @@ static void handle_writecert(sc_card_t *card, long cert, char *file)
 		printf("cannot select certfile, %s\n", sc_strerror(i));
 		return;
 	}
+	sc_file_free(f);
 	if((i=sc_update_binary(card,0,buf,len,0))<0){
 		printf("cannot store cert, %s\n", sc_strerror(i));
 		return;
@@ -452,6 +516,9 @@ static void set_pin(u8 *data, size_t *pinlen, char *pin)
 {
 	int hex;
 	size_t i, len;
+
+	if (!data || !pinlen || !pin)
+		return;
 
 	len=strlen(pin);
 	hex=(len>=5 && len%3==2);
@@ -584,9 +651,9 @@ int main(
 	if(ctx->debug>0)
 		printf("Context for application \"%s\" created, Debug=%d\n", ctx->app_name, ctx->debug);
 
-	for(i=0;ctx->card_drivers[i];++i)
+	for(i=0;ctx->card_drivers && ctx->card_drivers[i];++i)
 		if(!strcmp("tcos", ctx->card_drivers[i]->short_name)) break;
-	if(!ctx->card_drivers[i]){
+	if(!ctx->card_drivers || !ctx->card_drivers[i]){
 		fprintf(stderr,"Context does not support TCOS-cards\n");
 		sc_release_context(ctx);
 		exit(1);
@@ -599,7 +666,7 @@ int main(
 		exit(1);
 	}
 
-	if((r = sc_connect_card(sc_ctx_get_reader(ctx, 0), &card))<0){
+	if((r = sc_connect_card(sc_ctx_get_reader(ctx, reader), &card))<0){
 		fprintf(stderr,"Connect-Card failed: %s\n", sc_strerror(r));
 		sc_release_context(ctx);
 		exit(1);
@@ -656,6 +723,10 @@ int main(
 	sc_unlock(card);
 	sc_disconnect_card(card);
 	sc_release_context(ctx);
+
+	sc_mem_clear(newpin, sizeof(newpin));
+	for (i = 0; i < sizeof(pinlist)/sizeof(pinlist[0]); ++i)
+		sc_mem_clear(pinlist[i].value, sizeof(pinlist[i].value));
 
 	exit(0);
 }

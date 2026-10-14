@@ -262,6 +262,8 @@ static int belpic_select_file(sc_card_t *card,
 
 	if (card == NULL || in_path == NULL)
 		return SC_ERROR_INTERNAL;
+	if (in_path->len > sizeof(pathbuf))
+		return SC_ERROR_INVALID_ARGUMENTS;
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
 
@@ -286,6 +288,8 @@ static int belpic_select_file(sc_card_t *card,
 
 	if (file_out != NULL) {
 		file = sc_file_new();
+		if (!file)
+			return SC_ERROR_OUT_OF_MEMORY;
 		file->path = *in_path;
 		if (pathlen >= 2)
 			file->id = (in_path->value[pathlen - 2] << 8) | in_path->value[pathlen - 1];

@@ -47,7 +47,7 @@ char *prettify_algorithm(const u8 *data, size_t length)
 		static char result[64];	/* large enough */
 
 		if (data[0] == 0x01 && length >= 5) {		/* RSA */
-			unsigned short modulus = (data[1] << 8) + data[2];
+			unsigned short modulus = ((unsigned short)data[1] << 8) + data[2];
 			snprintf(result, sizeof(result), "RSA%u", modulus);
 			return result;
 		}
@@ -72,7 +72,10 @@ char *prettify_algorithm(const u8 *data, size_t length)
 char *prettify_date(const u8 *data, size_t length)
 {
 	if (data != NULL && length == 4) {
-		time_t time = (time_t) (data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]);
+		time_t time = (time_t) (((unsigned long)data[0] << 24) |
+		                        ((unsigned long)data[1] << 16) |
+		                        ((unsigned long)data[2] << 8) |
+		                        (unsigned long)data[3]);
 		struct tm tm;
 		static char result[64];	/* large enough */
 
@@ -100,7 +103,7 @@ char *prettify_version(const u8 *data, size_t length)
 		int major = BCD2CHAR(data[0]);
 		int minor = BCD2CHAR(data[1]);
 
-		sprintf(result, "%d.%d", major, minor);
+		snprintf(result, sizeof(result), "%d.%d", major, minor);
 		return result;
 	}
 	return NULL;
@@ -156,7 +159,7 @@ char *prettify_serialnumber(const u8 *data, size_t length)
 {
 	if (data != NULL && length >= 4) {
 		static char result[15];	/* large enough for even 2*3 digits + separator */
-		sprintf(result, "%02X%02X%02X%02X", data[0], data[1], data[2], data[3]);
+		snprintf(result, sizeof(result), "%02X%02X%02X%02X", data[0], data[1], data[2], data[3]);
 		return result;
 	}
 	return NULL;
@@ -201,12 +204,19 @@ char *prettify_language(const u8 *data, size_t length)
 		size_t used_length = strnlen(src, length) >> 1;
 		int i = 0;
 
+		if (used_length > (sizeof(result) - 1) / 3)
+			used_length = (sizeof(result) - 1) / 3;
+
+		if (used_length == 0)
+			return NULL;
+
 		while (used_length) {
 			used_length--;
 			result[i++] = *src++;
 			result[i++] = *src++;
 			result[i++] = used_length ? ',' : '\0';
 		}
+		result[sizeof(result) - 1] = '\0';
 		return result;
 	}
 	return NULL;

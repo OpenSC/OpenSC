@@ -96,15 +96,16 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	size_t len;
 	char *_so_pin = NULL, *_user_pin = NULL, *_serial = NULL;
 	int r;
+	int res = -1;
 
 	memset(&param, 0, sizeof(sc_cardctl_gids_init_param_t));
 
 	if (so_pin == NULL) {
 		printf("Enter admin key (48 hexadecimal characters) : \n");
 		printf("Press Enter to set the admin key to 00...00\n");
-		if (util_getpass(&_so_pin, NULL, stdin) < 0) {
+		if (util_getpass(&_so_pin, NULL, stdin) < 0 || !_so_pin) {
 			fprintf(stderr, "Error reading admin key\n");
-			return -1;
+			goto out;
 		}
 		printf("\n");
 	} else {
@@ -115,19 +116,19 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	r = sc_hex_to_bin(_so_pin, param.init_code, &len);
 	if (r < 0) {
 		fprintf(stderr, "Error decoding initialization code (%s)\n", sc_strerror(r));
-		return -1;
+		goto out;
 	}
 
 	if (len != 24) {
 		fprintf(stderr, "The admin key must be a hexadecimal string of 48 characters\n");
-		return -1;
+		goto out;
 	}
 
 	if (user_pin == NULL) {
 		printf("Enter initial User-PIN (4 - 16 characters) : ");
-		if (util_getpass(&_user_pin, NULL, stdin) < 0) {
+		if (util_getpass(&_user_pin, NULL, stdin) < 0 || !_user_pin) {
 			fprintf(stderr, "Error reading User-PIN\n");
-			return -1;
+			goto out;
 		}
 		printf("\n");
 	} else {
@@ -137,9 +138,9 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	if (serial == NULL) {
 		printf("Enter serial number (32 hexadecimal characters): \n");
 		printf("Press Enter to set a random serial number\n");
-		if (util_getpass(&_serial, NULL, stdin) < 0) {
+		if (util_getpass(&_serial, NULL, stdin) < 0 || !_serial) {
 			fprintf(stderr, "Error reading serial number\n");
-			return -1;
+			goto out;
 		}
 		printf("\n");
 	} else {
@@ -150,13 +151,13 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 		memset(param.cardid, 0, sizeof(param.cardid));
 	} else if (strlen(_serial) != 32) {
 		fprintf(stderr, "the serial number must be a hexadecimal string of 32 characters\n");
-		return -1;
+		goto out;
 	} else {
 		len = sizeof(param.cardid);
 		r = sc_hex_to_bin(_serial, param.cardid, &len);
 		if (r < 0) {
 			fprintf(stderr, "Error decoding serial number (%s)\n", sc_strerror(r));
-			return -1;
+			goto out;
 		}
 	}
 
@@ -164,12 +165,12 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 
 	if (param.user_pin_len < 4) {
 		fprintf(stderr, "PIN must be at least 4 characters long\n");
-		return -1;
+		goto out;
 	}
 
 	if (param.user_pin_len > 16) {
 		fprintf(stderr, "PIN must not be longer than 16 characters\n");
-		return -1;
+		goto out;
 	}
 
 	param.user_pin = (u8 *)_user_pin;
@@ -177,9 +178,24 @@ static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin,
 	r = sc_card_ctl(card, SC_CARDCTL_GIDS_INITIALIZE, (void *)&param);
 	if (r < 0) {
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GIDS_INITIALIZE, *) failed with %s\n", sc_strerror(r));
+		goto out;
 	}
 
-	return 0;
+	res = 0;
+out:
+	if (so_pin == NULL && _so_pin != NULL) {
+		sc_mem_clear(_so_pin, strlen(_so_pin));
+		free(_so_pin);
+	}
+	if (user_pin == NULL && _user_pin != NULL) {
+		sc_mem_clear(_user_pin, strlen(_user_pin));
+		free(_user_pin);
+	}
+	if (serial == NULL && _serial != NULL) {
+		free(_serial);
+	}
+	sc_mem_clear(&param, sizeof(param));
+	return res;
 }
 
 static int unblock(sc_card_t* card, const char *so_pin, const char *user_pin) {
@@ -188,6 +204,7 @@ static int unblock(sc_card_t* card, const char *so_pin, const char *user_pin) {
 	size_t len;
 	u8 key[24];
 	struct sc_pin_cmd_data data;
+	int res = -1;
 
 	memset(&data, 0, sizeof(struct sc_pin_cmd_data));
 
@@ -198,9 +215,9 @@ static int unblock(sc_card_t* card, const char *so_pin, const char *user_pin) {
 		printf("WARNING\n");
 		printf("============================================================\n");
 		printf("Enter admin key (48 hexadecimal characters) : ");
-		if (util_getpass(&_so_pin, NULL, stdin) < 0) {
+		if (util_getpass(&_so_pin, NULL, stdin) < 0 || !_so_pin) {
 			fprintf(stderr, "Error reading admin key\n");
-			return -1;
+			goto out;
 		}
 		printf("\n");
 	} else {
@@ -211,27 +228,27 @@ static int unblock(sc_card_t* card, const char *so_pin, const char *user_pin) {
 	r = sc_hex_to_bin(_so_pin, key, &len);
 	if (r < 0) {
 		fprintf(stderr, "Error decoding initialization code (%s)\n", sc_strerror(r));
-		return -1;
+		goto out;
 	}
 
 	if (len != 24) {
 		fprintf(stderr, "admin key must be a hexadecimal string of 48 characters\n");
-		return -1;
+		goto out;
 	}
 
 	r = sc_card_ctl(card, SC_CARDCTL_GIDS_AUTHENTICATE_ADMIN, (void *)key);
 	if (r < 0) {
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GIDS_AUTHENTICATE_ADMIN, *) failed with %s\n", sc_strerror(r));
-		return -1;
+		goto out;
 	}
 	printf("Administrator authentication successful\n");
 	printf("Setting the new PIN\n");
 
 	if (user_pin == NULL) {
 		printf("Enter User-PIN (4 - 16 characters) : ");
-		if (util_getpass(&_user_pin, NULL, stdin) < 0) {
+		if (util_getpass(&_user_pin, NULL, stdin) < 0 || !_user_pin) {
 			fprintf(stderr, "Error reading User-PIN\n");
-			return -1;
+			goto out;
 		}
 		printf("\n");
 	} else {
@@ -246,12 +263,23 @@ static int unblock(sc_card_t* card, const char *so_pin, const char *user_pin) {
 	r = sc_pin_cmd(card, &data);
 	if (r < 0) {
 		fprintf(stderr, "reset pin failed with %s\n", sc_strerror(r));
-		return -1;
+		goto out;
 	}
 	printf("Unblock PIN done successfully\n");
 	// the card should have deauthenticated the admin, but to be sure:
 	sc_logout(card);
-	return 0;
+	res = 0;
+out:
+	sc_mem_clear(key, sizeof(key));
+	if (so_pin == NULL && _so_pin != NULL) {
+		sc_mem_clear(_so_pin, strlen(_so_pin));
+		free(_so_pin);
+	}
+	if (user_pin == NULL && _user_pin != NULL) {
+		sc_mem_clear(_user_pin, strlen(_user_pin));
+		free(_user_pin);
+	}
+	return res;
 }
 
 static int changeAdminKey(sc_card_t* card, const char *so_pin, const char* new_key) {
@@ -259,6 +287,7 @@ static int changeAdminKey(sc_card_t* card, const char *so_pin, const char* new_k
 	size_t len;
 	u8 key[24];
 	int r;
+	int res = -1;
 
 	if (so_pin == NULL) {
 		printf("============================================================\n");
@@ -267,9 +296,9 @@ static int changeAdminKey(sc_card_t* card, const char *so_pin, const char* new_k
 		printf("WARNING\n");
 		printf("============================================================\n");
 		printf("Enter admin key (48 hexadecimal characters) : ");
-		if (util_getpass(&_so_pin, NULL, stdin) < 0) {
+		if (util_getpass(&_so_pin, NULL, stdin) < 0 || !_so_pin) {
 			fprintf(stderr, "Error reading admin key\n");
-			return -1;
+			goto out;
 		}
 		printf("\n");
 	} else {
@@ -280,25 +309,25 @@ static int changeAdminKey(sc_card_t* card, const char *so_pin, const char* new_k
 	r = sc_hex_to_bin(_so_pin, key, &len);
 	if (r < 0) {
 		fprintf(stderr, "Error decoding initialization code (%s)\n", sc_strerror(r));
-		return -1;
+		goto out;
 	}
 
 	if (len != 24) {
 		fprintf(stderr, "admin key must be a hexadecimal string of 48 characters\n");
-		return -1;
+		goto out;
 	}
 
 	r = sc_card_ctl(card, SC_CARDCTL_GIDS_AUTHENTICATE_ADMIN, (void *)key);
 	if (r < 0) {
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GIDS_AUTHENTICATE_ADMIN, *) failed with %s\n", sc_strerror(r));
-		return -1;
+		goto out;
 	}
 
 	if (new_key == NULL) {
 		printf("Enter new admin key (48 hexadecimal characters) : ");
-		if (util_getpass(&_new_key, NULL, stdin) < 0) {
+		if (util_getpass(&_new_key, NULL, stdin) < 0 || !_new_key) {
 			fprintf(stderr, "Error reading new admin key\n");
-			return -1;
+			goto out;
 		}
 		printf("\n");
 	} else {
@@ -309,31 +338,54 @@ static int changeAdminKey(sc_card_t* card, const char *so_pin, const char* new_k
 	r = sc_hex_to_bin(_new_key, key, &len);
 	if (r < 0) {
 		fprintf(stderr, "Error decoding initialization code (%s)\n", sc_strerror(r));
-		return -1;
+		goto out;
 	}
 
 	if (len != 24) {
 		fprintf(stderr, "admin key must be a hexadecimal string of 48 characters\n");
-		return -1;
+		goto out;
 	}
 
 	r = sc_card_ctl(card, SC_CARDCTL_GIDS_SET_ADMIN_KEY, (void *)key);
 	sc_logout(card);
 	if (r < 0) {
 		fprintf(stderr, "sc_card_ctl(*, SC_CARDCTL_GIDS_SET_ADMIN_KEY, *) failed with %s\n", sc_strerror(r));
-		return -1;
+		goto out;
 	}
-	return 0;
+	res = 0;
+out:
+	sc_mem_clear(key, sizeof(key));
+	if (so_pin == NULL && _so_pin != NULL) {
+		sc_mem_clear(_so_pin, strlen(_so_pin));
+		free(_so_pin);
+	}
+	if (new_key == NULL && _new_key != NULL) {
+		sc_mem_clear(_new_key, strlen(_new_key));
+		free(_new_key);
+	}
+	return res;
 }
 
 // read a DO from the card
 static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdentifier, u8* response, size_t *responselen) {
 	sc_apdu_t apdu;
 	int r;
-	u8 data[4] = {0x5C, 0x02, (dataObjectIdentifier&0xFF00)>>8, (dataObjectIdentifier&0xFF)};
+	u8 data[4];
 	size_t datasize = 0;
 	const u8* p;
-	u8 buffer[MAX_GIDS_FILE_SIZE];
+	u8 *buffer;
+
+	if (!responselen)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	data[0] = 0x5C;
+	data[1] = 0x02;
+	data[2] = (dataObjectIdentifier & 0xFF00) >> 8;
+	data[3] = (dataObjectIdentifier & 0xFF);
+
+	buffer = malloc(MAX_GIDS_FILE_SIZE);
+	if (!buffer)
+		return SC_ERROR_OUT_OF_MEMORY;
 
 	sc_format_apdu(card, &apdu,
 		response == NULL ? SC_APDU_CASE_3_SHORT : SC_APDU_CASE_4_SHORT, 0xCB, (fileIdentifier&0xFF00)>>8, (fileIdentifier&0xFF));
@@ -341,43 +393,64 @@ static int gids_get_DO(sc_card_t* card, int fileIdentifier, int dataObjectIdenti
 	apdu.data = data;
 	apdu.datalen = 04;
 	apdu.resp = buffer;
-	apdu.resplen = sizeof(buffer);
+	apdu.resplen = MAX_GIDS_FILE_SIZE;
 	apdu.le = 256;
 
 	r = sc_transmit_apdu(card, &apdu);
-	if (r < 0)
+	if (r < 0) {
+		free(buffer);
 		return r;
+	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r < 0)
+	if (r < 0) {
+		free(buffer);
 		return r;
+	}
 
-	p = sc_asn1_find_tag(card->ctx, buffer, sizeof(buffer), dataObjectIdentifier, &datasize);
+	p = sc_asn1_find_tag(card->ctx, buffer, apdu.resplen, dataObjectIdentifier, &datasize);
 	if (!p) {
+		free(buffer);
 		return SC_ERROR_FILE_NOT_FOUND;
 	}
 	if (datasize > *responselen) {
+		free(buffer);
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	}
 	if (response) {
 		memcpy(response, p, datasize);
 	}
 	*responselen = datasize;
+	free(buffer);
 	return SC_SUCCESS;
 }
 
 static int print_info(sc_card_t *card) {
 	int r;
-	u8 buffer[MAX_GIDS_FILE_SIZE];
-	size_t size = sizeof(buffer);
-	u8 masterfile[MAX_GIDS_FILE_SIZE];
-	size_t masterfilesize = sizeof(masterfile);
-	u8 cmapfile[MAX_GIDS_FILE_SIZE];
-	size_t cmapfilesize = sizeof(cmapfile);
-	u8 keymap[MAX_GIDS_FILE_SIZE];
-	size_t keymapsize = sizeof(keymap);
-	gids_mf_record_t *records = (gids_mf_record_t *) (masterfile+1);
+	u8 *buffer = NULL;
+	size_t size;
+	u8 *masterfile = NULL;
+	size_t masterfilesize;
+	u8 *cmapfile = NULL;
+	size_t cmapfilesize;
+	u8 *keymap = NULL;
+	size_t keymapsize;
+	gids_mf_record_t *records;
 	int recordcount;
 	int i;
+
+	buffer = malloc(MAX_GIDS_FILE_SIZE);
+	masterfile = malloc(MAX_GIDS_FILE_SIZE);
+	cmapfile = malloc(MAX_GIDS_FILE_SIZE);
+	keymap = malloc(MAX_GIDS_FILE_SIZE);
+	if (!buffer || !masterfile || !cmapfile || !keymap) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto out;
+	}
+	size = MAX_GIDS_FILE_SIZE;
+	masterfilesize = MAX_GIDS_FILE_SIZE;
+	cmapfilesize = MAX_GIDS_FILE_SIZE;
+	keymapsize = MAX_GIDS_FILE_SIZE;
+	records = (gids_mf_record_t *) (masterfile + 1);
 
 	printf("===============================\n");
 	printf("Dumping the content of the card\n");
@@ -386,25 +459,25 @@ static int print_info(sc_card_t *card) {
 	if (r < 0) {
 		fprintf(stderr, "unable to retrieve the master file: %s\n", sc_strerror(r));
 		fprintf(stderr, "Is that a new card ?\n");
-		return r;
+		goto out;
 	}
 	printf("Dumping Files:\n");
 	if (masterfilesize >= 1) {
-		recordcount = (int) ((masterfilesize-1) / sizeof(gids_mf_record_t));
+		recordcount = (int) ((masterfilesize - 1) / sizeof(gids_mf_record_t));
 		printf("Found %d entries in the masterfile\n", recordcount);
 		for (i = 0; i < recordcount; i++) {
 			if (records[i].filename[0] == 0) {
-				printf("   Directory: %s\n", records[i].directory);
+				printf("   Directory: %.8s\n", records[i].directory);
 				printf("      FileIdentifier: 0x%x\n", records[i].fileIdentifier);
 				printf("\n");
 			}
 		}
 		for (i = 0; i < recordcount; i++) {
 			if (records[i].filename[0] != 0) {
-				printf("   File: %s\\%s\n", records[i].directory, records[i].filename);
+				printf("   File: %.8s\\%.8s\n", records[i].directory, records[i].filename);
 				printf("      FileIdentifier: 0x%x\n", records[i].fileIdentifier);
 				printf("      DataObjectIdentifier: 0x%x\n", records[i].dataObjectIdentifier);
-				size = sizeof(buffer);
+				size = MAX_GIDS_FILE_SIZE;
 				r = gids_get_DO(card, records[i].fileIdentifier, records[i].dataObjectIdentifier, buffer, &size);
 				if (r < 0) {
 					printf("      unable to read the file: %s\n", sc_strerror(r));
@@ -412,20 +485,20 @@ static int print_info(sc_card_t *card) {
 					printf("      Size: %zu\n", size);
 				}
 				printf("\n");
-				if (strcmp(records[i].directory, "mscp") == 0 && strcmp(records[i].filename, "cmapfile") == 0 ) {
+				if (strncmp(records[i].directory, "mscp", 4) == 0 && strncmp(records[i].filename, "cmapfile", 8) == 0) {
 					cmapfilesize = size;
 					memcpy(cmapfile, buffer, size);
 				}
 			}
 		}
 		printf("Dumping containers:\n");
-		if (cmapfilesize == sizeof(cmapfile)) {
+		if (cmapfilesize == MAX_GIDS_FILE_SIZE) {
 			printf("Unable to find the container file (mscp\\cmapfile)\n");
 		} else {
 			PCONTAINER_MAP_RECORD cmaprecords = (PCONTAINER_MAP_RECORD) cmapfile;
 			size_t cmaprecordnum = (cmapfilesize / sizeof(CONTAINER_MAP_RECORD));
-			size_t keymaprecordnum = -1;
-			struct gids_keymap_record* keymaprecord = ((struct gids_keymap_record*)(keymap +1));
+			size_t keymaprecordnum = 0;
+			struct gids_keymap_record* keymaprecord = ((struct gids_keymap_record*)(keymap + 1));
 			if (cmaprecordnum == 0) {
 				printf("   no container found\n");
 			} else {
@@ -484,7 +557,13 @@ static int print_info(sc_card_t *card) {
 	} else {
 		printf("No file system found\n");
 	}
-	return SC_SUCCESS;
+	r = SC_SUCCESS;
+out:
+	free(buffer);
+	free(masterfile);
+	free(cmapfile);
+	free(keymap);
+	return r;
 }
 
 int main(int argc, char * argv[])
@@ -563,8 +642,9 @@ int main(int argc, char * argv[])
 	r = util_connect_card(ctx, &card, opt_reader, opt_wait);
 	if (r != SC_SUCCESS) {
 		if (r < 0) {
-			fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(err));
+			fprintf(stderr, "Failed to connect to card: %s\n", sc_strerror(r));
 		}
+		err = 1;
 		goto end;
 	}
 

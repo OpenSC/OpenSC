@@ -93,6 +93,7 @@ static int masktech_finish(sc_card_t *card)
 {
 	/* free the private data */
 	if (card->drv_data) {
+		sc_mem_clear(card->drv_data, sizeof(struct masktech_private_data));
 		free(card->drv_data);
 		card->drv_data = NULL;
 	}
@@ -136,8 +137,8 @@ static int masktech_compute_signature(sc_card_t *card,
 		0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65,
 		0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20
 	};
-	if (card == NULL || data == NULL || out == NULL)
-		return SC_ERROR_INTERNAL;
+	if (data == NULL || out == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	sc_log(card->ctx,  "masktech_compute_signature()\n");
 
 	/* retrieve the key reference */
@@ -147,6 +148,7 @@ static int masktech_compute_signature(sc_card_t *card,
 
 	if (private_data->rsa_key_ref == 0x88)
 	{
+		int ret;
 		/* for this key reference, the card supports only SHA256 hash and the hash is computed using a digest info */
 		/* check that it is a SHA256 with digest info*/
 		if ((datalen != sizeof(hdr_sha256) + 32) || (memcmp(hdr_sha256, data, sizeof(hdr_sha256)) != 0))
@@ -157,7 +159,9 @@ static int masktech_compute_signature(sc_card_t *card,
 		/* extract the SHA-256 hash */
 		memcpy(sha256hash, (u8 *)(data+(datalen-32)), 32);//only last 32 byte => sha256
 		/* default ISO 7816 functions */
-		return iso_ops->compute_signature(card, sha256hash, 32, out, outlen);
+		ret = iso_ops->compute_signature(card, sha256hash, 32, out, outlen);
+		sc_mem_clear(sha256hash, sizeof(sha256hash));
+		return ret;
 	}
 	else
 	{
@@ -176,8 +180,8 @@ static int masktech_decipher(sc_card_t *card,
 	sc_apdu_t apdu;
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 
-	if (card == NULL || crgram == NULL || out == NULL)
-		return SC_ERROR_INTERNAL;
+	if (crgram == NULL || out == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	sc_log(card->ctx,  "masktech_decipher()\n");
 
 	if (crgram_len > SC_MAX_EXT_APDU_BUFFER_SIZE) {
@@ -197,11 +201,16 @@ static int masktech_decipher(sc_card_t *card,
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		if (outlen < apdu.resplen) {
+			sc_mem_clear(rbuf, sizeof(rbuf));
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		}
 
-		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
+		memcpy(out, apdu.resp, apdu.resplen);
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
 	}
+	sc_mem_clear(rbuf, sizeof(rbuf));
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 

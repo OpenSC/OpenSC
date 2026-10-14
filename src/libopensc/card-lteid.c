@@ -63,18 +63,24 @@ lteid_get_can_cache_path(sc_card_t *card, char *buf, size_t buf_len)
 static int
 lteid_get_cached_can(sc_card_t *card, unsigned char *can)
 {
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	char path[PATH_MAX];
+	FILE *fd;
+
+	if (!can)
+		return 0;
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	lteid_get_can_cache_path(card, path, sizeof(path));
 
-	FILE *fd = fopen(path, "r");
+	fd = fopen(path, "r");
 
 	if (!fd) {
 		LOG_FUNC_RETURN(card->ctx, 0);
 	}
 
 	if (LTEID_CAN_LENGTH != fread(can, 1, LTEID_CAN_LENGTH, fd)) {
+		fclose(fd);
 		LOG_FUNC_RETURN(card->ctx, 0);
 	}
 
@@ -88,10 +94,14 @@ lteid_cache_can(sc_card_t *card, const char *can)
 {
 	int rv;
 	char path[PATH_MAX];
+	FILE *fd;
+
+	if (!can)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	lteid_get_can_cache_path(card, path, sizeof(path));
 
-	FILE *fd = fopen(path, "w");
+	fd = fopen(path, "w");
 
 	if (!fd && errno == ENOENT) {
 		if ((rv = sc_make_cache_dir(card->ctx)) < 0)
@@ -113,13 +123,13 @@ lteid_cache_can(sc_card_t *card, const char *can)
 static int
 lteid_clear_cached_can(sc_card_t *card)
 {
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 	char path[PATH_MAX];
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	lteid_get_can_cache_path(card, path, sizeof(path));
 
-	if (!unlink(path)) {
+	if (unlink(path) != 0 && errno != ENOENT) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
 
@@ -183,6 +193,8 @@ lteid_get_can(sc_card_t *card, struct establish_pace_channel_input *pace_input)
 static int
 lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin, size_t pinlen, int *tries_left)
 {
+	int rv;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	struct lteid_drv_data *drv_data = DRVDATA(card);
@@ -205,7 +217,7 @@ lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin
 		pace_input.pin_length = pinlen;
 	}
 
-	int rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+	rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 	if (rv != SC_SUCCESS) {
 		sc_log(card->ctx, "Error performing PACE for pin ref 0x%02x.", ref);
 
@@ -226,6 +238,13 @@ lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin
 			}
 		}
 
+		free(pace_output.ef_cardaccess);
+		free(pace_output.recent_car);
+		free(pace_output.previous_car);
+		free(pace_output.id_icc);
+		free(pace_output.id_pcd);
+		sc_mem_clear(&pace_input, sizeof(pace_input));
+
 		LOG_FUNC_RETURN(card->ctx, rv);
 	}
 
@@ -243,6 +262,7 @@ lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin
 	free(pace_output.previous_car);
 	free(pace_output.id_icc);
 	free(pace_output.id_pcd);
+	sc_mem_clear(&pace_input, sizeof(pace_input));
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -298,8 +318,11 @@ lteid_finish(sc_card_t *card)
 
 	sc_sm_stop(card);
 
-	free(card->drv_data);
-	card->drv_data = NULL;
+	if (card->drv_data) {
+		sc_mem_clear(card->drv_data, sizeof(struct lteid_drv_data));
+		free(card->drv_data);
+		card->drv_data = NULL;
+	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -460,9 +483,12 @@ lteid_pin_cmd_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 static int
 lteid_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
-
 	int rv;
+
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	switch (data->cmd) {
 	case SC_PIN_CMD_VERIFY:
@@ -488,10 +514,11 @@ lteid_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 static int
 lteid_set_security_env(struct sc_card *card, const struct sc_security_env *env, int se_num)
 {
-	LOG_FUNC_CALLED(card->ctx);
-
 	struct sc_apdu apdu;
+	u8 sdata[3];
 	int rv;
+
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (env == NULL || env->key_ref_len != 1)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
@@ -501,8 +528,10 @@ lteid_set_security_env(struct sc_card *card, const struct sc_security_env *env, 
 	if (env->algorithm != SC_ALGORITHM_EC || env->operation != SC_SEC_OPERATION_SIGN)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	const u8 data[] = {0x84, 0x01, env->key_ref[0]};
-	sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, data, sizeof(data), NULL, 0);
+	sdata[0] = 0x84;
+	sdata[1] = 0x01;
+	sdata[2] = env->key_ref[0];
+	sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, sdata, sizeof(sdata), NULL, 0);
 
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
@@ -516,6 +545,11 @@ lteid_set_security_env(struct sc_card *card, const struct sc_security_env *env, 
 static int
 lteid_compute_signature(struct sc_card *card, const u8 *data, size_t data_len, u8 *out, size_t outlen)
 {
+	int rv;
+
+	if (!data || !out)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	// Usually this is called with 104 bytes buffer. But we expect card to return 96 byte hash.
@@ -524,7 +558,7 @@ lteid_compute_signature(struct sc_card *card, const u8 *data, size_t data_len, u
 
 	memset(out, 0, outlen);
 
-	const int rv = iso_ops->compute_signature(card, data, data_len, out, 96);
+	rv = iso_ops->compute_signature(card, data, data_len, out, 96);
 
 	LOG_FUNC_RETURN(card->ctx, rv);
 }
@@ -532,9 +566,14 @@ lteid_compute_signature(struct sc_card *card, const u8 *data, size_t data_len, u
 static int
 lteid_process_fci(struct sc_card *card, struct sc_file *file, const u8 *buf, size_t buflen)
 {
+	int rv;
+
+	if (!file || !buf)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	int rv = iso_ops->process_fci(card, file, buf, buflen);
+	rv = iso_ops->process_fci(card, file, buf, buflen);
 
 	if (rv != SC_SUCCESS) {
 		LOG_FUNC_RETURN(card->ctx, rv);

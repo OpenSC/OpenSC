@@ -964,6 +964,9 @@ static int setcos_putdata(struct sc_card *card, struct sc_cardctl_setcos_data_ob
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (!data_obj || !data_obj->Data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse     = SC_APDU_CASE_3_SHORT;
 	apdu.cla     = 0x00;
@@ -990,6 +993,9 @@ static int setcos_getdata(struct sc_card *card, struct sc_cardctl_setcos_data_ob
 	struct sc_apdu			apdu;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!data_obj || !data_obj->Data)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	memset(&apdu, 0, sizeof(apdu));
 	apdu.cse     = SC_APDU_CASE_2_SHORT;
@@ -1029,6 +1035,11 @@ static int setcos_generate_store_key(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (!data || !data->pubexp)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (data->op_type == OP_TYPE_STORE && (!data->primep || !data->primeq))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* Setup key-generation parameters */
 	len = 0;
 	if (data->op_type == OP_TYPE_GENERATE)
@@ -1039,12 +1050,19 @@ static int setcos_generate_store_key(sc_card_t *card,
 	sbuf[len++] = data->mod_len / 256;	/* 2 bytes for modulus bitlength */
 	sbuf[len++] = data->mod_len % 256;
 
+	if (len + 2 + BYTES4BITS(data->pubexp_len) > sizeof(sbuf))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sbuf[len++] = data->pubexp_len / 256;   /* 2 bytes for pubexp bitlength */
 	sbuf[len++] = data->pubexp_len % 256;
 	memcpy(sbuf + len, data->pubexp, BYTES4BITS(data->pubexp_len));
 	len += BYTES4BITS(data->pubexp_len);
 
 	if (data->op_type == OP_TYPE_STORE) {
+		if (len + 4 + BYTES4BITS(data->primep_len) + BYTES4BITS(data->primeq_len) > sizeof(sbuf)) {
+			sc_mem_clear(sbuf, sizeof(sbuf));
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
 		sbuf[len++] = data->primep_len / 256;
 		sbuf[len++] = data->primep_len % 256;
 		memcpy(sbuf + len, data->primep, BYTES4BITS(data->primep_len));
@@ -1062,6 +1080,7 @@ static int setcos_generate_store_key(sc_card_t *card,
 	apdu.lc	= len;
 
 	r = sc_transmit_apdu(card, &apdu);
+	sc_mem_clear(sbuf, sizeof(sbuf));
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);

@@ -627,9 +627,12 @@ md_get_config_str(PCARD_DATA pCardData, enum ui_str id)
 		return ret;
 
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (!vs || !pCardData->pbAtr)
+		return ret;
+
 	if (vs->ctx && vs->reader) {
 		struct sc_atr atr;
-		atr.len = pCardData->cbAtr;
+		atr.len = pCardData->cbAtr > sizeof(atr.value) ? sizeof(atr.value) : pCardData->cbAtr;
 		memcpy(atr.value, pCardData->pbAtr, atr.len);
 		ret = ui_get_str(vs->ctx, &atr, vs->p15card, id);
 	}
@@ -650,10 +653,13 @@ md_get_config_icon(PCARD_DATA pCardData, char *flag_name, HICON ret_default)
 	logprintf(pCardData, 2, "Get '%s' option\n", flag_name);
 
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (!vs || !pCardData->pbAtr)
+		return ret;
+
 	if (vs->ctx && vs->reader)   {
 		struct sc_atr atr;
 		scconf_block *atrblock;
-		atr.len = pCardData->cbAtr;
+		atr.len = pCardData->cbAtr > sizeof(atr.value) ? sizeof(atr.value) : pCardData->cbAtr;
 		memcpy(atr.value, pCardData->pbAtr, atr.len);
 		atrblock = _sc_match_atr_block(vs->ctx, NULL, &atr);
 		logprintf(pCardData, 2, "Match ATR:\n");
@@ -694,10 +700,13 @@ md_get_config_int(PCARD_DATA pCardData, char *flag_name, int ret_default)
 	logprintf(pCardData, 2, "Get '%s' option\n", flag_name);
 
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
+	if (!vs || !pCardData->pbAtr)
+		return ret;
+
 	if (vs->ctx && vs->reader)   {
 		struct sc_atr atr;
 		scconf_block *atrblock;
-		atr.len = pCardData->cbAtr;
+		atr.len = pCardData->cbAtr > sizeof(atr.value) ? sizeof(atr.value) : pCardData->cbAtr;
 		memcpy(atr.value, pCardData->pbAtr, atr.len);
 		atrblock = _sc_match_atr_block(vs->ctx, NULL, &atr);
 		logprintf(pCardData, 2, "Match ATR:\n");
@@ -728,13 +737,13 @@ md_get_config_bool(PCARD_DATA pCardData, char *flag_name, BOOL ret_default)
 		return ret;
 
 	vs = (VENDOR_SPECIFIC*) pCardData->pvVendorSpecific;
-	if (!vs)
+	if (!vs || !pCardData->pbAtr)
 		return ret;
 
 	if (vs->ctx && vs->reader)   {
 		struct sc_atr atr;
 		scconf_block *atrblock;
-		atr.len = pCardData->cbAtr;
+		atr.len = pCardData->cbAtr > sizeof(atr.value) ? sizeof(atr.value) : pCardData->cbAtr;
 		memcpy(atr.value, pCardData->pbAtr, atr.len);
 		atrblock = _sc_match_atr_block(vs->ctx, NULL, &atr);
 		logprintf(pCardData, 2, "Match ATR:\n");
@@ -1314,7 +1323,7 @@ md_pkcs15_update_containers(PCARD_DATA pCardData, unsigned char *blob, size_t si
 			if (cont->guid[0] != 0) {
 				md_contguid_delete_conversion(pCardData, cont->guid);
 			}
-			memset(cont, 0, sizeof(CONTAINER_MAP_RECORD));
+			memset(cont, 0, sizeof(*cont));
 		}
 		else   {
 			strlcpy(cont->guid, szGuid, MAX_CONTAINER_NAME_LEN + 1);
@@ -2449,7 +2458,7 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 	DWORD dwret = SCARD_F_INTERNAL_ERROR;
 	CHAR szGuid[MAX_CONTAINER_NAME_LEN +1] = "Default key label";
 
-	if (!pCardData)
+	if (!pCardData || idx >= MD_MAX_KEY_CONTAINERS)
 		return SCARD_E_INVALID_PARAMETER;
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
@@ -2556,7 +2565,7 @@ md_pkcs15_generate_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, DWORD ke
 
 	dwret = md_contguid_add_conversion(pCardData, cont->prkey_obj, cont->guid);
 	if (dwret != SCARD_S_SUCCESS)
-		return dwret;
+		goto done;
 
 	cont->id = ((struct sc_pkcs15_prkey_info *)cont->prkey_obj->data)->id;
 	cont->index = idx;
@@ -2591,7 +2600,7 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	DWORD dwret = SCARD_F_INTERNAL_ERROR;
 	CHAR szGuid[MAX_CONTAINER_NAME_LEN +1] = "Default key label";
 
-	if (!pCardData)
+	if (!pCardData || idx >= MD_MAX_KEY_CONTAINERS)
 		return SCARD_E_INVALID_PARAMETER;
 
 	vs = (VENDOR_SPECIFIC*)(pCardData->pvVendorSpecific);
@@ -2613,6 +2622,7 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	rv = sc_pkcs15_convert_prkey(&prkey_args.key, pkey);
 	if (rv)   {
 		logprintf(pCardData, 1, "MdStoreKey() cannot convert private key");
+		EVP_PKEY_free(pkey);
 		return SCARD_E_INVALID_PARAMETER;
 	}
 
@@ -2620,6 +2630,8 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	rv = sc_pkcs15_convert_pubkey(&pubkey_args.key, pkey);
 	if (rv)   {
 		logprintf(pCardData, 1, "MdStoreKey() cannot convert public key");
+		sc_pkcs15_erase_prkey(&prkey_args.key);
+		EVP_PKEY_free(pkey);
 		return SCARD_E_INVALID_PARAMETER;
 	}
 
@@ -2635,6 +2647,9 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 		logprintf(pCardData, 3,
 			  "MdStoreKey(): unsupported key type: 0x%lX\n",
 			  (unsigned long)key_type);
+		sc_pkcs15_erase_prkey(&prkey_args.key);
+		sc_pkcs15_erase_pubkey(&pubkey_args.key);
+		EVP_PKEY_free(pkey);
 		return SCARD_E_INVALID_PARAMETER;
 	}
 
@@ -2646,6 +2661,9 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	rv = sc_lock(card);
 	if (rv)   {
 		logprintf(pCardData, 3, "MdStoreKey(): cannot lock card\n");
+		sc_pkcs15_erase_prkey(&prkey_args.key);
+		sc_pkcs15_erase_pubkey(&pubkey_args.key);
+		EVP_PKEY_free(pkey);
 		return SCARD_F_INTERNAL_ERROR;
 	}
 
@@ -2653,6 +2671,9 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 	rv = sc_pkcs15init_bind(card, "pkcs15", NULL, NULL, &profile);
 	if (rv) {
 		logprintf(pCardData, 3, "MdStoreKey(): PKCS#15 bind failed\n");
+		sc_pkcs15_erase_prkey(&prkey_args.key);
+		sc_pkcs15_erase_pubkey(&pubkey_args.key);
+		EVP_PKEY_free(pkey);
 		sc_unlock(card);
 		return SCARD_F_INTERNAL_ERROR;
 	}
@@ -2693,7 +2714,7 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 
 	dwret = md_contguid_add_conversion(pCardData, cont->prkey_obj, cont->guid);
 	if (dwret != SCARD_S_SUCCESS)
-		return dwret;
+		goto done;
 
 	cont->id = ((struct sc_pkcs15_prkey_info *)cont->prkey_obj->data)->id;
 	cont->index = idx;
@@ -2705,6 +2726,10 @@ md_pkcs15_store_key(PCARD_DATA pCardData, DWORD idx, DWORD key_type, BYTE *blob,
 		  (int) sizeof cont->guid, cont->guid);
 
 done:
+	if (pkey)
+		EVP_PKEY_free(pkey);
+	sc_pkcs15_erase_prkey(&prkey_args.key);
+	sc_pkcs15_erase_pubkey(&pubkey_args.key);
 	sc_pkcs15init_unbind(profile);
 	sc_unlock(card);
 	return dwret;
@@ -3432,6 +3457,11 @@ DWORD WINAPI CardCreateContainerEx(__in PCARD_DATA  pCardData,
 
 	if (!pCardData || !lock(pCardData))
 		MD_FUNC_RETURN(pCardData, 1, SCARD_E_INVALID_PARAMETER);
+
+	if (bContainerIndex >= MD_MAX_KEY_CONTAINERS) {
+		dwret = SCARD_E_INVALID_PARAMETER;
+		goto err;
+	}
 
 	if (PinId == ROLE_ADMIN) {
 		dwret = SCARD_W_SECURITY_VIOLATION;
@@ -5053,10 +5083,17 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 
 		r = sc_pkcs15_compute_signature(vs->p15card, pkey, opt_crypt_flags, dataToSign, dataToSignLen, pbuf, lg, NULL);
 		logprintf(pCardData, 2, "sc_pkcs15_compute_signature return %d\n", r);
-		if(r < 0)   {
-			logprintf(pCardData, 2, "sc_pkcs15_compute_signature error %s\n", sc_strerror(r));
+		if(r < 0 || (DWORD)r > pInfo->cbSignedData)   {
+			if (r < 0) {
+				logprintf(pCardData, 2, "sc_pkcs15_compute_signature error %s\n", sc_strerror(r));
+				dwret = md_translate_OpenSC_to_Windows_error(r, SCARD_F_INTERNAL_ERROR);
+			} else {
+				logprintf(pCardData, 2, "sc_pkcs15_compute_signature returned size %d > buffer %lu\n", r, (unsigned long)pInfo->cbSignedData);
+				dwret = SCARD_E_INSUFFICIENT_BUFFER;
+			}
+			pCardData->pfnCspFree(pInfo->pbSignedData);
+			pInfo->pbSignedData = NULL;
 			pCardData->pfnCspFree(pbuf);
-			dwret = md_translate_OpenSC_to_Windows_error(r, SCARD_F_INTERNAL_ERROR);
 			goto err;
 		}
 
@@ -5152,6 +5189,12 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 		goto err;
 	}
 
+	/* check for integer underflow on public key size */
+	if (pAgreementInfo->dwPublicKey <= sizeof(BCRYPT_ECCKEY_BLOB)) {
+		dwret = SCARD_E_INVALID_PARAMETER;
+		goto err;
+	}
+
 	/* convert the Windows public key into an OpenSC public key */
 	publicKeySize = pAgreementInfo->dwPublicKey - sizeof(BCRYPT_ECCKEY_BLOB) + 1;
 	pbPublicKey = (PBYTE) pCardData->pfnCspAlloc(publicKeySize);
@@ -5164,19 +5207,22 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 	memcpy(pbPublicKey+1, pAgreementInfo->pbPublicKey +  sizeof(BCRYPT_ECCKEY_BLOB), publicKeySize-1);
 
 	/* derive the key using the OpenSC functions */
-	r = sc_pkcs15_derive(vs->p15card, pkey, opt_derive_flags, pbPublicKey, publicKeySize, out, &outlen );
+	r = sc_pkcs15_derive(vs->p15card, pkey, opt_derive_flags, pbPublicKey, publicKeySize, NULL, &outlen );
 	logprintf(pCardData, 2, "sc_pkcs15_derive returned %d\n", r);
 
-	if ( r < 0)   {
+	if ( r < 0 || outlen == 0)   {
 		logprintf(pCardData, 2, "sc_pkcs15_derive error(%i): %s\n", r, sc_strerror(r));
 		pCardData->pfnCspFree(pbPublicKey);
-		dwret = md_translate_OpenSC_to_Windows_error(r, SCARD_E_INVALID_VALUE);
+		pbPublicKey = NULL;
+		dwret = (r < 0) ? md_translate_OpenSC_to_Windows_error(r, SCARD_E_INVALID_VALUE) : SCARD_E_UNEXPECTED;
 		goto err;
 	}
 
 	out = pCardData->pfnCspAlloc(outlen);
 
 	if (!out) {
+		pCardData->pfnCspFree(pbPublicKey);
+		pbPublicKey = NULL;
 		dwret = ERROR_OUTOFMEMORY;
 		goto err;
 	}
@@ -5185,10 +5231,13 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 	logprintf(pCardData, 2, "sc_pkcs15_derive returned %d\n", r);
 
 	pCardData->pfnCspFree(pbPublicKey);
+	pbPublicKey = NULL;
 
 	if ( r < 0)   {
 		logprintf(pCardData, 2, "sc_pkcs15_derive error(%i): %s\n", r, sc_strerror(r));
+		SecureZeroMemory(out, outlen);
 		pCardData->pfnCspFree(out);
+		out = NULL;
 		dwret = md_translate_OpenSC_to_Windows_error(r, SCARD_E_INVALID_VALUE);
 		goto err;
 	}
@@ -5207,9 +5256,18 @@ DWORD WINAPI CardConstructDHAgreement(__in PCARD_DATA pCardData,
 		}
 	}
 	/* no empty space => need to allocate memory */
+	if (vs->allocatedAgreements >= 255) {
+		SecureZeroMemory(out, outlen);
+		pCardData->pfnCspFree(out);
+		out = NULL;
+		dwret = SCARD_E_NO_MEMORY;
+		goto err;
+	}
 	temp = (struct md_dh_agreement*) pCardData->pfnCspAlloc((vs->allocatedAgreements+1) * sizeof(struct md_dh_agreement));
 	if (!temp) {
+		SecureZeroMemory(out, outlen);
 		pCardData->pfnCspFree(out);
+		out = NULL;
 		dwret = SCARD_E_NO_MEMORY;
 		goto err;
 	}
@@ -7231,6 +7289,7 @@ static DWORD associate_card(PCARD_DATA pCardData)
 static void disassociate_card(PCARD_DATA pCardData)
 {
 	VENDOR_SPECIFIC *vs;
+	BYTE i;
 
 	if (!pCardData) {
 		logprintf(pCardData, 1,
@@ -7245,6 +7304,18 @@ static void disassociate_card(PCARD_DATA pCardData)
 		logprintf(pCardData, 1,
 			  "disassociate_card called without vendor specific data\n");
 		return;
+	}
+
+	if (vs->dh_agreements) {
+		for (i = 0; i < vs->allocatedAgreements; i++) {
+			if (vs->dh_agreements[i].pbAgreement) {
+				SecureZeroMemory(vs->dh_agreements[i].pbAgreement, vs->dh_agreements[i].dwSize);
+				pCardData->pfnCspFree(vs->dh_agreements[i].pbAgreement);
+			}
+		}
+		pCardData->pfnCspFree(vs->dh_agreements);
+		vs->dh_agreements = NULL;
+		vs->allocatedAgreements = 0;
 	}
 
 	memset(vs->pin_objs, 0, sizeof(vs->pin_objs));

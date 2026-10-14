@@ -111,16 +111,17 @@ static struct sc_pkcs15_card *p15card = NULL;
 static char *readpin_stdin(void)
 {
 	char buf[128];
-	char *p;
+	char *p, *res = NULL;
 
 	p = fgets(buf, sizeof(buf), stdin);
 	if (p != NULL) {
 		p = strchr(buf, '\n');
 		if (p != NULL)
 			*p = '\0';
-		return strdup(buf);
+		res = strdup(buf);
 	}
-	return NULL;
+	sc_mem_clear(buf, sizeof(buf));
+	return res;
 }
 
 static char * get_pin(struct sc_pkcs15_object *obj)
@@ -147,7 +148,7 @@ static char * get_pin(struct sc_pkcs15_object *obj)
 		(int) sizeof obj->label, obj->label);
 	while (1) {
 		pincode = getpass(buf);
-		if (strlen(pincode) == 0)
+		if (!pincode || strlen(pincode) == 0)
 			return NULL;
 		if (strlen(pincode) < pinfo->attrs.pin.min_length ||
 				strlen(pincode) > pinfo->attrs.pin.max_length)
@@ -156,12 +157,15 @@ static char * get_pin(struct sc_pkcs15_object *obj)
 	}
 }
 
-static size_t read_input(u8 *buf, int buflen)
+static size_t read_input(u8 *buf, size_t buflen)
 {
 	FILE *inf;
 	size_t c;
 
-	if (opt_input==NULL) {
+	if (buflen == 0)
+		return 0;
+
+	if (opt_input == NULL) {
 		inf = stdin;
 	} else {
 		inf = fopen(opt_input, "rb");
@@ -171,12 +175,11 @@ static size_t read_input(u8 *buf, int buflen)
 		}
 	}
 	c = fread(buf, 1, buflen, inf);
-	if (inf!=stdin) {
-		fclose(inf);
-	}
-	if (c <= 0) {
+	if (c == 0 && ferror(inf)) {
 		perror("read");
-		return 0;
+	}
+	if (inf != stdin) {
+		fclose(inf);
 	}
 	return c;
 }
@@ -185,6 +188,7 @@ static int write_output(const u8 *buf, size_t len)
 {
 	FILE *outf;
 	int output_binary = (opt_output == NULL && opt_raw == 0 ? 0 : 1);
+	int r = 0;
 
 	if (opt_output != NULL) {
 		outf = fopen(opt_output, "wb");
@@ -198,12 +202,14 @@ static int write_output(const u8 *buf, size_t len)
 
 	if (output_binary == 0)
 		util_print_binary(outf, buf, len);
-	else
-		fwrite(buf, len, 1, outf);
+	else if (fwrite(buf, 1, len, outf) != len) {
+		fprintf(stderr, "Failed to write output.\n");
+		r = -1;
+	}
 
 	if (outf != stdout)
 		fclose(outf);
-	return 0;
+	return r;
 }
 
 static int sign(struct sc_pkcs15_object *obj)
@@ -279,7 +285,7 @@ static int decipher(struct sc_pkcs15_object *obj)
 		fprintf(stderr, "No input file specified. Reading from stdin\n");
 	}
 	c = read_input(buf, sizeof(buf));
-	if (c <= 0)
+	if (c == 0)
 		return 2;
 
 	len = sizeof(out);
@@ -291,10 +297,12 @@ static int decipher(struct sc_pkcs15_object *obj)
 	flags = opt_crypt_flags & ~SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01;
 	r = sc_pkcs15_decipher(p15card, obj, flags, buf, c, out, len, NULL);
 	if (r < 0) {
+		sc_mem_clear(out, sizeof(out));
 		fprintf(stderr, "Decrypt failed: %s\n", sc_strerror(r));
 		return 1;
 	}
 	r = write_output(out, r);
+	sc_mem_clear(out, sizeof(out));
 
 	return r;
 }
@@ -309,7 +317,11 @@ static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
 	usage_name = (usage & SC_PKCS15_PRKEY_USAGE_SIGN)? "signature" : "decryption";
 
 	if (opt_key_id != NULL) {
-		sc_pkcs15_hex_string_to_id(opt_key_id, &id);
+		r = sc_pkcs15_hex_string_to_id(opt_key_id, &id);
+		if (r < 0) {
+			fprintf(stderr, "Invalid key ID '%s': %s\n", opt_key_id, sc_strerror(r));
+			return 2;
+		}
 		r = sc_pkcs15_find_prkey_by_id_usage(p15card, &id, usage, &key);
 		if (r < 0) {
 			fprintf(stderr, "Unable to find private %s key '%s': %s\n",
@@ -345,7 +357,10 @@ static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
 		pincode = get_pin(pin);
 		if (((pincode == NULL || *pincode == '\0')) &&
 		    !(p15card->card->reader->capabilities & SC_READER_CAP_PIN_PAD)) {
-			free(pincode);
+			if (pincode) {
+				sc_mem_clear(pincode, strlen(pincode));
+				free(pincode);
+			}
 			return 5;
 		}
 
@@ -367,7 +382,10 @@ static int get_key(unsigned int usage, sc_pkcs15_object_t **result)
 		} else
 			r = sc_pkcs15_verify_pin(p15card, pin, (const u8 *)pincode, pincode ? strlen(pincode) : 0);
 
-		free(pincode);
+		if (pincode) {
+			sc_mem_clear(pincode, strlen(pincode));
+			free(pincode);
+		}
 		if (r) {
 			fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(r));
 			return 5;

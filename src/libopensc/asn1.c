@@ -161,14 +161,18 @@ static void print_indent(size_t depth)
 
 static void print_hex(const u8 * buf, size_t buflen, size_t depth)
 {
-	size_t lines_len = buflen * 5 + 128;
-	char *lines = malloc(lines_len);
-	char *line = lines;
+	size_t lines_len;
+	char *lines, *line;
 
-	if (buf == NULL || buflen == 0 || lines == NULL) {
-		free(lines);
+	if (buf == NULL || buflen == 0 || buflen > (SIZE_MAX - 128) / 5) {
 		return;
 	}
+	lines_len = buflen * 5 + 128;
+	lines = malloc(lines_len);
+	if (lines == NULL) {
+		return;
+	}
+	line = lines;
 
 	sc_hex_dump(buf, buflen, lines, lines_len);
 

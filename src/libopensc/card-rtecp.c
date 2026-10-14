@@ -533,6 +533,7 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	rsf_length[1] = newlen & 0xFF;
 
 	if (buf_end - p < (int)(2 + sizeof(rsf_length))) {
+		sc_mem_clear(buf, buf_length);
 		free(buf);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 	}
@@ -542,6 +543,7 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	while (newlen)
 	{
 		if (buf_end - p < (int)(newlen + 2)) {
+			sc_mem_clear(buf, buf_length);
 			free(buf);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
@@ -553,6 +555,7 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 		*p++ = 0xA5;
 		*p++ = (u8)val_length;
 		if (val_length > newlen) {
+			sc_mem_clear(buf, buf_length);
 			free(buf);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 		}
@@ -601,7 +604,10 @@ static int rtecp_reset_retry_counter(sc_card_t *card, unsigned int type,
 		tmp[1] = newlen & 0xFF;
 		sc_asn1_put_tag(0x80, tmp, sizeof(tmp), p, sizeof(buf) - (p - buf), &p);
 		r = sc_asn1_put_tag(0xA5, newref, newlen, p, sizeof(buf) - (p - buf), &p);
-		LOG_TEST_RET(card->ctx, r, "Invalid new PIN length");
+		if (r < 0) {
+			sc_mem_clear(buf, sizeof(buf));
+			LOG_TEST_RET(card->ctx, r, "Invalid new PIN length");
+		}
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x01, ref_qualifier);
 		apdu.lc = p - buf;
@@ -609,6 +615,7 @@ static int rtecp_reset_retry_counter(sc_card_t *card, unsigned int type,
 		apdu.datalen = p - buf;
 
 		r = sc_transmit_apdu(card, &apdu);
+		sc_mem_clear(buf, sizeof(buf));
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		LOG_TEST_RET(card->ctx, r, "Set PIN failed");
@@ -758,11 +765,16 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (r) {
+		sc_mem_clear(buf, sizeof(buf));
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (!r && request == SC_CARDCTL_RTECP_GENERATE_KEY)
 	{
 		if (genkey_data->type == SC_ALGORITHM_RSA &&
+				genkey_data->u.rsa.modulus &&
+				genkey_data->u.rsa.exponent &&
 				genkey_data->u.rsa.modulus_len >= apdu.resplen &&
 				genkey_data->u.rsa.exponent_len >= 3)
 		{
@@ -774,6 +786,7 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 			genkey_data->u.rsa.exponent_len = 3;
 		}
 		else if (genkey_data->type == SC_ALGORITHM_GOSTR3410 &&
+				genkey_data->u.gostr3410.xy &&
 				genkey_data->u.gostr3410.xy_len >= apdu.resplen)
 		{
 			memcpy(genkey_data->u.gostr3410.xy, apdu.resp, apdu.resplen);
@@ -792,6 +805,7 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 		else
 			r = SC_ERROR_BUFFER_TOO_SMALL;
 	}
+	sc_mem_clear(buf, sizeof(buf));
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 

@@ -202,11 +202,16 @@ setcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	const u8 *puk, size_t puk_len)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info;
 	sc_file_t *pinfile = NULL, *tmp_pinfile = NULL;
 	int r, ignore_ac = 0;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!pin_obj || !pin_obj->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
@@ -330,12 +335,19 @@ setcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		struct sc_pkcs15_object *object)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
+	struct sc_pkcs15_prkey_info *key_info;
 	struct sc_file *file = NULL;
-	size_t keybits = key_info->modulus_length;
+	size_t keybits;
 	int r;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!object || !object->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	key_info = (struct sc_pkcs15_prkey_info *)object->data;
+	keybits = key_info->modulus_length;
+
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Create key failed: RSA only supported");
 
@@ -396,15 +408,27 @@ setcos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_prkey *prkey)
 {
 	struct sc_context *ctx = p15card->card->ctx;
-	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
+	struct sc_pkcs15_prkey_info *key_info;
 	struct sc_cardctl_setcos_gen_store_key_info args;
 	struct sc_file *file = NULL;
 	int r;
-	size_t keybits = key_info->modulus_length;
+	size_t keybits;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!object || !object->data || !prkey)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Store key failed: RSA only supported");
+
+	if (!prkey->u.rsa.exponent.data || prkey->u.rsa.exponent.len == 0
+			|| !prkey->u.rsa.p.data || prkey->u.rsa.p.len == 0
+			|| !prkey->u.rsa.q.data || prkey->u.rsa.q.len == 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	key_info = (struct sc_pkcs15_prkey_info *)object->data;
+	keybits = key_info->modulus_length;
 
 	/* Parameter check */
 	if ( (keybits < 512) || (keybits > 1024) || (keybits & 0x7))
@@ -417,7 +441,10 @@ setcos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	LOG_TEST_RET(ctx, r, "Cannot store key: select key file failed");
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-	LOG_TEST_RET(ctx, r, "No authorisation to store private key");
+	if (r < 0) {
+		sc_file_free(file);
+		LOG_TEST_RET(ctx, r, "No authorisation to store private key");
+	}
 
 	/* Fill in data structure */
 	memset(&args, 0, sizeof(args));
@@ -432,9 +459,8 @@ setcos_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	/* Generate/store rsa key  */
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_GENERATE_STORE_KEY, &args);
-	LOG_TEST_RET(ctx, r, "Card control 'GENERATE_STORE_KEY' failed");
-
 	sc_file_free(file);
+	LOG_TEST_RET(ctx, r, "Card control 'GENERATE_STORE_KEY' failed");
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -448,13 +474,20 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_cardctl_setcos_gen_store_key_info args;
 	struct sc_cardctl_setcos_data_obj data_obj;
-	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)object->data;
+	struct sc_pkcs15_prkey_info *key_info;
 	int r;
-	size_t keybits = key_info->modulus_length;
+	size_t keybits;
 	unsigned char raw_pubkey[256];
 	struct sc_file *file = NULL;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!object || !object->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	key_info = (struct sc_pkcs15_prkey_info *)object->data;
+	keybits = key_info->modulus_length;
+
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Generate key failed: RSA only supported");
 
@@ -488,21 +521,32 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 
 	/* Key pair generation -> collect public key info */
 	if (pubkey != NULL) {
+		memset(pubkey, 0, sizeof(*pubkey));
 		pubkey->algorithm		= SC_ALGORITHM_RSA;
 		pubkey->u.rsa.modulus.len	= BYTES4BITS(keybits);
 		pubkey->u.rsa.modulus.data	= malloc(pubkey->u.rsa.modulus.len);
-		if (pubkey->u.rsa.modulus.data == NULL)
+		if (pubkey->u.rsa.modulus.data == NULL) {
+			sc_file_free(file);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 		pubkey->u.rsa.exponent.len	= SETCOS_DEFAULT_PUBKEY_LEN;
 		pubkey->u.rsa.exponent.data	= malloc(SETCOS_DEFAULT_PUBKEY_LEN);
-		if (pubkey->u.rsa.exponent.data == NULL)
+		if (pubkey->u.rsa.exponent.data == NULL) {
+			free(pubkey->u.rsa.modulus.data);
+			pubkey->u.rsa.modulus.data = NULL;
+			pubkey->u.rsa.modulus.len = 0;
+			sc_file_free(file);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 		memcpy(pubkey->u.rsa.exponent.data, SETCOS_DEFAULT_PUBKEY, SETCOS_DEFAULT_PUBKEY_LEN);
 
 		/* Get public key modulus */
 		r = sc_select_file(p15card->card, &file->path, NULL);
 		sc_file_free(file);
-		LOG_TEST_RET(ctx, r, "Cannot get key modulus: select key file failed");
+		if (r < 0) {
+			sc_log(ctx, "Cannot get key modulus: select key file failed");
+			goto err;
+		}
 
 		data_obj.P1 = 0x01;
 		data_obj.P2 = 0x01;
@@ -510,23 +554,43 @@ setcos_generate_key(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		data_obj.DataLen = sizeof(raw_pubkey);
 
 		r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_GETDATA, &data_obj);
-		LOG_TEST_RET(ctx, r, "Cannot get key modulus: 'SETCOS_GETDATA' failed");
+		if (r < 0) {
+			sc_log(ctx, "Cannot get key modulus: 'SETCOS_GETDATA' failed");
+			goto err;
+		}
 
-		if (data_obj.DataLen < 3 || data_obj.DataLen < pubkey->u.rsa.modulus.len)
-			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "Cannot get key modulus: wrong length of raw key");
+		if (data_obj.DataLen < pubkey->u.rsa.modulus.len + 2) {
+			sc_log(ctx, "Cannot get key modulus: wrong length of raw key");
+			r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+			goto err;
+		}
 
 		keybits = ((raw_pubkey[0] * 256) + raw_pubkey[1]);  /* modulus bit length */
 		if (keybits != key_info->modulus_length)  {
 			sc_log(ctx, "key-size from card[%zu] does not match[%zu]",
 					keybits, key_info->modulus_length);
-			LOG_TEST_RET(ctx, SC_ERROR_PKCS15INIT, "Failed to generate key");
+			r = SC_ERROR_PKCS15INIT;
+			goto err;
 		}
 		memcpy(pubkey->u.rsa.modulus.data, &raw_pubkey[2], pubkey->u.rsa.modulus.len);
 	} else {
 		sc_file_free(file);
 	}
 
+	sc_mem_clear(raw_pubkey, sizeof(raw_pubkey));
 	return r;
+
+err:
+	if (pubkey != NULL) {
+		free(pubkey->u.rsa.modulus.data);
+		pubkey->u.rsa.modulus.data = NULL;
+		pubkey->u.rsa.modulus.len = 0;
+		free(pubkey->u.rsa.exponent.data);
+		pubkey->u.rsa.exponent.data = NULL;
+		pubkey->u.rsa.exponent.len = 0;
+	}
+	sc_mem_clear(raw_pubkey, sizeof(raw_pubkey));
+	LOG_FUNC_RETURN(ctx, r);
 }
 
 
@@ -546,12 +610,12 @@ setcos_create_pin_internal(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *pinfile = NULL;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+	if (!auth_info || auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
 
 	if (auth_info->attrs.pin.reference >= SETCOS_MAX_PINS)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (pin == NULL || puk == NULL || pin_len < 4 || puk_len < 4)
+	if (pin == NULL || puk == NULL || pin_len < 4 || pin_len > 8 || puk_len < 4 || puk_len > 8)
 		return SC_ERROR_INVALID_PIN_LENGTH;
 
 	/* Verify required access rights if needed (i.e. if the
@@ -566,7 +630,7 @@ setcos_create_pin_internal(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 
 	/* Make command to add a pin-record */
-
+	memset(data, 0, sizeof(data));
 	data_obj.P1 = 01;
 	data_obj.P2 = 01;
 
@@ -600,6 +664,7 @@ setcos_create_pin_internal(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	data_obj.DataLen = 24;
 
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_SETCOS_PUTDATA, &data_obj);
+	sc_mem_clear(data, sizeof(data));
 
 	SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, r);
 }

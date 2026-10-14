@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "libopensc/opensc.h"
 #include "pkcs11_uri.h"
 
 static struct pkcs11_uri_attr path_attr[] = {
@@ -155,9 +156,13 @@ validate_query(const char *query)
 static int
 get_attr(struct pkcs11_uri_attr attr[], char *token)
 {
-	for (int i = 0; attr[i].name; i++) {
-		if (strncasecmp(token, attr[i].name, strlen(attr[i].name)) == 0 &&
-				*(token + strlen(attr[i].name)) == '=')
+	int i;
+
+	if (!token)
+		return -1;
+	for (i = 0; attr[i].name; i++) {
+		size_t len = strlen(attr[i].name);
+		if (strncasecmp(token, attr[i].name, len) == 0 && token[len] == '=')
 			return attr[i].id;
 	}
 	return -1;
@@ -171,6 +176,9 @@ decode_percent_string(char *data, char **out)
 	char *p = data;
 	long value;
 	size_t decoded_len = 0;
+
+	if (!data || !out)
+		return -1;
 
 	decoded = malloc(strlen(data) + 1);
 	if (decoded == NULL)
@@ -189,7 +197,7 @@ decode_percent_string(char *data, char **out)
 			tmp_end = NULL;
 			errno = 0;
 			value = strtol(tmp, &tmp_end, 16);
-			if (errno == EINVAL)
+			if (errno == EINVAL || value < 0 || value > 255)
 				goto fail;
 			if (tmp_end != tmp + 2)
 				goto fail;
@@ -479,7 +487,7 @@ pkcs11_uri_free(struct pkcs11_uri *uri)
 	free(uri->type);
 	free(uri->pin_source);
 	if (uri->pin_value) {
-		memset(uri->pin_value, 0, strlen(uri->pin_value));
+		sc_mem_clear(uri->pin_value, strlen(uri->pin_value));
 		free(uri->pin_value);
 	}
 	free(uri->module_name);

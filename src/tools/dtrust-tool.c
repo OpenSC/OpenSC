@@ -105,20 +105,20 @@ get_pin(char **pin, const char *label, unsigned char check)
 
 	*pin = NULL;
 
-	printf("Enter %s:", label);
+	printf("Enter %s:", label ? label : "PIN");
 	r = util_getpass(pin, &len1, stdin);
 	if (r < 0 || *pin == NULL) {
-		fprintf(stderr, "Unable to get PIN");
+		fprintf(stderr, "Unable to get PIN\n");
 		goto fail;
 	}
 
 	if (!check)
 		return 0;
 
-	printf("Enter %s again:", label);
+	printf("Enter %s again:", label ? label : "PIN");
 	r = util_getpass(&pin2, &len2, stdin);
 	if (r < 0 || pin2 == NULL) {
-		fprintf(stderr, "Unable to get PIN");
+		fprintf(stderr, "Unable to get PIN\n");
 		goto fail;
 	}
 
@@ -130,12 +130,17 @@ get_pin(char **pin, const char *label, unsigned char check)
 	if (pin2 != NULL) {
 		sc_mem_clear(pin2, len2);
 		free(pin2);
+		pin2 = NULL;
 	}
 
 	if (r == 0)
 		return 0;
 
 fail:
+	if (pin2 != NULL) {
+		sc_mem_clear(pin2, len2);
+		free(pin2);
+	}
 	/* Free PIN only in case of an error. */
 	if (*pin != NULL) {
 		sc_mem_clear(*pin, len1);
@@ -150,6 +155,9 @@ int
 parse_pin(sc_card_t *card, const char *pinstr, const char *label, unsigned char *require_can)
 {
 	const char *valid = NULL;
+
+	if (pinstr == NULL)
+		return -1;
 
 	switch (card->type) {
 	case SC_CARD_TYPE_DTRUST_V4_1_STD:
@@ -201,7 +209,7 @@ parse_pin(sc_card_t *card, const char *pinstr, const char *label, unsigned char 
 		break;
 	}
 
-	fprintf(stderr, "%s PIN '%s' is invalid. Choose one from: %s\n", label, pinstr, valid);
+	fprintf(stderr, "%s PIN '%s' is invalid. Choose one from: %s\n", label ? label : "Specified", pinstr, valid);
 
 	return -1;
 }
@@ -211,6 +219,9 @@ pin_status(sc_card_t *card, int ref, const char *pin_label, unsigned char transp
 {
 	int r;
 	struct sc_pin_cmd_data data;
+
+	if (pin_label == NULL)
+		pin_label = "PIN";
 
 	memset(&data, 0, sizeof(data));
 	data.cmd = SC_PIN_CMD_GET_INFO;
@@ -592,8 +603,14 @@ change_pin(sc_card_t *card, int ref_verify, int ref_change)
 	}
 
 fail:
-	free(oldpin);
-	free(newpin);
+	if (oldpin != NULL) {
+		sc_mem_clear(oldpin, strlen(oldpin));
+		free(oldpin);
+	}
+	if (newpin != NULL) {
+		sc_mem_clear(newpin, strlen(newpin));
+		free(newpin);
+	}
 }
 
 void
@@ -661,7 +678,10 @@ resume_pin(sc_card_t *card, int ref_pin)
 	}
 
 fail:
-	free(pin);
+	if (pin != NULL) {
+		sc_mem_clear(pin, strlen(pin));
+		free(pin);
+	}
 }
 
 void
@@ -777,7 +797,10 @@ unblock_pin(sc_card_t *card, int ref_pin)
 	}
 
 fail:
-	free(puk);
+	if (puk != NULL) {
+		sc_mem_clear(puk, strlen(puk));
+		free(puk);
+	}
 }
 
 int
@@ -872,27 +895,35 @@ main(int argc, char *argv[])
 	if (opt_change != NULL) {
 		pin_change = parse_pin(card, opt_change, "Change", opt_verify == NULL ? &opt_can_verify : NULL);
 		pin_verify = pin_change;
-		if (pin_change < 0)
+		if (pin_change < 0) {
+			r = 1;
 			goto out;
+		}
 	}
 
 	if (opt_verify != NULL) {
 		pin_verify = parse_pin(card, opt_verify, "Verification", &opt_can_verify);
-		if (pin_verify < 0)
+		if (pin_verify < 0) {
+			r = 1;
 			goto out;
+		}
 	}
 
 	if (opt_resume != NULL) {
 		opt_can_verify = 1;
 		pin_resume = parse_pin(card, opt_resume, "Resume", NULL);
-		if (pin_resume < 0)
+		if (pin_resume < 0) {
+			r = 1;
 			goto out;
+		}
 	}
 
 	if (opt_unblock != NULL) {
 		pin_unblock = parse_pin(card, opt_unblock, "Unblock", NULL);
-		if (pin_unblock < 0)
+		if (pin_unblock < 0) {
+			r = 1;
 			goto out;
+		}
 	}
 
 	/* D-Trust Card 5 requires PACE authentication with CAN */
@@ -1055,15 +1086,24 @@ main(int argc, char *argv[])
 				ret = strcmp(str, "yes\n");
 			free(str);
 
-			if (ret)
+			if (ret) {
+				r = 1;
 				goto out;
+			}
 #else
 			char str[8];
 			char *ret;
 
-			ret = fgets(str, 8, stdin);
-			if (ret == NULL || strcmp(ret, "yes\n"))
+			ret = fgets(str, sizeof(str), stdin);
+			if (ret == NULL) {
+				r = 1;
 				goto out;
+			}
+			str[strcspn(str, "\r\n")] = '\0';
+			if (strcmp(str, "yes")) {
+				r = 1;
+				goto out;
+			}
 #endif
 		}
 
@@ -1122,5 +1162,5 @@ out:
 
 	sc_release_context(ctx);
 
-	return EXIT_SUCCESS;
+	return r ? EXIT_FAILURE : EXIT_SUCCESS;
 }

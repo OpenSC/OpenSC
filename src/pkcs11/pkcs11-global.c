@@ -422,8 +422,13 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved)
 	for (i=0; i < (int)sc_ctx_get_reader_count(context); i++)
 		card_removed(sc_ctx_get_reader(context, i));
 
-	while ((p = list_fetch(&sessions)))
-		free(p);
+	while ((p = list_fetch(&sessions))) {
+		struct sc_pkcs11_session *sess = (struct sc_pkcs11_session *)p;
+		size_t j;
+		for (j = 0; j < SC_PKCS11_OPERATION_MAX; j++)
+			sc_pkcs11_release_operation(&sess->operation[j]);
+		free(sess);
+	}
 	list_destroy(&sessions);
 
 	while ((slot = list_fetch(&virtual_slots))) {
@@ -733,6 +738,9 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
 	CK_RV rv;
 	unsigned int i;
 
+	if (pLabel == NULL_PTR || (pPin == NULL_PTR && ulPinLen > 0))
+		return CKR_ARGUMENTS_BAD;
+
 	/* Strip trailing whitespace and null terminate the label.
 	 * Keep the fixed-length buffer though as some other layers or drivers (SC-HSM)
 	 * might expect the length is fixed! */
@@ -802,8 +810,8 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,   /* blocking/nonblocking flag */
 	CK_RV rv;
 	int r;
 
-	if (pReserved != NULL_PTR)
-		return  CKR_ARGUMENTS_BAD;
+	if (pSlot == NULL_PTR || pReserved != NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
 
 	sc_log(context, "C_WaitForSlotEvent(block=%d)", !(flags & CKF_DONT_BLOCK));
 	rv = sc_pkcs11_lock();
@@ -822,11 +830,17 @@ again:
 	sc_pkcs11_unlock();
 	r = sc_wait_for_event(context, mask, &found, &events, -1, &reader_states);
 	/* Was C_Finalize called ? */
-	if (in_finalize == 1)
+	if (in_finalize == 1) {
+		if (reader_states)
+			sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
 		return CKR_CRYPTOKI_NOT_INITIALIZED;
+	}
 
-	if ((rv = sc_pkcs11_lock()) != CKR_OK)
+	if ((rv = sc_pkcs11_lock()) != CKR_OK) {
+		if (reader_states)
+			sc_wait_for_event(context, 0, NULL, NULL, -1, &reader_states);
 		return rv;
+	}
 
 	if (r != SC_SUCCESS) {
 		sc_log(context, "sc_wait_for_event() returned %d\n",  r);
