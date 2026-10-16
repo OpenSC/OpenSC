@@ -77,7 +77,8 @@
 					</term>
 					<listitem>
 						<para>
-							Specify hash algorithm used with RSA-PKCS-PSS signature or RSA-OAEP decryption.
+							Specify hash algorithm used with RSA-PKCS-PSS, HASH-ML-DSA and HASH-SLH-DSA
+							signatures or RSA-OAEP decryption.
 							Allowed values are "SHA-1", "SHA256", "SHA384", "SHA512", and some tokens may
 							also allow "SHA224". Default is "SHA-1".
 						</para>
@@ -89,6 +90,11 @@
 							at most keyLen - 2 - 2*hashLen. For example, for RSA 3072-bit key and
 							SHA384, the longest plaintext to encrypt with RSA-OAEP is (with all
 							sizes in bytes): 384 - 2 - 2*48 = 286, aka 286 bytes.
+						</para>
+						<para>
+							For HASH-ML-DSA and HASH-SLH-DSA, the input is the message already hashed
+							with the specified algorithm, so it must be exactly as long as that
+							algorithm's digest.
 						</para>
 					</listitem>
 				</varlistentry>

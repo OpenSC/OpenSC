@@ -371,7 +371,7 @@ static const char *option_help[] = {
 		"Derive a secret key using another key and some data",
 		"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
 		"Specify mechanism (use -M for a list of supported mechanisms), or by hexadecimal, e.g., 0x80001234",
-		"Specify hash algorithm used with RSA-PKCS-PSS signature and RSA-PKCS-OAEP decryption",
+		"Specify hash algorithm used with RSA-PKCS-PSS, HASH-ML-DSA and HASH-SLH-DSA signatures and RSA-PKCS-OAEP decryption",
 		"Specify MGF (Message Generation Function) used for RSA-PSS signature and RSA-OAEP decryption (possible values are MGF1-SHA1 to MGF1-SHA512)",
 		"Specify how many bytes should be used for salt in RSA-PSS signatures (default is digest size)",
 
@@ -2443,8 +2443,8 @@ static unsigned long hash_length(const unsigned long hash) {
 		sLen = 64;
 		break;
 	default:
-		util_fatal("Unknown hash algorithm '%s' for RSA-PSS signatures",
-			p11_mechanism_to_name(hash));
+		util_fatal("Unknown hash algorithm '%s'",
+				p11_mechanism_to_name(hash));
 		break;
 	}
 	return sLen;
@@ -2461,9 +2461,10 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 
 	pss_params->hashAlg = 0;
 
-	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_PSS)
+	if (opt_hash_alg != 0 && opt_mechanism != CKM_RSA_PKCS_PSS && opt_mechanism != CKM_HASH_ML_DSA &&
+			opt_mechanism != CKM_HASH_SLH_DSA)
 		util_fatal("The hash-algorithm is applicable only to "
-			"RSA-PKCS-PSS mechanism");
+			   "RSA-PKCS-PSS, HASH-ML-DSA and HASH-SLH-DSA mechanisms");
 
 	/* set "default" MGF and hash algorithms. We can overwrite MGF later */
 	switch (opt_mechanism) {
@@ -10450,6 +10451,7 @@ static struct mech_info	p11_mechanisms[] = {
 	{ CKM_CHACHA20_POLY1305,	"CHACHA20-POLY1305", NULL, MF_UNKNOWN},
 	{ CKM_ML_DSA,	"ML-DSA", "mldsa", MF_UNKNOWN},
 	{ CKM_ML_DSA_KEY_PAIR_GEN, "ML-DSA-KEY-PAIR-GEN", NULL, MF_UNKNOWN},
+	{ CKM_HASH_ML_DSA, "HASH-ML-DSA", NULL, MF_UNKNOWN},
 	{ CKM_HASH_ML_DSA_SHA224, "HASH-ML-DSA-SHA224", "mldsa-sha224", MF_UNKNOWN},
 	{ CKM_HASH_ML_DSA_SHA256, "HASH-ML-DSA-SHA256", "mldsa-sha256", MF_UNKNOWN},
 	{ CKM_HASH_ML_DSA_SHA384, "HASH-ML-DSA-SHA384", "mldsa-sha384", MF_UNKNOWN},
@@ -10464,6 +10466,7 @@ static struct mech_info	p11_mechanisms[] = {
 	{ CKM_ML_KEM_KEY_PAIR_GEN, "ML-KEM-KEY-PAIR-GEN", NULL, MF_UNKNOWN},
 	{ CKM_SLH_DSA,	"SLH-DSA", "slhdsa", MF_UNKNOWN},
 	{ CKM_SLH_DSA_KEY_PAIR_GEN, "SLH-DSA-KEY-PAIR-GEN", NULL, MF_UNKNOWN},
+	{ CKM_HASH_SLH_DSA, "HASH-SLH-DSA", NULL, MF_UNKNOWN},
 	{ CKM_HASH_SLH_DSA_SHA224, "HASH-SLH-DSA-SHA224", "slhdsa-sha224", MF_UNKNOWN},
 	{ CKM_HASH_SLH_DSA_SHA256, "HASH-SLH-DSA-SHA256", "slhdsa-sha256", MF_UNKNOWN},
 	{ CKM_HASH_SLH_DSA_SHA384, "HASH-SLH-DSA-SHA384", "slhdsa-sha384", MF_UNKNOWN},
