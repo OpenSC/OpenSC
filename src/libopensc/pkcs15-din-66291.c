@@ -231,7 +231,7 @@ int sc_pkcs15emu_din_66291_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid
             r = sc_read_binary(p15card->card, 0, tokeninfo_content, file_tokeninfo->size, 0);
             if (r < 0)
                 goto err;
-            r = sc_pkcs15_parse_tokeninfo(p15card->card->ctx, tokeninfo, tokeninfo_content, r);
+            r = sc_pkcs15_parse_tokeninfo(p15card->card, tokeninfo, tokeninfo_content, r);
             if (r != SC_SUCCESS)
                 goto err;
 
