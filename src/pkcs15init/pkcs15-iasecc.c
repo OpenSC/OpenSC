@@ -562,7 +562,7 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 		*(sdo->docp.size.value + 0) = (sz >> 8) & 0xFF;
 		*(sdo->docp.size.value + 1) = sz & 0xFF;
 
-		if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)   {
+		if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR || card->type == SC_CARD_TYPE_IASECC_OBERTHUR_V7)   {
 			/* TODO: Disabled for the tests of the Oberthur card */
 		}
 		else   {
@@ -1029,7 +1029,7 @@ iasecc_pkcs15_create_key_slot(struct sc_profile *profile, struct sc_pkcs15_card 
 
 	/* Oberthur's card do not returns FCP for selected application DF.
 	 * That's why for the following authentication use the 'CREATE' ACL defined in the application profile. */
-	if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)
+	if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR || card->type == SC_CARD_TYPE_IASECC_OBERTHUR_V7)
 		p15card->card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_CREATE);
 	p15card->card->caps  = save_card_caps;
@@ -1318,7 +1318,7 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 		LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() UPDATE authentication failed for SDO");
 	}
 
-	if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)   {
+	if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR || card->type == SC_CARD_TYPE_IASECC_OBERTHUR_V7)   {
 		/* Oberthur's card supports creation/deletion of the key slots ... */
 		rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_DELETE, sdo);
 	}

@@ -81,6 +81,9 @@ static const struct sc_atr_table iasecc_known_atrs[] = {
 	{ "3B:7F:96:00:00:00:31:B8:64:40:70:14:10:73:94:01:80:82:90:00",
 	  "FF:FF:FF:FF:FF:FF:FF:FE:FF:FF:00:00:FF:FF:FF:FF:FF:FF:FF:FF",
 		"IAS/ECC Gemalto", SC_CARD_TYPE_IASECC_GEMALTO,  0, NULL },
+	{ "3B:DD:00:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:08:00:07:90:00:FE",
+	  "FF:FF:00:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF",
+		"IAS/ECC v1.0.1 Oberthur v7", SC_CARD_TYPE_IASECC_OBERTHUR_V7, 0, NULL },
         { "3B:DD:00:00:81:31:FE:45:80:F9:A0:00:00:00:77:01:08:00:07:90:00:00",
 	  "FF:FF:00:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:FF:00",
 		"IAS/ECC v1.0.1 Oberthur", SC_CARD_TYPE_IASECC_OBERTHUR,  0, NULL },
@@ -637,7 +640,7 @@ iasecc_init(struct sc_card *card)
 
 	if (card->type == SC_CARD_TYPE_IASECC_GEMALTO)
 		rv = iasecc_init_gemalto(card);
-	else if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)
+	else if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR || card->type == SC_CARD_TYPE_IASECC_OBERTHUR_V7)
 		rv = iasecc_init_oberthur(card);
 	else if (card->type == SC_CARD_TYPE_IASECC_SAGEM)
 		rv = iasecc_init_amos_or_sagem(card);
@@ -935,6 +938,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 		if (card->type != SC_CARD_TYPE_IASECC_GEMALTO
 				&& card->type != SC_CARD_TYPE_IASECC_OBERTHUR
+				&& card->type != SC_CARD_TYPE_IASECC_OBERTHUR_V7
 				&& card->type != SC_CARD_TYPE_IASECC_SAGEM
 				&& card->type != SC_CARD_TYPE_IASECC_AMOS
 				&& card->type != SC_CARD_TYPE_IASECC_MI
@@ -949,6 +953,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)
 				apdu.p1 = 0x01;
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
+			    card->type == SC_CARD_TYPE_IASECC_OBERTHUR_V7 ||
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
@@ -961,6 +966,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		else if (lpath.type == SC_PATH_TYPE_FROM_CURRENT)  {
 			apdu.p1 = 0x09;
 			if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
+			    card->type == SC_CARD_TYPE_IASECC_OBERTHUR_V7 ||
 			    card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
@@ -979,6 +985,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			if (card->type == SC_CARD_TYPE_IASECC_AMOS ||
 			    card->type == SC_CARD_TYPE_IASECC_MI2 ||
 			    card->type == SC_CARD_TYPE_IASECC_OBERTHUR ||
+			    card->type == SC_CARD_TYPE_IASECC_OBERTHUR_V7 ||
 			    card->type == SC_CARD_TYPE_IASECC_GEMALTO ||
 			    iasecc_is_cpx(card)) {
 				apdu.p2 = 0x04;

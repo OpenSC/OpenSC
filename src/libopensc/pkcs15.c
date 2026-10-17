@@ -139,7 +139,7 @@ static int sc_pkcs15_aux_get_md_guid(struct sc_pkcs15_card *, const struct sc_pk
 		unsigned, unsigned char *, size_t *);
 static void sc_pkcs15_clear_tokeninfo(struct sc_pkcs15_tokeninfo *tokeninfo);
 
-int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
+int sc_pkcs15_parse_tokeninfo(sc_card_t *card,
 	sc_pkcs15_tokeninfo_t *ti, const u8 *buf, size_t blen)
 {
 	int r;
@@ -214,7 +214,10 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_toki_attrs + 3, label, &label_len, 0);
 	sc_format_asn1_entry(asn1_toki_attrs + 4, asn1_twlabel, NULL, 0);
 	sc_format_asn1_entry(asn1_toki_attrs + 5, &ti->flags, &flags_len, 0);
-	sc_format_asn1_entry(asn1_toki_attrs + 6, &ti->seInfo, &ti->num_seInfo, 0);
+	if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR_V7)
+		sc_format_asn1_entry(asn1_toki_attrs + 6, NULL, &ti->num_seInfo, 0);
+	else
+		sc_format_asn1_entry(asn1_toki_attrs + 6, &ti->seInfo, &ti->num_seInfo, 0);
 	sc_format_asn1_entry(asn1_toki_attrs + 7, NULL, NULL, 0);
 	sc_format_asn1_entry(asn1_toki_attrs + 8, asn1_supported_algorithms, NULL, 0);
 	sc_format_asn1_entry(asn1_toki_attrs + 9, NULL, NULL, 0);
@@ -224,11 +227,11 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	sc_format_asn1_entry(asn1_toki_attrs + 13, asn1_profile_indication, NULL, 0);
 	sc_format_asn1_entry(asn1_tokeninfo, asn1_toki_attrs, NULL, 0);
 
-	r = sc_asn1_decode(ctx, asn1_tokeninfo, buf, blen, NULL, NULL);
+	r = sc_asn1_decode(card->ctx, asn1_tokeninfo, buf, blen, NULL, NULL);
 	if (r != SC_SUCCESS) {
 		/* The decoding could have allocated something we need to free */
 		sc_pkcs15_clear_tokeninfo(ti);
-		LOG_TEST_RET(ctx, r, "ASN.1 parsing of EF(TokenInfo) failed");
+		LOG_TEST_RET(card->ctx, r, "ASN.1 parsing of EF(TokenInfo) failed");
 	}
 
 	if (asn1_toki_attrs[1].flags & SC_ASN1_PRESENT && serial_len > 0)   {
@@ -237,7 +240,7 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 		if (ti->serial_number == NULL)
 			return SC_ERROR_OUT_OF_MEMORY;
 		sc_bin_to_hex(serial, serial_len, ti->serial_number, serial_len * 2 + 1, 0);
-		sc_log(ctx, "TokenInfo.serialNunmber '%s'", ti->serial_number);
+		sc_log(card->ctx, "TokenInfo.serialNunmber '%s'", ti->serial_number);
 	}
 
 	if (ti->manufacturer_id == NULL) {
@@ -259,13 +262,13 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	}
 	if (asn1_toki_attrs[11].flags & SC_ASN1_PRESENT) {
 		if (asn1_last_update[0].flags & SC_ASN1_PRESENT)   {
-			sc_log(ctx, "LastUpdate.generalizedTime present");
+			sc_log(card->ctx, "LastUpdate.generalizedTime present");
 			ti->last_update.gtime = strdup((char *)last_update);
 			if (ti->last_update.gtime == NULL)
 				return SC_ERROR_OUT_OF_MEMORY;
 		}
 		else if (asn1_last_update[1].flags & SC_ASN1_PRESENT)  {
-			sc_log(ctx, "LastUpdate.referencedTime present");
+			sc_log(card->ctx, "LastUpdate.referencedTime present");
 		}
 	}
 	if (asn1_toki_attrs[12].flags & SC_ASN1_PRESENT) {
@@ -278,18 +281,18 @@ int sc_pkcs15_parse_tokeninfo(sc_context_t *ctx,
 	sc_init_oid(&ti->profile_indication.oid);
 	if (asn1_toki_attrs[13].flags & SC_ASN1_PRESENT) {
 		if (asn1_profile_indication[0].flags & SC_ASN1_PRESENT)   {
-			sc_log(ctx, "ProfileIndication.oid present");
+			sc_log(card->ctx, "ProfileIndication.oid present");
 		}
 		else if (asn1_profile_indication[1].flags & SC_ASN1_PRESENT)  {
-			sc_log(ctx, "ProfileIndication.name present");
+			sc_log(card->ctx, "ProfileIndication.name present");
 			ti->profile_indication.name = strdup((char *)profile_indication);
 			if (ti->profile_indication.name == NULL)
 				return SC_ERROR_OUT_OF_MEMORY;
 		}
 	}
 
-	sc_log(ctx, "LastUpdate.path '%s'", sc_print_path(&ti->last_update.path));
-	sc_log(ctx, "ProfileIndication.name '%s'",  ti->profile_indication.name);
+	sc_log(card->ctx, "LastUpdate.path '%s'", sc_print_path(&ti->last_update.path));
+	sc_log(card->ctx, "ProfileIndication.name '%s'",  ti->profile_indication.name);
 	return SC_SUCCESS;
 }
 
@@ -1151,7 +1154,7 @@ sc_pkcs15_bind_internal_tokeninfo(struct sc_pkcs15_card *p15card)
 	}
 
 	memset(&tokeninfo, 0, sizeof(tokeninfo));
-	err = sc_pkcs15_parse_tokeninfo(ctx, &tokeninfo, buf, (size_t)err);
+	err = sc_pkcs15_parse_tokeninfo(card, &tokeninfo, buf, (size_t)err);
 	if (err != SC_SUCCESS)   {
 		sc_log(ctx, "cannot parse TokenInfo content: %s", sc_strerror(err));
 		goto end;

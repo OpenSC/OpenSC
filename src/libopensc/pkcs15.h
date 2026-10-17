@@ -839,7 +839,7 @@ void sc_pkcs15_pincache_clear(struct sc_pkcs15_card *p15card);
 int sc_pkcs15_encode_dir(struct sc_context *ctx,
 			struct sc_pkcs15_card *card,
 			u8 **buf, size_t *buflen);
-int sc_pkcs15_parse_tokeninfo(struct sc_context *ctx,
+int sc_pkcs15_parse_tokeninfo(struct sc_card *card,
 			sc_pkcs15_tokeninfo_t *ti,
 			const u8 *buf, size_t blen);
 int sc_pkcs15_encode_tokeninfo(struct sc_context *ctx,

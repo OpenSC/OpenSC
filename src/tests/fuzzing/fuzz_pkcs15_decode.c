@@ -103,7 +103,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
 	}
 
 	tokeninfo = sc_pkcs15_tokeninfo_new();
-	sc_pkcs15_parse_tokeninfo(ctx, tokeninfo, buf, buf_len);
+	sc_pkcs15_parse_tokeninfo(card, tokeninfo, buf, buf_len);
 	sc_pkcs15_free_tokeninfo(tokeninfo);
 
 	sc_pkcs15_parse_unusedspace(buf, buf_len, p15card);

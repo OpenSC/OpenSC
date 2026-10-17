@@ -182,7 +182,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 	rv = dump_ef(p15card->card, "3F0050155032", buf, &len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Reading of EF.TOKENINFO failed.");
 
-	rv = sc_pkcs15_parse_tokeninfo(p15card->card->ctx, p15card->tokeninfo,
+	rv = sc_pkcs15_parse_tokeninfo(p15card->card, p15card->tokeninfo,
 				       buf, len);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Decoding of EF.TOKENINFO failed.");
 
