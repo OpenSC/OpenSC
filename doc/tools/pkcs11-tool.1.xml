@@ -455,6 +455,33 @@
 
 				<varlistentry>
 					<term>
+						<option>--encapsulate</option>
+					</term>
+					<listitem><para>Encapsulate a shared secret to a public key with
+					<function>C_EncapsulateKey</function> (PKCS#11 3.2, e.g. the ML-KEM mechanism).
+					The ciphertext is written to <option>--output-file</option> (default: stdout)
+					and the shared secret to <option>--secret-file</option>, if given.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--decapsulate</option>
+					</term>
+					<listitem><para>Decapsulate the ciphertext read from <option>--input-file</option>
+					(default: stdin) with a private key, using <function>C_DecapsulateKey</function>.
+					The shared secret is written to <option>--output-file</option> (default: stdout).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--secret-file</option> <replaceable>filename</replaceable>
+					</term>
+					<listitem><para>Write the shared secret produced by <option>--encapsulate</option>
+					to this file.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--salt-len</option> <replaceable>bytes</replaceable>
 					</term>
 					<listitem><para>Specify how many bytes of salt should
