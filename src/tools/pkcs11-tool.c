@@ -221,6 +221,9 @@ enum {
 	OPT_TEST_EC,
 	OPT_DERIVE,
 	OPT_DERIVE_PASS_DER,
+	OPT_ENCAPSULATE,
+	OPT_DECAPSULATE,
+	OPT_SECRET_FILE,
 	OPT_DECRYPT,
 	OPT_ENCRYPT,
 	OPT_UNWRAP,
@@ -275,6 +278,9 @@ static const struct option options[] = {
 	{ "hash",		0, NULL,		'h' },
 	{ "derive",		0, NULL,		OPT_DERIVE },
 	{ "derive-pass-der",	0, NULL,		OPT_DERIVE_PASS_DER },
+	{ "encapsulate",	0, NULL,		OPT_ENCAPSULATE },
+	{ "decapsulate",	0, NULL,		OPT_DECAPSULATE },
+	{ "secret-file",	1, NULL,		OPT_SECRET_FILE },
 	{ "mechanism",		1, NULL,		'm' },
 	{ "hash-algorithm",	1, NULL,		OPT_HASH_ALGORITHM },
 	{ "mgf",		1, NULL,		OPT_MGF },
@@ -374,6 +380,9 @@ static const char *option_help[] = {
 		"Hash some data",
 		"Derive a secret key using another key and some data",
 		"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
+		"Encapsulate a shared secret to a public key (e.g. ML-KEM), writing the ciphertext to --output-file",
+		"Decapsulate the ciphertext from --input-file with a private key, writing the shared secret to --output-file",
+		"Write the shared secret produced by --encapsulate to this file",
 		"Specify mechanism (use -M for a list of supported mechanisms), or by hexadecimal, e.g., 0x80001234",
 		"Specify hash algorithm used with RSA-PKCS-PSS, HASH-ML-DSA and HASH-SLH-DSA signatures and RSA-PKCS-OAEP decryption",
 		"Specify MGF (Message Generation Function) used for RSA-PSS signature and RSA-OAEP decryption (possible values are MGF1-SHA1 to MGF1-SHA512)",
@@ -504,6 +513,7 @@ static int		opt_key_usage_wrap = 0;
 static int		opt_key_usage_encapsulate = 0;
 static int		opt_key_usage_default = 1; /* uses defaults if no opt_key_usage options */
 static int		opt_derive_pass_der = 0;
+static const char *opt_secret_file = NULL;
 static unsigned long	opt_random_bytes = 0;
 static CK_MECHANISM_TYPE opt_hash_alg = 0;
 static unsigned long	opt_mgf = 0;
@@ -641,6 +651,8 @@ static void		decrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		encrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		derive_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+static void encapsulate_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+static void decapsulate_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static int		gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE,
 				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *, const char *);
 static int		gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE, CK_OBJECT_HANDLE *, const char *, char *);
@@ -828,6 +840,8 @@ int main(int argc, char * argv[])
 	int do_wrap = 0;
 	int do_hash = 0;
 	int do_derive = 0;
+	int do_encapsulate = 0;
+	int do_decapsulate = 0;
 	int do_gen_keypair = 0;
 	int do_gen_key = 0;
 	int do_write_object = 0;
@@ -1224,6 +1238,19 @@ int main(int argc, char * argv[])
 			do_derive = 1;
 			action_count++;
 			break;
+		case OPT_ENCAPSULATE:
+			need_session |= NEED_SESSION_RW;
+			do_encapsulate = 1;
+			action_count++;
+			break;
+		case OPT_DECAPSULATE:
+			need_session |= NEED_SESSION_RW;
+			do_decapsulate = 1;
+			action_count++;
+			break;
+		case OPT_SECRET_FILE:
+			opt_secret_file = optarg;
+			break;
 #ifndef _WIN32
 		case OPT_TEST_FORK:
 			do_test_fork = 1;
@@ -1577,6 +1604,18 @@ int main(int argc, char * argv[])
 		}
 	}
 
+	if (do_encapsulate || do_decapsulate) {
+		CK_OBJECT_CLASS kem_class = do_encapsulate ? CKO_PUBLIC_KEY : CKO_PRIVATE_KEY;
+
+		if (do_encapsulate && do_decapsulate)
+			util_fatal("--encapsulate and --decapsulate cannot be used together");
+		if (opt_uri && opt_uri->type && opt_object_class != kem_class)
+			util_fatal("Incorrect type of key");
+		if (!find_object(session, kem_class, &object,
+				    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0))
+			util_fatal("%s key not found", do_encapsulate ? "Public" : "Private");
+	}
+
 	if (do_decrypt) {
 		/*
 		 * Newer mechanisms have their details in the mechanism table, however
@@ -1689,6 +1728,12 @@ int main(int argc, char * argv[])
 	/* before list objects, so we can see a derived key */
 	if (do_derive)
 		derive_key(opt_slot, session, object);
+
+	if (do_encapsulate)
+		encapsulate_key(opt_slot, session, object);
+
+	if (do_decapsulate)
+		decapsulate_key(opt_slot, session, object);
 
 	if (do_list_objects)
 		list_objects(session);
@@ -2074,6 +2119,14 @@ static void list_mechs(CK_SLOT_ID slot)
 			if (info.flags & CKF_DERIVE) {
 				printf(", derive");
 				info.flags &= ~CKF_DERIVE;
+			}
+			if (info.flags & CKF_ENCAPSULATE) {
+				printf(", encapsulate");
+				info.flags &= ~CKF_ENCAPSULATE;
+			}
+			if (info.flags & CKF_DECAPSULATE) {
+				printf(", decapsulate");
+				info.flags &= ~CKF_DECAPSULATE;
 			}
 			if (info.flags & CKF_EC_F_P) {
 				printf(", EC F_P");
@@ -6529,6 +6582,171 @@ derive_hkdf(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	free(salt);
 	free(info);
 	return newkey;
+}
+
+/* C_EncapsulateKey and C_DecapsulateKey are only in the PKCS #11 3.2 function list */
+static CK_FUNCTION_LIST_3_2_PTR
+get_function_list_3_2(void)
+{
+	CK_VERSION version = {3, 2};
+	CK_INTERFACE_PTR interface = NULL;
+	CK_FUNCTION_LIST_3_2_PTR p11_3_2;
+	CK_RV rv;
+
+	if (p11->version.major < 3)
+		util_fatal("Encapsulation needs a PKCS #11 3.2 module");
+	rv = p11->C_GetInterface((CK_UTF8CHAR_PTR) "PKCS 11", &version, &interface, 0);
+	if (rv != CKR_OK || interface == NULL)
+		util_fatal("The module has no PKCS #11 3.2 interface (C_GetInterface: %s)", CKR2Str(rv));
+	p11_3_2 = (CK_FUNCTION_LIST_3_2_PTR)interface->pFunctionList;
+	if (p11_3_2->version.major != 3 || p11_3_2->version.minor < 2)
+		util_fatal("The module has no PKCS #11 3.2 interface");
+	return p11_3_2;
+}
+
+static void
+write_value(const char *path, const void *value, size_t value_len)
+{
+	int fd = STDOUT_FILENO;
+	ssize_t sz;
+
+	if (path) {
+		fd = open(path, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR);
+		if (fd < 0)
+			util_fatal("failed to open %s: %m", path);
+	}
+	sz = write(fd, value, value_len);
+	if (sz < 0 || (size_t)sz != value_len)
+		util_fatal("Failed to write to %s: %m", path ? path : "stdout");
+	if (path)
+		close(fd);
+}
+
+static CK_MECHANISM_TYPE
+kem_mechanism(CK_SLOT_ID slot, CK_FLAGS flags)
+{
+	if (!opt_mechanism_used)
+		if (!find_mechanism(slot, flags | opt_allow_sw, NULL, 0, &opt_mechanism))
+			util_fatal("No mechanism found for this operation");
+	return opt_mechanism;
+}
+
+/* the shared secret is a session object, readable so it can be written out */
+static CK_ULONG
+kem_secret_template(CK_ATTRIBUTE *tmpl)
+{
+	static CK_OBJECT_CLASS secret_class = CKO_SECRET_KEY;
+	static CK_KEY_TYPE secret_type = CKK_GENERIC_SECRET;
+	static CK_BBOOL _true = TRUE;
+	static CK_BBOOL _false = FALSE;
+	CK_ULONG n_attrs = 0;
+
+	FILL_ATTR(tmpl[n_attrs], CKA_TOKEN, &_false, sizeof(_false));
+	n_attrs++;
+	FILL_ATTR(tmpl[n_attrs], CKA_CLASS, &secret_class, sizeof(secret_class));
+	n_attrs++;
+	FILL_ATTR(tmpl[n_attrs], CKA_KEY_TYPE, &secret_type, sizeof(secret_type));
+	n_attrs++;
+	FILL_ATTR(tmpl[n_attrs], CKA_SENSITIVE, &_false, sizeof(_false));
+	n_attrs++;
+	FILL_ATTR(tmpl[n_attrs], CKA_EXTRACTABLE, &_true, sizeof(_true));
+	n_attrs++;
+	if (opt_allowed_mechanisms_len > 0) {
+		FILL_ATTR(tmpl[n_attrs], CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+				sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+		n_attrs++;
+	}
+	return n_attrs;
+}
+
+static void
+encapsulate_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
+{
+	CK_FUNCTION_LIST_3_2_PTR p11_3_2 = get_function_list_3_2();
+	CK_MECHANISM mech = {0};
+	CK_BYTE *ciphertext = NULL;
+	CK_ULONG ciphertext_len = 0;
+	CK_OBJECT_HANDLE secret = CK_INVALID_HANDLE;
+	CK_BYTE *value = NULL;
+	CK_ULONG value_len = 0;
+	CK_RV rv;
+	CK_ATTRIBUTE secret_template[6];
+	CK_ULONG n_attrs = kem_secret_template(secret_template);
+
+	mech.mechanism = kem_mechanism(slot, CKF_ENCAPSULATE);
+	fprintf(stderr, "Using encapsulation algorithm %s\n", p11_mechanism_to_name(mech.mechanism));
+
+	rv = p11_3_2->C_EncapsulateKey(session, &mech, key, secret_template, n_attrs,
+			NULL, &ciphertext_len, &secret);
+	if (rv != CKR_OK)
+		p11_fatal("C_EncapsulateKey", rv);
+	ciphertext = malloc(ciphertext_len);
+	if (ciphertext == NULL)
+		util_fatal("malloc() failure");
+	rv = p11_3_2->C_EncapsulateKey(session, &mech, key, secret_template, n_attrs,
+			ciphertext, &ciphertext_len, &secret);
+	if (rv != CKR_OK)
+		p11_fatal("C_EncapsulateKey", rv);
+
+	write_value(opt_output, ciphertext, ciphertext_len);
+	free(ciphertext);
+
+	if (opt_secret_file) {
+		value = getVALUE(session, secret, &value_len);
+		if (value == NULL || value_len == 0)
+			util_fatal("Cannot read the shared secret");
+		write_value(opt_secret_file, value, value_len);
+		free(value);
+	}
+	p11->C_DestroyObject(session, secret);
+}
+
+static void
+decapsulate_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
+{
+	CK_FUNCTION_LIST_3_2_PTR p11_3_2 = get_function_list_3_2();
+	CK_MECHANISM mech = {0};
+	unsigned char ciphertext[4096]; /* ML-KEM-1024 ciphertext is 1568 bytes */
+	size_t ciphertext_len = 0;
+	ssize_t sz = 0;
+	int fd;
+	CK_OBJECT_HANDLE secret = CK_INVALID_HANDLE;
+	CK_BYTE *value = NULL;
+	CK_ULONG value_len = 0;
+	CK_RV rv;
+	CK_ATTRIBUTE secret_template[6];
+	CK_ULONG n_attrs = kem_secret_template(secret_template);
+
+	mech.mechanism = kem_mechanism(slot, CKF_DECAPSULATE);
+	fprintf(stderr, "Using decapsulation algorithm %s\n", p11_mechanism_to_name(mech.mechanism));
+
+	if (opt_input == NULL)
+		fd = 0;
+	else if ((fd = open(opt_input, O_RDONLY | O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %m", opt_input);
+	while (ciphertext_len < sizeof(ciphertext) &&
+			(sz = read(fd, ciphertext + ciphertext_len, sizeof(ciphertext) - ciphertext_len)) > 0)
+		ciphertext_len += sz;
+	if (sz < 0)
+		util_fatal("Cannot read from %s: %m", opt_input ? opt_input : "stdin");
+	if (ciphertext_len == sizeof(ciphertext))
+		util_fatal("Ciphertext in %s is too long", opt_input ? opt_input : "stdin");
+	if (fd != 0)
+		close(fd);
+
+	if ((getCLASS(session, key) == CKO_PRIVATE_KEY) && getALWAYS_AUTHENTICATE(session, key))
+		login(session, CKU_CONTEXT_SPECIFIC);
+	rv = p11_3_2->C_DecapsulateKey(session, &mech, key, secret_template, n_attrs,
+			ciphertext, ciphertext_len, &secret);
+	if (rv != CKR_OK)
+		p11_fatal("C_DecapsulateKey", rv);
+
+	value = getVALUE(session, secret, &value_len);
+	if (value == NULL || value_len == 0)
+		util_fatal("Cannot read the shared secret");
+	write_value(opt_output, value, value_len);
+	free(value);
+	p11->C_DestroyObject(session, secret);
 }
 
 static void
