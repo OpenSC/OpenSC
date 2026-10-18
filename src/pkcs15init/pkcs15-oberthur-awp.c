@@ -1019,14 +1019,6 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	/*
 	 * serial number
 	 */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-
-	/* TODO the der encoding of a ANS1_INTEGER is a TLV, the original code only as using the
-	 * i2c_ASN1_INTEGER which is not in OpenSSL 1.1
-	 * It was adding the tag V_ASN1_INTEGER and the one byte length back in in effect creating
-	 * a DER encoded ASN1_INTEGER
-	 * So we can simplify the code and make compatible with OpenSSL 1.1. This needs to be tested
-	 */
 	ci->serial.len = 0;
 	ci->serial.value = NULL;
 	/* get length */
@@ -1041,28 +1033,6 @@ awp_encode_cert_info(struct sc_pkcs15_card *p15card, struct sc_pkcs15_object *ob
 	}
 	/* if len == 0, and value == NULL, then the cert did not have a serial number.*/
 	sc_log(ctx,  "cert. serial encoded length %zu", ci->serial.len);
-
-#else
-	do   {
-		int encoded_len;
-		unsigned char encoded[0x40], *encoded_ptr;
-
-		encoded_ptr = encoded;
-		encoded_len = i2c_ASN1_INTEGER(X509_get_serialNumber(x), &encoded_ptr);
-
-		if (!(ci->serial.value = malloc(encoded_len + 3)))   {
-			r = SC_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		memcpy(ci->serial.value + 2, encoded, encoded_len);
-		*(ci->serial.value + 0) = V_ASN1_INTEGER;
-		*(ci->serial.value + 1) = encoded_len;
-		ci->serial.len = encoded_len + 2;
-
-		sc_log(ctx,  "cert. serial encoded length %i", encoded_len);
-	} while (0);
-#endif
 
 	ci->x509 = X509_dup(x);
 err:
@@ -1319,14 +1289,14 @@ awp_update_key_info(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 {
 	struct sc_context *ctx = p15card->card->ctx;
 	struct sc_file *key_file=NULL, *info_file=NULL, *file=NULL;
-	struct awp_key_info ikey;
+	struct awp_key_info ikey = {0};
 	int rv = 0;
-	unsigned char *buf;
+	unsigned char *buf = NULL;
 	size_t buf_len;
 
 	LOG_FUNC_CALLED(ctx);
 
-    	rv = awp_new_file(p15card, profile, SC_PKCS15_TYPE_PRKEY_RSA, prvkey_id & 0xFF, &info_file, &key_file);
+	rv = awp_new_file(p15card, profile, SC_PKCS15_TYPE_PRKEY_RSA, prvkey_id & 0xFF, &info_file, &key_file);
 	LOG_TEST_RET(ctx, rv, "AWP update key info failed: instantiation error");
 	sc_log(ctx,  "key id %X; info id%X", key_file->id, info_file->id);
 
@@ -1343,8 +1313,11 @@ awp_update_key_info(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	}
 
 	buf = calloc(1,file->size);
-	if (!buf)
-		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "AWP update key info failed: allocation error");
+	if (!buf) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		sc_log(ctx, "AWP update key info failed: allocation error");
+		goto done;
+	}
 
 	rv = sc_read_binary(p15card->card, 0, buf, file->size, 0);
 	if (rv < 0)    {
@@ -1353,17 +1326,18 @@ awp_update_key_info(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	}
 	buf_len = rv;
 
-	memset(&ikey, 0, sizeof(ikey));
 	rv = awp_parse_key_info(ctx, buf, buf_len, &ikey);
 	if (rv < 0)   {
 		sc_log(ctx,  "AWP update key info failed: parse key info error");
 		goto done;
 	}
-	free(buf);
 
 	rv = awp_set_key_info(p15card, profile, info_file, &ikey, ci);
-	LOG_TEST_RET(ctx, rv, "AWP update key info failed: set key info error");
+	if (rv < 0)
+		sc_log(ctx, "AWP update key info failed: set key info error");
 done:
+	free(buf);
+	awp_free_key_info(&ikey);
 	sc_file_free(file);
 	sc_file_free(key_file);
 	sc_file_free(info_file);
