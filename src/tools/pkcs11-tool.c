@@ -9293,7 +9293,6 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 		return 0;
 	}
 	if (mech_type == CKM_RSA_PKCS_OAEP) {
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 		const EVP_MD *md;
 		switch (oaep_params.hashAlg) {
 		case CKM_SHA_1:
@@ -9379,12 +9378,6 @@ static int encrypt_decrypt(CK_SESSION_HANDLE session,
 				return 0;
 			}
 		}
-#else
-		if (oaep_params.hashAlg != CKM_SHA_1) {
-			printf("This version of OpenSSL only supports SHA1 for OAEP, returning\n");
-			return 0;
-		}
-#endif
 	}
 
 	size_t out_len = sizeof(encrypted);
