@@ -177,8 +177,8 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 df_data.data.df.create_ac=0x10;
 		 df_data.data.df.append_ac=0xC0;
 		 df_data.data.df.lock_ac=0x10;
-		 if (df->namelen > 0 && df->name)
-			  memcpy(df_data.data.df.aid,df->name,df->namelen);
+		 if (df->namelen > 0)
+			  memcpy(df_data.data.df.aid, df->name, df->namelen);
 
 		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &df_data);
 		 LOG_TEST_RET(card->ctx,ret,"Create DF failed");
