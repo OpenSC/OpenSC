@@ -2443,8 +2443,7 @@ static unsigned long hash_length(const unsigned long hash) {
 		sLen = 64;
 		break;
 	default:
-		util_fatal("Unknown hash algorithm '%s'",
-				p11_mechanism_to_name(hash));
+		util_fatal("Unknown hash algorithm '%s'", p11_mechanism_to_name(hash));
 		break;
 	}
 	return sLen;
