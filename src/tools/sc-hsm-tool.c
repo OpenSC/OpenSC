@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #ifdef HAVE_UNISTD_H
@@ -142,6 +143,7 @@ static const char *option_help[] = {
 #endif
 		"Wrap key and save to <filename>",
 		"Unwrap key read from <filename>",
+		"Generate key with specified <keyspec>",
 		"Use public key authentication, set total number of public keys",
 		"Number of public keys required for authentication [1]",
 		"Replacing a public key allowed after authentication",
@@ -172,7 +174,7 @@ static const char *option_help[] = {
 		"Uses reader number <arg> [0]",
 		"Wait for a card to be inserted",
 		"Verbose operation, may be used several times",
-};
+		""};
 
 typedef struct {
 	BIGNUM * x;
@@ -2331,6 +2333,9 @@ int main(int argc, char *argv[])
 	sc_context_t *ctx = NULL;
 	sc_card_t *card = NULL;
 	struct sc_pkcs15_card *p15card = NULL;
+
+	static_assert(sizeof(options) / sizeof(options[0]) == sizeof(option_help) / sizeof(option_help[0]),
+			"Inconsistent size of the options and options_help structures!");
 
 	while (1) {
 		c = getopt_long(argc, argv, "XC:I:P:W:U:G:K:n:e:g:Ss:d:i:fr:wv", options, &long_optind);
