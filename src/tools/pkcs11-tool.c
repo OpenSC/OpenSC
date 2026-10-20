@@ -5792,13 +5792,12 @@ find_slot_by_uri(struct pkcs11_uri *uri, CK_SLOT_ID_PTR result)
 static int find_slot_by_description(const char *label, CK_SLOT_ID_PTR result)
 {
 	CK_SLOT_INFO	info;
-	CK_ULONG	n, len;
+	CK_ULONG n;
 	CK_RV		rv;
 
 	if (!p11_num_slots)
 		return 0;
 
-	len = strlen(label);
 	for (n = 0; n < p11_num_slots; n++) {
 		const char	*slot_label;
 
@@ -5806,7 +5805,7 @@ static int find_slot_by_description(const char *label, CK_SLOT_ID_PTR result)
 		if (rv != CKR_OK)
 			continue;
 		slot_label = p11_utf8_to_local(info.slotDescription, sizeof(info.slotDescription));
-		if (!strncmp(label, slot_label, len)) {
+		if (!strcmp(label, slot_label)) {
 			*result = p11_slots[n];
 			return 1;
 		}
@@ -5817,13 +5816,12 @@ static int find_slot_by_description(const char *label, CK_SLOT_ID_PTR result)
 static int find_slot_by_token_label(const char *label, CK_SLOT_ID_PTR result)
 {
 	CK_TOKEN_INFO	info;
-	CK_ULONG	n, len;
+	CK_ULONG n;
 	CK_RV		rv;
 
 	if (!p11_num_slots)
 		return 0;
 
-	len = strlen(label);
 	for (n = 0; n < p11_num_slots; n++) {
 		const char	*token_label;
 
@@ -5831,7 +5829,7 @@ static int find_slot_by_token_label(const char *label, CK_SLOT_ID_PTR result)
 		if (rv != CKR_OK)
 			continue;
 		token_label = p11_utf8_to_local(info.label, sizeof(info.label));
-		if (!strncmp(label, token_label, len)) {
+		if (!strcmp(label, token_label)) {
 			*result = p11_slots[n];
 			return 1;
 		}
