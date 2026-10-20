@@ -70,6 +70,7 @@ static const char *option_help[] = {
 		"Resume authentication key PIN after 2 incorrect attempts",
 		"Unblock PIN using PUK",
 		"Verify Card Access Number (CAN)",
+		"",
 };
 
 static int

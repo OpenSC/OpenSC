@@ -74,20 +74,21 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
-	"Lists all keys in a public key file",
-	"Creates new RSA key files for <arg> keys",
-	"Creates a new CHV<arg> file",
-	"Generates a new RSA key pair",
-	"Reads a public key from the card",
-	"Verifies CHV1 before issuing commands",
-	"Selects which key number to operate on [1]",
-	"Selects the DF to operate in",
-	"Private key file",
-	"The RSA exponent to use in key generation [3]",
-	"Modulus length to use in key generation [1024]",
-	"Uses reader <arg>",
-	"Wait for card insertion",
-	"Verbose operation, may be used several times",
+		"Lists all keys in a public key file",
+		"Creates new RSA key files for <arg> keys",
+		"Creates a new CHV<arg> file",
+		"Generates a new RSA key pair",
+		"Reads a public key from the card",
+		"Verifies CHV1 before issuing commands",
+		"Selects which key number to operate on [1]",
+		"Selects the DF to operate in",
+		"Private key file",
+		"The RSA exponent to use in key generation [3]",
+		"Modulus length to use in key generation [1024]",
+		"Uses reader <arg>",
+		"Wait for card insertion",
+		"Verbose operation, may be used several times",
+		"",
 };
 
 static sc_context_t *ctx = NULL;

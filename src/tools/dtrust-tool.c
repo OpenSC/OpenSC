@@ -75,6 +75,7 @@ static const char *option_help[] = {
 	"Unblock blocked PIN",
 	"This message",
 	"Verbose operation, may be used several times",
+	"",
 };
 // clang-format on
 

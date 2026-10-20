@@ -142,6 +142,7 @@ static const char *option_help[] = {
 #endif
 		"Wrap key and save to <filename>",
 		"Unwrap key read from <filename>",
+		"Generate key with specified <keyspec>",
 		"Use public key authentication, set total number of public keys",
 		"Number of public keys required for authentication [1]",
 		"Replacing a public key allowed after authentication",
@@ -172,6 +173,7 @@ static const char *option_help[] = {
 		"Uses reader number <arg> [0]",
 		"Wait for a card to be inserted",
 		"Verbose operation, may be used several times",
+		"",
 };
 
 typedef struct {
