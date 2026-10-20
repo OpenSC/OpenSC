@@ -19,6 +19,12 @@
 #include <getopt.h>
 #include "libopensc/opensc.h"
 
+#include <assert.h>
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -48,10 +54,10 @@ extern "C" {
 void util_print_binary(FILE *f, const u8 *buf, size_t count);
 void util_hex_dump(FILE *f, const u8 *in, size_t len, const char *sep);
 void util_hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr);
-void util_print_usage(const char *app_name, const struct option options[],
-	const char *option_help[], const char *args);
-NORETURN void util_print_usage_and_die(const char *app_name, const struct option options[],
-	const char *option_help[], const char *args);
+void util_print_usage_internal(const char *app_name, const struct option options[],
+		const char *option_help[], const char *args);
+NORETURN void util_print_usage_and_die_internal(const char *app_name, const struct option options[],
+		const char *option_help[], const char *args);
 int util_list_card_drivers(const sc_context_t *ctx);
 const char * util_acl_to_str(const struct sc_acl_entry *e);
 void util_warn(const char *fmt, ...);
@@ -70,6 +76,24 @@ int util_getpass (char **lineptr, size_t *n, FILE *stream);
  * otherwise - use input
  */
 size_t util_get_pin(const char *input, const char **pin);
+
+/* Check at compile time that every option has a help string. option_help may
+ * or may not have an entry for the terminating {NULL} option. */
+#define UTIL_ASSERT_OPTION_HELP(options, option_help) \
+	static_assert(ARRAY_SIZE(options) == ARRAY_SIZE(option_help), \
+			"options and option_help have different lengths")
+
+#define util_print_usage(app_name, options, option_help, args) \
+	do { \
+		UTIL_ASSERT_OPTION_HELP(options, option_help); \
+		util_print_usage_internal(app_name, options, option_help, args); \
+	} while (0)
+
+#define util_print_usage_and_die(app_name, options, option_help, args) \
+	do { \
+		UTIL_ASSERT_OPTION_HELP(options, option_help); \
+		util_print_usage_and_die_internal(app_name, options, option_help, args); \
+	} while (0)
 
 #ifdef __cplusplus
 }

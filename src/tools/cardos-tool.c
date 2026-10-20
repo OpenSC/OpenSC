@@ -70,14 +70,15 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
-	"Print this help message",
-	"Print information about this card",
-	"Format this card erasing all content",
-	"Specify startkey for format",
-	"Change Startkey with given APDU command",
-	"Uses reader number <arg> [0]",
-	"Wait for a card to be inserted",
-	"Verbose operation, may be used several times",
+		"Print this help message",
+		"Print information about this card",
+		"Format this card erasing all content",
+		"Specify startkey for format",
+		"Change Startkey with given APDU command",
+		"Uses reader number <arg> [0]",
+		"Wait for a card to be inserted",
+		"Verbose operation, may be used several times",
+		"",
 };
 
 static sc_context_t *ctx = NULL;

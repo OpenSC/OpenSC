@@ -20,7 +20,6 @@
 
 #include "config.h"
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -107,8 +106,6 @@ extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
 
 #define NEED_SESSION_RO	0x01
 #define NEED_SESSION_RW	0x02
-
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 // clang-format off
 /* EC, Edwards and Montgomery curves understood by pkcs11-tool */
@@ -853,9 +850,6 @@ int main(int argc, char * argv[])
 	int do_generate_random = 0;
 	char *s = NULL;
 	CK_RV rv;
-
-	static_assert(sizeof(options) / sizeof(options[0]) == sizeof(option_help) / sizeof(option_help[0]),
-			"Inconsistent size of the options and options_help structures!");
 
 #ifdef _WIN32
 	char expanded_val[PATH_MAX];

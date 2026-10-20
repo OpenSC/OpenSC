@@ -78,16 +78,17 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
-	"Initialize token",
-	"Define the administrator key",
-	"Define user PIN",
-	"Define serial number",
-	"Unblock the user PIN after an administrator authentication",
-	"Change the administrator key",
-	"Define the new administrator key",
-	"Uses reader number <arg> [0]",
-	"Wait for a card to be inserted",
-	"Verbose operation, may be used several times",
+		"Initialize token",
+		"Define the administrator key",
+		"Define user PIN",
+		"Define serial number",
+		"Unblock the user PIN after an administrator authentication",
+		"Change the administrator key",
+		"Define the new administrator key",
+		"Uses reader number <arg> [0]",
+		"Wait for a card to be inserted",
+		"Verbose operation, may be used several times",
+		"",
 };
 
 static int initialize(sc_card_t *card, const char *so_pin, const char *user_pin, const char* serial)
