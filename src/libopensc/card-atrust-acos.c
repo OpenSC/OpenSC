@@ -455,8 +455,6 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
 		if (env->key_ref_len > 255 || env->key_ref_len > sizeof(sbuf) - 10)
 			return SC_ERROR_INVALID_ARGUMENTS;
-		if (env->key_ref_len > 0 && env->key_ref == NULL)
-			return SC_ERROR_INVALID_ARGUMENTS;
 		if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
 			*p++ = 0x83;
 		else
