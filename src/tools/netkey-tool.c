@@ -651,9 +651,9 @@ int main(
 	if(ctx->debug>0)
 		printf("Context for application \"%s\" created, Debug=%d\n", ctx->app_name, ctx->debug);
 
-	for(i=0;ctx->card_drivers && ctx->card_drivers[i];++i)
+	for(i=0;ctx->card_drivers[i];++i)
 		if(!strcmp("tcos", ctx->card_drivers[i]->short_name)) break;
-	if(!ctx->card_drivers || !ctx->card_drivers[i]){
+	if(!ctx->card_drivers[i]){
 		fprintf(stderr,"Context does not support TCOS-cards\n");
 		sc_release_context(ctx);
 		exit(1);
