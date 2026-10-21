@@ -1588,7 +1588,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			} else
 				c = objlen > *len ? *len : objlen;
 
-			memcpy(parm, obj, c);
+			if (c > 0)
+				memcpy(parm, obj, c);
 			*len = c;
 		}
 		break;
@@ -1613,7 +1614,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			} else
 				c = objlen > *len ? *len : objlen;
 
-			memcpy(parm, obj, c);
+			if (c > 0)
+				memcpy(parm, obj, c);
 			*len = c;
 		}
 		break;
