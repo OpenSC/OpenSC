@@ -35,11 +35,11 @@ for SET in "ML-KEM-512" "ML-KEM-768" "ML-KEM-1024"; do
         --label="$SET" --id=$ID --usage-encapsulate
     assert $? "Failed to generate $SET key pair"
 
-    $PKCS11_TOOL "${PRIV_ARGS[@]}" --encapsulate --id=$ID \
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --encapsulate -m ML-KEM --id=$ID \
         --output-file=kem.ct --secret-file=kem.ss1
     assert $? "Failed to encapsulate with $SET"
 
-    $PKCS11_TOOL "${PRIV_ARGS[@]}" --decapsulate --id=$ID \
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --decapsulate -m ML-KEM --id=$ID \
         --input-file=kem.ct --output-file=kem.ss2
     assert $? "Failed to decapsulate with $SET"
 
@@ -50,7 +50,7 @@ for SET in "ML-KEM-512" "ML-KEM-768" "ML-KEM-1024"; do
 
     # A truncated ciphertext must be refused
     head -c 100 kem.ct > kem.short
-    $PKCS11_TOOL "${PRIV_ARGS[@]}" --decapsulate --id=$ID \
+    $PKCS11_TOOL "${PRIV_ARGS[@]}" --decapsulate -m ML-KEM --id=$ID \
         --input-file=kem.short --output-file=kem.ss3 2>/dev/null
     [[ $? != 0 ]]
     assert $? "$SET decapsulated a truncated ciphertext"
