@@ -6578,7 +6578,6 @@ derive_hkdf(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	return newkey;
 }
 
-/* C_EncapsulateKey and C_DecapsulateKey are only in the PKCS #11 3.2 function list */
 static CK_FUNCTION_LIST_3_2_PTR
 get_function_list_3_2(void)
 {
@@ -6607,11 +6606,11 @@ write_value(const char *path, const void *value, size_t value_len)
 	if (path) {
 		fd = open(path, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR);
 		if (fd < 0)
-			util_fatal("failed to open %s: %m", path);
+			util_fatal("failed to open %s: %s", path, strerror(errno));
 	}
 	sz = write(fd, value, value_len);
 	if (sz < 0 || (size_t)sz != value_len)
-		util_fatal("Failed to write to %s: %m", path ? path : "stdout");
+		util_fatal("Failed to write to %s: %s", path ? path : "stdout", strerror(errno));
 	if (path)
 		close(fd);
 }
@@ -6717,12 +6716,12 @@ decapsulate_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key
 	if (opt_input == NULL)
 		fd = 0;
 	else if ((fd = open(opt_input, O_RDONLY | O_BINARY)) < 0)
-		util_fatal("Cannot open %s: %m", opt_input);
+		util_fatal("Cannot open %s: %s", opt_input, strerror(errno));
 	while (ciphertext_len < sizeof(ciphertext) &&
 			(sz = read(fd, ciphertext + ciphertext_len, sizeof(ciphertext) - ciphertext_len)) > 0)
 		ciphertext_len += sz;
 	if (sz < 0)
-		util_fatal("Cannot read from %s: %m", opt_input ? opt_input : "stdin");
+		util_fatal("Cannot read from %s: %s", opt_input ? opt_input : "stdin", strerror(errno));
 	if (ciphertext_len == sizeof(ciphertext))
 		util_fatal("Ciphertext in %s is too long", opt_input ? opt_input : "stdin");
 	if (fd != 0)
