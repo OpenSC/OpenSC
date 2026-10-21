@@ -6,6 +6,7 @@
 	<title>OpenSC Manual Pages: Section 1</title>
 
 	<xi:include href="cardos-tool.1.xml"/>
+	<xi:include href="cedulauy-tool.1.xml"/>
 	<xi:include href="cryptoflex-tool.1.xml"/>
 	<xi:include href="dnie-tool.1.xml"/>
 	<xi:include href="egk-tool.1.xml"/>
