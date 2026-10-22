@@ -235,6 +235,7 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 		memset(&cert_obj,  0, sizeof(cert_obj));
 		memset(&pubkey_obj,  0, sizeof(pubkey_obj));
 		memset(&prkey_obj,  0, sizeof(prkey_obj));
+		memset(&cert_der,  0, sizeof(cert_der));
 
 		cert_info.id = obj_info.id;
 		pubkey_info.id = obj_info.id;
@@ -265,7 +266,6 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 
 		if (r || !cert_der.value || cert_der.len == 0) {
 			sc_log(card->ctx,  "No cert found,i=%d", i);
-			free(cert_der.value);
 			continue;
 		}
 		cert_info.path.count = (int)cert_der.len;
@@ -289,6 +289,8 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 			if (cert_out != NULL)
 				sc_pkcs15_free_certificate(cert_out);
 			free(cert_info.value.value);
+			cert_info.value.value = NULL;
+			cert_der.value = NULL;
 			continue;
 		}
 
@@ -297,8 +299,11 @@ static int sc_pkcs15emu_cac_init(sc_pkcs15_card_t *p15card)
 			sc_log(card->ctx,  " Failed to add cert obj r=%d",r);
 			sc_pkcs15_free_certificate(cert_out);
 			free(cert_info.value.value);
+			cert_info.value.value = NULL;
+			cert_der.value = NULL;
 			continue;
 		}
+		cert_der.value = NULL;
 		/* set the token name to the name of the CN of the first certificate */
 		if (!token_name) {
 			u8 * cn_name = NULL;
