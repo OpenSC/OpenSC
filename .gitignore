@@ -142,6 +142,7 @@ src/tests/unittests/strip_pkcs1_2_padding
 src/tests/unittests/sm
 src/tests/unittests/check_macro_reference_loop
 src/tests/unittests/decode_ecdsa_signature
+src/tests/unittests/entersafe-mscp
 src/tests/unittests/hextobin
 
 src/tests/fuzzing/fuzz_asn1_print
