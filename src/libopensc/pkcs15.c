@@ -2565,7 +2565,13 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 		/* Handle the case where the ASN.1 Path object specified
 		 * index and length values */
 
-		if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE) {
+		if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV) {
+			/* A record file's advertised size is not a reliable bound on
+			 * the concatenated values of its SIMPLE-TLV records. In
+			 * particular, a short aggregate buffer must not shorten a
+			 * later READ RECORD and silently truncate an ASN.1 object. */
+			len = MAX_FILE_SIZE;
+		} else if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE) {
 
 			// in_path->index: record_no
 			// in_path->count: ignored!
@@ -2616,10 +2622,11 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 		if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV) {
 			unsigned int i;
-			size_t l, record_len;
+			size_t l, record_len, header_len;
 			unsigned char *head = data;
 
-			for (i=1; ; i++) {
+			/* ISO 7816-4 reserves record number 255. */
+			for (i = 1; i <= 0xfe; i++) {
 				l = len - (head - data);
 				if (l > 256) {
 					l = 256;
@@ -2630,19 +2637,29 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 				if (r < 0) {
 					goto fail_unlock;
 				}
-				if (r < 2)
+				if (r == 0)
 					break;
+				if (r < 2 || (size_t)r > l) {
+					r = SC_ERROR_INVALID_ASN1_OBJECT;
+					goto fail_unlock;
+				}
 				record_len = head[1];
-				if (record_len != 0xff) {
-					memmove(head, head+2, r-2);
-					head += (r-2);
+				header_len = 2;
+				if (record_len == 0xff) {
+					if (r < 4) {
+						r = SC_ERROR_INVALID_ASN1_OBJECT;
+						goto fail_unlock;
+					}
+					record_len = ((size_t)head[2] << 8) | head[3];
+					header_len = 4;
 				}
-				else {
-					if (r < 4)
-						break;
-					memmove(head, head+4, r-4);
-					head += (r-4);
+				/* Reject incomplete values, but allow trailing padding. */
+				if (record_len > (size_t)r - header_len) {
+					r = SC_ERROR_INVALID_ASN1_OBJECT;
+					goto fail_unlock;
 				}
+				memmove(head, head + header_len, record_len);
+				head += record_len;
 			}
 			len = head-data;
 		}
