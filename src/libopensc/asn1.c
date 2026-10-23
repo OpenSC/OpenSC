@@ -2218,12 +2218,12 @@ sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, const unsigned char *in
 	if (r_len > 0)
 		memcpy(buf + (halflen - r_len), r, r_len);
 	if (s_len > 0)
-		memcpy(buf + (buflen - s_len), s, s_len);
+		memcpy(buf + (2*halflen - s_len), s, s_len);
 
 	sc_log(ctx, "r(%zu): %s", halflen, sc_dump_hex(buf, halflen));
 	sc_log(ctx, "s(%zu): %s", halflen, sc_dump_hex(buf + halflen, halflen));
 
-	rv = SC_SUCCESS;
+	rv = (int)(2 * halflen);
 err:
 	free(r);
 	free(s);
