@@ -112,13 +112,13 @@ typedef struct epass2003_exdata_st {
 	unsigned char bFipsCertification;	/* fips mode Alg */
 	unsigned char currAlg;		/* current Alg */
 	unsigned int  ecAlgFlags; 	/* Ec Alg mechanism type*/
-	/* DF directly below the MF that is currently selected (3F00 xxxx), or
-	 * cur_df_len == 0 if unknown. Re-selecting a DF resets the security status
-	 * of the COS (a verified PIN is lost), so selecting a file inside the
-	 * current DF must not select the DF again. Only trusted while the reader
-	 * lock is held: forgotten when the lock is (re)obtained, on reset and on
-	 * any operation that may change the file system. */
-	u8 cur_df[4];
+	/* Absolute path (starting with 3F00) of the DF that was selected last,
+	 * or cur_df_len == 0 if the current file is not a known DF. Re-selecting
+	 * a DF resets the security status of the COS (a verified PIN is lost), so
+	 * a path inside the current DF is selected relative to it. Forgotten when
+	 * an EF is selected, on card reset, when SM is re-established and on any
+	 * operation that may change the file system. */
+	u8 cur_df[SC_MAX_PATH_SIZE];
 	size_t cur_df_len;
 } epass2003_exdata;
 
@@ -1949,6 +1949,21 @@ epass2003_forget_df(struct sc_card *card)
 		exdata->cur_df_len = 0;
 }
 
+static void
+epass2003_set_df(struct sc_card *card, const u8 *path, size_t len)
+{
+	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
+
+	if (!exdata)
+		return;
+	if (len > sizeof(exdata->cur_df)) {
+		exdata->cur_df_len = 0;
+		return;
+	}
+	memcpy(exdata->cur_df, path, len);
+	exdata->cur_df_len = len;
+}
+
 static int
 epass2003_select_fid(struct sc_card *card, unsigned int id_hi, unsigned int id_lo,
 		sc_file_t ** file_out)
@@ -2008,7 +2023,7 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 	u8 n_pathbuf[SC_MAX_PATH_SIZE];
 	const u8 *path = pathbuf;
 	size_t pathlen = len;
-	unsigned int i;
+	size_t i, start = 0;
 	int r;
 	sc_file_t *file = NULL;
 	epass2003_exdata *exdata;
@@ -2030,45 +2045,48 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 	}
 
 	exdata = (epass2003_exdata *)card->drv_data;
-	if (exdata && exdata->cur_df_len == 4 && memcmp(path, exdata->cur_df, 4) == 0) {
-		if (pathlen == 4) {
+	if (exdata && exdata->cur_df_len > 0 && exdata->cur_df_len <= pathlen
+			&& memcmp(path, exdata->cur_df, exdata->cur_df_len) == 0) {
+		if (exdata->cur_df_len == pathlen) {
 			/* already in the requested DF */
 			if (file_out) {
 				sc_file_t *df = sc_file_new();
 				if (!df)
 					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-				df->id = (path[2] << 8) + path[3];
+				df->id = (path[pathlen - 2] << 8) + path[pathlen - 1];
 				df->path.type = SC_PATH_TYPE_PATH;
-				memcpy(df->path.value, path, 4);
-				df->path.len = 4;
+				memcpy(df->path.value, path, pathlen);
+				df->path.len = pathlen;
 				df->type = SC_FILE_TYPE_DF;
 				df->ef_structure = SC_FILE_EF_UNKNOWN;
 				*file_out = df;
 			}
 			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		}
-		/* pathlen == 6: a file inside the current DF */
-		r = epass2003_select_fid(card, path[4], path[5], &file);
-		if (r != SC_SUCCESS || file->type == SC_FILE_TYPE_DF)
-			epass2003_forget_df(card);
-		goto out;
+		/* inside the current DF: select only what follows it */
+		start = exdata->cur_df_len;
+	} else {
+		epass2003_forget_df(card);
 	}
 
-	epass2003_forget_df(card);
-	for (i = 0; i < pathlen - 2; i += 2) {
+	for (i = start; i < pathlen - 2; i += 2) {
 		r = epass2003_select_fid(card, path[i], path[i + 1], NULL);
+		if (r != SC_SUCCESS)
+			epass2003_forget_df(card);
 		LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
+		/* a FID that is followed by further FIDs is a DF */
+		epass2003_set_df(card, path, i + 2);
 	}
 
 	r = epass2003_select_fid(card, path[pathlen - 2], path[pathlen - 1], &file);
-	if (r == SC_SUCCESS && exdata) {
-		if (pathlen == 6 || (pathlen == 4 && file->type == SC_FILE_TYPE_DF)) {
-			memcpy(exdata->cur_df, path, 4);
-			exdata->cur_df_len = 4;
-		}
-	}
+	if (r == SC_SUCCESS && file->type == SC_FILE_TYPE_DF)
+		epass2003_set_df(card, path, pathlen);
+	else
+		/* With an EF selected the COS refuses a PIN verification until the
+		 * DF is selected again, so the next select of the DF itself (or of
+		 * anything else) starts from the MF, as 0.26 did. */
+		epass2003_forget_df(card);
 
-out:
 	if (file_out)
 		*file_out = file;
 	else
@@ -2102,8 +2120,12 @@ epass2003_select_file(struct sc_card *card, const sc_path_t * in_path,
 static int
 epass2003_card_reader_lock_obtained(struct sc_card *card, int was_reset)
 {
-	/* another process may have used the card since we last held the lock */
-	epass2003_forget_df(card);
+	/* After a reset nothing is selected any more. Without a reset the
+	 * selection is kept: forgetting it here would make the next path select
+	 * re-select the DF, which drops a PIN that was verified while the reader
+	 * lock was held before (e.g. C_Login, then reading a private object). */
+	if (was_reset > 0)
+		epass2003_forget_df(card);
 	return SC_SUCCESS;
 }
 
