@@ -1,6 +1,21 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 #include "libopensc/internal.h"
 #include "torture.h"
+
+/* Use typed expectations with cmocka 2, while retaining 1.x support. */
+#ifndef check_expected_int
+#define check_expected_int(parameter) check_expected(parameter)
+#endif
+#ifndef check_expected_uint
+#define check_expected_uint(parameter) check_expected(parameter)
+#endif
+#ifndef expect_int_value
+#define expect_int_value(function, parameter, value) expect_value(function, parameter, value)
+#endif
+#ifndef expect_uint_value
+#define expect_uint_value(function, parameter, value) expect_value(function, parameter, value)
+#endif
+
 /* Include the internal encoding selector as other padding unit tests do. */
 #include "libopensc/padding.c"
 /* Validate the complete synthetic extended APDU without sending it. */
@@ -47,10 +62,10 @@ mock_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **file_out)
 	file_select_calls++;
 	if (path->type == SC_PATH_TYPE_DF_NAME)
 		model_pin_verified = 0;
-	check_expected(path_type);
-	check_expected(path_len);
-	check_expected(value);
-	check_expected(want_fci);
+	check_expected_int(path_type);
+	check_expected_uint(path_len);
+	check_expected_ptr(value);
+	check_expected_int(want_fci);
 	result = mock_type(int);
 	if (result == SC_SUCCESS && file_out != NULL &&
 			(path->type == SC_PATH_TYPE_DF_NAME || child_file_type >= 0)) {
@@ -249,10 +264,10 @@ deny_security_operations_without_io(void **state)
 static void
 expect_selection(int type, const u8 *value, size_t len, int fci, int result)
 {
-	expect_value(mock_select_file, path_type, type);
-	expect_value(mock_select_file, path_len, len);
+	expect_int_value(mock_select_file, path_type, type);
+	expect_uint_value(mock_select_file, path_len, len);
 	expect_memory(mock_select_file, value, value, len);
-	expect_value(mock_select_file, want_fci, fci);
+	expect_int_value(mock_select_file, want_fci, fci);
 	will_return(mock_select_file, result);
 }
 
