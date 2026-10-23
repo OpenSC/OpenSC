@@ -39,6 +39,7 @@
 #define SHA_DIGEST_LENGTH	20
 #endif
 
+#include "pkcs11-pss-params.h"
 #include "sc-pkcs11.h"
 #ifdef USE_PKCS15_INIT
 #include "pkcs15init/pkcs15-init.h"
@@ -4805,10 +4806,6 @@ static CK_RV
 pkcs15_prkey_init_params(struct sc_pkcs11_session *session,
 			CK_MECHANISM_PTR pMechanism)
 {
-	const CK_RSA_PKCS_PSS_PARAMS *pss_params;
-	unsigned int expected_hash = 0, i;
-	const unsigned int hashes[5] = { CKM_SHA_1, CKM_SHA256,
-		CKM_SHA384, CKM_SHA512, CKM_SHA224 };
 	const CK_RSA_PKCS_OAEP_PARAMS *oaep_params;
 
 	switch (pMechanism->mechanism) {
@@ -4818,40 +4815,8 @@ pkcs15_prkey_init_params(struct sc_pkcs11_session *session,
 	case CKM_SHA256_RSA_PKCS_PSS:
 	case CKM_SHA384_RSA_PKCS_PSS:
 	case CKM_SHA512_RSA_PKCS_PSS:
-		if (!pMechanism->pParameter ||
-			pMechanism->ulParameterLen != sizeof(CK_RSA_PKCS_PSS_PARAMS))
-			return CKR_MECHANISM_PARAM_INVALID;
+		return sc_pkcs11_validate_pss_params(pMechanism);
 
-		pss_params = (CK_RSA_PKCS_PSS_PARAMS*)pMechanism->pParameter;
-		if (pss_params->mgf < CKG_MGF1_SHA1 || pss_params->mgf > CKG_MGF1_SHA224)
-			return CKR_MECHANISM_PARAM_INVALID;
-
-		/* The hashAlg field can have any value for CKM_RSA_PKCS_PSS and must be
-		 * used again in the PSS padding; for the other mechanisms it strictly
-		 * must match the padding declared in the mechanism.
-		 */
-		if (pMechanism->mechanism == CKM_SHA1_RSA_PKCS_PSS) {
-			expected_hash = CKM_SHA_1;
-		} else if (pMechanism->mechanism == CKM_SHA224_RSA_PKCS_PSS) {
-			expected_hash = CKM_SHA224;
-		} else if (pMechanism->mechanism == CKM_SHA256_RSA_PKCS_PSS) {
-			expected_hash = CKM_SHA256;
-		} else if (pMechanism->mechanism == CKM_SHA384_RSA_PKCS_PSS) {
-			expected_hash = CKM_SHA384;
-		} else if (pMechanism->mechanism == CKM_SHA512_RSA_PKCS_PSS) {
-			expected_hash = CKM_SHA512;
-		} else if (pMechanism->mechanism == CKM_RSA_PKCS_PSS) {
-			for (i = 0; i < 5; ++i) {
-				if (hashes[i] == pss_params->hashAlg) {
-					expected_hash = hashes[i];
-				}
-			}
-		}
-
-		if (expected_hash != pss_params->hashAlg)
-			return CKR_MECHANISM_PARAM_INVALID;
-
-		break;
 	case CKM_RSA_PKCS_OAEP:
 		if (!pMechanism->pParameter ||
 			pMechanism->ulParameterLen != sizeof(CK_RSA_PKCS_OAEP_PARAMS))
@@ -4874,7 +4839,6 @@ pkcs15_prkey_init_params(struct sc_pkcs11_session *session,
 	}
 	return CKR_OK;
 }
-
 
 struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
 	pkcs15_prkey_release,
