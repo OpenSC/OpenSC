@@ -139,8 +139,11 @@ static int atrust_acos_init(struct sc_card *card)
 
 static int atrust_acos_finish(struct sc_card *card)
 {
-	if (card->drv_data)
+	if (card->drv_data) {
+		sc_mem_clear(card->drv_data, sizeof(atrust_acos_ex_data));
 		free((atrust_acos_ex_data *)card->drv_data);
+		card->drv_data = NULL;
+	}
 	return 0;
 }
 
@@ -235,15 +238,18 @@ static int process_fci(struct sc_context *ctx, struct sc_file *file,
 /*****************************************************************************/
 
 static int atrust_acos_select_aid(struct sc_card *card,
-			      u8 aid[16], size_t len,
+			      const u8 *aid, size_t len,
 			      struct sc_file **file_out)
 {
 	sc_apdu_t apdu;
 	int r;
 	size_t i = 0;
 
+	if (aid == NULL || len == 0 || len > 16)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x04, 0x0C);
-	apdu.lc = len;
+	apdu.lc = (u8)len;
 	apdu.data = (u8*)aid;
 	apdu.datalen = len;
 	apdu.resplen = 0;
@@ -366,6 +372,9 @@ static int atrust_acos_select_file(struct sc_card *card,
 	int    r;
 	size_t i, pathlen;
 
+	if (in_path == NULL || in_path->len == 0 || in_path->len > sizeof(pathbuf))
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
 
@@ -431,22 +440,30 @@ static int atrust_acos_set_security_env(struct sc_card *card,
 				    int se_num)
 {
 	u8              *p, *pp;
-	int              r, operation = env->operation;
+	int              r, operation;
 	struct sc_apdu   apdu;
 	u8               sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	atrust_acos_ex_data *ex_data = (atrust_acos_ex_data *)card->drv_data;
 
+	if (env == NULL || ex_data == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	operation = env->operation;
 	p     = sbuf;
 
 	/* copy key reference, if present */
 	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+		if (env->key_ref_len > 255 || env->key_ref_len > sizeof(sbuf) - 10)
+			return SC_ERROR_INVALID_ARGUMENTS;
 		if (env->flags & SC_SEC_ENV_KEY_REF_SYMMETRIC)
 			*p++ = 0x83;
 		else
 			*p++ = 0x84;
-		*p++ = env->key_ref_len;
-		memcpy(p, env->key_ref, env->key_ref_len);
-		p += env->key_ref_len;
+		*p++ = (u8)env->key_ref_len;
+		if (env->key_ref_len > 0) {
+			memcpy(p, env->key_ref, env->key_ref_len);
+			p += env->key_ref_len;
+		}
 	}
 	pp = p;
 	if (operation == SC_SEC_OPERATION_DECIPHER){
@@ -561,7 +578,10 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	atrust_acos_ex_data *ex_data = (atrust_acos_ex_data *)card->drv_data;
 
-	if (datalen > SC_MAX_APDU_BUFFER_SIZE)
+	if (data == NULL || out == NULL || ex_data == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (datalen > sizeof(sbuf) || datalen > 255)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (ex_data->sec_ops == SC_SEC_OPERATION_SIGN) {
@@ -579,9 +599,12 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 		apdu.datalen = datalen;
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00) {
+			sc_mem_clear(sbuf, sizeof(sbuf));
+			sc_mem_clear(rbuf, sizeof(rbuf));
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,
 				       sc_check_sw(card, apdu.sw1, apdu.sw2));
+		}
 
 		/* call COMPUTE SIGNATURE */
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x2A,
@@ -595,9 +618,15 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
-			memcpy(out, apdu.resp, len);
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
+			if (outlen < apdu.resplen) {
+				sc_mem_clear(sbuf, sizeof(sbuf));
+				sc_mem_clear(rbuf, sizeof(rbuf));
+				return SC_ERROR_BUFFER_TOO_SMALL;
+			}
+			memcpy(out, apdu.resp, apdu.resplen);
+			sc_mem_clear(sbuf, sizeof(sbuf));
+			sc_mem_clear(rbuf, sizeof(rbuf));
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
 		}
 	} else if (ex_data->sec_ops == SC_SEC_OPERATION_AUTHENTICATE) {
 		size_t tmp_len;
@@ -612,13 +641,21 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 			tmp_len = sizeof(sbuf);
 			r = sc_pkcs1_encode(card->ctx, flags, data, datalen,
 					sbuf, &tmp_len, sizeof(sbuf)*8, NULL);
-			if (r < 0)
+			if (r < 0) {
+				sc_mem_clear(sbuf, sizeof(sbuf));
+				sc_mem_clear(rbuf, sizeof(rbuf));
 				return r;
+			}
 		} else {
 			memcpy(sbuf, data, datalen);
 			tmp_len = datalen;
 		}
-		apdu.lc = tmp_len;
+		if (tmp_len > 255) {
+			sc_mem_clear(sbuf, sizeof(sbuf));
+			sc_mem_clear(rbuf, sizeof(rbuf));
+			return SC_ERROR_INVALID_ARGUMENTS;
+		}
+		apdu.lc = (u8)tmp_len;
 		apdu.data = sbuf;
 		apdu.datalen = tmp_len;
 		apdu.resp = rbuf;
@@ -626,20 +663,31 @@ static int atrust_acos_compute_signature(struct sc_card *card,
 		apdu.le = 256;
 		r = sc_transmit_apdu(card, &apdu);
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+		if (apdu.sw1 != 0x90 || apdu.sw2 != 0x00) {
+			sc_mem_clear(sbuf, sizeof(sbuf));
+			sc_mem_clear(rbuf, sizeof(rbuf));
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
-		{
-			size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
-
-			memcpy(out, apdu.resp, len);
-			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
 		}
-	} else
+		if (outlen < apdu.resplen) {
+			sc_mem_clear(sbuf, sizeof(sbuf));
+			sc_mem_clear(rbuf, sizeof(rbuf));
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		}
+		memcpy(out, apdu.resp, apdu.resplen);
+		sc_mem_clear(sbuf, sizeof(sbuf));
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
+	} else {
+		sc_mem_clear(sbuf, sizeof(sbuf));
+		sc_mem_clear(rbuf, sizeof(rbuf));
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
+	}
 
 	/* clear old state */
 	ex_data->sec_ops = 0;
 	ex_data->fix_digestInfo = 0;
+	sc_mem_clear(sbuf, sizeof(sbuf));
+	sc_mem_clear(rbuf, sizeof(rbuf));
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
@@ -655,10 +703,10 @@ static int atrust_acos_decipher(struct sc_card *card,
 	u8 rbuf[SC_MAX_APDU_BUFFER_SIZE];
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
-	if (card == NULL || crgram == NULL || out == NULL)
-		return SC_ERROR_INTERNAL;
+	if (crgram == NULL || out == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	LOG_FUNC_CALLED(card->ctx);
-	if (crgram_len > 255)
+	if (crgram_len > 255 || crgram_len + 1 > sizeof(sbuf))
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* INS: 0x2A  PERFORM SECURITY OPERATION
@@ -677,12 +725,19 @@ static int atrust_acos_decipher(struct sc_card *card,
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
-
-		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
+		if (outlen < apdu.resplen) {
+			sc_mem_clear(sbuf, sizeof(sbuf));
+			sc_mem_clear(rbuf, sizeof(rbuf));
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		}
+		memcpy(out, apdu.resp, apdu.resplen);
+		sc_mem_clear(sbuf, sizeof(sbuf));
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
 	}
 
+	sc_mem_clear(sbuf, sizeof(sbuf));
+	sc_mem_clear(rbuf, sizeof(rbuf));
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 

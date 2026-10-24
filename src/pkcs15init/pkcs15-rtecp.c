@@ -23,6 +23,7 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "libopensc/opensc.h"
 #include "libopensc/cardctl.h"
@@ -307,7 +308,7 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	unsigned char auth_id, paramset;
 	sc_pkcs15_prkey_info_t *key_info;
 	sc_file_t *file;
-	int r;
+	int r, pval;
 
 	if (!profile || !p15card || !p15card->card || !p15card->card->ctx
 			|| !obj || !obj->data)
@@ -336,12 +337,12 @@ static int rtecp_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 	if (obj->type == SC_PKCS15_TYPE_PRKEY_GOSTR3410)
 	{
-		if (key_info->params.len < sizeof(int))
+		if (!key_info->params.data || key_info->params.len < sizeof(int))
 			return SC_ERROR_INVALID_ARGUMENTS;
-		if (((int*)key_info->params.data)[0] < 1
-				|| ((int*)key_info->params.data)[0] > 3)
+		memcpy(&pval, key_info->params.data, sizeof(int));
+		if (pval < 1 || pval > 3)
 			return SC_ERROR_INVALID_ARGUMENTS;
-		paramset = ((unsigned int*)key_info->params.data)[0] & 0x03;
+		paramset = (unsigned char)(pval & 0x03);
 		static_assert(sizeof(prgkey_prop) / sizeof(prgkey_prop[0]) > 1, "internal error");
 		static_assert(sizeof(pbgkey_prop) / sizeof(pbgkey_prop[0]) > 1, "internal error");
 		prgkey_prop[1] = 0x10 + (paramset << 4);
@@ -474,8 +475,10 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	buf = calloc(1, buf_len);
 	if (!buf)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-	if (key_len > buf_len)
+	if (key_len > buf_len) {
+		free(buf);
 		return SC_ERROR_INTERNAL;
+	}
 	if (key->algorithm == SC_ALGORITHM_RSA)
 	{
 		/* p */
@@ -505,14 +508,16 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	r = sc_select_file(card, &path, NULL);
 	if (r == SC_SUCCESS)
 		r = sc_change_reference_data(card, 0, 0, NULL, 0, buf, key_len, NULL);
-	sc_mem_clear(buf, key_len);
+	sc_mem_clear(buf, buf_len);
 	/* store public key */
 	if (key->algorithm == SC_ALGORITHM_RSA)
 		key_len = len * 3;
 	else
 		goto end;
-	if (key_len > buf_len)
-		return SC_ERROR_INTERNAL;
+	if (key_len > buf_len) {
+		r = SC_ERROR_INTERNAL;
+		goto end;
+	}
 	if (key->algorithm == SC_ALGORITHM_RSA)
 	{
 		/* modulus */
@@ -528,8 +533,10 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		r = sc_profile_get_file(profile, "PuKey-DF", &pukey_df);
 		if (r == SC_SUCCESS)
 		{
-			if (!pukey_df)
-				return SC_ERROR_INTERNAL;
+			if (!pukey_df) {
+				r = SC_ERROR_INTERNAL;
+				goto end;
+			}
 			path = pukey_df->path;
 			r = sc_append_file_id(&path, key_info->key_reference);
 			sc_file_free(pukey_df);
@@ -547,6 +554,7 @@ static int rtecp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_log(card->ctx,  "%s\n", "Store public key failed");
 	}
 end:
+	sc_mem_clear(buf, buf_len);
 	free(buf);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -563,11 +571,12 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int r;
 
 	if (!profile || !p15card || !p15card->card || !p15card->card->ctx
-			|| !obj || !obj->data || !pubkey)
+			|| !obj || !obj->data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	ctx = p15card->card->ctx;
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
+	memset(&data, 0, sizeof(data));
 	switch (obj->type)
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
@@ -608,7 +617,6 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		data.u.gostr3410.xy = calloc(1, data.u.gostr3410.xy_len);
 		if (!data.u.gostr3410.xy)
 		{
-			free(data.u.gostr3410.xy);
 			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 		}
 		break;
@@ -616,8 +624,9 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		return SC_ERROR_INTERNAL;
 	}
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_RTECP_GENERATE_KEY, &data);
-	if (r == SC_SUCCESS)
+	if (r == SC_SUCCESS && pubkey != NULL)
 	{
+		memset(pubkey, 0, sizeof(*pubkey));
 		pubkey->algorithm = data.type;
 		switch (data.type)
 		{
@@ -631,6 +640,18 @@ static int rtecp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			pubkey->u.gostr3410.xy.data = data.u.gostr3410.xy;
 			pubkey->u.gostr3410.xy.len = data.u.gostr3410.xy_len;
 			break;
+		}
+	}
+	else
+	{
+		if (data.type == SC_ALGORITHM_RSA)
+		{
+			free(data.u.rsa.modulus);
+			free(data.u.rsa.exponent);
+		}
+		else if (data.type == SC_ALGORITHM_GOSTR3410)
+		{
+			free(data.u.gostr3410.xy);
 		}
 	}
 	LOG_FUNC_RETURN(ctx, r);

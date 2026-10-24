@@ -93,6 +93,10 @@ static int entersafe_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 		 mf_data.data.df.create_ac=0x10;
 		 mf_data.data.df.append_ac=0xC0;
 		 mf_data.data.df.lock_ac=0x10;
+		 if (mf_file->namelen > sizeof(mf_data.data.df.aid)) {
+			 sc_file_free(mf_file);
+			 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_DATA);
+		 }
 		 memcpy(mf_data.data.df.aid,mf_file->name,mf_file->namelen);
 		 sc_file_free(mf_file);
 
@@ -133,7 +137,7 @@ static int entersafe_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 			 LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "Initialize EF(DIR) failed with file size too large");
 		 buff = calloc(1,size);
 		 if(!buff)
-			  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
+			  SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);
 		 memset(buff,0,size);
 
 		 ret = sc_update_binary(card,0,buff,size,0);
@@ -153,9 +157,16 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (!df)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	{/* df */
 		 sc_entersafe_create_data df_data;
 
+		 if (df->namelen > sizeof(df_data.data.df.aid))
+			  return SC_ERROR_INVALID_ARGUMENTS;
+
+		 memset(&df_data, 0, sizeof(df_data));
 		 df_data.type = SC_ENTERSAFE_DF_DATA;
 		 df_data.data.df.file_id[0]=(df->id >> 8) & 0xFF;
 		 df_data.data.df.file_id[1]=df->id & 0xFF;
@@ -166,7 +177,8 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 df_data.data.df.create_ac=0x10;
 		 df_data.data.df.append_ac=0xC0;
 		 df_data.data.df.lock_ac=0x10;
-		 memcpy(df_data.data.df.aid,df->name,df->namelen);
+		 if (df->namelen > 0)
+			  memcpy(df_data.data.df.aid, df->name, df->namelen);
 
 		 ret = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_CREATE_FILE, &df_data);
 		 LOG_TEST_RET(card->ctx,ret,"Create DF failed");
@@ -180,6 +192,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 ret = sc_profile_get_file(profile, "p15_gpkf", &gpkf_file);
 		 LOG_TEST_RET(card->ctx,ret,"Get GPKF info failed");
 
+		 memset(&ef_data, 0, sizeof(ef_data));
 		 ef_data.type=SC_ENTERSAFE_EF_DATA;
 		 ef_data.data.ef.file_id[0]=(gpkf_file->id>>8)&0xFF;
 		 ef_data.data.ef.file_id[1]=gpkf_file->id&0xFF;
@@ -219,6 +232,7 @@ static int entersafe_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 				   SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INCONSISTENT_PROFILE);
 			  }
 
+			  memset(&tmp, 0, sizeof(tmp));
 			  tmp.type=SC_ENTERSAFE_EF_DATA;
 			  tmp.data.ef.file_id[0]=(file->id>>8)&0xFF;
 			  tmp.data.ef.file_id[1]=file->id&0xFF;
@@ -252,7 +266,7 @@ static int entersafe_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15c
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+	if (!auth_info || auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
 
 	if (auth_info->attrs.pin.reference < ENTERSAFE_USER_PIN_ID)
@@ -270,9 +284,14 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 {
 	struct sc_card *card = p15card->card;
 	int	r;
-	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!pin_obj || !pin_obj->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
@@ -283,16 +302,17 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 if (!pin || !pin_len || pin_len > 16)
 			  return SC_ERROR_INVALID_ARGUMENTS;
 
+		 memset(&data, 0, sizeof(data));
 		 data.key_id = auth_info->attrs.pin.reference;
 		 data.usage=0x0B;
 		 data.key_data.symmetric.EC=0x33;
 		 data.key_data.symmetric.ver=0x00;
 		 /* pad pin with 0 */
-		 memset(data.key_data.symmetric.key_val, 0, sizeof(data.key_data.symmetric.key_val));
 		 memcpy(data.key_data.symmetric.key_val, pin, pin_len);
 		 data.key_data.symmetric.key_len=16;
 
 		 r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
+		 sc_mem_clear(&data, sizeof(data));
 		 if (r < 0)
 			 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 
@@ -306,16 +326,17 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		 if (!puk || !puk_len || puk_len > 16)
 			  return SC_ERROR_INVALID_ARGUMENTS;
 
+		 memset(&data, 0, sizeof(data));
 		 data.key_id = auth_info->attrs.pin.reference+1;
 		 data.usage=0x0B;
 		 data.key_data.symmetric.EC=0x33;
 		 data.key_data.symmetric.ver=0x00;
 		 /* pad pin with 0 */
-		 memset(data.key_data.symmetric.key_val, 0, sizeof(data.key_data.symmetric.key_val));
 		 memcpy(data.key_data.symmetric.key_val, puk, puk_len);
 		 data.key_data.symmetric.key_len=16;
 
 		 r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
+		 sc_mem_clear(&data, sizeof(data));
 	}
 
 
@@ -326,6 +347,8 @@ static int entersafe_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15c
 								   sc_pkcs15_prkey_info_t *prkey)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (!prkey)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	if (prkey->key_reference < ENTERSAFE_MIN_KEY_ID)
 		prkey->key_reference = ENTERSAFE_MIN_KEY_ID;
 	if (prkey->key_reference > ENTERSAFE_MAX_KEY_ID)
@@ -343,21 +366,34 @@ static int entersafe_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 							   sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
-	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *kinfo;
 	sc_card_t *card = p15card->card;
 	sc_entersafe_wkey_data data;
 	sc_file_t              *tfile;
 	const sc_acl_entry_t   *acl_entry;
 	int r;
-
-	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)obj->data;
-	size_t keybits = key_info->modulus_length;
+	struct sc_pkcs15_prkey_info *key_info;
+	size_t keybits;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if ( key->algorithm != SC_ALGORITHM_RSA )
+	if (!obj || !obj->data || !key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	key_info = (struct sc_pkcs15_prkey_info *)obj->data;
+	keybits = key_info->modulus_length;
+
+	if ( key->algorithm != SC_ALGORITHM_RSA ||
+		 !key->u.rsa.p.len || !key->u.rsa.p.data ||
+		 !key->u.rsa.q.len || !key->u.rsa.q.data ||
+		 !key->u.rsa.dmp1.len || !key->u.rsa.dmp1.data ||
+		 !key->u.rsa.dmq1.len || !key->u.rsa.dmq1.data ||
+		 !key->u.rsa.iqmp.len || !key->u.rsa.iqmp.data ||
+		 !key->u.rsa.modulus.len || !key->u.rsa.modulus.data ||
+		 !key->u.rsa.exponent.len || !key->u.rsa.exponent.data )
 	{
-		 /* ignore non-RSA keys */
+		 /* ignore non-RSA or incomplete keys */
 		 SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,SC_ERROR_INVALID_ARGUMENTS);
 	}
 
@@ -382,10 +418,13 @@ static int entersafe_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_free(tfile);
 	LOG_TEST_RET(card->ctx, r, "can't verify pin");
 
+	memset(&data, 0, sizeof(data));
 	data.key_id = (u8) kinfo->key_reference;
 	data.usage=0x22;
 	data.key_data.rsa=&key->u.rsa;
-	return sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
+	r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
+	sc_mem_clear(&data, sizeof(data));
+	return r;
 }
 
 static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
@@ -393,15 +432,21 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 {
 	int r;
 	sc_entersafe_gen_key_data	gendat;
-	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *kinfo;
 	sc_card_t *card = p15card->card;
 	sc_file_t              *tfile;
 	const sc_acl_entry_t   *acl_entry;
-
-	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *)obj->data;
-	size_t keybits = key_info->modulus_length;
+	struct sc_pkcs15_prkey_info *key_info;
+	size_t keybits;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (!obj || !obj->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	key_info = (struct sc_pkcs15_prkey_info *)obj->data;
+	keybits = key_info->modulus_length;
 
 	if ( obj->type != SC_PKCS15_TYPE_PRKEY_RSA )
 	{
@@ -429,6 +474,7 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 	sc_file_free(tfile);
 	LOG_TEST_RET(card->ctx, r, "can't verify pin");
 
+	memset(&gendat, 0, sizeof(gendat));
 	/* generate key pair */
 	gendat.key_id     = (u8) kinfo->key_reference;
 	gendat.key_length = (size_t) kinfo->modulus_length;
@@ -436,17 +482,27 @@ static int entersafe_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15ca
 	r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_GENERATE_KEY, &gendat);
 	LOG_TEST_RET(card->ctx, r, "EnterSafe generate RSA key pair failed");
 
+	if (!gendat.modulus)
+		return SC_ERROR_INTERNAL;
+
 	/* get the modulus via READ PUBLIC KEY */
 	if (pubkey) {
 		u8 *buf;
-		struct sc_pkcs15_pubkey_rsa *rsa = &pubkey->u.rsa;
+		struct sc_pkcs15_pubkey_rsa *rsa;
+
+		memset(pubkey, 0, sizeof(*pubkey));
+		rsa = &pubkey->u.rsa;
 		/* set the modulus */
 		rsa->modulus.data = gendat.modulus;
 		rsa->modulus.len  = kinfo->modulus_length >> 3;
 		/* set the exponent (always 0x10001) */
 		buf = malloc(3);
-		if (!buf)
+		if (!buf) {
+			free(gendat.modulus);
+			rsa->modulus.data = NULL;
+			rsa->modulus.len = 0;
 			return SC_ERROR_OUT_OF_MEMORY;
+		}
 		buf[0] = 0x01;
 		buf[1] = 0x00;
 		buf[2] = 0x01;

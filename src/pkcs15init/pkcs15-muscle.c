@@ -42,9 +42,9 @@
 static int muscle_erase_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
 	int r;
-	struct sc_file *file;
+	struct sc_file *file = NULL;
 	struct sc_path path;
-	memset(&file, 0, sizeof(file));
+
 	sc_format_path("3F00", &path);
 	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
@@ -68,9 +68,9 @@ static int
 muscle_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df)
 {
 	int	r;
-	struct sc_file *file;
+	struct sc_file *file = NULL;
 	struct sc_path path;
-	memset(&file, 0, sizeof(file));
+
 	sc_format_path("3F00", &path);
 	if ((r = sc_select_file(p15card->card, &path, &file)) < 0)
 		return r;
@@ -199,7 +199,12 @@ muscle_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE,r);
 	}
 	rsa = &key->u.rsa;
+	if (!rsa->modulus.len || !rsa->p.len || !rsa->p.data ||
+	    !rsa->q.len || !rsa->q.data || !rsa->iqmp.len || !rsa->iqmp.data ||
+	    !rsa->dmp1.len || !rsa->dmp1.data || !rsa->dmq1.len || !rsa->dmq1.data)
+		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
+	memset(&info, 0, sizeof(info));
 	info.keySize = rsa->modulus.len << 3;
 	info.keyType = 0x03; /* CRT type */
 	info.keyLocation = key_info->key_reference * 2; /* Mult by 2 to preserve even/odd keynumber structure */
@@ -218,6 +223,7 @@ muscle_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	info.dq1Value = rsa->dmq1.data;
 
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_MUSCLE_IMPORT_KEY, &info);
+	sc_mem_clear(&info, sizeof(info));
 	if (r < 0) {
 		sc_log(ctx,  "Unable to import key");
 		SC_FUNC_RETURN(ctx, SC_LOG_DEBUG_VERBOSE,r);
@@ -273,26 +279,31 @@ muscle_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	r = sc_card_ctl(card, SC_CARDCTL_MUSCLE_GENERATE_KEY, &args);
 	if (r < 0) {
+		sc_mem_clear(&args, sizeof(args));
 		sc_log(card->ctx,  "Unable to generate key");
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
 	}
 
-	memset(&extArgs, 0, sizeof(extArgs));
-	memset(pubkey, 0, sizeof(*pubkey));
+	if (pubkey != NULL) {
+		memset(&extArgs, 0, sizeof(extArgs));
+		memset(pubkey, 0, sizeof(*pubkey));
 
-	extArgs.keyType = 0x01;
-	extArgs.keyLocation = args.publicKeyLocation;
-	r = sc_card_ctl(card, SC_CARDCTL_MUSCLE_EXTRACT_KEY, &extArgs);
-	if (r < 0) {
-		sc_log(card->ctx,  "Unable to extract the public key");
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
+		extArgs.keyType = 0x01;
+		extArgs.keyLocation = args.publicKeyLocation;
+		r = sc_card_ctl(card, SC_CARDCTL_MUSCLE_EXTRACT_KEY, &extArgs);
+		if (r < 0) {
+			sc_mem_clear(&args, sizeof(args));
+			sc_log(card->ctx,  "Unable to extract the public key");
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
+		}
+
+		pubkey->algorithm = SC_ALGORITHM_RSA;
+		pubkey->u.rsa.modulus.len   = extArgs.modLength;
+		pubkey->u.rsa.modulus.data  = extArgs.modValue;
+		pubkey->u.rsa.exponent.len  = extArgs.expLength;
+		pubkey->u.rsa.exponent.data = extArgs.expValue;
 	}
-
-	pubkey->algorithm = SC_ALGORITHM_RSA;
-	pubkey->u.rsa.modulus.len   = extArgs.modLength;
-	pubkey->u.rsa.modulus.data  = extArgs.modValue;
-	pubkey->u.rsa.exponent.len  = extArgs.expLength;
-	pubkey->u.rsa.exponent.data = extArgs.expValue;
+	sc_mem_clear(&args, sizeof(args));
 
 	return r;
 }

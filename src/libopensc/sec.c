@@ -43,7 +43,7 @@ int sc_decipher(sc_card_t *card,
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	LOG_FUNC_CALLED(card->ctx);
-	if (card->ops->decipher == NULL)
+	if (card->ops == NULL || card->ops->decipher == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->decipher(card, crgram, crgram_len, out, outlen);
         SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -58,8 +58,11 @@ int sc_compute_signature(sc_card_t *card,
 	if (card == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
+	if (data == NULL || out == NULL) {
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	}
 	LOG_FUNC_CALLED(card->ctx);
-	if (card->ops->compute_signature == NULL)
+	if (card->ops == NULL || card->ops->compute_signature == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->compute_signature(card, data, datalen, out, outlen);
         SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -74,7 +77,7 @@ int sc_unwrap(sc_card_t *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
-	if (card->ops->unwrap == NULL)
+	if (card->ops == NULL || card->ops->unwrap == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->unwrap(card, crgram, crgram_len);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -85,11 +88,11 @@ int sc_wrap(sc_card_t *card,
 {
 	int r;
 
-	if (card == NULL) {
+	if (card == NULL || out == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
-	if (card->ops->wrap == NULL)
+	if (card->ops == NULL || card->ops->wrap == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->wrap(card, out, outlen);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -101,11 +104,11 @@ int sc_set_security_env(sc_card_t *card,
 {
 	int r;
 
-	if (card == NULL) {
+	if (card == NULL || env == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
-	if (card->ops->set_security_env == NULL)
+	if (card->ops == NULL || card->ops->set_security_env == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->set_security_env(card, env, se_num);
         SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -119,7 +122,7 @@ int sc_restore_security_env(sc_card_t *card, int se_num)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
-	if (card->ops->restore_security_env == NULL)
+	if (card->ops == NULL || card->ops->restore_security_env == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->restore_security_env(card, se_num);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -146,7 +149,7 @@ int sc_verify(sc_card_t *card, unsigned int type, int ref,
 
 int sc_logout(sc_card_t *card)
 {
-	if (card->ops->logout == NULL)
+	if (card->ops == NULL || card->ops->logout == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
 	return card->ops->logout(card);
 }
@@ -203,7 +206,7 @@ int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	int r, debug;
 
-	if (card == NULL) {
+	if (card == NULL || data == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
@@ -214,44 +217,46 @@ int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 		card->ctx->debug = 0;
 	}
 
-	if (card->ops->pin_cmd) {
+	if (card->ops && card->ops->pin_cmd) {
 		r = card->ops->pin_cmd(card, data);
 	} else if (!(data->flags & SC_PIN_CMD_USE_PINPAD)) {
 		/* Card driver doesn't support new style pin_cmd, fall
 		 * back to old interface */
 
 		r = SC_ERROR_NOT_SUPPORTED;
-		switch (data->cmd) {
-		case SC_PIN_CMD_VERIFY:
-			if (card->ops->verify != NULL)
-				r = card->ops->verify(card,
-					data->pin_type,
-					data->pin_reference,
-					data->pin1.data,
-					(size_t) data->pin1.len,
-					&data->pin1.tries_left);
-			break;
-		case SC_PIN_CMD_CHANGE:
-			if (card->ops->change_reference_data != NULL)
-				r = card->ops->change_reference_data(card,
-					data->pin_type,
-					data->pin_reference,
-					data->pin1.data,
-					(size_t) data->pin1.len,
-					data->pin2.data,
-					(size_t) data->pin2.len,
-					&data->pin1.tries_left);
-			break;
-		case SC_PIN_CMD_UNBLOCK:
-			if (card->ops->reset_retry_counter != NULL)
-				r = card->ops->reset_retry_counter(card,
-					data->pin_type,
-					data->pin_reference,
-					data->pin1.data,
-					(size_t) data->pin1.len,
-					data->pin2.data,
-					(size_t) data->pin2.len);
-			break;
+		if (card->ops) {
+			switch (data->cmd) {
+			case SC_PIN_CMD_VERIFY:
+				if (card->ops->verify != NULL)
+					r = card->ops->verify(card,
+						data->pin_type,
+						data->pin_reference,
+						data->pin1.data,
+						(size_t) data->pin1.len,
+						&data->pin1.tries_left);
+				break;
+			case SC_PIN_CMD_CHANGE:
+				if (card->ops->change_reference_data != NULL)
+					r = card->ops->change_reference_data(card,
+						data->pin_type,
+						data->pin_reference,
+						data->pin1.data,
+						(size_t) data->pin1.len,
+						data->pin2.data,
+						(size_t) data->pin2.len,
+						&data->pin1.tries_left);
+				break;
+			case SC_PIN_CMD_UNBLOCK:
+				if (card->ops->reset_retry_counter != NULL)
+					r = card->ops->reset_retry_counter(card,
+						data->pin_type,
+						data->pin_reference,
+						data->pin1.data,
+						(size_t) data->pin1.len,
+						data->pin2.data,
+						(size_t) data->pin2.len);
+				break;
+			}
 		}
 		if (r == SC_ERROR_NOT_SUPPORTED)
 			sc_log(card->ctx,  "unsupported PIN operation (%d)",
@@ -278,7 +283,14 @@ int sc_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
  */
 int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 {
-	size_t i = 0, j, pin_len = pin->len;
+	size_t i = 0, j, pin_len;
+
+	if (buf == NULL || pin == NULL || buflen == 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	pin_len = pin->len;
+	if (pin_len > 0 && pin->data == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (pin->max_length && pin_len > pin->max_length)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -292,6 +304,8 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 			if (pin->data[i] < '0' || pin->data[i] > '9')
 				return SC_ERROR_INVALID_ARGUMENTS;
 		}
+		if (buflen < 1)
+			return SC_ERROR_BUFFER_TOO_SMALL;
 		buf[0] = 0x20 | (u8) pin_len;
 		buf++;
 		buflen--;
@@ -301,15 +315,18 @@ int sc_build_pin(u8 *buf, size_t buflen, struct sc_pin_cmd_pin *pin, int pad)
 	if (pin->encoding == SC_PIN_ENCODING_ASCII) {
 		if (pin_len > buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
-		memcpy(buf, pin->data, pin_len);
+		if (pin_len > 0)
+			memcpy(buf, pin->data, pin_len);
 		i = pin_len;
 	} else if (pin->encoding == SC_PIN_ENCODING_BCD || pin->encoding == SC_PIN_ENCODING_GLP) {
 		if (pin_len > 2 * buflen)
 			return SC_ERROR_BUFFER_TOO_SMALL;
 		for (i = j = 0; j < pin_len; j++) {
-			if (!isdigit(pin->data[j])) {
+			if (!isdigit((unsigned char)pin->data[j])) {
 				return SC_ERROR_INVALID_DATA;
 			}
+			if ((j & 1) == 0)
+				buf[i] = 0;
 			buf[i] <<= 4;
 			buf[i] |= pin->data[j] & 0xf;
 			if (j & 1)
@@ -350,11 +367,11 @@ sc_encrypt_sym(struct sc_card *card, const u8 *plaintext, size_t plaintext_len,
 {
 	int r;
 
-	if (card == NULL)
+	if (card == NULL || plaintext == NULL || out == NULL || outlen == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
-	if (card->ops->encrypt_sym == NULL)
+	if (card->ops == NULL || card->ops->encrypt_sym == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->encrypt_sym(card, plaintext, plaintext_len, out, outlen);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -366,11 +383,11 @@ sc_decrypt_sym(struct sc_card *card, const u8 *data, size_t data_len,
 {
 	int r;
 
-	if (card == NULL)
+	if (card == NULL || data == NULL || out == NULL || outlen == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
-	if (card->ops->decrypt_sym == NULL)
+	if (card->ops == NULL || card->ops->decrypt_sym == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_NOT_SUPPORTED);
 	r = card->ops->decrypt_sym(card, data, data_len, out, outlen);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);

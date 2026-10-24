@@ -43,6 +43,8 @@ is_string_valid_atr(const char *atr_str)
 	unsigned char atr[SC_MAX_ATR_SIZE];
 	size_t atr_len = sizeof(atr);
 
+	if (!atr_str)
+		return 0;
 	if (sc_hex_to_bin(atr_str, atr, &atr_len))
 		return 0;
 	if (atr_len < 2)
@@ -57,6 +59,9 @@ int util_connect_reader (sc_context_t *ctx, sc_reader_t **reader,
 {
 	struct sc_reader *found = NULL;
 	int r;
+
+	if (!reader)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	setbuf(stderr, NULL);
 	setbuf(stdout, NULL);
@@ -146,7 +151,7 @@ int util_connect_reader (sc_context_t *ctx, sc_reader_t **reader,
 					*reader = sc_ctx_get_reader_by_name(ctx, reader_id);
 			}
 		}
-autofound:
+	autofound:
 		if (!(*reader)) {
 			fprintf(stderr, "Reader \"%s\" not found (%d reader(s) detected)\n",
 					reader_id, sc_ctx_get_reader_count(ctx));
@@ -167,6 +172,9 @@ util_connect_card_ex(sc_context_t *ctx, sc_card_t **cardp,
 	struct sc_reader *reader = NULL;
 	struct sc_card *card = NULL;
 	int r;
+
+	if (!cardp)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	r = util_connect_reader(ctx, &reader, reader_id, do_wait);
 	if(r)
@@ -206,6 +214,9 @@ void util_print_binary(FILE *f, const u8 *buf, size_t count)
 {
 	size_t i;
 
+	if (!f || (!buf && count > 0))
+		return;
+
 	for (i = 0; i < count; i++) {
 		unsigned char c = buf[i];
 		const char *format;
@@ -222,6 +233,9 @@ void util_hex_dump(FILE *f, const u8 *in, size_t len, const char *sep)
 {
 	size_t i;
 
+	if (!f || (!in && len > 0))
+		return;
+
 	for (i = 0; i < len; i++) {
 		if (sep != NULL && i)
 			fprintf(f, "%s", sep);
@@ -232,6 +246,9 @@ void util_hex_dump(FILE *f, const u8 *in, size_t len, const char *sep)
 void util_hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr)
 {
 	int lines = 0;
+
+	if (!f || (!in && count > 0))
+		return;
 
  	while (count) {
 		char ascbuf[17];
@@ -265,13 +282,16 @@ util_print_usage_internal(const char *app_name, const struct option options[],
 	int i;
 	int header_shown = 0;
 
+	if (!app_name || !options || !option_help)
+		return;
+
 	if (args)
 		printf("Usage: %s [OPTIONS] %s\n", app_name, args);
 	else
 		printf("Usage: %s [OPTIONS]\n", app_name);
 
 	for (i = 0; options[i].name; i++) {
-		char buf[40];
+		char buf[128];
 		const char *arg_str;
 
 		/* Skip "hidden" options */
@@ -294,9 +314,9 @@ util_print_usage_internal(const char *app_name, const struct option options[],
 		}
 		if (isascii(options[i].val) &&
 		    isprint(options[i].val) && !isspace(options[i].val))
-			sprintf(buf, "-%c, --%s%s", options[i].val, options[i].name, arg_str);
+			snprintf(buf, sizeof(buf), "-%c, --%s%s", options[i].val, options[i].name, arg_str);
 		else
-			sprintf(buf, "    --%s%s", options[i].name, arg_str);
+			snprintf(buf, sizeof(buf), "    --%s%s", options[i].name, arg_str);
 
 		/* print the line - wrap if necessary */
 		if (strlen(buf) > 28) {
@@ -337,8 +357,9 @@ int util_list_card_drivers(const sc_context_t *ctx)
 
 const char * util_acl_to_str(const sc_acl_entry_t *e)
 {
-	static char line[80], buf[20];
+	static char line[80], buf[64];
 	unsigned int acl;
+	size_t linelen;
 
 	if (e == NULL)
 		return "N/A";
@@ -350,13 +371,16 @@ const char * util_acl_to_str(const sc_acl_entry_t *e)
 		case SC_AC_UNKNOWN:
 			return "N/A";
 		case SC_AC_NEVER:
-			return "NEVR";
+			strcpy(buf, "NEVR");
+			break;
 		case SC_AC_NONE:
-			return "NONE";
+			strcpy(buf, "NONE");
+			break;
 		case SC_AC_CHV:
-			strcpy(buf, "CHV");
 			if (e->key_ref != SC_AC_KEY_REF_NONE)
-				sprintf(buf + 3, "%d", e->key_ref);
+				snprintf(buf, sizeof(buf), "CHV%d", e->key_ref);
+			else
+				strcpy(buf, "CHV");
 			break;
 		case SC_AC_TERM:
 			strcpy(buf, "TERM");
@@ -365,24 +389,28 @@ const char * util_acl_to_str(const sc_acl_entry_t *e)
 			strcpy(buf, "PROT");
 			break;
 		case SC_AC_AUT:
-			strcpy(buf, "AUTH");
 			if (e->key_ref != SC_AC_KEY_REF_NONE)
-				sprintf(buf + 4, "%d", e->key_ref);
+				snprintf(buf, sizeof(buf), "AUTH%d", e->key_ref);
+			else
+				strcpy(buf, "AUTH");
 			break;
 		case SC_AC_SEN:
-			strcpy(buf, "Sec.Env. ");
 			if (e->key_ref != SC_AC_KEY_REF_NONE)
-				sprintf(buf + 3, "#%d", e->key_ref);
+				snprintf(buf, sizeof(buf), "Sec.Env. #%d", e->key_ref);
+			else
+				strcpy(buf, "Sec.Env. ");
 			break;
 		case SC_AC_SCB:
-			strcpy(buf, "Sec.ControlByte ");
 			if (e->key_ref != SC_AC_KEY_REF_NONE)
-				sprintf(buf + 3, "Ox%X", e->key_ref);
+				snprintf(buf, sizeof(buf), "Sec.ControlByte 0x%X", e->key_ref);
+			else
+				strcpy(buf, "Sec.ControlByte ");
 			break;
 		case SC_AC_IDA:
-			strcpy(buf, "PKCS#15 AuthID ");
 			if (e->key_ref != SC_AC_KEY_REF_NONE)
-				sprintf(buf + 3, "#%d", e->key_ref);
+				snprintf(buf, sizeof(buf), "PKCS#15 AuthID #%d", e->key_ref);
+			else
+				strcpy(buf, "PKCS#15 AuthID ");
 			break;
 		default:
 			strcpy(buf, "????");
@@ -393,7 +421,9 @@ const char * util_acl_to_str(const sc_acl_entry_t *e)
 		e = e->next;
 	}
 	line[(sizeof line)-1] = '\0'; /* make sure it's NUL terminated */
-	line[strlen(line)-1] = 0; /* get rid of trailing space */
+	linelen = strlen(line);
+	if (linelen > 0 && line[linelen - 1] == ' ')
+		line[linelen - 1] = 0; /* get rid of trailing space */
 	return line;
 }
 
@@ -446,7 +476,12 @@ util_getpass (char **lineptr, size_t *len, FILE *stream)
 	int ch = 0;
 #ifndef _WIN32
 	struct termios old, new;
+#endif
 
+	if (!lineptr)
+		return -1;
+
+#ifndef _WIN32
 	fflush(stdout);
 	if (tcgetattr (fileno (stdout), &old) != 0) {
 		fprintf(stderr, "\nWARNING: not prompting for input, because stdout is not a TTY\n");

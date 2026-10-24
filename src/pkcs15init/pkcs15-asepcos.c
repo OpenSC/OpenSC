@@ -137,6 +137,8 @@ static int asepcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_context_t *ctx = p15card->card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!df)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	/* Check whether a transport exists and verify it if present */
 	r = asepcos_check_verify_tpin(profile, p15card);
 	if (r != SC_SUCCESS)
@@ -170,6 +172,8 @@ static int asepcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int asepcos_select_pin_reference(sc_profile_t *profile,
 		sc_pkcs15_card_t *p15card, sc_pkcs15_auth_info_t *auth_info)
 {
+	if (!auth_info)
+		return SC_ERROR_INVALID_ARGUMENTS;
 	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 		return SC_SUCCESS;
 	if (auth_info->attrs.pin.reference <= 0)
@@ -226,17 +230,18 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
 	if (auth_info == NULL || auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
 
+	/* pin length */
+	if (!pin || pinlen < 4 || pinlen > 16) {
+		sc_log(card->ctx,  "invalid PIN length");
+		return SC_ERROR_INVALID_ARGUMENTS;
+	}
+
 	/* outer tag */
 	*p++ = 0x85;
 	p++;
 	/* as a file id for pin with use 0x00:<key id> */
 	*p++ = (pinid >> 8) & 0xff;
 	*p++ = pinid & 0xff;
-	/* pin length */
-	if (pinlen < 4 || pinlen > 16) {
-		sc_log(card->ctx,  "invalid PIN length");
-		return SC_ERROR_INVALID_ARGUMENTS;
-	}
 	*p++ = 0x00;
 	*p++ = pinlen & 0xff;
 	/* max tries */
@@ -255,11 +260,14 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
 	buf[1] = p - buf - 2;
 
 	nfile = sc_file_new();
-	if (nfile == NULL)
+	if (nfile == NULL) {
+		sc_mem_clear(buf, sizeof(buf));
 		return SC_ERROR_OUT_OF_MEMORY;
+	}
 	nfile->type = SC_FILE_TYPE_INTERNAL_EF;
 	nfile->id   = pinid & 0xffff;
 	r = sc_file_set_prop_attr(nfile, buf, p - buf);
+	sc_mem_clear(buf, sizeof(buf));
 	if (r != SC_SUCCESS) {
 		sc_file_free(nfile);
 		return r;
@@ -343,20 +351,22 @@ static int asepcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_file_t *df, sc_pkcs15_object_t *pin_obj,
 	const u8 *pin, size_t pin_len, const u8 *puk, size_t puk_len)
 {
-	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
+	sc_pkcs15_auth_info_t *auth_info;
 	struct sc_card *card = p15card->card;
 	int       r, pid, puk_id;
-	sc_path_t tpath = df->path;
+	sc_path_t tpath;
 	sc_file_t *tfile = NULL;
 	sc_context_t *ctx = p15card->card->ctx;
 
 	LOG_FUNC_CALLED(ctx);
-	if (!pin || !pin_len)
+	if (!pin || !pin_len || !pin_obj || !pin_obj->data || !df)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (auth_info == NULL || auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
+	auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
         	return SC_ERROR_OBJECT_NOT_VALID;
 
+	tpath = df->path;
 	pid = (auth_info->attrs.pin.reference & 0xff) | (int)(((tpath.len >> 1) - 1) << 16);
 
 	/* get the ACL of the application DF */
@@ -564,14 +574,26 @@ static int asepcos_do_create_key(sc_card_t *card, size_t ksize, int fileid,
 static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj)
 {
-	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *kinfo;
 	int       r;
 	size_t    len;
 	u8        buf[512], *p = buf;
-	size_t    blen = kinfo->modulus_length / 8;
-	int       afileid = -1,
-	          fileid = (kinfo->path.value[kinfo->path.len-2]) << 8 |
-	                   kinfo->path.value[kinfo->path.len-1];
+	size_t    blen;
+	int afileid = -1, fileid;
+
+	if (!obj || !obj->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	blen = kinfo->modulus_length / 8;
+
+	if (kinfo->path.len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	fileid = (kinfo->path.value[kinfo->path.len - 2]) << 8 |
+		 kinfo->path.value[kinfo->path.len - 1];
+
+	if (blen + 64 > sizeof(buf))
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (obj->auth_id.len != 0) {
 		/* the key is protected by a PIN */
@@ -585,6 +607,9 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			return r;
 		}
 
+		if (!pin || !pin->data)
+			return SC_ERROR_INTERNAL;
+
 		auth_info = (struct sc_pkcs15_auth_info *)pin->data;
 
 		st.akn = auth_info->attrs.pin.reference;
@@ -595,6 +620,9 @@ static int asepcos_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		}
 		afileid = st.fileid;
 	}
+
+	if (!profile || !profile->df_info || !profile->df_info->file)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* authenticate if necessary */
 	r = asepcos_do_authenticate(profile, p15card, &profile->df_info->file->path, SC_AC_OP_CREATE);
@@ -661,12 +689,23 @@ static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *pro
 	sc_path_t tpath;
 	sc_cardctl_asepcos_change_key_t	ckdata;
 
+	if (!key || !key->exponent.data || !key->exponent.len ||
+	    !key->p.data || !key->p.len || !key->q.data || !key->q.len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (key->exponent.len > sizeof(buf) || key->p.len > sizeof(buf) || key->q.len > sizeof(buf) ||
+	    key->exponent.len + key->p.len + key->q.len + 32 > sizeof(buf))
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* authenticate if necessary */
 	if (obj->auth_id.len != 0) {
 		r = asepcos_do_authenticate(profile, p15card, &kinfo->path, SC_AC_OP_UPDATE);
 		if (r != SC_SUCCESS)
 			return r;
 	}
+
+	if (kinfo->path.len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* select the rsa private key */
 	memset(&tpath, 0, sizeof(sc_path_t));
@@ -706,6 +745,7 @@ static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *pro
 	ckdata.datalen = p - buf;
 
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_ASEPCOS_CHANGE_KEY, &ckdata);
+	sc_mem_clear(buf, sizeof(buf));
 	if (r != SC_SUCCESS) {
 		sc_log(p15card->card->ctx,  "unable to change key data");
 		return r;
@@ -724,7 +764,12 @@ static int asepcos_do_store_rsa_key(sc_pkcs15_card_t *p15card, sc_profile_t *pro
 static int asepcos_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
-	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *kinfo;
+
+	if (!obj || !obj->data || !key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
 
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
 		sc_log(p15card->card->ctx,  "only RSA is currently supported");
@@ -745,17 +790,25 @@ static int asepcos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	sc_pkcs15_object_t *obj, sc_pkcs15_pubkey_t *pubkey)
 {
 	int r;
-	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *kinfo;
 	sc_card_t *card = p15card->card;
 	sc_apdu_t apdu;
 	sc_path_t tpath;
 	u8  rbuf[SC_MAX_APDU_BUFFER_SIZE],
 	    sbuf[SC_MAX_APDU_BUFFER_SIZE];
 
+	if (!obj || !obj->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+
 	/* authenticate if necessary */
 	r = asepcos_do_authenticate(profile, p15card, &kinfo->path, SC_AC_OP_UPDATE);
 	if (r != SC_SUCCESS)
 		return r;
+
+	if (kinfo->path.len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* select the rsa private key */
 	memset(&tpath, 0, sizeof(sc_path_t));
@@ -788,17 +841,25 @@ static int asepcos_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 		return SC_ERROR_INTERNAL;
 	}
 
-	pubkey->u.rsa.modulus.len  = apdu.resplen;
-	pubkey->u.rsa.modulus.data = malloc(apdu.resplen);
-	if (pubkey->u.rsa.modulus.data == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-	memcpy(pubkey->u.rsa.modulus.data, apdu.resp, apdu.resplen);
+	if (pubkey) {
+		memset(pubkey, 0, sizeof(*pubkey));
+		pubkey->u.rsa.modulus.len  = apdu.resplen;
+		pubkey->u.rsa.modulus.data = malloc(apdu.resplen);
+		if (pubkey->u.rsa.modulus.data == NULL)
+			return SC_ERROR_OUT_OF_MEMORY;
+		memcpy(pubkey->u.rsa.modulus.data, apdu.resp, apdu.resplen);
 
-	pubkey->u.rsa.exponent.len  = 3;
-	pubkey->u.rsa.exponent.data = malloc(3);
-	if (pubkey->u.rsa.exponent.data == NULL)
-		return SC_ERROR_OUT_OF_MEMORY;
-	memcpy(pubkey->u.rsa.exponent.data, sbuf, 3);
+		pubkey->u.rsa.exponent.len  = 3;
+		pubkey->u.rsa.exponent.data = malloc(3);
+		if (pubkey->u.rsa.exponent.data == NULL) {
+			free(pubkey->u.rsa.modulus.data);
+			pubkey->u.rsa.modulus.data = NULL;
+			pubkey->u.rsa.modulus.len = 0;
+			return SC_ERROR_OUT_OF_MEMORY;
+		}
+		memcpy(pubkey->u.rsa.exponent.data, sbuf, 3);
+		pubkey->algorithm = SC_ALGORITHM_RSA;
+	}
 
 	kinfo->key_reference = tpath.value[1];
 	return SC_SUCCESS;

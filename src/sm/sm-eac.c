@@ -220,6 +220,10 @@ static int encode_mse_cdata(struct sc_context *ctx, int protocol,
 			goto err;
 		}
 		oid_len = OBJ_length(object);
+		if (oid_len > sizeof(oid)) {
+			r = SC_ERROR_INTERNAL;
+			goto err;
+		}
 		memcpy(oid, OBJ_get0_data(object), oid_len);
 	}
 
@@ -328,15 +332,20 @@ static int eac_mse_set_at_pace(sc_card_t *card, int protocol,
 {
 	int r, tries;
 	unsigned char key = secret_key;
+	u8 my_sw1 = 0, my_sw2 = 0;
 
 	r = eac_mse_set_at(card, 0xC1, protocol, &key, sizeof key, NULL,
-			0, NULL, 0, NULL, 0, chat, sw1, sw2);
+			0, NULL, 0, NULL, 0, chat, &my_sw1, &my_sw2);
+	if (sw1)
+		*sw1 = my_sw1;
+	if (sw2)
+		*sw2 = my_sw2;
 	if (0 > r)
 		goto err;
 
-	if (*sw1 == 0x63) {
-		if ((*sw2 & 0xc0) == 0xc0) {
-			tries = *sw2 & 0x0f;
+	if (my_sw1 == 0x63) {
+		if ((my_sw2 & 0xc0) == 0xc0) {
+			tries = my_sw2 & 0x0f;
 			if (tries <= 1) {
 				/* this is only a warning... */
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Remaining tries: %d (%s must be %s)\n",
@@ -346,14 +355,14 @@ static int eac_mse_set_at_pace(sc_card_t *card, int protocol,
 			r = SC_SUCCESS;
 		} else {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Unknown status bytes: SW1=%02X, SW2=%02X\n",
-					*sw1, *sw2);
+					my_sw1, my_sw2);
 			r = SC_ERROR_CARD_CMD_FAILED;
 		}
-	} else if (*sw1 == 0x62 && *sw2 == 0x83) {
+	} else if (my_sw1 == 0x62 && my_sw2 == 0x83) {
 			 sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Password is deactivated\n");
 			 r = SC_ERROR_AUTH_METHOD_BLOCKED;
 	} else {
-		r = sc_check_sw(card, *sw1, *sw2);
+		r = sc_check_sw(card, my_sw1, my_sw2);
 	}
 
 err:
@@ -629,6 +638,8 @@ get_psec(sc_card_t *card, const char *pin, size_t length_pin, enum s_type pin_id
 		length_pin = strlen(p);
 		if (length_pin > EAC_MAX_MRZ_LEN) {
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "MRZ too long");
+			OPENSSL_cleanse(p, length_pin);
+			free(p);
 			return NULL;
 		}
 		pin = p;
@@ -1859,7 +1870,7 @@ int eac_pace_get_tries_left(sc_card_t *card,
 		sw2 = apdu.sw2;
 #endif
 
-		if (r > 0 && (sw1 == 0x63) && ((sw2 & 0xc0) == 0xc0)) {
+		if (r >= 0 && (sw1 == 0x63) && ((sw2 & 0xc0) == 0xc0)) {
 			*tries_left = sw2 & 0x0f;
 		} else {
 			*tries_left = -1;

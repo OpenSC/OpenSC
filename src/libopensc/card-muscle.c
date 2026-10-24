@@ -67,8 +67,12 @@ typedef struct muscle_private {
 static int muscle_finish(sc_card_t *card)
 {
 	muscle_private_t *priv = MUSCLE_DATA(card);
-	mscfs_free(priv->fs);
-	free(priv);
+	if (priv) {
+		mscfs_free(priv->fs);
+		sc_mem_clear(priv, sizeof(*priv));
+		free(priv);
+		card->drv_data = NULL;
+	}
 	return 0;
 }
 
@@ -321,10 +325,14 @@ static int muscle_delete_file(sc_card_t *card, const sc_path_t *path_in)
 	mscfs_t *fs = MUSCLE_FS(card);
 	mscfs_file_t *file_data = NULL;
 	int r = 0;
+	int x;
+
+	if (!path_in)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	r = mscfs_loadFileInfo(fs, path_in->value, path_in->len, &file_data, NULL);
 	if(r < 0) SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE,r);
-	for(int x = 0; x < fs->cache.size; x++) {
+	for(x = 0; x < fs->cache.size; x++) {
 		mscfs_file_t *file = &fs->cache.array[x];
 		file->deleteFile = 0;
 	}
@@ -405,6 +413,8 @@ static int select_item(sc_card_t *card, const sc_path_t *path_in, sc_file_t ** f
 	if(file_out) {
 		sc_file_t *file;
 		file = sc_file_new();
+		if (!file)
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_OUT_OF_MEMORY);
 		file->path = *path_in;
 		file->size = file_data->size;
 		file->id = (oid[2] << 8) | oid[3];
@@ -554,6 +564,10 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd)
 	muscle_private_t* priv = MUSCLE_DATA(card);
 	const int bufferLength = MSC_MAX_PIN_COMMAND_LENGTH;
 	u8 buffer[MSC_MAX_PIN_COMMAND_LENGTH];
+
+	if (!priv || !cmd)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	switch(cmd->cmd) {
 	case SC_PIN_CMD_VERIFY:
 		switch(cmd->pin_type) {
@@ -566,7 +580,7 @@ static int muscle_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *cmd)
 			cmd->apdu = &apdu;
 			cmd->pin1.offset = 5;
 			r = iso_ops->pin_cmd(card, cmd);
-			if(r >= 0)
+			if (r >= 0 && cmd->pin_reference < 16)
 				priv->verifiedPins |= (1 << cmd->pin_reference);
 			return r;
 		}
@@ -692,6 +706,9 @@ static int muscle_set_security_env(sc_card_t *card,
 {
 	muscle_private_t* priv = MUSCLE_DATA(card);
 
+	if (!priv || !env)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (env->operation != SC_SEC_OPERATION_SIGN &&
 	    env->operation != SC_SEC_OPERATION_DECIPHER) {
 		sc_log(card->ctx,  "Invalid crypto operation supplied.\n");
@@ -745,6 +762,9 @@ static int muscle_decipher(sc_card_t * card,
 	u8 key_id;
 	int r;
 
+	if (!priv || !crgram || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* sanity check */
 	if (priv->env.operation != SC_SEC_OPERATION_DECIPHER)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -774,6 +794,9 @@ static int muscle_compute_signature(sc_card_t *card, const u8 *data,
 	muscle_private_t* priv = MUSCLE_DATA(card);
 	u8 key_id;
 	int r;
+
+	if (!priv || !data || !out)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	key_id = priv->rsa_key_ref * 2; /* Private key */
 
