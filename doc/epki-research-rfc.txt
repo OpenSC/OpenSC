@@ -142,12 +142,64 @@ library were confirmed loaded. No negotiated signature-scheme trace or
 authenticated page content was retained. The temporary browser profile and
 caches were removed; 25 protected production/runtime paths were unchanged.
 
-Reset/reconnect, direct card-level logout and injected failures were
-covered offline, not exercised on the card. The hardware test checked
-post-logout session state but did not attempt an unauthenticated signature.
-No 2.129/2.126 hardware validation is claimed. Other cards, key roles, PIN
-roles, concurrent clients and Windows/macOS remain untested. These results
-support the stated experimental profile, not general card compatibility.
+Later on 23 October, a private lifecycle harness verified six further
+PKCS#1 v1.5/SHA-256 signatures on the same card. Removal and reinsertion
+required a fresh connection and another identity check. In one outer
+transaction, authenticated signing and direct sc_logout were followed by
+local authentication denial and a raw same-key MSE/PSO probe without
+another VERIFY; PSO returned 6982. A fresh login could sign again. A retained
+PKCS#11 signing client also signed three times around two reselections of
+the known PKCS#15 application by a separate read-only core client, using
+one explicit login and the framework PIN cache.
+
+These observations do not validate the in-place reset callback, two
+authenticated signing clients, unrelated applications or stress behavior.
+Injected failures have offline coverage only. No 2.129/2.126 hardware
+validation is claimed. Other cards, key/PIN roles and Windows/macOS remain
+untested. These results support the stated experimental profile, not
+general card compatibility.
+
+Reproducing the focused checks
+
+The committed software regressions are src/tests/unittests/epki-research.c
+(driver behavior) and epki-lifecycle.c (real core/PKCS#15 paths with a
+synthetic reader). After configuring with --enable-cmocka and building:
+
+    make -C src/tests/unittests check TESTS='epki-research epki-lifecycle'
+
+For a manual signature smoke test, use the configuration above only for
+the selected process. Do not install middleware or register a browser
+module. Set tool to <build>/src/tools/pkcs11-tool and module to
+<build>/src/pkcs11/.libs/opensc-pkcs11.so, using absolute paths in the same
+built checkout; set config to the isolated configuration file. List slots with:
+
+    OPENSC_CONF="$config" OPENSC_DEBUG=0 "$tool" --module "$module" --list-slots
+
+Set slot to the intended PKCS#11 slot ID and id to the hexadecimal ID of
+its authentication certificate/private key. Check that selection locally
+before authenticating. In a new private working directory, run one command
+at a time and stop on any failure:
+
+    OPENSC_CONF="$config" OPENSC_DEBUG=0 "$tool" --module "$module" \
+        --slot "$slot" --read-object --type cert --id "$id" --output-file cert.der
+    openssl x509 -inform DER -in cert.der -pubkey -noout > public-key.pem
+    openssl rand -out message.bin 64
+    OPENSC_CONF="$config" OPENSC_DEBUG=0 "$tool" --module "$module" \
+        --slot "$slot" --login --sign --id "$id" --mechanism SHA256-RSA-PKCS \
+        --input-file message.bin --output-file signature.bin
+    openssl dgst -sha256 -verify public-key.pem -signature signature.bin message.bin
+
+Enter the PIN only at the tool's hidden local prompt; omit --pin. Stop on
+any failure without retrying authentication. Do not share the certificate,
+public key or a full debug capture. To check fresh-connection reinsertion,
+let the process exit, remove/reinsert the same card, recheck slot/identity
+and repeat with a fresh message. Finish other card-backed work first.
+
+This procedure does not reproduce the private harness's retained-connection
+removal, direct card-level logout or two-client sequence. In particular,
+PKCS#11 software logout is not proof of physical-card logout. Those results
+remain separately reported observations. No card-specific hardware harness
+is added to the automated suite; the software regressions remain in cmocka.
 
 Provenance
 
