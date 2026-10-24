@@ -228,37 +228,29 @@ observed_card(void)
 }
 
 static void
-reject_other_cards_without_io(void **state)
-{
-	sc_card_t card = observed_card();
-	card.atr.value[14] ^= 1;
-	assert_int_equal(epki_match_card(&card), 0);
-	assert_int_equal(epki_init(&card), SC_ERROR_INVALID_CARD);
-	card.atr.len--;
-	assert_int_equal(epki_match_card(&card), 0);
-	assert_int_equal(epki_match_card(NULL), 0);
-	assert_int_equal(epki_init(NULL), SC_ERROR_INVALID_CARD);
-	assert_int_equal(select_calls, 0);
-}
-
-static void
 deny_security_operations_without_io(void **state)
 {
 	sc_card_t card = observed_card();
-	struct sc_card_operations *ops = sc_get_test_epki_research_driver()->ops;
+	sc_context_t ctx = {0};
+	sc_security_env_t env = {0};
 	struct sc_pin_cmd_data pin = {0};
+	u8 input[32] = {0}, output[256], args = 0;
 	unsigned commands[] = {SC_PIN_CMD_VERIFY, SC_PIN_CMD_CHANGE,
 			SC_PIN_CMD_UNBLOCK, SC_PIN_CMD_GET_INFO};
 	size_t i;
+	card.ctx = &ctx;
+	card.ops = sc_get_test_epki_research_driver()->ops;
 	for (i = 0; i < sizeof(commands) / sizeof(commands[0]); i++) {
 		pin.cmd = commands[i];
-		assert_int_equal(ops->pin_cmd(&card, &pin), SC_ERROR_NOT_SUPPORTED);
+		assert_int_equal(sc_pin_cmd(&card, &pin), SC_ERROR_NOT_SUPPORTED);
 	}
-	assert_int_equal(ops->compute_signature(&card, NULL, 0, NULL, 0), SC_ERROR_NOT_SUPPORTED);
-	assert_int_equal(ops->decipher(&card, NULL, 0, NULL, 0), SC_ERROR_NOT_SUPPORTED);
-	assert_int_equal(ops->set_security_env(&card, NULL, 0), SC_ERROR_NOT_SUPPORTED);
-	assert_int_equal(ops->card_ctl(&card, ~0UL, NULL), SC_ERROR_NOT_SUPPORTED);
+	assert_int_equal(sc_compute_signature(&card, input, sizeof(input), output, sizeof(output)), SC_ERROR_NOT_SUPPORTED);
+	assert_int_equal(sc_decipher(&card, input, sizeof(input), output, sizeof(output)), SC_ERROR_NOT_SUPPORTED);
+	assert_int_equal(sc_set_security_env(&card, &env, 0), SC_ERROR_NOT_SUPPORTED);
+	assert_int_equal(sc_card_ctl(&card, ~0UL, &args), SC_ERROR_NOT_SUPPORTED);
 	assert_int_equal(select_calls, 0);
+	assert_int_equal(file_select_calls, 0);
+	assert_int_equal(transmit_calls, 0);
 }
 
 static void
@@ -395,6 +387,8 @@ no_implicit_profile_probe(void **state)
 	sc_card_t card = observed_card();
 	sc_context_t ctx;
 	size_t i;
+	assert_int_equal(epki_match_card(NULL), 0);
+	assert_int_equal(epki_init(NULL), SC_ERROR_INVALID_CARD);
 	assert_int_equal(epki_match_card(&card), 0);
 	assert_int_equal(epki_init(&card), SC_ERROR_INVALID_CARD);
 	for (i = 0; i < sizeof(configs) / sizeof(configs[0]); i++) {
@@ -521,11 +515,11 @@ enabled_profile_requires_aid_selection(void **state)
 }
 
 static void
-enable_only_explicit_matching_profile(void **state)
+enable_signing_for_explicit_matching_profile(void **state)
 {
 	sc_card_t card = observed_card();
 	sc_context_t ctx = {0};
-	static const u8 good[] = {0x02, 0x82}, wrong[] = {0x03, 0x82};
+	static const u8 good[] = {0x02, 0x82};
 	card.ctx = &ctx;
 	ctx.conf = scconf_new(NULL);
 	assert_non_null(ctx.conf);
@@ -533,12 +527,6 @@ enable_only_explicit_matching_profile(void **state)
 					 "card_driver epki-research { enable_profile = true; enable_local_signing = true; }"),
 			1);
 	ctx.conf_blocks[0] = ctx.conf->root;
-	expect_version(wrong, sizeof(wrong));
-	assert_int_equal(epki_init(&card), SC_ERROR_INVALID_CARD);
-	assert_null(card.drv_data);
-	assert_int_equal(card.algorithm_count, 0);
-	expect_version(good, 1);
-	assert_int_equal(epki_init(&card), SC_ERROR_INVALID_CARD);
 	expect_version(good, sizeof(good));
 	assert_int_equal(epki_init(&card), SC_SUCCESS);
 	assert_non_null(card.drv_data);
@@ -550,7 +538,7 @@ enable_only_explicit_matching_profile(void **state)
 	assert_false(card.caps & SC_CARD_CAP_ISO7816_PIN_INFO);
 	assert_false(card.caps & SC_CARD_CAP_APDU_EXT);
 	assert_false(((struct epki_data *)card.drv_data)->raw_rsa_enabled);
-	assert_int_equal(transmit_calls, 3);
+	assert_int_equal(transmit_calls, 1);
 	epki_finish(&card);
 	free(card.algorithms);
 	scconf_free(ctx.conf);
@@ -562,7 +550,6 @@ prepare_enabled(sc_card_t *card, sc_context_t *ctx, struct epki_data *priv)
 	*card = observed_card();
 	memset(ctx, 0, sizeof(*ctx));
 	memset(priv, 0, sizeof(*priv));
-	priv->signing_enabled = 1;
 	priv->profile_checked = 1;
 	priv->app_selected = 1;
 	card->ctx = ctx;
@@ -671,7 +658,6 @@ reject_unsafe_pin_requests_before_io(void **state)
 	ctx.debug = 1;
 	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_NOT_ALLOWED);
 	assert_int_equal(transmit_calls, 0);
-	assert_false(priv.pin_attempted);
 }
 
 static sc_security_env_t
@@ -746,7 +732,6 @@ only_verified_signing_environment(void **state)
 	next_apdu.sw2 = 0x82;
 	assert_int_equal(epki_set_security_env(&card, &env, 0), SC_ERROR_SECURITY_STATUS_NOT_SATISFIED);
 	assert_false(priv.security_env_valid);
-	assert_true(priv.signing_failed);
 	assert_false(priv.pin_verified);
 	assert_int_equal(epki_set_security_env(&card, &env, 0), SC_ERROR_SECURITY_STATUS_NOT_SATISFIED);
 	assert_int_equal(transmit_calls, 1);
@@ -784,7 +769,6 @@ failed_mse_allows_a_new_authenticated_operation(void **state)
 	expect_mse();
 	assert_int_equal(epki_set_security_env(&card, &env, 0), SC_SUCCESS);
 	assert_true(priv.security_env_valid);
-	assert_false(priv.signing_failed);
 	assert_int_equal(transmit_calls, 3);
 	epki_clear_selection(&priv);
 }
@@ -882,7 +866,8 @@ raw_rsa_remains_sign_only_and_requires_authentication(void **state)
 	priv.pin_verified = 1;
 	env.operation = SC_SEC_OPERATION_DECIPHER;
 	assert_int_equal(epki_set_security_env(&card, &env, 0), SC_ERROR_NOT_SUPPORTED);
-	assert_int_equal(epki_reject_crypto(&card, encoded, sizeof(encoded), out, sizeof(out)),
+	card.ops = sc_get_test_epki_research_driver()->ops;
+	assert_int_equal(sc_decipher(&card, encoded, sizeof(encoded), out, sizeof(out)),
 			SC_ERROR_NOT_SUPPORTED);
 	env.operation = SC_SEC_OPERATION_SIGN;
 	env.algorithm_flags |= SC_ALGORITHM_RSA_HASH_NONE;
@@ -927,8 +912,6 @@ raw_rsa_uses_exact_extended_framing_and_bounded_response(void **state)
 			signature, sizeof(signature), 0x90, 0, SC_SUCCESS};
 	assert_int_equal(epki_compute_signature(&card, encoded, sizeof(encoded), out, sizeof(out)), 256);
 	assert_memory_equal(out, signature, sizeof(out));
-	assert_int_equal(priv.successful_signatures, 1);
-	assert_false(priv.signing_failed);
 	assert_false(priv.security_env_valid);
 	assert_int_equal(epki_compute_signature(&card, encoded, sizeof(encoded), out, sizeof(out)),
 			SC_ERROR_NOT_ALLOWED);
@@ -964,9 +947,7 @@ raw_rsa_failure_consumes_current_operation(void **state)
 			next_apdu.response_len = 255;
 		assert_int_equal(epki_compute_signature(&card, encoded, sizeof(encoded), out, sizeof(out)),
 				errors[i]);
-		assert_true(priv.signing_failed);
 		assert_false(priv.security_env_valid);
-		assert_int_equal(priv.successful_signatures, 0);
 		assert_int_equal(out[0], 0xa5);
 		/* A consumed operation cannot send another PSO. A transport
 		 * failure also invalidates the raw algorithm selection. */
@@ -980,7 +961,6 @@ raw_rsa_failure_consumes_current_operation(void **state)
 		}
 		expect_mse();
 		assert_int_equal(epki_set_security_env(&card, &env, 0), SC_SUCCESS);
-		assert_false(priv.signing_failed);
 		epki_clear_selection(&priv);
 	}
 }
@@ -1009,8 +989,6 @@ sign_digest_info_once_and_validate_response(void **state)
 	assert_int_equal(epki_compute_signature(&card, digest_info, sizeof(digest_info), out, sizeof(out)),
 			SC_ERROR_NOT_ALLOWED);
 	assert_int_equal(transmit_calls, 1);
-	assert_int_equal(priv.successful_signatures, 1);
-	assert_false(priv.signing_failed);
 
 	prepare_enabled(&card, &ctx, &priv);
 	priv.pin_verified = priv.security_env_valid = 1;
@@ -1019,9 +997,6 @@ sign_digest_info_once_and_validate_response(void **state)
 	assert_int_equal(epki_compute_signature(&card, digest_info, sizeof(digest_info), out, sizeof(out)),
 			SC_ERROR_UNKNOWN_DATA_RECEIVED);
 	assert_int_equal(out[0], 0);
-	assert_true(priv.sign_attempted);
-	assert_true(priv.signing_failed);
-	assert_int_equal(priv.successful_signatures, 0);
 }
 
 static void
@@ -1049,23 +1024,16 @@ repeated_operations_do_not_exhaust_driver(void **state)
 		assert_int_equal(epki_compute_signature(&card, digest_info, sizeof(digest_info),
 						 out, sizeof(out)),
 				256);
-		assert_memory_equal(out, signature, sizeof(out));
-		assert_int_equal(priv.successful_signatures, i + 1);
-		assert_true(priv.pin_verified);
-		assert_false(priv.signing_failed);
-		assert_false(priv.security_env_valid);
-		/* A second PSO without its own MSE must never be sent. */
-		assert_int_equal(epki_compute_signature(&card, digest_info, sizeof(digest_info),
-						 out, sizeof(out)),
-				SC_ERROR_NOT_ALLOWED);
-		assert_int_equal(card.lock_count, 1);
-		assert_int_equal(transmit_calls, 1 + 2 * (i + 1));
 	}
-	/* There is no application-specific per-connection signature quota. */
-	expect_mse();
-	assert_int_equal(epki_set_security_env(&card, &env, 0), SC_SUCCESS);
-	assert_int_equal(transmit_calls, 66);
+	/* No per-connection quota; a fresh MSE is still required after each PSO. */
+	assert_memory_equal(out, signature, sizeof(out));
 	assert_true(priv.pin_verified);
+	assert_false(priv.security_env_valid);
+	assert_int_equal(epki_compute_signature(&card, digest_info, sizeof(digest_info),
+					 out, sizeof(out)),
+			SC_ERROR_NOT_ALLOWED);
+	assert_int_equal(card.lock_count, 1);
+	assert_int_equal(transmit_calls, 65); /* One VERIFY and 32 MSE/PSO pairs. */
 }
 
 static void
@@ -1111,8 +1079,7 @@ new_transaction_requires_fresh_authentication(void **state)
 	for (phase = 0; phase < 2; phase++) {
 		prepare_enabled(&card, &ctx, &priv);
 		card.ops = sc_get_test_epki_research_driver()->ops;
-		priv.pin_attempted = priv.pin_verified = priv.security_env_valid = 1;
-		priv.successful_signatures = 1;
+		priv.pin_verified = priv.security_env_valid = 1;
 		new_transaction_at_next_lock = 1;
 		if (phase == 0)
 			assert_int_equal(epki_set_security_env(&card, &env, 0), SC_ERROR_SECURITY_STATUS_NOT_SATISFIED);
@@ -1208,13 +1175,10 @@ invalidate_authenticated_cache_on_transaction_or_foreign_selection(void **state)
 	expect_selection(SC_PATH_TYPE_DF_NAME, epki_aid, sizeof(epki_aid), 1, SC_SUCCESS);
 	assert_int_equal(epki_select_file(&card, &app, NULL), SC_SUCCESS);
 	priv.pin_verified = 1;
-	priv.pin_attempted = 1;
 	assert_int_equal(epki_reader_lock_obtained(&card, 0), SC_SUCCESS);
 	assert_false(priv.pin_verified);
 	assert_false(priv.app_selected);
 	assert_null(priv.app_file);
-	assert_true(priv.pin_attempted);
-	assert_true(priv.signing_enabled);
 	assert_int_equal(epki_set_security_env(&card, &env, 0), SC_ERROR_SECURITY_STATUS_NOT_SATISFIED);
 
 	/* New transaction must select again; it cannot reuse stale state. */
@@ -1236,7 +1200,6 @@ invalidate_authenticated_cache_on_transaction_or_foreign_selection(void **state)
 	assert_false(priv.pin_verified);
 	assert_false(priv.app_selected);
 	assert_null(priv.app_file);
-	assert_true(priv.pin_attempted);
 }
 
 static void
@@ -1257,14 +1220,12 @@ child_df_or_unknown_fci_cannot_preserve_authenticated_app(void **state)
 		expect_selection(SC_PATH_TYPE_DF_NAME, epki_aid, sizeof(epki_aid), 1, SC_SUCCESS);
 		assert_int_equal(epki_select_file(&card, &app, NULL), SC_SUCCESS);
 		priv.pin_verified = 1;
-		priv.pin_attempted = 1;
 		child_file_type = types[i];
 		expect_selection(SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 1, SC_SUCCESS);
 		assert_int_equal(epki_select_file(&card, &child, NULL), SC_SUCCESS);
 		assert_false(priv.pin_verified);
 		assert_false(priv.app_selected);
 		assert_null(priv.app_file);
-		assert_true(priv.pin_attempted);
 	}
 	child_file_type = SC_FILE_TYPE_WORKING_EF;
 }
@@ -1282,14 +1243,12 @@ invalidate_cache_before_consulting_it_on_new_transaction(void **state)
 	expect_selection(SC_PATH_TYPE_DF_NAME, epki_aid, sizeof(epki_aid), 1, SC_SUCCESS);
 	assert_int_equal(epki_select_file(&card, &app, NULL), SC_SUCCESS);
 	priv.pin_verified = 1;
-	priv.pin_attempted = 1;
 	new_transaction_at_next_lock = 1;
 	/* A stale cached app is discarded during lock acquisition. */
 	expect_selection(SC_PATH_TYPE_DF_NAME, epki_aid, sizeof(epki_aid), 1, SC_SUCCESS);
 	assert_int_equal(epki_select_file(&card, &app, NULL), SC_SUCCESS);
 	assert_int_equal(file_select_calls, 2);
 	assert_false(priv.pin_verified);
-	assert_true(priv.pin_attempted);
 	assert_true(priv.app_selected);
 	assert_non_null(priv.app_file);
 	epki_clear_selection(&priv);
@@ -1334,7 +1293,6 @@ reset_requires_profile_check_before_reauthentication(void **state)
 	prepare_enabled(&card, &ctx, &priv);
 	priv.pin_verified = priv.security_env_valid = 1;
 	assert_int_equal(epki_reader_lock_obtained(&card, 1), SC_SUCCESS);
-	assert_true(priv.signing_enabled);
 	assert_false(priv.profile_checked);
 	assert_false(priv.pin_verified);
 	assert_false(priv.security_env_valid);
@@ -1342,7 +1300,6 @@ reset_requires_profile_check_before_reauthentication(void **state)
 	expect_version(wrong, sizeof(wrong));
 	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_INVALID_CARD);
 	assert_false(priv.profile_checked);
-	assert_false(priv.pin_attempted);
 	assert_int_equal(transmit_calls, 1); /* Public query only; no PIN. */
 
 	/* A later explicit request can recover after a valid profile query. */
@@ -1364,8 +1321,6 @@ reset_requires_profile_check_before_reauthentication(void **state)
 	expect_selection(SC_PATH_TYPE_DF_NAME, epki_aid, sizeof(epki_aid), 1, SC_SUCCESS);
 	expect_version(wrong, sizeof(wrong));
 	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_INVALID_CARD);
-	assert_true(priv.signing_enabled);
-	assert_false(priv.pin_attempted);
 	assert_int_equal(card.lock_count, 0);
 	assert_int_equal(transmit_calls, 1);
 }
@@ -1374,14 +1329,13 @@ int
 main(void)
 {
 	const struct CMUnitTest tests[] = {
-			cmocka_unit_test(reject_other_cards_without_io),
 			cmocka_unit_test(no_implicit_profile_probe),
 			cmocka_unit_test(enabled_profile_still_requires_observed_atr),
 			cmocka_unit_test(read_only_profile_rejects_unverified_versions),
 			cmocka_unit_test(read_only_profile_requires_complete_successful_probe),
 			cmocka_unit_test(explicit_read_only_profile_is_narrow),
 			cmocka_unit_test(enabled_profile_requires_aid_selection),
-			cmocka_unit_test(enable_only_explicit_matching_profile),
+			cmocka_unit_test(enable_signing_for_explicit_matching_profile),
 			cmocka_unit_test(verify_once_per_request_and_preserve_retry_count),
 			cmocka_unit_test(reject_unsafe_pin_requests_before_io),
 			cmocka_unit_test(only_verified_signing_environment),

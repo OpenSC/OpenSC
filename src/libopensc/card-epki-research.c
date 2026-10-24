@@ -23,8 +23,6 @@
 #endif
 
 #include "internal.h"
-#include <limits.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -61,18 +59,13 @@ epki_match_card(sc_card_t *card)
 	return r == SC_SUCCESS && unlock_r == SC_SUCCESS;
 }
 
+/* Private state exists only when local signing is enabled. */
 struct epki_data {
-	int signing_enabled;
 	int raw_rsa_enabled;
 	int raw_signature;
-	int pin_attempted;
 	int pin_verified;
 	int security_env_valid;
-	int sign_attempted;
-	int signing_failed;
-	unsigned successful_signatures;
 	int profile_checked;
-	int diagnostics;
 	int app_selected;
 	sc_file_t *app_file;
 };
@@ -88,22 +81,6 @@ epki_clear_selection(struct epki_data *priv)
 	priv->raw_signature = 0;
 	sc_file_free(priv->app_file);
 	priv->app_file = NULL;
-}
-
-/* Only fixed phase names, return/status codes, booleans and counters. Never
- * print PIN buffers, APDU data, certificates or signing input. */
-static void
-epki_diagnostic(sc_card_t *card, const char *stage, int result,
-		unsigned sw1, unsigned sw2)
-{
-	struct epki_data *priv = card->drv_data;
-	if (priv != NULL && priv->diagnostics && priv->pin_attempted)
-		fprintf(stderr, "OpenSC local diagnostic: phase=%s result=%d sw=%02x%02x "
-				"pin_verified=%d app_selected=%d security_env=%d sign_attempted=%d "
-				"signing_failed=%d successful_signatures=%u\n",
-				stage, result, sw1, sw2, !!priv->pin_verified, !!priv->app_selected,
-				!!priv->security_env_valid, !!priv->sign_attempted,
-				!!priv->signing_failed, priv->successful_signatures);
 }
 
 /* These options belong in an isolated OPENSC_CONF, never the system config. */
@@ -216,9 +193,7 @@ epki_init(sc_card_t *card)
 		epki_finish(card);
 		return r;
 	}
-	priv->signing_enabled = 1;
 	priv->profile_checked = 1;
-	priv->diagnostics = epki_config_bool(card, "enable_local_diagnostics");
 	if (priv->raw_rsa_enabled) {
 		/* The checked 0282 profile supports extended APDUs. Only the
 		 * 256-byte signature input needs one; keep public read sizes
@@ -327,7 +302,7 @@ epki_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **file_out)
 	 * redundant and may discard card authentication. Reuse is limited to
 	 * this exact AID/path while the same outer transaction is still held.
 	 * Direct-child SELECT still runs and requests FCI as required. */
-	reuse = priv != NULL && priv->signing_enabled && priv->pin_verified &&
+	reuse = priv != NULL && priv->pin_verified &&
 		priv->app_selected && priv->app_file != NULL;
 	if (reuse) {
 		if (file_out != NULL && (app_aid_match || path->len == sizeof(app_path))) {
@@ -367,10 +342,8 @@ epki_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **file_out)
 	}
 
 done:
-	if (r < 0) {
+	if (r < 0)
 		epki_clear_selection(priv);
-		epki_diagnostic(card, "select", r, 0, 0);
-	}
 	sc_file_free(selected_file);
 	if (locked)
 		sc_unlock(card);
@@ -385,7 +358,7 @@ epki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 	u8 padded_pin[8];
 	int r;
 
-	if (priv == NULL || !priv->signing_enabled)
+	if (priv == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
 	if (data == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -410,10 +383,6 @@ epki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 	r = sc_lock(card);
 	if (r < 0)
 		return r;
-	if (!priv->signing_enabled) {
-		sc_unlock(card);
-		return SC_ERROR_NOT_ALLOWED;
-	}
 	if (!priv->app_selected) {
 		r = epki_select_application(card, NULL);
 		if (r < 0) {
@@ -432,7 +401,6 @@ epki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 	}
 	/* One VERIFY per caller request. No implicit retry, PIN retention or
 	 * per-connection attempt latch: OpenSC owns its PIN-cache policy. */
-	priv->pin_attempted = 1;
 	priv->pin_verified = 0;
 	priv->security_env_valid = 0;
 	memset(padded_pin, 0xff, sizeof(padded_pin));
@@ -460,8 +428,6 @@ epki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 		data->pin1.logged_in = SC_PIN_STATE_LOGGED_IN;
 	}
 pin_done:
-	epki_diagnostic(card, r == SC_SUCCESS ? "pin-success" : "pin-failure",
-			r, apdu.sw1, apdu.sw2);
 	sc_unlock(card);
 	return r;
 }
@@ -475,7 +441,7 @@ epki_logout(sc_card_t *card)
 	struct epki_data *priv = card != NULL ? card->drv_data : NULL;
 	int r;
 
-	if (priv == NULL || !priv->signing_enabled)
+	if (priv == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
 	r = sc_lock(card);
 	if (r < 0) {
@@ -488,13 +454,6 @@ epki_logout(sc_card_t *card)
 }
 
 static int
-epki_reject_crypto(sc_card_t *card, const u8 *input,
-		size_t input_len, u8 *output, size_t output_len)
-{
-	return SC_ERROR_NOT_SUPPORTED;
-}
-
-static int
 epki_set_security_env(sc_card_t *card,
 		const struct sc_security_env *env, int se_num)
 {
@@ -502,12 +461,11 @@ epki_set_security_env(sc_card_t *card,
 	u8 mse[] = {0x84, 0x01, 0x00, 0x80, 0x01, 0x00};
 	const unsigned long required = SC_SEC_ENV_ALG_PRESENT | SC_SEC_ENV_KEY_REF_PRESENT;
 	const unsigned long supported = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_NONE;
-	const char *stage = "mse-status";
 	sc_apdu_t apdu;
 	size_t i;
 	int r, raw;
 
-	if (priv == NULL || !priv->signing_enabled)
+	if (priv == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
 	priv->security_env_valid = 0;
 	priv->raw_signature = 0;
@@ -533,17 +491,14 @@ epki_set_security_env(sc_card_t *card,
 			return SC_ERROR_NOT_SUPPORTED;
 	mse[2] = env->key_ref[0];
 	r = epki_signing_state(priv, 0);
-	if (r < 0) {
-		epki_diagnostic(card, "mse-local-state", r, 0, 0);
+	if (r < 0)
 		return r;
-	}
 
 	r = sc_lock(card);
 	if (r < 0)
 		return r;
-	r = !priv->signing_enabled ? SC_ERROR_NOT_ALLOWED : epki_signing_state(priv, 0);
+	r = epki_signing_state(priv, 0);
 	if (r < 0) {
-		epki_diagnostic(card, "mse-transaction-state", r, 0, 0);
 		sc_unlock(card);
 		return r;
 	}
@@ -554,21 +509,17 @@ epki_set_security_env(sc_card_t *card,
 	apdu.flags |= SC_APDU_FLAGS_NO_RETRY_WL | SC_APDU_FLAGS_NO_GET_RESP;
 	/* This call sends MSE once. Failure leaves no usable environment; a
 	 * later caller may begin a new operation with a fresh MSE. */
-	priv->signing_failed = 1;
 	r = sc_transmit_apdu(card, &apdu);
-	if (r < 0) {
-		stage = "mse-transport";
+	if (r < 0)
 		epki_clear_selection(priv);
-	} else
+	else
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r == SC_SUCCESS) {
-		priv->signing_failed = 0;
 		priv->security_env_valid = 1;
 		priv->raw_signature = raw;
 	} else if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
 		priv->pin_verified = 0;
 	}
-	epki_diagnostic(card, stage, r, apdu.sw1, apdu.sw2);
 	sc_unlock(card);
 	return r;
 }
@@ -582,7 +533,7 @@ epki_compute_signature(sc_card_t *card, const u8 *input,
 	u8 response[256];
 	int r, raw;
 
-	if (priv == NULL || !priv->signing_enabled)
+	if (priv == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
 	raw = priv->raw_signature;
 	if (raw && !priv->raw_rsa_enabled)
@@ -593,21 +544,16 @@ epki_compute_signature(sc_card_t *card, const u8 *input,
 	if (output_len < sizeof(response))
 		return SC_ERROR_BUFFER_TOO_SMALL;
 	r = epki_signing_state(priv, 1);
-	if (r < 0) {
-		epki_diagnostic(card, "pso-local-state", r, 0, 0);
+	if (r < 0)
 		return r;
-	}
 	r = sc_lock(card);
 	if (r < 0)
 		return r;
-	r = !priv->signing_enabled ? SC_ERROR_NOT_ALLOWED : epki_signing_state(priv, 1);
+	r = epki_signing_state(priv, 1);
 	if (r < 0) {
-		epki_diagnostic(card, "pso-transaction-state", r, 0, 0);
 		sc_unlock(card);
 		return r;
 	}
-	priv->sign_attempted = 1;
-	priv->signing_failed = 1;
 	priv->security_env_valid = 0;
 	sc_format_apdu(card, &apdu, raw ? SC_APDU_CASE_4_EXT : SC_APDU_CASE_4_SHORT,
 			0x2a, raw ? 0x80 : 0x9e, raw ? 0x86 : 0x9a);
@@ -627,37 +573,23 @@ epki_compute_signature(sc_card_t *card, const u8 *input,
 	r = sc_transmit_apdu(card, &apdu);
 	if (r < 0) {
 		epki_clear_selection(priv);
-		epki_diagnostic(card, "pso-transport", r, apdu.sw1, apdu.sw2);
 		goto sign_done;
 	}
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r < 0) {
 		if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
 			priv->pin_verified = 0;
-		epki_diagnostic(card, "pso-status", r, apdu.sw1, apdu.sw2);
 		goto sign_done;
 	}
 	if (apdu.resplen != sizeof(response)) {
 		r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
-		epki_diagnostic(card, "pso-response-length", r, apdu.sw1, apdu.sw2);
 		goto sign_done;
 	}
 	memcpy(output, response, sizeof(response));
-	if (priv->successful_signatures != UINT_MAX)
-		priv->successful_signatures++;
-	priv->signing_failed = 0;
 	r = sizeof(response);
-	epki_diagnostic(card, raw ? "pso-raw-success" : "pso-success", r, apdu.sw1, apdu.sw2);
 sign_done:
 	sc_unlock(card);
 	return r;
-}
-
-static int
-epki_reject_control(sc_card_t *card, unsigned long request, void *data)
-{
-	/* No card management, key generation, formatting, or initialization. */
-	return SC_ERROR_NOT_SUPPORTED;
 }
 
 static struct sc_card_operations epki_ops;
@@ -685,8 +617,6 @@ sc_get_epki_research_driver(void)
 	epki_ops.pin_cmd = epki_pin_cmd;
 	epki_ops.logout = epki_logout;
 	epki_ops.compute_signature = epki_compute_signature;
-	epki_ops.decipher = epki_reject_crypto;
 	epki_ops.set_security_env = epki_set_security_env;
-	epki_ops.card_ctl = epki_reject_control;
 	return &epki_driver;
 }
