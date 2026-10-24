@@ -36,7 +36,6 @@ app default {
         enable_profile = true;
         enable_local_signing = true;
         enable_raw_rsa_signing = true;
-        enable_local_diagnostics = false;
     }
     pkcs11 {
         lock_login = false;
@@ -112,10 +111,10 @@ historical research and is not part of this driver proposal.
 
 Validation
 
-The revised ePKIApplet 2.130 implementation, based on reviewed generic fixes
-over master ccfa7600f7c7ae249118d5f301e679e476a004a5, passed a strict Linux
-build and all 17 offline unit programs. Its 31 mocked driver cases include
-six recognition groups. Six additional lifecycle scenarios use real OpenSC
+On 23 October 2026, the revised ePKIApplet 2.130 implementation, based on
+reviewed generic fixes over master ccfa7600f7c7ae249118d5f301e679e476a004a5,
+passed a strict Linux build and all 17 offline unit programs. Its 31 mocked
+driver cases include six recognition groups. Six additional lifecycle scenarios use real OpenSC
 locks, PKCS#15 PIN caching and use_key dispatch with a synthetic reader;
 only one of those six scenarios passed with the earlier driver. A separate
 local harness checked the production pkcs15_login/pkcs15_logout functions
@@ -158,6 +157,12 @@ Injected failures have offline coverage only. No 2.129/2.126 hardware
 validation is claimed. Other cards, key/PIN roles and Windows/macOS remain
 untested. These results support the stated experimental profile, not
 general card compatibility.
+
+The 24 October cleanup removes research diagnostics, redundant state and
+unsupported-operation stubs, plus duplicate test assertions/cases. The strict
+Linux build and all 17 offline unit programs pass; the remaining 30 driver
+cases and six lifecycle scenarios pass with cmocka 1 and 2. The physical-card
+and browser results above precede this cleanup and have not been repeated.
 
 Reproducing the focused checks
 
