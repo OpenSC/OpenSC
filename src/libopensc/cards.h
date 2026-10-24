@@ -294,8 +294,12 @@ enum {
 
 	/* Bit4id Digital-DNA (NXP ChipDoc, Italian CNS/eID) */
 	SC_CARD_TYPE_CHIPDOC_IT = 46000,
+
+	/* Experimental PKCS#15 profile; final allocation pending review. */
+	SC_CARD_TYPE_EPKI_RESEARCH = 47000,
 };
 
+extern sc_card_driver_t *sc_get_epki_research_driver(void);
 extern sc_card_driver_t *sc_get_default_driver(void);
 extern sc_card_driver_t *sc_get_cardos_driver(void);
 extern sc_card_driver_t *sc_get_cryptoflex_driver(void);

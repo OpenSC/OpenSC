@@ -1,0 +1,248 @@
+Experimental PKCS#15 applet/profile driver (RFC)
+
+Scope
+
+This prototype supports cryptovision ePKIApplet 2.130 (reported interface
+version 0x0282) on one observed SmartCafe Expert 7 card. The version mapping
+comes from limited vendor analysis and is corroborated by vendor-supplied
+release history naming ePKIApplet 2.130 on 16 April 2020; the 1 June 2018
+entry names ePKIApplet 2.129 on SCE7. This identifies the reported interface,
+not an exact CAP package, personalization or certified product variant.
+The epki-research driver name and card-type allocation remain provisional.
+The platform ATR and standard PKCS#15 AID alone do not identify an applet;
+all access requires an explicit enable_profile option and interface value
+0x0282. The ATR/AID/version tuple is a constrained profile check, not proof
+of a unique applet or personalization. Without that option the driver
+returns no match and sends no discovery APDU. Forced initialization checks
+the same requirements. Support for other cards or profiles is not implied.
+
+Public object access uses OpenSC ISO operations and its PKCS#15 parser.
+Signing is opt-in: RSA-2048, PIN reference 1, and PKCS#15-selected one-byte
+key references 1..255. Only one authentication key was tested on hardware.
+PKCS#1 v1.5 uses card padding. A separate raw-RSA opt-in uses OpenSC software
+PSS encoding and the card's raw signature operation; native PSS is not
+advertised. Other sizes/PIN roles, decryption, PIN change/unblock, key
+generation and card writes are unsupported.
+
+Isolated test configuration
+
+The entire profile is disabled until explicitly selected; signing is a
+second opt-in. This process-specific OPENSC_CONF example is for isolated
+testing, not a system default or browser installer:
+
+app default {
+    card_drivers = epki-research;
+    card_driver epki-research {
+        enable_profile = true;
+        enable_local_signing = true;
+        enable_raw_rsa_signing = true;
+    }
+    pkcs11 {
+        lock_login = false;
+        atomic = false;
+        slots_per_card = 1;
+    }
+    reader_driver pcsc {
+        connect_exclusive = false;
+        disconnect_action = leave;
+        transaction_end_action = leave;
+        reconnect_action = leave;
+        enable_pinpad = false;
+        enable_pace = false;
+        enable_escape = false;
+    }
+    framework pkcs15 {
+        use_file_caching = no;
+        use_pin_caching = true;
+        enable_pkcs15_emulation = false;
+    }
+}
+
+Do not store a PIN in configuration. The driver refuses PIN verification
+with debugging enabled because lower-level logging can include its APDU.
+Each explicit VERIFY sends at most one command; it does not retry a failed
+PIN or use an empty VERIFY probe. The driver itself stores no PIN.
+
+The normal OpenSC framework can cache a successful PIN in process memory.
+When a new transaction invalidates selection/authentication, the existing
+PKCS#15 use_key path may revalidate that cached PIN once inside the same
+transaction as MSE and signing. A wrong cached PIN is discarded by the
+framework. The standard cache-use limit (currently 10 revalidations) and user-consent
+rules still apply.
+With PIN caching disabled, a caller must supply authentication within the
+same transaction as its private operation; no hidden driver cache is added.
+
+The driver no longer limits successful signatures or permanently disables
+later explicit operations after a PIN/signing error. Every signature still
+needs a fresh security environment, and the driver never internally retries
+MSE or PSO. New transactions invalidate selection/PIN/MSE state. A reset
+also requires the exact profile to be rechecked before sending another PIN.
+
+The driver logout operation reselects the known application and clears
+local state. OpenSC PKCS#11 uses software logout by upstream design: C_Logout
+clears that module's PIN cache/session state without logging other processes
+out of the physical card. A later C_Login can verify again. The standalone
+core logout callback and PKCS#11 software logout are distinct paths.
+
+Testing wanted: ePKIApplet 2.129 and ePKIApplet 2.126
+
+Owners of cards reporting ePKIApplet 2.129 (interface 0x0281) or ePKIApplet
+2.126 (interface 0x027e) could help establish additional compatibility.
+These full names are deliberately included here and in the proposed PR
+text so prospective testers can find them. Limited static vendor analysis
+suggests related interfaces, but neither version has been tested with this
+driver on physical hardware. This patch continues to reject both versions;
+there is no hidden enable option and no supported version range.
+
+For a test offer, provide the claimed applet/version and its source, card
+platform/ATR, contact or contactless interface, reader model, and OS/OpenSC
+version. The ATR can be collected with opensc-tool --atr; it identifies the
+platform rather than a unique cardholder. Describe whether the expected
+login uses a PIN, PACE or biometrics. Do not include a PIN, personal
+certificate, card serial number or a full transaction capture. Begin with
+public-object/profile checks before considering an authenticated test.
+
+Vendor release history names 2.129 on SCE7, but a 2.126/SCE7 pairing has not
+been independently established. Personalization may require PACE or other
+security contexts that version/PIN metadata alone cannot identify. This
+request for testers is a compatibility hypothesis, not a claim that swapping
+version bytes is sufficient. The earlier private candidate patch is kept as
+historical research and is not part of this driver proposal.
+
+Validation
+
+On 23 October 2026, the revised ePKIApplet 2.130 implementation, based on
+reviewed generic fixes over master ccfa7600f7c7ae249118d5f301e679e476a004a5,
+passed a strict Linux build and all 17 offline unit programs. Its 31 mocked
+driver cases include six recognition groups. Six additional lifecycle scenarios use real OpenSC
+locks, PKCS#15 PIN caching and use_key dispatch with a synthetic reader;
+only one of those six scenarios passed with the earlier driver. A separate
+local harness checked the production pkcs15_login/pkcs15_logout functions
+with lock_login=false; that harness does not invoke exported PKCS#11
+entrypoints.
+
+On 23 October 2026, the revised module was also tested through its exported
+PKCS#11 interface with one physical ePKIApplet 2.130 SCE7 card and its
+RSA-2048 authentication key. Eight fresh local signatures were independently
+verified with OpenSSL: two PKCS#1 v1.5/SHA-256 signatures, including one after
+logout and a fresh login, and six PSS signatures. The PSS hash/MGF/salt
+combinations were SHA256/SHA256/32, SHA384/SHA384/48, SHA512/SHA512/64,
+SHA256/SHA256/0, SHA256/SHA384/16 and SHA256/SHA256/222. Two login/logout
+cycles succeeded, and each logout was followed by a check for a public
+session state. These tests used lock_login=false and the standard framework
+PIN cache.
+
+A separate Firefox 158.0.1 profile configured to require TLS 1.3, with
+HTTP/3 disabled, successfully authenticated to the SSO service. The user
+reported one PIN prompt and prompt loading. Numeric diagnostics recorded
+six raw-signature successes, six expected cached-PIN revalidations and no
+unexpected driver errors. The exact newly built OpenSC module and core
+library were confirmed loaded. No negotiated signature-scheme trace or
+authenticated page content was retained. The temporary browser profile and
+caches were removed; 25 protected production/runtime paths were unchanged.
+
+Later on 23 October, a private lifecycle harness verified six further
+PKCS#1 v1.5/SHA-256 signatures on the same card. Removal and reinsertion
+required a fresh connection and another identity check. In one outer
+transaction, authenticated signing and direct sc_logout were followed by
+local authentication denial and a raw same-key MSE/PSO probe without
+another VERIFY; PSO returned 6982. A fresh login could sign again. A retained
+PKCS#11 signing client also signed three times around two reselections of
+the known PKCS#15 application by a separate read-only core client, using
+one explicit login and the framework PIN cache.
+
+These observations do not validate the in-place reset callback, two
+authenticated signing clients, unrelated applications or stress behavior.
+Injected failures have offline coverage only. No 2.129/2.126 hardware
+validation is claimed. Other cards, key/PIN roles and Windows/macOS remain
+untested. These results support the stated experimental profile, not
+general card compatibility.
+
+The 24 October cleanup removes research diagnostics, redundant state and
+unsupported-operation stubs, plus duplicate test assertions/cases. The strict
+Linux build and all 17 offline unit programs pass; the remaining 30 driver
+cases and six lifecycle scenarios pass with cmocka 1 and 2. The physical-card
+and browser results above precede this cleanup and have not been repeated.
+
+Reproducing the focused checks
+
+The committed software regressions are src/tests/unittests/epki-research.c
+(driver behavior) and epki-lifecycle.c (real core/PKCS#15 paths with a
+synthetic reader). After configuring with --enable-cmocka and building:
+
+    make -C src/tests/unittests check TESTS='epki-research epki-lifecycle'
+
+For a manual signature smoke test, use the configuration above only for
+the selected process. Do not install middleware or register a browser
+module. Set tool to <build>/src/tools/pkcs11-tool and module to
+<build>/src/pkcs11/.libs/opensc-pkcs11.so, using absolute paths in the same
+built checkout; set config to the isolated configuration file. List slots with:
+
+    OPENSC_CONF="$config" OPENSC_DEBUG=0 "$tool" --module "$module" --list-slots
+
+Set slot to the intended PKCS#11 slot ID and id to the hexadecimal ID of
+its authentication certificate/private key. Check that selection locally
+before authenticating. In a new private working directory, run one command
+at a time and stop on any failure:
+
+    OPENSC_CONF="$config" OPENSC_DEBUG=0 "$tool" --module "$module" \
+        --slot "$slot" --read-object --type cert --id "$id" --output-file cert.der
+    openssl x509 -inform DER -in cert.der -pubkey -noout > public-key.pem
+    openssl rand -out message.bin 64
+    OPENSC_CONF="$config" OPENSC_DEBUG=0 "$tool" --module "$module" \
+        --slot "$slot" --login --sign --id "$id" --mechanism SHA256-RSA-PKCS \
+        --input-file message.bin --output-file signature.bin
+    openssl dgst -sha256 -verify public-key.pem -signature signature.bin message.bin
+
+Enter the PIN only at the tool's hidden local prompt; omit --pin. Stop on
+any failure without retrying authentication. Do not share the certificate,
+public key or a full debug capture. To check fresh-connection reinsertion,
+let the process exit, remove/reinsert the same card, recheck slot/identity
+and repeat with a fresh message. Finish other card-backed work first.
+
+This procedure does not reproduce the private harness's retained-connection
+removal, direct card-level logout or two-client sequence. In particular,
+PKCS#11 software logout is not proof of physical-card logout. Those results
+remain separately reported observations. No card-specific hardware harness
+is added to the automated suite; the software regressions remain in cmocka.
+
+Provenance
+
+Sources include public OpenSC/standards, independent card reads, limited
+static analysis and guarded runtime observations of SCinterface 8.3.13.
+Independent card reads support identifiers and key/PIN metadata; the
+applet version query, PIN command binding, MSE mapping and signature routes
+also contain vendor-derived interface facts. A saved decoded PIN maximum
+of 8 may be OpenSC's default rather than an encoded card field; vendor PIN
+objects also reported 8. Public opcode definitions alone do not establish
+this applet's complete command recipes.
+
+The driver glue, policies and mocks were written against OpenSC. Test PIN,
+message and signature payloads are synthetic; expected protocol values
+retain their public, card-observation or vendor-analysis origins. Existing
+OpenSC code and notices retain their licence terms. No vendor binaries,
+decompiler listings or personal-card response fixtures are included. Later
+successful tests do not change discovery provenance. This is neither a
+public-documentation-only nor a formal clean-room claim, and this technical
+statement does not establish publication rights or legal clearance.
+
+Public corroboration reviewed on 20 October 2026:
+BSI 0804-2012 section 2, p17 [1] publishes tag 0182 and a two-byte version
+for related ePKI v3.6, but uses CLA 00 rather than this profile's 80.
+RSA PKCS#15 v1.1 sections 6.8.2-6.8.2.1 [2] support the PIN encoding and
+right-padding rules applied to independently read card fields. Neither
+source documents the complete 2.130 PIN/MSE/signing bindings. No applicable
+public guide for MSE algorithm 00, on-card PKCS#1 padding selection or the
+raw-RSA/no-indicator/extended-Le recipe was located. Those bindings retain
+their vendor-analysis origin; later corroboration does not erase history.
+OpenSC's ChipDoc-IT and Masktech drivers [3] show individual no-indicator
+raw/extended conventions in different MSE or operation contexts, not this
+applet's complete recipe.
+
+[1] https://commoncriteriaportal.org/files/epfiles/0804a_pdf.pdf#page=17
+[2] RSA Security Inc. Public-Key Cryptography Standards (PKCS),
+    PKCS #15 v1.1, RSA Laboratories, 6 June 2000, pp43-46 (public archive):
+    https://www.foo.be/docs/opensst/ref/pkcs/pkcs-15/pkcs-15v1_1.pdf#page=43
+[3] OpenSC fc27ee8768cb882fceb99535dce8b6a966534dcb,
+    src/libopensc/card-chipdocit.c:431-481 and card-masktech.c:169-204:
+    https://github.com/OpenSC/OpenSC/tree/fc27ee8768cb882fceb99535dce8b6a966534dcb/src/libopensc
