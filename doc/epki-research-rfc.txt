@@ -26,8 +26,8 @@ PKCS#1 v1.5/OAEP decryption through OpenSC's existing software unpadding.
 Public-key encryption remains host-side; no RSA C_Encrypt is added.
 An independent enable_local_pin_change opt-in adds the ordinary PIN-reference-1
 change candidate described below. Other sizes/PIN roles, unblock, key generation
-and other card writes remain unsupported. Decryption and PIN operations are
-refused while debug logging is enabled.
+and other card writes remain unsupported. Decryption is refused while debug
+logging is enabled; PIN commands reject PIN-level debugging as described below.
 
 Isolated test configuration
 
@@ -66,10 +66,12 @@ app default {
     }
 }
 
-Do not store a PIN in configuration. The driver refuses PIN verification
-with debugging enabled because lower-level logging can include its APDU.
-Each explicit VERIFY sends at most one command; it does not retry a failed
-PIN or use an empty VERIFY probe. The driver itself stores no PIN.
+Do not store a PIN in configuration. OpenSC's sc_pin_cmd wrapper suppresses
+ordinary debugging while invoking the driver. The driver rejects PIN commands
+if debugging remains enabled (SC_LOG_DEBUG_PIN or higher through that wrapper),
+because lower-level logging can include the PIN APDU. Each explicit VERIFY
+sends at most one command; it does not retry a failed PIN or use an empty
+VERIFY probe. The driver itself stores no PIN.
 
 The normal OpenSC framework can cache a successful PIN in process memory.
 When a new transaction invalidates selection/authentication, the existing
@@ -126,8 +128,9 @@ or established for this profile.
 The accepted CHANGE request is CHV reference 1 with explicitly supplied old
 and new PINs, each 4..8 bytes with SC_PIN_ENCODING_ASCII, using the existing
 right-padding to eight bytes with FF. No new character policy is inferred.
-Both inputs, command flags and the disabled-debugging requirement are
-validated before selection, a profile query or any authentication attempt.
+Both inputs, command flags and the requirement that debugging be suppressed
+for the PIN command are validated before selection, a profile query or any
+authentication attempt.
 Pinpad, implicit-change, session-PIN and caller-built APDUs are rejected.
 
 One transaction selects/checks the exact 0282 profile as needed, sends one
@@ -181,6 +184,21 @@ version bytes is sufficient. The earlier private candidate patch is kept as
 historical research and is not part of this driver proposal.
 
 Validation
+
+The current offline suite includes 19 unit programs. The ePKI programs
+cover 41 driver cases and ten lifecycle cases. Two generic PKCS#11 programs
+exercise the production object-search API (four groups) and public-discovery
+transaction handling (six groups) with synthetic objects and callbacks.
+They require no card, PIN or module initialization. After configuring with
+--enable-cmocka and building, run all unit programs with:
+
+    make -C src/tests/unittests check
+
+For just the shared-code regressions:
+
+    make -C src/tests/unittests check TESTS='pkcs11-find-objects pkcs11-discovery'
+
+The dated results below describe earlier revisions, not a new hardware run.
 
 On 23 October 2026, the revised ePKIApplet 2.130 implementation, based on
 reviewed generic fixes over master ccfa7600f7c7ae249118d5f301e679e476a004a5,

@@ -467,8 +467,8 @@ epki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 		return SC_ERROR_NOT_SUPPORTED;
 	if (!epki_valid_pin(&data->pin1) || (change && !epki_valid_pin(&data->pin2)))
 		return SC_ERROR_INVALID_ARGUMENTS;
-	/* Debug output at lower layers can contain the full APDU. Refuse before
-	 * copying a PIN, rather than mutate a potentially shared log context. */
+	/* sc_pin_cmd suppresses ordinary debugging; PIN-level debugging remains
+	 * enabled and can log the full APDU. Refuse before copying a PIN. */
 	if (card->ctx == NULL || card->ctx->debug != 0)
 		return SC_ERROR_NOT_ALLOWED;
 
