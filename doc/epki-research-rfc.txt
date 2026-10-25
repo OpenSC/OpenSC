@@ -90,6 +90,10 @@ clears that module's PIN cache/session state without logging other processes
 out of the physical card. A later C_Login can verify again. The standalone
 core logout callback and PKCS#11 software logout are distinct paths.
 
+PKCS#11 object searches test a valid CKA_CLASS filter before other attribute
+comparisons, avoiding unrelated value reads when a caller lists CKA_VALUE
+first. Matching still applies the complete caller template.
+
 Testing wanted: ePKIApplet 2.129 and ePKIApplet 2.126
 
 Owners of cards reporting ePKIApplet 2.129 (interface 0x0281) or ePKIApplet

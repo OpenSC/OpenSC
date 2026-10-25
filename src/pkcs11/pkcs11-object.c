@@ -355,6 +355,7 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	CK_RV rv;
 	CK_BBOOL is_private = TRUE;
 	CK_ATTRIBUTE private_attribute = { CKA_PRIVATE, &is_private, sizeof(is_private) };
+	CK_ATTRIBUTE_PTR class_attribute = NULL;
 	int match, hide_private;
 	unsigned int i, j;
 	struct sc_pkcs11_session *session;
@@ -393,6 +394,17 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	hide_private = 0;
 	if ((slot->login_user == -1) && (slot->token_info.flags & CKF_LOGIN_REQUIRED))
 		hide_private = 1;
+	/* Class is available without reading an object's value. Callers may
+	 * put CKA_VALUE first, so reject unrelated classes before a value
+	 * comparison can trigger an unnecessary card read.
+	 */
+	for (j = 0; j < ulCount; j++) {
+		if (pTemplate[j].type == CKA_CLASS && pTemplate[j].pValue != NULL_PTR &&
+				pTemplate[j].ulValueLen == sizeof(CK_OBJECT_CLASS)) {
+			class_attribute = &pTemplate[j];
+			break;
+		}
+	}
 
 	/* For each object in token do */
 	for (i=0; i<list_size(&slot->objects); i++) {
@@ -410,6 +422,10 @@ C_FindObjectsInit(CK_SESSION_HANDLE hSession,	/* the session's handle */
 				continue;
 			}
 		}
+
+		if (class_attribute != NULL &&
+				object->ops->cmp_attribute(session, object, class_attribute) == 0)
+			continue;
 
 		/* Try to match every attribute */
 		match = 1;
