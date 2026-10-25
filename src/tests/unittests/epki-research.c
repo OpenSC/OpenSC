@@ -133,6 +133,19 @@ struct expected_apdu {
 static struct expected_apdu next_apdu, following_apdu;
 static int have_following_apdu;
 static int transmit_calls;
+static int pin_clear_calls, unlock_calls, pin_trace_count;
+static int pin_unlock_counts[2];
+
+static void
+mock_mem_clear(void *buffer, size_t len)
+{
+	sc_mem_clear(buffer, len);
+	if (len == 8) {
+		static const u8 zeroes[8] = {0};
+		assert_memory_equal(buffer, zeroes, sizeof(zeroes));
+		pin_clear_calls++;
+	}
+}
 
 static int
 mock_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
@@ -140,6 +153,12 @@ mock_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 	if (apdu->ins == 0xca)
 		assert_true(card->lock_count > 0);
 	transmit_calls++;
+	if (apdu->ins == 0x20 || apdu->ins == 0x24) {
+		assert_true(card->lock_count > 0);
+		if (pin_trace_count < 2)
+			pin_unlock_counts[pin_trace_count] = unlock_calls;
+		pin_trace_count++;
+	}
 	assert_int_equal(apdu->cla, next_apdu.cla);
 	assert_int_equal(apdu->ins, next_apdu.ins);
 	assert_int_equal(apdu->p1, next_apdu.p1);
@@ -152,6 +171,14 @@ mock_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 		assert_memory_equal(apdu->data, next_apdu.data, next_apdu.data_len);
 	assert_int_equal(apdu->flags & next_apdu.required_flags, next_apdu.required_flags);
 	assert_int_equal(apdu->flags & next_apdu.forbidden_flags, 0);
+	if (apdu->ins == 0x24) {
+		static const u8 header[] = {0x00, 0x24, 0x01, 0x01, 0x08};
+		u8 wire[13];
+		assert_int_equal(sc_apdu_get_length(apdu, SC_PROTO_T1), sizeof(wire));
+		assert_int_equal(sc_apdu2bytes(card->ctx, apdu, SC_PROTO_T1, wire, sizeof(wire)), SC_SUCCESS);
+		assert_memory_equal(wire, header, sizeof(header));
+		assert_memory_equal(wire + sizeof(header), next_apdu.data, 8);
+	}
 	if (apdu->cse == (SC_APDU_CASE_4_EXT)) {
 		static const u8 header[] = {0x00, 0x2a, 0x80, 0x86, 0x00, 0x01, 0x00};
 		u8 wire[265];
@@ -198,6 +225,12 @@ mock_check_sw(sc_card_t *card, unsigned sw1, unsigned sw2)
 		return SC_SUCCESS;
 	if (sw1 == 0x69 && sw2 == 0x82)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
+	if (sw1 == 0x69 && sw2 == 0x83)
+		return SC_ERROR_AUTH_METHOD_BLOCKED;
+	if (sw1 == 0x6c)
+		return SC_ERROR_WRONG_LENGTH;
+	if (sw1 == 0x6a && sw2 == 0x80)
+		return SC_ERROR_INCORRECT_PARAMETERS;
 	return SC_ERROR_CARD_CMD_FAILED;
 }
 
@@ -221,12 +254,14 @@ mock_unlock(sc_card_t *card)
 {
 	assert_true(card->lock_count > 0);
 	card->lock_count--;
+	unlock_calls++;
 	return SC_SUCCESS;
 }
 #define sc_lock			    mock_lock
 #define sc_unlock		    mock_unlock
 #define sc_transmit_apdu	    mock_transmit_apdu
 #define sc_check_sw		    mock_check_sw
+#define sc_mem_clear		    mock_mem_clear
 #define sc_get_iso7816_driver	    mock_iso_driver
 #define iso7816_select_aid	    mock_select_aid
 #define sc_get_epki_research_driver sc_get_test_epki_research_driver
@@ -236,6 +271,7 @@ mock_unlock(sc_card_t *card)
 #undef sc_get_iso7816_driver
 #undef sc_transmit_apdu
 #undef sc_check_sw
+#undef sc_mem_clear
 #undef sc_lock
 #undef sc_unlock
 
@@ -247,6 +283,8 @@ observed_card(void)
 	memcpy(card.atr.value, epki_atr, sizeof(epki_atr));
 	select_calls = 0;
 	transmit_calls = 0;
+	pin_clear_calls = unlock_calls = pin_trace_count = 0;
+	memset(pin_unlock_counts, 0, sizeof(pin_unlock_counts));
 	have_following_apdu = 0;
 	file_select_calls = 0;
 	child_file_type = SC_FILE_TYPE_WORKING_EF;
@@ -570,6 +608,7 @@ enable_signing_for_explicit_matching_profile(void **state)
 	assert_true(card.caps & SC_CARD_CAP_BATCH_PUBLIC_OBJECTS);
 	assert_false(card.caps & SC_CARD_CAP_APDU_EXT);
 	assert_false(((struct epki_data *)card.drv_data)->raw_rsa_enabled);
+	assert_false(((struct epki_data *)card.drv_data)->pin_change_enabled);
 	assert_int_equal(transmit_calls, 1);
 	epki_finish(&card);
 	free(card.algorithms);
@@ -692,6 +731,217 @@ reject_unsafe_pin_requests_before_io(void **state)
 	ctx.debug = 1;
 	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_NOT_ALLOWED);
 	assert_int_equal(transmit_calls, 0);
+}
+
+static struct sc_pin_cmd_data
+valid_pin_change_request(void)
+{
+	static const u8 new_pin[] = {'w', 'x', 'y', 'z'};
+	struct sc_pin_cmd_data pin = valid_pin_request();
+	pin.cmd = SC_PIN_CMD_CHANGE;
+	pin.flags = SC_PIN_CMD_NEED_PADDING;
+	pin.pin2.data = new_pin;
+	pin.pin2.len = sizeof(new_pin);
+	pin.pin2.encoding = SC_PIN_ENCODING_ASCII;
+	return pin;
+}
+
+static void
+expect_pin_change(unsigned sw1, unsigned sw2)
+{
+	static const u8 padded_new[] = {'w', 'x', 'y', 'z', 0xff, 0xff, 0xff, 0xff};
+	expect_pin(0x90, 0);
+	following_apdu = (struct expected_apdu){0, 0x24, 1, 1,
+			SC_APDU_CASE_3_SHORT, padded_new, sizeof(padded_new), 0,
+			SC_APDU_FLAGS_NO_RETRY_WL | SC_APDU_FLAGS_NO_GET_RESP,
+			SC_APDU_FLAGS_CHAINING, NULL, 0, sw1, sw2, SC_SUCCESS};
+	have_following_apdu = 1;
+}
+
+static void
+pin_management_opt_in_does_not_advertise_crypto(void **state)
+{
+	static const u8 version[] = {0x02, 0x82};
+	sc_card_t card = observed_card();
+	sc_context_t ctx;
+	struct epki_data *priv;
+	struct sc_pin_cmd_data pin = valid_pin_request();
+	set_detection_config(&card, &ctx,
+			"card_driver epki-research { enable_profile = true; enable_local_pin_change = true; }");
+	expect_version(version, sizeof(version));
+	assert_int_equal(epki_init(&card), SC_SUCCESS);
+	priv = card.drv_data;
+	assert_non_null(priv);
+	assert_true(priv->pin_change_enabled);
+	assert_false(priv->signing_enabled);
+	assert_false(priv->decryption_enabled);
+	assert_false(priv->raw_rsa_enabled);
+	assert_int_equal(card.algorithm_count, 0);
+	assert_null(card.algorithms);
+	assert_false(card.caps & SC_CARD_CAP_APDU_EXT);
+	/* Management-only applications can still authenticate normally. */
+	expect_selection(SC_PATH_TYPE_DF_NAME, epki_aid, sizeof(epki_aid), 1, SC_SUCCESS);
+	expect_pin(0x90, 0);
+	assert_int_equal(epki_pin_cmd(&card, &pin), SC_SUCCESS);
+	epki_finish(&card);
+	scconf_free(ctx.conf);
+}
+
+static void
+pin_change_validates_both_inputs_before_io(void **state)
+{
+	sc_card_t card;
+	sc_context_t ctx;
+	struct epki_data priv;
+	struct sc_pin_cmd_data pin;
+	sc_apdu_t prepared = {0};
+	size_t i;
+	prepare_enabled(&card, &ctx, &priv);
+	pin = valid_pin_change_request();
+	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_NOT_SUPPORTED);
+	priv.pin_change_enabled = 1;
+	for (i = 0; i < 2; i++) {
+		struct sc_pin_cmd_pin *input;
+		pin = valid_pin_change_request();
+		input = i ? &pin.pin2 : &pin.pin1;
+		input->data = NULL;
+		assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_INVALID_ARGUMENTS);
+		pin = valid_pin_change_request();
+		input = i ? &pin.pin2 : &pin.pin1;
+		input->len = 3;
+		assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_INVALID_ARGUMENTS);
+		input->len = 9;
+		assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_INVALID_ARGUMENTS);
+		pin = valid_pin_change_request();
+		input = i ? &pin.pin2 : &pin.pin1;
+		input->encoding = SC_PIN_ENCODING_BCD;
+		assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_INVALID_ARGUMENTS);
+	}
+	pin = valid_pin_change_request();
+	pin.flags |= SC_PIN_CMD_IMPLICIT_CHANGE;
+	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_NOT_SUPPORTED);
+	pin = valid_pin_change_request();
+	pin.flags |= SC_PIN_CMD_USE_PINPAD;
+	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_NOT_SUPPORTED);
+	pin = valid_pin_change_request();
+	pin.pin_reference = 2;
+	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_NOT_SUPPORTED);
+	pin = valid_pin_change_request();
+	pin.pin_type = SC_AC_CONTEXT_SPECIFIC;
+	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_NOT_SUPPORTED);
+	pin = valid_pin_change_request();
+	pin.apdu = &prepared;
+	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_NOT_SUPPORTED);
+	pin = valid_pin_change_request();
+	pin.puk_reference = 2;
+	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_NOT_SUPPORTED);
+	pin = valid_pin_change_request();
+	ctx.debug = 1;
+	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_NOT_ALLOWED);
+	assert_int_equal(transmit_calls, 0);
+	assert_int_equal(file_select_calls, 0);
+	assert_int_equal(unlock_calls, 0);
+	assert_int_equal(pin_clear_calls, 0); /* No PIN was copied. */
+}
+
+static void
+pin_change_verifies_old_then_sends_only_new_once(void **state)
+{
+	sc_card_t card;
+	sc_context_t ctx;
+	struct epki_data priv;
+	struct sc_pin_cmd_data pin = valid_pin_change_request();
+	prepare_enabled(&card, &ctx, &priv);
+	priv.pin_change_enabled = 1;
+	priv.pin_verified = priv.security_env_valid = priv.raw_signature = 1;
+	priv.app_file = sc_file_new();
+	assert_non_null(priv.app_file);
+	expect_pin_change(0x90, 0);
+	assert_int_equal(epki_pin_cmd(&card, &pin), SC_SUCCESS);
+	assert_int_equal(transmit_calls, 2);
+	assert_int_equal(pin_clear_calls, 2);
+	assert_int_equal(pin_unlock_counts[0], pin_unlock_counts[1]);
+	assert_int_equal(unlock_calls, 1);
+	assert_int_equal(card.lock_count, 0);
+	assert_false(priv.app_selected);
+	assert_false(priv.pin_verified);
+	assert_false(priv.security_env_valid);
+	assert_false(priv.security_operation);
+	assert_false(priv.raw_signature);
+	assert_null(priv.app_file);
+	assert_int_equal(pin.pin1.tries_left, -1);
+	assert_int_equal(pin.pin2.tries_left, -1);
+	assert_int_equal(pin.pin1.logged_in, SC_PIN_STATE_UNKNOWN);
+	assert_int_equal(pin.pin2.logged_in, SC_PIN_STATE_UNKNOWN);
+}
+
+static void
+pin_change_errors_stop_without_retry_or_retained_state(void **state)
+{
+	static const struct {
+		int write;
+		unsigned sw1, sw2;
+		int transport, result;
+	} cases[] = {
+			{0, 0x63, 0xc2, SC_SUCCESS,		    SC_ERROR_PIN_CODE_INCORRECT  },
+			{0, 0x90, 0,    SC_ERROR_TRANSMIT_FAILED, SC_ERROR_TRANSMIT_FAILED     },
+			{1, 0x69, 0x83, SC_SUCCESS,		    SC_ERROR_AUTH_METHOD_BLOCKED },
+			{1, 0x6a, 0x80, SC_SUCCESS,		    SC_ERROR_INCORRECT_PARAMETERS},
+			{1, 0x6c, 8,    SC_SUCCESS,		 SC_ERROR_WRONG_LENGTH	      },
+			{1, 0x61, 8,    SC_SUCCESS,		 SC_ERROR_CARD_CMD_FAILED	 },
+			{1, 0x90, 0,    SC_ERROR_TRANSMIT_FAILED, SC_ERROR_TRANSMIT_FAILED     }
+	};
+	size_t i;
+	for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		sc_card_t card;
+		sc_context_t ctx;
+		struct epki_data priv;
+		struct sc_pin_cmd_data pin = valid_pin_change_request();
+		prepare_enabled(&card, &ctx, &priv);
+		priv.pin_change_enabled = 1;
+		priv.pin_verified = priv.security_env_valid = priv.raw_signature = 1;
+		if (cases[i].write) {
+			expect_pin_change(cases[i].sw1, cases[i].sw2);
+			following_apdu.result = cases[i].transport;
+		} else {
+			expect_pin(cases[i].sw1, cases[i].sw2);
+			next_apdu.result = cases[i].transport;
+		}
+		assert_int_equal(epki_pin_cmd(&card, &pin), cases[i].result);
+		assert_int_equal(transmit_calls, cases[i].write ? 2 : 1);
+		assert_int_equal(pin_clear_calls, transmit_calls);
+		assert_int_equal(pin.pin1.tries_left, i == 0 ? 2 : -1);
+		assert_int_equal(pin.pin2.tries_left, -1);
+		assert_int_equal(pin.pin1.logged_in, SC_PIN_STATE_UNKNOWN);
+		assert_int_equal(pin.pin2.logged_in, SC_PIN_STATE_UNKNOWN);
+		assert_false(priv.app_selected);
+		assert_false(priv.pin_verified);
+		assert_false(priv.security_env_valid);
+		assert_false(priv.raw_signature);
+		assert_int_equal(card.lock_count, 0);
+	}
+}
+
+static void
+pin_change_rechecks_profile_after_reset_before_pin_io(void **state)
+{
+	static const u8 wrong[] = {0x02, 0x81};
+	sc_card_t card;
+	sc_context_t ctx;
+	struct epki_data priv;
+	struct sc_pin_cmd_data pin = valid_pin_change_request();
+	prepare_enabled(&card, &ctx, &priv);
+	priv.pin_change_enabled = 1;
+	card.ops = sc_get_test_epki_research_driver()->ops;
+	reset_at_next_lock = 1;
+	expect_selection(SC_PATH_TYPE_DF_NAME, epki_aid, sizeof(epki_aid), 1, SC_SUCCESS);
+	expect_version(wrong, sizeof(wrong));
+	assert_int_equal(epki_pin_cmd(&card, &pin), SC_ERROR_INVALID_CARD);
+	assert_int_equal(transmit_calls, 1); /* Public version query only. */
+	assert_int_equal(pin_clear_calls, 0);
+	assert_false(priv.profile_checked);
+	assert_false(priv.app_selected);
+	assert_int_equal(card.lock_count, 0);
 }
 
 static sc_security_env_t
@@ -1614,6 +1864,11 @@ main(void)
 			cmocka_unit_test(enable_signing_for_explicit_matching_profile),
 			cmocka_unit_test(verify_once_per_request_and_preserve_retry_count),
 			cmocka_unit_test(reject_unsafe_pin_requests_before_io),
+			cmocka_unit_test(pin_management_opt_in_does_not_advertise_crypto),
+			cmocka_unit_test(pin_change_validates_both_inputs_before_io),
+			cmocka_unit_test(pin_change_verifies_old_then_sends_only_new_once),
+			cmocka_unit_test(pin_change_errors_stop_without_retry_or_retained_state),
+			cmocka_unit_test(pin_change_rechecks_profile_after_reset_before_pin_io),
 			cmocka_unit_test(only_verified_signing_environment),
 			cmocka_unit_test(failed_mse_allows_a_new_authenticated_operation),
 			cmocka_unit_test(selected_pkcs15_key_reference_is_preserved),

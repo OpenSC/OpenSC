@@ -12,15 +12,18 @@ struct fixture {
 	struct sc_reader_operations reader_ops;
 	sc_pkcs15_card_t p15;
 	sc_pkcs15_tokeninfo_t tokeninfo;
-	sc_pkcs15_object_t pin, key;
-	sc_pkcs15_auth_info_t pin_info;
+	sc_pkcs15_object_t pin, key, other_pin;
+	sc_pkcs15_auth_info_t pin_info, other_pin_info;
 	sc_pkcs15_prkey_info_t key_info;
-	unsigned locks, unlocks, verifies, signatures, versions, selections, info_queries;
+	unsigned locks, unlocks, verifies, signatures, versions, selections, changes, info_queries;
 	int reset_next_lock, authenticated, mse, reject_pin, fail_signature;
+	int changing_pin;
+	u8 current_pin[4];
 };
 
 static struct fixture *active;
 static const u8 synthetic_pin[] = {'1', '2', '3', '4'};
+static const u8 new_pin[] = {'5', '6', '7', '8'};
 
 static int
 reader_lock(sc_reader_t *reader)
@@ -97,14 +100,30 @@ transmit(sc_card_t *card, sc_apdu_t *apdu)
 	case 0x20:
 		active->verifies++;
 		assert_int_equal(apdu->datalen, 8);
-		assert_memory_equal(apdu->data, synthetic_pin, sizeof(synthetic_pin));
 		assert_true(apdu->flags & SC_APDU_FLAGS_NO_RETRY_WL);
 		assert_true(apdu->flags & SC_APDU_FLAGS_NO_GET_RESP);
-		active->authenticated = !active->reject_pin;
-		if (active->reject_pin) {
+		active->authenticated = !active->reject_pin &&
+					memcmp(apdu->data, active->current_pin, sizeof(active->current_pin)) == 0;
+		if (!active->authenticated) {
 			apdu->sw1 = 0x63;
 			apdu->sw2 = 0xc2;
 		}
+		break;
+	case 0x24:
+		assert_true(active->changing_pin);
+		assert_true(active->authenticated);
+		active->changes++;
+		assert_int_equal(apdu->cla, 0);
+		assert_int_equal(apdu->p1, 1);
+		assert_int_equal(apdu->p2, 1);
+		assert_int_equal(apdu->cse, SC_APDU_CASE_3_SHORT);
+		assert_int_equal(apdu->datalen, 8);
+		assert_int_equal(apdu->le, 0);
+		for (size_t i = sizeof(active->current_pin); i < apdu->datalen; i++)
+			assert_int_equal(apdu->data[i], 0xff);
+		assert_true(apdu->flags & SC_APDU_FLAGS_NO_RETRY_WL);
+		assert_true(apdu->flags & SC_APDU_FLAGS_NO_GET_RESP);
+		memcpy(active->current_pin, apdu->data, sizeof(active->current_pin));
 		break;
 	case 0x22:
 		assert_true(active->authenticated);
@@ -146,6 +165,7 @@ setup(void **state)
 	assert_non_null(f);
 	active = f;
 	*state = f;
+	memcpy(f->current_pin, synthetic_pin, sizeof(f->current_pin));
 	f->card.ctx = &f->ctx;
 	f->card.reader = &f->reader;
 	f->reader.ctx = &f->ctx;
@@ -159,7 +179,7 @@ setup(void **state)
 	assert_non_null(f->ctx.conf);
 	assert_int_equal(scconf_parse_string(f->ctx.conf,
 					 "card_driver epki-research { enable_profile = true; "
-					 "enable_local_signing = true; }"),
+					 "enable_local_signing = true; enable_local_pin_change = true; }"),
 			1);
 	f->ctx.conf_blocks[0] = f->ctx.conf->root;
 	assert_int_equal(f->card.lock_count, 0);
@@ -191,6 +211,13 @@ setup(void **state)
 	f->key.data = &f->key_info;
 	f->key.auth_id = f->pin_info.auth_id;
 	f->key.prev = &f->pin;
+	f->key.next = &f->other_pin;
+	f->other_pin.prev = &f->key;
+	f->other_pin.type = SC_PKCS15_TYPE_AUTH_PIN;
+	f->other_pin.data = &f->other_pin_info;
+	f->other_pin_info = f->pin_info;
+	f->other_pin_info.auth_id.value[0] = 2;
+	f->other_pin_info.attrs.pin.reference = 2;
 	f->key_info.native = 1;
 	f->key_info.usage = SC_PKCS15_PRKEY_USAGE_SIGN;
 	f->key_info.modulus_length = 2048;
@@ -379,6 +406,57 @@ no_cached_pin_means_no_implicit_verification(void **state)
 	assert_int_equal(f->signatures, 0);
 }
 
+static int
+change_pin(struct fixture *f, const u8 *old, size_t oldlen,
+		const u8 *new_value, size_t newlen)
+{
+	int r;
+	f->changing_pin = 1;
+	r = sc_pkcs15_change_pin(&f->p15, &f->pin, old, oldlen, new_value, newlen);
+	f->changing_pin = 0;
+	assert_int_equal(f->card.lock_count, 0);
+	return r;
+}
+
+static void
+successful_pin_change_updates_standard_cache(void **state)
+{
+	struct fixture *f = *state;
+	static const u8 unrelated[] = {'9', '8', '7', '6'};
+	assert_int_equal(login(f), SC_SUCCESS);
+	f->other_pin.content.value = sc_mem_secure_alloc(sizeof(unrelated));
+	assert_non_null(f->other_pin.content.value);
+	f->other_pin.content.len = sizeof(unrelated);
+	f->other_pin.content_free = sc_mem_secure_free;
+	memcpy(f->other_pin.content.value, unrelated, sizeof(unrelated));
+	assert_int_equal(change_pin(f, synthetic_pin, sizeof(synthetic_pin),
+					 new_pin, sizeof(new_pin)),
+			SC_SUCCESS);
+	assert_int_equal(f->verifies, 2);
+	assert_int_equal(f->changes, 1);
+	assert_memory_equal(f->pin.content.value, new_pin, sizeof(new_pin));
+	assert_memory_equal(f->other_pin.content.value, unrelated, sizeof(unrelated));
+	assert_int_equal(sign_message(f), 256);
+	assert_int_equal(f->verifies, 3); /* Revalidation uses the NEW cached PIN. */
+}
+
+static void
+invalid_change_length_preserves_cache_without_card_io(void **state)
+{
+	struct fixture *f = *state;
+	unsigned selections, verifies;
+	assert_int_equal(login(f), SC_SUCCESS);
+	selections = f->selections;
+	verifies = f->verifies;
+	assert_int_equal(change_pin(f, synthetic_pin, sizeof(synthetic_pin),
+					 new_pin, 3),
+			SC_ERROR_INVALID_PIN_LENGTH);
+	assert_memory_equal(f->pin.content.value, synthetic_pin, sizeof(synthetic_pin));
+	assert_int_equal(f->selections, selections);
+	assert_int_equal(f->verifies, verifies);
+	assert_int_equal(f->changes, 0);
+}
+
 int
 main(void)
 {
@@ -391,6 +469,8 @@ main(void)
 			cmocka_unit_test_setup_teardown(signature_failure_does_not_poison_new_operation, setup, teardown),
 			cmocka_unit_test_setup_teardown(direct_logout_clears_card_state_and_allows_relogin, setup, teardown),
 			cmocka_unit_test_setup_teardown(no_cached_pin_means_no_implicit_verification, setup, teardown),
+			cmocka_unit_test_setup_teardown(successful_pin_change_updates_standard_cache, setup, teardown),
+			cmocka_unit_test_setup_teardown(invalid_change_length_preserves_cache_without_card_io, setup, teardown),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }

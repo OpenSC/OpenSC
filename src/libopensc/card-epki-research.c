@@ -11,6 +11,7 @@
  * A separate decryption opt-in enables the profile's raw RSA decipher
  * route; OpenSC supplies PKCS#1 v1.5/OAEP unpadding in its shared layer.
  * A separate raw-RSA opt-in lets OpenSC encode RSA-PSS in software.
+ * A separate management opt-in permits ordinary PIN-reference-1 changes.
  * Authentication is cached only during a reader transaction. OpenSC
  * manages PIN caching and revalidation; the driver never retains a PIN.
  * Provenance combines public OpenSC/standards, independent card reads,
@@ -66,6 +67,7 @@ struct epki_data {
 	int signing_enabled;
 	int decryption_enabled;
 	int raw_rsa_enabled;
+	int pin_change_enabled;
 	int raw_signature;
 	int pin_verified;
 	int security_env_valid;
@@ -170,7 +172,7 @@ epki_init(sc_card_t *card)
 {
 	struct epki_data *priv;
 	unsigned long algorithm_flags;
-	int r, signing, decryption;
+	int r, signing, decryption, pin_change;
 
 	/* OpenSC may initialize a forced driver even after match_card failed. */
 	if (epki_match_card(card) != 1)
@@ -181,7 +183,8 @@ epki_init(sc_card_t *card)
 	card->drv_data = NULL;
 	signing = epki_config_bool(card, "enable_local_signing");
 	decryption = epki_config_bool(card, "enable_local_decryption");
-	if (!signing && !decryption)
+	pin_change = epki_config_bool(card, "enable_local_pin_change");
+	if (!signing && !decryption && !pin_change)
 		return SC_SUCCESS;
 	priv = calloc(1, sizeof(*priv));
 	if (priv == NULL)
@@ -189,6 +192,13 @@ epki_init(sc_card_t *card)
 	card->drv_data = priv;
 	priv->signing_enabled = signing;
 	priv->decryption_enabled = decryption;
+	priv->pin_change_enabled = pin_change;
+	priv->profile_checked = 1;
+	/* PIN management alone must not advertise a private-key primitive. */
+	if (!signing && !decryption) {
+		card->name = "SCE7 PKCS#15 (experimental local PIN management)";
+		return SC_SUCCESS;
+	}
 	/* GET_INFO is unsupported; do not select the app merely to reject it. */
 	card->caps |= SC_CARD_CAP_NO_PIN_INFO | SC_CARD_CAP_BATCH_PUBLIC_OBJECTS;
 	/* OpenSC supplies DigestInfo; the applet supplies type-1 RSA padding.
@@ -206,7 +216,6 @@ epki_init(sc_card_t *card)
 		epki_finish(card);
 		return r;
 	}
-	priv->profile_checked = 1;
 	if (priv->raw_rsa_enabled || decryption) {
 		/* The checked 0282 profile supports extended APDUs. Only the
 		 * 256-byte RSA inputs need one; keep public read sizes
@@ -393,13 +402,48 @@ epki_read_record(sc_card_t *card, unsigned int rec_nr, unsigned int idx,
 	return epki_public_read_result(card, iso->read_record(card, rec_nr, idx, buf, count, flags));
 }
 
+/* Caller validates the complete request before any I/O and keeps the
+ * application selected within one transaction. Never retain a PIN. */
+static int
+epki_send_pin(sc_card_t *card, unsigned ins, unsigned p1,
+		const struct sc_pin_cmd_pin *pin, int *tries_left)
+{
+	sc_apdu_t apdu;
+	u8 padded_pin[8];
+	int r;
+
+	memset(padded_pin, 0xff, sizeof(padded_pin));
+	memcpy(padded_pin, pin->data, pin->len);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, ins, p1, 0x01);
+	apdu.cla = 0x00;
+	apdu.data = padded_pin;
+	apdu.datalen = apdu.lc = sizeof(padded_pin);
+	apdu.flags |= SC_APDU_FLAGS_NO_RETRY_WL | SC_APDU_FLAGS_NO_GET_RESP;
+	r = sc_transmit_apdu(card, &apdu);
+	sc_mem_clear(padded_pin, sizeof(padded_pin));
+	if (r < 0) {
+		epki_clear_selection(card->drv_data);
+		return r;
+	}
+	if (ins == 0x20 && apdu.sw1 == 0x63 && (apdu.sw2 & 0xf0) == 0xc0) {
+		*tries_left = apdu.sw2 & 0x0f;
+		return SC_ERROR_PIN_CODE_INCORRECT;
+	}
+	return sc_check_sw(card, apdu.sw1, apdu.sw2);
+}
+
+static int
+epki_valid_pin(const struct sc_pin_cmd_pin *pin)
+{
+	return pin->data != NULL && pin->len >= 4 && pin->len <= 8 &&
+	       pin->encoding == SC_PIN_ENCODING_ASCII;
+}
+
 static int
 epki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
 	struct epki_data *priv = card != NULL ? card->drv_data : NULL;
-	sc_apdu_t apdu;
-	u8 padded_pin[8];
-	int r;
+	int r, change;
 
 	if (priv == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
@@ -407,14 +451,21 @@ epki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	data->pin1.tries_left = -1;
 	data->pin1.logged_in = SC_PIN_STATE_UNKNOWN;
-	/* No empty VERIFY status queries, pinpad commands, change or unblock. */
-	if (data->cmd != SC_PIN_CMD_VERIFY || data->pin_type != SC_AC_CHV ||
+	change = data->cmd == SC_PIN_CMD_CHANGE;
+	if (change) {
+		data->pin2.tries_left = -1;
+		data->pin2.logged_in = SC_PIN_STATE_UNKNOWN;
+	}
+	/* No empty VERIFY probes, pinpad/implicit commands, other PIN roles or
+	 * unblock. PIN change has its own opt-in, independent of cryptography. */
+	if ((data->cmd != SC_PIN_CMD_VERIFY && !change) ||
+			(change && (!priv->pin_change_enabled || data->puk_reference != 0)) ||
+			data->pin_type != SC_AC_CHV ||
 			data->pin_reference != 1 || data->apdu != NULL ||
 			(data->flags & ~SC_PIN_CMD_NEED_PADDING) != 0 ||
-			data->pin2.data != NULL || data->pin2.len != 0)
+			(!change && (data->pin2.data != NULL || data->pin2.len != 0)))
 		return SC_ERROR_NOT_SUPPORTED;
-	if (data->pin1.data == NULL || data->pin1.len < 4 || data->pin1.len > 8 ||
-			data->pin1.encoding != SC_PIN_ENCODING_ASCII)
+	if (!epki_valid_pin(&data->pin1) || (change && !epki_valid_pin(&data->pin2)))
 		return SC_ERROR_INVALID_ARGUMENTS;
 	/* Debug output at lower layers can contain the full APDU. Refuse before
 	 * copying a PIN, rather than mutate a potentially shared log context. */
@@ -448,31 +499,18 @@ epki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 	priv->security_env_valid = 0;
 	priv->security_operation = 0;
 	priv->raw_signature = 0;
-	memset(padded_pin, 0xff, sizeof(padded_pin));
-	memcpy(padded_pin, data->pin1.data, data->pin1.len);
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, 0x01);
-	apdu.cla = 0x00;
-	apdu.data = padded_pin;
-	apdu.datalen = apdu.lc = sizeof(padded_pin);
-	/* In particular, do not retry VERIFY after a wrong-length response. */
-	apdu.flags |= SC_APDU_FLAGS_NO_RETRY_WL | SC_APDU_FLAGS_NO_GET_RESP;
-	r = sc_transmit_apdu(card, &apdu);
-	sc_mem_clear(padded_pin, sizeof(padded_pin));
-	if (r < 0) {
+	r = epki_send_pin(card, 0x20, 0x00, &data->pin1, &data->pin1.tries_left);
+	if (change) {
+		/* Vendor-derived 0282 binding: old PIN is verified separately.
+		 * CHANGE contains the prepared new PIN only, with no response Le.
+		 * Never fall back to old+new framing or retry a write. */
+		if (r == SC_SUCCESS)
+			r = epki_send_pin(card, 0x24, 0x01, &data->pin2, NULL);
 		epki_clear_selection(priv);
-		goto pin_done;
-	}
-	if (apdu.sw1 == 0x63 && (apdu.sw2 & 0xf0) == 0xc0) {
-		data->pin1.tries_left = apdu.sw2 & 0x0f;
-		r = SC_ERROR_PIN_CODE_INCORRECT;
-		goto pin_done;
-	}
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	if (r == SC_SUCCESS) {
+	} else if (r == SC_SUCCESS) {
 		priv->pin_verified = 1;
 		data->pin1.logged_in = SC_PIN_STATE_LOGGED_IN;
 	}
-pin_done:
 	sc_unlock(card);
 	return r;
 }

@@ -24,13 +24,15 @@ PSS encoding and the card's raw signature operation; native PSS is not
 advertised. A separate enable_local_decryption opt-in adds RSA-2048
 PKCS#1 v1.5/OAEP decryption through OpenSC's existing software unpadding.
 Public-key encryption remains host-side; no RSA C_Encrypt is added.
-Other sizes/PIN roles, PIN change/unblock, key generation and card writes
-remain unsupported. Decryption is refused while debug logging is enabled.
+An independent enable_local_pin_change opt-in adds the ordinary PIN-reference-1
+change candidate described below. Other sizes/PIN roles, unblock, key generation
+and other card writes remain unsupported. Decryption and PIN operations are
+refused while debug logging is enabled.
 
 Isolated test configuration
 
 The entire profile is disabled until explicitly selected; signing is a
-second opt-in; decryption is independently disabled by default. This
+second opt-in; decryption and PIN changes are independently disabled by default. This
 process-specific OPENSC_CONF example is for isolated testing, not a system
 default or browser installer:
 
@@ -41,6 +43,7 @@ app default {
         enable_local_signing = true;
         enable_raw_rsa_signing = true;
         # enable_local_decryption = true;
+        # enable_local_pin_change = true;
     }
     pkcs11 {
         lock_login = false;
@@ -108,6 +111,49 @@ The capability hints remain limited to this explicitly enabled driver.
 PKCS#11 object searches test a valid CKA_CLASS filter before other attribute
 comparisons, avoiding unrelated value reads when a caller lists CKA_VALUE
 first. Matching still applies the complete caller template.
+
+Ordinary PIN change
+
+enable_local_pin_change is false by default and is independent of signing
+and decryption. With only this option and enable_profile selected, ordinary
+PIN verification and the narrow change operation are available, but no RSA
+algorithm or extended-APDU capability is advertised. It does not enable
+unblock/reset, SO/PUK/signature-PIN management, PACE or personalization.
+The candidate uses the ordinary plain PC/SC software-PIN route. The
+middleware's optional manager/secure-messaging dispatch is not reproduced
+or established for this profile.
+
+The accepted CHANGE request is CHV reference 1 with explicitly supplied old
+and new PINs, each 4..8 bytes with SC_PIN_ENCODING_ASCII, using the existing
+right-padding to eight bytes with FF. No new character policy is inferred.
+Both inputs, command flags and the disabled-debugging requirement are
+validated before selection, a profile query or any authentication attempt.
+Pinpad, implicit-change, session-PIN and caller-built APDUs are rejected.
+
+One transaction selects/checks the exact 0282 profile as needed, sends one
+00 20 00 01 VERIFY with the prepared old PIN, and only on success sends one
+00 24 01 01 CHANGE with the prepared new PIN alone. Both are short case-3
+commands; CHANGE has Lc=8 and no Le. There is no old+new-PIN fallback,
+wrong-length retry or GET RESPONSE. Temporary prepared PINs are cleared
+after each transmission. A failed old VERIFY stops before CHANGE and can
+report its 63Cx retry count. Change-phase retry counts remain unknown;
+status errors retain their specific OpenSC mapping rather than all being
+reported as an incorrect old PIN. Selection/authentication/MSE state is
+cleared after the change request. A transport failure during CHANGE cannot
+establish whether the card accepted the new PIN; it must not be retried.
+
+Use the process-specific configuration above for isolated testing. The
+historical PIN-change hardware settings are recorded below; no validation
+of other configurations is claimed. Close card applications before changing
+the PIN and reopen them afterward; other processes can retain their own
+credentials.
+
+The five new grouped driver regressions use synthetic PINs and an entirely
+mocked transport. They cover opt-in isolation, validation before I/O, exact
+serialized new-only framing in one transaction, buffer clearing, failure
+handling without retries, and a reset/profile rejection before PIN I/O.
+They do not establish hardware behavior; the separate attended result below
+covers one physical card. No browser or mail-client registration is modified.
 
 Testing wanted: ePKIApplet 2.129 and ePKIApplet 2.126
 
@@ -215,6 +261,31 @@ key used were not recorded. Encrypted-mail sending, mixed OAEP/MGF1 hashes
 and other cards/readers remain unvalidated. These results do not extend
 the supported profile or establish a browser performance fix.
 
+PIN-change validation
+
+On 25 October 2026, an earlier isolated PIN-change candidate was tested
+on the same physical 2.130 card. Through the exported C_SetPIN interface,
+it made one ordinary reference-1 change from the current PIN to a
+different PIN.
+After closing/finalizing that module, a fresh initialization and C_Login
+with the new PIN succeeded. One fresh PKCS#1 v1.5/SHA-256 signature and one
+fresh PKCS#1 v1.5 decryption round trip on distinct RSA-2048 keys verified
+independently. The user also reported that Thunderbird worked afterward;
+that application check was not instrumented. All 42 protected runtime and
+application files remained unchanged; no candidate module was registered.
+
+The attended test used atomic=false, lock_login=true and PIN/file caches
+disabled. The new PIN remains active; no automatic change-back, deliberately
+wrong PIN, old-PIN rejection test, reset/unblock or interrupted-write test
+was performed. Real policy-error, blocked-PIN and ambiguous-write behavior
+remain untested. Other cards, PIN roles and manager/PIN-pad/PACE
+configurations are not covered. Software error-injection tests do not
+establish those hardware behaviors or issuer recovery rules.
+
+These earlier hardware checks do not constitute a fresh end-to-end
+hardware run of this public follow-up. The new software checks are
+reported separately in the pull request.
+
 Reproducing the focused checks
 
 The committed software regressions are src/tests/unittests/epki-research.c
@@ -275,6 +346,20 @@ ISO opcode definitions and similar signing commands do not establish this
 applet-specific binding. Hardware tests validate the result but do not
 change its discovery provenance. Encryption-key references and usage are
 read through PKCS#15 rather than hardcoded from a personal card.
+
+The ordinary PIN-change recipe was derived separately from limited static
+REA analysis of the exact SCinterface 8.3.13 library. Complete-file hashes
+establish that the installed library matches the Ubuntu 24.04 package in the
+user-supplied archive; package version alone is not the binary-match proof.
+For the matching 0282 branch, the analysis establishes a prior ordinary
+VERIFY and then CHANGE mode 1/reference 1 with only the prepared new PIN,
+CLA 00, a one-byte Lc and no explicit Le. Public vendor manuals describe
+the PIN-change workflow but do not provide this exact applet command recipe.
+The new feature therefore retains vendor-analysis provenance; no public-only
+or clean-room claim is made. The one-card validation above does not change
+that discovery provenance or establish wider compatibility.
+No vendor binary, pseudocode listing, PIN, personal identifier or full
+analysis transcript is included in this proposed source change.
 
 The driver glue, policies and mocks were written against OpenSC. Test PIN,
 message and signature payloads are synthetic; expected protocol values
