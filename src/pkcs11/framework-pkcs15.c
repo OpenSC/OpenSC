@@ -1308,6 +1308,26 @@ _pkcs15_create_typed_objects(struct pkcs15_fw_data *fw_data)
 	return rv;
 }
 
+static int
+_pkcs15_create_typed_objects_batched(struct pkcs15_fw_data *fw_data)
+{
+	struct sc_card *card = fw_data->p15_card->card;
+	int r, unlock_r;
+
+	if (!(card->caps & SC_CARD_CAP_BATCH_PUBLIC_OBJECTS))
+		return _pkcs15_create_typed_objects(fw_data);
+	r = sc_lock(card);
+	if (r < 0)
+		return r;
+	/* Only public object discovery is batched. No lock spans slot setup,
+	 * PIN entry or login, and each driver still handles resets/errors.
+	 */
+	r = _pkcs15_create_typed_objects(fw_data);
+	unlock_r = sc_unlock(card);
+	if (r >= 0 && unlock_r < 0)
+		r = unlock_r;
+	return r;
+}
 
 int
 _is_slot_auth_object(struct sc_pkcs15_auth_info *pin_info)
@@ -1645,7 +1665,7 @@ pkcs15_create_tokens(struct sc_pkcs11_card *p11card, struct sc_app_info *app_inf
 	sc_log(context, "Flags:0x%X; Auth User/Sign PINs %p/%p", cs_flags, auth_user_pin, auth_sign_pin);
 
 	/* Add PKCS#15 objects of the known types to the framework data */
-	rc = _pkcs15_create_typed_objects(fw_data);
+	rc = _pkcs15_create_typed_objects_batched(fw_data);
 	if (rc < 0)
 		return sc_to_cryptoki_error(rc, NULL);
 	sc_log(context, "Found %d FW objects objects", fw_data->num_objects);

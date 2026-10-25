@@ -189,6 +189,8 @@ epki_init(sc_card_t *card)
 	card->drv_data = priv;
 	priv->signing_enabled = signing;
 	priv->decryption_enabled = decryption;
+	/* GET_INFO is unsupported; do not select the app merely to reject it. */
+	card->caps |= SC_CARD_CAP_NO_PIN_INFO | SC_CARD_CAP_BATCH_PUBLIC_OBJECTS;
 	/* OpenSC supplies DigestInfo; the applet supplies type-1 RSA padding.
 	 * The additional raw signature primitive allows the shared software
 	 * encoder to implement PSS, including explicit hash/MGF/salt parameters.
@@ -309,12 +311,13 @@ epki_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **file_out)
 		goto done;
 	}
 
-	/* Once VERIFY succeeds, repeated selects of the same application are
-	 * redundant and may discard card authentication. Reuse is limited to
-	 * this exact AID/path while the same outer transaction is still held.
-	 * Direct-child SELECT still runs and requests FCI as required. */
-	reuse = priv != NULL && priv->pin_verified &&
-		priv->app_selected && priv->app_file != NULL;
+	/* Authenticated reuse preserves the existing PIN semantics. Before
+	 * login, only exact direct-child paths can reuse the known application
+	 * while this same outer transaction is held. A bare DF/AID selection
+	 * still runs, and the child SELECT always requests its own FCI.
+	 */
+	reuse = priv != NULL && priv->app_selected && priv->app_file != NULL &&
+		(priv->pin_verified || (app_path_match && path->len > sizeof(app_path)));
 	if (reuse) {
 		if (file_out != NULL && (app_aid_match || path->len == sizeof(app_path))) {
 			sc_file_dup(&selected_file, priv->app_file);
@@ -359,6 +362,35 @@ done:
 	if (locked)
 		sc_unlock(card);
 	return r;
+}
+
+static int
+epki_public_read_result(sc_card_t *card, int r)
+{
+	struct epki_data *priv = card->drv_data;
+	if (r < 0) {
+		epki_clear_selection(priv);
+		if (priv != NULL && (r == SC_ERROR_CARD_RESET ||
+						    r == SC_ERROR_READER_REATTACHED || r == SC_ERROR_CARD_REMOVED))
+			priv->profile_checked = 0;
+	}
+	return r;
+}
+
+static int
+epki_read_binary(sc_card_t *card, unsigned int idx, u8 *buf,
+		size_t count, unsigned long *flags)
+{
+	const struct sc_card_operations *iso = sc_get_iso7816_driver()->ops;
+	return epki_public_read_result(card, iso->read_binary(card, idx, buf, count, flags));
+}
+
+static int
+epki_read_record(sc_card_t *card, unsigned int rec_nr, unsigned int idx,
+		u8 *buf, size_t count, unsigned long flags)
+{
+	const struct sc_card_operations *iso = sc_get_iso7816_driver()->ops;
+	return epki_public_read_result(card, iso->read_record(card, rec_nr, idx, buf, count, flags));
 }
 
 static int
@@ -693,8 +725,8 @@ sc_get_epki_research_driver(void)
 	epki_ops.init = epki_init;
 	epki_ops.finish = epki_finish;
 	epki_ops.card_reader_lock_obtained = epki_reader_lock_obtained;
-	epki_ops.read_binary = iso->read_binary;
-	epki_ops.read_record = iso->read_record;
+	epki_ops.read_binary = epki_read_binary;
+	epki_ops.read_record = epki_read_record;
 	epki_ops.select_file = epki_select_file;
 	epki_ops.get_response = iso->get_response;
 	epki_ops.check_sw = iso->check_sw;

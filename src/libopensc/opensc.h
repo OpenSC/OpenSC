@@ -573,6 +573,17 @@ struct sc_reader_operations {
 /* Card (or card driver) supports key unwrapping operations */
 #define SC_CARD_CAP_UNWRAP_KEY			0x00001000
 
+/* Card driver does not implement PIN status queries, including proprietary
+ * ones. Unlike the absence of SC_CARD_CAP_ISO7816_PIN_INFO, this permits
+ * PKCS#15 to skip selecting the PIN's application for an unsupported query.
+ */
+#define SC_CARD_CAP_NO_PIN_INFO 0x00002000
+
+/* Driver benefits from one bounded transaction while initial public PKCS#15
+ * objects are discovered. This never spans slot creation or user login.
+ */
+#define SC_CARD_CAP_BATCH_PUBLIC_OBJECTS 0x00004000
+
 typedef struct sc_card {
 	struct sc_context *ctx;
 	struct sc_reader *reader;

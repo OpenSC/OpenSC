@@ -15,7 +15,7 @@ struct fixture {
 	sc_pkcs15_object_t pin, key;
 	sc_pkcs15_auth_info_t pin_info;
 	sc_pkcs15_prkey_info_t key_info;
-	unsigned locks, unlocks, verifies, signatures, versions, selections;
+	unsigned locks, unlocks, verifies, signatures, versions, selections, info_queries;
 	int reset_next_lock, authenticated, mse, reject_pin, fail_signature;
 };
 
@@ -236,6 +236,66 @@ sign_message(struct fixture *f)
 }
 
 static void
+unsupported_pin_info_preserves_cached_state_without_card_io(void **state)
+{
+	struct fixture *f = *state;
+	assert_true(f->card.caps & SC_CARD_CAP_NO_PIN_INFO);
+	assert_int_equal(login(f), SC_SUCCESS);
+	f->pin_info.max_tries = 3;
+	f->pin_info.tries_left = 2;
+	f->pin_info.logged_in = SC_PIN_STATE_LOGGED_IN;
+	unsigned locks = f->locks, unlocks = f->unlocks;
+	unsigned selections = f->selections, verifies = f->verifies;
+	for (unsigned i = 0; i < 3; i++) {
+		assert_int_equal(sc_pkcs15_get_pin_info(&f->p15, &f->pin), SC_ERROR_NOT_SUPPORTED);
+		assert_int_equal(f->pin_info.max_tries, 3);
+		assert_int_equal(f->pin_info.tries_left, 2);
+		assert_int_equal(f->pin_info.logged_in, SC_PIN_STATE_LOGGED_IN);
+	}
+	assert_int_equal(f->locks, locks);
+	assert_int_equal(f->unlocks, unlocks);
+	assert_int_equal(f->selections, selections);
+	assert_int_equal(f->verifies, verifies);
+	assert_true(f->authenticated);
+	/* Real private operations still perform their normal reauthentication. */
+	assert_int_equal(sign_message(f), 256);
+	assert_int_equal(f->verifies, verifies + 1);
+}
+
+static int
+proprietary_pin_info(sc_card_t *card, struct sc_pin_cmd_data *data)
+{
+	assert_true(card->lock_count > 0);
+	assert_int_equal(data->cmd, SC_PIN_CMD_GET_INFO);
+	active->info_queries++;
+	data->pin1.max_tries = 5;
+	data->pin1.tries_left = 4;
+	data->pin1.logged_in = SC_PIN_STATE_LOGGED_IN;
+	return SC_SUCCESS;
+}
+
+static void
+proprietary_pin_info_without_iso_capability_still_runs(void **state)
+{
+	struct fixture *f = *state;
+	struct sc_card_operations *original_ops = f->card.ops;
+	struct sc_card_operations ops = *f->card.ops;
+	ops.pin_cmd = proprietary_pin_info;
+	f->card.ops = &ops;
+	f->card.caps &= ~(SC_CARD_CAP_NO_PIN_INFO | SC_CARD_CAP_ISO7816_PIN_INFO);
+	unsigned selections = f->selections;
+	assert_int_equal(sc_pkcs15_get_pin_info(&f->p15, &f->pin), SC_SUCCESS);
+	assert_int_equal(f->locks, 1);
+	assert_int_equal(f->unlocks, 1);
+	assert_int_equal(f->selections, selections + 1);
+	assert_int_equal(f->info_queries, 1);
+	assert_int_equal(f->pin_info.max_tries, 5);
+	assert_int_equal(f->pin_info.tries_left, 4);
+	assert_int_equal(f->pin_info.logged_in, SC_PIN_STATE_LOGGED_IN);
+	f->card.ops = original_ops;
+}
+
+static void
 separate_transactions_and_software_logout(void **state)
 {
 	struct fixture *f = *state;
@@ -323,6 +383,8 @@ int
 main(void)
 {
 	const struct CMUnitTest tests[] = {
+			cmocka_unit_test_setup_teardown(unsupported_pin_info_preserves_cached_state_without_card_io, setup, teardown),
+			cmocka_unit_test_setup_teardown(proprietary_pin_info_without_iso_capability_still_runs, setup, teardown),
 			cmocka_unit_test_setup_teardown(separate_transactions_and_software_logout, setup, teardown),
 			cmocka_unit_test_setup_teardown(reset_rechecks_profile_and_revalidates_pin, setup, teardown),
 			cmocka_unit_test_setup_teardown(wrong_cached_pin_is_used_once_and_discarded, setup, teardown),

@@ -693,6 +693,8 @@ int sc_pkcs15_get_pin_info(struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_auth_info *pin_info = (struct sc_pkcs15_auth_info *) pin_obj->data;
 
 	LOG_FUNC_CALLED(ctx);
+	if (card->caps & SC_CARD_CAP_NO_PIN_INFO)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 
 	r = sc_lock(card);
 	if (r != SC_SUCCESS)

@@ -77,6 +77,33 @@ mock_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **file_out)
 	return result;
 }
 
+static int read_result, read_calls;
+static int
+mock_read_binary(sc_card_t *card, unsigned int idx, u8 *buf,
+		size_t count, unsigned long *flags)
+{
+	assert_int_equal(idx, 7);
+	assert_int_equal(count, 3);
+	assert_non_null(buf);
+	assert_non_null(flags);
+	assert_int_equal(*flags, 11);
+	read_calls++;
+	return read_result;
+}
+
+static int
+mock_read_record(sc_card_t *card, unsigned int rec_nr, unsigned int idx,
+		u8 *buf, size_t count, unsigned long flags)
+{
+	assert_int_equal(rec_nr, 2);
+	assert_int_equal(idx, 7);
+	assert_int_equal(count, 3);
+	assert_non_null(buf);
+	assert_int_equal(flags, 11);
+	read_calls++;
+	return read_result;
+}
+
 static struct sc_card_driver *
 mock_iso_driver(void)
 {
@@ -85,6 +112,8 @@ mock_iso_driver(void)
 	const struct sc_card_driver *iso = sc_get_iso7816_driver();
 	ops = *iso->ops;
 	ops.select_file = mock_select_file;
+	ops.read_binary = mock_read_binary;
+	ops.read_record = mock_read_record;
 	driver = *iso;
 	driver.ops = &ops;
 	return &driver;
@@ -325,12 +354,12 @@ preserve_other_paths_and_selection_errors(void **state)
 }
 
 static void
-only_public_read_callbacks_are_inherited(void **state)
+only_public_read_callbacks_are_exposed(void **state)
 {
 	struct sc_card_operations *ops = sc_get_test_epki_research_driver()->ops;
 	const struct sc_card_operations *iso = sc_get_iso7816_driver()->ops;
-	assert_ptr_equal(ops->read_binary, iso->read_binary);
-	assert_ptr_equal(ops->read_record, iso->read_record);
+	assert_ptr_equal(ops->read_binary, epki_read_binary);
+	assert_ptr_equal(ops->read_record, epki_read_record);
 	assert_ptr_equal(ops->select_file, epki_select_file);
 	assert_ptr_equal(ops->get_response, iso->get_response);
 	assert_ptr_equal(ops->process_fci, iso->process_fci);
@@ -489,6 +518,7 @@ explicit_read_only_profile_is_narrow(void **state)
 	assert_int_equal(card.algorithm_count, 0);
 	assert_null(card.algorithms);
 	assert_false(card.caps & SC_CARD_CAP_APDU_EXT);
+	assert_false(card.caps & SC_CARD_CAP_BATCH_PUBLIC_OBJECTS);
 	assert_int_equal(select_calls, 2);
 	assert_int_equal(transmit_calls, 2);
 	assert_int_equal(card.lock_count, 0);
@@ -536,6 +566,8 @@ enable_signing_for_explicit_matching_profile(void **state)
 	assert_int_equal(card.algorithms[0].flags,
 			SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_NONE);
 	assert_false(card.caps & SC_CARD_CAP_ISO7816_PIN_INFO);
+	assert_true(card.caps & SC_CARD_CAP_NO_PIN_INFO);
+	assert_true(card.caps & SC_CARD_CAP_BATCH_PUBLIC_OBJECTS);
 	assert_false(card.caps & SC_CARD_CAP_APDU_EXT);
 	assert_false(((struct epki_data *)card.drv_data)->raw_rsa_enabled);
 	assert_int_equal(transmit_calls, 1);
@@ -1246,6 +1278,105 @@ new_transaction_requires_fresh_authentication(void **state)
 }
 
 static void
+public_read_errors_invalidate_selection_without_retry(void **state)
+{
+	const int results[] = {3, 0, SC_ERROR_FILE_END_REACHED, SC_ERROR_RECORD_NOT_FOUND,
+			SC_ERROR_TRANSMIT_FAILED, SC_ERROR_CARD_RESET, SC_ERROR_READER_REATTACHED,
+			SC_ERROR_CARD_REMOVED};
+	for (unsigned kind = 0; kind < 2; kind++) {
+		for (unsigned i = 0; i < sizeof(results) / sizeof(results[0]); i++) {
+			sc_card_t card;
+			sc_context_t ctx;
+			struct epki_data priv;
+			u8 bytes[3];
+			unsigned long flags = 11;
+			prepare_enabled(&card, &ctx, &priv);
+			priv.app_file = sc_file_new();
+			assert_non_null(priv.app_file);
+			priv.pin_verified = priv.security_env_valid = 1;
+			read_result = results[i];
+			read_calls = 0;
+			int r = kind ? epki_read_record(&card, 2, 7, bytes, sizeof(bytes), flags) : epki_read_binary(&card, 7, bytes, sizeof(bytes), &flags);
+			assert_int_equal(r, results[i]);
+			assert_int_equal(read_calls, 1);
+			if (r < 0) {
+				assert_false(priv.app_selected);
+				assert_null(priv.app_file);
+				assert_false(priv.pin_verified);
+				assert_false(priv.security_env_valid);
+			} else {
+				assert_true(priv.app_selected);
+				assert_non_null(priv.app_file);
+				assert_true(priv.pin_verified);
+				assert_true(priv.security_env_valid);
+			}
+			assert_int_equal(priv.profile_checked, r != SC_ERROR_CARD_RESET &&
+									       r != SC_ERROR_READER_REATTACHED && r != SC_ERROR_CARD_REMOVED);
+			epki_clear_selection(&priv);
+		}
+	}
+}
+
+static void
+public_child_reuse_is_transaction_scoped_and_never_authenticates(void **state)
+{
+	sc_card_t card;
+	sc_context_t ctx;
+	struct epki_data priv;
+	sc_path_t app, child;
+	sc_security_env_t env = valid_security_env();
+	static const u8 fid[] = {0x54, 0x02};
+
+	prepare_enabled(&card, &ctx, &priv);
+	card.ops = sc_get_test_epki_research_driver()->ops;
+	card.lock_count = 1;
+	sc_format_path("3F005015", &app);
+	sc_format_path("3F0050155402", &child);
+	/* A bare application selection retains its original semantics. */
+	for (unsigned i = 0; i < 2; i++) {
+		expect_selection(SC_PATH_TYPE_DF_NAME, epki_aid, sizeof(epki_aid), 1, SC_SUCCESS);
+		assert_int_equal(epki_select_file(&card, &app, NULL), SC_SUCCESS);
+	}
+	/* Only direct children can omit the redundant AID inside this lock. */
+	for (unsigned i = 0; i < 2; i++) {
+		expect_selection(SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 1, SC_SUCCESS);
+		assert_int_equal(epki_select_file(&card, &child, NULL), SC_SUCCESS);
+	}
+	assert_int_equal(file_select_calls, 4);
+	assert_false(priv.pin_verified);
+	assert_int_equal(epki_set_security_env(&card, &env, 0), SC_ERROR_SECURITY_STATUS_NOT_SATISFIED);
+	assert_int_equal(transmit_calls, 0);
+	assert_int_equal(card.lock_count, 1);
+
+	/* A child DF cannot justify retaining the application's current DF. */
+	child_file_type = SC_FILE_TYPE_DF;
+	expect_selection(SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 1, SC_SUCCESS);
+	assert_int_equal(epki_select_file(&card, &child, NULL), SC_SUCCESS);
+	assert_false(priv.app_selected);
+	assert_null(priv.app_file);
+	child_file_type = SC_FILE_TYPE_WORKING_EF;
+	expect_selection(SC_PATH_TYPE_DF_NAME, epki_aid, sizeof(epki_aid), 1, SC_SUCCESS);
+	expect_selection(SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 1, SC_SUCCESS);
+	assert_int_equal(epki_select_file(&card, &child, NULL), SC_SUCCESS);
+
+	/* Ending the outer transaction invalidates the public selection too. */
+	card.lock_count = 0;
+	new_transaction_at_next_lock = 1;
+	expect_selection(SC_PATH_TYPE_DF_NAME, epki_aid, sizeof(epki_aid), 1, SC_SUCCESS);
+	expect_selection(SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 1, SC_SUCCESS);
+	assert_int_equal(epki_select_file(&card, &child, NULL), SC_SUCCESS);
+	assert_int_equal(card.lock_count, 0);
+	reset_at_next_lock = 1;
+	expect_selection(SC_PATH_TYPE_DF_NAME, epki_aid, sizeof(epki_aid), 1, SC_SUCCESS);
+	expect_selection(SC_PATH_TYPE_FILE_ID, fid, sizeof(fid), 1, SC_SUCCESS);
+	assert_int_equal(epki_select_file(&card, &child, NULL), SC_SUCCESS);
+	assert_false(priv.profile_checked);
+	assert_false(priv.pin_verified);
+	assert_int_equal(card.lock_count, 0);
+	epki_clear_selection(&priv);
+}
+
+static void
 preserve_login_across_public_reads_and_key_selection(void **state)
 {
 	sc_card_t card;
@@ -1501,11 +1632,13 @@ main(void)
 			cmocka_unit_test(reset_requires_profile_check_before_reauthentication),
 			cmocka_unit_test(opensc_prepends_digest_info_without_rsa_padding),
 			cmocka_unit_test(preserve_login_across_public_reads_and_key_selection),
+			cmocka_unit_test(public_child_reuse_is_transaction_scoped_and_never_authenticates),
+			cmocka_unit_test(public_read_errors_invalidate_selection_without_retry),
 			cmocka_unit_test(invalidate_authenticated_cache_on_transaction_or_foreign_selection),
 			cmocka_unit_test(child_df_or_unknown_fci_cannot_preserve_authenticated_app),
 			cmocka_unit_test(invalidate_cache_before_consulting_it_on_new_transaction),
 			cmocka_unit_test(deny_security_operations_without_io),
-			cmocka_unit_test(only_public_read_callbacks_are_inherited),
+			cmocka_unit_test(only_public_read_callbacks_are_exposed),
 			cmocka_unit_test(map_only_observed_application_paths),
 			cmocka_unit_test(preserve_other_paths_and_selection_errors),
 	};
