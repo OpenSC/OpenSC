@@ -550,6 +550,8 @@ prepare_enabled(sc_card_t *card, sc_context_t *ctx, struct epki_data *priv)
 	*card = observed_card();
 	memset(ctx, 0, sizeof(*ctx));
 	memset(priv, 0, sizeof(*priv));
+	priv->signing_enabled = 1;
+	priv->security_operation = SC_SEC_OPERATION_SIGN;
 	priv->profile_checked = 1;
 	priv->app_selected = 1;
 	card->ctx = ctx;
@@ -916,6 +918,149 @@ raw_rsa_uses_exact_extended_framing_and_bounded_response(void **state)
 	assert_int_equal(epki_compute_signature(&card, encoded, sizeof(encoded), out, sizeof(out)),
 			SC_ERROR_NOT_ALLOWED);
 	assert_int_equal(transmit_calls, 2);
+}
+
+static void
+decryption_requires_its_own_opt_in(void **state)
+{
+	static const u8 good[] = {0x02, 0x82};
+	sc_card_t card = observed_card();
+	sc_context_t ctx = {0};
+	sc_security_env_t env = valid_security_env();
+	struct epki_data *priv;
+	u8 input[256] = {0}, output[256];
+
+	set_detection_config(&card, &ctx,
+			"card_driver epki-research { enable_profile = true; enable_local_decryption = true; }");
+	expect_version(good, sizeof(good));
+	assert_int_equal(epki_init(&card), SC_SUCCESS);
+	priv = card.drv_data;
+	assert_non_null(priv);
+	assert_true(priv->decryption_enabled);
+	assert_false(priv->signing_enabled);
+	assert_false(priv->raw_rsa_enabled);
+	assert_int_equal(card.algorithm_count, 1);
+	assert_int_equal(card.algorithms[0].flags, SC_ALGORITHM_RSA_RAW);
+	assert_true(card.caps & SC_CARD_CAP_APDU_EXT);
+	assert_int_equal(card.max_send_size, 256);
+	assert_int_equal(card.max_recv_size, 256);
+	priv->pin_verified = 1;
+	assert_int_equal(epki_set_security_env(&card, &env, 0), SC_ERROR_NOT_SUPPORTED);
+	assert_int_equal(epki_compute_signature(&card, input, sizeof(input), output, sizeof(output)),
+			SC_ERROR_NOT_SUPPORTED);
+	env.operation = SC_SEC_OPERATION_DECIPHER;
+	assert_int_equal(epki_set_security_env(&card, &env, 0), SC_ERROR_NOT_SUPPORTED);
+	env.algorithm_flags = SC_ALGORITHM_RSA_PAD_NONE;
+	env.key_size_bits = 1024;
+	assert_int_equal(epki_set_security_env(&card, &env, 0), SC_ERROR_NOT_SUPPORTED);
+	assert_int_equal(transmit_calls, 1);
+	epki_finish(&card);
+	free(card.algorithms);
+	scconf_free(ctx.conf);
+}
+
+static void
+decryption_uses_a_distinct_environment_and_raw_framing(void **state)
+{
+	sc_card_t card;
+	sc_context_t ctx;
+	struct epki_data priv;
+	sc_security_env_t env = valid_security_env();
+	u8 ciphertext[256] = {1}, block[256] = {2}, output[256];
+	prepare_raw(&card, &ctx, &priv);
+	priv.decryption_enabled = priv.pin_verified = 1;
+	env.algorithm_flags = SC_ALGORITHM_RSA_PAD_NONE;
+	expect_mse();
+	assert_int_equal(epki_set_security_env(&card, &env, 0), SC_SUCCESS);
+	assert_int_equal(epki_decipher(&card, ciphertext, sizeof(ciphertext), output, sizeof(output)),
+			SC_ERROR_NOT_ALLOWED);
+	env.operation = SC_SEC_OPERATION_DECIPHER;
+	expect_mse();
+	next_apdu.p2 = 0xb8;
+	assert_int_equal(epki_set_security_env(&card, &env, 0), SC_SUCCESS);
+	assert_int_equal(epki_compute_signature(&card, ciphertext, sizeof(ciphertext), output, sizeof(output)),
+			SC_ERROR_NOT_ALLOWED);
+	assert_int_equal(epki_decipher(&card, ciphertext, 255, output, sizeof(output)), SC_ERROR_INVALID_ARGUMENTS);
+	assert_int_equal(epki_decipher(&card, ciphertext, 257, output, sizeof(output)), SC_ERROR_INVALID_ARGUMENTS);
+	assert_int_equal(epki_decipher(&card, ciphertext, sizeof(ciphertext), output, 255), SC_ERROR_BUFFER_TOO_SMALL);
+	ctx.debug = 1;
+	assert_int_equal(epki_decipher(&card, ciphertext, sizeof(ciphertext), output, sizeof(output)), SC_ERROR_NOT_ALLOWED);
+	ctx.debug = 0;
+	assert_int_equal(transmit_calls, 2);
+	next_apdu = (struct expected_apdu){0, 0x2a, 0x80, 0x86,
+			SC_APDU_CASE_4_EXT, ciphertext, sizeof(ciphertext), 65536,
+			SC_APDU_FLAGS_NO_RETRY_WL, SC_APDU_FLAGS_CHAINING | SC_APDU_FLAGS_NO_GET_RESP,
+			block, sizeof(block), 0x90, 0, SC_SUCCESS};
+	assert_int_equal(epki_decipher(&card, ciphertext, sizeof(ciphertext), output, sizeof(output)), 256);
+	assert_memory_equal(output, block, sizeof(output));
+	assert_false(priv.security_env_valid);
+	assert_int_equal(epki_decipher(&card, ciphertext, sizeof(ciphertext), output, sizeof(output)), SC_ERROR_NOT_ALLOWED);
+	assert_int_equal(transmit_calls, 3);
+}
+
+static void
+decryption_errors_do_not_release_output_or_retry(void **state)
+{
+	const int errors[] = {SC_ERROR_TRANSMIT_FAILED, SC_ERROR_CARD_CMD_FAILED,
+			SC_ERROR_UNKNOWN_DATA_RECEIVED, SC_ERROR_SECURITY_STATUS_NOT_SATISFIED};
+	u8 ciphertext[256] = {1}, block[256] = {2}, output[256], untouched[256];
+	size_t i;
+	memset(untouched, 0xa5, sizeof(untouched));
+	for (i = 0; i < sizeof(errors) / sizeof(errors[0]); i++) {
+		sc_card_t card;
+		sc_context_t ctx;
+		struct epki_data priv;
+		prepare_raw(&card, &ctx, &priv);
+		priv.decryption_enabled = priv.pin_verified = priv.security_env_valid = 1;
+		priv.security_operation = SC_SEC_OPERATION_DECIPHER;
+		memcpy(output, untouched, sizeof(output));
+		next_apdu = (struct expected_apdu){0, 0x2a, 0x80, 0x86,
+				SC_APDU_CASE_4_EXT, ciphertext, sizeof(ciphertext), 65536,
+				SC_APDU_FLAGS_NO_RETRY_WL, SC_APDU_FLAGS_CHAINING | SC_APDU_FLAGS_NO_GET_RESP,
+				block, sizeof(block), 0x90, 0, SC_SUCCESS};
+		if (i == 0)
+			next_apdu.result = SC_ERROR_TRANSMIT_FAILED;
+		else if (i == 1)
+			next_apdu.sw1 = 0x6f;
+		else if (i == 2)
+			next_apdu.response_len = 255;
+		else {
+			next_apdu.sw1 = 0x69;
+			next_apdu.sw2 = 0x82;
+		}
+		assert_int_equal(epki_decipher(&card, ciphertext, sizeof(ciphertext), output, sizeof(output)), errors[i]);
+		assert_false(priv.security_env_valid);
+		assert_memory_equal(output, untouched, sizeof(output));
+		assert_true(epki_decipher(&card, ciphertext, sizeof(ciphertext), output, sizeof(output)) < 0);
+		assert_int_equal(transmit_calls, 1);
+		if (i == 0 || i == 3)
+			assert_false(priv.pin_verified);
+	}
+}
+
+static void
+decryption_cannot_reuse_authentication_after_unlock_or_reset(void **state)
+{
+	u8 ciphertext[256] = {1}, output[256];
+	int reset;
+	for (reset = 0; reset <= 1; reset++) {
+		sc_card_t card;
+		sc_context_t ctx;
+		struct epki_data priv;
+		prepare_raw(&card, &ctx, &priv);
+		card.ops = sc_get_test_epki_research_driver()->ops;
+		priv.decryption_enabled = priv.pin_verified = priv.security_env_valid = 1;
+		priv.security_operation = SC_SEC_OPERATION_DECIPHER;
+		if (reset)
+			reset_at_next_lock = 1;
+		else
+			new_transaction_at_next_lock = 1;
+		assert_int_equal(epki_decipher(&card, ciphertext, sizeof(ciphertext), output, sizeof(output)),
+				SC_ERROR_SECURITY_STATUS_NOT_SATISFIED);
+		assert_int_equal(transmit_calls, 0);
+		assert_false(priv.pin_verified);
+		assert_false(priv.security_env_valid);
+	}
 }
 
 static void
@@ -1345,6 +1490,10 @@ main(void)
 			cmocka_unit_test(raw_rsa_remains_sign_only_and_requires_authentication),
 			cmocka_unit_test(raw_rsa_uses_exact_extended_framing_and_bounded_response),
 			cmocka_unit_test(raw_rsa_failure_consumes_current_operation),
+			cmocka_unit_test(decryption_requires_its_own_opt_in),
+			cmocka_unit_test(decryption_uses_a_distinct_environment_and_raw_framing),
+			cmocka_unit_test(decryption_errors_do_not_release_output_or_retry),
+			cmocka_unit_test(decryption_cannot_reuse_authentication_after_unlock_or_reset),
 			cmocka_unit_test(sign_digest_info_once_and_validate_response),
 			cmocka_unit_test(repeated_operations_do_not_exhaust_driver),
 			cmocka_unit_test(logout_clears_authentication_and_allows_relogin),

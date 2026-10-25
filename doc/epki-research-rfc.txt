@@ -21,14 +21,18 @@ Signing is opt-in: RSA-2048, PIN reference 1, and PKCS#15-selected one-byte
 key references 1..255. Only one authentication key was tested on hardware.
 PKCS#1 v1.5 uses card padding. A separate raw-RSA opt-in uses OpenSC software
 PSS encoding and the card's raw signature operation; native PSS is not
-advertised. Other sizes/PIN roles, decryption, PIN change/unblock, key
-generation and card writes are unsupported.
+advertised. A separate enable_local_decryption opt-in adds RSA-2048
+PKCS#1 v1.5/OAEP decryption through OpenSC's existing software unpadding.
+Public-key encryption remains host-side; no RSA C_Encrypt is added.
+Other sizes/PIN roles, PIN change/unblock, key generation and card writes
+remain unsupported. Decryption is refused while debug logging is enabled.
 
 Isolated test configuration
 
 The entire profile is disabled until explicitly selected; signing is a
-second opt-in. This process-specific OPENSC_CONF example is for isolated
-testing, not a system default or browser installer:
+second opt-in; decryption is independently disabled by default. This
+process-specific OPENSC_CONF example is for isolated testing, not a system
+default or browser installer:
 
 app default {
     card_drivers = epki-research;
@@ -36,6 +40,7 @@ app default {
         enable_profile = true;
         enable_local_signing = true;
         enable_raw_rsa_signing = true;
+        # enable_local_decryption = true;
     }
     pkcs11 {
         lock_login = false;
@@ -66,15 +71,16 @@ PIN or use an empty VERIFY probe. The driver itself stores no PIN.
 The normal OpenSC framework can cache a successful PIN in process memory.
 When a new transaction invalidates selection/authentication, the existing
 PKCS#15 use_key path may revalidate that cached PIN once inside the same
-transaction as MSE and signing. A wrong cached PIN is discarded by the
-framework. The standard cache-use limit (currently 10 revalidations) and user-consent
-rules still apply.
+transaction as MSE and its private operation. A wrong cached PIN is discarded
+by the framework. The standard cache-use limit (currently 10 revalidations)
+and user-consent rules still apply.
 With PIN caching disabled, a caller must supply authentication within the
 same transaction as its private operation; no hidden driver cache is added.
 
 The driver no longer limits successful signatures or permanently disables
 later explicit operations after a PIN/signing error. Every signature still
-needs a fresh security environment, and the driver never internally retries
+needs a fresh security environment, as does decryption. Signing and
+decryption environments cannot be exchanged. The driver never retries
 MSE or PSO. New transactions invalidate selection/PIN/MSE state. A reset
 also requires the exact profile to be rechecked before sending another PIN.
 
@@ -161,8 +167,34 @@ general card compatibility.
 The 24 October cleanup removes research diagnostics, redundant state and
 unsupported-operation stubs, plus duplicate test assertions/cases. The strict
 Linux build and all 17 offline unit programs pass; the remaining 30 driver
-cases and six lifecycle scenarios pass with cmocka 1 and 2. The physical-card
-and browser results above precede this cleanup and have not been repeated.
+cases and six lifecycle scenarios pass with cmocka 1 and 2. On 24 October,
+the cleaned head 09661d6 also repeated one PKCS#1 v1.5 and six PSS signature
+checks, plus certificate login in a fresh Firefox profile requiring TLS 1.3.
+The tester reported one PIN prompt and prompt loading. The earlier removal,
+direct card-level logout and two-client hardware sequences were not repeated
+for that cleaned head.
+
+RSA decryption validation
+
+The decryption changes add four focused driver cases for independent
+opt-in, distinct MSE/PSO framing, failure handling and transaction/reset
+invalidation. The resulting 34 driver cases and six lifecycle scenarios
+pass. Eight additional private, synthetic crypto/core checks cover shared
+unpadding and authentication/error paths; all 17 offline unit programs pass.
+Those eight checks are local validation, not committed automated tests.
+
+On one physical ePKIApplet 2.130 card, the exported PKCS#11 interface
+verified PKCS#1 v1.5 decryption with four RSA-2048 encryption keys. Four
+OAEP vectors on one key verified SHA-1, SHA-256, SHA-384 and SHA-512,
+each with a matching MGF1 hash and a nonempty label. The tests used fresh
+random messages, one login/logout and an explicit output-length query.
+The user also reported successful decryption of one existing S/MIME
+message in Thunderbird with this OpenSC build. Its running process was
+verified to load only the new OpenSC middleware, without the vendor module.
+This is a one-message application check; PIN prompt count and the specific
+key used were not recorded. Encrypted-mail sending, mixed OAEP/MGF1 hashes
+and other cards/readers remain unvalidated. These results do not extend
+the supported profile or establish a browser performance fix.
 
 Reproducing the focused checks
 
@@ -216,6 +248,14 @@ also contain vendor-derived interface facts. A saved decoded PIN maximum
 of 8 may be OpenSC's default rather than an encoded card field; vendor PIN
 objects also reported 8. Public opcode definitions alone do not establish
 this applet's complete command recipes.
+
+The new decipher binding (MSE CRT B8, algorithm zero, extended PSO 80/86
+with a 256-byte input, no indicator and Le 0000) comes from a separate
+limited static analysis of the middleware's decryption route. Generic
+ISO opcode definitions and similar signing commands do not establish this
+applet-specific binding. Hardware tests validate the result but do not
+change its discovery provenance. Encryption-key references and usage are
+read through PKCS#15 rather than hardcoded from a personal card.
 
 The driver glue, policies and mocks were written against OpenSC. Test PIN,
 message and signature payloads are synthetic; expected protocol values

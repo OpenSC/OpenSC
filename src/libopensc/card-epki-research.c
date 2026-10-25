@@ -8,6 +8,8 @@
  * Application/file selection follows locally observed card behavior.
  * Read-only by default. Private opt-in supports PIN verification and
  * RSA-2048 PKCS#1 v1.5 signing with a PKCS#15-selected key.
+ * A separate decryption opt-in enables the profile's raw RSA decipher
+ * route; OpenSC supplies PKCS#1 v1.5/OAEP unpadding in its shared layer.
  * A separate raw-RSA opt-in lets OpenSC encode RSA-PSS in software.
  * Authentication is cached only during a reader transaction. OpenSC
  * manages PIN caching and revalidation; the driver never retains a PIN.
@@ -59,12 +61,15 @@ epki_match_card(sc_card_t *card)
 	return r == SC_SUCCESS && unlock_r == SC_SUCCESS;
 }
 
-/* Private state exists only when local signing is enabled. */
+/* Private operations require their own explicit opt-in. */
 struct epki_data {
+	int signing_enabled;
+	int decryption_enabled;
 	int raw_rsa_enabled;
 	int raw_signature;
 	int pin_verified;
 	int security_env_valid;
+	int security_operation;
 	int profile_checked;
 	int app_selected;
 	sc_file_t *app_file;
@@ -78,6 +83,7 @@ epki_clear_selection(struct epki_data *priv)
 	priv->app_selected = 0;
 	priv->pin_verified = 0;
 	priv->security_env_valid = 0;
+	priv->security_operation = 0;
 	priv->raw_signature = 0;
 	sc_file_free(priv->app_file);
 	priv->app_file = NULL;
@@ -108,11 +114,11 @@ epki_config_bool(sc_card_t *card, const char *option)
 /* Authentication and the MSE belong to the current transaction. A failed
  * command consumes its environment, but does not disable later operations. */
 static int
-epki_signing_state(const struct epki_data *priv, int need_env)
+epki_private_state(const struct epki_data *priv, int need_env, int operation)
 {
 	if (!priv->pin_verified)
 		return SC_ERROR_SECURITY_STATUS_NOT_SATISFIED;
-	if (need_env && !priv->security_env_valid)
+	if (need_env && (!priv->security_env_valid || priv->security_operation != operation))
 		return SC_ERROR_NOT_ALLOWED;
 	return SC_SUCCESS;
 }
@@ -164,7 +170,7 @@ epki_init(sc_card_t *card)
 {
 	struct epki_data *priv;
 	unsigned long algorithm_flags;
-	int r;
+	int r, signing, decryption;
 
 	/* OpenSC may initialize a forced driver even after match_card failed. */
 	if (epki_match_card(card) != 1)
@@ -173,20 +179,25 @@ epki_init(sc_card_t *card)
 	card->type = SC_CARD_TYPE_EPKI_RESEARCH;
 	card->cla = 0x00;
 	card->drv_data = NULL;
-	if (!epki_config_bool(card, "enable_local_signing"))
+	signing = epki_config_bool(card, "enable_local_signing");
+	decryption = epki_config_bool(card, "enable_local_decryption");
+	if (!signing && !decryption)
 		return SC_SUCCESS;
 	priv = calloc(1, sizeof(*priv));
 	if (priv == NULL)
 		return SC_ERROR_OUT_OF_MEMORY;
 	card->drv_data = priv;
+	priv->signing_enabled = signing;
+	priv->decryption_enabled = decryption;
 	/* OpenSC supplies DigestInfo; the applet supplies type-1 RSA padding.
 	 * The additional raw signature primitive allows the shared software
 	 * encoder to implement PSS, including explicit hash/MGF/salt parameters.
-	 * Never advertise unverified native PSS or enable a decrypt operation.
+	 * Raw decipher also uses the shared software encoding layer. Its
+	 * security environment is distinct from either signature operation.
 	 */
-	algorithm_flags = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_NONE;
-	priv->raw_rsa_enabled = epki_config_bool(card, "enable_raw_rsa_signing");
-	if (priv->raw_rsa_enabled)
+	algorithm_flags = signing ? SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_NONE : 0;
+	priv->raw_rsa_enabled = signing && epki_config_bool(card, "enable_raw_rsa_signing");
+	if (priv->raw_rsa_enabled || decryption)
 		algorithm_flags |= SC_ALGORITHM_RSA_RAW;
 	r = _sc_card_add_rsa_alg(card, 2048, algorithm_flags, 0);
 	if (r < 0) {
@@ -194,16 +205,16 @@ epki_init(sc_card_t *card)
 		return r;
 	}
 	priv->profile_checked = 1;
-	if (priv->raw_rsa_enabled) {
+	if (priv->raw_rsa_enabled || decryption) {
 		/* The checked 0282 profile supports extended APDUs. Only the
-		 * 256-byte signature input needs one; keep public read sizes
+		 * 256-byte RSA inputs need one; keep public read sizes
 		 * bounded to the previous short-response limit.
 		 */
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 		card->max_send_size = 256;
 		card->max_recv_size = 256;
 	}
-	card->name = "SCE7 PKCS#15 (experimental local signature)";
+	card->name = decryption ? "SCE7 PKCS#15 (experimental local cryptography)" : "SCE7 PKCS#15 (experimental local signature)";
 	return SC_SUCCESS;
 }
 
@@ -403,6 +414,8 @@ epki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 	 * per-connection attempt latch: OpenSC owns its PIN-cache policy. */
 	priv->pin_verified = 0;
 	priv->security_env_valid = 0;
+	priv->security_operation = 0;
+	priv->raw_signature = 0;
 	memset(padded_pin, 0xff, sizeof(padded_pin));
 	memcpy(padded_pin, data->pin1.data, data->pin1.len);
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x20, 0x00, 0x01);
@@ -463,18 +476,21 @@ epki_set_security_env(sc_card_t *card,
 	const unsigned long supported = SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01 | SC_ALGORITHM_RSA_HASH_NONE;
 	sc_apdu_t apdu;
 	size_t i;
-	int r, raw;
+	int r, raw, signing, decryption;
 
 	if (priv == NULL)
 		return SC_ERROR_NOT_SUPPORTED;
 	priv->security_env_valid = 0;
+	priv->security_operation = 0;
 	priv->raw_signature = 0;
 	if (env == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	raw = env->algorithm_flags == SC_ALGORITHM_RSA_PAD_NONE;
-	if (se_num != 0 || env->operation != SC_SEC_OPERATION_SIGN ||
+	signing = env->operation == SC_SEC_OPERATION_SIGN && priv->signing_enabled &&
+		  (env->algorithm_flags == supported || (raw && priv->raw_rsa_enabled));
+	decryption = env->operation == SC_SEC_OPERATION_DECIPHER && priv->decryption_enabled && raw;
+	if (se_num != 0 || (!signing && !decryption) ||
 			env->algorithm != SC_ALGORITHM_RSA || env->key_size_bits != 2048 ||
-			(env->algorithm_flags != supported && !(raw && priv->raw_rsa_enabled)) ||
 			(env->flags & required) != required ||
 			(env->flags & ~(required | SC_SEC_ENV_FILE_REF_PRESENT)) != 0 ||
 			env->key_ref_len != 1 || env->key_ref[0] == 0)
@@ -490,19 +506,21 @@ epki_set_security_env(sc_card_t *card,
 		if (env->params[i].param_type || env->params[i].value || env->params[i].value_len)
 			return SC_ERROR_NOT_SUPPORTED;
 	mse[2] = env->key_ref[0];
-	r = epki_signing_state(priv, 0);
+	r = epki_private_state(priv, 0, env->operation);
 	if (r < 0)
 		return r;
 
 	r = sc_lock(card);
 	if (r < 0)
 		return r;
-	r = epki_signing_state(priv, 0);
+	r = epki_private_state(priv, 0, env->operation);
 	if (r < 0) {
 		sc_unlock(card);
 		return r;
 	}
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, 0xb6);
+	/* The decipher CRT is independently established for this profile.
+	 * Do not reuse a signing environment for private-key decryption. */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x22, 0x41, signing ? 0xb6 : 0xb8);
 	apdu.cla = 0x00;
 	apdu.data = mse;
 	apdu.datalen = apdu.lc = sizeof(mse);
@@ -516,7 +534,8 @@ epki_set_security_env(sc_card_t *card,
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	if (r == SC_SUCCESS) {
 		priv->security_env_valid = 1;
-		priv->raw_signature = raw;
+		priv->security_operation = env->operation;
+		priv->raw_signature = signing && raw;
 	} else if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
 		priv->pin_verified = 0;
 	}
@@ -533,8 +552,10 @@ epki_compute_signature(sc_card_t *card, const u8 *input,
 	u8 response[256];
 	int r, raw;
 
-	if (priv == NULL)
+	if (priv == NULL || !priv->signing_enabled)
 		return SC_ERROR_NOT_SUPPORTED;
+	if (priv->security_env_valid && priv->security_operation != SC_SEC_OPERATION_SIGN)
+		return SC_ERROR_NOT_ALLOWED;
 	raw = priv->raw_signature;
 	if (raw && !priv->raw_rsa_enabled)
 		return SC_ERROR_NOT_SUPPORTED;
@@ -543,18 +564,19 @@ epki_compute_signature(sc_card_t *card, const u8 *input,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (output_len < sizeof(response))
 		return SC_ERROR_BUFFER_TOO_SMALL;
-	r = epki_signing_state(priv, 1);
+	r = epki_private_state(priv, 1, SC_SEC_OPERATION_SIGN);
 	if (r < 0)
 		return r;
 	r = sc_lock(card);
 	if (r < 0)
 		return r;
-	r = epki_signing_state(priv, 1);
+	r = epki_private_state(priv, 1, SC_SEC_OPERATION_SIGN);
 	if (r < 0) {
 		sc_unlock(card);
 		return r;
 	}
 	priv->security_env_valid = 0;
+	priv->security_operation = 0;
 	sc_format_apdu(card, &apdu, raw ? SC_APDU_CASE_4_EXT : SC_APDU_CASE_4_SHORT,
 			0x2a, raw ? 0x80 : 0x9e, raw ? 0x86 : 0x9a);
 	apdu.cla = 0x00;
@@ -588,6 +610,69 @@ epki_compute_signature(sc_card_t *card, const u8 *input,
 	memcpy(output, response, sizeof(response));
 	r = sizeof(response);
 sign_done:
+	sc_mem_clear(response, sizeof(response));
+	sc_unlock(card);
+	return r;
+}
+
+static int
+epki_decipher(sc_card_t *card, const u8 *input, size_t input_len,
+		u8 *output, size_t output_len)
+{
+	struct epki_data *priv = card != NULL ? card->drv_data : NULL;
+	sc_apdu_t apdu;
+	u8 response[256];
+	int r;
+
+	if (priv == NULL || !priv->decryption_enabled)
+		return SC_ERROR_NOT_SUPPORTED;
+	/* Lower-layer response logs could contain decrypted key material. */
+	if (card->ctx == NULL || card->ctx->debug != 0)
+		return SC_ERROR_NOT_ALLOWED;
+	if (input == NULL || output == NULL || input_len != sizeof(response))
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (output_len < sizeof(response))
+		return SC_ERROR_BUFFER_TOO_SMALL;
+	r = epki_private_state(priv, 1, SC_SEC_OPERATION_DECIPHER);
+	if (r < 0)
+		return r;
+	r = sc_lock(card);
+	if (r < 0)
+		return r;
+	r = epki_private_state(priv, 1, SC_SEC_OPERATION_DECIPHER);
+	if (r < 0)
+		goto done;
+	priv->security_env_valid = 0;
+	priv->security_operation = 0;
+	/* Profile 0282 takes a complete RSA representative without an
+	 * indicator. Keep padding validation in OpenSC's existing layer. */
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_EXT, 0x2a, 0x80, 0x86);
+	apdu.cla = 0x00;
+	apdu.data = input;
+	apdu.datalen = apdu.lc = input_len;
+	apdu.le = 65536;
+	apdu.resp = response;
+	apdu.resplen = sizeof(response);
+	apdu.flags |= SC_APDU_FLAGS_NO_RETRY_WL;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0) {
+		epki_clear_selection(priv);
+		goto done;
+	}
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (r < 0) {
+		if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
+			priv->pin_verified = 0;
+		goto done;
+	}
+	if (apdu.resplen != sizeof(response)) {
+		r = SC_ERROR_UNKNOWN_DATA_RECEIVED;
+		goto done;
+	}
+	memcpy(output, response, sizeof(response));
+	r = sizeof(response);
+done:
+	sc_mem_clear(response, sizeof(response));
 	sc_unlock(card);
 	return r;
 }
@@ -617,6 +702,7 @@ sc_get_epki_research_driver(void)
 	epki_ops.pin_cmd = epki_pin_cmd;
 	epki_ops.logout = epki_logout;
 	epki_ops.compute_signature = epki_compute_signature;
+	epki_ops.decipher = epki_decipher;
 	epki_ops.set_security_env = epki_set_security_env;
 	return &epki_driver;
 }
