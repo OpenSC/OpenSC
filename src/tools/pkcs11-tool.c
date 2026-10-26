@@ -5919,14 +5919,23 @@ enum attr_kind {
 	ATTR_DATE    /* CK_DATE */
 };
 
-/* The name as the table writes it, less the padding it carries for spy's columns */
+/* The length of a pkcs11-display.c name without the trailing padding it
+ * carries for spy's columns; attribute and enum names alike have it */
+static size_t
+spy_name_len(const char *name)
+{
+	size_t n = strlen(name);
+
+	while (n > 0 && name[n - 1] == ' ')
+		n--;
+	return n;
+}
+
 static void
 attr_spec_name(const type_spec *spec, char *out, size_t out_len)
 {
-	size_t n = strlen(spec->name);
+	size_t n = spy_name_len(spec->name);
 
-	while (n > 0 && spec->name[n - 1] == ' ')
-		n--;
 	if (n >= out_len)
 		n = out_len - 1;
 	memcpy(out, spec->name, n);
@@ -6033,7 +6042,7 @@ print_attr_value(enum attr_kind kind, const type_spec *spec,
 			const char *n = lookup_enum_spec((enum_spec *)spec->arg, v);
 
 			if (n)
-				printf("%s\n", n);
+				printf("%.*s\n", (int)spy_name_len(n), n);
 			else
 				printf("0x%lx\n", v);
 		}
@@ -6176,7 +6185,9 @@ parse_attr_value(enum attr_kind kind, const type_spec *spec, const char *name,
 			found = 1;
 		} else {
 			for (i = 0; es && i < es->size; i++) {
-				if (!strcasecmp(es->specs[i].name, value)) {
+				size_t n = spy_name_len(es->specs[i].name);
+
+				if (n == strlen(value) && !strncasecmp(es->specs[i].name, value, n)) {
 					v = es->specs[i].type;
 					found = 1;
 				}
