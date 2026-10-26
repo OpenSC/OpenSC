@@ -6535,10 +6535,13 @@ piv_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 
 	/* If verify worked, we are logged_in */
 	if (data->cmd == SC_PIN_CMD_VERIFY) {
-		if (r >= 0)
+		if (r >= 0) {
 			priv->logged_in = SC_PIN_STATE_LOGGED_IN;
-		else
+			/* the card reset its retry counter; the reset value is issuer dependent */
+			priv->tries_left = -1;
+		} else {
 			priv->logged_in = SC_PIN_STATE_LOGGED_OUT;
+		}
 	}
 
 	/* Some cards never return 90 00  for SC_PIN_CMD_GET_INFO even if the card state is verified */
