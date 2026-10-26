@@ -113,11 +113,9 @@ typedef struct epass2003_exdata_st {
 	unsigned char currAlg;		/* current Alg */
 	unsigned int  ecAlgFlags; 	/* Ec Alg mechanism type*/
 	/* Absolute path (starting with 3F00) of the DF that was selected last,
-	 * or cur_df_len == 0 if it is not known. Selecting the DF again from the
-	 * MF resets the security status of the COS (a verified PIN is lost), so
-	 * a path inside the current DF is selected relative to it. Forgotten on
-	 * card reset, when SM fails or is re-established and on any operation
-	 * that may change the file system. */
+	 * or cur_df_len == 0 if it is not known. Try to avoid selecting the same
+	 * DF twice to preserve the security status which would otherwise be
+	 * reset. */
 	u8 cur_df[SC_MAX_PATH_SIZE];
 	size_t cur_df_len;
 } epass2003_exdata;
@@ -941,8 +939,6 @@ epass2003_refresh(struct sc_card *card)
 	exdata = (epass2003_exdata *)card->drv_data;
 
 	if (exdata->sm) {
-		/* a new SM session resets the security status as well */
-		exdata->cur_df_len = 0;
 		card->sm_ctx.sm_mode = 0;
 		r = mutual_auth(card, g_init_key_enc, g_init_key_mac);
 		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
@@ -2100,22 +2096,77 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+/* A file identifier (P1 = 00) can select the MF, the current DF, its parent or
+ * a file below either of them (ISO 7816-4). Track the current DF where the
+ * result tells which DF it is, otherwise forget it. */
+static int
+epass2003_select_file_id(struct sc_card *card, u8 id_hi, u8 id_lo,
+		sc_file_t **file_out)
+{
+	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
+	sc_file_t *file = NULL;
+	u8 df[SC_MAX_PATH_SIZE];
+	size_t len;
+	int r;
+
+	r = epass2003_select_fid(card, id_hi, id_lo, &file);
+	/* a failed select leaves the current DF unchanged */
+	LOG_TEST_RET(card->ctx, r, "SELECT FILE failed");
+
+	if (exdata) {
+		len = exdata->cur_df_len;
+		if (file->type != SC_FILE_TYPE_DF) {
+			/* below the MF if it is the current DF, otherwise below
+			 * the current DF or below its parent */
+			if (len != 2)
+				epass2003_forget_df(card);
+		} else if (id_hi == 0x3f && id_lo == 0x00) {
+			df[0] = 0x3f;
+			df[1] = 0x00;
+			epass2003_set_df(card, df, 2);
+		} else if (len == 2) {
+			/* the MF has no parent, so this DF is below it */
+			memcpy(df, exdata->cur_df, len);
+			df[len] = id_hi;
+			df[len + 1] = id_lo;
+			epass2003_set_df(card, df, len + 2);
+		} else if (len >= 4 && exdata->cur_df[len - 2] == id_hi && exdata->cur_df[len - 1] == id_lo) {
+			/* the current DF itself */
+		} else if (len >= 6 && exdata->cur_df[len - 4] == id_hi && exdata->cur_df[len - 3] == id_lo) {
+			/* the parent DF */
+			exdata->cur_df_len -= 2;
+		} else {
+			/* below the current DF or below its parent */
+			epass2003_forget_df(card);
+		}
+	}
+
+	if (file_out)
+		*file_out = file;
+	else
+		sc_file_free(file);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
 
 static int
 epass2003_select_file(struct sc_card *card, const sc_path_t * in_path,
 		sc_file_t ** file_out)
 {
+	int r;
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	switch (in_path->type) {
 	case SC_PATH_TYPE_FILE_ID:
 		if (in_path->len != 2)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-		epass2003_forget_df(card);
-		return epass2003_select_fid(card, in_path->value[0], in_path->value[1], file_out);
+		return epass2003_select_file_id(card, in_path->value[0], in_path->value[1], file_out);
 	case SC_PATH_TYPE_DF_NAME:
-		epass2003_forget_df(card);
-		return epass2003_select_aid(card, in_path, file_out);
+		r = epass2003_select_aid(card, in_path, file_out);
+		/* the path of a DF selected by its name is not known */
+		if (r == SC_SUCCESS)
+			epass2003_forget_df(card);
+		return r;
 	case SC_PATH_TYPE_PATH:
 		return epass2003_select_path(card, in_path->value, in_path->len, file_out);
 	default:
