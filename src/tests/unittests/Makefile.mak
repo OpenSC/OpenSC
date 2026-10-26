@@ -15,6 +15,25 @@ all: $(TARGETS)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
+# This header-only test does not need the legacy test objects or OpenSC libs.
+# cmocka is available with the optional vcpkg "tests" feature.
+CMOCKA_INCL_DIR = /I"$(VCPKG_DIR)\include"
+!IF "$(BUILD_TYPE)" == "MTd"
+CMOCKA_LIB = "$(VCPKG_DIR)\debug\lib\cmocka.lib"
+!ELSE
+CMOCKA_LIB = "$(VCPKG_DIR)\lib\cmocka.lib"
+!ENDIF
+
+check-pss: pkcs11-pss-params.exe
+	.\pkcs11-pss-params.exe
+
+pkcs11-pss-params.exe: pkcs11-pss-params.c torture.h \
+	$(TOPDIR)\src\pkcs11\pkcs11-pss-params.h \
+	$(TOPDIR)\src\pkcs11\pkcs11.h $(TOPDIR)\src\pkcs11\pd-pkcs11.h \
+	$(TOPDIR)\win32\config.h $(CMOCKA_LIB)
+	cl $(COPTS) /std:c11 $(CMOCKA_INCL_DIR) /c pkcs11-pss-params.c
+	link $(LINKFLAGS) /out:$@ pkcs11-pss-params.obj $(CMOCKA_LIB)
+
 $(TARGETS): $(OBJECTS) $(LIBS)
 
 .c.exe:

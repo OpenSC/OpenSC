@@ -75,6 +75,7 @@ jobs:
             --overlay-ports=${{ github.workspace }}/win32/ports `
             --x-feature=zlib `
             --x-feature=openpace `
+            --x-feature=tests `
             --x-manifest-root ${{ github.workspace }}/win32 `
             --x-install-root $installed
       - name: Install WIX
@@ -83,6 +84,12 @@ jobs:
         run: |
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
           & "$vsPath\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.setenv }} "&&" nmake /nologo /f Makefile.mak opensc.msi
+      - name: Build and test RSA-PSS parameters
+        if: matrix.configuration == 'Release'
+        # The x64 runner can execute x86/x64 tests; ARM64 is compile-only.
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          & "$vsPath\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.setenv }} "&&" cd src\tests\unittests "&&" nmake /nologo /f Makefile.mak ${{ matrix.platform == 'arm64' && 'pkcs11-pss-params.exe' || 'check-pss' }}
       - name: Archive artifacts
         id: upload-unsigned-artifact
         uses: actions/upload-artifact@v7

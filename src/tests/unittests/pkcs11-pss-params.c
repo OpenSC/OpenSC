@@ -2,6 +2,10 @@
 /* Operation initialization must reject invalid RSA-PSS parameters before
  * accessing a card. These tests need no PKCS#11 session or hardware.
  */
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #include "pkcs11/pkcs11-pss-params.h"
 #include "torture.h"
 

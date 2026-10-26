@@ -4,6 +4,10 @@
     "openssl"
   ],
   "features": {
+    "tests": {
+      "description": "Unit tests via cmocka",
+      "dependencies": ["cmocka"]
+    },
     "zlib": {
       "description": "Compressed data support (PIV, actalis)",
       "dependencies": ["zlib"]
