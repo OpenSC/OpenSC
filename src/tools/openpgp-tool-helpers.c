@@ -72,7 +72,7 @@ char *prettify_algorithm(const u8 *data, size_t length)
 char *prettify_date(const u8 *data, size_t length)
 {
 	if (data != NULL && length == 4) {
-		time_t time = (time_t) (data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]);
+		time_t time = (time_t)((unsigned long)data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]);
 		struct tm tm;
 		static char result[64];	/* large enough */
 

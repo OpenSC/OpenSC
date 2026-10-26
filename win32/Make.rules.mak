@@ -28,7 +28,8 @@ WIX_INCL_DIR = "/I$(WIX_PACKAGES)/wixtoolset.dutil/$(WIX_VERSION)/build/native/i
 WIX_LIBS = "$(WIX_PACKAGES)/wixtoolset.dutil/$(WIX_VERSION)/build/native/v14/$(PLATFORM)/dutil.lib" \
 	"$(WIX_PACKAGES)/wixtoolset.wcautil/$(WIX_VERSION)/build/native/v14/$(PLATFORM)/wcautil.lib"
 
-# We do not build tests on windows
+# Unit tests need cmocka (detected automatically from vcpkg), otherwise set
+# TESTS_DEF, CMOCKA_CFLAGS (include directory preceded by "/I") and CMOCKA_LIB
 #TESTS_DEF = /DENABLE_TESTS
 
 #Include support for Secure Messaging
@@ -48,17 +49,16 @@ BUILD_TYPE = MT
 # If vcpkg is configured, automatically detect and enable installed dependencies
 !IF "$(VCPKG_INSTALLED)" != ""
 !IF "$(VCPKG_DEFAULT_TRIPLET)" == ""
-VCPKG_DEFAULT_TRIPLET = x64-windows-static
+VCPKG_DEFAULT_TRIPLET = $(PLATFORM)-windows-static
 !ENDIF
 VCPKG_DIR = $(VCPKG_INSTALLED)\$(VCPKG_DEFAULT_TRIPLET)
 !IF EXIST("$(VCPKG_DIR)\lib\libcrypto.lib")
 OPENSSL_DEF = /DENABLE_OPENSSL
 OPENSSL_DIR = $(VCPKG_DIR)
 OPENSSL_LIB = $(VCPKG_DIR)\lib\libcrypto.lib
-OPENSSL_EXTRA_CFLAGS = /DOPENSSL_SECURE_MALLOC_SIZE=65536
 !ENDIF
 !IF EXIST("$(VCPKG_DIR)\lib\zs.lib")
-ZLIBSTATIC_DEF = /DENABLE_ZLIB_STATIC
+ZLIB_DEF = /DENABLE_ZLIB
 ZLIB_INCL_DIR = /I$(VCPKG_DIR)\include
 ZLIB_LIB = $(VCPKG_DIR)\lib\zs.lib
 !ENDIF
@@ -66,6 +66,11 @@ ZLIB_LIB = $(VCPKG_DIR)\lib\zs.lib
 OPENPACE_DEF = /DENABLE_OPENPACE
 OPENPACE_INCL_DIR = /I$(VCPKG_DIR)\include
 OPENPACE_LIB = $(VCPKG_DIR)\lib\eac.lib
+!ENDIF
+!IF EXIST("$(VCPKG_DIR)\lib\cmocka.lib")
+TESTS_DEF = /DENABLE_TESTS
+CMOCKA_CFLAGS = /I$(VCPKG_DIR)\include /DCMOCKA_STATIC
+CMOCKA_LIB = $(VCPKG_DIR)\lib\cmocka.lib
 !ENDIF
 !ENDIF
 
@@ -89,46 +94,35 @@ OPENSSL_INCL_DIR = /I$(OPENSSL_DIR)\include
 OPENSSL_LIB = $(OPENSSL_DIR)\lib\VC\$(PLATFORM)\$(BUILD_TYPE)\libcrypto_static.lib
 !ENDIF
 OPENSSL_LIB = $(OPENSSL_LIB) user32.lib advapi32.lib crypt32.lib ws2_32.lib
+OPENSSL_EXTRA_CFLAGS = /DOPENSSL_SECURE_MALLOC_SIZE=65536
 
 PROGRAMS_OPENSSL = cryptoflex-tool.exe pkcs15-init.exe netkey-tool.exe piv-tool.exe \
 	westcos-tool.exe sc-hsm-tool.exe dnie-tool.exe gids-tool.exe lteid-tool.exe
 OPENSC_FEATURES = $(OPENSC_FEATURES) openssl
-WIXFLAGS = -d OpenSSL="$(OPENSSL_DIR)" $(WIXFLAGS)
+WIXFLAGS = -d OpenSSL $(WIXFLAGS)
 !ENDIF
 
 
 # If you want support for zlib (Used for PIV and actalis):
-# - Download zlib-dll and
-# - uncomment the line starting with ZLIB_DEF 
-# - set the ZLIB_INCL_DIR below to the zlib include lib proceeded by "/I"
-# - set the ZLIB_LIB  below to your zlib lib file
+# - uncomment the line starting with ZLIB_DEF
+# - download zlib-dll to C:\zlib-dll (zlib1.dll is added to the installer)
+# - or set ZLIB_INCL_DIR (include directory preceded by "/I") and ZLIB_LIB for a static zlib
 #ZLIB_DEF = /DENABLE_ZLIB
-!IF "$(ZLIBSTATIC_DEF)" == "/DENABLE_ZLIB_STATIC"
-ZLIB_DEF = /DENABLE_ZLIB
-!IF "$(ZLIB_INCL_DIR)" == ""
-ZLIB_INCL_DIR = /IC:\zlib
-!ENDIF
+!IF "$(ZLIB_DEF)" == "/DENABLE_ZLIB"
 !IF "$(ZLIB_LIB)" == ""
-ZLIB_LIB = C:\zlib\zlib.lib
-!ENDIF
-OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
-!ELSEIF "$(ZLIB_DEF)" == "/DENABLE_ZLIB"
-!IF "$(ZLIB_INCL_DIR)" == ""
 ZLIB_INCL_DIR = /IC:\zlib-dll\include
-!ENDIF
-!IF "$(ZLIB_LIB)" == ""
 ZLIB_LIB = C:\zlib-dll\lib\zdll.lib
+WIXFLAGS = -d zlib="C:\zlib-dll" $(WIXFLAGS)
 !ENDIF
 OPENSC_FEATURES = $(OPENSC_FEATURES) zlib
-WIXFLAGS = -d zlib="C:\zlib-dll" $(WIXFLAGS)
 !ENDIF
 
 
 # If you want support for EAC:
 # - Download OpenPACE and
-# - uncomment the line starting with OPENPACE_DEF 
+# - uncomment the line starting with OPENPACE_DEF
 # - set the OPENPACE_INCL_DIR below to the OpenPACE include directory preceded by "/I"
-# - set the OPENPACE_LIB  below to your OpenPACE lib file
+# - set the OPENPACE_LIB below to your OpenPACE lib file
 #OPENPACE_DEF= /DENABLE_OPENPACE
 !IF "$(OPENPACE_DEF)" == "/DENABLE_OPENPACE"
 !IF "$(OPENPACE_DIR)" == ""
@@ -144,12 +138,15 @@ OPENPACE_LIB = $(OPENPACE_DIR)\src\libeac.lib
 # Build only when OpenPACE and OpenSSL are available
 PROGRAMS_OPENPACE = npa-tool.exe
 !ENDIF
-WIXFLAGS = -d OpenPACE="$(OPENPACE_DIR)" $(WIXFLAGS)
+WIXFLAGS = -d OpenPACE $(WIXFLAGS)
 !ENDIF
 
 
 # Used for MiniDriver
-CPDK_INCL_DIR = "/IC:\Program Files (x86)\Windows Kits\10\Cryptographic Provider Development Kit\Include"
+!IF "$(WINDOWSSDKDIR)" == ""
+WINDOWSSDKDIR = C:\Program Files (x86)\Windows Kits\10
+!ENDIF
+CPDK_INCL_DIR = "/I$(WINDOWSSDKDIR)\Cryptographic Provider Development Kit\Include"
 
 DEFS = /DWINVER=0x0601 /D_WIN32_WINNT=0x0601 /DWIN32_LEAN_AND_MEAN /DOPENSC_FEATURES="\"$(OPENSC_FEATURES)\"" \
 	/DPACKAGE_NAME="\"$(PRODUCT_NAME)\"" /DPACKAGE_VERSION="\"$(PRODUCT_VERSION)\"" \
@@ -158,11 +155,11 @@ DEFS = /DWINVER=0x0601 /D_WIN32_WINNT=0x0601 /DWIN32_LEAN_AND_MEAN /DOPENSC_FEAT
 	/DOPENSC_SCM_REVISION="\"$(PACKAGE_SCM_REVISION)\"" \
 	/DOPENSC_VS_FF_COMPANY_NAME="\"$(VS_FF_LEGAL_COMPANY_NAME)\"" /DOPENSC_VS_FF_PRODUCT_NAME="\"$(VS_FF_PRODUCT_NAME)\"" \
 	/DOPENSC_VS_FF_LEGAL_COPYRIGHT="\"$(VS_FF_LEGAL_COPYRIGHT)\"" /DOPENSC_VS_FF_COMMENTS="\"$(VS_FF_COMMENTS)\""
-COPTS = /nologo /Zi /GS /W3 /WX /D_CRT_SECURE_NO_DEPRECATE /D_CRT_NONSTDC_NO_WARNINGS /DHAVE_CONFIG_H \
+COPTS = /nologo /utf-8 /Zi /GS /W3 /WX /D_CRT_SECURE_NO_DEPRECATE /D_CRT_NONSTDC_NO_WARNINGS /DHAVE_CONFIG_H \
 	$(DEFS) $(DEBUG_DEF) $(OPENPACE_DEF) $(OPENSSL_DEF) $(ZLIB_DEF) $(MINIDRIVER_DEF) $(SM_DEF) $(TESTS_DEF) $(OPENSSL_EXTRA_CFLAGS) \
 	/I$(TOPDIR)\win32 /I$(TOPDIR)\src $(OPENPACE_INCL_DIR) $(OPENSSL_INCL_DIR) $(ZLIB_INCL_DIR) $(CPDK_INCL_DIR)
 LINKFLAGS = /nologo /INCREMENTAL:NO /NXCOMPAT /DYNAMICBASE /DEBUG /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD /MANIFEST:embed
-LIBFLAGS =  /nologo
+LIBFLAGS = /nologo
 
 !IF "$(DEBUG_DEF)" == "/DDEBUG"
 LINKFLAGS = $(LINKFLAGS) /NODEFAULTLIB:LIBCMT

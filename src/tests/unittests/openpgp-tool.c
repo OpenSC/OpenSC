@@ -56,17 +56,24 @@ static void torture_prettify_algorithm(void **state)
 }
 
 const struct expectation expectations_date[] = {
-    { "\x01\x02\x03", 3, NULL },
-    { "\x12\x34\x56\x78", 4, "1979-09-05 22:51:36" },
-    { "\x7f\xff\xff\xff", 4, "2038-01-19 03:14:07" },
-    /* XXX: probably not a feature */
-    { "\x80\x00\x00\x00", 4, "1901-12-13 20:45:52" },
-    { NULL, 0, NULL }
+		{"\x01\x02\x03",	 3, NULL			},
+		{"\x12\x34\x56\x78", 4, "1979-09-05 22:51:36"},
+		{"\x7f\xff\xff\xff", 4, "2038-01-19 03:14:07"},
+		{NULL,	       0, NULL		      }
+};
+
+/* Timestamps are unsigned 32-bit, dates past 2038 need 64-bit time_t */
+const struct expectation expectations_date_2038[] = {
+		{"\x80\x00\x00\x00", 4, "2038-01-19 03:14:08"},
+		{"\xff\xff\xff\xff", 4, "2106-02-07 06:28:15"},
+		{NULL,	       0, NULL		      }
 };
 
 static void torture_prettify_date(void **state)
 {
 	torture_prettify(state, expectations_date, prettify_date);
+	if (sizeof(time_t) > 4)
+		torture_prettify(state, expectations_date_2038, prettify_date);
 }
 
 const struct expectation expectations_version[] = {
