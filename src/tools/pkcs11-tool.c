@@ -377,9 +377,9 @@ static const char *option_help[] = {
 		"Hash some data",
 		"Derive a secret key using another key and some data",
 		"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
-		"Encapsulate a shared secret to a public key (e.g. ML-KEM), writing the ciphertext to --output-file",
-		"Decapsulate the ciphertext from --input-file with a private key, writing the shared secret to --output-file",
-		"Write the shared secret produced by --encapsulate to this file",
+		"Encapsulate a shared secret to a public key (e.g. ML-KEM): the ciphertext goes to --output-file, the shared secret to --secret-file",
+		"Decapsulate the ciphertext from --input-file with a private key: the shared secret goes to --secret-file (default stdout)",
+		"File for the shared secret of --encapsulate and --decapsulate (needs --extractable)",
 		"Specify mechanism (use -M for a list of supported mechanisms), or by hexadecimal, e.g., 0x80001234",
 		"Specify hash algorithm used with RSA-PKCS-PSS, HASH-ML-DSA and HASH-SLH-DSA signatures and RSA-PKCS-OAEP decryption",
 		"Specify MGF (Message Generation Function) used for RSA-PSS signature and RSA-OAEP decryption (possible values are MGF1-SHA1 to MGF1-SHA512)",
@@ -1502,7 +1502,7 @@ int main(int argc, char * argv[])
 	if (do_list_mechs)
 		list_mechs(opt_slot);
 
-	if (do_sign || do_decrypt || do_encrypt || do_unwrap || do_wrap) {
+	if (do_sign || do_decrypt || do_encrypt || do_unwrap || do_wrap || do_decapsulate) {
 		CK_TOKEN_INFO info;
 
 		get_token_info(opt_slot, &info);
@@ -1603,6 +1603,8 @@ int main(int argc, char * argv[])
 
 		if (do_encapsulate && do_decapsulate)
 			util_fatal("--encapsulate and --decapsulate cannot be used together");
+		if (do_decapsulate && opt_output)
+			util_fatal("--decapsulate writes the shared secret to --secret-file, not --output-file");
 		if (opt_uri && opt_uri->type && opt_object_class != kem_class)
 			util_fatal("Incorrect type of key");
 		if (!find_object(session, kem_class, &object,
@@ -6578,23 +6580,68 @@ derive_hkdf(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	return newkey;
 }
 
+/*
+ * C_EncapsulateKey and C_DecapsulateKey. libpkcs11 loads the module's default
+ * interface, which is used when it is 3.2. A module may make an older one its
+ * default and offer 3.2 alongside (FreeHSM defaults to 3.0), so 3.2 is then
+ * asked for by version.
+ */
 static CK_FUNCTION_LIST_3_2_PTR
 get_function_list_3_2(void)
 {
-	CK_VERSION version = {3, 2};
+	CK_VERSION_PTR version = module ? C_GetModuleVersion(module) : NULL;
+	CK_VERSION want = {3, 2};
 	CK_INTERFACE_PTR interface = NULL;
-	CK_FUNCTION_LIST_3_2_PTR p11_3_2;
+	CK_FUNCTION_LIST_3_2_PTR funcs;
 	CK_RV rv;
 
-	if (p11->version.major < 3)
+	if (version == NULL || version->major < 3)
 		util_fatal("Encapsulation needs a PKCS #11 3.2 module");
-	rv = p11->C_GetInterface((CK_UTF8CHAR_PTR) "PKCS 11", &version, &interface, 0);
-	if (rv != CKR_OK || interface == NULL)
-		util_fatal("The module has no PKCS #11 3.2 interface (C_GetInterface: %s)", CKR2Str(rv));
-	p11_3_2 = (CK_FUNCTION_LIST_3_2_PTR)interface->pFunctionList;
-	if (p11_3_2->version.major != 3 || p11_3_2->version.minor < 2)
+	if (version->major == 3 && version->minor >= 2) {
+		interface = C_GetModuleInterface(module);
+	} else {
+		rv = p11->C_GetInterface((CK_UTF8CHAR_PTR) "PKCS 11", &want, &interface, 0);
+		if (rv != CKR_OK)
+			interface = NULL;
+	}
+	if (interface == NULL)
 		util_fatal("The module has no PKCS #11 3.2 interface");
-	return p11_3_2;
+	funcs = (CK_FUNCTION_LIST_3_2_PTR)interface->pFunctionList;
+	if (funcs->version.major != 3 || funcs->version.minor < 2)
+		util_fatal("The module has no PKCS #11 3.2 interface");
+	return funcs;
+}
+
+/* The whole of the input file (or stdin), whatever its size */
+static unsigned char *
+read_input(const char *path, size_t *len)
+{
+	unsigned char *buf = NULL;
+	size_t cap = 0;
+	ssize_t sz;
+	int fd = 0;
+
+	*len = 0;
+	if (path != NULL && (fd = open(path, O_RDONLY | O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %s", path, strerror(errno));
+	do {
+		if (*len == cap) {
+			unsigned char *grown = realloc(buf, cap ? cap * 2 : 4096);
+
+			if (grown == NULL)
+				util_fatal("out of memory");
+			buf = grown;
+			cap = cap ? cap * 2 : 4096;
+		}
+		sz = read(fd, buf + *len, cap - *len);
+		if (sz > 0)
+			*len += (size_t)sz;
+	} while (sz > 0);
+	if (sz < 0)
+		util_fatal("Cannot read from %s: %s", path ? path : "stdin", strerror(errno));
+	if (path != NULL)
+		close(fd);
+	return buf;
 }
 
 static void
@@ -6624,32 +6671,46 @@ kem_mechanism(CK_SLOT_ID slot, CK_FLAGS flags)
 	return opt_mechanism;
 }
 
-/* the shared secret is a session object, readable so it can be written out */
+/*
+ * The shared secret is a session object. Its CKA_PRIVATE, CKA_SENSITIVE and
+ * CKA_EXTRACTABLE follow --private, --sensitive and --extractable, as for
+ * --derive with HKDF, so it can only be written out with --extractable.
+ */
 static CK_ULONG
-kem_secret_template(CK_ATTRIBUTE *tmpl)
+kem_secret_template(CK_ATTRIBUTE *tmpl, int max_attrs)
 {
 	static CK_OBJECT_CLASS secret_class = CKO_SECRET_KEY;
 	static CK_KEY_TYPE secret_type = CKK_GENERIC_SECRET;
-	static CK_BBOOL _true = TRUE;
-	static CK_BBOOL _false = FALSE;
-	CK_ULONG n_attrs = 0;
+	int n_attrs = 0;
 
-	FILL_ATTR(tmpl[n_attrs], CKA_TOKEN, &_false, sizeof(_false));
-	n_attrs++;
-	FILL_ATTR(tmpl[n_attrs], CKA_CLASS, &secret_class, sizeof(secret_class));
-	n_attrs++;
-	FILL_ATTR(tmpl[n_attrs], CKA_KEY_TYPE, &secret_type, sizeof(secret_type));
-	n_attrs++;
-	FILL_ATTR(tmpl[n_attrs], CKA_SENSITIVE, &_false, sizeof(_false));
-	n_attrs++;
-	FILL_ATTR(tmpl[n_attrs], CKA_EXTRACTABLE, &_true, sizeof(_true));
-	n_attrs++;
-	if (opt_allowed_mechanisms_len > 0) {
-		FILL_ATTR(tmpl[n_attrs], CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_TOKEN, &s_false, sizeof(CK_BBOOL));
+	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_CLASS, &secret_class, sizeof(secret_class));
+	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_KEY_TYPE, &secret_type, sizeof(secret_type));
+	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_PRIVATE, opt_is_private ? &s_true : &s_false, sizeof(CK_BBOOL));
+	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_SENSITIVE, opt_is_sensitive ? &s_true : &s_false, sizeof(CK_BBOOL));
+	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_EXTRACTABLE, opt_is_extractable ? &s_true : &s_false, sizeof(CK_BBOOL));
+	if (opt_allowed_mechanisms_len > 0)
+		FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
 				sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
-		n_attrs++;
+	return (CK_ULONG)n_attrs;
+}
+
+/* Write the shared secret to --secret-file, or to stdout if decapsulating
+ * without one; then destroy the session object */
+static void
+kem_write_secret(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE secret, int to_stdout)
+{
+	CK_BYTE *value;
+	CK_ULONG value_len = 0;
+
+	if (opt_secret_file != NULL || to_stdout) {
+		value = getVALUE(session, secret, &value_len);
+		if (value == NULL || value_len == 0)
+			util_fatal("Cannot read the shared secret (use --extractable, without --sensitive)");
+		write_value(opt_secret_file, value, value_len);
+		free(value);
 	}
-	return n_attrs;
+	p11->C_DestroyObject(session, secret);
 }
 
 static void
@@ -6660,11 +6721,9 @@ encapsulate_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key
 	CK_BYTE *ciphertext = NULL;
 	CK_ULONG ciphertext_len = 0;
 	CK_OBJECT_HANDLE secret = CK_INVALID_HANDLE;
-	CK_BYTE *value = NULL;
-	CK_ULONG value_len = 0;
 	CK_RV rv;
-	CK_ATTRIBUTE secret_template[6];
-	CK_ULONG n_attrs = kem_secret_template(secret_template);
+	CK_ATTRIBUTE secret_template[8];
+	CK_ULONG n_attrs = kem_secret_template(secret_template, ARRAY_SIZE(secret_template));
 
 	mech.mechanism = kem_mechanism(slot, CKF_ENCAPSULATE);
 	fprintf(stderr, "Using encapsulation algorithm %s\n", p11_mechanism_to_name(mech.mechanism));
@@ -6684,14 +6743,7 @@ encapsulate_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key
 	write_value(opt_output, ciphertext, ciphertext_len);
 	free(ciphertext);
 
-	if (opt_secret_file) {
-		value = getVALUE(session, secret, &value_len);
-		if (value == NULL || value_len == 0)
-			util_fatal("Cannot read the shared secret");
-		write_value(opt_secret_file, value, value_len);
-		free(value);
-	}
-	p11->C_DestroyObject(session, secret);
+	kem_write_secret(session, secret, 0);
 }
 
 static void
@@ -6699,47 +6751,27 @@ decapsulate_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key
 {
 	CK_FUNCTION_LIST_3_2_PTR p11_3_2 = get_function_list_3_2();
 	CK_MECHANISM mech = {0};
-	unsigned char ciphertext[4096]; /* ML-KEM-1024 ciphertext is 1568 bytes */
+	unsigned char *ciphertext;
 	size_t ciphertext_len = 0;
-	ssize_t sz = 0;
-	int fd;
 	CK_OBJECT_HANDLE secret = CK_INVALID_HANDLE;
-	CK_BYTE *value = NULL;
-	CK_ULONG value_len = 0;
 	CK_RV rv;
-	CK_ATTRIBUTE secret_template[6];
-	CK_ULONG n_attrs = kem_secret_template(secret_template);
+	CK_ATTRIBUTE secret_template[8];
+	CK_ULONG n_attrs = kem_secret_template(secret_template, ARRAY_SIZE(secret_template));
 
 	mech.mechanism = kem_mechanism(slot, CKF_DECAPSULATE);
 	fprintf(stderr, "Using decapsulation algorithm %s\n", p11_mechanism_to_name(mech.mechanism));
 
-	if (opt_input == NULL)
-		fd = 0;
-	else if ((fd = open(opt_input, O_RDONLY | O_BINARY)) < 0)
-		util_fatal("Cannot open %s: %s", opt_input, strerror(errno));
-	while (ciphertext_len < sizeof(ciphertext) &&
-			(sz = read(fd, ciphertext + ciphertext_len, sizeof(ciphertext) - ciphertext_len)) > 0)
-		ciphertext_len += sz;
-	if (sz < 0)
-		util_fatal("Cannot read from %s: %s", opt_input ? opt_input : "stdin", strerror(errno));
-	if (ciphertext_len == sizeof(ciphertext))
-		util_fatal("Ciphertext in %s is too long", opt_input ? opt_input : "stdin");
-	if (fd != 0)
-		close(fd);
+	ciphertext = read_input(opt_input, &ciphertext_len);
 
 	if ((getCLASS(session, key) == CKO_PRIVATE_KEY) && getALWAYS_AUTHENTICATE(session, key))
 		login(session, CKU_CONTEXT_SPECIFIC);
 	rv = p11_3_2->C_DecapsulateKey(session, &mech, key, secret_template, n_attrs,
-			ciphertext, ciphertext_len, &secret);
+			ciphertext, (CK_ULONG)ciphertext_len, &secret);
+	free(ciphertext);
 	if (rv != CKR_OK)
 		p11_fatal("C_DecapsulateKey", rv);
 
-	value = getVALUE(session, secret, &value_len);
-	if (value == NULL || value_len == 0)
-		util_fatal("Cannot read the shared secret");
-	write_value(opt_output, value, value_len);
-	free(value);
-	p11->C_DestroyObject(session, secret);
+	kem_write_secret(session, secret, 1);
 }
 
 static void

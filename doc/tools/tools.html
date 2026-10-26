@@ -1710,14 +1710,16 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Encapsulate a shared secret to a public key with
 					<code class="function">C_EncapsulateKey</code> (PKCS#11 3.2, e.g. the ML-KEM mechanism).
 					The ciphertext is written to <code class="option">--output-file</code> (default: stdout)
-					and the shared secret to <code class="option">--secret-file</code>, if given.</p></dd><dt><span class="term">
+					and the shared secret to <code class="option">--secret-file</code>, if given; writing the
+					secret needs <code class="option">--extractable</code>.</p></dd><dt><span class="term">
 						<code class="option">--decapsulate</code>
 					</span></dt><dd><p>Decapsulate the ciphertext read from <code class="option">--input-file</code>
 					(default: stdin) with a private key, using <code class="function">C_DecapsulateKey</code>.
-					The shared secret is written to <code class="option">--output-file</code> (default: stdout).</p></dd><dt><span class="term">
+					The shared secret is written to <code class="option">--secret-file</code> (default: stdout),
+					which needs <code class="option">--extractable</code>.</p></dd><dt><span class="term">
 						<code class="option">--secret-file</code> <em class="replaceable"><code>filename</code></em>
-					</span></dt><dd><p>Write the shared secret produced by <code class="option">--encapsulate</code>
-					to this file.</p></dd><dt><span class="term">
+					</span></dt><dd><p>Write the shared secret of <code class="option">--encapsulate</code> or
+					<code class="option">--decapsulate</code> to this file.</p></dd><dt><span class="term">
 						<code class="option">--salt-len</code> <em class="replaceable"><code>bytes</code></em>
 					</span></dt><dd><p>Specify how many bytes of salt should
 					be used in RSA-PSS signatures. Accepts two special values:
@@ -1979,6 +1981,16 @@ pkcs11-tool --login --unwrap --mechanism RSA-PKCS --id 22 \
 			Use the SO-PIN to initialize or re-set the PIN:
 				</p><pre class="programlisting">
 pkcs11-tool --login --login-type so --init-pin
+				</pre><p>
+
+			Encapsulate a shared secret to the ML-KEM public key with ID 31, then
+			recover it with the private key; both write it out, so both need
+			<code class="option">--extractable</code>:
+				</p><pre class="programlisting">
+pkcs11-tool --encapsulate --mechanism ML-KEM --id 31 --extractable \
+	--output-file ciphertext.bin --secret-file secret.bin
+pkcs11-tool --login --decapsulate --mechanism ML-KEM --id 31 --extractable \
+	--input-file ciphertext.bin --secret-file secret2.bin
 				</pre><p>
 		</p></div><div class="refsect1"><a name="id-1.18.8"></a><h2>Authors</h2><p><span class="command"><strong>pkcs11-tool</strong></span> was written by
 		Olaf Kirch <code class="email">&lt;<a class="email" href="mailto:okir@suse.de">okir@suse.de</a>&gt;</code>.</p></div></div><div class="refentry"><div class="refentry.separator"><hr></div><a name="pkcs15-crypt"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>pkcs15-crypt — perform crypto operations using PKCS#15 smart cards</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">pkcs15-crypt</code>  [<em class="replaceable"><code>OPTIONS</code></em>]</p></div></div><div class="refsect1"><a name="id-1.19.4"></a><h2>Description</h2><p>
