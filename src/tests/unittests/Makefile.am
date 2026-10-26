@@ -48,7 +48,6 @@ base64_SOURCES = base64.c
 parse_pkcs11_uri_SOURCES = parse_pkcs11_uri.c
 pkcs15_tlv_record_SOURCES = pkcs15-tlv-record.c
 pkcs11_pss_params_SOURCES = pkcs11-pss-params.c
-pkcs15_tlv_record_LDADD = $(LDADD) $(OPTIONAL_ZLIB_LIBS)
 
 if ENABLE_ZLIB
 noinst_PROGRAMS += compression

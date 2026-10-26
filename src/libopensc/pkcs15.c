@@ -2662,6 +2662,12 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 				head += record_len;
 			}
 			len = head-data;
+			if (len > 0) {
+				unsigned char *tmp = realloc(data, len);
+
+				if (tmp != NULL)
+					data = tmp;
+			}
 		}
 		else if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE) {
 			r = sc_read_record(p15card->card, in_path->index, (unsigned)offset, data, len, SC_RECORD_BY_REC_NR);

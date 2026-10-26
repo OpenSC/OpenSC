@@ -90,6 +90,13 @@ jobs:
         run: |
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
           & "$vsPath\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.setenv }} "&&" cd src\tests\unittests "&&" nmake /nologo /f Makefile.mak ${{ matrix.platform == 'arm64' && 'pkcs11-pss-params.exe' || 'check-pss' }}
+      - name: Build and test SIMPLE-TLV records
+        if: matrix.configuration == 'Release'
+        # The x64 runner can execute x86/x64 tests; ARM64 is compile-only.
+        run: |
+          $env:PATH = "${{ github.workspace }}\src\libopensc;$env:PATH"
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          & "$vsPath\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.setenv }} "&&" cd src\tests\unittests "&&" nmake /nologo /f Makefile.mak ${{ matrix.platform == 'arm64' && 'pkcs15-tlv-record.exe' || 'check-tlv-record' }}
       - name: Archive artifacts
         id: upload-unsigned-artifact
         uses: actions/upload-artifact@v7

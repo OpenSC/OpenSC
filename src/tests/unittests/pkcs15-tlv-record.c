@@ -1,11 +1,12 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 /* Synthetic record fixtures only: no card data or hardware access. */
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #include "libopensc/internal.h"
 #include "libopensc/pkcs15.h"
 #include "torture.h"
-#ifdef ENABLE_ZLIB
-#include "libopensc/compression.c"
-#endif
 
 static const u8 pin[] = {
 		0x30, 0x21, 0x30, 0x00, 0x30, 0x03, 0x04, 0x01, 0x03,
@@ -17,16 +18,6 @@ static size_t record_sizes[3], advertised_size;
 static unsigned record_calls, max_records;
 static int generated_records, read_error;
 
-static int
-mock_lock(sc_card_t *card)
-{
-	return SC_SUCCESS;
-}
-static int
-mock_unlock(sc_card_t *card)
-{
-	return SC_SUCCESS;
-}
 static int
 mock_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **out)
 {
@@ -43,9 +34,9 @@ mock_read_record(sc_card_t *card, unsigned rec, unsigned idx,
 		u8 *out, size_t count, unsigned long flags)
 {
 	size_t n;
-	record_calls++;
+	if (idx == 0)
+		record_calls++;
 	assert_int_equal(rec, record_calls);
-	assert_int_equal(idx, 0);
 	assert_int_equal(flags, SC_RECORD_BY_REC_NR);
 	assert_true(rec <= 254);
 	if (read_error)
@@ -60,22 +51,15 @@ mock_read_record(sc_card_t *card, unsigned rec, unsigned idx,
 		return 256;
 	}
 	n = record_sizes[rec - 1];
+	if (idx >= n)
+		return 0;
+	n -= idx;
 	/* Model a successful short read when the caller's buffer is small. */
 	if (n > count)
 		n = count;
-	memcpy(out, records[rec - 1], n);
+	memcpy(out, records[rec - 1] + idx, n);
 	return (int)n;
 }
-#define sc_lock	       mock_lock
-#define sc_unlock      mock_unlock
-#define sc_select_file mock_select_file
-#define sc_read_record mock_read_record
-#include "libopensc/pkcs15.c"
-#undef sc_read_record
-#undef sc_select_file
-#undef sc_unlock
-#undef sc_lock
-
 static void
 reset_records(void)
 {
@@ -100,6 +84,14 @@ read_fixture(u8 **out, size_t *len)
 	sc_card_t card = {0};
 	sc_pkcs15_card_t p15 = {0};
 	sc_path_t path = {0};
+	struct sc_card_operations card_ops = {0};
+	struct sc_reader_operations reader_ops = {0};
+	sc_reader_t reader = {0};
+	card_ops.select_file = mock_select_file;
+	card_ops.read_record = mock_read_record;
+	reader.ops = &reader_ops;
+	card.reader = &reader;
+	card.ops = &card_ops;
 	card.ctx = &ctx;
 	p15.card = &card;
 	path.count = -1;
@@ -108,6 +100,7 @@ read_fixture(u8 **out, size_t *len)
 static void
 complete_records_despite_small_size(void **state)
 {
+	int r;
 	u8 *out = NULL;
 	const u8 *p;
 	size_t len = 0;
@@ -116,7 +109,8 @@ complete_records_despite_small_size(void **state)
 	sc_pkcs15_card_t p15 = {0};
 	sc_file_t app = {0};
 	reset_records();
-	assert_int_equal(read_fixture(&out, &len), SC_SUCCESS);
+	r = read_fixture(&out, &len);
+	assert_int_equal(r, SC_SUCCESS);
 	assert_int_equal(len, 3 * sizeof(pin));
 	assert_int_equal(record_calls, 4);
 	card.ctx = &ctx;
@@ -128,7 +122,8 @@ complete_records_despite_small_size(void **state)
 	p = out;
 	for (unsigned i = 0; i < 3; i++) {
 		sc_pkcs15_object_t obj = {0};
-		assert_int_equal(sc_pkcs15_decode_aodf_entry(&p15, &obj, &p, &len), SC_SUCCESS);
+		r = sc_pkcs15_decode_aodf_entry(&p15, &obj, &p, &len);
+		assert_int_equal(r, SC_SUCCESS);
 		assert_int_equal(obj.type, SC_PKCS15_TYPE_AUTH_PIN);
 		assert_int_equal(((sc_pkcs15_auth_info_t *)obj.data)->attrs.pin.reference, 1);
 		free(obj.data);
@@ -139,6 +134,7 @@ complete_records_despite_small_size(void **state)
 static void
 check_padded_records(size_t header_len)
 {
+	int r;
 	u8 *out = NULL;
 	size_t len = 0;
 	reset_records();
@@ -152,7 +148,8 @@ check_padded_records(size_t header_len)
 		memset(records[i] + header_len + sizeof(pin), 0, 5);
 		record_sizes[i] = header_len + sizeof(pin) + 5;
 	}
-	assert_int_equal(read_fixture(&out, &len), SC_SUCCESS);
+	r = read_fixture(&out, &len);
+	assert_int_equal(r, SC_SUCCESS);
 	assert_int_equal(len, max_records * sizeof(pin));
 	assert_int_equal(record_calls, max_records + 1);
 	for (unsigned i = 0; i < max_records; i++)
@@ -172,31 +169,37 @@ complete_padded_extended_records(void **state)
 static void
 reject_incomplete_record(void **state)
 {
+	int r;
 	u8 *out = NULL;
 	size_t len = 0;
 	reset_records();
 	record_sizes[1]--;
-	assert_int_equal(read_fixture(&out, &len), SC_ERROR_INVALID_ASN1_OBJECT);
+	r = read_fixture(&out, &len);
+	assert_int_equal(r, SC_ERROR_INVALID_ASN1_OBJECT);
 	assert_null(out);
 }
 static void
 reject_partial_header(void **state)
 {
+	int r;
 	u8 *out = NULL;
 	size_t len = 0;
 	reset_records();
 	record_sizes[0] = 1;
-	assert_int_equal(read_fixture(&out, &len), SC_ERROR_INVALID_ASN1_OBJECT);
+	r = read_fixture(&out, &len);
+	assert_int_equal(r, SC_ERROR_INVALID_ASN1_OBJECT);
 	assert_null(out);
 	reset_records();
 	records[0][1] = 0xff;
 	record_sizes[0] = 3;
-	assert_int_equal(read_fixture(&out, &len), SC_ERROR_INVALID_ASN1_OBJECT);
+	r = read_fixture(&out, &len);
+	assert_int_equal(r, SC_ERROR_INVALID_ASN1_OBJECT);
 	assert_null(out);
 }
 static void
 extended_length_record(void **state)
 {
+	int r;
 	u8 *out = NULL;
 	size_t len = 0;
 	reset_records();
@@ -206,7 +209,8 @@ extended_length_record(void **state)
 	records[0][3] = 252;
 	memset(records[0] + 4, 0xa5, 252);
 	record_sizes[0] = 256;
-	assert_int_equal(read_fixture(&out, &len), SC_SUCCESS);
+	r = read_fixture(&out, &len);
+	assert_int_equal(r, SC_SUCCESS);
 	assert_int_equal(len, 252);
 	for (size_t i = 0; i < len; i++)
 		assert_int_equal(out[i], 0xa5);
@@ -215,13 +219,15 @@ extended_length_record(void **state)
 static void
 bound_record_number_and_aggregate_size(void **state)
 {
+	int r;
 	u8 *out = NULL;
 	size_t len = 0;
 	reset_records();
 	generated_records = 1;
 	max_records = 254;
 	advertised_size = 1;
-	assert_int_equal(read_fixture(&out, &len), SC_SUCCESS);
+	r = read_fixture(&out, &len);
+	assert_int_equal(r, SC_SUCCESS);
 	assert_int_equal(record_calls, 254);
 	assert_int_equal(len, 254 * 254);
 	assert_true(len <= MAX_FILE_SIZE);
@@ -230,11 +236,13 @@ bound_record_number_and_aggregate_size(void **state)
 static void
 propagate_read_error(void **state)
 {
+	int r;
 	u8 *out = NULL;
 	size_t len = 0;
 	reset_records();
 	read_error = SC_ERROR_TRANSMIT_FAILED;
-	assert_int_equal(read_fixture(&out, &len), SC_ERROR_TRANSMIT_FAILED);
+	r = read_fixture(&out, &len);
+	assert_int_equal(r, SC_ERROR_TRANSMIT_FAILED);
 	assert_null(out);
 }
 int
