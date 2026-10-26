@@ -11,6 +11,10 @@
     "openpace": {
       "description": "EAC/PACE support via OpenPACE",
       "dependencies": ["openpace"]
+    },
+    "tests": {
+      "description": "Unit tests",
+      "dependencies": ["cmocka"]
     }
   },
   "builtin-baseline": "e182cb4dd2df2ab02f66a1aabd5f35bbdc9522c7"
