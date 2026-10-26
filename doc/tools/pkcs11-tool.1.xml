@@ -392,10 +392,26 @@
 
 				<varlistentry>
 					<term>
+						<option>--set-attribute</option> <replaceable>name</replaceable>=<replaceable>value</replaceable>
+					</term>
+					<listitem><para>Set an attribute of the object selected as for
+					<option>--read-attribute</option>. The value is read according to the
+					attribute: <literal>true</literal> or <literal>false</literal>, a number or
+					a name (<literal>CKK_AES</literal>), text for labels, hexadecimal for byte
+					arrays such as <literal>ID</literal>, <literal>YYYYMMDD</literal> for dates,
+					and a comma-separated list of mechanisms for
+					<literal>CKA_ALLOWED_MECHANISMS</literal>. May be repeated; all the
+					attributes are sent in one <function>C_SetAttributeValue</function> call.
+					Which attributes may be changed is for the token to decide.</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
 						<option>--set-id</option> <replaceable>id</replaceable>,
 						<option>-e</option> <replaceable>id</replaceable>
 					</term>
-					<listitem><para>Set the CKA_ID of the object.</para></listitem>
+					<listitem><para>Set the CKA_ID of the object. Deprecated: use
+					<option>--set-attribute</option> ID=<replaceable>id</replaceable>.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>
@@ -659,6 +675,20 @@
 					</term>
 					<listitem><para>Get object's CKA_VALUE attribute (use with
 					<option>--type</option>).</para></listitem>
+				</varlistentry>
+
+				<varlistentry>
+					<term>
+						<option>--read-attribute</option> <replaceable>names</replaceable>
+					</term>
+					<listitem><para>Print the named attributes of the object selected with
+					<option>--uri</option>, or with <option>--type</option>, <option>--id</option>
+					and <option>--label</option>. <replaceable>names</replaceable> is a
+					comma-separated list of attribute names, with or without the
+					<literal>CKA_</literal> prefix (<literal>CKA_LABEL</literal>,
+					<literal>sensitive</literal>), or numeric values such as
+					<literal>0x80000001</literal>. May be repeated. A sensitive or absent
+					attribute is reported as such.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

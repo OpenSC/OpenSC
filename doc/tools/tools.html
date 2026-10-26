@@ -1731,9 +1731,20 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Set the CKA_EXTRACTABLE attribute (object can be extracted)</p></dd><dt><span class="term">
 						<code class="option">--undestroyable</code>
 					</span></dt><dd><p>Set the CKA_DESTROYABLE attribute to false (object cannot be destroyed)</p></dd><dt><span class="term">
+						<code class="option">--set-attribute</code> <em class="replaceable"><code>name</code></em>=<em class="replaceable"><code>value</code></em>
+					</span></dt><dd><p>Set an attribute of the object selected as for
+					<code class="option">--read-attribute</code>. The value is read according to the
+					attribute: <code class="literal">true</code> or <code class="literal">false</code>, a number or
+					a name (<code class="literal">CKK_AES</code>), text for labels, hexadecimal for byte
+					arrays such as <code class="literal">ID</code>, <code class="literal">YYYYMMDD</code> for dates,
+					and a comma-separated list of mechanisms for
+					<code class="literal">CKA_ALLOWED_MECHANISMS</code>. May be repeated; all the
+					attributes are sent in one <code class="function">C_SetAttributeValue</code> call.
+					Which attributes may be changed is for the token to decide.</p></dd><dt><span class="term">
 						<code class="option">--set-id</code> <em class="replaceable"><code>id</code></em>,
 						<code class="option">-e</code> <em class="replaceable"><code>id</code></em>
-					</span></dt><dd><p>Set the CKA_ID of the object.</p></dd><dt><span class="term">
+					</span></dt><dd><p>Set the CKA_ID of the object. Deprecated: use
+					<code class="option">--set-attribute</code> ID=<em class="replaceable"><code>id</code></em>.</p></dd><dt><span class="term">
 						<code class="option">--show-info</code>,
 						<code class="option">-I</code>
 					</span></dt><dd><p>Display general token information.</p></dd><dt><span class="term">
@@ -1843,6 +1854,15 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						<code class="option">-r</code>
 					</span></dt><dd><p>Get object's CKA_VALUE attribute (use with
 					<code class="option">--type</code>).</p></dd><dt><span class="term">
+						<code class="option">--read-attribute</code> <em class="replaceable"><code>names</code></em>
+					</span></dt><dd><p>Print the named attributes of the object selected with
+					<code class="option">--uri</code>, or with <code class="option">--type</code>, <code class="option">--id</code>
+					and <code class="option">--label</code>. <em class="replaceable"><code>names</code></em> is a
+					comma-separated list of attribute names, with or without the
+					<code class="literal">CKA_</code> prefix (<code class="literal">CKA_LABEL</code>,
+					<code class="literal">sensitive</code>), or numeric values such as
+					<code class="literal">0x80000001</code>. May be repeated. A sensitive or absent
+					attribute is reported as such.</p></dd><dt><span class="term">
 						<code class="option">--delete-object</code>,
 						<code class="option">-b</code>
 					</span></dt><dd><p>Delete an object.</p></dd><dt><span class="term">
