@@ -1939,7 +1939,6 @@ epass2003_select_fid_(struct sc_card *card, sc_path_t * in_path, sc_file_t ** fi
 	return 0;
 }
 
-
 static void
 epass2003_forget_df(struct sc_card *card)
 {
@@ -2045,8 +2044,8 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 	}
 
 	exdata = (epass2003_exdata *)card->drv_data;
-	if (exdata && exdata->cur_df_len > 0 && exdata->cur_df_len <= pathlen
-			&& memcmp(path, exdata->cur_df, exdata->cur_df_len) == 0) {
+	if (exdata && exdata->cur_df_len > 0 && exdata->cur_df_len <= pathlen &&
+			memcmp(path, exdata->cur_df, exdata->cur_df_len) == 0) {
 		if (exdata->cur_df_len == pathlen) {
 			/* already in the requested DF */
 			if (file_out) {
