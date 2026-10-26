@@ -27,13 +27,14 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#include "cardctl.h"
-#include "internal.h"
-#include "pkcs15.h"
 #include "asn1.h"
-#include "common/libscdl.h"
+#include "cardctl.h"
 #include "common/compat_strlcat.h"
 #include "common/compat_strlcpy.h"
+#include "common/libscdl.h"
+#include "internal.h"
+#include "pkcs15.h"
+#include "simpletlv.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/sha.h>
@@ -2565,13 +2566,7 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 		/* Handle the case where the ASN.1 Path object specified
 		 * index and length values */
 
-		if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV) {
-			/* A record file's advertised size is not a reliable bound on
-			 * the concatenated values of its SIMPLE-TLV records. In
-			 * particular, a short aggregate buffer must not shorten a
-			 * later READ RECORD and silently truncate an ASN.1 object. */
-			len = MAX_FILE_SIZE;
-		} else if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE) {
+		if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE) {
 
 			// in_path->index: record_no
 			// in_path->count: ignored!
@@ -2622,16 +2617,13 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 		if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV) {
 			unsigned int i;
-			size_t l, record_len, header_len;
-			unsigned char *head = data;
+			size_t used = 0, record_len;
+			u8 record[256], tag;
+			const u8 *value;
 
-			/* ISO 7816-4 reserves record number 255. */
-			for (i = 1; i <= 0xfe; i++) {
-				l = len - (head - data);
-				if (l > 256) {
-					l = 256;
-				}
-				r = sc_read_record(p15card->card, i, 0, head, l, SC_RECORD_BY_REC_NR);
+			for (i = 1;; i++) {
+				/* The aggregate size counts values, not record headers. */
+				r = sc_read_record(p15card->card, i, 0, record, sizeof(record), SC_RECORD_BY_REC_NR);
 				if (r == SC_ERROR_RECORD_NOT_FOUND)
 					break;
 				if (r < 0) {
@@ -2639,29 +2631,28 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 				}
 				if (r == 0)
 					break;
-				if (r < 2 || (size_t)r > l) {
+				if ((size_t)r > sizeof(record)) {
 					r = SC_ERROR_INVALID_ASN1_OBJECT;
 					goto fail_unlock;
 				}
-				record_len = head[1];
-				header_len = 2;
-				if (record_len == 0xff) {
-					if (r < 4) {
-						r = SC_ERROR_INVALID_ASN1_OBJECT;
-						goto fail_unlock;
-					}
-					record_len = ((size_t)head[2] << 8) | head[3];
-					header_len = 4;
+				if (r >= 4 && record[1] == 0xff) {
+					/* The shared parser uses little-endian extended lengths;
+					 * normalize the record's big-endian length first. */
+					u8 tmp = record[2];
+					record[2] = record[3];
+					record[3] = tmp;
 				}
-				/* Reject incomplete values, but allow trailing padding. */
-				if (record_len > (size_t)r - header_len) {
+				value = record;
+				r = sc_simpletlv_read_tag(&value, (size_t)r, &tag, &record_len);
+				if (r != SC_SUCCESS || record_len > len - used) {
 					r = SC_ERROR_INVALID_ASN1_OBJECT;
 					goto fail_unlock;
 				}
-				memmove(head, head + header_len, record_len);
-				head += record_len;
+				/* Copy only the complete value, ignoring trailing padding. */
+				memcpy(data + used, value, record_len);
+				used += record_len;
 			}
-			len = head-data;
+			len = used;
 			if (len > 0) {
 				unsigned char *tmp = realloc(data, len);
 

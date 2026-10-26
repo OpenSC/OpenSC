@@ -38,7 +38,6 @@ mock_read_record(sc_card_t *card, unsigned rec, unsigned idx,
 		record_calls++;
 	assert_int_equal(rec, record_calls);
 	assert_int_equal(flags, SC_RECORD_BY_REC_NR);
-	assert_true(rec <= 254);
 	if (read_error)
 		return read_error;
 	if (rec > max_records)
@@ -65,7 +64,7 @@ reset_records(void)
 {
 	memset(records, 0, sizeof(records));
 	memset(record_sizes, 0, sizeof(record_sizes));
-	advertised_size = 40;
+	advertised_size = 3 * sizeof(pin);
 	max_records = 3;
 	record_calls = 0;
 	generated_records = 0;
@@ -98,7 +97,7 @@ read_fixture(u8 **out, size_t *len)
 	return sc_pkcs15_read_file(&p15, &path, out, len, 0);
 }
 static void
-complete_records_despite_small_size(void **state)
+complete_values_without_counting_headers(void **state)
 {
 	int r;
 	u8 *out = NULL;
@@ -204,6 +203,7 @@ extended_length_record(void **state)
 	size_t len = 0;
 	reset_records();
 	max_records = 1;
+	advertised_size = 252;
 	records[0][1] = 0xff;
 	records[0][2] = 0;
 	records[0][3] = 252;
@@ -217,7 +217,7 @@ extended_length_record(void **state)
 	free(out);
 }
 static void
-bound_record_number_and_aggregate_size(void **state)
+complete_maximum_record_file(void **state)
 {
 	int r;
 	u8 *out = NULL;
@@ -225,14 +225,83 @@ bound_record_number_and_aggregate_size(void **state)
 	reset_records();
 	generated_records = 1;
 	max_records = 254;
-	advertised_size = 1;
+	advertised_size = max_records * 254;
 	r = read_fixture(&out, &len);
 	assert_int_equal(r, SC_SUCCESS);
-	assert_int_equal(record_calls, 254);
+	assert_int_equal(record_calls, 255);
 	assert_int_equal(len, 254 * 254);
 	assert_true(len <= MAX_FILE_SIZE);
 	free(out);
 }
+static void
+reject_values_exceeding_file_size(void **state)
+{
+	int r;
+	u8 *out = NULL;
+	size_t len = 0;
+	reset_records();
+	advertised_size--;
+	r = read_fixture(&out, &len);
+	assert_int_equal(r, SC_ERROR_INVALID_ASN1_OBJECT);
+	assert_null(out);
+}
+
+static unsigned apdu_calls, expected_record;
+
+static int
+mock_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
+{
+	apdu_calls++;
+	assert_int_equal(apdu->ins, 0xb2);
+	assert_int_equal(apdu->p1, expected_record);
+	assert_int_equal(apdu->p2, 4);
+	assert_true(apdu->resplen >= 1);
+	apdu->resp[0] = 0xa5;
+	apdu->resplen = 1;
+	apdu->sw1 = 0x90;
+	apdu->sw2 = 0;
+	return SC_SUCCESS;
+}
+
+static void
+iso_record_number_boundary(void **state)
+{
+	sc_context_t ctx = {0};
+	struct sc_reader_operations reader_ops = {0};
+	sc_reader_t reader = {0};
+	sc_card_t card = {0};
+	struct sc_card_operations *iso = sc_get_iso7816_driver()->ops;
+	u8 value;
+	int r;
+
+	reader_ops.transmit = mock_transmit;
+	reader.ops = &reader_ops;
+	reader.active_protocol = SC_PROTO_T1;
+	reader.max_recv_size = 256;
+	card.reader = &reader;
+	card.ctx = &ctx;
+	card.ops = iso;
+	card.max_recv_size = 256;
+	apdu_calls = 0;
+	/* Current record and the last permitted record still reach transport. */
+	expected_record = 0;
+	r = iso->read_record(&card, expected_record, 0, &value, 1, SC_RECORD_BY_REC_NR);
+	assert_int_equal(r, 1);
+	assert_int_equal(value, 0xa5);
+	expected_record = 254;
+	r = iso->read_record(&card, expected_record, 0, &value, 1, SC_RECORD_BY_REC_NR);
+	assert_int_equal(r, 1);
+	assert_int_equal(apdu_calls, 2);
+	/* Reserved numbers/identifiers are rejected before an APDU is sent. */
+	r = iso->read_record(&card, 255, 0, &value, 1, SC_RECORD_BY_REC_NR);
+	assert_int_equal(r, SC_ERROR_RECORD_NOT_FOUND);
+	r = iso->read_record(&card, 255, 0, &value, 1, SC_RECORD_BY_REC_ID);
+	assert_int_equal(r, SC_ERROR_RECORD_NOT_FOUND);
+	r = iso->read_record(&card, 256, 0, &value, 1, SC_RECORD_BY_REC_NR);
+	assert_int_equal(r, SC_ERROR_INVALID_ARGUMENTS);
+	assert_int_equal(apdu_calls, 2);
+}
+
 static void
 propagate_read_error(void **state)
 {
@@ -249,13 +318,15 @@ int
 main(void)
 {
 	const struct CMUnitTest tests[] = {
-			cmocka_unit_test(complete_records_despite_small_size),
+			cmocka_unit_test(complete_values_without_counting_headers),
 			cmocka_unit_test(complete_padded_short_records),
 			cmocka_unit_test(complete_padded_extended_records),
 			cmocka_unit_test(reject_incomplete_record),
 			cmocka_unit_test(reject_partial_header),
 			cmocka_unit_test(extended_length_record),
-			cmocka_unit_test(bound_record_number_and_aggregate_size),
+			cmocka_unit_test(complete_maximum_record_file),
+			cmocka_unit_test(reject_values_exceeding_file_size),
+			cmocka_unit_test(iso_record_number_boundary),
 			cmocka_unit_test(propagate_read_error)};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
