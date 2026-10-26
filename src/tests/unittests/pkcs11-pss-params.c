@@ -24,13 +24,14 @@ reject_unknown_hash_including_zero(void **state)
 			0, CKM_RSA_PKCS, CKM_SHA256_RSA_PKCS, CKM_VENDOR_DEFINED};
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_PSS, &params, sizeof(params)};
+	CK_RV rc;
 	size_t i;
 
 	(void)state;
 	for (i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
 		params.hashAlg = invalid[i];
-		assert_int_equal(sc_pkcs11_validate_pss_params(&mechanism),
-				CKR_MECHANISM_PARAM_INVALID);
+		rc = sc_pkcs11_validate_pss_params(&mechanism);
+		assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
 	}
 }
 
@@ -42,6 +43,7 @@ accept_supported_hash_and_mgf_combinations(void **state)
 			CKG_MGF1_SHA384, CKG_MGF1_SHA512};
 	CK_RSA_PKCS_PSS_PARAMS params;
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_PSS, &params, sizeof(params)};
+	CK_RV rc;
 	size_t i, j;
 
 	(void)state;
@@ -52,9 +54,11 @@ accept_supported_hash_and_mgf_combinations(void **state)
 		for (j = 0; j < sizeof(mgfs) / sizeof(mgfs[0]); j++) {
 			params.mgf = mgfs[j];
 			mechanism.mechanism = CKM_RSA_PKCS_PSS;
-			assert_int_equal(sc_pkcs11_validate_pss_params(&mechanism), CKR_OK);
+			rc = sc_pkcs11_validate_pss_params(&mechanism);
+			assert_int_equal(rc, CKR_OK);
 			mechanism.mechanism = hashes[i].mechanism;
-			assert_int_equal(sc_pkcs11_validate_pss_params(&mechanism), CKR_OK);
+			rc = sc_pkcs11_validate_pss_params(&mechanism);
+			assert_int_equal(rc, CKR_OK);
 		}
 	}
 }
@@ -64,6 +68,7 @@ reject_combined_mechanism_hash_mismatch(void **state)
 {
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
 	CK_MECHANISM mechanism = {CKM_SHA256_RSA_PKCS_PSS, &params, sizeof(params)};
+	CK_RV rc;
 	size_t i, j;
 
 	(void)state;
@@ -71,12 +76,12 @@ reject_combined_mechanism_hash_mismatch(void **state)
 		mechanism.mechanism = hashes[i].mechanism;
 		for (j = 0; j < sizeof(hashes) / sizeof(hashes[0]); j++) {
 			params.hashAlg = hashes[j].hash;
-			assert_int_equal(sc_pkcs11_validate_pss_params(&mechanism),
-					i == j ? CKR_OK : CKR_MECHANISM_PARAM_INVALID);
+			rc = sc_pkcs11_validate_pss_params(&mechanism);
+			assert_int_equal(rc, i == j ? CKR_OK : CKR_MECHANISM_PARAM_INVALID);
 		}
 		params.hashAlg = 0;
-		assert_int_equal(sc_pkcs11_validate_pss_params(&mechanism),
-				CKR_MECHANISM_PARAM_INVALID);
+		rc = sc_pkcs11_validate_pss_params(&mechanism);
+		assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
 	}
 }
 
@@ -85,35 +90,39 @@ reject_invalid_parameter_storage(void **state)
 {
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_PSS, NULL, sizeof(params)};
+	CK_RV rc;
 
 	(void)state;
-	assert_int_equal(sc_pkcs11_validate_pss_params(&mechanism),
-			CKR_MECHANISM_PARAM_INVALID);
+	rc = sc_pkcs11_validate_pss_params(NULL_PTR);
+	assert_int_equal(rc, CKR_ARGUMENTS_BAD);
+	rc = sc_pkcs11_validate_pss_params(&mechanism);
+	assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
 	mechanism.pParameter = &params;
 	mechanism.ulParameterLen = 0;
-	assert_int_equal(sc_pkcs11_validate_pss_params(&mechanism),
-			CKR_MECHANISM_PARAM_INVALID);
+	rc = sc_pkcs11_validate_pss_params(&mechanism);
+	assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
 	mechanism.ulParameterLen = sizeof(params) - 1;
-	assert_int_equal(sc_pkcs11_validate_pss_params(&mechanism),
-			CKR_MECHANISM_PARAM_INVALID);
+	rc = sc_pkcs11_validate_pss_params(&mechanism);
+	assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
 	mechanism.ulParameterLen = sizeof(params) + 1;
-	assert_int_equal(sc_pkcs11_validate_pss_params(&mechanism),
-			CKR_MECHANISM_PARAM_INVALID);
+	rc = sc_pkcs11_validate_pss_params(&mechanism);
+	assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
 }
 
 static void
 reject_invalid_mgf(void **state)
 {
-	const CK_RSA_PKCS_MGF_TYPE invalid[] = {0, CKG_MGF1_SHA224 + 1, ~0UL};
+	const CK_RSA_PKCS_MGF_TYPE invalid[] = {0, CKG_MGF1_SHA3_224, ~0UL};
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_PSS, &params, sizeof(params)};
+	CK_RV rc;
 	size_t i;
 
 	(void)state;
 	for (i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
 		params.mgf = invalid[i];
-		assert_int_equal(sc_pkcs11_validate_pss_params(&mechanism),
-				CKR_MECHANISM_PARAM_INVALID);
+		rc = sc_pkcs11_validate_pss_params(&mechanism);
+		assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
 	}
 }
 
@@ -123,6 +132,7 @@ accept_non_default_salt_lengths(void **state)
 	const CK_ULONG lengths[] = {0, 1, 20, 32, 222};
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_PSS, &params, sizeof(params)};
+	CK_RV rc;
 	size_t i;
 
 	(void)state;
@@ -131,7 +141,8 @@ accept_non_default_salt_lengths(void **state)
 	 */
 	for (i = 0; i < sizeof(lengths) / sizeof(lengths[0]); i++) {
 		params.sLen = lengths[i];
-		assert_int_equal(sc_pkcs11_validate_pss_params(&mechanism), CKR_OK);
+		rc = sc_pkcs11_validate_pss_params(&mechanism);
+		assert_int_equal(rc, CKR_OK);
 	}
 }
 
