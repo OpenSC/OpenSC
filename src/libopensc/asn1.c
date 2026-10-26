@@ -1618,8 +1618,19 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 		}
 		break;
 	case SC_ASN1_OBJECT:
-		if (parm != NULL)
-			r = sc_asn1_decode_object_id(obj, objlen, (struct sc_object_id *) parm);
+		if (parm != NULL) {
+			if (objlen == 0) {
+				if (entry->flags & SC_ASN1_OPTIONAL) {
+					sc_debug(ctx, SC_LOG_DEBUG_ASN1, "decoding ASN.1 object '%s' with len=0 as invalid OID", entry->name);
+					sc_init_oid((struct sc_object_id *)parm);
+					return SC_SUCCESS;
+				} else {
+					sc_debug(ctx, SC_LOG_DEBUG_ASN1, "ignoring ASN.1 object '%s' with len=0 as invalid OID", entry->name);
+				}
+			} else {
+				r = sc_asn1_decode_object_id(obj, objlen, (struct sc_object_id *)parm);
+			}
+		}
 		break;
 	case SC_ASN1_PRINTABLESTRING:
 	case SC_ASN1_UTF8STRING:
