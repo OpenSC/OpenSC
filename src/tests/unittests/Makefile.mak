@@ -6,7 +6,7 @@ default: all
 
 TARGETS = asn1.exe base64.exe check_macro_reference_loop.exe decode_ecdsa_signature.exe \
 	hextobin.exe openpgp-tool.exe parse_pkcs11_uri.exe pkcs15-emulator-filter.exe \
-	simpletlv.exe strip_pkcs1_2_padding.exe
+	simpletlv.exe strip_pkcs1_2_padding.exe pkcs11-pss-params.exe
 
 !IF "$(ZLIB_DEF)" == "/DENABLE_ZLIB"
 TARGETS = $(TARGETS) compression.exe
