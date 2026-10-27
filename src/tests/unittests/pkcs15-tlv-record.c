@@ -246,7 +246,14 @@ mock_record_transmit(sc_reader_t *reader, sc_apdu_t *apdu)
 {
 	static const struct {
 		unsigned record, offset;
-	} sequence[] = {{1, 0}, {1, 256}, {1, 509}, {2, 0}, {2, sizeof(pin) + 2}, {3, 0}};
+	} sequence[] = {
+			{1, 0		     },
+			{1, 256	       },
+			{1, 509	       },
+			{2, 0		     },
+			{2, sizeof(pin) + 2},
+			{3, 0		     },
+	};
 	unsigned step = iso_record_calls++;
 	size_t offset, n, header;
 
