@@ -2617,7 +2617,8 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 		if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV) {
 			unsigned int i;
-			size_t used = 0, record_len;
+			size_t value_bytes_read = 0, record_len;
+			size_t record_bytes, copied, missing;
 			u8 record[256], tag;
 			const u8 *value;
 
@@ -2632,27 +2633,40 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 				if (r == 0)
 					break;
 				if ((size_t)r > sizeof(record)) {
-					r = SC_ERROR_INVALID_ASN1_OBJECT;
+					r = SC_ERROR_INVALID_TLV_OBJECT;
 					goto fail_unlock;
 				}
+				record_bytes = (size_t)r;
 				if (r >= 4 && record[1] == 0xff) {
-					/* The shared parser uses little-endian extended lengths;
-					 * normalize the record's big-endian length first. */
+					/* Interpret extended record lengths as big endian;
+					 * adapt to the shared parser's little-endian convention. */
 					u8 tmp = record[2];
 					record[2] = record[3];
 					record[3] = tmp;
 				}
 				value = record;
-				r = sc_simpletlv_read_tag(&value, (size_t)r, &tag, &record_len);
-				if (r != SC_SUCCESS || record_len > len - used) {
-					r = SC_ERROR_INVALID_ASN1_OBJECT;
+				r = sc_simpletlv_read_tag(&value, record_bytes, &tag, &record_len);
+				if ((r != SC_SUCCESS && r != SC_ERROR_TLV_END_OF_CONTENTS) ||
+						record_len > len - value_bytes_read) {
+					r = SC_ERROR_INVALID_TLV_OBJECT;
 					goto fail_unlock;
 				}
-				/* Copy only the complete value, ignoring trailing padding. */
-				memcpy(data + used, value, record_len);
-				used += record_len;
+				copied = MIN(record_len, record_bytes - (size_t)(value - record));
+				memcpy(data + value_bytes_read, value, copied);
+				missing = record_len - copied;
+				if (missing > 0) {
+					r = sc_read_record(p15card->card, i, (unsigned int)record_bytes,
+							data + value_bytes_read + copied, missing, SC_RECORD_BY_REC_NR);
+					if (r < 0)
+						goto fail_unlock;
+					if ((size_t)r != missing) {
+						r = SC_ERROR_INVALID_TLV_OBJECT;
+						goto fail_unlock;
+					}
+				}
+				value_bytes_read += record_len;
 			}
-			len = used;
+			len = value_bytes_read;
 			if (len > 0) {
 				unsigned char *tmp = realloc(data, len);
 
