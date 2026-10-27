@@ -52,7 +52,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--create-pin-files</option> <replaceable>id</replaceable>,
+						<option>--create-pin-file</option> <replaceable>id</replaceable>,
 						<option>-P</option> <replaceable>id</replaceable>
 					</term>
 					<listitem><para>Creates new PIN file for CHV<replaceable>id</replaceable></para></listitem>

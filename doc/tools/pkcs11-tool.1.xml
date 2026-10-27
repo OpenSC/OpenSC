@@ -223,7 +223,7 @@
 					</term>
 					<listitem>
 						<para>Display a list of objects.</para>
-						<para>The options <option>--keytype</option>, <option>--label</option>
+						<para>The options <option>--key-type</option>, <option>--label</option>
 						, <option>--id</option> or <option>--application-id</option> can be
 						used to filter the listed objects.</para>
 					</listitem>
