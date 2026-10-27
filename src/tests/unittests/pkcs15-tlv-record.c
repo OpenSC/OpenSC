@@ -14,8 +14,8 @@ static const u8 pin[] = {
 		0x01, 0x01, 0x02, 0x01, 0x04, 0x02, 0x01, 0x08, 0x02,
 		0x01, 0x08, 0x80, 0x01, 0x01, 0x04, 0x01, 0xff};
 static u8 records[3][604];
-static size_t record_sizes[3], advertised_size;
-static unsigned record_calls, max_records, read_offset, continuation_calls;
+static size_t record_sizes[3], advertised_size, read_offset;
+static unsigned record_calls, max_records, continuation_calls;
 static int generated_records, read_error, continuation_error;
 
 static int
@@ -58,7 +58,7 @@ mock_read_record(sc_card_t *card, unsigned rec, unsigned idx,
 	}
 	if (generated_records) {
 		assert_true(count >= 256);
-		out[0] = rec;
+		out[0] = (u8)rec;
 		out[1] = 254;
 		memset(out + 2, 0xa5, 254);
 		return 256;
@@ -88,7 +88,7 @@ reset_records(void)
 	read_error = 0;
 	continuation_error = 0;
 	for (unsigned i = 0; i < max_records; i++) {
-		records[i][0] = i + 1;
+		records[i][0] = (u8)(i + 1);
 		records[i][1] = sizeof(pin);
 		memcpy(records[i] + 2, pin, sizeof(pin));
 		record_sizes[i] = sizeof(pin) + 2;
