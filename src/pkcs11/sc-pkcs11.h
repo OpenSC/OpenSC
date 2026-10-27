@@ -426,6 +426,9 @@ int slot_get_logged_in_state(struct sc_pkcs11_slot *slot);
 int slot_get_card_state(struct sc_pkcs11_slot *slot);
 
 /* Login tracking functions */
+CK_RV change_pin_with_login(struct sc_pkcs11_slot *slot,
+		CK_CHAR_PTR pOldPin, CK_ULONG ulOldLen,
+		CK_CHAR_PTR pNewPin, CK_ULONG ulNewLen);
 CK_RV restore_login_state(struct sc_pkcs11_slot *slot);
 CK_RV reset_login_state(struct sc_pkcs11_slot *slot, CK_RV rv);
 CK_RV push_login_state(struct sc_pkcs11_slot *slot,
