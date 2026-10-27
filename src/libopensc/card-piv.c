@@ -4451,60 +4451,64 @@ piv_init(sc_card_t *card)
 	 * Response of AID says if SM is supported. Look for Cipher Suite
 	 */
 	if (priv->csID) {
-		/*
-		 * Main point in SM and VCI is to allow contactless access
-		 * set what we know from discovery object
-		 */
-
-		if (priv->init_flags & PIV_INIT_CONTACTLESS)
-			priv->sm_params.flags |= NIST_SM_CONTACTLESS;
-
-		if (priv->pin_policy & PIV_PP_VCI_IMPL)
-			priv->sm_params.flags |= NIST_SM_VCI_IMPL;
-
-		if (priv->pin_policy & PIV_PP_VCI_WITHOUT_PC)
-			priv->sm_params.flags |= NIST_SM_VCI_WITHOUT_PC;
-
-		/* fill in other common params */
-
 		r = sm_nist_load_options(card, &priv->sm_params, "PIV");
-		/* TODO test */
 
-		/*
-		 * Get the PIV_OBJ_SM_CERT_SIGNER and optional sm_in_cvc in cache
-		 * both are in same object. Do not need the object, just the cert in it
-		 * sm_cvc and sm_in_cvc both have EC_keys sm_in_cvc may have RSA signature
-		 * if not found, sm_nist_start will provide error messages
-		 */
-		r = piv_get_cached_data(card, PIV_OBJ_SM_CERT_SIGNER, NULL, NULL);
-		if (r > 0) {
-			r = piv_cache_internal_data(card, PIV_OBJ_SM_CERT_SIGNER);
-			if (r > 0 &&
-					priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data &&
-					priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len &&
-					((priv->sm_params.signer_cert_der = malloc(priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len)))) {
-				memcpy(priv->sm_params.signer_cert_der,
-						priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data,
-						priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len);
-				priv->sm_params.signer_cert_der_len = priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len;
-				priv->sm_params.flags |= NIST_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
-				if (priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].flags & PIV_OBJ_CACHE_COMPRESSED) {
-					priv->sm_params.flags |= NIST_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
+		if (r < 0) {
+			sc_log(card->ctx," sm_nist_load_options failed");
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
+
+		if (!(priv->sm_params.flags & NIST_SM_FLAGS_NEVER)) {
+			/*
+			 * Main point in SM and VCI is to allow contactless access
+			 * set what we know from discovery object
+			 */
+
+			if (priv->init_flags & PIV_INIT_CONTACTLESS)
+				priv->sm_params.flags |= NIST_SM_CONTACTLESS;
+
+			if (priv->pin_policy & PIV_PP_VCI_IMPL)
+				priv->sm_params.flags |= NIST_SM_VCI_IMPL;
+
+			if (priv->pin_policy & PIV_PP_VCI_WITHOUT_PC)
+				priv->sm_params.flags |= NIST_SM_VCI_WITHOUT_PC;
+
+			/*
+			 * Get the PIV_OBJ_SM_CERT_SIGNER and optional sm_in_cvc in cache
+			 * both are in same object. Do not need the object, just the cert in it
+			 * sm_cvc and sm_in_cvc both have EC_keys sm_in_cvc may have RSA signature.
+			 * If not found, sm_nist_start will provide error messages
+			 */
+			r = piv_get_cached_data(card, PIV_OBJ_SM_CERT_SIGNER, NULL, NULL);
+			if (r > 0) {
+				r = piv_cache_internal_data(card, PIV_OBJ_SM_CERT_SIGNER);
+				if (r > 0 &&
+						priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data &&
+						priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len &&
+						((priv->sm_params.signer_cert_der = malloc(priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len)))) {
+					memcpy(priv->sm_params.signer_cert_der,
+							priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_data,
+							priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len);
+					priv->sm_params.signer_cert_der_len = priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].internal_obj_len;
+					priv->sm_params.flags |= NIST_SM_FLAGS_SM_CERT_SIGNER_PRESENT; /* set for debugging */
+					if (priv->obj_cache[PIV_OBJ_SM_CERT_SIGNER].flags & PIV_OBJ_CACHE_COMPRESSED) {
+						priv->sm_params.flags |= NIST_SM_FLAGS_SM_CERT_SIGNER_COMPRESSED;
+					}
 				}
 			}
-		}
-		/* TODO did we have a sm_in_cvc?  Needed if Signing cert was using RSA */
+			/* TODO did we have a sm_in_cvc?  Needed if Signing cert was using RSA */
+	
+			priv->sm_params.csID = priv->csID;
+	
+			priv->sm_params.sm_nist_pre_transmit_callback = piv_sm_nist_pre_transmit_callback;
+			r = sm_nist_start(card, &priv->sm_params);
+			sc_log(card->ctx, "sm_nist_start returned:%d", r);
 
-		priv->sm_params.csID = priv->csID;
-
-		priv->sm_params.sm_nist_pre_transmit_callback = piv_sm_nist_pre_transmit_callback;
-		r = sm_nist_start(card, &priv->sm_params);
-		sc_log(card->ctx, "sm_nist_start returned:%d", r);
-
-		/* If failed, and user said NIST_SM_FLAGS_ALWAYS quit */
-		if (priv->sm_params.flags & NIST_SM_FLAGS_ALWAYS && r < 0) {
-			sc_log(card->ctx, "User has requested PIV_SM_FLAGS_ALWAYS, SM has failed to start, don't use the card");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
+			/* If failed and user or opensc.conf said NIST_SM_FLAGS_ALWAYS then quit */
+			if (priv->sm_params.flags & NIST_SM_FLAGS_ALWAYS && r < 0) {
+				sc_log(card->ctx, "User has requested PIV_SM_FLAGS_ALWAYS, SM has failed to start, don't use the card");
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ALLOWED);
+			}
 		}
 	}
 #endif /* PIV_SM_NIST */
