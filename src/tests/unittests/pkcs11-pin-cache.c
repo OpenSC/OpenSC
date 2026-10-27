@@ -105,8 +105,8 @@ slot_seeker(const void *element, const void *key)
 static struct sc_pkcs11_session *
 open_session(struct endpoint *ep)
 {
-	CK_SESSION_HANDLE handle;
-	struct sc_pkcs11_session *session;
+	CK_SESSION_HANDLE handle = CK_INVALID_HANDLE;
+	struct sc_pkcs11_session *session = NULL;
 	assert_int_equal(C_OpenSession(ep->slot.id, CKF_RW_SESSION | CKF_SERIAL_SESSION,
 					 NULL, NULL, &handle),
 			CKR_OK);
