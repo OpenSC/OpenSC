@@ -107,7 +107,7 @@ smart cards and similar security tokens based on Siemens Card/OS M4.
 						<code class="option">--create-key-files</code> <em class="replaceable"><code>arg</code></em>,
 						<code class="option">-c</code> <em class="replaceable"><code>arg</code></em>
 					</span></dt><dd><p>Creates new RSA key files for <em class="replaceable"><code>arg</code></em> keys</p></dd><dt><span class="term">
-						<code class="option">--create-pin-files</code> <em class="replaceable"><code>id</code></em>,
+						<code class="option">--create-pin-file</code> <em class="replaceable"><code>id</code></em>,
 						<code class="option">-P</code> <em class="replaceable"><code>id</code></em>
 					</span></dt><dd><p>Creates new PIN file for CHV<em class="replaceable"><code>id</code></em></p></dd><dt><span class="term">
 						<code class="option">--exponent</code> <em class="replaceable"><code>exp</code></em>,
@@ -1495,9 +1495,6 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 						<code class="option">-i</code> <em class="replaceable"><code>file</code></em>
 					</span></dt><dd><p>Input file for any operation that requires an input file.
 					</p></dd><dt><span class="term">
-						<code class="option">--key-slots-discovery</code> <em class="replaceable"><code>file</code></em>
-					</span></dt><dd><p>Print properties of the key slots. Needs 'admin' authentication.
-					</p></dd><dt><span class="term">
 						<code class="option">--send-apdu</code> <em class="replaceable"><code>apdu</code></em>,
 						<code class="option">-s</code> <em class="replaceable"><code>apdu</code></em>
 					</span></dt><dd><p>Sends an arbitrary APDU to the card in the format
@@ -1612,7 +1609,7 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					</span></dt><dd><p>Display a list of mechanisms supported by the token.</p></dd><dt><span class="term">
 						<code class="option">--list-objects</code>,
 						<code class="option">-O</code>
-					</span></dt><dd><p>Display a list of objects.</p><p>The options <code class="option">--keytype</code>, <code class="option">--label</code>
+					</span></dt><dd><p>Display a list of objects.</p><p>The options <code class="option">--key-type</code>, <code class="option">--label</code>
 						, <code class="option">--id</code> or <code class="option">--application-id</code> can be
 						used to filter the listed objects.</p></dd><dt><span class="term">
 						<code class="option">--list-slots</code>,
@@ -2056,7 +2053,7 @@ pkcs11-tool --login --login-type so --init-pin
 					<code class="literal">x</code><em class="replaceable"><code>NN</code></em>
 					(see also <code class="option">--raw</code>).</p></dd><dt><span class="term">
 						<code class="option">--signature-format</code>,
-						<code class="option">--f</code>
+						<code class="option">-f</code>
 					</span></dt><dd><p>When signing with ECDSA key this option indicates
 					to <span class="command"><strong>pkcs15-crypt</strong></span> the signature output format.
 					Possible values are 'rs'(default) -- two concatenated
@@ -2483,7 +2480,7 @@ pkcs11-tool --login --login-type so --init-pin
 						</p></dd><dt><span class="term">
 						<code class="option">--application-name</code> <em class="replaceable"><code>arg</code></em>
 					</span></dt><dd><p>
-							Specify application name of data object (use with <code class="option">--store-data-object</code>)
+							Specify application name of data object (use with <code class="option">--store-data</code>)
 						</p></dd><dt><span class="term">
 						<code class="option">--aid</code> <em class="replaceable"><code>AID</code></em>
 					</span></dt><dd><p>
