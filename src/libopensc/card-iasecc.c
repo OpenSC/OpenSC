@@ -2043,7 +2043,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	struct sc_context *ctx = card->ctx;
 	struct sc_file *save_current_df = NULL, *save_current_ef = NULL;
-	struct iasecc_sdo sdo;
+	struct iasecc_sdo sdo = {0};
 	struct sc_path path;
 	int rv;
 
@@ -2080,7 +2080,6 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 		LOG_TEST_GOTO_ERR(ctx, rv, "Unable to select MF");
 	}
 
-	memset(&sdo, 0, sizeof(sdo));
 	sdo.sdo_class = IASECC_SDO_CLASS_CHV;
 
 	sdo.sdo_ref = data->pin_reference & ~IASECC_OBJECT_REF_LOCAL;
