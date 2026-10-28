@@ -1136,7 +1136,7 @@ static int read_ssh_key(void)
 		if (len + 4 + 9 > (int)sizeof(buf))
 			goto fail2;
 		tmp = snprintf((char *) buf+len+4, sizeof(buf) - len - 4, "nistp%zu", n);
-		if (tmp < 0 || tmp > 255 || len + 4 + tmp > (int)sizeof(buf))
+		if (tmp > 255 || len + 4 + tmp > (int)sizeof(buf))
 			goto fail2;
 		buf[len++] = 0;
 		buf[len++] = 0;
