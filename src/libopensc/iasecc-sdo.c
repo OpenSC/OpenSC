@@ -161,9 +161,16 @@ iasecc_docp_free_fields(struct iasecc_sdo_docp *docp)
 	free(docp->size.value);
 	free(docp->name.value);
 	free(docp->issuer_data.value);
-
-	/* invalidate all the other members too */
-	memset(docp, 0, sizeof(struct iasecc_sdo_docp));
+	docp->tries_maximum.value = NULL;
+	docp->tries_remaining.value = NULL;
+	docp->usage_maximum.value = NULL;
+	docp->usage_remaining.value = NULL;
+	docp->non_repudiation.value = NULL;
+	docp->acls_contact.value = NULL;
+	docp->acls_contactless.value = NULL;
+	docp->size.value = NULL;
+	docp->name.value = NULL;
+	docp->issuer_data.value = NULL;
 }
 
 void
@@ -181,6 +188,11 @@ iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 		free(sdo->data.pub_key.compulsory.value);
 		free(sdo->data.pub_key.chr.value);
 		free(sdo->data.pub_key.cha.value);
+		sdo->data.pub_key.n.value = NULL;
+		sdo->data.pub_key.e.value = NULL;
+		sdo->data.pub_key.compulsory.value = NULL;
+		sdo->data.pub_key.chr.value = NULL;
+		sdo->data.pub_key.cha.value = NULL;
 	}
 	else if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PRIVATE)   {
 		free(sdo->data.prv_key.p.value);
@@ -189,19 +201,29 @@ iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 		free(sdo->data.prv_key.dmp1.value);
 		free(sdo->data.prv_key.dmq1.value);
 		free(sdo->data.prv_key.compulsory.value);
+		sdo->data.prv_key.p.value = NULL;
+		sdo->data.prv_key.q.value = NULL;
+		sdo->data.prv_key.iqmp.value = NULL;
+		sdo->data.prv_key.dmp1.value = NULL;
+		sdo->data.prv_key.dmq1.value = NULL;
+		sdo->data.prv_key.compulsory.value = NULL;
 	}
 	else if (sdo->sdo_class == IASECC_SDO_CLASS_CHV)   {
 		free(sdo->data.chv.size_max.value);
 		free(sdo->data.chv.size_min.value);
 		free(sdo->data.chv.value.value);
+		sdo->data.chv.size_max.value = NULL;
+		sdo->data.chv.size_min.value = NULL;
+		sdo->data.chv.value.value = NULL;
 	}
 	else if (sdo->sdo_class == IASECC_SDO_CLASS_KEYSET)   {
 		free(sdo->data.keyset.mac.value);
 		free(sdo->data.keyset.enc.value);
 		free(sdo->data.keyset.compulsory.value);
+		sdo->data.keyset.mac.value = NULL;
+		sdo->data.keyset.enc.value = NULL;
+		sdo->data.keyset.compulsory.value = NULL;
 	}
-	/* invalidate all the other members too */
-	memset(sdo, 0, sizeof(struct iasecc_sdo));
 }
 
 
