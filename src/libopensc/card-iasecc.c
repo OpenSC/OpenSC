@@ -2876,6 +2876,7 @@ static int
 iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo)
 {
 	struct sc_context *ctx = card->ctx;
+	struct iasecc_sdo tmp;
 	int rv, sdo_tag;
 
 	LOG_FUNC_CALLED(ctx);
@@ -2884,19 +2885,22 @@ iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo)
 
 	rv = iasecc_sdo_get_tagged_data(card, sdo_tag, sdo);
 	/* When there is no public data 'GET DATA' returns error */
-	if (rv != SC_ERROR_INCORRECT_PARAMETERS) {
-		if (rv < 0) {
-			iasecc_sdo_free_fields(card, sdo);
-			LOG_TEST_RET(ctx, rv, "cannot parse ECC SDO data");
-		}
-	}
+	if (rv != SC_ERROR_INCORRECT_PARAMETERS)
+		LOG_TEST_GOTO_ERR(ctx, rv, "cannot parse ECC SDO data");
 
 	rv = iasecc_sdo_get_tagged_data(card, IASECC_DOCP_TAG, sdo);
-	if (rv < 0) {
-		iasecc_sdo_free_fields(card, sdo);
-		LOG_TEST_RET(ctx, rv, "cannot parse ECC DOCP data");
-	}
+	LOG_TEST_GOTO_ERR(ctx, rv, "cannot parse ECC DOCP data");
 
+	LOG_FUNC_RETURN(ctx, rv);
+
+err:
+	/* release parsed data but keep the SDO identity: callers handle NOT_FOUND */
+	tmp = *sdo;
+	iasecc_sdo_free_fields(card, sdo);
+	sdo->sdo_class = tmp.sdo_class;
+	sdo->sdo_ref = tmp.sdo_ref;
+	sdo->usage = tmp.usage;
+	sdo->magic = tmp.magic;
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
