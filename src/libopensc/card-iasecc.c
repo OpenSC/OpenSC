@@ -3541,9 +3541,7 @@ iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_refer
 		LOG_TEST_RET(ctx, rv, "cannot parse SDO data");
 
 		rv = iasecc_sdo_get_data(card, sdo);
-		if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND)   {
-			iasecc_sdo_free(card, sdo);
-
+		if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND) {
 			sc_log(ctx, "found empty key slot %i", idx);
 			break;
 		} else if (rv != SC_SUCCESS) {
