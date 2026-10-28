@@ -131,35 +131,35 @@ H13-H15: 0x0F 0x65 0x81 final phase: tarjeta no operativa
  * OpenDNIe defines two ATR's for user and finalized card state
  */
 static struct sc_atr_table dnie_atrs[] = {
-	/* TODO: get ATR for uninitialized DNIe */
-	{		/** card activated; normal operation state */
-	 "3B:7F:00:00:00:00:6A:44:4E:49:65:00:00:00:00:00:00:03:90:00",
-	 "FF:FF:00:FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:FF:FF:FF",
-	 DNIE_CHIP_SHORTNAME,
-	 SC_CARD_TYPE_DNIE_USER,
-	 0,
-	 NULL},
-	{		/** card finalized, unusable */
-	 "3B:7F:00:00:00:00:6A:44:4E:49:65:00:00:00:00:00:00:0F:65:81",
-	 "FF:FF:00:FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:FF:FF:FF",
-	 DNIE_CHIP_SHORTNAME,
-	 SC_CARD_TYPE_DNIE_TERMINATED,
-	 0,
-	 NULL},
+		/* TODO: get ATR for uninitialized DNIe */
+		{/** card activated; normal operation state */
+				"3B:7F:00:00:00:00:6A:44:4E:49:65:00:00:00:00:00:00:03:90:00",
+			"FF:FF:00:FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:FF:FF:FF",
+			DNIE_CHIP_SHORTNAME,
+			SC_CARD_TYPE_DNIE_USER,
+			0,
+			NULL														 },
+		{/** card finalized, unusable */
+				"3B:7F:00:00:00:00:6A:44:4E:49:65:00:00:00:00:00:00:0F:65:81",
+			"FF:FF:00:FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:FF:FF:FF",
+			DNIE_CHIP_SHORTNAME,
+			SC_CARD_TYPE_DNIE_TERMINATED,
+			0,
+			NULL														 },
 
 #ifdef ENABLE_OPENPACE
-	/* contactless interface (PC/SC wrapped ATRs for 14443 Type B) */
-	/* FIXME: check if ATR is the same for uninitialized DNIe */
-	{
-	 "3B:88:80:01:E1:F3:5E:11:00:00:00:00:00",
-	 "FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00",
-	 DNIE_CHIP_SHORTNAME,
-	 SC_CARD_TYPE_DNIE_CONTACTLESS,
-	 0,
-	 NULL},
+		/* contactless interface (PC/SC wrapped ATRs for 14443 Type B) */
+		/* FIXME: check if ATR is the same for uninitialized DNIe */
+		{
+			"3B:88:80:01:E1:F3:5E:11:00:00:00:00:00",
+			"FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00",
+			DNIE_CHIP_SHORTNAME,
+			SC_CARD_TYPE_DNIE_CONTACTLESS,
+			0,
+			NULL														 },
 #endif
 
-	{NULL, NULL, NULL, 0, 0, NULL}
+		{NULL,											  NULL, NULL, 0, 0, NULL}
 };
 
 /**

@@ -25,6 +25,7 @@
 
 #if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)
 
+#include "libopensc/cwa14890.h"
 #include "libopensc/opensc.h"
 
 #ifdef ENABLE_DNIE_UI

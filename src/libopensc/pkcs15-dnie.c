@@ -24,12 +24,12 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-#include "libopensc/log.h"
 #include "libopensc/asn1.h"
-#include "libopensc/pkcs15.h"
 #include "libopensc/cards.h"
-#include "libopensc/cwa14890.h"
 #include "libopensc/cwa-dnie.h"
+#include "libopensc/cwa14890.h"
+#include "libopensc/log.h"
+#include "libopensc/pkcs15.h"
 
 /* Card driver related */
 #if defined(ENABLE_OPENSSL) && defined(ENABLE_SM)
@@ -168,7 +168,7 @@ static int sc_pkcs15emu_dnie_init(sc_pkcs15_card_t * p15card)
 			p15card->opts.use_pin_cache,
 			p15card->opts.pin_cache_counter,
 			p15card->opts.pin_cache_ignore_user_consent);
-        }
+	}
 
 	/* Set root path of this application */
 	sc_file_free(p15card->file_app);
