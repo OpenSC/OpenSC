@@ -228,7 +228,7 @@ iasecc_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 	sc_log(ctx, "path(type:%X;path:%s)\n", file->path.type, sc_print_path(&file->path));
 
 	file->id = (file->id & 0xFF00) | (num & 0xFF);
-	if (file->path.len == 0)   {
+	if (file->path.len < 2) {
 		file->path.type = SC_PATH_TYPE_FILE_ID;
 		file->path.len = 2;
 	}
@@ -1103,7 +1103,10 @@ iasecc_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 
 err:
 	iasecc_sdo_free(card, sdo_pubkey);
-	iasecc_sdo_free(card, sdo_prvkey);
+	if (rv == SC_SUCCESS)
+		free(sdo_prvkey);
+	else
+		iasecc_sdo_free(card, sdo_prvkey);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -1160,6 +1163,8 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 	card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_GENERATE);
 	card->caps = caps;
+	sc_file_free(file);
+	file = NULL;
 	LOG_TEST_RET(ctx, rv, "SC_AC_OP_GENERATE authentication failed");
 
 	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_LOCAL;
@@ -1173,33 +1178,58 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 	rv = iasecc_sdo_allocate_pubkey(profile, card, (struct sc_pkcs15_pubkey_info *)key_info, &sdo_pubkey);
 	LOG_TEST_RET(ctx, rv, "IasEcc: allocate SDO public key failed");
 
-	pubkey->algorithm = SC_ALGORITHM_RSA;
+	if (pubkey != NULL) {
+		pubkey->algorithm = SC_ALGORITHM_RSA;
 
-	pubkey->u.rsa.modulus.len = sdo_pubkey->data.pub_key.n.size;
-	pubkey->u.rsa.modulus.data  = (unsigned char *) malloc(pubkey->u.rsa.modulus.len);
-	if (!pubkey->u.rsa.modulus.data)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	memcpy(pubkey->u.rsa.modulus.data, sdo_pubkey->data.pub_key.n.value, pubkey->u.rsa.modulus.len);
+		pubkey->u.rsa.modulus.len = sdo_pubkey->data.pub_key.n.size;
+		pubkey->u.rsa.modulus.data  = (unsigned char *) malloc(pubkey->u.rsa.modulus.len);
+		if (!pubkey->u.rsa.modulus.data) {
+			iasecc_sdo_free(card, sdo_pubkey);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+		memcpy(pubkey->u.rsa.modulus.data, sdo_pubkey->data.pub_key.n.value, pubkey->u.rsa.modulus.len);
 
-	pubkey->u.rsa.exponent.len = sdo_pubkey->data.pub_key.e.size;
-	pubkey->u.rsa.exponent.data = (unsigned char *) malloc(pubkey->u.rsa.exponent.len);
-	if (!pubkey->u.rsa.exponent.data)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
-	memcpy(pubkey->u.rsa.exponent.data, sdo_pubkey->data.pub_key.e.value, pubkey->u.rsa.exponent.len);
+		pubkey->u.rsa.exponent.len = sdo_pubkey->data.pub_key.e.size;
+		pubkey->u.rsa.exponent.data = (unsigned char *) malloc(pubkey->u.rsa.exponent.len);
+		if (!pubkey->u.rsa.exponent.data) {
+			free(pubkey->u.rsa.modulus.data);
+			pubkey->u.rsa.modulus.data = NULL;
+			pubkey->u.rsa.modulus.len = 0;
+			iasecc_sdo_free(card, sdo_pubkey);
+			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
+		memcpy(pubkey->u.rsa.exponent.data, sdo_pubkey->data.pub_key.e.value, pubkey->u.rsa.exponent.len);
 
-	rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &tmp, &tmp_len);
-	LOG_TEST_RET(ctx, rv, "encode public key failed");
+		rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &tmp, &tmp_len);
+	} else {
+		sc_pkcs15_pubkey_t temp_pubkey;
+		memset(&temp_pubkey, 0, sizeof(temp_pubkey));
+		temp_pubkey.algorithm = SC_ALGORITHM_RSA;
+		temp_pubkey.u.rsa.modulus.len = sdo_pubkey->data.pub_key.n.size;
+		temp_pubkey.u.rsa.modulus.data = sdo_pubkey->data.pub_key.n.value;
+		temp_pubkey.u.rsa.exponent.len = sdo_pubkey->data.pub_key.e.size;
+		temp_pubkey.u.rsa.exponent.data = sdo_pubkey->data.pub_key.e.value;
+		rv = sc_pkcs15_encode_pubkey(ctx, &temp_pubkey, &tmp, &tmp_len);
+	}
+
+	if (rv < 0) {
+		iasecc_sdo_free(card, sdo_pubkey);
+		LOG_TEST_RET(ctx, rv, "encode public key failed");
+	}
 
 	rv = iasecc_pkcs15_encode_supported_algos(p15card, object);
-	LOG_TEST_RET(ctx, rv, "encode private key access rules failed");
+	if (rv < 0) {
+		free(tmp);
+		iasecc_sdo_free(card, sdo_pubkey);
+		LOG_TEST_RET(ctx, rv, "encode private key access rules failed");
+	}
 
 	/* SDO PrvKey data replaced by public part of generated key */
 	rv = sc_pkcs15_allocate_object_content(ctx, object, tmp, tmp_len);
+	iasecc_sdo_free(card, sdo_pubkey);
+	free(tmp);
 	LOG_TEST_RET(ctx, rv, "Failed to allocate public key as object content");
 
-	iasecc_sdo_free(card, sdo_pubkey);
-
-	free(tmp);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -1217,11 +1247,17 @@ iasecc_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15ca
 	size_t keybits = key_info->modulus_length;
 	struct iasecc_sdo *sdo_prvkey;
 	struct iasecc_sdo *sdo_pubkey = NULL;
-	struct sc_pkcs15_prkey_rsa *rsa = &prvkey->u.rsa;
+	struct sc_pkcs15_prkey_rsa *rsa;
 	struct sc_file	*file = NULL;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
+	if (!prvkey || prvkey->algorithm != SC_ALGORITHM_RSA)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	rsa = &prvkey->u.rsa;
+	if (!rsa->modulus.data || !rsa->exponent.data || !rsa->p.data || !rsa->q.data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	sc_log(ctx, "Store IAS/ECC key(keybits:%zu,AuthID:%s,path:%s)",
 			keybits, sc_pkcs15_print_id(&object->auth_id), sc_print_path(&key_info->path));
 
@@ -1251,10 +1287,8 @@ iasecc_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15ca
 	LOG_TEST_RET(ctx, rv, "private key store failed: cannot allocate 'SDO PUBLIC KEY'");
 
 	rv = iasecc_sdo_store_key(profile, p15card, sdo_prvkey, sdo_pubkey, rsa);
-	LOG_TEST_RET(ctx, rv, "cannot store SDO PRIVATE/PUBLIC KEYs");
-
-	/* sdo_prvkey is freed while object is freeing */
 	iasecc_sdo_free(card, sdo_pubkey);
+	LOG_TEST_RET(ctx, rv, "cannot store SDO PRIVATE/PUBLIC KEYs");
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -1369,6 +1403,9 @@ iasecc_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_card *
 
 	LOG_FUNC_CALLED(ctx);
 
+	if (!object || !path)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	switch(object->type & SC_PKCS15_TYPE_CLASS_MASK)   {
 	case SC_PKCS15_TYPE_PUBKEY:
 		key_ref = ((struct sc_pkcs15_pubkey_info *)object->data)->key_reference;
@@ -1406,7 +1443,12 @@ iasecc_pkcs15_delete_object (struct sc_profile *profile, struct sc_pkcs15_card *
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 
+	if (path->len < 2)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	file = sc_file_new();
+	if (!file)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
 	file->type = SC_FILE_TYPE_WORKING_EF;
 	file->ef_structure = SC_FILE_EF_TRANSPARENT;
 	file->id = path->value[path->len-2] * 0x100 + path->value[path->len-1];
@@ -1745,7 +1787,11 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 
 		for (ii=0; ii<nn_objs; ii++)   {
 			struct sc_pkcs15_data_info *info = (struct sc_pkcs15_data_info *)p15objects[ii]->data;
-			int file_id = info->path.value[info->path.len - 2] * 0x100 + info->path.value[info->path.len - 1];
+			int file_id;
+
+			if (info->path.len < 2)
+				continue;
+			file_id = info->path.value[info->path.len - 2] * 0x100 + info->path.value[info->path.len - 1];
 
 			sc_log(ctx, "iasecc_store_data_object() %i: file_id 0x%X, pfile->id 0x%X\n", ii, file_id, file->id);
 			if (file->id == file_id)

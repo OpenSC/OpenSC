@@ -75,6 +75,8 @@ getline(char **lineptr, size_t *n, FILE *stream)
 	if (!p)
 		return -1;
 	*lineptr = p;
+	if (n)
+		*n = SC_MAX_EXT_APDU_BUFFER_SIZE*3;
 
 	if (fgets(p, SC_MAX_EXT_APDU_BUFFER_SIZE*3, stream) == NULL)
 		return -1;
@@ -117,15 +119,31 @@ static const char *app_name = "npa-tool";
 static void read_dg(sc_card_t *card, unsigned char sfid, const char *dg_str,
 		unsigned char **dg, size_t *dg_len)
 {
-	int r = iso7816_read_binary_sfid(card, sfid, dg, dg_len);
-	if (r < 0)
+	char *buf = NULL;
+	int r;
+
+	if (dg && *dg) {
+		free(*dg);
+		*dg = NULL;
+	}
+	if (dg_len)
+		*dg_len = 0;
+
+	r = iso7816_read_binary_sfid(card, sfid, dg, dg_len);
+	if (r < 0) {
 		fprintf(stderr, "Could not read DG %02u %s (%s)\n",
 				sfid, dg_str, sc_strerror(r));
-	else {
-		/* 32768 is the maximum size of dg according to ICAO Doc 9303 */
-		char buf[32768*5];
-		sc_hex_dump(*dg, *dg_len, buf, sizeof buf);
+	} else if (dg && *dg && dg_len && *dg_len > 0) {
+		if (*dg_len <= SIZE_MAX / 5 - 1)
+			buf = malloc(*dg_len * 5 + 1);
+		if (!buf) {
+			fprintf(stderr, "Could not allocate buffer to dump DG %02u %s\n",
+					sfid, dg_str);
+			return;
+		}
+		sc_hex_dump(*dg, *dg_len, buf, *dg_len * 5 + 1);
 		fprintf(stdout, "Read DG %02u %s:\n%s", sfid, dg_str, buf);
+		free(buf);
 	}
 }
 
@@ -175,27 +193,29 @@ int npa_translate_apdus(sc_card_t *card, FILE *input)
 	size_t readlen = 0, apdulen;
 	sc_apdu_t apdu;
 	ssize_t linelen;
-	int r;
-
-	memset(&apdu, 0, sizeof apdu);
+	int r = SC_SUCCESS;
 
 	while (1) {
 		if (input == stdin)
 			printf("Enter unencrypted C-APDU (empty line to exit)\n");
 
+		memset(&apdu, 0, sizeof apdu);
+
 		linelen = getline(&read, &readlen, input);
-		if (linelen <= 1) {
-			if (linelen < 0) {
-				r = SC_ERROR_INTERNAL;
-				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
-						"Could not read line");
-			} else {
-				r = SC_SUCCESS;
-				printf("Thanks for flying with ccid\n");
-			}
+		if (linelen < 0) {
+			r = SC_ERROR_INTERNAL;
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL,
+					"Could not read line");
 			break;
 		}
-		read[linelen - 1] = 0;
+		while (linelen > 0 && (read[linelen - 1] == '\n' || read[linelen - 1] == '\r')) {
+			read[--linelen] = '\0';
+		}
+		if (linelen == 0) {
+			r = SC_SUCCESS;
+			printf("Thanks for flying with ccid\n");
+			break;
+		}
 
 		apdulen = sizeof buf;
 		if (sc_hex_to_bin(read, buf, &apdulen) < 0) {
@@ -286,6 +306,8 @@ static int add_to_ASN1_AUXILIARY_DATA_NPA_TOOL(
 	r = SC_SUCCESS;
 
 err:
+	if (r != SC_SUCCESS && template)
+		CVC_DISCRETIONARY_DATA_TEMPLATE_free(template);
 	return r;
 }
 
@@ -335,7 +357,7 @@ main (int argc, char **argv)
 
 	/* Parse command line */
 	if (cmdline_parser (argc, argv, &cmdline) != 0)
-		exit(1);
+		return 1;
 	if (cmdline.env_flag) {
 		can = getenv("CAN");
 		mrz = getenv("MRZ");
@@ -355,7 +377,8 @@ main (int argc, char **argv)
 		if (sc_hex_to_bin(cmdline.chat_arg, (u8 *) pace_input.chat,
 					&pace_input.chat_length) < 0) {
 			fprintf(stderr, "Could not parse CHAT.\n");
-			exit(2);
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			goto err_cmdline;
 		}
 	}
 	if (cmdline.cert_desc_given) {
@@ -365,7 +388,8 @@ main (int argc, char **argv)
 					(u8 *) pace_input.certificate_description,
 					&pace_input.certificate_description_length) < 0) {
 			fprintf(stderr, "Could not parse certificate description.\n");
-			exit(2);
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			goto err_cmdline;
 		}
 	}
 	if (cmdline.tr_03110v201_flag)
@@ -386,16 +410,20 @@ main (int argc, char **argv)
 	r = sc_context_create(&ctx, &ctx_param);
 	if (r) {
 		fprintf(stderr, "Failed to establish context: %s\n", sc_strerror(r));
-		exit(1);
+		goto err_cmdline;
 	}
 
-    r = sc_set_card_driver(ctx, "default");
-	if (r)
-		goto err;
+	r = sc_set_card_driver(ctx, "default");
+	if (r) {
+		sc_release_context(ctx);
+		goto err_cmdline;
+	}
 
 	r = util_connect_card_ex(ctx, &card, cmdline.reader_arg, 0, 0);
-	if (r)
-		goto err;
+	if (r) {
+		sc_release_context(ctx);
+		goto err_cmdline;
+	}
 
 	EAC_init();
 	if (cmdline.cvc_dir_given)
@@ -417,13 +445,15 @@ main (int argc, char **argv)
 				if (sscanf(pin, "%llu", &secret) != 1) {
 					fprintf(stderr, "%s is not an unsigned long long.\n",
 							eac_secret_name(pace_input.pin_id));
-					exit(2);
+					r = SC_ERROR_INVALID_ARGUMENTS;
+					goto err;
 				}
 				if (strlen(pin) > pace_input.pin_length) {
 					fprintf(stderr, "%s too big, only %u digits allowed.\n",
 							eac_secret_name(pace_input.pin_id),
 							(unsigned int) pace_input.pin_length);
-					exit(2);
+					r = SC_ERROR_INVALID_ARGUMENTS;
+					goto err;
 				}
 			}
 		} else if (cmdline.can_given) {
@@ -434,13 +464,15 @@ main (int argc, char **argv)
 				if (sscanf(can, "%llu", &secret) != 1) {
 					fprintf(stderr, "%s is not an unsigned long long.\n",
 							eac_secret_name(pace_input.pin_id));
-					exit(2);
+					r = SC_ERROR_INVALID_ARGUMENTS;
+					goto err;
 				}
 				if (strlen(can) > pace_input.pin_length) {
 					fprintf(stderr, "%s too big, only %u digits allowed.\n",
 							eac_secret_name(pace_input.pin_id),
 							(unsigned int) pace_input.pin_length);
-					exit(2);
+					r = SC_ERROR_INVALID_ARGUMENTS;
+					goto err;
 				}
 			}
 		} else if (cmdline.puk_given) {
@@ -451,19 +483,22 @@ main (int argc, char **argv)
 				if (sscanf(puk, "%llu", &secret) != 1) {
 					fprintf(stderr, "%s is not an unsigned long long.\n",
 							eac_secret_name(pace_input.pin_id));
-					exit(2);
+					r = SC_ERROR_INVALID_ARGUMENTS;
+					goto err;
 				}
 				if (strlen(puk) > pace_input.pin_length) {
 					fprintf(stderr, "%s too big, only %u digits allowed.\n",
 							eac_secret_name(pace_input.pin_id),
 							(unsigned int) pace_input.pin_length);
-					exit(2);
+					r = SC_ERROR_INVALID_ARGUMENTS;
+					goto err;
 				}
 			}
 		} else {
 			fprintf(stderr, "Please specify whether to do PACE with "
 					"PIN, CAN or PUK.\n");
-			exit(1);
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			goto err;
 		}
 
 		pace_input.pin = (unsigned char *) secretbuf;
@@ -480,6 +515,8 @@ main (int argc, char **argv)
 
 			secret++;
 		} while (0 > r && secret <= maxsecret);
+
+		sc_mem_clear(secretbuf, sizeof(secretbuf));
 
 		gettimeofday(&tv, NULL);
 		if (0 > r) {
@@ -572,7 +609,8 @@ main (int argc, char **argv)
 			if (!cmdline.cv_certificate_given || !cmdline.private_key_given) {
 				fprintf(stderr, "Need at least the terminal's certificate "
 						"and its private key to perform terminal authentication.\n");
-				exit(1);
+				r = SC_ERROR_INVALID_ARGUMENTS;
+				goto err;
 			}
 
 			certs = calloc(cmdline.cv_certificate_given + 1, sizeof *certs);
@@ -649,7 +687,8 @@ main (int argc, char **argv)
 					if (sc_hex_to_bin(cmdline.verify_community_arg, community_id,
 								&community_id_len) < 0) {
 						fprintf(stderr, "Could not parse community ID.\n");
-						exit(2);
+						r = SC_ERROR_INVALID_ARGUMENTS;
+						goto err;
 					}
 					r = add_to_ASN1_AUXILIARY_DATA_NPA_TOOL(&templates,
 							NID_id_CommunityID,
@@ -869,6 +908,16 @@ nopace:
 	}
 
 err:
+	if (cmdline.pin_arg)
+		sc_mem_clear(cmdline.pin_arg, strlen(cmdline.pin_arg));
+	if (cmdline.new_pin_arg)
+		sc_mem_clear(cmdline.new_pin_arg, strlen(cmdline.new_pin_arg));
+	if (cmdline.puk_arg)
+		sc_mem_clear(cmdline.puk_arg, strlen(cmdline.puk_arg));
+	if (cmdline.can_arg)
+		sc_mem_clear(cmdline.can_arg, strlen(cmdline.can_arg));
+	if (cmdline.mrz_arg)
+		sc_mem_clear(cmdline.mrz_arg, strlen(cmdline.mrz_arg));
 	cmdline_parser_free(&cmdline);
 	free(pace_output.ef_cardaccess);
 	free(pace_output.recent_car);
@@ -879,21 +928,21 @@ err:
 		OPENSSL_cleanse(ef_cardsecurity, ef_cardsecurity_len);
 		free(ef_cardsecurity);
 	}
-	if (input)
+	if (input && input != stdin)
 		fclose(input);
 	if (certs) {
-		i = 0;
-		while (certs[i]) {
+		for (i = 0; i < cmdline.cv_certificate_given; i++)
 			free((unsigned char *) certs[i]);
-			i++;
-		}
 		free(certs);
 	}
 	free(certs_lens);
 	free(certs_chat);
 	if (cvc_cert)
 		CVC_CERT_free(cvc_cert);
-	free(privkey);
+	if (privkey) {
+		sc_mem_clear(privkey, privkey_len);
+		free(privkey);
+	}
 	free(dg);
 	if (templates)
 		ASN1_AUXILIARY_DATA_NPA_TOOL_free(templates);
@@ -908,5 +957,19 @@ err:
 		fprintf(stderr, "Error: %s\n", sc_strerror(r));
 
 	return -r;
+
+err_cmdline:
+	if (cmdline.pin_arg)
+		sc_mem_clear(cmdline.pin_arg, strlen(cmdline.pin_arg));
+	if (cmdline.new_pin_arg)
+		sc_mem_clear(cmdline.new_pin_arg, strlen(cmdline.new_pin_arg));
+	if (cmdline.puk_arg)
+		sc_mem_clear(cmdline.puk_arg, strlen(cmdline.puk_arg));
+	if (cmdline.can_arg)
+		sc_mem_clear(cmdline.can_arg, strlen(cmdline.can_arg));
+	if (cmdline.mrz_arg)
+		sc_mem_clear(cmdline.mrz_arg, strlen(cmdline.mrz_arg));
+	cmdline_parser_free(&cmdline);
+	return 1;
 }
 

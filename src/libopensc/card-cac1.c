@@ -70,6 +70,10 @@ static int cac_cac1_get_certificate(sc_card_t *card, u8 **out_buf, size_t *out_l
 	size_t len;
 	sc_apdu_t apdu;
 	int r = SC_SUCCESS;
+
+	if (!out_buf || !out_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	/* get the size */
 	size = left = *out_buf ? *out_len : sizeof(buf);
@@ -134,6 +138,9 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (!priv || !buf)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	/* if we didn't return it all last time, return the remainder */
 	if (priv->cached) {
 		sc_log(card->ctx, "returning cached value idx=%d count=%zu", idx, count);
@@ -178,6 +185,10 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 	}
 
 	/* OK we've read the data, now copy the required portion out to the callers buffer */
+	if (idx > priv->cache_buf_len) {
+		r = SC_ERROR_FILE_END_REACHED;
+		goto done;
+	}
 	priv->cached = 1;
 	len = MIN(count, priv->cache_buf_len-idx);
 	if (len && priv->cache_buf)
@@ -210,6 +221,8 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 
 	if (card == NULL || in_path == NULL)
 		return SC_ERROR_INTERNAL;
+	if (in_path->len > sizeof(pathbuf))
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	ctx = card->ctx;
 	priv = CAC_DATA(card);
@@ -254,6 +267,8 @@ static int cac_select_file_by_type(sc_card_t *card, const sc_path_t *in_path, sc
 	}
 
 	if (in_path->aid.len) {
+		if (in_path->aid.len > sizeof(pathbuf))
+			return SC_ERROR_INVALID_ARGUMENTS;
 		if (!pathlen) {
 			memcpy(path, in_path->aid.value, in_path->aid.len);
 			pathlen = in_path->aid.len;
@@ -345,6 +360,7 @@ static int cac_finish(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (priv) {
 		cac_free_private_data(priv);
+		card->drv_data = NULL;
 	}
 	return SC_SUCCESS;
 }
@@ -364,6 +380,9 @@ static int cac_select_pki_applet(sc_card_t *card, int index)
 static int cac_find_first_pki_applet(sc_card_t *card, int *index_out)
 {
 	int r, i;
+
+	if (!index_out)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	for (i = 0; i < MAX_CAC_SLOTS; i++) {
 		r = cac_select_pki_applet(card, i);
@@ -438,6 +457,8 @@ static int cac_populate_cac1(sc_card_t *card, int index, cac_private_data_t *pri
 			"cuid", priv->cac_id, priv->cac_id_len);
 #else
 		sc_log(card->ctx, "OpenSSL Required");
+		free(priv->cac_id);
+		priv->cac_id = NULL;
 		return SC_ERROR_NOT_SUPPORTED;
 #endif /* ENABLE_OPENSSL */
 	}

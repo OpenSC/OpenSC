@@ -258,15 +258,21 @@ isoApplet_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t
                      const u8 *puk, size_t puk_len)
 {
 	sc_card_t *card = p15card->card;
-	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
-	struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
+	sc_pkcs15_auth_info_t *auth_info;
+	struct sc_pkcs15_pin_attributes *pin_attrs;
 	int r;
+
+	if (!profile || !df || !pin_obj || !pin_obj->data || !pin || !pin_len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
+	pin_attrs = &auth_info->attrs.pin;
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	if(!pin || !pin_len || !df)
+	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 	{
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OBJECT_NOT_VALID);
 	}
 
 	if(pin_attrs->reference != 1 &&	pin_attrs->reference != 2)
@@ -316,8 +322,10 @@ isoApplet_get_curve(u8 *oid, size_t oid_len, const struct ec_curve **curve_out)
 {
 	int i;
 
-	if(!oid)
+	if(!oid || !curve_out)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	*curve_out = NULL;
 
 	/* Search the curve parameters. */
 	for (i = 0; curves[i].oid.value; i++)
@@ -354,6 +362,9 @@ isoApplet_generate_key_rsa(sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
 	int rv;
 	size_t keybits;
 	struct sc_cardctl_isoApplet_genkey args;
+
+	if (!key_info || !pubkey)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -405,6 +416,7 @@ isoApplet_generate_key_rsa(sc_pkcs15_prkey_info_t *key_info, sc_card_t *card,
 	pubkey->u.rsa.modulus.data	= args.pubkey.rsa.modulus.value;
 	pubkey->u.rsa.exponent.len	= args.pubkey.rsa.exponent.len;
 	pubkey->u.rsa.exponent.data	= args.pubkey.rsa.exponent.value;
+	sc_mem_clear(&args, sizeof(args));
 	rv = SC_SUCCESS;
 	LOG_FUNC_RETURN(card->ctx, rv);
 err:
@@ -420,6 +432,7 @@ err:
 		pubkey->u.rsa.exponent.data = NULL;
 		pubkey->u.rsa.exponent.len = 0;
 	}
+	sc_mem_clear(&args, sizeof(args));
 	LOG_FUNC_RETURN(card->ctx, rv);
 }
 
@@ -448,8 +461,14 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 	const struct ec_curve *curve = NULL;
 	struct sc_ec_parameters *alg_id_params = NULL;
 	sc_cardctl_isoApplet_genkey_t args;
-	const struct sc_ec_parameters *info_ecp =
-	    (struct sc_ec_parameters *) key_info->params.data;
+	const struct sc_ec_parameters *info_ecp;
+
+	if (!key_info || !pubkey)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	info_ecp = (const struct sc_ec_parameters *) key_info->params.data;
+	if (!info_ecp || !info_ecp->der.value || info_ecp->der.len == 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -464,9 +483,12 @@ isoApplet_generate_key_ec(const sc_pkcs15_prkey_info_t *key_info, sc_card_t *car
 	}
 
 	r = isoApplet_get_curve(info_ecp->der.value, info_ecp->der.len, &curve);
-	if(r < 0)
+	if(r < 0 || !curve)
 	{
-		sc_log(card->ctx, "EC key generation failed: Unsupported curve: [%s].", info_ecp->named_curve);
+		sc_log(card->ctx, "EC key generation failed: Unsupported curve: [%s].",
+			info_ecp->named_curve ? info_ecp->named_curve : "unknown");
+		if (r >= 0)
+			r = SC_ERROR_INVALID_ARGUMENTS;
 		goto out;
 	}
 
@@ -563,41 +585,45 @@ out:
 		free(args.pubkey.ec.ecPointQ.value);
 		args.pubkey.ec.ecPointQ.value = NULL;
 	}
-	if(r < 0 && pubkey)
+	sc_mem_clear(&args, sizeof(args));
+	if(r < 0)
 	{
-		if(pubkey->alg_id)
+		if(alg_id_params)
 		{
-			free(pubkey->alg_id);
-			pubkey->alg_id = NULL;
+			if(alg_id_params->der.value)
+			{
+				free(alg_id_params->der.value);
+				alg_id_params->der.value = NULL;
+			}
+			free(alg_id_params);
+			alg_id_params = NULL;
 		}
-		if(pubkey->u.ec.params.der.value)
+		if(pubkey)
 		{
-			free(pubkey->u.ec.params.der.value);
-			pubkey->u.ec.params.der.value = NULL;
-			pubkey->u.ec.params.der.len = 0;
+			if(pubkey->alg_id)
+			{
+				free(pubkey->alg_id);
+				pubkey->alg_id = NULL;
+			}
+			if(pubkey->u.ec.params.der.value)
+			{
+				free(pubkey->u.ec.params.der.value);
+				pubkey->u.ec.params.der.value = NULL;
+				pubkey->u.ec.params.der.len = 0;
+			}
+			if(pubkey->u.ec.params.named_curve)
+			{
+				free(pubkey->u.ec.params.named_curve);
+				pubkey->u.ec.params.named_curve = NULL;
+			}
+			if(pubkey->u.ec.ecpointQ.value)
+			{
+				free(pubkey->u.ec.ecpointQ.value);
+				pubkey->u.ec.ecpointQ.value = NULL;
+				pubkey->u.ec.ecpointQ.len = 0;
+			}
+			memset(pubkey, 0, sizeof(sc_pkcs15_pubkey_t));
 		}
-		if(pubkey->u.ec.params.named_curve)
-		{
-			free(pubkey->u.ec.params.named_curve);
-			pubkey->u.ec.params.named_curve = NULL;
-		}
-		if(pubkey->u.ec.ecpointQ.value)
-		{
-			free(pubkey->u.ec.ecpointQ.value);
-			pubkey->u.ec.ecpointQ.value = NULL;
-			pubkey->u.ec.ecpointQ.len = 0;
-		}
-		memset(pubkey, 0, sizeof(sc_pkcs15_pubkey_t));
-	}
-	if(r < 0 && alg_id_params)
-	{
-		if(alg_id_params->der.value)
-		{
-			free(alg_id_params->der.value);
-			alg_id_params->der.value = NULL;
-		}
-		free(alg_id_params);
-		pubkey->alg_id->params = NULL;
 	}
 	LOG_FUNC_RETURN(card->ctx, r);
 }
@@ -608,9 +634,20 @@ isoApplet_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
                        sc_pkcs15_pubkey_t *pubkey)
 {
 	int r;
-	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) obj->data;
+	sc_pkcs15_prkey_info_t *key_info;
 	sc_file_t *privKeyFile=NULL;
 	sc_card_t *card = p15card->card;
+	sc_pkcs15_pubkey_t local_pubkey, *pk = pubkey;
+
+	if (!profile || !obj || !obj->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (pk == NULL) {
+		memset(&local_pubkey, 0, sizeof(local_pubkey));
+		pk = &local_pubkey;
+	}
+
+	key_info = (sc_pkcs15_prkey_info_t *) obj->data;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -632,16 +669,20 @@ isoApplet_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	switch(obj->type)
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
-		r = isoApplet_generate_key_rsa(key_info, card, pubkey);
+		r = isoApplet_generate_key_rsa(key_info, card, pk);
 		break;
 
 	case SC_PKCS15_TYPE_PRKEY_EC:
-		r = isoApplet_generate_key_ec(key_info, card, pubkey);
+		r = isoApplet_generate_key_ec(key_info, card, pk);
 		break;
 
 	default:
 		r = SC_ERROR_NOT_SUPPORTED;
-		sc_log(card->ctx, "%s: Key generation failed: Unknown/unsupported key type.", strerror(r));
+		sc_log(card->ctx, "%s: Key generation failed: Unknown/unsupported key type.", sc_strerror(r));
+	}
+
+	if (pubkey == NULL) {
+		sc_pkcs15_erase_pubkey(pk);
 	}
 
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -690,12 +731,19 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
                     sc_pkcs15_prkey_t *key)
 {
 	sc_card_t *card = p15card->card;
-	sc_pkcs15_prkey_info_t *key_info = (sc_pkcs15_prkey_info_t *) object->data;
+	sc_pkcs15_prkey_info_t *key_info;
 	sc_file_t *privKeyFile=NULL;
 	sc_cardctl_isoApplet_import_key_t args;
 	int r;
 
+	if (!profile || !object || !object->data || !key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	key_info = (sc_pkcs15_prkey_info_t *) object->data;
+
 	LOG_FUNC_CALLED(card->ctx);
+
+	memset(&args, 0, sizeof(args));
 
 	/* Authentication stuff. */
 	r = sc_profile_get_file_by_path(profile, &key_info->path, &privKeyFile);
@@ -716,11 +764,11 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
 		args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_2048;
-		if(!key->u.rsa.p.data
-		        ||!key->u.rsa.q.data
-		        ||!key->u.rsa.iqmp.data
-		        ||!key->u.rsa.dmp1.data
-		        ||!key->u.rsa.dmq1.data)
+		if(!key->u.rsa.p.data || !key->u.rsa.p.len
+		        ||!key->u.rsa.q.data || !key->u.rsa.q.len
+		        ||!key->u.rsa.iqmp.data || !key->u.rsa.iqmp.len
+		        ||!key->u.rsa.dmp1.data || !key->u.rsa.dmp1.len
+		        ||!key->u.rsa.dmq1.data || !key->u.rsa.dmq1.len)
 		{
 			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Only CRT RSA keys may be imported.");
 		}
@@ -745,8 +793,17 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 			r = sc_pkcs15_fix_ec_parameters(card->ctx, &key->u.ec.params);
 			LOG_TEST_RET(card->ctx, r, "EC key storing failed: Unknown curve.");
 		}
+		if(key->u.ec.params.der.len == 0 || key->u.ec.params.der.value == NULL) {
+			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "EC key storing failed: Invalid curve parameters.");
+		}
 		r = isoApplet_get_curve(key->u.ec.params.der.value, key->u.ec.params.der.len, &curve);
 		LOG_TEST_RET(card->ctx, r, "EC key generation failed: Unsupported curve");
+		if (!curve)
+			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "EC curve not found");
+
+		if (!key->u.ec.privateD.data || key->u.ec.privateD.len == 0)
+			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "EC private key value missing");
+
 		args.privkey.ec.params.prime.value        = curve->prime.value;
 		args.privkey.ec.params.prime.len          = curve->prime.len;
 		args.privkey.ec.params.coefficientA.value = curve->coefficientA.value;
@@ -770,6 +827,7 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 	args.priv_key_ref = key_info->key_reference;
 
 	r = sc_card_ctl(card, SC_CARDCTL_ISOAPPLET_IMPORT_KEY, &args);
+	sc_mem_clear(&args, sizeof(args));
 	if (r < 0)
 	{
 		sc_log(card->ctx, "%s: Error in card_ctl", sc_strerror(r));

@@ -168,6 +168,16 @@ static int entersafe_init(sc_card_t *card)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 }
 
+static int entersafe_finish(sc_card_t *card)
+{
+	if (card->drv_data) {
+		sc_mem_clear(card->drv_data, sizeof(sc_security_env_t));
+		free(card->drv_data);
+		card->drv_data = NULL;
+	}
+	return SC_SUCCESS;
+}
+
 static int entersafe_gen_random(sc_card_t *card, u8 *buff, size_t size)
 {
 	int r = SC_SUCCESS;
@@ -444,6 +454,8 @@ static int entersafe_read_binary(sc_card_t *card,
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.resplen == 0)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	if (apdu.resplen > count)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_WRONG_LENGTH);
 	memcpy(buf, recvbuf, apdu.resplen);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
@@ -538,6 +550,8 @@ static int entersafe_select_aid(sc_card_t *card,
 		sc_file_t *file = *file_out;
 		if (file == NULL)
 			return SC_ERROR_INTERNAL;
+		if (in_path->len > sizeof(file->name))
+			return SC_ERROR_INVALID_ARGUMENTS;
 
 		file->type = SC_FILE_TYPE_DF;
 		file->ef_structure = SC_FILE_EF_UNKNOWN;
@@ -820,16 +834,21 @@ static int entersafe_compute_with_prkey(sc_card_t *card,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (!data || datalen > SC_MAX_APDU_BUFFER_SIZE)
+	if (!data || !out || datalen > SC_MAX_APDU_BUFFER_SIZE)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	memcpy(p,data,size);
 
-	if (!card->drv_data)
+	if (!card->drv_data) {
+		sc_mem_clear(sbuf, sizeof(sbuf));
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INTERNAL);
+	}
 
 	r = entersafe_internal_set_security_env(card, card->drv_data, &p, &size);
-	LOG_TEST_RET(card->ctx, r, "internal set security env failed");
+	if (r < 0) {
+		sc_mem_clear(sbuf, sizeof(sbuf));
+		LOG_TEST_RET(card->ctx, r, "internal set security env failed");
+	}
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x86, 0x80);
 	apdu.data = p;
@@ -840,13 +859,22 @@ static int entersafe_compute_with_prkey(sc_card_t *card,
 	apdu.le = 256;
 
 	r = entersafe_transmit_apdu(card, &apdu, 0, 0, 0, 0);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	sc_mem_clear(sbuf, sizeof(sbuf));
+	if (r < 0) {
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	}
 
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
-		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
+		if (outlen < apdu.resplen) {
+			sc_mem_clear(rbuf, sizeof(rbuf));
+			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_BUFFER_TOO_SMALL);
+		}
+		memcpy(out, apdu.resp, apdu.resplen);
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
 	}
+	sc_mem_clear(rbuf, sizeof(rbuf));
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
@@ -1099,6 +1127,9 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 	{ /* Write 'x'; */
 		u8 sbuff[SC_MAX_APDU_BUFFER_SIZE];
 
+		if (!data.data || data.len == 0 || data.len > sizeof(sbuff))
+			return SC_ERROR_INVALID_ARGUMENTS;
+
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x46, factor, 0x00);
 
 		memcpy(sbuff, data.data, data.len);
@@ -1132,6 +1163,7 @@ static int entersafe_write_rsa_key_factor(sc_card_t *card,
 		apdu.lc = apdu.datalen = data.len;
 
 		r = entersafe_transmit_apdu(card, &apdu, 0, 0, 0, 0);
+		sc_mem_clear(sbuff, sizeof(sbuff));
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "Write prkey factor failed");
 	}
@@ -1161,6 +1193,9 @@ static int entersafe_write_large_rsa_key(sc_card_t *card,u8 key_id,struct sc_pkc
 		u8 sbuff[SC_MAX_APDU_BUFFER_SIZE];
 		sc_apdu_t apdu;
 
+		if (!rsa->modulus.data || rsa->modulus.len < 0x100)
+			return SC_ERROR_INVALID_ARGUMENTS;
+
 		/* first 64(0x40) bytes of N */
 		sbuff[0] = 0x83;
 		sbuff[1] = 0x02;
@@ -1175,6 +1210,7 @@ static int entersafe_write_large_rsa_key(sc_card_t *card,u8 key_id,struct sc_pkc
 		apdu.lc = apdu.datalen = 0x46;
 
 		r = entersafe_transmit_apdu(card, &apdu, 0, 0, 0, 0);
+		sc_mem_clear(sbuff, sizeof(sbuff));
 		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 		LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "Write pukey N(1) failed");
 
@@ -1218,6 +1254,7 @@ static int entersafe_write_symmetric_key(sc_card_t *card,
 	apdu.lc = apdu.datalen = len + 2;
 
 	r = entersafe_transmit_apdu(card, &apdu, key_maintain, sizeof(key_maintain), 1, 1);
+	sc_mem_clear(sbuff, sizeof(sbuff));
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "Write prkey failed");
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -1559,6 +1596,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	entersafe_ops = *iso_drv->ops;
 	entersafe_ops.match_card = entersafe_match_card;
 	entersafe_ops.init = entersafe_init;
+	entersafe_ops.finish = entersafe_finish;
 	entersafe_ops.read_binary = entersafe_read_binary;
 	entersafe_ops.write_binary = NULL;
 	entersafe_ops.update_binary = entersafe_update_binary;

@@ -240,7 +240,7 @@ authentic_pkcs15_new_file(struct sc_profile *profile, struct sc_card *card,
 
 	file->id = (file->id & 0xFF00) | (num & 0xFF);
 	if (file->type != SC_FILE_TYPE_BSO)   {
-		if (file->path.len == 0)   {
+		if (file->path.len < 2) {
 			file->path.type = SC_PATH_TYPE_FILE_ID;
 			file->path.len = 2;
 		}
@@ -588,10 +588,14 @@ authentic_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p
 	rv = sc_pkcs15_allocate_object_content(ctx, object, (unsigned char *)sdo, sizeof(struct sc_authentic_sdo));
 	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to allocate PrvKey SDO as object content");
 
+	sdo->file = NULL;
+
 err:
-	if (sdo == NULL || sdo->file != file_p_prvkey)
-		sc_file_free(file_p_prvkey);
-	authentic_free_sdo_data(sdo);
+	if (rv != SC_SUCCESS) {
+		if (sdo == NULL || sdo->file != file_p_prvkey)
+			sc_file_free(file_p_prvkey);
+		authentic_free_sdo_data(sdo);
+	}
 	free(sdo);
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -610,8 +614,9 @@ authentic_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15c
 	size_t keybits = key_info->modulus_length;
 	struct sc_authentic_sdo *sdo = NULL;
 	unsigned char *tmp = NULL;
-	size_t tmp_len;
+	size_t tmp_len = 0;
 	unsigned long caps;
+	struct sc_pkcs15_pubkey local_pubkey, *pk = pubkey;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -641,26 +646,36 @@ authentic_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15c
 	rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_GENERATE, sdo);
 	LOG_TEST_RET(ctx, rv, "generate key failed");
 
-	pubkey->algorithm = SC_ALGORITHM_RSA;
-	//FIXME: allocate/copy/free to reduce memory leakage
-	pubkey->u.rsa.modulus = sdo->data.prvkey->u.rsa.modulus;
-	pubkey->u.rsa.exponent = sdo->data.prvkey->u.rsa.exponent;
+	if (!sdo->data.prvkey)
+		LOG_TEST_RET(ctx, SC_ERROR_INTERNAL, "Missing generated key in SDO");
+
+	if (pk == NULL) {
+		memset(&local_pubkey, 0, sizeof(local_pubkey));
+		pk = &local_pubkey;
+	}
+
+	pk->algorithm = SC_ALGORITHM_RSA;
+	pk->u.rsa.modulus = sdo->data.prvkey->u.rsa.modulus;
+	pk->u.rsa.exponent = sdo->data.prvkey->u.rsa.exponent;
+	sdo->data.prvkey->u.rsa.modulus.data = NULL;
+	sdo->data.prvkey->u.rsa.exponent.data = NULL;
+	free(sdo->data.prvkey);
 	sdo->data.prvkey = NULL;
 
-	rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &tmp, &tmp_len);
-	LOG_TEST_RET(ctx, rv, "encode public key failed");
+	rv = sc_pkcs15_encode_pubkey(ctx, pk, &tmp, &tmp_len);
+	if (rv == SC_SUCCESS) {
+		rv = sc_pkcs15_allocate_object_content(ctx, object, tmp, tmp_len);
+		if (rv != SC_SUCCESS)
+			sc_log(ctx, "Failed to allocate public key as object content");
+	}
+	if (tmp)
+		free(tmp);
 
-	/*
-	 * Here algorithms supported by key have to be fixed, if it will be implemented
-	 * (see src/libopensc/pkcs15-prkey.c).
-	 */
+	if (pubkey == NULL) {
+		sc_pkcs15_erase_pubkey(pk);
+	}
 
 	authentic_free_sdo_data(sdo);
-
-	rv = sc_pkcs15_allocate_object_content(ctx, object, tmp, tmp_len);
-	LOG_TEST_RET(ctx, rv, "Failed to allocate public key as object content");
-
-	free(tmp);
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -677,6 +692,7 @@ authentic_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p1
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *) object->data;
 	size_t keybits = key_info->modulus_length;
 	struct sc_authentic_sdo *sdo;
+	struct sc_pkcs15_prkey_rsa *rsa;
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
@@ -687,6 +703,16 @@ authentic_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p1
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Invalid PrKey SDO data");
 	else if (keybits < 1024 || keybits > 2048 || (keybits % 256))
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Invalid RSA key size");
+
+	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA || !prvkey || prvkey->algorithm != SC_ALGORITHM_RSA)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Authentic supports RSA keys only");
+
+	rsa = &prvkey->u.rsa;
+	if (!rsa->p.len || !rsa->p.data || !rsa->q.len || !rsa->q.data ||
+	    !rsa->iqmp.len || !rsa->iqmp.data || !rsa->dmp1.len || !rsa->dmp1.data ||
+	    !rsa->dmq1.len || !rsa->dmq1.data || !rsa->modulus.len || !rsa->modulus.data ||
+	    !rsa->exponent.len || !rsa->exponent.data)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Incomplete RSA key components");
 
 	key_info->access_flags &= ~SC_PKCS15_PRKEY_ACCESS_LOCAL;
 
@@ -704,11 +730,11 @@ authentic_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p1
 
 	card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, sdo->file, SC_AC_OP_UPDATE);
-	LOG_TEST_RET(ctx, rv, "SC_AC_OP_GENERATE authentication failed");
+	if (rv == SC_SUCCESS) {
+		rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_STORE, sdo);
+	}
 
-	rv = sc_card_ctl(card, SC_CARDCTL_AUTHENTIC_SDO_STORE, sdo);
-	LOG_TEST_RET(ctx, rv, "store IAS SDO PRIVATE KEY failed");
-
+	sdo->data.prvkey = NULL;
 	authentic_free_sdo_data(sdo);
 	sc_pkcs15_free_object_content(object);
 

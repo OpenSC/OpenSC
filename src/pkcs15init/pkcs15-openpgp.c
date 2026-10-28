@@ -172,16 +172,28 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_object_t *obj, sc_pkcs15_prkey_t *key)
 {
 	sc_card_t *card = p15card->card;
-	sc_pkcs15_prkey_info_t *kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
-	sc_cardctl_openpgp_key_gen_store_info_t key_info = {0};
+	sc_pkcs15_prkey_info_t *kinfo;
+	sc_cardctl_openpgp_key_gen_store_info_t key_info;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!obj || !obj->data || !key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	kinfo = (sc_pkcs15_prkey_info_t *) obj->data;
+	if (kinfo->id.len < 1)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	memset(&key_info, 0, sizeof(key_info));
+
 	switch(obj->type)
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
-		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_key_gen_store_info_t));
+		if (!key->u.rsa.exponent.data || !key->u.rsa.p.data ||
+		    !key->u.rsa.q.data || !key->u.rsa.modulus.data)
+			return SC_ERROR_INVALID_ARGUMENTS;
+
 		key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
 		key_info.key_id = kinfo->id.value[0];
 		key_info.u.rsa.exponent = key->u.rsa.exponent.data;
@@ -200,7 +212,8 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	case SC_PKCS15_TYPE_PRKEY_EC:
 	case SC_PKCS15_TYPE_PRKEY_EDDSA:
 	case SC_PKCS15_TYPE_PRKEY_XEDDSA:
-		memset(&key_info, 0, sizeof(sc_cardctl_openpgp_key_gen_store_info_t));
+		if (!key->u.ec.privateD.data)
+			return SC_ERROR_INVALID_ARGUMENTS;
 
 		r = openpgp_set_algorithm(p15card, kinfo->id.value[0], obj->type, &key_info.algorithm);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "Key type not valid for key id");
@@ -213,18 +226,18 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		 * PKCS11 does not pass it when creting private key object.
 		 * pkcs15init/pkcs15-lib.c will attempt to derive it from private key
 		 */
-		if (key->u.ec.ecpointQ.len) {
+		if (key->u.ec.ecpointQ.len && key->u.ec.ecpointQ.value) {
 			key_info.u.ec.ecpointQ = malloc(key->u.ec.ecpointQ.len);
-			if (!key_info.u.ec.ecpointQ)
-				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+			if (!key_info.u.ec.ecpointQ) {
+				r = SC_ERROR_OUT_OF_MEMORY;
+				goto err;
+			}
 			memcpy(key_info.u.ec.ecpointQ, key->u.ec.ecpointQ.value, key->u.ec.ecpointQ.len);
 		}
 		key_info.u.ec.ecpointQ_len = key->u.ec.ecpointQ.len;
 		key_info.u.ec.oid = key->u.ec.params.id;
 		key_info.key_type = key->algorithm; /* SC_SC_ALGORITHM_* */
 		r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_STORE_KEY, &key_info);
-
-		free(key_info.u.ec.ecpointQ);
 		break;
 
 	default:
@@ -233,6 +246,9 @@ static int openpgp_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 
 err:
+	free(key_info.u.ec.ecpointQ);
+	key_info.u.ec.ecpointQ = NULL;
+	sc_mem_clear(&key_info, sizeof(key_info));
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -248,11 +264,18 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 {
 	sc_context_t *ctx = card->ctx;
 	sc_cardctl_openpgp_key_gen_store_info_t key_info;
-	sc_pkcs15_prkey_info_t *required = (sc_pkcs15_prkey_info_t *)obj->data;
-	sc_pkcs15_id_t *kid = &(required->id);
+	sc_pkcs15_prkey_info_t *required;
+	sc_pkcs15_id_t *kid;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!obj || !obj->data)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	required = (sc_pkcs15_prkey_info_t *)obj->data;
+	kid = &(required->id);
+
 	memset(&key_info, 0, sizeof(key_info));
 	sc_log(ctx, "Key ID to be generated: %s", sc_dump_hex(kid->value, kid->len));
 
@@ -263,7 +286,7 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 		sc_log(ctx, "Authentication key is to be generated.");
 		key_info.key_id = 3;
 	}
-	if (!key_info.key_id && (kid->len > 1 || kid->value[0] > 3)) {
+	if (!key_info.key_id && (kid->len != 1 || kid->value[0] < 1 || kid->value[0] > 3)) {
 		sc_log(ctx, "Key ID must be 1, 2 or 3!");
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
@@ -276,8 +299,10 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-
 	key_info.algorithm = SC_OPENPGP_KEYALGO_RSA;
+
+	if (required->modulus_length < 512 || required->modulus_length > 4096 || (required->modulus_length & 0x7))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* Prepare buffer */
 	key_info.u.rsa.modulus_len = required->modulus_length;
@@ -294,22 +319,31 @@ static int openpgp_generate_key_rsa(sc_card_t *card, sc_pkcs15_object_t *obj,
 	}
 
 	r = sc_card_ctl(card, SC_CARDCTL_OPENPGP_GENERATE_KEY, &key_info);
-	LOG_TEST_GOTO_ERR(card->ctx, r, "on-card EC key generation failed");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "on-card RSA key generation failed");
 
-	pubkey->algorithm = SC_ALGORITHM_RSA;
-	sc_log(ctx, "Set output modulus info");
-	pubkey->u.rsa.modulus.len = BYTES4BITS(key_info.u.rsa.modulus_len);
-	pubkey->u.rsa.modulus.data = calloc(1, pubkey->u.rsa.modulus.len);
-	if (pubkey->u.rsa.modulus.data == NULL)
-		goto err;
-	memcpy(pubkey->u.rsa.modulus.data, key_info.u.rsa.modulus, BYTES4BITS(key_info.u.rsa.modulus_len));
+	if (pubkey != NULL) {
+		pubkey->algorithm = SC_ALGORITHM_RSA;
+		sc_log(ctx, "Set output modulus info");
+		pubkey->u.rsa.modulus.len = BYTES4BITS(key_info.u.rsa.modulus_len);
+		pubkey->u.rsa.modulus.data = calloc(1, pubkey->u.rsa.modulus.len);
+		if (pubkey->u.rsa.modulus.data == NULL) {
+			r = SC_ERROR_NOT_ENOUGH_MEMORY;
+			goto err;
+		}
+		memcpy(pubkey->u.rsa.modulus.data, key_info.u.rsa.modulus, pubkey->u.rsa.modulus.len);
 
-	sc_log(ctx, "Set output exponent info");
-	pubkey->u.rsa.exponent.len = BYTES4BITS(key_info.u.rsa.exponent_len);
-	pubkey->u.rsa.exponent.data = calloc(1, pubkey->u.rsa.exponent.len);
-	if (pubkey->u.rsa.exponent.data == NULL)
-		goto err;
-	memcpy(pubkey->u.rsa.exponent.data, key_info.u.rsa.exponent, pubkey->u.rsa.exponent.len);
+		sc_log(ctx, "Set output exponent info");
+		pubkey->u.rsa.exponent.len = BYTES4BITS(key_info.u.rsa.exponent_len);
+		pubkey->u.rsa.exponent.data = calloc(1, pubkey->u.rsa.exponent.len);
+		if (pubkey->u.rsa.exponent.data == NULL) {
+			free(pubkey->u.rsa.modulus.data);
+			pubkey->u.rsa.modulus.data = NULL;
+			pubkey->u.rsa.modulus.len = 0;
+			r = SC_ERROR_NOT_ENOUGH_MEMORY;
+			goto err;
+		}
+		memcpy(pubkey->u.rsa.exponent.data, key_info.u.rsa.exponent, pubkey->u.rsa.exponent.len);
+	}
 
 err:
 	free(key_info.u.rsa.modulus);
@@ -317,6 +351,8 @@ err:
 	free(key_info.u.rsa.exponent);
 	key_info.u.rsa.exponent = NULL;
 	free(key_info.data);
+	key_info.data = NULL;
+	sc_mem_clear(&key_info, sizeof(key_info));
 	LOG_FUNC_RETURN(ctx, r);
 }
 
@@ -333,13 +369,24 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 {
 	sc_context_t *ctx = card->ctx;
 	sc_cardctl_openpgp_key_gen_store_info_t key_info;
-	sc_pkcs15_prkey_info_t *required = (sc_pkcs15_prkey_info_t *)obj->data;
-	sc_pkcs15_id_t *kid = &(required->id);
-	struct sc_ec_parameters *info_ec =
-			(struct sc_ec_parameters *)required->params.data;
+	sc_pkcs15_prkey_info_t *required;
+	sc_pkcs15_id_t *kid;
+	struct sc_ec_parameters *info_ec;
+	size_t i;
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!obj || !obj->data)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	required = (sc_pkcs15_prkey_info_t *)obj->data;
+	kid = &(required->id);
+	info_ec = (struct sc_ec_parameters *)required->params.data;
+
+	if (!info_ec || !info_ec->der.value)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	memset(&key_info, 0, sizeof(key_info));
 
 	sc_log(ctx, "Key ID to be generated: %s", sc_dump_hex(kid->value, kid->len));
@@ -351,24 +398,34 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 		sc_log(ctx, "Authentication key is to be generated.");
 		key_info.key_id = 3;
 	}
-	if (!key_info.key_id && (kid->len > 1 || kid->value[0] > 3)) {
+	if (!key_info.key_id && (kid->len != 1 || kid->value[0] < 1 || kid->value[0] > 3)) {
 		sc_log(ctx, "Key ID must be 1, 2 or 3!");
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 
 	if (!key_info.key_id)
 		key_info.key_id = kid->value[0];
-	key_info.key_type = pubkey->algorithm;
-	/* set algorithm id based on key reference and key type */
-	switch (pubkey->algorithm) {
-		/* EC is in 04||x||y format
-		 * (field_length + 7)/8 * 2 + 1 in bytes
-		 * len is ecpoint length + format byte
-		 * see section 7.2.14 of 3.3.1 specs
-		 * EDDSA and XEDDSA have no format byte and one number
-		 * (field_length + 7)/8 in bytes
-		 */
 
+	if (pubkey != NULL)
+		key_info.key_type = pubkey->algorithm;
+	else {
+		switch (obj->type) {
+		case SC_PKCS15_TYPE_PRKEY_EC:
+			key_info.key_type = SC_ALGORITHM_EC;
+			break;
+		case SC_PKCS15_TYPE_PRKEY_EDDSA:
+			key_info.key_type = SC_ALGORITHM_EDDSA;
+			break;
+		case SC_PKCS15_TYPE_PRKEY_XEDDSA:
+			key_info.key_type = SC_ALGORITHM_XEDDSA;
+			break;
+		default:
+			LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
+		}
+	}
+
+	/* set algorithm id based on key reference and key type */
+	switch (key_info.key_type) {
 	case SC_ALGORITHM_EC:
 		key_info.algorithm = (key_info.key_id == SC_OPENPGP_KEY_ENCR)
 						     ? SC_OPENPGP_KEYALGO_ECDH	 /* ECDH for slot 2 only */
@@ -384,18 +441,21 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 		key_info.algorithm = SC_OPENPGP_KEYALGO_ECDH; /* but could be used to sign too */
 		key_info.u.ec.ecpointQ_len = BYTES4BITS(required->field_length);
 		break;
+	default:
+		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 	}
 
 	/* copying info_ec.id works for any EC ECDH EdDSA keys */
-	if (info_ec->der.len > 2 && info_ec->der.len == (size_t)(info_ec->der.value[1] + 2))
+	if (info_ec->der.len > 2 && info_ec->der.len == (size_t)(info_ec->der.value[1] + 2) &&
+	    info_ec->der.value[1] < SC_MAX_OBJECT_ID_OCTETS)
 		key_info.u.ec.oidv_len = info_ec->der.value[1];
 	else
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	for (size_t i = 0; (i < key_info.u.ec.oidv_len) && (i + 2 < info_ec->der.len); i++) {
+	for (i = 0; i < key_info.u.ec.oidv_len; i++) {
 		key_info.u.ec.oidv.value[i] = info_ec->der.value[i + 2];
 	}
-	key_info.u.ec.oidv.value[key_info.data_len] = -1;
+	key_info.u.ec.oidv.value[key_info.u.ec.oidv_len] = -1;
 
 	/* copy  id also */
 	key_info.u.ec.oid = info_ec->id;
@@ -405,21 +465,26 @@ static int openpgp_generate_key_ec(sc_card_t *card, sc_pkcs15_object_t *obj,
 	LOG_TEST_GOTO_ERR(card->ctx, r, "on-card EC key generation failed");
 
 	/* set pubkey according to response of card */
-	sc_log(ctx, "Set output ecpoint info");
+	if (pubkey != NULL) {
+		sc_log(ctx, "Set output ecpoint info");
 
-	pubkey->algorithm = key_info.key_type;
-	pubkey->u.ec.ecpointQ.len = key_info.u.ec.ecpointQ_len;
-	pubkey->u.ec.ecpointQ.value = malloc(key_info.u.ec.ecpointQ_len);
-	if (pubkey->u.ec.ecpointQ.value == NULL) {
-		r = SC_ERROR_NOT_ENOUGH_MEMORY;
-		goto err;
+		pubkey->algorithm = key_info.key_type;
+		pubkey->u.ec.ecpointQ.len = key_info.u.ec.ecpointQ_len;
+		pubkey->u.ec.ecpointQ.value = malloc(key_info.u.ec.ecpointQ_len);
+		if (pubkey->u.ec.ecpointQ.value == NULL) {
+			r = SC_ERROR_NOT_ENOUGH_MEMORY;
+			goto err;
+		}
+
+		memcpy(pubkey->u.ec.ecpointQ.value, key_info.u.ec.ecpointQ, key_info.u.ec.ecpointQ_len);
 	}
-
-	memcpy(pubkey->u.ec.ecpointQ.value, key_info.u.ec.ecpointQ, key_info.u.ec.ecpointQ_len);
 
 err:
 	free(key_info.u.ec.ecpointQ);
+	key_info.u.ec.ecpointQ = NULL;
 	free(key_info.data);
+	key_info.data = NULL;
+	sc_mem_clear(&key_info, sizeof(key_info));
 
 	LOG_FUNC_RETURN(ctx, r);
 }
@@ -441,6 +506,9 @@ static int openpgp_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	int r;
 
 	LOG_FUNC_CALLED(ctx);
+
+	if (!obj || !obj->data)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	switch(obj->type)
 	{
@@ -498,10 +566,14 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 	sc_pkcs15_cert_info_t *cinfo;
 	sc_pkcs15_id_t *cid;
 	sc_pkcs15_data_info_t *dinfo;
+	unsigned int tag = 0x7F21;
 	u8 buf[254];
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!obj || !obj->data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	switch (obj->type & SC_PKCS15_TYPE_CLASS_MASK) {
 	case SC_PKCS15_TYPE_PRKEY:
@@ -512,9 +584,10 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 		break;
 
 	case SC_PKCS15_TYPE_CERT:
+		if (!content)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		cinfo = (sc_pkcs15_cert_info_t *) obj->data;
 		cid = &(cinfo->id);
-		unsigned int tag = 0x7F21;
 
 		if (cid->len != 1) {
 			sc_log(card->ctx, "ID=%s is not valid.", sc_dump_hex(cid->value, cid->len));
@@ -554,6 +627,8 @@ static int openpgp_store_data(struct sc_pkcs15_card *p15card, struct sc_profile 
 		break;
 
 	case SC_PKCS15_TYPE_DATA_OBJECT:
+		if (!content)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		dinfo = (sc_pkcs15_data_info_t *) obj->data;
 		/* dinfo->app_label contains filename */
 		sc_log(ctx, "===== App label %s", dinfo->app_label);

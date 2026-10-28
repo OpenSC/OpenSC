@@ -1421,12 +1421,16 @@ static int gids_generate_key(sc_card_t *card, sc_pkcs15_object_t *object, struct
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(card->ctx, r, "generate key returned error");
 
-	r = gids_read_public_key(card, 0, NULL, kid, 0, &buffer, &buffersize);
-	LOG_TEST_RET(card->ctx, r, "read public key returned error");
-	r = sc_pkcs15_decode_pubkey(card->ctx, pubkey, buffer, buffersize);
-	if (buffer)
-		free(buffer);
-	LOG_FUNC_RETURN(card->ctx, r);
+	if (pubkey != NULL) {
+		r = gids_read_public_key(card, 0, NULL, kid, 0, &buffer, &buffersize);
+		LOG_TEST_RET(card->ctx, r, "read public key returned error");
+		pubkey->algorithm = SC_ALGORITHM_RSA;
+		r = sc_pkcs15_decode_pubkey(card->ctx, pubkey, buffer, buffersize);
+		if (buffer)
+			free(buffer);
+		LOG_FUNC_RETURN(card->ctx, r);
+	}
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
 // import the key in an existing container
@@ -1479,9 +1483,16 @@ static int gids_import_key(sc_card_t *card, sc_pkcs15_object_t *object, sc_pkcs1
 		sc_log(card->ctx, "GIDS supports RSA keys only (but may support ECC one day).");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
-	if (!key->u.rsa.dmp1.len || !key->u.rsa.dmq1.len || !key->u.rsa.iqmp.len) {
-		sc_log(card->ctx, "GIDS needs dmp1 & dmq1 & iqmp");
-		return SC_ERROR_NOT_SUPPORTED;
+	if (!key->u.rsa.modulus.len || !key->u.rsa.modulus.data ||
+	    !key->u.rsa.exponent.len || !key->u.rsa.exponent.data ||
+	    !key->u.rsa.d.len || !key->u.rsa.d.data ||
+	    !key->u.rsa.p.len || !key->u.rsa.p.data ||
+	    !key->u.rsa.q.len || !key->u.rsa.q.data ||
+	    !key->u.rsa.dmp1.len || !key->u.rsa.dmp1.data ||
+	    !key->u.rsa.dmq1.len || !key->u.rsa.dmq1.data ||
+	    !key->u.rsa.iqmp.len || !key->u.rsa.iqmp.data) {
+		sc_log(card->ctx, "GIDS requires complete RSA CRT private key components");
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	sc_format_asn1_entry(asn1_rsa_priv_coefficients_gids + 0, &version, NULL, 1);
 	sc_format_asn1_entry(asn1_rsa_priv_coefficients_gids + 1, key->u.rsa.modulus.data, &key->u.rsa.modulus.len, 1);
@@ -1509,7 +1520,10 @@ static int gids_import_key(sc_card_t *card, sc_pkcs15_object_t *object, sc_pkcs1
 	SC_TEST_GOTO_ERR(card->ctx, SC_LOG_DEBUG_VERBOSE, r, "unable to put the private key - key greater than 2048 bits ?");
 	r = SC_SUCCESS;
 err:
-	sc_mem_clear(buffer, buflen);
+	if (buffer) {
+		sc_mem_clear(buffer, buflen);
+		free(buffer);
+	}
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -1846,6 +1860,7 @@ static int gids_initialize(sc_card_t *card, sc_cardctl_gids_init_param_t* param)
 	pindata.pin_reference = 0x80;
 
 	r = sc_pin_cmd(card, &pindata);
+	sc_mem_clear(&pindata, sizeof(pindata));
 	LOG_TEST_RET(card->ctx, r, "gids set pin");
 
 	// create file

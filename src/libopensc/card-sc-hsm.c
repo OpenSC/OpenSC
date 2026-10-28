@@ -726,6 +726,7 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 
 		r = (*iso_ops->pin_cmd)(card, data);
 		data->apdu = NULL;
+		sc_mem_clear(cmdbuff, sizeof(cmdbuff));
 	}
 	LOG_TEST_RET(card->ctx, r, "Verification failed");
 
@@ -752,6 +753,7 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 			apdu.le = 0;
 			if (sc_transmit_apdu(card, &apdu) != SC_SUCCESS
 					|| sc_check_sw(card, apdu.sw1, apdu.sw2) != SC_SUCCESS) {
+				sc_mem_clear(recvbuf, sizeof(recvbuf));
 				sc_log(card->ctx,
 						"Generating session PIN failed");
 				LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
@@ -766,6 +768,7 @@ static int sc_hsm_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 							"Buffer too small for session PIN");
 				}
 			}
+			sc_mem_clear(recvbuf, sizeof(recvbuf));
 		} else {
 			sc_log(card->ctx,
 					"Session PIN not supported for this PIN (0x%02X)",
@@ -947,9 +950,9 @@ static int sc_hsm_list_files(sc_card_t *card, u8 * buf, size_t buflen)
 	LOG_TEST_RET(card->ctx, r, "ENUMERATE OBJECTS APDU transmit failed");
 
 	if (buflen < apdu.resplen)
-		memcpy(buf, recvbuf, buflen);
-	else
-		memcpy(buf, recvbuf, apdu.resplen);
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+
+	memcpy(buf, recvbuf, apdu.resplen);
 
 	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
@@ -1089,7 +1092,7 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 	u8 rbuf[514];
 	sc_hsm_private_data_t *priv;
 
-	if (card == NULL || data == NULL || out == NULL) {
+	if (data == NULL || out == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	priv = (sc_hsm_private_data_t *) card->drv_data;
@@ -1115,15 +1118,18 @@ static int sc_hsm_compute_signature(sc_card_t *card,
 
 		if ((priv->algorithm & 0xF0) == ALGO_EC_RAW) {
 			len = sc_hsm_decode_ecdsa_signature(card, apdu.resp, apdu.resplen, out, outlen, priv->env->key_size_bits);
-			if (len < 0) {
-				LOG_FUNC_RETURN(card->ctx, len);
-			}
 		} else {
-			len = (int)(apdu.resplen > outlen ? outlen : apdu.resplen);
-			memcpy(out, apdu.resp, len);
+			if (outlen < apdu.resplen) {
+				sc_mem_clear(rbuf, sizeof(rbuf));
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+			}
+			memcpy(out, apdu.resp, apdu.resplen);
+			len = (int)apdu.resplen;
 		}
+		sc_mem_clear(rbuf, sizeof(rbuf));
 		LOG_FUNC_RETURN(card->ctx, len);
 	}
+	sc_mem_clear(rbuf, sizeof(rbuf));
 	LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
@@ -1137,7 +1143,7 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 	u8 rbuf[514];
 	sc_hsm_private_data_t *priv;
 
-	if (card == NULL || crgram == NULL || out == NULL) {
+	if (crgram == NULL || out == NULL) {
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	LOG_FUNC_CALLED(card->ctx);
@@ -1161,19 +1167,33 @@ static int sc_hsm_decipher(sc_card_t *card, const u8 * crgram, size_t crgram_len
 			//
 			// The SmartCard-HSM returns the point result of the DH operation
 			// with a leading '04'
-			if (apdu.resplen <= 0)
+			if (apdu.resplen <= 0) {
+				sc_mem_clear(rbuf, sizeof(rbuf));
 				return SC_ERROR_INTERNAL;
-			len = apdu.resplen - 1 > outlen ? outlen : apdu.resplen - 1;
+			}
+			if (outlen < apdu.resplen - 1) {
+				sc_mem_clear(rbuf, sizeof(rbuf));
+				return SC_ERROR_BUFFER_TOO_SMALL;
+			}
+			len = apdu.resplen - 1;
 			memcpy(out, apdu.resp + 1, len);
+			sc_mem_clear(rbuf, sizeof(rbuf));
 			LOG_FUNC_RETURN(card->ctx, (int)len);
 		} else {
-			len = apdu.resplen > outlen ? outlen : apdu.resplen;
+			if (outlen < apdu.resplen) {
+				sc_mem_clear(rbuf, sizeof(rbuf));
+				return SC_ERROR_BUFFER_TOO_SMALL;
+			}
+			len = apdu.resplen;
 			memcpy(out, apdu.resp, len);
+			sc_mem_clear(rbuf, sizeof(rbuf));
 			LOG_FUNC_RETURN(card->ctx, (int)len);
 		}
 	}
-	else
+	else {
+		sc_mem_clear(rbuf, sizeof(rbuf));
 		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
+	}
 }
 
 
@@ -1421,15 +1441,18 @@ static int sc_hsm_wrap_key(sc_card_t *card, sc_cardctl_sc_hsm_wrapped_key_t *par
 		params->wrapped_key_length = apdu.resplen;
 		params->wrapped_key = malloc(apdu.resplen);
 		if (params->wrapped_key == NULL) {
+			sc_mem_clear(data, sizeof(data));
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 		}
 	} else {
 		if (apdu.resplen > params->wrapped_key_length) {
+			sc_mem_clear(data, sizeof(data));
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
 		}
 		params->wrapped_key_length = apdu.resplen;
 	}
 	memcpy(params->wrapped_key, data, apdu.resplen);
+	sc_mem_clear(data, sizeof(data));
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -1680,6 +1703,7 @@ static int sc_hsm_init_pin(sc_card_t *card, sc_cardctl_pkcs11_init_pin_t *params
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (params->pin_len > 16) {
+		memset(priv->sopin, 0, sizeof(priv->sopin));
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "User PIN too long");
 	}
 
@@ -1697,7 +1721,11 @@ static int sc_hsm_init_pin(sc_card_t *card, sc_cardctl_pkcs11_init_pin_t *params
 	apdu.lc = apdu.datalen;
 
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, r, "APDU transmit failed");
+	if (r < 0) {
+		sc_mem_clear(ibuff, sizeof(ibuff));
+		memset(priv->sopin, 0, sizeof(priv->sopin));
+		LOG_TEST_RET(ctx, r, "APDU transmit failed");
+	}
 
 	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
 
@@ -1717,14 +1745,19 @@ static int sc_hsm_init_pin(sc_card_t *card, sc_cardctl_pkcs11_init_pin_t *params
 		apdu.lc = apdu.datalen;
 
 		r = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(ctx, r, "APDU transmit failed");
+		if (r < 0) {
+			sc_mem_clear(ibuff, sizeof(ibuff));
+			memset(priv->sopin, 0, sizeof(priv->sopin));
+			LOG_TEST_RET(ctx, r, "APDU transmit failed");
+		}
 
 		r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
 	}
 
-	LOG_TEST_RET(ctx, r, "Check SW error");
-
+	sc_mem_clear(ibuff, sizeof(ibuff));
 	memset(priv->sopin, 0, sizeof(priv->sopin));
+
+	LOG_TEST_RET(ctx, r, "Check SW error");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -1750,19 +1783,27 @@ static int sc_hsm_generate_keypair(sc_card_t *card, sc_cardctl_sc_hsm_keygen_inf
 	apdu.datalen = keyinfo->gakprequest_len;
 
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	if (r < 0) {
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	}
 
 	r =  sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "Check SW error");
+	if (r < 0) {
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		LOG_TEST_RET(card->ctx, r, "Check SW error");
+	}
 
 	keyinfo->gakpresponse_len = apdu.resplen;
 	keyinfo->gakpresponse = malloc(apdu.resplen);
 
 	if (keyinfo->gakpresponse == NULL) {
+		sc_mem_clear(rbuf, sizeof(rbuf));
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 	}
 
 	memcpy(keyinfo->gakpresponse, apdu.resp, apdu.resplen);
+	sc_mem_clear(rbuf, sizeof(rbuf));
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -1955,8 +1996,10 @@ static int sc_hsm_finish(sc_card_t * card)
 		free(priv->serialno);
 		sc_file_free(priv->dffcp);
 		free(priv->EF_C_DevAut);
+		sc_mem_clear(priv, sizeof(sc_hsm_private_data_t));
+		free(priv);
+		card->drv_data = NULL;
 	}
-	free(priv);
 
 	return SC_SUCCESS;
 }
