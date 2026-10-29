@@ -1399,6 +1399,20 @@ static int gids_create_keyfile(sc_card_t *card, sc_pkcs15_object_t *object) {
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+static int gids_delete_key(sc_card_t *card, sc_pkcs15_object_t *object);
+
+/*
+ * The container (cmapfile record, keymap record and key file) is created before the key is
+ * generated or imported. Delete it again when that fails, otherwise it stays allocated forever.
+ */
+static void
+gids_rollback_container(sc_card_t *card, sc_pkcs15_object_t *object)
+{
+	if (gids_delete_key(card, object) < 0) {
+		sc_log(card->ctx, "unable to delete the container after the failed key operation");
+	}
+}
+
 // generate a key on an existing container
 static int gids_generate_key(sc_card_t *card, sc_pkcs15_object_t *object, struct sc_pkcs15_pubkey* pubkey) {
 
@@ -1428,16 +1442,19 @@ static int gids_generate_key(sc_card_t *card, sc_pkcs15_object_t *object, struct
 	apdu.data = generatekey;
 
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "generate key returned error");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "generate key returned error");
 
 	r = gids_read_public_key(card, 0, NULL, kid, 0, &buffer, &buffersize);
-	LOG_TEST_RET(card->ctx, r, "read public key returned error");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "read public key returned error");
 	r = sc_pkcs15_decode_pubkey(card->ctx, pubkey, buffer, buffersize);
-	if (buffer)
-		free(buffer);
+err:
+	free(buffer);
+	if (r < 0) {
+		gids_rollback_container(card, object);
+	}
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -1489,11 +1506,13 @@ static int gids_import_key(sc_card_t *card, sc_pkcs15_object_t *object, sc_pkcs1
 
 	if (object->type != SC_PKCS15_TYPE_PRKEY_RSA || key->algorithm != SC_ALGORITHM_RSA) {
 		sc_log(card->ctx, "GIDS supports RSA keys only (but may support ECC one day).");
-		return SC_ERROR_NOT_SUPPORTED;
+		r = SC_ERROR_NOT_SUPPORTED;
+		goto err;
 	}
 	if (!key->u.rsa.dmp1.len || !key->u.rsa.dmq1.len || !key->u.rsa.iqmp.len) {
 		sc_log(card->ctx, "GIDS needs dmp1 & dmq1 & iqmp");
-		return SC_ERROR_NOT_SUPPORTED;
+		r = SC_ERROR_NOT_SUPPORTED;
+		goto err;
 	}
 	sc_format_asn1_entry(asn1_rsa_priv_coefficients_gids + 0, &version, NULL, 1);
 	sc_format_asn1_entry(asn1_rsa_priv_coefficients_gids + 1, key->u.rsa.modulus.data, &key->u.rsa.modulus.len, 1);
@@ -1522,6 +1541,9 @@ static int gids_import_key(sc_card_t *card, sc_pkcs15_object_t *object, sc_pkcs1
 	r = SC_SUCCESS;
 err:
 	sc_mem_clear(buffer, buflen);
+	if (r < 0) {
+		gids_rollback_container(card, object);
+	}
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
