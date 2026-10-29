@@ -910,20 +910,20 @@ app default {
 
 		# Use env NIST_SM_PAIRING_CODE="8 bytes of ASCII digits"
 
-
 		# For higher security the "Secure Messaging Certificate Signer"
 		# can be verified by OpenSSL.
 		# Either the calling application can read the certificate using pkcs11
 		# and verify the certificate or have OpenSC verify the certificate
 		# by providing the trusted and untrusted certificates
+		# in two files of PEM encoded certificates (without any extra text)
 		# in the trust path using the following:
 		
-		# signer_cert_untrusted_dir for intermediate CA. (may be empty or absent)
-		# signer_cert_untrusted_dir = "";
-		# root CA certs that are trusted by system admin are in
-		# signer_cert_trusted_dir = "";
+		# signer_cert_untrusted for intermediate CAs. (may be empty or absent)
+		# signer_cert_untrusted = "";
+		# root CA certs that are trusted by your system admin are in
+		# signer_cert_trusted = "";
 
-		# Other card drivers may also use SM.
+		# Other card drivers may also use NIST SM.
 
 		#  Use of sm-nist can be set to several "levels":
 		#   "default"  use for contactless only
@@ -932,15 +932,14 @@ app default {
 
 		# The levels can be set for different type cards:
 		# PIV card:
-		# piv_use_sm = "level";
+		# piv_use_sm = "<level>";
 		#  for other cards Use "opensc-tool -D"  to get other driver names
 		#  such as myeid"
-		# myeid_use_sm = "level";
-		# Use  opensc-tool -D  to get other driver names
+		# myeid_use_sm = "<level>";
 
 		# The levels may be set in env such as:
-		#   PIV_USE_SM=level
-		#   MYEID_USE_SM=level
+		#   PIV_USE_SM=<level>
+		#   MYEID_USE_SM=<level>
 		# Environment supersedes the opensc.conf.
 	
 	}
