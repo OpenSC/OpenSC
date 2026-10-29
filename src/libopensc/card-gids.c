@@ -1098,15 +1098,16 @@ gids_get_container_detail(sc_card_t* card, sc_cardctl_gids_get_container_t* cont
 	memset(container, 0, sizeof(sc_cardctl_gids_get_container_t));
 	container->containernum = num;
 
+	// free (deleted or never used) and problematic records are not containers: report them as
+	// not found so that the PKCS#15 emulation does not expose phantom key objects for them
 	if (!(records[num].bFlags & CONTAINER_MAP_VALID_CONTAINER)) {
-		return SC_SUCCESS;
+		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
-	// ignore problematic containers
 	if (records[num].wKeyExchangeKeySizeBits > 0 && records[num].wSigKeySizeBits > 0) {
-		return SC_SUCCESS;
+		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 	if (records[num].wKeyExchangeKeySizeBits == 0 && records[num].wSigKeySizeBits == 0) {
-		return SC_SUCCESS;
+		return SC_ERROR_OBJECT_NOT_FOUND;
 	}
 	for (i = 0; i < MAX_CONTAINER_NAME_LEN; i++) {
 		container->label[i] = (char) records[num].wszGuid[i];
