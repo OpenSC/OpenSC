@@ -980,7 +980,13 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 				&data, &len);
 		LOG_TEST_GOTO_ERR(ctx, r, "Card specific 'read-public' procedure failed.");
 
-		r = sc_pkcs15_decode_pubkey(ctx, pubkey, data, len);
+		/* as for public key files below: EC keys may be returned as SPKI, which keeps the curve */
+		if ((algorithm == SC_ALGORITHM_EC || algorithm == SC_ALGORITHM_EDDSA ||
+				    algorithm == SC_ALGORITHM_XEDDSA) &&
+				len && *data == (SC_ASN1_TAG_SEQUENCE | SC_ASN1_TAG_CONSTRUCTED))
+			r = sc_pkcs15_pubkey_from_spki_sequence(ctx, data, len, &pubkey);
+		else
+			r = sc_pkcs15_decode_pubkey(ctx, pubkey, data, len);
 		LOG_TEST_GOTO_ERR(ctx, r, "Decode public key error");
 	}
 	else if (info->path.len)   {
