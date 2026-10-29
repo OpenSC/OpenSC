@@ -96,8 +96,8 @@ typedef struct sm_nist_params {
 	unsigned long flags; /* NIST_SM_* */
 	u8 *signer_cert_der;
 	size_t signer_cert_der_len;
-	char *signer_cert_untrusted_dir;
-	char *signer_cert_trusted_dir;
+	char *signer_cert_untrusted;
+	char *signer_cert_trusted;
 	u8 *sm_in_cvc_der;
 	size_t sm_in_cvc_der_len;
 	u8 pairing_code[NIST_SM_PAIRING_CODE_LEN];
@@ -110,6 +110,9 @@ typedef struct sm_nist_params {
 
 int
 sm_nist_load_options(sc_card_t *card, sm_nist_params_t *params, char *prefix);
+
+int
+sm_nist_verify_cert_chain(sc_card_t *card, sm_nist_params_t *sm_params);
 
 int
 sm_nist_start(sc_card_t *card, sm_nist_params_t *params);
