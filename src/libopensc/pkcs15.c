@@ -2637,15 +2637,9 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 					goto fail_unlock;
 				}
 				record_bytes = (size_t)r;
-				if (r >= 4 && record[1] == 0xff) {
-					/* Interpret extended record lengths as big endian;
-					 * adapt to the shared parser's little-endian convention. */
-					u8 tmp = record[2];
-					record[2] = record[3];
-					record[3] = tmp;
-				}
 				value = record;
-				r = sc_simpletlv_read_tag(&value, record_bytes, &tag, &record_len);
+				r = sc_simpletlv_read_tag(&value, record_bytes, &tag, &record_len,
+						SC_SIMPLETLV_BIG_ENDIAN);
 				if ((r != SC_SUCCESS && r != SC_ERROR_TLV_END_OF_CONTENTS) ||
 						record_len > len - value_bytes_read) {
 					r = SC_ERROR_INVALID_TLV_OBJECT;
