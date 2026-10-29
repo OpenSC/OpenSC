@@ -81,7 +81,7 @@ iasecc_pkcs15_delete_file(struct sc_pkcs15_card *p15card, struct sc_profile *pro
 
 	LOG_FUNC_CALLED(ctx);
 
-	sc_log(ctx, "iasecc_pkcs15_delete_file() id %04X\n", df->id);
+	sc_log(ctx, "id %04X\n", df->id);
 
 	card->caps |= SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, df, SC_AC_OP_DELETE);
@@ -444,6 +444,9 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 
 	LOG_FUNC_CALLED(ctx);
 
+	if (out)
+		*out = NULL;
+
 	sdo = calloc(1, sizeof(struct iasecc_sdo));
 	if (!sdo)
 		LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot allocate 'iasecc_sdo'");
@@ -460,32 +463,30 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 		sdo->not_on_card = 1;
 
 		rv = iasecc_sdo_set_key_acls_from_profile(profile, card, "private-key", sdo);
-		if (rv != SC_SUCCESS)
-			iasecc_sdo_free(card, sdo);
-		LOG_TEST_RET(ctx, rv, "IasEcc: cannot set ACLs for SDO from the 'private-key'");
+		LOG_TEST_GOTO_ERR(ctx, rv, "IasEcc: cannot set ACLs for SDO from the 'private-key'");
 
 		/* FIXME: set here sdo->docp.name and sdo->docp.idata */
 
 		sdo->docp.non_repudiation.value = calloc(1, 1);
 		if (!sdo->docp.non_repudiation.value)   {
-			iasecc_sdo_free(card, sdo);
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
 		}
 		sdo->docp.non_repudiation.tag = IASECC_DOCP_TAG_NON_REPUDIATION;
 		sdo->docp.non_repudiation.size = 1;
 
 		sdo->data.prv_key.compulsory.value = calloc(1, 1);
 		if (!sdo->data.prv_key.compulsory.value)   {
-			iasecc_sdo_free(card, sdo);
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
 		}
 		sdo->data.prv_key.compulsory.tag = IASECC_SDO_PRVKEY_TAG_COMPULSORY;
 		sdo->data.prv_key.compulsory.size = 1;
 
 		sdo->docp.size.value = calloc(1, 2);
 		if (!sdo->docp.size.value)   {
-			iasecc_sdo_free(card, sdo);
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
 		}
 		sdo->docp.size.tag = IASECC_DOCP_TAG_SIZE;
 		sdo->docp.size.size = 2;
@@ -510,17 +511,18 @@ iasecc_sdo_allocate_prvkey(struct sc_profile *profile, struct sc_card *card,
 		sc_log(ctx, "non_repudiation %i", *(sdo->docp.non_repudiation.value + 0));
 		sc_log(ctx, "compulsory 0x%X", *(sdo->data.prv_key.compulsory.value + 0));
 	}
-	else if (rv < 0) {
-		iasecc_sdo_free(card, sdo);
-		LOG_TEST_RET(ctx, rv, "IasEcc: error while getting private key SDO data");
+	else
+		LOG_TEST_GOTO_ERR(ctx, rv, "IasEcc: error while getting private key SDO data");
+
+	if (out) {
+		*out = sdo;
+		sdo = NULL;
 	}
 
-	if (out)
-		*out = sdo;
-	else
-		iasecc_sdo_free(card, sdo);
+err:
+	iasecc_sdo_free(card, sdo);
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -548,14 +550,12 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 		sdo->not_on_card = 1;
 
 		rv = iasecc_sdo_set_key_acls_from_profile(profile, card, "public-key", sdo);
-		if (rv != SC_SUCCESS)
-			iasecc_sdo_free(card, sdo);
-		LOG_TEST_RET(ctx, rv, "iasecc_sdo_allocate_pubkey() cannot set ACLs for SDO from the 'public-key'");
+		LOG_TEST_GOTO_ERR(ctx, rv, "cannot set ACLs for SDO from the 'public-key'");
 
 		sdo->docp.size.value = calloc(1, 2);
 		if (!sdo->docp.size.value)   {
-			iasecc_sdo_free(card, sdo);
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
 		}
 		sdo->docp.size.size = 2;
 		sdo->docp.size.tag = IASECC_DOCP_TAG_SIZE;
@@ -568,8 +568,8 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 		else   {
 			sdo->data.pub_key.cha.value = calloc(1, 2);
 			if (!sdo->data.pub_key.cha.value)   {
-				iasecc_sdo_free(card, sdo);
-				LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+				rv = SC_ERROR_OUT_OF_MEMORY;
+				goto err;
 			}
 			sdo->data.pub_key.cha.size = 2;
 			sdo->data.pub_key.cha.tag = IASECC_SDO_PUBKEY_TAG_CHA;
@@ -577,23 +577,24 @@ iasecc_sdo_allocate_pubkey(struct sc_profile *profile, struct sc_card *card, str
 
 		sdo->data.pub_key.compulsory.value = calloc(1, 1);
 		if (!sdo->data.pub_key.compulsory.value)   {
-			iasecc_sdo_free(card, sdo);
-			LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+			rv = SC_ERROR_OUT_OF_MEMORY;
+			goto err;
 		}
 		sdo->data.pub_key.compulsory.tag = IASECC_SDO_PUBKEY_TAG_COMPULSORY;
 		sdo->data.pub_key.compulsory.size = 1;
 	}
-	else if (rv < 0) {
-		iasecc_sdo_free(card, sdo);
-		LOG_TEST_RET(ctx, rv, "iasecc_sdo_allocate_pubkey() error while getting public key SDO data");
+	else
+		LOG_TEST_GOTO_ERR(ctx, rv, "error while getting public key SDO data");
+
+	if (out) {
+		*out = sdo;
+		sdo = NULL;
 	}
 
-	if (out)
-		*out = sdo;
-	else
-		iasecc_sdo_free(card, sdo);
+err:
+	iasecc_sdo_free(card, sdo);
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -1079,11 +1080,11 @@ iasecc_pkcs15_create_key(struct sc_profile *profile, struct sc_pkcs15_card *p15c
 
 	rv = iasecc_sdo_allocate_pubkey(profile, card, (struct sc_pkcs15_pubkey_info *)key_info, &sdo_pubkey);
 	LOG_TEST_RET(ctx, rv, "IasEcc: allocate SDO public key failed");
-	sc_log(ctx, "iasecc_pkcs15_create_key() sdo_pubkey->not_on_card %i", sdo_pubkey->not_on_card);
+	sc_log(ctx, "sdo_pubkey->not_on_card %i", sdo_pubkey->not_on_card);
 
 	rv = iasecc_sdo_allocate_prvkey(profile, card, key_info, &sdo_prvkey);
 	LOG_TEST_GOTO_ERR(ctx, rv, "IasEcc: init SDO private key failed");
-	sc_log(ctx, "iasecc_pkcs15_create_key() sdo_prvkey->not_on_card %i", sdo_prvkey->not_on_card);
+	sc_log(ctx, "sdo_prvkey->not_on_card %i", sdo_prvkey->not_on_card);
 
 	if (!sdo_prvkey->not_on_card && !sdo_pubkey->not_on_card)   {
 		sc_log(ctx, "Key ref %i already allocated", key_info->key_reference);
@@ -1120,7 +1121,7 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 	struct sc_context *ctx = card->ctx;
 	struct sc_pkcs15_prkey_info *key_info = (struct sc_pkcs15_prkey_info *) object->data;
 	size_t keybits = key_info->modulus_length;
-	struct iasecc_sdo *sdo_prvkey = NULL;
+	struct iasecc_sdo *sdo_prvkey;
 	struct iasecc_sdo *sdo_pubkey = NULL;
 	struct sc_file	*file = NULL;
 	unsigned char *tmp = NULL;
@@ -1146,60 +1147,67 @@ iasecc_pkcs15_generate_key(struct sc_profile *profile, sc_pkcs15_card_t *p15card
 
 	/* TODO: Check if native IAS middleware accepts the meaningful path value. */
 	rv = sc_profile_get_parent(profile, "private-key", &file);
-	LOG_TEST_RET(ctx, rv, "IasEcc: cannot get private key parent file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "IasEcc: cannot get private key parent file");
 
 	rv = sc_select_file(card, &file->path, NULL);
-	LOG_TEST_RET(ctx, rv, "DF for private objects not defined");
+	LOG_TEST_GOTO_ERR(ctx, rv, "DF for private objects not defined");
 
 	sc_file_free(file);
+	file = NULL;
 
 	rv = iasecc_sdo_convert_to_file(card, sdo_prvkey, &file);
-	LOG_TEST_RET(ctx, rv, "Cannot convert SDO PRIVKEY to file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot convert SDO PRIVKEY to file");
 
 	caps = card->caps;
 	card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_GENERATE);
 	card->caps = caps;
-	LOG_TEST_RET(ctx, rv, "SC_AC_OP_GENERATE authentication failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "SC_AC_OP_GENERATE authentication failed");
 
 	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_LOCAL;
 	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_ALWAYSSENSITIVE;
 	key_info->access_flags |= SC_PKCS15_PRKEY_ACCESS_NEVEREXTRACTABLE;
 
 	rv = sc_card_ctl(card, SC_CARDCTL_IASECC_SDO_GENERATE, sdo_prvkey);
-	LOG_TEST_RET(ctx, rv, "generate key failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "generate key failed");
 
 	/* Quite dangerous -- cast of 'sc_pkcs15_prvkey_info' into 'sc_pkcs15_pubkey_info'. */
 	rv = iasecc_sdo_allocate_pubkey(profile, card, (struct sc_pkcs15_pubkey_info *)key_info, &sdo_pubkey);
-	LOG_TEST_RET(ctx, rv, "IasEcc: allocate SDO public key failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "IasEcc: allocate SDO public key failed");
 
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 
 	pubkey->u.rsa.modulus.len = sdo_pubkey->data.pub_key.n.size;
 	pubkey->u.rsa.modulus.data  = (unsigned char *) malloc(pubkey->u.rsa.modulus.len);
-	if (!pubkey->u.rsa.modulus.data)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (!pubkey->u.rsa.modulus.data) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 	memcpy(pubkey->u.rsa.modulus.data, sdo_pubkey->data.pub_key.n.value, pubkey->u.rsa.modulus.len);
 
 	pubkey->u.rsa.exponent.len = sdo_pubkey->data.pub_key.e.size;
 	pubkey->u.rsa.exponent.data = (unsigned char *) malloc(pubkey->u.rsa.exponent.len);
-	if (!pubkey->u.rsa.exponent.data)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (!pubkey->u.rsa.exponent.data) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 	memcpy(pubkey->u.rsa.exponent.data, sdo_pubkey->data.pub_key.e.value, pubkey->u.rsa.exponent.len);
 
 	rv = sc_pkcs15_encode_pubkey(ctx, pubkey, &tmp, &tmp_len);
-	LOG_TEST_RET(ctx, rv, "encode public key failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "encode public key failed");
 
 	rv = iasecc_pkcs15_encode_supported_algos(p15card, object);
-	LOG_TEST_RET(ctx, rv, "encode private key access rules failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "encode private key access rules failed");
 
 	/* SDO PrvKey data replaced by public part of generated key */
 	rv = sc_pkcs15_allocate_object_content(ctx, object, tmp, tmp_len);
-	LOG_TEST_RET(ctx, rv, "Failed to allocate public key as object content");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Failed to allocate public key as object content");
 
+err:
 	iasecc_sdo_free(card, sdo_pubkey);
-
 	free(tmp);
+	sc_file_free(file);
+
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -1238,21 +1246,22 @@ iasecc_pkcs15_store_key(struct sc_profile *profile, struct sc_pkcs15_card *p15ca
 			sdo_prvkey->data.prv_key.compulsory.on_card);
 
 	rv = sc_profile_get_parent(profile, "private-key", &file);
-	LOG_TEST_RET(ctx, rv, "cannot instantiate parent DF of the private key");
+	LOG_TEST_GOTO_ERR(ctx, rv, "cannot instantiate parent DF of the private key");
 
 	rv = sc_select_file(card, &file->path, NULL);
-	LOG_TEST_RET(ctx, rv, "failed to select parent DF");
+	LOG_TEST_GOTO_ERR(ctx, rv, "failed to select parent DF");
 
-	sc_file_free(file);
 
 	key_info->access_flags &= ~SC_PKCS15_PRKEY_ACCESS_LOCAL;
 
 	rv = iasecc_sdo_allocate_pubkey(profile, card, (struct sc_pkcs15_pubkey_info *)key_info, &sdo_pubkey);
-	LOG_TEST_RET(ctx, rv, "private key store failed: cannot allocate 'SDO PUBLIC KEY'");
+	LOG_TEST_GOTO_ERR(ctx, rv, "private key store failed: cannot allocate 'SDO PUBLIC KEY'");
 
 	rv = iasecc_sdo_store_key(profile, p15card, sdo_prvkey, sdo_pubkey, rsa);
-	LOG_TEST_RET(ctx, rv, "cannot store SDO PRIVATE/PUBLIC KEYs");
+	LOG_TEST_GOTO_ERR(ctx, rv, "cannot store SDO PRIVATE/PUBLIC KEYs");
 
+err:
+	sc_file_free(file);
 	/* sdo_prvkey is freed while object is freeing */
 	iasecc_sdo_free(card, sdo_pubkey);
 
@@ -1273,7 +1282,7 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_pkcs15_delete_sdo() class 0x%X; reference %i", sdo_class, ref);
+	sc_log(ctx, "class 0x%X; reference %i", sdo_class, ref);
 
 	sdo = calloc(1, sizeof(struct iasecc_sdo));
 	if (!sdo)
@@ -1288,8 +1297,7 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 		if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND)
 			rv = SC_SUCCESS;
 
-		iasecc_sdo_free(card, sdo);
-		LOG_FUNC_RETURN(ctx, rv);
+		goto err;
 	}
 
 	if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PUBLIC)   {
@@ -1300,23 +1308,15 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 		}
 	}
 
-	sc_log(ctx, "iasecc_pkcs15_delete_sdo() SDO class 0x%X, ref 0x%X", sdo->sdo_class, sdo->sdo_ref);
+	sc_log(ctx, "SDO class 0x%X, ref 0x%X", sdo->sdo_class, sdo->sdo_ref);
 	rv = iasecc_sdo_convert_to_file(card, sdo, &dummy_file);
-	if (rv < 0)   {
-		iasecc_sdo_free(card, sdo);
-		LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() Cannot convert SDO to file");
-	}
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot convert SDO to file");
 
 	card->caps &= ~SC_CARD_CAP_USE_FCI_AC;
 	rv = sc_pkcs15init_authenticate(profile, p15card, dummy_file, SC_AC_OP_UPDATE);
 	card->caps = save_card_caps;
 
-	sc_file_free(dummy_file);
-
-	if (rv < 0)   {
-		iasecc_sdo_free(card, sdo);
-		LOG_TEST_RET(ctx, rv, "iasecc_pkcs15_delete_sdo() UPDATE authentication failed for SDO");
-	}
+	LOG_TEST_GOTO_ERR(ctx, rv, "UPDATE authentication failed for SDO");
 
 	if (card->type == SC_CARD_TYPE_IASECC_OBERTHUR)   {
 		/* Oberthur's card supports creation/deletion of the key slots ... */
@@ -1329,17 +1329,17 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 		int size;
 
 		if (!sdo->docp.size.value || sdo->docp.size.size < 2) {
-			iasecc_sdo_free(card, sdo);
-			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Missing/invalid SDO key size");
+			rv = SC_ERROR_INVALID_DATA;
+			LOG_TEST_GOTO_ERR(ctx, rv, "Missing/invalid SDO key size");
 		}
 
 		size = *(sdo->docp.size.value + 0) * 0x100 + *(sdo->docp.size.value + 1);
 		if (size <= 0 || size > (int)sizeof(zeros)) {
-			iasecc_sdo_free(card, sdo);
-			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Unsupported SDO key size");
+			rv = SC_ERROR_INVALID_DATA;
+			LOG_TEST_GOTO_ERR(ctx, rv, "Unsupported SDO key size");
 		}
 
-		sc_log(ctx, "iasecc_pkcs15_delete_sdo() SDO size %i bytes", size);
+		sc_log(ctx, "SDO size %i bytes", size);
 		memset(zeros, 0xA5, sizeof(zeros));
 		memset(&rsa, 0, sizeof(rsa));
 
@@ -1354,7 +1354,10 @@ iasecc_pkcs15_delete_sdo (struct sc_profile *profile, struct sc_pkcs15_card *p15
 		rv = iasecc_sdo_store_key(profile, p15card, sdo, NULL, &rsa);
 	}
 
+err:
 	iasecc_sdo_free(card, sdo);
+	sc_file_free(dummy_file);
+
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -1699,7 +1702,7 @@ iasecc_store_cert(struct sc_pkcs15_card *p15card, struct sc_profile *profile,
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_store_cert() authID '%s'", sc_pkcs15_print_id(&object->auth_id));
+	sc_log(ctx, "'%s'", sc_pkcs15_print_id(&object->auth_id));
 
 	rv = iasecc_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_CERT, 0, &pfile);
 	LOG_TEST_RET(ctx, rv, "IasEcc new CERT file error");
@@ -1735,19 +1738,19 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 	int rv, nn_objs, index, ii;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_store_data_object() authID '%s'", sc_pkcs15_print_id(&object->auth_id));
+	sc_log(ctx, "authID '%s'", sc_pkcs15_print_id(&object->auth_id));
 	nn_objs = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_DATA_OBJECT, p15objects, MAX_DATA_OBJS);
 	LOG_TEST_RET(ctx, nn_objs, "IasEcc get pkcs15 DATA objects error");
 
 	for(index = 1; index < MAX_DATA_OBJS; index++)   {
 		rv = iasecc_pkcs15_new_file(profile, card, SC_PKCS15_TYPE_DATA_OBJECT, index, &file);
-		LOG_TEST_RET(ctx, rv, "iasecc_store_data_object() pkcs15 new DATA file error");
+		LOG_TEST_RET(ctx, rv, "pkcs15 new DATA file error");
 
 		for (ii=0; ii<nn_objs; ii++)   {
 			struct sc_pkcs15_data_info *info = (struct sc_pkcs15_data_info *)p15objects[ii]->data;
 			int file_id = info->path.value[info->path.len - 2] * 0x100 + info->path.value[info->path.len - 1];
 
-			sc_log(ctx, "iasecc_store_data_object() %i: file_id 0x%X, pfile->id 0x%X\n", ii, file_id, file->id);
+			sc_log(ctx, "%i: file_id 0x%X, pfile->id 0x%X\n", ii, file_id, file->id);
 			if (file->id == file_id)
 			   break;
 		}
@@ -1760,7 +1763,7 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 
 	if (index == MAX_DATA_OBJS) {
 		rv = SC_ERROR_TOO_MANY_OBJECTS;
-		LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_store_data_object() too many DATA objects.");
+		LOG_TEST_GOTO_ERR(ctx, rv, "too many DATA objects.");
 	}
 
 	do  {
@@ -1770,58 +1773,58 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 
 		object->access_rules[0].access_mode = SC_PKCS15_ACCESS_RULE_MODE_READ;
 		acl = sc_file_get_acl_entry(file, SC_AC_OP_READ);
-		sc_log(ctx, "iasecc_store_data_object() READ method %i", acl->method);
+		sc_log(ctx, "READ method %i", acl->method);
 		if (acl->method == SC_AC_IDA)
 			iasecc_reference_to_pkcs15_id (acl->key_ref, &object->access_rules[0].auth_id);
 
 		object->access_rules[1].access_mode = SC_PKCS15_ACCESS_RULE_MODE_UPDATE;
 		acl = sc_file_get_acl_entry(file, SC_AC_OP_UPDATE);
-		sc_log(ctx, "iasecc_store_data_object() UPDATE method %i", acl->method);
+		sc_log(ctx, "UPDATE method %i", acl->method);
 		if (acl->method == SC_AC_IDA)
 			iasecc_reference_to_pkcs15_id (acl->key_ref, &object->access_rules[1].auth_id);
 
 		object->access_rules[2].access_mode = SC_PKCS15_ACCESS_RULE_MODE_DELETE;
 		acl = sc_file_get_acl_entry(file, SC_AC_OP_DELETE);
-		sc_log(ctx, "iasecc_store_data_object() UPDATE method %i", acl->method);
+		sc_log(ctx, "UPDATE method %i", acl->method);
 		if (acl->method == SC_AC_IDA)
 			iasecc_reference_to_pkcs15_id (acl->key_ref, &object->access_rules[2].auth_id);
 
 	} while(0);
 
 	rv = iasecc_file_convert_acls(ctx, profile, file);
-	LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_store_data_object() cannot convert profile ACLs");
+	LOG_TEST_GOTO_ERR(ctx, rv, "cannot convert profile ACLs");
 
 	rv = sc_profile_get_parent(profile, "public-data", &parent);
-	LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_store_data_object() cannot get object parent");
-	sc_log(ctx, "iasecc_store_data_object() parent path '%s'\n", sc_print_path(&parent->path));
+	LOG_TEST_GOTO_ERR(ctx, rv, "cannot get object parent");
+	sc_log(ctx, "parent path '%s'\n", sc_print_path(&parent->path));
 
 	rv = sc_select_file(card, &parent->path, NULL);
-	LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_store_data_object() cannot select parent");
+	LOG_TEST_GOTO_ERR(ctx, rv, "cannot select parent");
 
 	rv = sc_select_file(card, &file->path, &cfile);
 	if (!rv)   {
 		rv = sc_pkcs15init_authenticate(profile, p15card, cfile, SC_AC_OP_DELETE);
-		LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_store_data_object() DELETE authentication failed");
+		LOG_TEST_GOTO_ERR(ctx, rv, "DELETE authentication failed");
 
 		rv = iasecc_pkcs15_delete_file(p15card, profile, cfile);
-		LOG_TEST_GOTO_ERR(ctx, rv, "s_pkcs15init_store_data_object() delete pkcs15 file error");
+		LOG_TEST_GOTO_ERR(ctx, rv, "delete pkcs15 file error");
 	}
 	else if (rv != SC_ERROR_FILE_NOT_FOUND)   {
-		LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_store_data_object() select file error");
+		LOG_TEST_GOTO_ERR(ctx, rv, "select file error");
 	}
 
 	rv = sc_pkcs15init_authenticate(profile, p15card, parent, SC_AC_OP_CREATE);
-	LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_store_data_object() parent CREATE authentication failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "parent CREATE authentication failed");
 
 	file->size = data->len;
 	rv = sc_create_file(card, file);
-	LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_store_data_object() cannot create DATA file");
+	LOG_TEST_GOTO_ERR(ctx, rv, "cannot create DATA file");
 
 	rv = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-	LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_store_data_object() data file UPDATE authentication failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "data file UPDATE authentication failed");
 
 	rv = sc_update_binary(card, 0, data->value, data->len, 0);
-	LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_store_data_object() update DATA file failed");
+	LOG_TEST_GOTO_ERR(ctx, rv, "update DATA file failed");
 
 	if (path)
 		*path = file->path;
