@@ -196,6 +196,7 @@ enum {
 	SC_CARD_TYPE_DNIE_ADMIN,      /* ATR LC byte: 01 */
 	SC_CARD_TYPE_DNIE_USER,	      /* ATR LC byte: 03 */
 	SC_CARD_TYPE_DNIE_TERMINATED, /* ATR LC byte: 0F */
+	SC_CARD_TYPE_DNIE_CONTACTLESS,
 
 	/* JavaCards with isoApplet */
 	SC_CARD_TYPE_ISO_APPLET_BASE = 28000,
