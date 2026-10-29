@@ -184,14 +184,14 @@ iasecc_chv_cache_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 			break;
 
 	if (current)   {
-		sc_log(ctx, "iasecc_chv_cache_verified() current PIN-%i", current->reference);
+		sc_log(ctx, "current PIN-%i", current->reference);
 		pin_status = current;
 	}
 	else   {
 		pin_status = calloc(1, sizeof(struct iasecc_pin_status));
 		if (!pin_status)
 			LOG_TEST_RET(ctx, SC_ERROR_OUT_OF_MEMORY, "Cannot callocate PIN status info");
-		sc_log(ctx, "iasecc_chv_cache_verified() allocated %p", pin_status);
+		sc_log(ctx, "allocated %p", pin_status);
 	}
 
 	pin_status->reference = pin_cmd->pin_reference;
@@ -200,7 +200,7 @@ iasecc_chv_cache_verified(struct sc_card *card, struct sc_pin_cmd_data *pin_cmd)
 	else
 		memset(pin_status->sha1, 0, SHA_DIGEST_LENGTH);
 
-	sc_log_hex(ctx, "iasecc_chv_cache_verified() sha1(PIN)", pin_status->sha1, SHA_DIGEST_LENGTH);
+	sc_log_hex(ctx, "sha1(PIN)", pin_status->sha1, SHA_DIGEST_LENGTH);
 
 	if (!current)   {
 		if (!checked_pins)   {
@@ -648,7 +648,8 @@ iasecc_init(struct sc_card *card)
 	else if (iasecc_is_cpx(card))
 		rv = iasecc_init_cpx(card);
 	else {
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_CARD, "");
+		rv = SC_ERROR_INVALID_CARD;
+		LOG_TEST_GOTO_ERR(ctx, rv, "");
 	}
 
 
@@ -714,13 +715,13 @@ iasecc_read_binary(struct sc_card *card, unsigned int offs,
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "iasecc_read_binary() failed");
-	sc_log(ctx, "iasecc_read_binary() apdu.resplen %zu", apdu.resplen);
+	LOG_TEST_RET(ctx, rv, "failed");
+	sc_log(ctx, "apdu.resplen %zu", apdu.resplen);
 
 	if (apdu.resplen == IASECC_READ_BINARY_LENGTH_MAX && apdu.resplen < count)   {
 		rv = iasecc_read_binary(card, (int)(offs + apdu.resplen), buf + apdu.resplen, count - apdu.resplen, flags);
 		if (rv != SC_ERROR_WRONG_LENGTH)   {
-			LOG_TEST_RET(ctx, rv, "iasecc_read_binary() read tail failed");
+			LOG_TEST_RET(ctx, rv, "read tail failed");
 			apdu.resplen += rv;
 		}
 	}
@@ -764,7 +765,7 @@ _iasecc_sm_read_binary(struct sc_card *card, unsigned int offs,
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sm_read_binary() card:%p offs:%i count:%zu ", card, offs, count);
+	sc_log(ctx, "card:%p offs:%i count:%zu ", card, offs, count);
 	if (offs > 0x7fff)
 		LOG_TEST_RET(ctx, SC_ERROR_OFFSET_TOO_LARGE, "Invalid arguments");
 
@@ -774,7 +775,7 @@ _iasecc_sm_read_binary(struct sc_card *card, unsigned int offs,
 	if (prv->cache.valid && prv->cache.current_ef) {
 		entry = sc_file_get_acl_entry(prv->cache.current_ef, SC_AC_OP_READ);
 		if (!entry)
-			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "iasecc_sm_read() 'READ' ACL not present");
+			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "'READ' ACL not present");
 
 		sc_log(ctx, "READ method/reference %X/%X", entry->method, entry->key_ref);
 		if ((entry->method == SC_AC_SCB) && (entry->key_ref & IASECC_SCB_METHOD_SM))   {
@@ -802,12 +803,12 @@ _iasecc_sm_update_binary(struct sc_card *card, unsigned int offs,
 		return SC_SUCCESS;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sm_read_binary() card:%p offs:%i count:%zu ", card, offs, count);
+	sc_log(ctx, "card:%p offs:%i count:%zu ", card, offs, count);
 
 	if (prv->cache.valid && prv->cache.current_ef) {
 		entry = sc_file_get_acl_entry(prv->cache.current_ef, SC_AC_OP_UPDATE);
 		if (!entry)
-			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "iasecc_sm_update() 'UPDATE' ACL not present");
+			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "'UPDATE' ACL not present");
 
 		sc_log(ctx, "UPDATE method/reference %X/%X", entry->method, entry->key_ref);
 		if (entry->method == SC_AC_SCB && (entry->key_ref & IASECC_SCB_METHOD_SM))   {
@@ -873,7 +874,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 
 	sc_log(ctx, "iasecc_select_file(card:%p) path.len %zu; path.type %i; aid_len %zu",
 			card, path->len, path->type, path->aid.len);
-	sc_log(ctx, "iasecc_select_file() path:%s", sc_print_path(path));
+	sc_log(ctx, "path:%s", sc_print_path(path));
 
 	if ((!iasecc_is_cpx(card)) &&
 	    (card->type != SC_CARD_TYPE_IASECC_GEMALTO) &&
@@ -893,8 +894,8 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		struct sc_file *file = NULL;
 		struct sc_path ppath;
 
-		sc_log(ctx, "iasecc_select_file() select parent AID:%p/%zu", lpath.aid.value, lpath.aid.len);
-		sc_log(ctx, "iasecc_select_file() select parent AID:%s", sc_dump_hex(lpath.aid.value, lpath.aid.len));
+		sc_log(ctx, "select parent AID:%p/%zu", lpath.aid.value, lpath.aid.len);
+		sc_log(ctx, "select parent AID:%s", sc_dump_hex(lpath.aid.value, lpath.aid.len));
 		memset(&ppath, 0, sizeof(ppath));
 		memcpy(ppath.value, lpath.aid.value, lpath.aid.len);
 		ppath.len = lpath.aid.len;
@@ -987,7 +988,7 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		else   {
 			sc_log(ctx, "Invalid PATH type: 0x%X", lpath.type);
 			rv = SC_ERROR_NOT_SUPPORTED;
-			LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_select_file() invalid PATH type");
+			LOG_TEST_GOTO_ERR(ctx, rv, "invalid PATH type");
 		}
 
 		for (ii=0; ii<2; ii++)   {
@@ -1019,9 +1020,9 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 			break;
 		}
 
-		LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_select_file() check SW failed");
+		LOG_TEST_GOTO_ERR(ctx, rv, "check SW failed");
 
-		sc_log(ctx, "iasecc_select_file() apdu.resp %zu", apdu.resplen);
+		sc_log(ctx, "apdu.resp %zu", apdu.resplen);
 		if (apdu.resplen)   {
 			sc_log(ctx, "apdu.resp %02X:%02X:%02X...", apdu.resp[0], apdu.resp[1], apdu.resp[2]);
 
@@ -1134,7 +1135,7 @@ iasecc_process_fci(struct sc_card *card, struct sc_file *file,
 	Oberthur: 62 1B 80 02 05 DC 82 01 01 83 02 B0 01 88 00 A1 09 8C 07 7B 17 FF 17 17 17 00 8A 01 05 90 00
 */
 
-	sc_log(ctx, "iasecc_process_fci() type %i; let's parse file ACLs", file->type);
+	sc_log(ctx, "type %i; let's parse file ACLs", file->type);
 	tag = sc_asn1_find_tag(ctx, buf, buflen, IASECC_DOCP_TAG_ACLS, &taglen);
 	if (tag)
 		acls = sc_asn1_find_tag(ctx, tag, taglen, IASECC_DOCP_TAG_ACLS_CONTACT, &taglen);
@@ -1332,13 +1333,13 @@ iasecc_create_file(struct sc_card *card, struct sc_file *file)
 	if (prv->cache.valid && prv->cache.current_df) {
 		entry = sc_file_get_acl_entry(prv->cache.current_df, SC_AC_OP_CREATE);
 		if (!entry)
-			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "iasecc_create_file() 'CREATE' ACL not present");
+			LOG_TEST_RET(ctx, SC_ERROR_OBJECT_NOT_FOUND, "'CREATE' ACL not present");
 
-		sc_log(ctx, "iasecc_create_file() 'CREATE' method/reference %X/%X", entry->method, entry->key_ref);
-		sc_log(ctx, "iasecc_create_file() create data: '%s'", sc_dump_hex(sbuf, sbuf_len + 2));
+		sc_log(ctx, "'CREATE' method/reference %X/%X", entry->method, entry->key_ref);
+		sc_log(ctx, "create data: '%s'", sc_dump_hex(sbuf, sbuf_len + 2));
 		if (entry->method == SC_AC_SCB && (entry->key_ref & IASECC_SCB_METHOD_SM))   {
                         rv = iasecc_sm_create_file(card, entry->key_ref & IASECC_SCB_METHOD_MASK_REF, sbuf, sbuf_len + 2);
-                        LOG_TEST_RET(ctx, rv, "iasecc_create_file() SM create file error");
+                        LOG_TEST_RET(ctx, rv, "SM create file error");
 
                         rv = iasecc_select_file(card, &file->path, NULL);
                         LOG_FUNC_RETURN(ctx, rv);
@@ -1354,7 +1355,7 @@ iasecc_create_file(struct sc_card *card, struct sc_file *file)
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "iasecc_create_file() create file error");
+	LOG_TEST_RET(ctx, rv, "create file error");
 
 	rv = iasecc_select_file(card, &file->path, NULL);
 	LOG_TEST_RET(ctx, rv, "Cannot select newly created file");
@@ -1663,7 +1664,7 @@ iasecc_set_security_env(struct sc_card *card,
 		const struct sc_security_env *env, int se_num)
 {
 	struct sc_context *ctx = card->ctx;
-	struct iasecc_sdo sdo;
+	struct iasecc_sdo sdo = {0};
 	struct iasecc_private_data *prv = (struct iasecc_private_data *)card->drv_data;
 	unsigned algo_ref;
 	struct sc_apdu apdu;
@@ -1691,15 +1692,14 @@ iasecc_set_security_env(struct sc_card *card,
 	sc_log(ctx, "iasecc_set_security_env(card:%p) operation 0x%X; senv.algorithm 0x%lX, senv.algorithm_ref 0x%lX",
 			card, env->operation, env->algorithm, env->algorithm_ref);
 
-	memset(&sdo, 0, sizeof(sdo));
 	sdo.sdo_class = IASECC_SDO_CLASS_RSA_PRIVATE;
 	sdo.sdo_ref  = env->key_ref[0] & ~IASECC_OBJECT_REF_LOCAL;
 	rv = iasecc_sdo_get_data(card, &sdo);
-	LOG_TEST_RET(ctx, rv, "Cannot get RSA PRIVATE SDO data");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get RSA PRIVATE SDO data");
 
 	if (sdo.docp.size.size < 2) {
-		iasecc_sdo_free_fields(card, &sdo);
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_TEST_GOTO_ERR(ctx, rv, "Invalid RSA PRIVATE SDO data");
 	}
 	/* To made by iasecc_sdo_convert_to_file() */
 	prv->key_size = *(sdo.docp.size.value + 0) * 0x100 + *(sdo.docp.size.value + 1);
@@ -1857,6 +1857,7 @@ iasecc_set_security_env(struct sc_card *card,
 
 err:
 	iasecc_sdo_free_fields(card, &sdo);
+
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -2051,16 +2052,15 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 	sc_log(ctx, "iasecc_pin_get_policy(card:%p)", card);
 
 	if (data->pin_type != SC_AC_CHV)   {
-		sc_log(ctx, "PIN policy only available for CHV type");
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+		rv = SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_GOTO_ERR(ctx, rv, "PIN policy only available for CHV type");
 	}
 
 	if (prv->cache.valid && prv->cache.current_df) {
 		sc_file_dup(&save_current_df, prv->cache.current_df);
 		if (save_current_df == NULL) {
 			rv = SC_ERROR_OUT_OF_MEMORY;
-			sc_log(ctx, "Cannot duplicate current DF file");
-			goto err;
+			LOG_TEST_GOTO_ERR(ctx, rv, "Cannot duplicate current DF file");
 		}
 	}
 
@@ -2068,8 +2068,7 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 		sc_file_dup(&save_current_ef, prv->cache.current_ef);
 		if (save_current_ef == NULL) {
 			rv = SC_ERROR_OUT_OF_MEMORY;
-			sc_log(ctx, "Cannot duplicate current EF file");
-			goto err;
+			LOG_TEST_GOTO_ERR(ctx, rv, "Cannot duplicate current EF file");
 		}
 	}
 
@@ -2084,18 +2083,17 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 
 	sdo.sdo_ref = data->pin_reference & ~IASECC_OBJECT_REF_LOCAL;
 
-	sc_log(ctx, "iasecc_pin_get_policy() reference %i", sdo.sdo_ref);
+	sc_log(ctx, "reference %i", sdo.sdo_ref);
 
 	rv = iasecc_sdo_get_data(card, &sdo);
 	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get SDO PIN data");
 
 	if (sdo.docp.acls_contact.size == 0) {
 		rv = SC_ERROR_INVALID_DATA;
-		sc_log(ctx, "Extremely strange ... there is no ACLs");
-		goto err;
+		LOG_TEST_GOTO_ERR(ctx, rv, "Extremely strange ... there is no ACLs");
 	}
 
-	sc_log(ctx, "iasecc_pin_get_policy() sdo.docp.size.size %zu", sdo.docp.size.size);
+	sc_log(ctx, "sdo.docp.size.size %zu", sdo.docp.size.size);
 
 	memcpy(pin->scbs, sdo.docp.scbs, sizeof(pin->scbs));
 
@@ -2117,13 +2115,13 @@ iasecc_pin_get_policy (struct sc_card *card, struct sc_pin_cmd_data *data, struc
 	       pin->max_length, pin->min_length, pin->tries_maximum, pin->tries_remaining);
 
 	if (save_current_df)   {
-		sc_log(ctx, "iasecc_pin_get_policy() restore current DF");
+		sc_log(ctx, "restore current DF");
 		rv = iasecc_select_file(card, &save_current_df->path, NULL);
 		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot return to saved DF");
 	}
 
 	if (save_current_ef)   {
-		sc_log(ctx, "iasecc_pin_get_policy() restore current EF");
+		sc_log(ctx, "restore current EF");
 		rv = iasecc_select_file(card, &save_current_ef->path, NULL);
 		LOG_TEST_GOTO_ERR(ctx, rv, "Cannot return to saved EF");
 	}
@@ -2254,8 +2252,8 @@ static int
 iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 {
 	struct sc_context *ctx = card->ctx;
-	struct iasecc_sdo_update update;
-	struct iasecc_sdo sdo;
+	struct iasecc_sdo_update update = {0};
+	struct iasecc_sdo sdo = {0};
 	unsigned scb;
 	int rv;
 
@@ -2264,28 +2262,27 @@ iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 	if (!data->pin2.data || data->pin2.len < 32)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Needs at least 32 bytes for a new keyset value");
 
-	memset(&sdo, 0, sizeof(sdo));
 	sdo.sdo_class = IASECC_SDO_CLASS_KEYSET;
 	sdo.sdo_ref  = data->pin_reference;
 
 	rv = iasecc_sdo_get_data(card, &sdo);
-	LOG_TEST_RET(ctx, rv, "Cannot get keyset data");
+	LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get keyset data");
 
 	if (sdo.docp.acls_contact.size == 0) {
-		iasecc_sdo_free_fields(card, &sdo);
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Bewildered ... there are no ACLs");
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_TEST_GOTO_ERR(ctx, rv, "Bewildered ... there are no ACLs");
 	}
 	scb = sdo.docp.scbs[IASECC_ACLS_KEYSET_PUT_DATA];
 
-	memset(&update, 0, sizeof(update));
 	update.magic = SC_CARDCTL_IASECC_SDO_MAGIC_PUT_DATA;
 	update.sdo_class = sdo.sdo_class;
 	update.sdo_ref = sdo.sdo_ref;
-	iasecc_sdo_free_fields(card, &sdo);
 
 	sc_log(ctx, "SCB:0x%X", scb);
-	if (!(scb & IASECC_SCB_METHOD_SM))
-		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Other then protected by SM, the keyset change is not supported");
+	if (!(scb & IASECC_SCB_METHOD_SM)) {
+		rv = SC_ERROR_NOT_SUPPORTED;
+		LOG_TEST_GOTO_ERR(ctx, rv, "Other then protected by SM, the keyset change is not supported");
+	}
 
 
 	update.fields[0].parent_tag = IASECC_SDO_KEYSET_TAG;
@@ -2301,6 +2298,10 @@ iasecc_keyset_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 	update.fields[1].size = 16;
 
 	rv = iasecc_sm_sdo_update(card, (scb & IASECC_SCB_METHOD_MASK_REF), &update);
+
+err:
+	iasecc_sdo_free_fields(card, &sdo);
+
 	LOG_FUNC_RETURN(ctx, rv);
 }
 
@@ -2420,7 +2421,7 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data)
 				pin_cmd.pin_reference = se_num;
 			}
 			rv = iasecc_pin_verify(card, &pin_cmd);
-			LOG_TEST_RET(ctx, rv, "iasecc_pin_reset() verify PUK error");
+			LOG_TEST_RET(ctx, rv, "verify PUK error");
 
 			if (!need_all)
 				break;
@@ -2433,7 +2434,7 @@ iasecc_pin_reset(struct sc_card *card, struct sc_pin_cmd_data *data)
 
 		if (scb & IASECC_SCB_METHOD_EXT_AUTH)   {
 			rv =  iasecc_sm_external_authentication(card, data->pin_reference, &data->pin1.tries_left);
-			LOG_TEST_RET(ctx, rv, "iasecc_pin_reset() external authentication error");
+			LOG_TEST_RET(ctx, rv, "external authentication error");
 		}
 	} while(0);
 
@@ -2459,7 +2460,7 @@ iasecc_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_pin_cmd() cmd 0x%X, PIN type 0x%X, PIN reference %i, PIN-1 %p:%zu, PIN-2 %p:%zu",
+	sc_log(ctx, "cmd 0x%X, PIN type 0x%X, PIN reference %i, PIN-1 %p:%zu, PIN-2 %p:%zu",
 			data->cmd, data->pin_type, data->pin_reference,
 			data->pin1.data, data->pin1.len, data->pin2.data, data->pin2.len);
 
@@ -2583,8 +2584,8 @@ iasecc_sdo_create(struct sc_card *card, struct iasecc_sdo *sdo)
 			IASECC_SDO_TAG_HEADER, sdo->sdo_class | 0x80, sdo->sdo_ref);
 
 	data_len = iasecc_sdo_encode_create(ctx, sdo, &data);
-	LOG_TEST_RET(ctx, data_len, "iasecc_sdo_create() cannot encode SDO create data");
-	sc_log(ctx, "iasecc_sdo_create() create data(%i):%s", data_len, sc_dump_hex(data, data_len));
+	LOG_TEST_RET(ctx, data_len, "cannot encode SDO create data");
+	sc_log(ctx, "create data(%i):%s", data_len, sc_dump_hex(data, data_len));
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDB, 0x3F, 0xFF);
 	apdu.data = data;
@@ -2595,7 +2596,7 @@ iasecc_sdo_create(struct sc_card *card, struct iasecc_sdo *sdo)
 	rv = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "iasecc_sdo_create() SDO put data error");
+	LOG_TEST_RET(ctx, rv, "SDO put data error");
 
 	memset(&update, 0, sizeof(update));
 	update.magic = SC_CARDCTL_IASECC_SDO_MAGIC_PUT_DATA;
@@ -2682,7 +2683,7 @@ iasecc_sdo_put_data(struct sc_card *card, struct iasecc_sdo_update *update)
 
 		encoded_len = iasecc_sdo_encode_update_field(ctx, update->sdo_class, update->sdo_ref,
 							&update->fields[ii], &encoded);
-		sc_log(ctx, "iasecc_sdo_put_data() encode[%i]; tag %X; encoded_len %i", ii, update->fields[ii].tag, encoded_len);
+		sc_log(ctx, "encode[%i]; tag %X; encoded_len %i", ii, update->fields[ii].tag, encoded_len);
 		LOG_TEST_RET(ctx, encoded_len, "Cannot encode update data");
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDB, 0x3F, 0xFF);
@@ -2883,19 +2884,10 @@ iasecc_sdo_get_data(struct sc_card *card, struct iasecc_sdo *sdo)
 	sdo_tag = iasecc_sdo_tag_from_class(sdo->sdo_class);
 
 	rv = iasecc_sdo_get_tagged_data(card, sdo_tag, sdo);
-	/* When there is no public data 'GET DATA' returns error */
-	if (rv != SC_ERROR_INCORRECT_PARAMETERS) {
-		if (rv < 0) {
-			iasecc_sdo_free_fields(card, sdo);
-			LOG_TEST_RET(ctx, rv, "cannot parse ECC SDO data");
-		}
-	}
+	LOG_TEST_RET(ctx, rv, "cannot parse ECC SDO data");
 
 	rv = iasecc_sdo_get_tagged_data(card, IASECC_DOCP_TAG, sdo);
-	if (rv < 0) {
-		iasecc_sdo_free_fields(card, sdo);
-		LOG_TEST_RET(ctx, rv, "cannot parse ECC DOCP data");
-	}
+	LOG_TEST_RET(ctx, rv, "cannot parse ECC DOCP data");
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -2947,7 +2939,7 @@ iasecc_sdo_generate(struct sc_card *card, struct iasecc_sdo *sdo)
 	update_pubkey.fields[0].size = sizeof(exponent);
 
 	rv = iasecc_sdo_put_data(card, &update_pubkey);
-	LOG_TEST_RET(ctx, rv, "iasecc_sdo_generate() update SDO public key failed");
+	LOG_TEST_RET(ctx, rv, "update SDO public key failed");
 
 	offs = 0;
 	sbuf[offs++] = IASECC_SDO_TEMPLATE_TAG;
@@ -3111,7 +3103,7 @@ iasecc_qsign_data_sha1(struct sc_context *ctx, const unsigned char *in, size_t i
 	if (!in || !in_len || !out)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "sc_pkcs15_get_qsign_data() input data length %zu", in_len);
+	sc_log(ctx, "input data length %zu", in_len);
 	memset(out, 0, sizeof(struct iasecc_qsign_data));
 
 	md = sc_evp_md(ctx, "SHA1");
@@ -3207,7 +3199,7 @@ iasecc_qsign_data_sha256(struct sc_context *ctx, const unsigned char *in, size_t
 	if (!in || !in_len || !out)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
-	sc_log(ctx, "sc_pkcs15_get_qsign_data() input data length %zu", in_len);
+	sc_log(ctx, "input data length %zu", in_len);
 	memset(out, 0, sizeof(struct iasecc_qsign_data));
 
 	md = sc_evp_md(ctx, "SHA256");
@@ -3292,7 +3284,7 @@ iasecc_compute_signature_dst(struct sc_card *card,
 	int rv = SC_SUCCESS;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_compute_signature_dst() input length %zu", in_len);
+	sc_log(ctx, "input length %zu", in_len);
 	if (env->operation != SC_SEC_OPERATION_SIGN)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "It's not SC_SEC_OPERATION_SIGN");
 	else if (!(prv->key_size & 0x1E0) || (prv->key_size & ~0x1E0))
@@ -3311,7 +3303,7 @@ iasecc_compute_signature_dst(struct sc_card *card,
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "Need RSA_HASH_SHA1 or RSA_HASH_SHA256 algorithm");
 	LOG_TEST_RET(ctx, rv, "Cannot get QSign data");
 
-	sc_log(ctx, "iasecc_compute_signature_dst() hash_len %zu; key_size %zu", hash_len, prv->key_size);
+	sc_log(ctx, "hash_len %zu; key_size %zu", hash_len, prv->key_size);
 
 	memset(sbuf, 0, sizeof(sbuf));
 	sbuf[offs++] = 0x90;
@@ -3331,7 +3323,7 @@ iasecc_compute_signature_dst(struct sc_card *card,
 	memcpy(sbuf + offs, qsign_data.last_block, qsign_data.last_block_size);
 	offs += qsign_data.last_block_size;
 
-	sc_log(ctx, "iasecc_compute_signature_dst() offs %zu; OP(meth:%X,ref:%X)",
+	sc_log(ctx, "offs %zu; OP(meth:%X,ref:%X)",
 			offs, prv->op_method, prv->op_ref);
 	if (prv->op_method == SC_AC_SCB && (prv->op_ref & IASECC_SCB_METHOD_SM))
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Not yet");
@@ -3346,7 +3338,7 @@ iasecc_compute_signature_dst(struct sc_card *card,
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, rv, "Compute signature failed");
 
-	sc_log(ctx, "iasecc_compute_signature_dst() partial hash OK");
+	sc_log(ctx, "partial hash OK");
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0x2A, 0x9E, 0x9A);
 	apdu.resp = rbuf;
@@ -3358,7 +3350,7 @@ iasecc_compute_signature_dst(struct sc_card *card,
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_RET(ctx, rv, "Compute signature failed");
 
-	sc_log(ctx, "iasecc_compute_signature_dst() DST resplen %zu", apdu.resplen);
+	sc_log(ctx, "DST resplen %zu", apdu.resplen);
 	if (apdu.resplen > out_len)
 		LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Result buffer too small for the DST signature");
 
@@ -3482,14 +3474,18 @@ iasecc_read_public_key(struct sc_card *card, unsigned type,
 		*out_len = 0;
 
 	bn[0].data = (unsigned char *) malloc(sdo.data.pub_key.n.size);
-	if (!bn[0].data)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "failed to read public key: cannot allocate modulus");
+	if (!bn[0].data) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, rv, "failed to read public key: cannot allocate modulus");
+	}
 	bn[0].len = sdo.data.pub_key.n.size;
 	memcpy(bn[0].data, sdo.data.pub_key.n.value, sdo.data.pub_key.n.size);
 
 	bn[1].data = (unsigned char *) malloc(sdo.data.pub_key.e.size);
-	if (!bn[1].data)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_OUT_OF_MEMORY, "failed to read public key: cannot allocate exponent");
+	if (!bn[1].data) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, rv, "failed to read public key: cannot allocate exponent");
+	}
 	bn[1].len = sdo.data.pub_key.e.size;
 	memcpy(bn[1].data, sdo.data.pub_key.e.value, sdo.data.pub_key.e.size);
 
@@ -3510,7 +3506,7 @@ err:
 
 	iasecc_sdo_free_fields(card, &sdo);
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -3534,16 +3530,14 @@ iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_refer
 		};
 		size_t sz;
 
-		if (sdo)
-			iasecc_sdo_free(card, sdo);
+		iasecc_sdo_free(card, sdo);
+		sdo = NULL;
 
 		rv = iasecc_sdo_allocate_and_parse(card, sdo_tag, 3, &sdo);
 		LOG_TEST_RET(ctx, rv, "cannot parse SDO data");
 
 		rv = iasecc_sdo_get_data(card, sdo);
 		if (rv == SC_ERROR_DATA_OBJECT_NOT_FOUND)   {
-			iasecc_sdo_free(card, sdo);
-
 			sc_log(ctx, "found empty key slot %i", idx);
 			break;
 		} else if (rv != SC_SUCCESS) {
@@ -3615,8 +3609,7 @@ iasecc_get_free_reference(struct sc_card *card, struct iasecc_ctl_get_free_refer
 
 	ctl_data->index = idx;
 
-	if (sdo)
-		iasecc_sdo_free(card, sdo);
+	iasecc_sdo_free(card, sdo);
 
 	if (idx > IASECC_OBJECT_REF_MAX)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_DATA_OBJECT_NOT_FOUND);
