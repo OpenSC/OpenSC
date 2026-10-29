@@ -2270,20 +2270,20 @@ int sc_asn1_decode_ecdsa_signature(sc_context_t *ctx, const u8 *data, size_t dat
 		r = sc_asn1_read_tag(&pint, (pend - pint), &cla, &tag, &intlen);
 		if (pint == NULL || r < 0 || intlen == 0 || (cla | tag) != 0x02) {
 			r = SC_ERROR_INVALID_DATA;
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Can not find 0x02");
+			LOG_TEST_GOTO_ERR(ctx, r, "Can not find 0x02");
 		}
 
 		if (intlen == fieldsize + 1) { /* drop leading 00 if present */
 			if (*pint != 0x00) {
 				r = SC_ERROR_INVALID_DATA;
-				LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Signature too long");
+				LOG_TEST_GOTO_ERR(ctx, r, "Signature too long");
 			}
 			pint++;
 			intlen--;
 		}
 		if (intlen > fieldsize) {
 			r = SC_ERROR_INVALID_DATA;
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Signature too long");
+			LOG_TEST_GOTO_ERR(ctx, r, "Signature too long");
 		}
 		memcpy(*out + fieldsize * i + fieldsize - intlen , pint, intlen);
 		pint += intlen; /* next integer */
