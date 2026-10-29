@@ -363,8 +363,9 @@ sc_single_transmit(struct sc_card *card, struct sc_apdu *apdu)
 	if (card->reader->ops->transmit == NULL)
 		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "cannot transmit APDU");
 
-	sc_log(ctx, "CLA:%X, INS:%X, P1:%X, P2:%X, data(%zu) %p",
-			apdu->cla, apdu->ins, apdu->p1, apdu->p2, apdu->datalen, apdu->data);
+	sc_log(ctx, "CSE:%X, CLA:%X, INS:%X, P1:%X, P2:%X, FLAGS:0x%8.8lx, data(%zu) %p, resp(%zu) %p",
+			apdu->cse, apdu->cla, apdu->ins, apdu->p1, apdu->p2, apdu->flags, apdu->datalen,
+			apdu->data, apdu->resplen, apdu->resp);
 #ifdef ENABLE_SM
 	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
 		   	&& (apdu->flags & SC_APDU_FLAGS_NO_SM) == 0) {
@@ -561,14 +562,15 @@ int sc_transmit_apdu(sc_card_t *card, sc_apdu_t *apdu)
 	}
 
 #if ENABLE_SM
-	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT
-			&& (apdu->flags & SC_APDU_FLAGS_CHAINING) != 0
-			&& (apdu->flags & SC_APDU_FLAGS_SM_CHAINING) != 0) {
+	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT &&
+			(apdu->flags & SC_APDU_FLAGS_CHAINING) != 0 &&
+			(apdu->flags & SC_APDU_FLAGS_NO_SM) == 0 &&
+			(card->sm_ctx.sm_flags & SM_FLAGS_ENCRYPT_THEN_CHAINING) != 0) {
 		sc_log(card->ctx,"Let SM do the chaining");
 		r = sc_transmit(card, apdu);
 	} else
 #endif
-	if ((apdu->flags & SC_APDU_FLAGS_CHAINING) != 0) {
+			if ((apdu->flags & SC_APDU_FLAGS_CHAINING) != 0) {
 		/* divide et impera: transmit APDU in chunks with Lc <= max_send_size
 		 * bytes using command chaining */
 		size_t    len  = apdu->datalen;
