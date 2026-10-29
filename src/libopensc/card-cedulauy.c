@@ -481,16 +481,11 @@ cedulauy_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
 	unsigned char sbuf[64];
 	unsigned char rbuf[256];
 	size_t offs = 0;
-	int under_sm = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (data == NULL || out == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-#ifdef CEDULAUY_HAS_PACE
-	under_sm = card->sm_ctx.sm_mode == SM_MODE_TRANSMIT;
-#endif
 
 	if (datalen == 0 || datalen > sizeof(sbuf) - 2)
 		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED,
@@ -501,13 +496,17 @@ cedulauy_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
 	sbuf[offs++] = (unsigned char)datalen;
 	memcpy(sbuf + offs, data, datalen);
 	offs += datalen;
-	if (under_sm) {
+#ifdef CEDULAUY_HAS_PACE
+	if (card->sm_ctx.sm_mode == SM_MODE_TRANSMIT) {
 		/* under SM the card returns an encrypted body that must not be truncated */
 		sc_format_apdu_ex(&apdu, card->cla, 0x2A, 0x90, 0xA0, sbuf, offs, rbuf, sizeof rbuf);
 		apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP;
 	} else {
 		sc_format_apdu_ex(&apdu, card->cla, 0x2A, 0x90, 0xA0, sbuf, offs, NULL, 0);
 	}
+#else
+	sc_format_apdu_ex(&apdu, card->cla, 0x2A, 0x90, 0xA0, sbuf, offs, NULL, 0);
+#endif
 	SC_TRANSMIT_TEST_RET(card, apdu, "PSO HASH failed");
 
 	/* PSO COMPUTE DIGITAL SIGNATURE */
