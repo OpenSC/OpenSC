@@ -3753,8 +3753,10 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 	len = 2 + tlvlen_7f48 + tlvlen_5f48;
 	/* set data part content */
 	data = calloc(1, len);
-	if (data == NULL)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ENOUGH_MEMORY, "Not enough memory");
+	if (data == NULL) {
+		r = SC_ERROR_NOT_ENOUGH_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, r, "Not enough memory");
+	}
 
 	switch (key_info->key_id) {
 		case SC_OPENPGP_KEY_SIGN:
@@ -3767,8 +3769,8 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 			ushort2bebytes(data, DO_AUTH);
 			break;
 		default:
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_ARGUMENTS,
-						"Invalid key ID; must be 1, 2, or 3");
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			LOG_TEST_GOTO_ERR(ctx, r, "Invalid key ID; must be 1, 2, or 3");
 	}
 	memcpy(data + 2, tlv_7f48, tlvlen_7f48);
 	memcpy(data + 2 + tlvlen_7f48, tlv_5f48, tlvlen_5f48);

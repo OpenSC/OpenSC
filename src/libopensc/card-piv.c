@@ -4737,12 +4737,14 @@ piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 	p = rbuf;
 	r = sc_asn1_read_tag(&p, r, &cla_out, &tag_out, &out_len);
 	if (r < 0 || (cla_out | tag_out) != 0x7C) {
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find Dynamic Authentication Template");
+		r = SC_ERROR_INVALID_DATA;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can't find Dynamic Authentication Template");
 	}
 
 	r = sc_asn1_read_tag(&p, out_len, &cla_out, &tag_out, &out_len);
 	if (r < 0 || (cla_out | tag_out) != 0x81) {
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find Challenge");
+		r = SC_ERROR_INVALID_DATA;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can't find Challenge");
 	}
 
 	if (len < out_len) {
@@ -4906,16 +4908,19 @@ piv_validate_general_authentication(sc_card_t *card,
 	p2 = rbuf;
 	r = sc_asn1_read_tag(&p2, r, &cla, &tag, &bodylen);
 	if (p2 == NULL || r < 0 || bodylen == 0 || (cla | tag) != 0x7C) {
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x7C");
+		r = SC_ERROR_INVALID_DATA;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can't find 0x7C");
 	}
 
 	r = sc_asn1_read_tag(&p2, bodylen, &cla, &tag, &taglen);
 	if (p2 == NULL || r < 0 || taglen == 0 || (cla | tag) != 0x82) {
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "Can't find 0x82");
+		r = SC_ERROR_INVALID_DATA;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Can't find 0x82");
 	}
 
 	if (taglen > outlen) {
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "data read longer then buffer");
+		r = SC_ERROR_INVALID_DATA;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "data read longer then buffer");
 	}
 
 	memcpy(out, p2, taglen);

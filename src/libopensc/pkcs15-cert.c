@@ -104,8 +104,10 @@ parse_x509_cert(sc_context_t *ctx, struct sc_pkcs15_der *der, struct sc_pkcs15_c
 
 	LOG_TEST_GOTO_ERR(ctx, r, "ASN.1 parsing of certificate failed");
 
-	if (!pubkey)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_ASN1_OBJECT, "Unable to decode subjectPublicKeyInfo from cert");
+	if (!pubkey) {
+		r = SC_ERROR_INVALID_ASN1_OBJECT;
+		LOG_TEST_GOTO_ERR(ctx, r, "Unable to decode subjectPublicKeyInfo from cert");
+	}
 
 
 	if (serial && serial_len)   {

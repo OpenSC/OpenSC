@@ -1758,8 +1758,10 @@ iasecc_store_data_object(struct sc_pkcs15_card *p15card, struct sc_profile *prof
 		file = NULL;
 	}
 
-	if (index == MAX_DATA_OBJS)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_TOO_MANY_OBJECTS, "iasecc_store_data_object() too many DATA objects.");
+	if (index == MAX_DATA_OBJS) {
+		rv = SC_ERROR_TOO_MANY_OBJECTS;
+		LOG_TEST_GOTO_ERR(ctx, rv, "iasecc_store_data_object() too many DATA objects.");
+	}
 
 	do  {
 		const struct sc_acl_entry *acl;
