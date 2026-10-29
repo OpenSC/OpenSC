@@ -145,6 +145,7 @@ const char *sc_strerror(int error)
 	const char *misc_errors[] = {
 		"Unknown error",
 		"PKCS#15 compatible smart card not found",
+		"Certificate verification failed",
 	};
 	const unsigned int misc_base = -SC_ERROR_UNKNOWN;
 

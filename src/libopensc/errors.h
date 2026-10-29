@@ -130,6 +130,7 @@ extern "C" {
 /* Errors that do not fit the categories above */
 #define SC_ERROR_UNKNOWN			-1900
 #define SC_ERROR_PKCS15_APP_NOT_FOUND		-1901
+#define SC_ERROR_CERT_VERIFICATION_FAILED	-1902
 
 const char *sc_strerror(int sc_errno);
 
