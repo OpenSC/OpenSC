@@ -1173,6 +1173,15 @@ gids_select_key_reference(sc_card_t *card, sc_pkcs15_prkey_info_t* key_info) {
 			sc_log(card->ctx, "container num is not allowed %zu %zu", i, recordsnum);
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
+		// never hand out a container that is in use: creating its key file again fails with
+		// "file already exists" and would leave the card unable to receive new keys
+		while (i < recordsnum && (records[i].bFlags & CONTAINER_MAP_VALID_CONTAINER)) {
+			i++;
+		}
+		if (i > GIDS_MAX_CONTAINER) {
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+		}
+		key_info->key_reference = (int)(GIDS_FIRST_KEY_IDENTIFIER + i);
 	}
 	snprintf(ch_tmp, sizeof(ch_tmp), "3FFFB0%02X", (u8) (0xFF & key_info->key_reference));
 	sc_format_path(ch_tmp, &(key_info->path));
