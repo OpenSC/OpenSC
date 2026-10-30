@@ -975,9 +975,11 @@ int main(int argc, char * argv[])
 			opt_attr_from_file = optarg;
 			break;
 		case OPT_READ_ATTRIBUTE:
-			if (opt_read_attributes_count == MAX_ATTRIBUTE_ARGS)
-				util_fatal("Too many --read-attribute options");
-			opt_read_attributes[opt_read_attributes_count++] = optarg;
+			for (s = strtok(optarg, ","); s != NULL; s = strtok(NULL, ",")) {
+				if (opt_read_attributes_count == MAX_ATTRIBUTE_ARGS)
+					util_fatal("Too many attributes for --read-attribute");
+				opt_read_attributes[opt_read_attributes_count++] = s;
+			}
 			need_session |= NEED_SESSION_RO;
 			if (!do_read_attribute)
 				action_count++;
@@ -5989,7 +5991,6 @@ attr_kind_of(CK_ATTRIBUTE_TYPE type, const type_spec *spec)
 	case CKA_VALUE_BITS:
 	case CKA_CERTIFICATE_CATEGORY:
 	case CKA_JAVA_MIDP_SECURITY_DOMAIN:
-	case CKA_PROFILE_ID:
 	case CKA_PARAMETER_SET:
 		return ATTR_ULONG;
 	case CKA_KEY_GEN_MECHANISM:
@@ -6060,7 +6061,7 @@ print_attr_value(enum attr_kind kind, const type_spec *spec,
 		for (i = 0; i < len; i++)
 			if (value[i] < 0x20 || value[i] == 0x7f)
 				goto hex;
-		printf("%.*s\n", (int)len, (const char *)value);
+		printf("%.*s\n", (int)len, value ? (const char *)value : "");
 		return;
 	case ATTR_DATE:
 		if (len == 0) {
@@ -6102,48 +6103,62 @@ read_attributes(CK_SESSION_HANDLE session)
 	size_t a;
 
 	for (a = 0; a < opt_read_attributes_count; a++) {
-		char *list = strdup(opt_read_attributes[a]);
-		char *name;
+		const char *name = opt_read_attributes[a];
+		CK_ATTRIBUTE attr = {0, NULL, 0};
+		const type_spec *spec;
+		char shown[64];
+		CK_RV rv;
 
-		if (list == NULL)
-			util_fatal("out of memory");
-		for (name = strtok(list, ","); name; name = strtok(NULL, ",")) {
-			CK_ATTRIBUTE attr = {0, NULL, 0};
-			const type_spec *spec;
-			char shown[64];
-			CK_RV rv;
+		if (!attr_from_name(name, &attr.type))
+			util_fatal("Unknown attribute \"%s\"", name);
+		spec = attr_spec_by_type(attr.type);
+		if (spec)
+			attr_spec_name(spec, shown, sizeof(shown));
+		else
+			snprintf(shown, sizeof(shown), "0x%08lx", (unsigned long)attr.type);
 
-			if (!attr_from_name(name, &attr.type))
-				util_fatal("Unknown attribute \"%s\"", name);
-			spec = attr_spec_by_type(attr.type);
-			if (spec)
-				attr_spec_name(spec, shown, sizeof(shown));
-			else
-				snprintf(shown, sizeof(shown), "0x%08lx", (unsigned long)attr.type);
-
+		rv = p11->C_GetAttributeValue(session, obj, &attr, 1);
+		if (rv == CKR_OK && attr.ulValueLen != CK_UNAVAILABLE_INFORMATION && attr.ulValueLen > 0) {
+			attr.pValue = malloc(attr.ulValueLen);
+			if (attr.pValue == NULL)
+				util_fatal("out of memory");
 			rv = p11->C_GetAttributeValue(session, obj, &attr, 1);
-			if (rv == CKR_OK && attr.ulValueLen != CK_UNAVAILABLE_INFORMATION) {
-				attr.pValue = attr.ulValueLen ? malloc(attr.ulValueLen) : NULL;
-				if (attr.ulValueLen && attr.pValue == NULL)
-					util_fatal("out of memory");
-				rv = p11->C_GetAttributeValue(session, obj, &attr, 1);
-			}
-			printf("%s: ", shown);
-			if (rv == CKR_OK && attr.ulValueLen == CK_UNAVAILABLE_INFORMATION)
-				printf("(unavailable)\n");
-			else if (rv == CKR_ATTRIBUTE_SENSITIVE)
-				printf("(sensitive)\n");
-			else if (rv == CKR_ATTRIBUTE_TYPE_INVALID)
-				printf("(not present)\n");
-			else if (rv != CKR_OK)
-				printf("(%s)\n", CKR2Str(rv));
-			else
-				print_attr_value(attr_kind_of(attr.type, spec), spec,
-						attr.pValue, attr.ulValueLen);
-			free(attr.pValue);
 		}
-		free(list);
+		printf("%s: ", shown);
+		if (rv == CKR_OK && attr.ulValueLen == CK_UNAVAILABLE_INFORMATION)
+			printf("(unavailable)\n");
+		else if (rv == CKR_ATTRIBUTE_SENSITIVE)
+			printf("(sensitive)\n");
+		else if (rv == CKR_ATTRIBUTE_TYPE_INVALID)
+			printf("(not present)\n");
+		else if (rv != CKR_OK)
+			printf("(%s)\n", CKR2Str(rv));
+		else
+			print_attr_value(attr_kind_of(attr.type, spec), spec,
+					attr.pValue, attr.ulValueLen);
+		free(attr.pValue);
 	}
+}
+
+/* A mechanism named as pkcs11-tool names it (AES-CBC) or as PKCS#11 does
+ * (CKM_AES_CBC) */
+static CK_MECHANISM_TYPE
+attr_mech_from_name(const char *name)
+{
+	CK_MECHANISM_TYPE mech;
+	char *s, *p;
+
+	if (strncasecmp(name, "CKM_", 4) != 0)
+		return p11_name_to_mechanism(name);
+	s = strdup(name + 4);
+	if (s == NULL)
+		util_fatal("out of memory");
+	for (p = s; *p; p++)
+		if (*p == '_')
+			*p = '-';
+	mech = p11_name_to_mechanism(s);
+	free(s);
+	return mech;
 }
 
 /* Parse VALUE for an attribute of this kind into a fresh buffer */
@@ -6181,15 +6196,16 @@ parse_attr_value(enum attr_kind kind, const type_spec *spec, const char *name,
 		if (p == NULL)
 			util_fatal("out of memory");
 		if (kind == ATTR_MECH) {
-			v = p11_name_to_mechanism(value);
+			v = attr_mech_from_name(value);
 			found = 1;
 		} else {
 			for (i = 0; es && i < es->size; i++) {
 				size_t n = spy_name_len(es->specs[i].name);
 
-				if (n == strlen(value) && !strncasecmp(es->specs[i].name, value, n)) {
+				if (!strncasecmp(es->specs[i].name, value, n) && value[n] == '\0') {
 					v = es->specs[i].type;
 					found = 1;
+					break;
 				}
 			}
 		}
@@ -6216,7 +6232,7 @@ parse_attr_value(enum attr_kind kind, const type_spec *spec, const char *name,
 			if (grown == NULL)
 				util_fatal("out of memory");
 			mechs = grown;
-			mechs[n++] = p11_name_to_mechanism(m);
+			mechs[n++] = attr_mech_from_name(m);
 		}
 		free(list);
 		attr->pValue = mechs;
@@ -6231,6 +6247,7 @@ parse_attr_value(enum attr_kind kind, const type_spec *spec, const char *name,
 		return;
 	case ATTR_DATE: {
 		CK_DATE *d;
+		char digits[8];
 		size_t i;
 
 		if (value[0] == '\0') {
@@ -6238,17 +6255,25 @@ parse_attr_value(enum attr_kind kind, const type_spec *spec, const char *name,
 			attr->ulValueLen = 0;
 			return;
 		}
-		if (strlen(value) != 8)
-			util_fatal("%s: \"%s\" is not YYYYMMDD", name, value);
-		for (i = 0; i < 8; i++)
-			if (value[i] < '0' || value[i] > '9')
-				util_fatal("%s: \"%s\" is not YYYYMMDD", name, value);
+		/* YYYY-MM-DD is what --read-attribute prints */
+		if (strlen(value) == 10 && value[4] == '-' && value[7] == '-') {
+			memcpy(digits, value, 4);
+			memcpy(digits + 4, value + 5, 2);
+			memcpy(digits + 6, value + 8, 2);
+		} else if (strlen(value) == 8) {
+			memcpy(digits, value, 8);
+		} else {
+			util_fatal("%s: \"%s\" is not YYYYMMDD or YYYY-MM-DD", name, value);
+		}
+		for (i = 0; i < sizeof(digits); i++)
+			if (digits[i] < '0' || digits[i] > '9')
+				util_fatal("%s: \"%s\" is not YYYYMMDD or YYYY-MM-DD", name, value);
 		d = malloc(sizeof(*d));
 		if (d == NULL)
 			util_fatal("out of memory");
-		memcpy(d->year, value, 4);
-		memcpy(d->month, value + 4, 2);
-		memcpy(d->day, value + 6, 2);
+		memcpy(d->year, digits, 4);
+		memcpy(d->month, digits + 4, 2);
+		memcpy(d->day, digits + 6, 2);
 		attr->pValue = d;
 		attr->ulValueLen = sizeof(*d);
 		return;

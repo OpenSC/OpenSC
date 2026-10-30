@@ -398,8 +398,9 @@
 					<option>--read-attribute</option>. The value is read according to the
 					attribute: <literal>true</literal> or <literal>false</literal>, a number or
 					a name (<literal>CKK_AES</literal>), text for labels, hexadecimal for byte
-					arrays such as <literal>ID</literal>, <literal>YYYYMMDD</literal> for dates,
-					and a comma-separated list of mechanisms for
+					arrays such as <literal>ID</literal>, <literal>YYYYMMDD</literal> or
+					<literal>YYYY-MM-DD</literal> for dates, and a comma-separated list of
+					mechanisms (<literal>AES-CBC</literal> or <literal>CKM_AES_CBC</literal>) for
 					<literal>CKA_ALLOWED_MECHANISMS</literal>. May be repeated; all the
 					attributes are sent in one <function>C_SetAttributeValue</function> call.
 					Which attributes may be changed is for the token to decide.</para></listitem>

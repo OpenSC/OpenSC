@@ -1736,8 +1736,9 @@ to enable debug output in the opensc library.</p></dd></dl></div><p>
 					<code class="option">--read-attribute</code>. The value is read according to the
 					attribute: <code class="literal">true</code> or <code class="literal">false</code>, a number or
 					a name (<code class="literal">CKK_AES</code>), text for labels, hexadecimal for byte
-					arrays such as <code class="literal">ID</code>, <code class="literal">YYYYMMDD</code> for dates,
-					and a comma-separated list of mechanisms for
+					arrays such as <code class="literal">ID</code>, <code class="literal">YYYYMMDD</code> or
+					<code class="literal">YYYY-MM-DD</code> for dates, and a comma-separated list of
+					mechanisms (<code class="literal">AES-CBC</code> or <code class="literal">CKM_AES_CBC</code>) for
 					<code class="literal">CKA_ALLOWED_MECHANISMS</code>. May be repeated; all the
 					attributes are sent in one <code class="function">C_SetAttributeValue</code> call.
 					Which attributes may be changed is for the token to decide.</p></dd><dt><span class="term">
