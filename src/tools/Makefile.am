@@ -67,6 +67,9 @@ pkcs11_tool_LDADD = \
 	$(top_builddir)/src/common/libpkcs11.la \
 	$(OPTIONAL_OPENSSL_LIBS)
 if ENABLE_SHARED
+# The attribute names of --read-attribute and --set-attribute; a static build
+# gets this file from libopensc-pkcs11 below
+pkcs11_tool_SOURCES += ../pkcs11/pkcs11-display.c ../pkcs11/pkcs11-display.h
 else
 pkcs11_tool_LDADD += \
 	$(top_builddir)/src/pkcs11/libopensc-pkcs11.la
