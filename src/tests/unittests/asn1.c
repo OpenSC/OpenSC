@@ -23,6 +23,28 @@
 #include "libopensc/log.c"
 #include "libopensc/asn1.c"
 
+static void
+torture_asn1_read_tag_eoc(void **state)
+{
+	const u8 inputs[] = {0x00, 0xff};
+	size_t i;
+
+	for (i = 0; i < sizeof(inputs) / sizeof(inputs[0]); i++) {
+		const u8 *p = &inputs[i];
+		unsigned int cla = 0xdeadbeefU;
+		unsigned int tag = 0xdeadbeefU;
+		size_t taglen = (size_t)-1;
+		int rv;
+
+		rv = sc_asn1_read_tag(&p, 1, &cla, &tag, &taglen);
+		assert_int_equal(rv, SC_SUCCESS);
+		assert_null(p);
+		assert_int_equal(cla, SC_ASN1_TAG_UNIVERSAL);
+		assert_int_equal(tag, SC_ASN1_TAG_EOC);
+		assert_int_equal(taglen, 0);
+	}
+}
+
 /* The last argument is an OID value */
 #define TORTURE_OID(name, asn1_data, ...) \
 	static void torture_asn1_oid_## name (void **state) \
@@ -793,6 +815,8 @@ int main(void)
 	int rc;
 	// clang-format off
 	struct CMUnitTest tests[] = {
+		/* read_tag() */
+		cmocka_unit_test(torture_asn1_read_tag_eoc),
 		/* INTEGER */
 		cmocka_unit_test(torture_asn1_integer_zero),
 		cmocka_unit_test(torture_asn1_integer_one),
