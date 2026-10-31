@@ -1374,48 +1374,6 @@ epass2003_sm_read_tag(struct sc_card *card, const u8 **buf, size_t buflen,
 }
 
 
-static const u8 *
-epass2003_sm_find_tag(struct sc_card *card, const u8 *buf, size_t buflen,
-		unsigned int tag_in, size_t *taglen_in)
-{
-	size_t left = buflen, taglen;
-	const u8 *p = buf;
-
-	*taglen_in = 0;
-	while (left >= 2) {
-		unsigned int cla = 0, tag, mask = 0xff00;
-
-		buf = p;
-		/* read a tag */
-		if (epass2003_sm_read_tag(card, &p, left, &cla, &tag, &taglen) != SC_SUCCESS
-				|| p == NULL)
-			return NULL;
-
-		left -= (p - buf);
-		/* we need to shift the class byte to the leftmost
-		 * byte of the tag */
-		while ((tag & mask) != 0) {
-			cla <<= 8;
-			mask <<= 8;
-		}
-		/* compare the read tag with the given tag */
-		if ((tag | cla) == tag_in) {
-			/* we have a match => return length and value part */
-			if (taglen > left)
-				return NULL;
-			*taglen_in = taglen;
-			return p;
-		}
-		/* otherwise continue reading tags */
-		if (taglen > left)
-			return NULL;
-		left -= taglen;
-		p += taglen;
-	}
-	return NULL;
-}
-
-
 static int
 epass2003_check_response_mac_and_sw(struct sc_card *card, struct sc_apdu *sm)
 {
@@ -1423,8 +1381,12 @@ epass2003_check_response_mac_and_sw(struct sc_card *card, struct sc_apdu *sm)
 	unsigned char *data = NULL, *mac = NULL;
 	size_t blocksize, mac_len;
 	int ret = -1;
-	size_t taglen;
-	const u8 *tag;
+	unsigned int cla = 0, tag = 0;
+	size_t taglen = 0;
+	const u8 *p = sm->resp;
+	const u8 *tag_start;
+	const u8 *mac_val;
+	size_t left = sm->resplen;
 	epass2003_exdata *exdata;
 	unsigned char *in = sm->resp;
 	size_t inlen = sm->resplen;
@@ -1436,28 +1398,60 @@ epass2003_check_response_mac_and_sw(struct sc_card *card, struct sc_apdu *sm)
 	if (inlen < 14)
 		return ret;
 
+	/* Optional DO 0x87 */
+	tag_start = p;
+	if (SC_SUCCESS != epass2003_sm_read_tag(card, &p, left, &cla, &tag, &taglen) || p == NULL)
+		return ret;
+	left -= (p - tag_start);
+	if (taglen > left)
+		return ret;
+
+	if ((cla | tag) == 0x87) {
+		p += taglen;
+		left -= taglen;
+
+		/* Read next tag (must be DO 0x99) */
+		tag_start = p;
+		if (SC_SUCCESS != epass2003_sm_read_tag(card, &p, left, &cla, &tag, &taglen) || p == NULL)
+			return ret;
+		left -= (p - tag_start);
+		if (taglen > left)
+			return ret;
+	}
+
 	/* compare BER-TLV encoded SW (TAG 0x99) and raw SW */
-	tag = epass2003_sm_find_tag(card, in, inlen, 0x99, &taglen);
-	if (tag == NULL || taglen != 2)
+	if ((cla | tag) != 0x99 || taglen != 2)
 		return ret;
-	if (sm->sw1 != tag[0] || sm->sw2 != tag[1])
+	if (sm->sw1 != p[0] || sm->sw2 != p[1])
 		return ret;
+
+	p += taglen;
+	left -= taglen;
 
 	/* no documentation/real hardware to test, the response is accepted without MAC check */
 	if (exdata->bFipsCertification) {
 		sc_log(card->ctx, "Warning, MAC is not checked");
 		return 0;
 	}
-	tag = epass2003_sm_find_tag(card, in, inlen, 0x8e, &taglen);
-	if (tag == NULL || taglen != 8)
+
+	/* Next tag must be DO 0x8E */
+	tag_start = p;
+	if (SC_SUCCESS != epass2003_sm_read_tag(card, &p, left, &cla, &tag, &taglen) || p == NULL)
 		return ret;
+	left -= (p - tag_start);
+	if (taglen > left)
+		return ret;
+
+	if ((cla | tag) != 0x8e || taglen != 8)
+		return ret;
+	mac_val = p;
 
 	if (KEY_TYPE_AES == exdata->smtype)
 		blocksize = 16;
 	else
 		blocksize = 8;
 
-	mac_len = tag - in - 2;
+	mac_len = tag_start - in;
 	if (NULL == (data = calloc(1, mac_len + blocksize)))
 		goto end;
 	if (NULL == (mac = malloc(mac_len + blocksize)))
@@ -1489,7 +1483,7 @@ epass2003_check_response_mac_and_sw(struct sc_card *card, struct sc_apdu *sm)
 			goto end;
 	}
 	/* compare MAC */
-	if (!memcmp(tag, mac + mac_len - blocksize, 8))
+	if (!memcmp(mac_val, mac + mac_len - blocksize, 8))
 		ret = 0;
 end:
 	if (data)
