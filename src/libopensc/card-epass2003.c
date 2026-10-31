@@ -1342,6 +1342,81 @@ epass2003_sm_wrap_apdu(struct sc_card *card, struct sc_apdu *plain, struct sc_ap
 }
 
 static int
+epass2003_sm_read_tag(struct sc_card *card, const u8 **buf, size_t buflen,
+		unsigned int *cla_out, unsigned int *tag_out, size_t *taglen)
+{
+	const u8 *p;
+
+	if (!buf || !*buf)
+		return sc_asn1_read_tag(buf, buflen, cla_out, tag_out, taglen);
+
+	p = *buf;
+	if (buflen >= 3 && p[0] == 0x87 && (p[1] & 0x80) && p[2] == 0x01 && p[1] != 0x82) {
+		/*
+		 * Workaround for EPASS2003 firmware bug:
+		 * Instead of (correct) TLV 87 81 81 [01 .. ..], incorrect TLV 87 81 [01 .. ..]
+		 * is returned (0x81 is encoded as a short-form length).
+		 */
+		size_t len = p[1];
+		if (buflen - 2 < len) {
+			*buf = NULL;
+			return SC_ERROR_ASN1_END_OF_CONTENTS;
+		}
+		sc_log(card->ctx, "Workaround for wrong BER-TLV in SM response");
+		*cla_out = (p[0] & SC_ASN1_TAG_CLASS) | (p[0] & SC_ASN1_TAG_CONSTRUCTED);
+		*tag_out = p[0] & SC_ASN1_TAG_PRIMITIVE;
+		*taglen = len;
+		*buf = p + 2;
+		return SC_SUCCESS;
+	}
+
+	return sc_asn1_read_tag(buf, buflen, cla_out, tag_out, taglen);
+}
+
+
+static const u8 *
+epass2003_sm_find_tag(struct sc_card *card, const u8 *buf, size_t buflen,
+		unsigned int tag_in, size_t *taglen_in)
+{
+	size_t left = buflen, taglen;
+	const u8 *p = buf;
+
+	*taglen_in = 0;
+	while (left >= 2) {
+		unsigned int cla = 0, tag, mask = 0xff00;
+
+		buf = p;
+		/* read a tag */
+		if (epass2003_sm_read_tag(card, &p, left, &cla, &tag, &taglen) != SC_SUCCESS
+				|| p == NULL)
+			return NULL;
+
+		left -= (p - buf);
+		/* we need to shift the class byte to the leftmost
+		 * byte of the tag */
+		while ((tag & mask) != 0) {
+			cla <<= 8;
+			mask <<= 8;
+		}
+		/* compare the read tag with the given tag */
+		if ((tag | cla) == tag_in) {
+			/* we have a match => return length and value part */
+			if (taglen > left)
+				return NULL;
+			*taglen_in = taglen;
+			return p;
+		}
+		/* otherwise continue reading tags */
+		if (taglen > left)
+			return NULL;
+		left -= taglen;
+		p += taglen;
+	}
+	return NULL;
+}
+
+
+static int
 epass2003_check_response_mac_and_sw(struct sc_card *card, struct sc_apdu *sm)
 {
 	unsigned char iv[16];
@@ -1352,41 +1427,19 @@ epass2003_check_response_mac_and_sw(struct sc_card *card, struct sc_apdu *sm)
 	const u8 *tag;
 	epass2003_exdata *exdata;
 	unsigned char *in = sm->resp;
-	unsigned char *alt_in;
 	size_t inlen = sm->resplen;
-	size_t len_correction;
 
 	/* card/ctx/drv_data is already checked by caller */
 	exdata = (epass2003_exdata *)card->drv_data;
 
 	/* The SM must contain at least TLV encoded SW and MAC fields. */
-	if (inlen < 14 )
+	if (inlen < 14)
 		return ret;
 
 	/* compare BER-TLV encoded SW (TAG 0x99) and raw SW */
-	alt_in = in;
-	tag = sc_asn1_find_tag(card->ctx, alt_in, inlen, 0x99, &taglen);
-	if (tag == NULL || taglen != 2) {
-		/*
-		 * It seems that the EPASS2003 firmware has some problem with BER-TLV encoding.
-		 * Instead of (correct) TLV 87 81 81 [01 .. ..] incorrect TLV 87 81 [01 .. ..]
-		 * is returned. There seems to be some proprietary fix for the faulty encoding
-		 * in the decrypt_response() function, similar fix here:
-		 */
-		if (0x01 == in[2] && 0x82 != in[1]) {
-			sc_log(card->ctx, "Workaround, wrong BER-TLV ?");
-			len_correction = in[1] + 2;
-			if (inlen < len_correction)
-				return ret;
-			inlen -= len_correction;
-			alt_in += len_correction;
-			tag = sc_asn1_find_tag(card->ctx, alt_in, inlen, 0x99, &taglen);
-			if (tag == NULL || taglen != 2)
-				return ret;
-		} else {
-			return ret;
-		}
-	}
+	tag = epass2003_sm_find_tag(card, in, inlen, 0x99, &taglen);
+	if (tag == NULL || taglen != 2)
+		return ret;
 	if (sm->sw1 != tag[0] || sm->sw2 != tag[1])
 		return ret;
 
@@ -1395,7 +1448,7 @@ epass2003_check_response_mac_and_sw(struct sc_card *card, struct sc_apdu *sm)
 		sc_log(card->ctx, "Warning, MAC is not checked");
 		return 0;
 	}
-	tag = sc_asn1_find_tag(card->ctx, alt_in, inlen, 0x8e, &taglen);
+	tag = epass2003_sm_find_tag(card, in, inlen, 0x8e, &taglen);
 	if (tag == NULL || taglen != 8)
 		return ret;
 
@@ -1472,7 +1525,7 @@ decrypt_response(struct sc_card *card, unsigned char *in, size_t inlen, unsigned
 
 	exdata = (epass2003_exdata *)card->drv_data;
 
-	if (SC_SUCCESS != sc_asn1_read_tag(&p, inlen, &cla, &tag, &cipher_len) || p == NULL) {
+	if (SC_SUCCESS != epass2003_sm_read_tag(card, &p, inlen, &cla, &tag, &cipher_len) || p == NULL) {
 		return -1;
 	}
 	if ((cla | tag) == 0x99)
