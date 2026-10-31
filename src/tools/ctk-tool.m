@@ -103,7 +103,7 @@ void
 run_algorithm_tests(SecKeyRef privateKey, SecKeyRef publicKey, int threadID)
 {
 	// --- 1. SIGNATURE ALGORITHMS ---
-	NSArray *signAlgorithms = @[
+	NSMutableArray *signAlgorithms = [NSMutableArray arrayWithArray:@[
 		// RSA Raw & PKCS1v15
 		(__bridge id)kSecKeyAlgorithmRSASignatureRaw,
 		(__bridge id)kSecKeyAlgorithmRSASignatureDigestPKCS1v15Raw,
@@ -140,18 +140,23 @@ run_algorithm_tests(SecKeyRef privateKey, SecKeyRef publicKey, int threadID)
 		(__bridge id)kSecKeyAlgorithmECDSASignatureMessageX962SHA256,
 		(__bridge id)kSecKeyAlgorithmECDSASignatureMessageX962SHA384,
 		(__bridge id)kSecKeyAlgorithmECDSASignatureMessageX962SHA512,
-		(__bridge id)kSecKeyAlgorithmECDSASignatureDigestRFC4754,
-		(__bridge id)kSecKeyAlgorithmECDSASignatureDigestRFC4754SHA1,
-		(__bridge id)kSecKeyAlgorithmECDSASignatureDigestRFC4754SHA224,
-		(__bridge id)kSecKeyAlgorithmECDSASignatureDigestRFC4754SHA256,
-		(__bridge id)kSecKeyAlgorithmECDSASignatureDigestRFC4754SHA384,
-		(__bridge id)kSecKeyAlgorithmECDSASignatureDigestRFC4754SHA512,
-		(__bridge id)kSecKeyAlgorithmECDSASignatureMessageRFC4754SHA1,
-		(__bridge id)kSecKeyAlgorithmECDSASignatureMessageRFC4754SHA224,
-		(__bridge id)kSecKeyAlgorithmECDSASignatureMessageRFC4754SHA256,
-		(__bridge id)kSecKeyAlgorithmECDSASignatureMessageRFC4754SHA384,
-		(__bridge id)kSecKeyAlgorithmECDSASignatureMessageRFC4754SHA512,
-	];
+	]];
+
+	if (@available(macOS 14.0, *)) {
+		[signAlgorithms addObjectsFromArray:@[
+			(__bridge id)kSecKeyAlgorithmECDSASignatureDigestRFC4754,
+			(__bridge id)kSecKeyAlgorithmECDSASignatureDigestRFC4754SHA1,
+			(__bridge id)kSecKeyAlgorithmECDSASignatureDigestRFC4754SHA224,
+			(__bridge id)kSecKeyAlgorithmECDSASignatureDigestRFC4754SHA256,
+			(__bridge id)kSecKeyAlgorithmECDSASignatureDigestRFC4754SHA384,
+			(__bridge id)kSecKeyAlgorithmECDSASignatureDigestRFC4754SHA512,
+			(__bridge id)kSecKeyAlgorithmECDSASignatureMessageRFC4754SHA1,
+			(__bridge id)kSecKeyAlgorithmECDSASignatureMessageRFC4754SHA224,
+			(__bridge id)kSecKeyAlgorithmECDSASignatureMessageRFC4754SHA256,
+			(__bridge id)kSecKeyAlgorithmECDSASignatureMessageRFC4754SHA384,
+			(__bridge id)kSecKeyAlgorithmECDSASignatureMessageRFC4754SHA512,
+		]];
+	}
 
 	for (id algoId in signAlgorithms) {
 		SecKeyAlgorithm algo = (__bridge SecKeyAlgorithm)algoId;
@@ -397,7 +402,15 @@ display_identity_details(SecCertificateRef cert, id accessControl)
 	}
 
 	// 3. Extract Public Key details
-	SecKeyRef publicKey = SecCertificateCopyKey(cert);
+	SecKeyRef publicKey = NULL;
+	if (@available(macOS 10.14, *)) {
+		publicKey = SecCertificateCopyKey(cert);
+	} else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+		(void)SecCertificateCopyPublicKey(cert, &publicKey);
+#pragma clang diagnostic pop
+	}
 	if (publicKey) {
 		CFDictionaryRef attributes = SecKeyCopyAttributes(publicKey);
 		if (attributes) {
