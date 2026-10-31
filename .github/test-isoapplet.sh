@@ -18,15 +18,14 @@ export LD_LIBRARY_PATH=/usr/local/lib
 # The ISO applet
 if [ ! -d IsoApplet ]; then
 	if [ "$isoapplet_version" = "v0" ]; then
-		 isoapplet_branch="main-javacard-v2.2.2"
-		 git clone https://github.com/philipWendland/IsoApplet.git --branch $isoapplet_branch --depth 1
+		isoapplet_branch="main-javacard-v2.2.2"
 	elif [ "$isoapplet_version" = "v1" ]; then
-		 #isoapplet_branch="main"
-		 git clone https://github.com/philipWendland/IsoApplet.git --revision 9cf87af45dc2949730a700a52a2dceb87353734c --depth 1
+		isoapplet_branch="main"
 	else
-		 echo "Unknown IsoApplet version: $isoapplet_version"
-		 exit 1
+		echo "Unknown IsoApplet version: $isoapplet_version"
+		exit 1
 	fi
+	git clone https://github.com/philipWendland/IsoApplet.git --branch $isoapplet_branch --depth 1
 
 	# enable IsoApplet key import patch
 	sed "s/DEF_PRIVATE_KEY_IMPORT_ALLOWED = false/DEF_PRIVATE_KEY_IMPORT_ALLOWED = true/g" -i "IsoApplet/src/${isoapplet_pkgdir}/IsoApplet.java"
