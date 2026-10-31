@@ -71,6 +71,7 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	if (*p == 0xff || *p == 0) {
 		/* end of data reached */
+		*cla_out = SC_ASN1_TAG_UNIVERSAL;
 		*taglen = 0;
 		*tag_out = SC_ASN1_TAG_EOC;
 		return SC_SUCCESS;
