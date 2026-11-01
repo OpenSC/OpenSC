@@ -715,13 +715,6 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 	switch(object->type)
 	{
 	case SC_PKCS15_TYPE_PRKEY_RSA:
-		if (key->u.rsa.p.len == 128) {
-			args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_2048;
-		} else if (key->u.rsa.p.len == 256) {
-			args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_4096;
-		} else {
-			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Unsupported RSA key length");
-		}
 		if(!key->u.rsa.p.data
 		        ||!key->u.rsa.q.data
 		        ||!key->u.rsa.iqmp.data
@@ -729,6 +722,17 @@ isoApplet_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_
 		        ||!key->u.rsa.dmq1.data)
 		{
 			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS, "Only CRT RSA keys may be imported.");
+		}
+		switch (key_info->modulus_length) {
+		case 2048:
+			args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_2048;
+			break;
+		case 4096:
+			args.algorithm_ref = SC_ISOAPPLET_ALG_REF_RSA_GEN_4096;
+			break;
+		default:
+			sc_log(card->ctx, "RSA private key length %zu is unsupported, correct length is 2048 or 4096", key_info->modulus_length);
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 		}
 		args.privkey.rsa.p.value    = key->u.rsa.p.data;
 		args.privkey.rsa.p.len      = key->u.rsa.p.len;
