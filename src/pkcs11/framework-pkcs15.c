@@ -5133,23 +5133,60 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 	return CKR_OK;
 }
 
-struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
-	pkcs15_pubkey_release,
-	pkcs15_pubkey_set_attribute,
-	pkcs15_pubkey_get_attribute,
-	sc_pkcs11_any_cmp_attribute,
-	pkcs15_any_destroy,
-	NULL,	/* get_size */
-	NULL,	/* sign */
-	NULL,	/* unwrap_key */
-	NULL,	/* decrypt */
-	NULL,	/* ecrypt */
-	NULL,	/* derive */
-	NULL,	/* can_do */
-	NULL,	/* init_params */
-	NULL	/* wrap_key */
-};
+static CK_RV
+pkcs15_pubkey_encrypt(struct sc_pkcs11_session *session, void *obj,
+		CK_MECHANISM_PTR pMechanism,
+		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+		CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+#ifdef ENABLE_OPENSSL
+	CK_ATTRIBUTE spki = {CKA_SPKI, NULL, 0};
+	CK_RV rv;
 
+	if (pulEncryptedDataLen == NULL) {
+		/* This is call from the C_EncryptInit function */
+		return CKR_OK;
+	}
+	if (pData == NULL && ulDataLen == 0) {
+		/* This is call from the C_EncryptFinalize function */
+		*pulEncryptedDataLen = 0;
+		return CKR_OK;
+	}
+	/* EncryptUpdate: the whole input is encrypted at once, as in pkcs15_prkey_decrypt() */
+
+	rv = pkcs15_pubkey_get_attribute(session, obj, &spki);
+	if (rv != CKR_OK)
+		return rv;
+	spki.pValue = malloc(spki.ulValueLen);
+	if (spki.pValue == NULL)
+		return CKR_HOST_MEMORY;
+	rv = pkcs15_pubkey_get_attribute(session, obj, &spki);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_encrypt_data(spki.pValue, spki.ulValueLen, pMechanism,
+				pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+	free(spki.pValue);
+	return rv;
+#else
+	return CKR_FUNCTION_NOT_SUPPORTED;
+#endif
+}
+
+struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
+		pkcs15_pubkey_release,
+		pkcs15_pubkey_set_attribute,
+		pkcs15_pubkey_get_attribute,
+		sc_pkcs11_any_cmp_attribute,
+		pkcs15_any_destroy,
+		NULL,		       /* get_size */
+		NULL,		       /* sign */
+		NULL,		       /* unwrap_key */
+		NULL,		       /* decrypt */
+		pkcs15_pubkey_encrypt, /* encrypt */
+		NULL,		       /* derive */
+		NULL,		       /* can_do */
+		NULL,		       /* init_params */
+		NULL		       /* wrap_key */
+};
 
 /* PKCS#15 Data Object*/
 static void
@@ -6608,7 +6645,13 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	/* Check if we support raw RSA */
 	if (rsa_flags & SC_ALGORITHM_RSA_RAW) {
+		CK_FLAGS old_flags = mech_info.flags;
+#ifdef ENABLE_OPENSSL
+		/* Encryption with the public key is done in software */
+		mech_info.flags |= CKF_ENCRYPT;
+#endif
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_X_509, &mech_info, CKK_RSA, NULL, NULL, NULL);
+		mech_info.flags = old_flags;
 		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
 		sc_pkcs11_free_mechanism(&mt);
 		if (rc != CKR_OK)
@@ -6645,7 +6688,13 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	/* No need to Check for PKCS1  We support it in software and turned it on above so always added it */
 	if (rsa_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+		CK_FLAGS old_flags = mech_info.flags;
+#ifdef ENABLE_OPENSSL
+		/* Encryption with the public key is done in software */
+		mech_info.flags |= CKF_ENCRYPT;
+#endif
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS, &mech_info, CKK_RSA, NULL, NULL, NULL);
+		mech_info.flags = old_flags;
 		rc = sc_pkcs11_register_mechanism(p11card, mt, &registered_mt);
 		sc_pkcs11_free_mechanism(&mt);
 		if (rc != CKR_OK)
