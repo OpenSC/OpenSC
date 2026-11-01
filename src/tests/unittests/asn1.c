@@ -160,7 +160,7 @@ TORTURE_INTEGER(min2, "\x80\x00", -32768)
 
 #if INT_MAX == 2147483647
 TORTURE_INTEGER(max4, "\x7F\xFF\xFF\xFF", 2147483647)
-TORTURE_INTEGER(min4, "\x80\x00\x00\x00", -2147483648)
+TORTURE_INTEGER(min4, "\x80\x00\x00\x00", INT_MIN)
 #else
 TORTURE_INTEGER_ERROR(max4, "\x7F\xFF\xFF\xFF", SC_ERROR_NOT_SUPPORTED)
 TORTURE_INTEGER_ERROR(min4, "\x80\x00\x00\x00", SC_ERROR_NOT_SUPPORTED)
@@ -267,7 +267,7 @@ static void torture_asn1_decode_entry_octet_string_empty(void **state)
 {
 	sc_context_t *ctx = *state;
 	/* Skipped the Tag and Length (0x04, 0x00) */
-	const u8 octet_string[0] = {};
+	const u8 octet_string[1] = {0};
 	struct sc_asn1_entry asn1_struct[2] = {
 		{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | SC_ASN1_CONS, SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }

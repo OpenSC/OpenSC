@@ -38,7 +38,8 @@ dist_noinst_SCRIPTS = common.sh \
                       test-pkcs11-tool-sym-crypt-test.sh \
                       test-pkcs11-tool-unwrap-wrap-test.sh \
                       test-pkcs11-tool-import.sh \
-                      test-pkcs11-tool-uri-with-slot-id.sh
+                      test-pkcs11-tool-uri-with-slot-id.sh \
+                      test-pkcs11-tool-kem.sh
 
 .NOTPARALLEL:
 TESTS = \
@@ -46,7 +47,8 @@ TESTS = \
         test-duplicate-symbols.sh \
         test-pkcs11-tool-test-threads.sh \
         test-pkcs11-tool-allowed-mechanisms.sh \
-        test-pkcs11-tool-sym-crypt-test.sh
+        test-pkcs11-tool-sym-crypt-test.sh \
+        test-pkcs11-tool-kem.sh
 if ENABLE_OPENSSL
 TESTS += \
         test-pkcs11-tool-test.sh \

@@ -16,7 +16,7 @@ SUBDIRS = $(SUBDIRS) smm
 !ENDIF
 
 !IF "$(TESTS_DEF)" == "/DENABLE_TESTS"
-SUBDIRS = $(SUBDIRS) tests
+SUBDIRS = $(SUBDIRS) tests\unittests
 !ENDIF
 
 all::

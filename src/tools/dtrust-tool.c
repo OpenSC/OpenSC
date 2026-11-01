@@ -628,7 +628,7 @@ resume_pin(sc_card_t *card, int ref_pin)
 		 * card useless. Thus we enforce the user to resume the PIN
 		 * during the regular unlock procedure. */
 		fprintf(stderr, "Invalid PIN to resume. Only the PUK can be resumed with this command.\n");
-		fprintf(stderr, "To resume a transport PIN call this tool with --can and --unlock-transport-protection parameter.\n");
+		fprintf(stderr, "To resume a transport PIN call this tool with --verify-can and --unlock-transport-protection parameter.\n");
 		return;
 
 	default:

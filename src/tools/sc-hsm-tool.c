@@ -521,7 +521,7 @@ print_info(sc_card_t *card)
 	struct sc_pin_cmd_data data;
 	sc_cardctl_sc_hsm_key_domain_t dkekinfo;
 	sc_path_t path;
-	sc_file_t *file;
+	sc_file_t *file = NULL;
 
 	u8 major, minor, opt;
 
@@ -530,6 +530,11 @@ print_info(sc_card_t *card)
 
 	if (r != SC_SUCCESS) {
 		fprintf(stderr, "Failed to select application: %s\n", sc_strerror(r));
+		return;
+	}
+
+	if (!file || !file->prop_attr || file->prop_attr_len < 2 || file->prop_attr_len == 3) {
+		sc_file_free(file);
 		return;
 	}
 

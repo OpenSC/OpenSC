@@ -133,6 +133,8 @@ rm -f $RPM_BUILD_ROOT%{_libdir}/libsmm-local.so
 %if 0%{?rhel}
 rm -rf %{buildroot}%{_bindir}/npa-tool
 rm -rf %{buildroot}%{_mandir}/man1/npa-tool.1*
+rm -rf %{buildroot}%{_bindir}/cedulauy-tool
+rm -rf %{buildroot}%{_mandir}/man1/cedulauy-tool.1*
 %endif
 
 # the pkcs11-register is not applicable to Fedora/RHEL where we use p11-kit
@@ -161,6 +163,7 @@ rm %{buildroot}%{_mandir}/man1/ctk-tool.1*
 %{_bindir}/netkey-tool
 %if ! 0%{?rhel}
 %{_bindir}/npa-tool
+%{_bindir}/cedulauy-tool
 %endif
 %{_bindir}/openpgp-tool
 %{_bindir}/opensc-explorer
@@ -188,6 +191,7 @@ rm %{buildroot}%{_mandir}/man1/ctk-tool.1*
 %{_mandir}/man1/netkey-tool.1*
 %if ! 0%{?rhel}
 %{_mandir}/man1/npa-tool.1*
+%{_mandir}/man1/cedulauy-tool.1*
 %endif
 %{_mandir}/man1/openpgp-tool.1*
 %{_mandir}/man1/opensc-explorer.*

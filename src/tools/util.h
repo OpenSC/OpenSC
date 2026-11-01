@@ -77,8 +77,8 @@ int util_getpass (char **lineptr, size_t *n, FILE *stream);
  */
 size_t util_get_pin(const char *input, const char **pin);
 
-/* Check at compile time that every option has a help string. option_help may
- * or may not have an entry for the terminating {NULL} option. */
+/* Check at compile time that every option has a help string. Including
+ * a sentinel for the terminating {NULL} option. */
 #define UTIL_ASSERT_OPTION_HELP(options, option_help) \
 	static_assert(ARRAY_SIZE(options) == ARRAY_SIZE(option_help), \
 			"options and option_help have different lengths")

@@ -20,7 +20,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-26, macos-15]
+        os: [xcode-27, macos-26, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -76,7 +76,7 @@ jobs:
   build-libressl:
     strategy:
       matrix:
-        os: [macos-26, macos-15, macos-14]
+        os: [xcode-27, macos-26, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7

@@ -1377,8 +1377,10 @@ sc_pkcs15_pubkey_from_spki_fields(struct sc_context *ctx, struct sc_pkcs15_pubke
 	pk_alg.params = NULL;
 	sc_log(ctx, "DEE pk_alg.algorithm=%lu", pk_alg.algorithm);
 
-	if (pk.len == 0)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INTERNAL, "Incorrect length of key");
+	if (pk.len == 0) {
+		r = SC_ERROR_INTERNAL;
+		LOG_TEST_GOTO_ERR(ctx, r, "Incorrect length of key");
+	}
 	pk.len = BYTES4BITS(pk.len); /* convert number of bits to bytes */
 
 	if (pk_alg.algorithm == SC_ALGORITHM_EC)   {

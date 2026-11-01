@@ -1,13 +1,13 @@
 #!/bin/bash
 # Build the macOS installer for the token and command line tools.
-#
-# This is only tested and supported on macOS 10.10 or later, using Xcode 6.0.1.
-# Building should also work on older macOS versions with slight changes; YMMV.
 
-# You need to install the following packages from homebrew or macports or fink:
+# You need to install the following packages from homebrew or macports:
 # autoconf automake libtool pkg-config help2man gengetopt
 
 export MACOSX_DEPLOYMENT_TARGET="10.13"
+# xcodebuild rejects targets older than the SDK supports, so raise it for Xcode projects
+SDK_MIN_TARGET=$(plutil -extract SupportedTargets.macosx.MinimumDeploymentTarget raw "$(xcrun --sdk macosx --show-sdk-path)/SDKSettings.json" 2>/dev/null)
+XCODE_DEPLOYMENT_TARGET=$(printf '%s\n' "${MACOSX_DEPLOYMENT_TARGET}" ${SDK_MIN_TARGET} | sort -V | tail -1)
 FORCE_OPENSSL_BUILD="1"
 
 set -ex
@@ -93,10 +93,10 @@ if ! test -e NotificationProxy; then
 	git clone https://github.com/frankmorgner/NotificationProxy.git
 fi
 if test -n "${CODE_SIGN_IDENTITY}" -a -n "${DEVELOPMENT_TEAM}"; then
-	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/ MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
+	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/ MACOSX_DEPLOYMENT_TARGET=${XCODE_DEPLOYMENT_TARGET} \
 		CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime" CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO CODE_SIGN_STYLE=Manual
 else
-	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/ MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}
+	xcodebuild -target NotificationProxy -configuration Release -project NotificationProxy/NotificationProxy.xcodeproj install DSTROOT=$BUILDPATH/target/Library/OpenSC/ MACOSX_DEPLOYMENT_TARGET=${XCODE_DEPLOYMENT_TARGET}
 fi
 mkdir -p "$BUILDPATH/target/Applications/Utilities"
 osacompile -o "$BUILDPATH/target/Applications/Utilities/OpenSC Notify.app" "MacOSX/OpenSC_Notify.applescript"
@@ -139,7 +139,7 @@ if test -e OpenSCToken -a -n "${CODE_SIGN_IDENTITY}" -a -n "${DEVELOPMENT_TEAM}"
 	BP=${BUILDPATH}
 	. ./bootstrap
 	BUILDPATH=${BP}
-	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token \
+	xcodebuild -target OpenSCTokenApp -configuration Debug -project OpenSCTokenApp.xcodeproj install DSTROOT=${BUILDPATH}/target_token MACOSX_DEPLOYMENT_TARGET=${XCODE_DEPLOYMENT_TARGET} GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS=NO \
 		CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY}" DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" OTHER_CODE_SIGN_FLAGS="--timestamp --options=runtime" CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO CODE_SIGN_STYLE=Manual
 	cd ..
 

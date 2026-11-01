@@ -31,7 +31,6 @@ jobs:
           - platform: arm64
             setenv: amd64_arm64
     env:
-      VCPKG_DEFAULT_TRIPLET: ${{ matrix.platform }}-windows-static
       BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - name: Checkout
@@ -73,8 +72,10 @@ jobs:
           echo "VCPKG_INSTALLED=$installed" >> $env:GITHUB_ENV
           C:\vcpkg\vcpkg install `
             --overlay-ports=${{ github.workspace }}/win32/ports `
+            --triplet ${{ matrix.platform }}-windows-static `
             --x-feature=zlib `
             --x-feature=openpace `
+            --x-feature=tests `
             --x-manifest-root ${{ github.workspace }}/win32 `
             --x-install-root $installed
       - name: Install WIX
@@ -83,6 +84,11 @@ jobs:
         run: |
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
           & "$vsPath\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.setenv }} "&&" nmake /nologo /f Makefile.mak opensc.msi
+      - name: Test OpenSC
+        if: matrix.configuration == 'Release' && matrix.platform != 'arm64'
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          & "$vsPath\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.setenv }} "&&" nmake /nologo /f Makefile.mak check
       - name: Archive artifacts
         id: upload-unsigned-artifact
         uses: actions/upload-artifact@v7

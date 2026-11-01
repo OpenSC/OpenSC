@@ -77,6 +77,14 @@
 #define SCARD_ATTR_VENDOR_IFD_VERSION SCARD_ATTR_VALUE(SCARD_CLASS_VENDOR_INFO, 0x0102) /**< Vendor-supplied interface device version (DWORD in the form 0xMMmmbbbb where MM = major version, mm = minor version, and bbbb = build number). */
 #endif
 
+/* Initial buffer size for SCardListReaders(), so that the reader list is
+ * fetched with a single call. The list holds the NUL terminated reader names
+ * and a final NUL. pcsc-lite supports at most PCSCLITE_MAX_READERS_CONTEXTS
+ * (16) readers with names of up to MAX_READERNAME (128) bytes, so this size
+ * always suffices there. The full names are needed (e.g. for SCardConnect),
+ * even though PKCS#11 shows only 64 bytes of them in the slot description. */
+#define PCSC_READER_BUF_SIZE (16 * 128 + 1)
+
 /* Logging */
 #define PCSC_TRACE(reader, desc, rv) do { sc_log(reader->ctx, "%s:" desc ": 0x%08lx\n", reader->name, (unsigned long)((ULONG)rv)); } while (0)
 #define PCSC_LOG(ctx, desc, rv) do { sc_log(ctx, desc ": 0x%08lx\n", (unsigned long)((ULONG)rv)); } while (0)
@@ -1411,7 +1419,7 @@ err1:
 static int pcsc_detect_readers(sc_context_t *ctx)
 {
 	struct pcsc_global_private_data *gpriv = (struct pcsc_global_private_data *) ctx->reader_drv_data;
-	DWORD active_proto, reader_buf_size = 0;
+	DWORD active_proto, reader_buf_size = 0, reader_buf_cap = PCSC_READER_BUF_SIZE;
 	SCARDHANDLE card_handle;
 	LONG rv;
 	char *reader_buf = NULL, *reader_name;
@@ -1436,6 +1444,13 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 	gpriv->attached_reader = NULL;
 	gpriv->removed_reader = NULL;
 
+	/* The +2 below is to make sure we have zero terminators, in case we get invalid data */
+	reader_buf = calloc(reader_buf_cap + 2, sizeof(char));
+	if (!reader_buf) {
+		ret = SC_ERROR_OUT_OF_MEMORY;
+		goto out;
+	}
+
 	do {
 		if (gpriv->pcsc_ctx == (SCARDCONTEXT)-1) {
 			/*
@@ -1445,8 +1460,33 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 			 */
 			rv = SCARD_E_INVALID_HANDLE;
 		} else {
-			rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, NULL,
-					NULL, (LPDWORD) &reader_buf_size);
+			/* The initial buffer is big enough to fetch the reader list
+			 * with a single call in almost all cases. Only if it is too
+			 * small, one extra cycle of two calls (size query and fetch
+			 * into a grown buffer) is needed. */
+			reader_buf_size = reader_buf_cap;
+			rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, mszGroups,
+					reader_buf, (LPDWORD)&reader_buf_size);
+			if (rv == (LONG)SCARD_E_INSUFFICIENT_BUFFER) {
+				/* The required size is only specified for a NULL buffer, so
+				 * query it explicitly, then grow the buffer and try again. */
+				rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, mszGroups,
+						NULL, (LPDWORD)&reader_buf_size);
+				if (rv == SCARD_S_SUCCESS && reader_buf_size > reader_buf_cap) {
+					free(reader_buf);
+					reader_buf_cap = reader_buf_size;
+					reader_buf = calloc(reader_buf_cap + 2, sizeof(char));
+					if (!reader_buf) {
+						ret = SC_ERROR_OUT_OF_MEMORY;
+						goto out;
+					}
+					rv = SCARD_E_INSUFFICIENT_BUFFER;
+					continue;
+				}
+				/* the list did not grow, handled as an error below */
+				if (rv == SCARD_S_SUCCESS)
+					rv = SCARD_E_INSUFFICIENT_BUFFER;
+			}
 
 			/*
 			 * All readers have disappeared, so mark them as
@@ -1501,20 +1541,6 @@ static int pcsc_detect_readers(sc_context_t *ctx)
 			rv = SCARD_E_INVALID_HANDLE;
 		}
 	} while (rv != SCARD_S_SUCCESS);
-
-	/* The +2 below is to make sure we have zero terminators, in case we get invalid data */
-	reader_buf = calloc(reader_buf_size+2, sizeof(char));
-	if (!reader_buf) {
-		ret = SC_ERROR_OUT_OF_MEMORY;
-		goto out;
-	}
-	rv = gpriv->SCardListReaders(gpriv->pcsc_ctx, mszGroups, reader_buf,
-			(LPDWORD) &reader_buf_size);
-	if (rv != SCARD_S_SUCCESS) {
-		PCSC_LOG(ctx, "SCardListReaders failed", rv);
-		ret = pcsc_to_opensc_error(rv);
-		goto out;
-	}
 
 	/* check if existing readers were returned in the list */
 	for (i = 0; i < sc_ctx_get_reader_count(ctx); i++) {
