@@ -45,7 +45,7 @@ if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	unset CC
 	unset CXX
 	CFLAGS="-I$PWD/src/minidriver/CNG -Wno-error=unknown-pragmas" \
-	CPPFLAGS="-DNTDDI_VERSION=0x06010000" \
+	CPPFLAGS="-DNTDDI_VERSION=0x06010000 -D__USE_MINGW_ANSI_STDIO=1" \
 	./configure --host=$HOST --with-completiondir=/tmp --disable-openssl --disable-readline --disable-zlib --enable-minidriver --enable-notify --prefix=$PWD/win32/opensc || cat config.log;
 	make -j 4 V=1
 	# no point in running tests on mingw
