@@ -4967,31 +4967,34 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		goto err;
 	}
 
-	if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PSS) {
-		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PSS)) {
+	/* RSA padding flags are meaningless for EC keys (cleared below) */
+	if (prkey_info->modulus_length > 0) {
+		if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PSS) {
+			if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PSS)) {
 #ifdef ENABLE_OPENSSL
-			if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
-				logprintf(pCardData, 2, "PSS padding requires native PSS or RAW RSA support\n");
+				if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+					logprintf(pCardData, 2, "PSS padding requires native PSS or RAW RSA support\n");
+					dwret = SCARD_E_UNSUPPORTED_FEATURE;
+					goto err;
+				}
+#else
+				logprintf(pCardData, 2, "PSS padding requires native PSS support\n");
+				dwret = SCARD_E_UNSUPPORTED_FEATURE;
+				goto err;
+#endif
+			}
+		} else if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01) {
+			if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1) && !(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+				logprintf(pCardData, 2, "PKCS1 padding requires native PKCS1 or RAW RSA support\n");
 				dwret = SCARD_E_UNSUPPORTED_FEATURE;
 				goto err;
 			}
-#else
-			logprintf(pCardData, 2, "PSS padding requires native PSS support\n");
-			dwret = SCARD_E_UNSUPPORTED_FEATURE;
-			goto err;
-#endif
-		}
-	} else if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01) {
-		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1) && !(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
-			logprintf(pCardData, 2, "PKCS1 padding requires native PKCS1 or RAW RSA support\n");
-			dwret = SCARD_E_UNSUPPORTED_FEATURE;
-			goto err;
-		}
-	} else if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_NONE) {
-		if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
-			logprintf(pCardData, 2, "No padding requires RAW RSA support\n");
-			dwret = SCARD_E_UNSUPPORTED_FEATURE;
-			goto err;
+		} else if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_NONE) {
+			if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+				logprintf(pCardData, 2, "No padding requires RAW RSA support\n");
+				dwret = SCARD_E_UNSUPPORTED_FEATURE;
+				goto err;
+			}
 		}
 	}
 
