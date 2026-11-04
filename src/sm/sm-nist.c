@@ -793,7 +793,9 @@ sm_nist_open(struct sc_card *card)
 	if (cs == NULL)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	sc_lock(card);
+	r = sc_lock(card);
+	if (r != SC_SUCCESS)
+		LOG_FUNC_RETURN(card->ctx, r);
 
 	/* use for several hash operations */
 	if ((hash_ctx = EVP_MD_CTX_new()) == NULL) {
