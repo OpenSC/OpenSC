@@ -404,8 +404,8 @@ sm_nist_load_options(sc_card_t *card, sm_nist_params_t *params, char *prefix)
 	char bufl[32] = {0};
 	size_t prefix_len;
 
-	if (!card || !prefix) {
-		r = SC_ERROR_INTERNAL;
+	if (!card || !params || !prefix) {
+		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -1437,6 +1437,9 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 	u8 *cert_blob = NULL;
 	size_t cert_blob_len = 0;
 
+	if (!card)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (!params) {
@@ -1562,6 +1565,10 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 	card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 
 err:
+	if (r < 0) {
+		if (sctx)
+			iso_sm_ctx_clear_free(sctx);
+	}
 	free(cert_blob);
 
 	return r;
@@ -2028,25 +2035,29 @@ sm_nist_clear_free(const struct iso_sm_ctx *ctx)
 }
 
 static int
-sm_nist_load_cert_stack(sc_card_t *card, char *filename, STACK_OF(X509) * psk)
+sm_nist_load_cert_stack(sc_card_t *card, char *filename, STACK_OF(X509) **psk)
 {
 	int r = 0;
 	X509 *i_cert = NULL;
 	FILE *fp = NULL;
 
+	if (!card || !filename || !psk)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_SM);
 
-	psk = sk_X509_new_null();
 	fp = fopen(filename, "r");
 	if (fp == NULL) {
 		sc_log(card->ctx, "Failed to open file %s", filename);
 
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_FILE_NOT_FOUND);
 	}
+	*psk = sk_X509_new_null();
 	while ((i_cert = PEM_read_X509(fp, NULL, NULL, NULL)) != NULL) {
-		sk_X509_push(psk, i_cert);
+		sk_X509_push(*psk, i_cert);
 	}
 	fclose(fp);
+
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
 
@@ -2063,6 +2074,9 @@ sm_nist_verify_cert_chain(sc_card_t *card, sm_nist_params_t *sm_params, X509 *si
 	X509_STORE *store = NULL;
 	X509_STORE_CTX *store_ctx = NULL;
 
+	if (!card || !sm_params || !signer_cert)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_SM);
 
 	if (sm_params->flags & NIST_SM_FLAGS_SM_CERT_SIGNER_VERIFIED) {
@@ -2075,7 +2089,7 @@ sm_nist_verify_cert_chain(sc_card_t *card, sm_nist_params_t *sm_params, X509 *si
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 
 	if (sm_params->signer_cert_untrusted != NULL) {
-		r = sm_nist_load_cert_stack(card, sm_params->signer_cert_untrusted, sk_untrusted);
+		r = sm_nist_load_cert_stack(card, sm_params->signer_cert_untrusted, &sk_untrusted);
 		LOG_TEST_GOTO_ERR(card->ctx, r, "failed to load signer_cert_untrusted");
 	}
 
