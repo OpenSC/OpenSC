@@ -139,15 +139,13 @@ const char *sc_strerror(int error)
 			"SM not applied",
 			"SM session already active",
 			"Invalid checksum",
-			"SM Incorrect SM Data Objects"
-	};
+			"SM Incorrect SM Data Objects"};
 	const unsigned int sm_base = -SC_ERROR_SM;
 
 	const char *misc_errors[] = {
 			"Unknown error",
 			"PKCS#15 compatible smart card not found",
-			"Certificate verification failed"
-	};
+			"Certificate verification failed"};
 	const unsigned int misc_base = -SC_ERROR_UNKNOWN;
 
 	const char *no_errors = "Success";
