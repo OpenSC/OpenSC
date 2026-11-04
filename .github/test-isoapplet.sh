@@ -98,22 +98,26 @@ popd
 dd if=/dev/random of=/tmp/data.bin bs=300 count=1
 if [ "$isoapplet_version" = "v0" ]; then
 	MECHANISM="ECDSA-SHA1"
+	EC_ID=3
+	EC_IMPORT_ID=4
 elif [ "$isoapplet_version" = "v1" ]; then
 	MECHANISM="ECDSA-SHA256"
+	EC_ID=5
+	EC_IMPORT_ID=6
 else
 	echo "Unknown IsoApplet version: $isoapplet_version"
 	exit 1
 fi
 # sign & verify using secp256r1 key
-$VALGRIND pkcs11-tool -l -p 123456 -s -m "$MECHANISM" -d 3 -i /tmp/data.bin -o /tmp/data.sig
-$VALGRIND pkcs11-tool --verify -m "$MECHANISM" -d 3 -i /tmp/data.bin --signature-file /tmp/data.sig
+$VALGRIND pkcs11-tool -l -p 123456 -s -m "$MECHANISM" -d "$EC_ID" -i /tmp/data.bin -o /tmp/data.sig
+$VALGRIND pkcs11-tool --verify -m "$MECHANISM" -d "$EC_ID" -i /tmp/data.bin --signature-file /tmp/data.sig
 # import, sign & verify using another secp256r1 key
 openssl ecparam -name secp256r1 -genkey -noout -out /tmp/ECprivKey.pem
 openssl ec -in /tmp/ECprivKey.pem -pubout -out /tmp/ECpubKey.pem
-$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECprivKey.pem -y privkey -d 4
-$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECpubKey.pem -y pubkey -d 4
-$VALGRIND pkcs11-tool -l -p 123456 -s -m "$MECHANISM" -d 4 -i /tmp/data.bin -o /tmp/data.sig
-$VALGRIND pkcs11-tool --verify -m "$MECHANISM" -d 4 -i /tmp/data.bin --signature-file /tmp/data.sig
+$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECprivKey.pem -y privkey -d "$EC_IMPORT_ID"
+$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECpubKey.pem -y pubkey -d "$EC_IMPORT_ID"
+$VALGRIND pkcs11-tool -l -p 123456 -s -m "$MECHANISM" -d "$EC_IMPORT_ID" -i /tmp/data.bin -o /tmp/data.sig
+$VALGRIND pkcs11-tool --verify -m "$MECHANISM" -d "$EC_IMPORT_ID" -i /tmp/data.bin --signature-file /tmp/data.sig
 
 # cleanup
 rm /tmp/ECprivKey.pem /tmp/ECpubKey.pem /tmp/data.bin /tmp/data.sig
