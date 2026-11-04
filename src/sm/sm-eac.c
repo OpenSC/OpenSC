@@ -122,7 +122,7 @@ err:
 	return NULL;
 }
 
-static int
+int
 eac_sm_start(sc_card_t *card, EAC_CTX *eac_ctx,
 		const unsigned char *id_icc, size_t id_icc_length)
 {

@@ -178,6 +178,25 @@ int perform_chip_authentication(sc_card_t *card,
 int perform_chip_authentication_ex(sc_card_t *card, void *eacsmctx,
 		unsigned char *picc_pubkey, size_t picc_pubkey_len);
 
+#ifdef ENABLE_OPENPACE
+/**
+ * @brief Establish secure messaging using the given EAC context
+ *
+ * Switches the SM context of \c card to the keys that were negotiated in
+ * \a eacsmctx. On success, the EAC context is owned by the SM layer and must
+ * not be freed by the caller.
+ *
+ * @param[in] card
+ * @param[in] eacsmctx       initialized EAC context with negotiated keys
+ * @param[in] id_icc         (optional) identifier of the ICC
+ * @param[in] id_icc_length  length of \a id_icc
+ *
+ * @return \c SC_SUCCESS or error code if an error occurred
+ */
+int eac_sm_start(sc_card_t *card, EAC_CTX *eacsmctx,
+		const unsigned char *id_icc, size_t id_icc_length);
+#endif
+
 /** 
  * @brief Sends an MSE:Set AT to determine the number of remaining tries
  *
