@@ -112,7 +112,7 @@ jobs:
       - run: .github/build.sh ix86
 
   build-mingw:
-    # mingw needs %zu-style printf fixes before it builds with ubuntu-26.04's gcc 15 toolchain
+    # pinned until #3925 (%zu under msvcrt printf with ubuntu-26.04's gcc 15) is fixed
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
