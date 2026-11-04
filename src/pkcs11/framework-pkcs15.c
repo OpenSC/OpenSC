@@ -5143,6 +5143,9 @@ pkcs15_pubkey_encrypt(struct sc_pkcs11_session *session, void *obj,
 	CK_ATTRIBUTE spki = {CKA_SPKI, NULL, 0};
 	CK_RV rv;
 
+	if (pMechanism == NULL)
+		return CKR_ARGUMENTS_BAD;
+
 	if (pulEncryptedDataLen == NULL) {
 		/* This is call from the C_EncryptInit function */
 		return CKR_OK;

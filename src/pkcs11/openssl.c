@@ -1021,6 +1021,9 @@ sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 	size_t len;
 	int padding;
 
+	if (out_len == NULL)
+		return CKR_ARGUMENTS_BAD;
+
 	switch (mech->mechanism) {
 	case CKM_RSA_PKCS:
 		padding = RSA_PKCS1_PADDING;
@@ -1072,7 +1075,7 @@ sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 		data_len = len;
 	}
 
-	ctx = EVP_PKEY_CTX_new(pkey, NULL);
+	ctx = sc_evp_pkey_ctx_new(context, pkey);
 	if (ctx == NULL || EVP_PKEY_encrypt_init(ctx) != 1 ||
 			EVP_PKEY_CTX_set_rsa_padding(ctx, padding) != 1 ||
 			EVP_PKEY_encrypt(ctx, out, &len, data, data_len) != 1) {
