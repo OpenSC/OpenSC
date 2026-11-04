@@ -312,7 +312,6 @@ typedef struct sc_file {
 #define SC_APDU_FLAGS_NO_RETRY_WL	0x00000004UL
 /* APDU is from Secure Messaging  */
 #define SC_APDU_FLAGS_NO_SM		0x00000008UL
-/* let SM do the command chaining  */
 #define SC_APDU_FLAGS_RETRY_WITH_SM_OPEN 0x00000010UL
 
 #define SC_APDU_ALLOCATE_FLAG		0x01
