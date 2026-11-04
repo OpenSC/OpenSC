@@ -28,12 +28,12 @@
 #include "libopensc/opensc.h"
 #include "sm-iso.h"
 
-#include "sm-nist.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
 #if defined(ENABLE_SM_NIST) && defined(ENABLE_SM) && !defined(OPENSSL_NO_EC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
+#include "sm-nist.h"
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
 #include <openssl/cmac.h>
@@ -2028,7 +2028,7 @@ sm_nist_clear_free(const struct iso_sm_ctx *ctx)
 }
 
 static int
-sm_nist_load_cert_stack(sc_card_t *card, char *filename, STACK_OF(X509) *psk)
+sm_nist_load_cert_stack(sc_card_t *card, char *filename, STACK_OF(X509) * psk)
 {
 	int r = 0;
 	X509 *i_cert = NULL;
@@ -2040,15 +2040,14 @@ sm_nist_load_cert_stack(sc_card_t *card, char *filename, STACK_OF(X509) *psk)
 	fp = fopen(filename, "r");
 	if (fp == NULL) {
 		sc_log(card->ctx, "Failed to open file %s", filename);
-		
+
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_FILE_NOT_FOUND);
 	}
-        while ((i_cert = PEM_read_X509(fp, NULL, NULL, NULL)) != NULL) {
-            sk_X509_push(psk, i_cert);
-        }
-        fclose(fp);
+	while ((i_cert = PEM_read_X509(fp, NULL, NULL, NULL)) != NULL) {
+		sk_X509_push(psk, i_cert);
+	}
+	fclose(fp);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
-
 }
 
 /*
@@ -2087,9 +2086,9 @@ sm_nist_verify_cert_chain(sc_card_t *card, sm_nist_params_t *sm_params, X509 *si
 	}
 
 	if (X509_STORE_set_flags(store,
-			X509_V_FLAG_TRUSTED_FIRST |
-			X509_V_FLAG_PARTIAL_CHAIN |
-			X509_V_FLAG_NO_ALT_CHAINS ) != 1) {
+			    X509_V_FLAG_TRUSTED_FIRST |
+					    X509_V_FLAG_PARTIAL_CHAIN |
+					    X509_V_FLAG_NO_ALT_CHAINS) != 1) {
 		r = SC_ERROR_INTERNAL;
 		LOG_TEST_GOTO_ERR(card->ctx, r, "X509_STORE_set_flags failed");
 	}
@@ -2105,7 +2104,7 @@ sm_nist_verify_cert_chain(sc_card_t *card, sm_nist_params_t *sm_params, X509 *si
 		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INTERNAL, "X509_STORE_CTX_new failed");
 	}
 
-	if (X509_STORE_CTX_init(store_ctx, store, signer_cert, sk_untrusted) !=1) {
+	if (X509_STORE_CTX_init(store_ctx, store, signer_cert, sk_untrusted) != 1) {
 		r = SC_ERROR_INTERNAL;
 		LOG_TEST_GOTO_ERR(card->ctx, r, "X509_STORE_CTX_init failed");
 	}
