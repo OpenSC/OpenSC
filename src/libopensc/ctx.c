@@ -996,7 +996,7 @@ int sc_context_create(sc_context_t **ctx_out, const sc_context_param_t *parm)
 
 #if defined(ENABLE_OPENSSL) && defined(OPENSSL_SECURE_MALLOC_SIZE) && !defined(LIBRESSL_VERSION_NUMBER)
 	if (!CRYPTO_secure_malloc_initialized()) {
-		CRYPTO_secure_malloc_init(OPENSSL_SECURE_MALLOC_SIZE, OPENSSL_SECURE_MALLOC_SIZE/8);
+		CRYPTO_secure_malloc_init(OPENSSL_SECURE_MALLOC_SIZE, OPENSSL_SECURE_MALLOC_SIZE/64);
 	}
 #endif
 
