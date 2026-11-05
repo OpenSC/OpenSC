@@ -73,10 +73,13 @@ $VALGRIND pkcs15-tool --change-pin --pin 123456 --new-pin 654321
 $VALGRIND pkcs15-tool --unblock-pin --puk 0123456789abcdef --new-pin 123456
 $VALGRIND pkcs15-init --generate-key rsa/2048     --id 1 --key-usage decrypt,sign --auth-id FF --pin 123456
 $VALGRIND pkcs15-init --generate-key rsa/2048     --id 2 --key-usage decrypt      --auth-id FF --pin 123456
-if [ "$isoapplet_version" = "v1" ]; then
+if [ "$isoapplet_version" = "v0" ]; then
+	ECDSA_MECHANISM="ECDSA-SHA1"
+elif [ "$isoapplet_version" = "v1" ]; then
+	ECDSA_MECHANISM="ECDSA-SHA256"
 	$VALGRIND pkcs15-init --generate-key rsa/4096     --id 3 --key-usage decrypt,sign --auth-id FF --pin 123456
 	$VALGRIND pkcs15-init --generate-key rsa/4096     --id 4 --key-usage decrypt      --auth-id FF --pin 123456
-elif [ "$isoapplet_version" != "v0" ]; then
+else
 	echo "Unknown IsoApplet version: $isoapplet_version"
 	exit 1
 fi
@@ -92,24 +95,16 @@ popd
 
 # random data to be signed
 dd if=/dev/random of=/tmp/data.bin bs=300 count=1
-if [ "$isoapplet_version" = "v0" ]; then
-	MECHANISM="ECDSA-SHA1"
-elif [ "$isoapplet_version" = "v1" ]; then
-	MECHANISM="ECDSA-SHA256"
-else
-	echo "Unknown IsoApplet version: $isoapplet_version"
-	exit 1
-fi
 # sign & verify using secp256r1 key
-$VALGRIND pkcs11-tool -l -p 123456 -s -m "$MECHANISM" -d 10 -i /tmp/data.bin -o /tmp/data.sig
-$VALGRIND pkcs11-tool --verify -m "$MECHANISM" -d 10 -i /tmp/data.bin --signature-file /tmp/data.sig
+$VALGRIND pkcs11-tool -l -p 123456 -s -m "$ECDSA_MECHANISM" -d 10 -i /tmp/data.bin -o /tmp/data.sig
+$VALGRIND pkcs11-tool --verify -m "$ECDSA_MECHANISM" -d 10 -i /tmp/data.bin --signature-file /tmp/data.sig
 # import, sign & verify using another secp256r1 key
 openssl ecparam -name secp256r1 -genkey -noout -out /tmp/ECprivKey.pem
 openssl ec -in /tmp/ECprivKey.pem -pubout -out /tmp/ECpubKey.pem
 $VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECprivKey.pem -y privkey -d 11
 $VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECpubKey.pem -y pubkey -d 11
-$VALGRIND pkcs11-tool -l -p 123456 -s -m "$MECHANISM" -d 11 -i /tmp/data.bin -o /tmp/data.sig
-$VALGRIND pkcs11-tool --verify -m "$MECHANISM" -d 11 -i /tmp/data.bin --signature-file /tmp/data.sig
+$VALGRIND pkcs11-tool -l -p 123456 -s -m "$ECDSA_MECHANISM" -d 11 -i /tmp/data.bin -o /tmp/data.sig
+$VALGRIND pkcs11-tool --verify -m "$ECDSA_MECHANISM" -d 11 -i /tmp/data.bin --signature-file /tmp/data.sig
 
 # cleanup
 rm /tmp/ECprivKey.pem /tmp/ECpubKey.pem /tmp/data.bin /tmp/data.sig
