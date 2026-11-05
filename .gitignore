@@ -133,6 +133,7 @@ src/tests/unittests/*.trs
 src/tests/unittests/asn1
 src/tests/unittests/base64
 src/tests/unittests/cachedir
+src/tests/unittests/chipdocit
 src/tests/unittests/compression
 src/tests/unittests/openpgp-tool
 src/tests/unittests/pkcs15filter

@@ -4,8 +4,8 @@
  *
  * The certificates are stored in a Bit4id-specific container (raw-DEFLATE with
  * a preset dictionary, see bit4id-cert-dict.h) that the generic reader cannot
- * decode. We read the two certificate EFs (authentication 0001, qualified-
- * signature DS3 0002, both under the "Generic" applet), inflate them, and
+ * decode. We read the two certificate EFs (signature 0001, authentication
+ * 0002, both under the "Generic" applet), inflate them, and
  * expose them together with the two RSA keys and the single user PIN. The key
  * references, EFs and PIN layout are card constants confirmed against a live
  * enumeration.
@@ -209,7 +209,7 @@ add_prkey(sc_pkcs15_card_t *p15card, const sc_pkcs15_id_t *id,
 	strlcpy(obj.label, label, sizeof obj.label);
 	obj.auth_id.len = 1;
 	obj.auth_id.value[0] = AUTH_ID;
-	obj.user_consent = user_consent; /* DS3: re-verify PIN per signature */
+	obj.user_consent = user_consent; /* Re-verify PIN per operation if required. */
 	obj.flags = SC_PKCS15_CO_FLAG_PRIVATE;
 	return sc_pkcs15emu_add_rsa_prkey(p15card, &obj, &info);
 }
@@ -252,18 +252,19 @@ sc_pkcs15emu_chipdocit_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	r = add_pin(p15card);
 	LOG_TEST_RET(card->ctx, r, "add PIN failed");
 
-	/* Auth key/cert: LCNS0, key ref 0x10, EF 0001. */
-	r = read_ds_cert(p15card, 0x0001, &id_auth, "CNS", 0);
+	/* EF 0001 / ref 0x10: native PrKD sign + nonRepudiation, consent 1.
+	 * Keep the existing IDs and labels; labels do not determine key usage. */
+	r = read_ds_cert(p15card, 0x0001, &id_auth, "CNS", 1);
 	LOG_TEST_RET(card->ctx, r, "read auth cert failed");
 	r = add_prkey(p15card, &id_auth, "CNS",
-			0x10, SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DECRYPT, 0);
+			0x10, SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_NONREPUDIATION, 1);
 	LOG_TEST_RET(card->ctx, r, "add auth key failed");
 
-	/* Qualified-signature key/cert: DS3, key ref 0x11, EF 0002, nonRepudiation. */
-	r = read_ds_cert(p15card, 0x0002, &id_ds, "DS3", 1);
+	/* EF 0002 / ref 0x11: native PrKD sign, no per-operation consent. */
+	r = read_ds_cert(p15card, 0x0002, &id_ds, "DS3", 0);
 	LOG_TEST_RET(card->ctx, r, "read DS cert failed");
 	r = add_prkey(p15card, &id_ds, "DS3",
-			0x11, SC_PKCS15_PRKEY_USAGE_NONREPUDIATION, 1);
+			0x11, SC_PKCS15_PRKEY_USAGE_SIGN, 0);
 	LOG_TEST_RET(card->ctx, r, "add DS key failed");
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
