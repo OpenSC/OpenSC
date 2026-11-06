@@ -4812,11 +4812,15 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *gost)
 		point = EC_KEY_get0_public_key(src);
 #else
 		group = EC_GROUP_new_by_curve_name_ex(osslctx, NULL, nid);
-		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pubkey_len);
-		if (!(pubkey = OPENSSL_malloc(pubkey_len)) ||
-				EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len, NULL) != 1 ||
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pubkey_len) != 1 ||
+				!(pubkey = OPENSSL_malloc(pubkey_len))) {
+			EC_GROUP_free(group);
+			return -1;
+		}
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len, NULL) != 1 ||
 				!(point = EC_POINT_new(group)) ||
 				EC_POINT_oct2point(group, point, pubkey, pubkey_len, NULL) != 1) {
+			OPENSSL_free(pubkey);
 			EC_GROUP_free(group);
 			EC_POINT_free(point);
 			return -1;
@@ -4898,8 +4902,11 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *ec)
 			return -1;
 		point_len = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, sizeof(buf), NULL);
 #else
-		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, sizeof(buf), &point_len);
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, sizeof(buf), &point_len) != 1)
+			return -1;
 #endif
+		if (point_len == 0)
+			return -1;
 		ec->public.value = OPENSSL_malloc(MAX_HEADER_LEN + point_len);
 		if (!ec->public.value)
 			return -1;
