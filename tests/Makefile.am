@@ -1,6 +1,6 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 
-EXTRA_DIST = softhsm_2.6.1_ref.json softhsm_2.7.0_ref.json softhsm_fips_ref.json softhsm_libressl_ref.json
+EXTRA_DIST = softhsm_2.6.1_ref.json softhsm_2.7.0_ref.json softhsm_fips_ref.json softhsm_libressl_ref.json freehsm_ref.json
 
 TEST_EXTENSIONS = .sh
 # This pushes the valgrind command to the test environment
@@ -27,6 +27,7 @@ dist_noinst_SCRIPTS = common.sh \
                       init-softhsm.sh \
                       init-softokn.sh \
                       init-kryoptic.sh \
+                      init-freehsm.sh \
                       test-manpage.sh \
                       test-duplicate-symbols.sh \
                       test-fuzzing.sh \

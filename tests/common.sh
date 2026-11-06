@@ -20,6 +20,8 @@ elif [ "${TOKENTYPE}" == "softokn" ]; then
     source "${SOURCE_PATH}/tests/init-softokn.sh"
 elif [ "${TOKENTYPE}" == "kryoptic" ]; then
     source "${SOURCE_PATH}/tests/init-kryoptic.sh"
+elif [ "${TOKENTYPE}" == "freehsm" ]; then
+    source "${SOURCE_PATH}/tests/init-freehsm.sh"
 else
     echo "Unknown token type: $1"
     exit 1
@@ -95,7 +97,7 @@ function card_setup() {
 		echo "Couldn't generate GENERIC key"
 		return 1
 	fi
-	if [ "${TOKENTYPE}" == "kryoptic" ]; then
+	if [ "${TOKENTYPE}" == "kryoptic" ] || [ "${TOKENTYPE}" == "freehsm" ]; then
 		# Generate Ed25519 Key pair
 		generate_key "EC:ed25519" "06" "ed25519" "S" || return 1
 		# Generate Ed448 Key pair

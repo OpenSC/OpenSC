@@ -46,6 +46,32 @@ jobs:
       - name: Test with Kryoptic
         run: tests/test-kryoptic.sh
 
+  test-freehsm:
+    runs-on: ubuntu-24.04
+    # FreeHSM needs OpenSSL 3.5, which Ubuntu 24.04 does not have
+    container:
+      image: debian:trixie
+    env:
+      SOURCE_PATH: ./
+      BUILD_PATH: ./
+      FREEHSM_VERSION: v2.6.0
+    steps:
+      - name: Install dependencies
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq git python3 $BASE_DEPS
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+      - name: Build FreeHSM
+        run: |
+          git clone --depth 1 --branch "$FREEHSM_VERSION"             https://github.com/afchine1337/freehsm /tmp/freehsm
+          make -C /tmp/freehsm PROFILE=all-mechanisms
+          install -m 755 /tmp/freehsm/libfreehsm.so /usr/local/lib/
+      - name: Build OpenSC
+        run: .github/build.sh
+      - name: Test FreeHSM
+        run: tests/test-freehsm.sh
+
   test-softokn:
     runs-on: ubuntu-24.04
     env:
