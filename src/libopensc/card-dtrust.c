@@ -373,6 +373,7 @@ dtrust_init(sc_card_t *card)
 	case SC_CARD_TYPE_DTRUST_V4_1_M100:
 	case SC_CARD_TYPE_DTRUST_V4_4_MULTI:
 		flags |= SC_ALGORITHM_ECDSA_RAW;
+		flags |= SC_ALGORITHM_ECDSA_HASH_NONE;
 		flags |= SC_ALGORITHM_ECDH_CDH_RAW;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 
@@ -383,6 +384,7 @@ dtrust_init(sc_card_t *card)
 	case SC_CARD_TYPE_DTRUST_V5_1_M100:
 	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
 		flags |= SC_ALGORITHM_ECDSA_RAW;
+		flags |= SC_ALGORITHM_ECDSA_HASH_NONE;
 		flags |= SC_ALGORITHM_ECDH_CDH_RAW;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 
