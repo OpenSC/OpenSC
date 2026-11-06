@@ -116,9 +116,14 @@ load_pkcs11_module(token_info_t *info, const char *path_to_pkcs11_library)
 	C_GetInterface = (CK_RV (*)(CK_UTF8CHAR_PTR, CK_VERSION_PTR, CK_INTERFACE_PTR_PTR, CK_FLAGS))
 			dlsym(pkcs11_so, "C_GetInterface");
 	if (C_GetInterface != NULL) {
-		/* PKCS#11 3.* C_GetInterface API: Get default interface */
+		/* PKCS#11 3.* C_GetInterface API: Prefer 3.2, which the KEM tests need
+		 * and which a module may not make its default, then the default */
 		CK_INTERFACE_PTR interface;
-		rv = C_GetInterface(NULL, NULL, &interface, 0);
+		CK_VERSION version = {3, 2};
+		rv = C_GetInterface((CK_UTF8CHAR_PTR) "PKCS 11", &version, &interface, 0);
+		if (CKR_OK != rv) {
+			rv = C_GetInterface(NULL, NULL, &interface, 0);
+		}
 		if (CKR_OK != rv) {
 			fprintf(stderr, "C_GetInterface call failed: 0x%.8lX", rv);
 			return 1;
