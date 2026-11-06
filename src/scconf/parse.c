@@ -111,8 +111,16 @@ static scconf_item *scconf_item_add_internal(scconf_parser * parser, int type)
 	}
 	item->type = type;
 
-	item->key = parser->key;
-	parser->key = NULL;
+	/*
+	 * A comment is a standalone item and has no key. Assigning the key
+	 * here would let a comment swallow the key of the item that is still
+	 * being parsed, and the following block or value would then be added
+	 * with key == NULL, which crashes the lookup and write functions.
+	 */
+	if (type != SCCONF_ITEM_TYPE_COMMENT) {
+		item->key = parser->key;
+		parser->key = NULL;
+	}
 
 	if (parser->last_item) {
 		parser->last_item->next = item;
