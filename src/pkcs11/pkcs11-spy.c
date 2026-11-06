@@ -1768,6 +1768,15 @@ spy_interface_function_list(CK_INTERFACE_PTR pInterface, CK_INTERFACE_PTR_PTR re
 
 	version = (CK_VERSION *)pInterface->pFunctionList;
 	if (version->major == 3 && version->minor >= 2) {
+		/* init_spy() recorded the module's default interface in po. That
+		 * one can be older than 3.2 while the module also offers 3.2 as a
+		 * non-default interface, which the caller is now asking for. Record
+		 * the 3.2 function list here, so that the 3.2 functions of
+		 * pkcs11_spy_3_2 have somewhere to forward the calls. When a newer
+		 * function list is added, this needs the same treatment. */
+		if (po->version.minor < 2) {
+			memcpy(po, pInterface->pFunctionList, sizeof(CK_FUNCTION_LIST_3_2));
+		}
 		(*retInterface)->pFunctionList = pkcs11_spy_3_2;
 	} else if (version->major == 3) {
 		(*retInterface)->pFunctionList = pkcs11_spy_3_0;
