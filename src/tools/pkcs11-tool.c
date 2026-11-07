@@ -4751,7 +4751,7 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *gost)
 {
 	unsigned char *pder;
 	BIGNUM *X = NULL, *Y = NULL;
-	int nid, rv = -1;
+	int nid, oid_len, rv = -1;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	const BIGNUM *bignum;
 	const EC_GROUP *group;
@@ -4773,23 +4773,27 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *gost)
 
 	nid = OBJ_txt2nid(name);
 #endif
-	rv = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), NULL);
-	if (rv < 0)
+	oid_len = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), NULL);
+	if (oid_len <= 0)
 		goto err;
 
-	gost->param_oid.value = OPENSSL_malloc(rv);
-	if (!gost->param_oid.value) {
-		rv = -1;
+	gost->param_oid.value = OPENSSL_malloc(oid_len);
+	if (!gost->param_oid.value)
 		goto err;
-	}
 
 	pder =  gost->param_oid.value;
-	rv = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), &pder);
-	gost->param_oid.len = rv;
+	oid_len = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), &pder);
+	if (oid_len <= 0)
+		goto err;
+	gost->param_oid.len = (size_t)oid_len;
 
 	if (private) {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		bignum = EC_KEY_get0_private_key(src);
+		if (!bignum) {
+			rv = -1;
+			goto err;
+		}
 #else
 		if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY, &bignum) != 1) {
 			rv = -1;
@@ -4844,7 +4848,7 @@ err:
 	BN_free(X);
 	BN_free(Y);
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-	BN_free(bignum);
+	BN_clear_free(bignum);
 	EC_GROUP_free(group);
 	EC_POINT_free(point);
 	OPENSSL_free(pubkey);
