@@ -294,6 +294,37 @@ for SIGN_KEY in "13" "14"; do
     rm data.sig{,.openssl} data.hash
 done
 
+if [ "${TOKENTYPE}" == "kryoptic" ]; then
+    echo "======================================================="
+    echo "Test single-part mechanisms on data > 1024 bytes"
+    echo "======================================================="
+    # EdDSA and ML-DSA sign in one part only; the whole input has to reach
+    # C_Sign and C_Verify, not 1024-byte C_SignUpdate chunks
+    head -c 4096 </dev/urandom > data
+    for KEY_METHOD in "06:EDDSA" "10:ML-DSA"; do
+        SIGN_KEY=${KEY_METHOD%%:*}
+        METHOD=${KEY_METHOD#*:}
+        echo
+        echo "======================================================="
+        echo "$METHOD: Sign & Verify 4096 bytes (KEY $SIGN_KEY)"
+        echo "======================================================="
+        $PKCS11_TOOL "${PRIV_ARGS[@]}" --id $SIGN_KEY -s -m $METHOD \
+            --input-file data --output-file data.sig
+        assert $? "Failed to Sign data"
+        $PKCS11_TOOL "${PUB_ARGS[@]}" --id $SIGN_KEY --verify -m $METHOD \
+            --input-file data --signature-file data.sig
+        assert $? "Failed to Verify signature using pkcs11-tool"
+        # the last byte is covered too: change it (byte + 1 mod 256)
+        { head -c 4095 data; tail -c 1 data | LC_ALL=C tr '\000-\377' '\001-\377\000'; } > data.changed
+        $PKCS11_TOOL "${PUB_ARGS[@]}" --id $SIGN_KEY --verify -m $METHOD \
+            --input-file data.changed --signature-file data.sig
+        if [[ "$?" == "0" ]]; then
+            assert 1 "Verified a signature over changed data"
+        fi
+        rm data.sig data.changed
+    done
+fi
+
 echo "======================================================="
 echo "Test GENERIC keys"
 echo "======================================================="
