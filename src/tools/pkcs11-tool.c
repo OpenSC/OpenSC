@@ -6554,16 +6554,25 @@ static void
 write_value(const char *path, const void *value, size_t value_len)
 {
 	int fd = STDOUT_FILENO;
-	ssize_t sz;
+	size_t written = 0;
+	const char *ptr = (const char *)value;
 
 	if (path) {
 		fd = open(path, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR);
 		if (fd < 0)
 			util_fatal("failed to open %s: %s", path, strerror(errno));
 	}
-	sz = write(fd, value, value_len);
-	if (sz < 0 || (size_t)sz != value_len)
-		util_fatal("Failed to write to %s: %s", path ? path : "stdout", strerror(errno));
+	while (written < value_len) {
+		ssize_t sz = write(fd, ptr + written, value_len - written);
+		if (sz < 0) {
+			if (errno == EINTR)
+				continue;
+			util_fatal("Failed to write to %s: %s", path ? path : "stdout", strerror(errno));
+		}
+		if (sz == 0)
+			util_fatal("Failed to write to %s: unexpected end of stream", path ? path : "stdout");
+		written += (size_t)sz;
+	}
 	if (path)
 		close(fd);
 }
