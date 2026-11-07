@@ -360,7 +360,11 @@ idprime_sm_select_file_by_id(sc_card_t *card, const sc_path_t *path, sc_file_t *
 		buffer = apdu.resp;
 		r = sc_asn1_read_tag(&buffer, apdu.resplen, &cla, &tag, &buffer_len);
 		if (r == SC_SUCCESS)
-			card->ops->process_fci(card, file, buffer, buffer_len);
+			r = card->ops->process_fci(card, file, buffer, buffer_len);
+		if (r != SC_SUCCESS) {
+			sc_file_free(file);
+			LOG_FUNC_RETURN(card->ctx, r);
+		}
 		*file_out = file;
 		break;
 	default:
@@ -1657,8 +1661,10 @@ idprime_finish(sc_card_t *card)
 	idprime_private_data_t *priv = card->drv_data;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	sc_sm_stop(card);
 	if (priv) {
 		idprime_free_private_data(priv);
+		card->drv_data = NULL;
 	}
 	return SC_SUCCESS;
 }
