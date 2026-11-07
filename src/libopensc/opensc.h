@@ -572,6 +572,9 @@ struct sc_reader_operations {
 #define SC_CARD_CAP_WRAP_KEY			0x00000800
 /* Card (or card driver) supports key unwrapping operations */
 #define SC_CARD_CAP_UNWRAP_KEY			0x00001000
+/* Card (or card driver) supports raw RSA decipher for software PKCS#1/OAEP
+ * depadding. */
+#define SC_CARD_CAP_RAW_RSA_DECIPHER		0x00002000
 
 typedef struct sc_card {
 	struct sc_context *ctx;

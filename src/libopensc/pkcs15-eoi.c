@@ -18,6 +18,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef HAVE_CONFIG_H
@@ -124,12 +125,37 @@ int sc_pkcs15emu_eoi_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	}
 	for (i = 0; i < len; i++) {
 		struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)objs[i]->data;
-		if ((objs[i]->auth_id.len == 8) && !strncmp((char*)objs[i]->auth_id.value, "Card PIN", 8)) {
+		/* The ChipDoc applet uses the PIN names of its own PKCS#15 structure */
+		if (!privdata->chipdoc_ca
+				&& (objs[i]->auth_id.len == 8)
+				&& !strncmp((char*)objs[i]->auth_id.value, "Card PIN", 8)) {
 			memcpy(objs[i]->auth_id.value, "Norm PIN", 8);
 		}
 		if (prkey_info && j < MAX_OBJECTS) {
 			privdata->prkey_mappings[j][0] = prkey_info->key_reference;
-			privdata->prkey_mappings[j++][1] = 0xA0 + (i + 1);
+			if (privdata->chipdoc_ca) {
+				/* ChipDoc: use its own PKCS#15 key references directly for SELKEY. */
+				privdata->prkey_mappings[j][1] = prkey_info->key_reference;
+			} else {
+				privdata->prkey_mappings[j][1] = 0xA0 + (i + 1);
+			}
+			j++;
+		}
+	}
+
+	/* ChipDoc TokenInfo holds only a placeholder; report the serial from
+	 * EF(D003). */
+	if (privdata->chipdoc_ca) {
+		if (card->serialnr.len == 0)
+			sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &card->serialnr);
+		if (card->serialnr.len > 0) {
+			char *serial = malloc(card->serialnr.len * 2 + 1);
+			if (!serial)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+			sc_bin_to_hex(card->serialnr.value, card->serialnr.len, serial,
+					card->serialnr.len * 2 + 1, 0);
+			free(p15card->tokeninfo->serial_number);
+			p15card->tokeninfo->serial_number = serial;
 		}
 	}
 
