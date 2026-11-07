@@ -1,7 +1,7 @@
 TOPDIR = ..\..\..
 
 TARGETS = asn1 compression pkcs15filter check_macro_reference_loop \
-	strip_pkcs1_2_padding base64 parse_pkcs11_uri
+	strip_pkcs1_2_padding base64 parse_pkcs11_uri entersafe-mscp
 
 OBJECTS = asn1.obj \
 	compression.obj \
