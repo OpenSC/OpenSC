@@ -2905,8 +2905,7 @@ iasecc_sdo_get_tagged_data(struct sc_card *card, int sdo_tag, struct iasecc_sdo 
  * consumer of iasecc_sdo_get_data() to cope with a missing SDO, describe the
  * configuration the card does have.  Both of its keys are 2048-bit -- that is
  * what its own PKCS#15 PrKDF and its certificates say -- and both are used
- * without secure messaging.  Deciphering is not asserted here: the card has not
- * been observed to do it, so that ACL is left at its "never" default. */
+ * without secure messaging. */
 static int
 iasecc_sdo_virtual_monaco(struct sc_card *card, struct iasecc_sdo *sdo, unsigned char sdo_class)
 {
@@ -2919,9 +2918,10 @@ iasecc_sdo_virtual_monaco(struct sc_card *card, struct iasecc_sdo *sdo, unsigned
 	sdo->docp.size.value[0] = 0x01; /* 0x0100 bytes == 2048-bit modulus */
 	sdo->docp.size.size = 2;
 
-	sdo->docp.amb = IASECC_ACL_PSO_SIGNATURE | IASECC_ACL_INTERNAL_AUTHENTICATE;
+	sdo->docp.amb = IASECC_ACL_PSO_SIGNATURE | IASECC_ACL_INTERNAL_AUTHENTICATE | IASECC_ACL_PSO_DECIPHER;
 	sdo->docp.scbs[0] = 0x00; /* PSO compute signature: no condition */
 	sdo->docp.scbs[1] = 0x00; /* internal authenticate: no condition */
+	sdo->docp.scbs[2] = 0x00; /* PSO decipher: no condition */
 
 	sc_log(card->ctx, "Monaco eID: no RSA private SDO on card, using the card's known configuration");
 	return SC_SUCCESS;
