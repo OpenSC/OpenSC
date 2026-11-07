@@ -473,6 +473,7 @@ dtrust_init(sc_card_t *card)
 	case SC_CARD_TYPE_DTRUST_V6_1_M100:
 	case SC_CARD_TYPE_DTRUST_V6_4_MULTI:
 		flags |= SC_ALGORITHM_ECDSA_RAW;
+		flags |= SC_ALGORITHM_ECDSA_HASH_NONE;
 		flags |= SC_ALGORITHM_ECDH_CDH_RAW;
 		ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE;
 
@@ -1566,8 +1567,6 @@ sc_get_dtrust_driver(void)
 	dtrust_ops.decipher = dtrust_decipher;
 	dtrust_ops.logout = dtrust_logout;
 	dtrust_ops.check_sw = dtrust_check_sw;
-
-	dtrust_drv.name = strdup(dtrust_drv.name);
 
 	return &dtrust_drv;
 }
