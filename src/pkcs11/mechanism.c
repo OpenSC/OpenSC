@@ -615,9 +615,11 @@ static CK_RV
 sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 {
 	struct sc_pkcs11_object *key;
-	CK_ATTRIBUTE attr = { CKA_MODULUS_BITS, pLength, sizeof(*pLength) };
+	CK_ATTRIBUTE attr = {CKA_MODULUS_BITS, pLength, sizeof(*pLength)}; // RSA
+	CK_ML_DSA_PARAMETER_SET_TYPE param_set = 0;
+	CK_ATTRIBUTE attr_param_set = {CKA_PARAMETER_SET, &param_set, sizeof(param_set)}; // ML-DSA, SLH-DSA
 	CK_KEY_TYPE key_type;
-	CK_ATTRIBUTE attr_key_type = { CKA_KEY_TYPE, &key_type, sizeof(key_type) };
+	CK_ATTRIBUTE attr_key_type = {CKA_KEY_TYPE, &key_type, sizeof(key_type)};
 	CK_RV rv;
 
 	key = ((struct operation_data *)operation->priv_data)->key;
@@ -628,30 +630,89 @@ sc_pkcs11_signature_size(sc_pkcs11_operation_t *operation, CK_ULONG_PTR pLength)
 	 * and then get what ever attributes are needed.
 	 */
 	rv = key->ops->get_attribute(operation->session, key, &attr_key_type);
-	if (rv == CKR_OK) {
-		switch(key_type) {
-			case CKK_RSA:
-				rv = key->ops->get_attribute(operation->session, key, &attr);
-				/* convert bits to bytes */
-				if (rv == CKR_OK)
-					*pLength = BYTES4BITS(*pLength);
-				break;
-			case CKK_EC:
-			case CKK_EC_EDWARDS:
-			case CKK_EC_MONTGOMERY:
-				/* TODO: -DEE we should use something other then CKA_MODULUS_BITS... */
-				rv = key->ops->get_attribute(operation->session, key, &attr);
-				if (rv == CKR_OK)
-					*pLength = BYTES4BITS(*pLength) * 2 ; /* 2*nLen in bytes */
-				break;
-			case CKK_GOSTR3410:
-				rv = key->ops->get_attribute(operation->session, key, &attr);
-				if (rv == CKR_OK)
-					*pLength = BYTES4BITS(*pLength) * 2;
-				break;
-			default:
-				rv = CKR_MECHANISM_INVALID;
+	if (rv != CKR_OK) {
+		LOG_FUNC_RETURN(context, (int)rv);
+	}
+
+	switch (key_type) {
+	case CKK_RSA:
+		rv = key->ops->get_attribute(operation->session, key, &attr);
+		/* convert bits to bytes */
+		if (rv == CKR_OK)
+			*pLength = BYTES4BITS(*pLength);
+		break;
+	case CKK_EC:
+		/* TODO: -DEE we should use something other then CKA_MODULUS_BITS... */
+		rv = key->ops->get_attribute(operation->session, key, &attr);
+		if (rv == CKR_OK)
+			*pLength = BYTES4BITS(*pLength) * 2; /* 2*nLen in bytes */
+		break;
+	case CKK_EC_EDWARDS:
+	case CKK_EC_MONTGOMERY:
+		*pLength = BYTES4BITS(255) * 2; /* FIXME for Ed448 */
+		break;
+	case CKK_ML_DSA:
+		rv = key->ops->get_attribute(operation->session, key, &attr_param_set);
+		if (rv != CKR_OK) {
+			break;
 		}
+		switch (param_set) {
+		case CKP_ML_DSA_44:
+			*pLength = 2420;
+			break;
+		case CKP_ML_DSA_65:
+			*pLength = 3309;
+			break;
+		case CKP_ML_DSA_87:
+			*pLength = 4627;
+			break;
+		default:
+			rv = CKR_MECHANISM_INVALID;
+			break;
+		}
+		break;
+	case CKK_SLH_DSA:
+		rv = key->ops->get_attribute(operation->session, key, &attr_param_set);
+		if (rv != CKR_OK) {
+			break;
+		}
+		switch (param_set) {
+		case CKP_SLH_DSA_SHA2_128S:
+		case CKP_SLH_DSA_SHAKE_128S:
+			*pLength = 7856;
+			break;
+		case CKP_SLH_DSA_SHA2_128F:
+		case CKP_SLH_DSA_SHAKE_128F:
+			*pLength = 17088;
+			break;
+		case CKP_SLH_DSA_SHA2_192S:
+		case CKP_SLH_DSA_SHAKE_192S:
+			*pLength = 16224;
+			break;
+		case CKP_SLH_DSA_SHA2_192F:
+		case CKP_SLH_DSA_SHAKE_192F:
+			*pLength = 35664;
+			break;
+		case CKP_SLH_DSA_SHA2_256S:
+		case CKP_SLH_DSA_SHAKE_256S:
+			*pLength = 29792;
+			break;
+		case CKP_SLH_DSA_SHA2_256F:
+		case CKP_SLH_DSA_SHAKE_256F:
+			*pLength = 49856;
+			break;
+		default:
+			rv = CKR_MECHANISM_INVALID;
+			break;
+		}
+		break;
+	case CKK_GOSTR3410:
+		rv = key->ops->get_attribute(operation->session, key, &attr);
+		if (rv == CKR_OK)
+			*pLength = BYTES4BITS(*pLength) * 2;
+		break;
+	default:
+		rv = CKR_MECHANISM_INVALID;
 	}
 
 	LOG_FUNC_RETURN(context, (int) rv);
@@ -1350,6 +1411,96 @@ out:
 	return rv;
 }
 
+/* Decapsulate key using KEM algorithm */
+CK_RV
+sc_pkcs11_decaps(struct sc_pkcs11_session *session,
+		CK_MECHANISM_PTR pMechanism,
+		struct sc_pkcs11_object *basekey,
+		CK_KEY_TYPE key_type,
+		CK_SESSION_HANDLE hSession,
+		CK_OBJECT_HANDLE hdkey,
+		struct sc_pkcs11_object *dkey,
+		CK_BYTE_PTR pCiphertext,
+		CK_ULONG ulCiphertextLen)
+{
+	struct sc_pkcs11_card *p11card;
+	sc_pkcs11_operation_t *operation;
+	sc_pkcs11_mechanism_type_t *mt;
+	CK_BYTE_PTR keybuf = NULL;
+	CK_ULONG ulDataLen = 0;
+	CK_ATTRIBUTE template[] = {
+			{CKA_VALUE, keybuf, 0},
+	};
+	CK_RV rv;
+
+	if (!session || !session->slot || !(p11card = session->slot->p11card))
+		return CKR_ARGUMENTS_BAD;
+
+	/* See if we support this mechanism type */
+	mt = sc_pkcs11_find_mechanism(p11card, pMechanism->mechanism, CKF_DECAPSULATE);
+	if (mt == NULL)
+		return CKR_MECHANISM_INVALID;
+
+	/* See if compatible with key type */
+	rv = _validate_key_type(mt, key_type);
+	if (rv != CKR_OK)
+		LOG_FUNC_RETURN(context, (int)rv);
+
+	rv = session_start_operation(session, SC_PKCS11_OPERATION_DECAPSULATE, mt, &operation);
+	if (rv != CKR_OK)
+		return rv;
+
+	memcpy(&operation->mechanism, pMechanism, sizeof(CK_MECHANISM));
+
+	/* Get the size of the data to be returned
+	 * If the card could decapsulate a key an leave it on the card
+	 * then no data is returned.
+	 * If the card returns the data, we will store it in the secret key CKA_VALUE
+	 */
+
+	ulDataLen = 0;
+	rv = operation->type->decapsulate(operation, basekey,
+			pCiphertext, ulCiphertextLen,
+			NULL, &ulDataLen);
+	if (rv != CKR_OK)
+		goto out;
+
+	if (ulDataLen > 0)
+		keybuf = calloc(1, ulDataLen);
+	else
+		keybuf = calloc(1, 8); /* pass in  dummy buffer */
+
+	if (!keybuf) {
+		rv = CKR_HOST_MEMORY;
+		goto out;
+	}
+
+	/* Now do the actual derivation */
+
+	rv = operation->type->decapsulate(operation, basekey, pCiphertext, ulCiphertextLen, keybuf, &ulDataLen);
+	if (rv != CKR_OK)
+		goto out;
+
+	/* add the CKA_VALUE attribute to the template if it was returned
+	 * if not assume it is on the card...
+	 */
+	if (ulDataLen > 0) {
+		template[0].pValue = keybuf;
+		template[0].ulValueLen = ulDataLen;
+
+		dkey->ops->set_attribute(session, dkey, &template[0]);
+
+		memset(keybuf, 0, ulDataLen);
+	}
+
+out:
+	session_stop_operation(session, SC_PKCS11_OPERATION_DECAPSULATE);
+
+	if (keybuf)
+		free(keybuf);
+	return rv;
+}
+
 /*
  * Initialize a encrypt operation
  */
@@ -1644,6 +1795,14 @@ sc_pkcs11_derive(sc_pkcs11_operation_t *operation,
 		    pData, pulDataLen);
 }
 
+static CK_RV
+sc_pkcs11_decapsulate(sc_pkcs11_operation_t *operation, struct sc_pkcs11_object *basekey,
+		CK_BYTE_PTR pCiphertext, CK_ULONG ulCiphertextLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen)
+{
+
+	return basekey->ops->decapsulate(operation->session, basekey, &operation->mechanism,
+			pCiphertext, ulCiphertextLen, pData, pulDataLen);
+}
 
 static CK_RV
 sc_pkcs11_wrap_operation(sc_pkcs11_operation_t *operation,
@@ -1736,6 +1895,9 @@ sc_pkcs11_new_fw_mechanism(CK_MECHANISM_TYPE mech,
 		mt->encrypt = sc_pkcs11_encrypt;
 		mt->encrypt_update = sc_pkcs11_encrypt_update;
 		mt->encrypt_final = sc_pkcs11_encrypt_final;
+	}
+	if (pInfo->flags & CKF_DECAPSULATE) {
+		mt->decapsulate = sc_pkcs11_decapsulate;
 	}
 
 	return mt;
