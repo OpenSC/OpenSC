@@ -143,6 +143,7 @@ src/tests/unittests/sm
 src/tests/unittests/check_macro_reference_loop
 src/tests/unittests/decode_ecdsa_signature
 src/tests/unittests/hextobin
+src/tests/unittests/pkcs15-read-pubkey
 
 src/tests/fuzzing/fuzz_asn1_print
 src/tests/fuzzing/fuzz_asn1_sig_value
