@@ -178,6 +178,22 @@ int perform_chip_authentication(sc_card_t *card,
 int perform_chip_authentication_ex(sc_card_t *card, void *eacsmctx,
 		unsigned char *picc_pubkey, size_t picc_pubkey_len);
 
+/**
+ * @brief Chip Authentication without nonce/token verification.
+ *
+ * Derives the SM keys from the key-agreement shared secret. On success,
+ * the SM layer owns the EAC context.
+ *
+ * @param[in] card
+ * @param[in,out] eacsmctx    initialized EAC context
+ * @param[in] picc_pubkey     PICC's static Chip Authentication public key
+ * @param[in] picc_pubkey_len length of \a picc_pubkey
+ *
+ * @return \c SC_SUCCESS or error code if an error occurred
+ */
+int perform_chip_authentication_ex_no_token(sc_card_t *card, void *eacsmctx,
+		unsigned char *picc_pubkey, size_t picc_pubkey_len);
+
 #ifdef ENABLE_OPENPACE
 /**
  * @brief Establish secure messaging using the given EAC context

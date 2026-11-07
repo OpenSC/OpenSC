@@ -49,6 +49,9 @@ char eac_default_flags = 0;
 #include <openssl/evp.h>
 #include <openssl/objects.h>
 
+/* Exported by libeac, but missing from the public OpenPACE headers. */
+extern int KA_CTX_derive_keys(KA_CTX *ka_ctx, const BUF_MEM *nonce, EVP_MD_CTX *md_ctx);
+
 
 /** @brief EAC secure messaging context */
 struct eac_sm_ctx {
@@ -1428,8 +1431,8 @@ err:
 		return r;
 }
 
-int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
-		unsigned char *picc_pubkey, size_t picc_pubkey_len)
+static int perform_chip_authentication_ex_flags(sc_card_t *card, void *eac_ctx,
+		unsigned char *picc_pubkey, size_t picc_pubkey_len, int no_token)
 {
 	int r;
 	BUF_MEM *picc_pubkey_buf = NULL, *nonce = NULL, *token = NULL,
@@ -1481,7 +1484,14 @@ int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
 	}
 
 
-	if (!CA_STEP6_derive_keys(ctx, nonce, token)) {
+	if (no_token) {
+		if (!KA_CTX_derive_keys(ctx->ca_ctx->ka_ctx, NULL, ctx->md_ctx)) {
+			sc_log_openssl(card->ctx);
+			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not derive keys.");
+			r = SC_ERROR_INTERNAL;
+			goto err;
+		}
+	} else if (!CA_STEP6_derive_keys(ctx, nonce, token)) {
 		sc_log_openssl(card->ctx);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not derive keys.");
 		r = SC_ERROR_INTERNAL;
@@ -1511,6 +1521,20 @@ err:
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 	else
 		return r;
+}
+
+int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
+		unsigned char *picc_pubkey, size_t picc_pubkey_len)
+{
+	return perform_chip_authentication_ex_flags(card, eac_ctx, picc_pubkey,
+			picc_pubkey_len, 0);
+}
+
+int perform_chip_authentication_ex_no_token(sc_card_t *card, void *eac_ctx,
+		unsigned char *picc_pubkey, size_t picc_pubkey_len)
+{
+	return perform_chip_authentication_ex_flags(card, eac_ctx, picc_pubkey,
+			picc_pubkey_len, 1);
 }
 
 static int
@@ -1815,6 +1839,12 @@ int perform_chip_authentication(sc_card_t *card,
 }
 
 int perform_chip_authentication_ex(sc_card_t *card, void *eac_ctx,
+		unsigned char *picc_pubkey, size_t picc_pubkey_len)
+{
+	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_NOT_SUPPORTED);
+}
+
+int perform_chip_authentication_ex_no_token(sc_card_t *card, void *eac_ctx,
 		unsigned char *picc_pubkey, size_t picc_pubkey_len)
 {
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_NOT_SUPPORTED);

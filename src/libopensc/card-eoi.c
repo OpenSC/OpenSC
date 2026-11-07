@@ -40,10 +40,6 @@
 #include <eac/objects.h>
 #include <eac/ta.h>
 
-/* Exported by libeac, but missing from the public OpenPACE headers. */
-int KA_CTX_derive_keys(KA_CTX *ka_ctx, const BUF_MEM *nonce, EVP_MD_CTX *md_ctx);
-BUF_MEM *BUF_MEM_create_init(const void *data, size_t len);
-
 static struct sc_card_operations eoi_ops;
 
 static struct {
@@ -204,8 +200,7 @@ eoi_decrypt_can(struct sc_pkcs15_u8 *enc_can, char *can)
 
 /*
  * ChipDoc cards use Chip Authentication (BSI TR-03110) instead of PACE:
- * EF(D004) holds the static CA key and the applet returns no nonce/token,
- * so the SM keys derive from the ECDH shared secret alone.
+ * EF(D004) holds the static CA key and the applet returns no nonce/token.
  */
 
 /* Card Authentication public key: ECDH, AES-CBC, CMAC-128 */
@@ -215,10 +210,6 @@ eoi_decrypt_can(struct sc_pkcs15_u8 *enc_can, char *can)
 
 static const u8 eoi_chipdoc_aid[] = {
 	0xE8, 0x28, 0xBD, 0x08, 0x0F, 0xA0, 0x00, 0x00, 0x03, 0x63, 0x64, 0x79, 0x6E, 0x69, 0x64
-};
-
-static const u8 eoi_chipdoc_mse_data[] = {
-	0x80, 0x0A, 0x04, 0x00, 0x7F, 0x00, 0x07, 0x02, 0x02, 0x03, 0x02, 0x02
 };
 
 static int eoi_chipdoc_transmit(struct sc_card *card, u8 cla, u8 ins, u8 p1, u8 p2,
@@ -344,57 +335,18 @@ end:
 }
 
 
-static int eoi_chipdoc_gen_auth(struct sc_card *card, const BUF_MEM *pubkey)
-{
-	u8 *data;
-	size_t data_len;
-	int r;
-
-	if (!pubkey || pubkey->length < 3 || pubkey->length > 0xFF - 3)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	/* Dynamic Authentication Data: 7C ::= { 80 ::= ephemeral public key } */
-	data_len = 6 + pubkey->length;
-	data = malloc(data_len);
-	if (!data)
-		return SC_ERROR_OUT_OF_MEMORY;
-	data[0] = 0x7C;
-	data[1] = 0x81;
-	data[2] = (u8)(3 + pubkey->length);
-	data[3] = 0x80;
-	data[4] = 0x81;
-	data[5] = (u8)pubkey->length;
-	memcpy(data + 6, pubkey->data, pubkey->length);
-
-	/* The applet expects the secure messaging indicator in the class byte */
-	r = eoi_chipdoc_transmit(card, 0x10, 0x86, 0x00, 0x00, data, data_len);
-	free(data);
-
-	if (r != SC_SUCCESS) {
-		sc_log(card->ctx, "GENERAL AUTHENTICATE failed: %s", sc_strerror(r));
-		return r;
-	}
-	return SC_SUCCESS;
-}
-
-
 static int eoi_chipdoc_sm_open(struct sc_card *card)
 {
 	EAC_CTX *eac_ctx = NULL;
-	BUF_MEM *picc_pubkey_buf = NULL, *eph_pubkey = NULL, *comp_pubkey = NULL;
+	BUF_MEM *comp_pubkey = NULL;
 	u8 *picc_pubkey = NULL;
 	size_t picc_pubkey_len = 0;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
 
-
 	r = eoi_chipdoc_read_ca_pubkey(card, &picc_pubkey, &picc_pubkey_len);
 	LOG_TEST_GOTO_ERR(card->ctx, r, "Cannot read the Chip Authentication public key");
-
-	picc_pubkey_buf = BUF_MEM_create_init(picc_pubkey, picc_pubkey_len);
-	if (!picc_pubkey_buf)
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_OUT_OF_MEMORY, "Out of memory");
 
 	EAC_init();
 	eac_ctx = EAC_CTX_new();
@@ -405,40 +357,16 @@ static int eoi_chipdoc_sm_open(struct sc_card *card)
 	if (!EAC_CTX_init_ca(eac_ctx, NID_id_CA_ECDH_AES_CBC_CMAC_128, EOI_CHIPDOC_CA_STD_DP))
 		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INTERNAL, "Cannot initialize Chip Authentication");
 
-	/* MSE: SET AT with the CA algorithm OID */
-	r = eoi_chipdoc_transmit(card, 0x00, 0x22, 0x41, 0xA4,
-			eoi_chipdoc_mse_data, sizeof eoi_chipdoc_mse_data);
-	LOG_TEST_GOTO_ERR(card->ctx, r, "Cannot set the authentication template");
-
-	/* The TA step 3 helper only generates the ephemeral key pair. */
+	/* TA_STEP3 only generates the ephemeral key. */
 	comp_pubkey = TA_STEP3_generate_ephemeral_key(eac_ctx);
 	if (!comp_pubkey)
 		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INTERNAL, "Cannot generate ephemeral key");
 
-	eph_pubkey = CA_STEP2_get_eph_pubkey(eac_ctx);
-	if (!eph_pubkey)
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INTERNAL, "Cannot get ephemeral public key");
-
-	/* CA step 2 */
-	r = eoi_chipdoc_gen_auth(card, eph_pubkey);
-	LOG_TEST_GOTO_ERR(card->ctx, r, "Cannot send ephemeral public key");
-
-	/* CA step 3: ECDH with the static public key of the card */
-	if (!CA_STEP4_compute_shared_secret(eac_ctx, picc_pubkey_buf))
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INTERNAL, "Cannot compute shared secret");
-
-	/* No nonce/token: derive the SM keys from the shared secret. */
-	if (!KA_CTX_derive_keys(eac_ctx->ca_ctx->ka_ctx, NULL, eac_ctx->md_ctx))
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INTERNAL, "Cannot derive session keys");
-
-	if (!EAC_CTX_set_encryption_ctx(eac_ctx, EAC_ID_CA))
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INTERNAL, "Cannot set encryption context");
-
-	/* Start secure messaging; on success the SM layer owns the EAC context */
-	r = eac_sm_start(card, eac_ctx, NULL, 0);
+	r = perform_chip_authentication_ex_no_token(card, eac_ctx,
+			picc_pubkey, picc_pubkey_len);
 	if (r == SC_SUCCESS)
 		eac_ctx = NULL;
-	LOG_TEST_GOTO_ERR(card->ctx, r, "Cannot start secure messaging");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Cannot perform Chip Authentication");
 
 	/* The first SM command must be SELECT MF. */
 	r = sc_select_file(card, sc_get_mf_path(), NULL);
@@ -447,8 +375,6 @@ static int eoi_chipdoc_sm_open(struct sc_card *card)
 	r = SC_SUCCESS;
 
 err:
-	BUF_MEM_clear_free(picc_pubkey_buf);
-	BUF_MEM_clear_free(eph_pubkey);
 	BUF_MEM_clear_free(comp_pubkey);
 	if (eac_ctx)
 		EAC_CTX_clear_free(eac_ctx);
