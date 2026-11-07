@@ -6,8 +6,31 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "pkcs11/pkcs11-pss-params.h"
+#include "pkcs11/openssl.c"
 #include "torture.h"
+
+#ifdef ENABLE_OPENSSL
+/* These parameter tests must not invoke the included mechanism registry. */
+struct sc_context *context = NULL;
+
+CK_RV
+sc_pkcs11_register_mechanism(struct sc_pkcs11_card *card,
+		sc_pkcs11_mechanism_type_t *type, sc_pkcs11_mechanism_type_t **registered)
+{
+	(void)card;
+	(void)type;
+	(void)registered;
+	fail_msg("Parameter validation must not register mechanisms");
+	return CKR_GENERAL_ERROR;
+}
+
+void
+sc_pkcs11_free_mechanism(sc_pkcs11_mechanism_type_t **type)
+{
+	(void)type;
+	fail_msg("Parameter validation must not free mechanisms");
+}
+#endif
 
 static const struct {
 	CK_MECHANISM_TYPE hash;

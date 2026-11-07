@@ -39,7 +39,6 @@
 #define SHA_DIGEST_LENGTH	20
 #endif
 
-#include "pkcs11-pss-params.h"
 #include "sc-pkcs11.h"
 #ifdef USE_PKCS15_INIT
 #include "pkcs15init/pkcs15-init.h"
