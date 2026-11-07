@@ -1488,9 +1488,9 @@ sc_pkcs11_decaps(struct sc_pkcs11_session *session,
 		template[0].pValue = keybuf;
 		template[0].ulValueLen = ulDataLen;
 
-		dkey->ops->set_attribute(session, dkey, &template[0]);
+		rv = dkey->ops->set_attribute(session, dkey, &template[0]);
 
-		memset(keybuf, 0, ulDataLen);
+		sc_mem_clear(keybuf, ulDataLen);
 	}
 
 out:

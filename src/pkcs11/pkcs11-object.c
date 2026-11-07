@@ -1820,7 +1820,8 @@ C_DecapsulateKey(CK_SESSION_HANDLE hSession,
 	struct sc_pkcs11_object *key_object;
 	CK_RV rv;
 
-	if (pMechanism == NULL_PTR)
+	if (pMechanism == NULL_PTR || phKey == NULL_PTR || pCiphertext == NULL_PTR ||
+	    (pTemplate == NULL_PTR && ulAttributeCount > 0))
 		return CKR_ARGUMENTS_BAD;
 
 	rv = sc_pkcs11_lock();
@@ -1867,7 +1868,10 @@ C_DecapsulateKey(CK_SESSION_HANDLE hSession,
 		if (rv == CKR_OK)
 			rv = sc_pkcs11_decaps(session, pMechanism, object, key_type,
 					hSession, *phKey, key_object, pCiphertext, ulCiphertextLen);
-		/* TODO if (rv != CK_OK) need to destroy the object */
+		if (rv != CKR_OK) {
+			sc_destroy_object_int(session, *phKey);
+			*phKey = CK_INVALID_HANDLE;
+		}
 		rv = reset_login_state(session->slot, rv);
 		break;
 	default:

@@ -601,7 +601,7 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 			CK_BYTE_PTR data, CK_ULONG data_len,
 			CK_BYTE_PTR signat, CK_ULONG signat_len)
 {
-	int res, r;
+	int res = -1, r;
 	CK_RV rv = CKR_GENERAL_ERROR;
 	EVP_PKEY *pkey = NULL;
 	const unsigned char *pubkey_tmp = NULL;

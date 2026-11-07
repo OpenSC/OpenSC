@@ -4277,6 +4277,8 @@ pkcs15_prkey_get_attribute(struct sc_pkcs11_session *session,
 	case CKA_EC_PARAMS:
 		return get_ec_pubkey_params(key, attr); /* get from pubkey for now */
 	case CKA_PARAMETER_SET:
+		if (!prkey->pub_data || !prkey->prv_info)
+			return CKR_ATTRIBUTE_TYPE_INVALID;
 		switch (prkey->pub_data->algorithm) {
 		case SC_ALGORITHM_MLDSA:
 		case SC_ALGORITHM_MLKEM:
@@ -5235,6 +5237,7 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 			switch (pubkey->pub_data->algorithm) {
 			case SC_ALGORITHM_MLDSA:
 			case SC_ALGORITHM_MLKEM:
+			case SC_ALGORITHM_SLHDSA:
 				check_attribute_buffer(attr, pubkey->pub_data->u.pqc.value.len);
 				memcpy(attr->pValue, pubkey->pub_data->u.pqc.value.value, pubkey->pub_data->u.pqc.value.len);
 				return CKR_OK;
@@ -5295,6 +5298,8 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 	case CKA_EC_POINT:
 		return get_ec_pubkey_point(pubkey->pub_data, attr);
 	case CKA_PARAMETER_SET:
+		if (!pubkey->pub_data || !pubkey->pub_info)
+			return CKR_ATTRIBUTE_TYPE_INVALID;
 		switch (pubkey->pub_data->algorithm) {
 		case SC_ALGORITHM_MLDSA:
 		case SC_ALGORITHM_MLKEM:
@@ -6248,7 +6253,7 @@ get_ec_pubkey_point(struct sc_pkcs15_pubkey *key, CK_ATTRIBUTE_PTR attr)
 	return CKR_ATTRIBUTE_TYPE_INVALID;
 }
 
-static CK_ULONG
+static CK_RV
 get_pqc_parameter_set(struct sc_pkcs15_pubkey *pub, unsigned long parameter_set, CK_ATTRIBUTE_PTR attr)
 {
 	if (pub == NULL || attr == NULL)
@@ -6259,13 +6264,13 @@ get_pqc_parameter_set(struct sc_pkcs15_pubkey *pub, unsigned long parameter_set,
 		switch (parameter_set) {
 		case SC_ALGORITHM_MLDSA_44:
 			*(CK_ULONG *)attr->pValue = CKP_ML_DSA_44;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_MLDSA_65:
 			*(CK_ULONG *)attr->pValue = CKP_ML_DSA_65;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_MLDSA_87:
 			*(CK_ULONG *)attr->pValue = CKP_ML_DSA_87;
-			return SC_SUCCESS;
+			return CKR_OK;
 		default:
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
@@ -6274,13 +6279,13 @@ get_pqc_parameter_set(struct sc_pkcs15_pubkey *pub, unsigned long parameter_set,
 		switch (parameter_set) {
 		case SC_ALGORITHM_MLKEM_512:
 			*(CK_ULONG *)attr->pValue = CKP_ML_KEM_512;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_MLKEM_768:
 			*(CK_ULONG *)attr->pValue = CKP_ML_KEM_768;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_MLKEM_1024:
 			*(CK_ULONG *)attr->pValue = CKP_ML_KEM_1024;
-			return SC_SUCCESS;
+			return CKR_OK;
 		default:
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
@@ -6289,40 +6294,40 @@ get_pqc_parameter_set(struct sc_pkcs15_pubkey *pub, unsigned long parameter_set,
 		switch (parameter_set) {
 		case SC_ALGORITHM_SLHDSA_SHA2_128S:
 			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHA2_128S;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_SLHDSA_SHAKE_128S:
 			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHAKE_128S;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_SLHDSA_SHA2_128F:
 			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHA2_128F;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_SLHDSA_SHAKE_128F:
 			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHAKE_128F;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_SLHDSA_SHA2_192S:
 			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHA2_192S;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_SLHDSA_SHAKE_192S:
 			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHAKE_192S;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_SLHDSA_SHA2_192F:
 			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHA2_192F;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_SLHDSA_SHAKE_192F:
 			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHAKE_192F;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_SLHDSA_SHA2_256S:
 			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHA2_256S;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_SLHDSA_SHAKE_256S:
 			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHAKE_256S;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_SLHDSA_SHA2_256F:
 			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHA2_256F;
-			return SC_SUCCESS;
+			return CKR_OK;
 		case SC_ALGORITHM_SLHDSA_SHAKE_256F:
 			*(CK_ULONG *)attr->pValue = CKP_SLH_DSA_SHAKE_256F;
-			return SC_SUCCESS;
+			return CKR_OK;
 		default:
 			return CKR_ATTRIBUTE_TYPE_INVALID;
 		}
@@ -6797,6 +6802,11 @@ register_slhdsa_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	mech_info.ulMinKeySize = min_key_size;
 	mech_info.ulMaxKeySize = max_key_size;
 
+#ifdef ENABLE_OPENSSL
+	mech_info.flags |= CKF_VERIFY;
+#endif
+	// TODO add HASH algorithms?
+
 	mt = sc_pkcs11_new_fw_mechanism(CKM_SLH_DSA, &mech_info, CKK_SLH_DSA, NULL, NULL, NULL);
 	if (!mt)
 		return CKR_HOST_MEMORY;
@@ -6804,11 +6814,6 @@ register_slhdsa_mechanisms(struct sc_pkcs11_card *p11card, int flags,
 	sc_pkcs11_free_mechanism(&mt);
 	if (rc != CKR_OK)
 		return rc;
-
-#ifdef ENABLE_OPENSSL
-	mech_info.flags |= CKF_VERIFY;
-#endif
-	// TODO add HASH algorithms?
 
 	if (flags & SC_ALGORITHM_ONBOARD_KEY_GEN) {
 		mech_info.flags = CKF_HW | CKF_GENERATE_KEY_PAIR;

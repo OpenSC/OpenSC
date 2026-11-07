@@ -1209,14 +1209,14 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					r = yk_copy_pubkey_from_tag(&info, &pubkey.u.pqc.value, 0x87);
 					if (r != SC_SUCCESS) {
 						sc_log(card->ctx, "Failed to parse ML-DSA public key. %d", r);
-						continue;
+						goto next_pubkey;
 					}
 					pubkey.algorithm = SC_ALGORITHM_MLDSA;
 					/* Prepare algorithm information for proper SPKI creation */
 					pubkey.alg_id = calloc(1, sizeof(struct sc_algorithm_id));
 					if (pubkey.alg_id == NULL) {
 						sc_log(card->ctx, "Failed to allocate pubkey alg_id");
-						continue;
+						goto next_pubkey;
 					}
 					switch (info.algorithm) {
 					case 0xE2:
@@ -1231,7 +1231,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					}
 					if (r != SC_SUCCESS) {
 						sc_log(card->ctx, "Failed to format ML-DSA OID");
-						continue;
+						goto next_pubkey;
 					}
 					pubkey.alg_id->algorithm = pubkey.algorithm;
 					break;
@@ -1241,14 +1241,14 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					r = yk_copy_pubkey_from_tag(&info, &pubkey.u.pqc.value, 0x88);
 					if (r != SC_SUCCESS) {
 						sc_log(card->ctx, "Failed to parse ML-KEM public key. %d", r);
-						continue;
+						goto next_pubkey;
 					}
 					pubkey.algorithm = SC_ALGORITHM_MLKEM;
 					/* Prepare algorithm information for proper SPKI creation */
 					pubkey.alg_id = calloc(1, sizeof(struct sc_algorithm_id));
 					if (pubkey.alg_id == NULL) {
 						sc_log(card->ctx, "Failed to allocate pubkey alg_id");
-						continue;
+						goto next_pubkey;
 					}
 					switch (info.algorithm) {
 					case 0xE5:
@@ -1263,7 +1263,7 @@ static int sc_pkcs15emu_piv_init(sc_pkcs15_card_t *p15card)
 					}
 					if (r != SC_SUCCESS) {
 						sc_log(card->ctx, "Failed to format ML-KEM OID");
-						continue;
+						goto next_pubkey;
 					}
 					pubkey.alg_id->algorithm = pubkey.algorithm;
 					break;

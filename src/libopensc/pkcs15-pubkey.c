@@ -1240,6 +1240,7 @@ sc_pkcs15_erase_pubkey(struct sc_pkcs15_pubkey *key)
 		break;
 	case SC_ALGORITHM_MLDSA:
 	case SC_ALGORITHM_MLKEM:
+	case SC_ALGORITHM_SLHDSA:
 		free(key->u.pqc.value.value);
 		break;
 	}

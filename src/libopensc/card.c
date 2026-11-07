@@ -1204,6 +1204,9 @@ sc_algorithm_info_t *sc_card_find_alg(sc_card_t *card,
 	for (i = 0; i < card->algorithm_count; i++) {
 		sc_algorithm_info_t *info = &card->algorithms[i];
 
+		if (info->algorithm != algorithm)
+			continue;
+
 		if (param && (info->algorithm == SC_ALGORITHM_EC ||
 			info->algorithm == SC_ALGORITHM_EDDSA ||
 			info->algorithm == SC_ALGORITHM_XEDDSA)) {
@@ -1214,8 +1217,6 @@ sc_algorithm_info_t *sc_card_find_alg(sc_card_t *card,
 			info->algorithm == SC_ALGORITHM_SLHDSA)) {
 			if (*(unsigned long *)param & info->flags)
 				return info;
-		} else if (info->algorithm != algorithm) {
-			continue;
 		} else if (info->key_length == key_length)
 			return info;
 	}
