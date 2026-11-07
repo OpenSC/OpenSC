@@ -1102,7 +1102,8 @@ static int read_ssh_key(void)
 		 * 3 x 4B item length headers
 		 * max 20B algorithm name, 9B curve name, max 256B key data */
 		unsigned char buf[300];
-		unsigned int i, tmp;
+		unsigned int i;
+		int tmp;
 		size_t n;
 		int len;
 
@@ -1136,7 +1137,7 @@ static int read_ssh_key(void)
 		if (len + 4 + 9 > (int)sizeof(buf))
 			goto fail2;
 		tmp = snprintf((char *) buf+len+4, sizeof(buf) - len - 4, "nistp%zu", n);
-		if (tmp > 255 || len + 4 + tmp > (int)sizeof(buf))
+		if (tmp < 0 || tmp > 255 || len + 4 + tmp > (int)sizeof(buf))
 			goto fail2;
 		buf[len++] = 0;
 		buf[len++] = 0;
