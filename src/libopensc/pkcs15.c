@@ -27,13 +27,14 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#include "cardctl.h"
-#include "internal.h"
-#include "pkcs15.h"
 #include "asn1.h"
-#include "common/libscdl.h"
+#include "cardctl.h"
 #include "common/compat_strlcat.h"
 #include "common/compat_strlcpy.h"
+#include "common/libscdl.h"
+#include "internal.h"
+#include "pkcs15.h"
+#include "simpletlv.h"
 
 #ifdef ENABLE_OPENSSL
 #include <openssl/sha.h>
@@ -2616,35 +2617,56 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 
 		if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE_TLV) {
 			unsigned int i;
-			size_t l, record_len;
-			unsigned char *head = data;
+			size_t value_bytes_read = 0, record_len;
+			size_t record_bytes, copied, missing;
+			u8 record[256], tag;
+			const u8 *value;
 
-			for (i=1; ; i++) {
-				l = len - (head - data);
-				if (l > 256) {
-					l = 256;
-				}
-				r = sc_read_record(p15card->card, i, 0, head, l, SC_RECORD_BY_REC_NR);
+			for (i = 1;; i++) {
+				/* The aggregate size counts values, not record headers. */
+				r = sc_read_record(p15card->card, i, 0, record, sizeof(record), SC_RECORD_BY_REC_NR);
 				if (r == SC_ERROR_RECORD_NOT_FOUND)
 					break;
 				if (r < 0) {
 					goto fail_unlock;
 				}
-				if (r < 2)
+				if (r == 0)
 					break;
-				record_len = head[1];
-				if (record_len != 0xff) {
-					memmove(head, head+2, r-2);
-					head += (r-2);
+				if ((size_t)r > sizeof(record)) {
+					r = SC_ERROR_INVALID_TLV_OBJECT;
+					goto fail_unlock;
 				}
-				else {
-					if (r < 4)
-						break;
-					memmove(head, head+4, r-4);
-					head += (r-4);
+				record_bytes = (size_t)r;
+				value = record;
+				r = sc_simpletlv_read_tag(&value, record_bytes, &tag, &record_len,
+						SC_SIMPLETLV_BIG_ENDIAN);
+				if ((r != SC_SUCCESS && r != SC_ERROR_TLV_END_OF_CONTENTS) ||
+						record_len > len - value_bytes_read) {
+					r = SC_ERROR_INVALID_TLV_OBJECT;
+					goto fail_unlock;
 				}
+				copied = MIN(record_len, record_bytes - (size_t)(value - record));
+				memcpy(data + value_bytes_read, value, copied);
+				missing = record_len - copied;
+				if (missing > 0) {
+					r = sc_read_record(p15card->card, i, (unsigned int)record_bytes,
+							data + value_bytes_read + copied, missing, SC_RECORD_BY_REC_NR);
+					if (r < 0)
+						goto fail_unlock;
+					if ((size_t)r != missing) {
+						r = SC_ERROR_INVALID_TLV_OBJECT;
+						goto fail_unlock;
+					}
+				}
+				value_bytes_read += record_len;
 			}
-			len = head-data;
+			len = value_bytes_read;
+			if (len > 0) {
+				unsigned char *tmp = realloc(data, len);
+
+				if (tmp != NULL)
+					data = tmp;
+			}
 		}
 		else if (file->ef_structure == SC_FILE_EF_LINEAR_VARIABLE) {
 			r = sc_read_record(p15card->card, in_path->index, (unsigned)offset, data, len, SC_RECORD_BY_REC_NR);

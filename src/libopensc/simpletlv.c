@@ -38,9 +38,13 @@
  * content length.
  */
 int
-sc_simpletlv_put_tag(u8 tag, size_t datalen, u8 *out, size_t outlen, u8 **ptr)
+sc_simpletlv_put_tag(u8 tag, size_t datalen, u8 *out, size_t outlen, u8 **ptr,
+		enum sc_simpletlv_byte_order byte_order)
 {
 	u8 *p = out;
+
+	if (byte_order != SC_SIMPLETLV_LITTLE_ENDIAN && byte_order != SC_SIMPLETLV_BIG_ENDIAN)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	if (outlen < 2 || (outlen < 4 && datalen >= 0xff))
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -60,8 +64,13 @@ sc_simpletlv_put_tag(u8 tag, size_t datalen, u8 *out, size_t outlen, u8 **ptr)
 	} else {
 		/* longer values up to 65535 */
 		*p++ = (u8)0xff; /* first byte is 0xff */
-		*p++ = (u8)datalen & 0xff;
-		*p++ = (u8)(datalen >> 8) & 0xff; /* LE */
+		if (byte_order == SC_SIMPLETLV_BIG_ENDIAN) {
+			*p++ = (u8)(datalen >> 8);
+			*p++ = (u8)datalen;
+		} else {
+			*p++ = (u8)datalen;
+			*p++ = (u8)(datalen >> 8);
+		}
 	}
 	if (ptr != NULL)
 		*ptr = p;
@@ -72,11 +81,15 @@ sc_simpletlv_put_tag(u8 tag, size_t datalen, u8 *out, size_t outlen, u8 **ptr)
  * content.
  */
 int
-sc_simpletlv_read_tag(const u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen)
+sc_simpletlv_read_tag(const u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen,
+		enum sc_simpletlv_byte_order byte_order)
 {
 	u8 tag;
 	size_t left = buflen, len;
 	const u8 *p = *buf;
+
+	if (byte_order != SC_SIMPLETLV_LITTLE_ENDIAN && byte_order != SC_SIMPLETLV_BIG_ENDIAN)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	*buf = NULL;
 
@@ -95,7 +108,7 @@ sc_simpletlv_read_tag(const u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen
 			return SC_ERROR_INVALID_TLV_OBJECT;
 		}
 		/* skip two bytes (the size) */
-		len = lebytes2ushort(p);
+		len = byte_order == SC_SIMPLETLV_BIG_ENDIAN ? bebytes2ushort(p) : lebytes2ushort(p);
 		p += 2;
 		left -= 2;
 	}

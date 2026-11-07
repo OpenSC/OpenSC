@@ -30,6 +30,11 @@ extern "C" {
 
 #include "libopensc/opensc.h"
 
+enum sc_simpletlv_byte_order {
+	SC_SIMPLETLV_LITTLE_ENDIAN,
+	SC_SIMPLETLV_BIG_ENDIAN
+};
+
 /*
  * Create a tag/length file in Simple TLV based on the  val_len  content length
  * @param  tag       Tag to store into the TL file
@@ -37,17 +42,21 @@ extern "C" {
  * @param  out       TL byte array to write into
  * @param  outlen    The length of the output array
  * @param  ptr       The end of the TL record written
+ * @param  byte_order Byte order of the two-byte extended length
  * @return           SC_SUCCESS for correct input
  */
-int sc_simpletlv_put_tag(u8 tag, size_t datalen, u8 *out, size_t outlen, u8 **ptr);
+int sc_simpletlv_put_tag(u8 tag, size_t datalen, u8 *out, size_t outlen, u8 **ptr,
+		enum sc_simpletlv_byte_order byte_order);
 
 /* get the Simple TLV tag and length.
  * @param  buf       Pointer to the TL file
  * @param  buflen    The length of TL file
  * @param  tag_out   The tag from the TL file
  * @param  taglen    The length of the V record
+ * @param  byte_order Byte order of the two-byte extended length
  * @return           SC_SUCCESS on valid input
  */
-int sc_simpletlv_read_tag(const u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen);
+int sc_simpletlv_read_tag(const u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen,
+		enum sc_simpletlv_byte_order byte_order);
 
 #endif
