@@ -16,10 +16,10 @@ endif
 
 noinst_PROGRAMS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin \
 	decode_ecdsa_signature check_macro_reference_loop strip_pkcs1_2_padding \
-	base64 parse_pkcs11_uri
+	base64 parse_pkcs11_uri entersafe-mscp
 TESTS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin \
 	decode_ecdsa_signature check_macro_reference_loop strip_pkcs1_2_padding \
-	base64 parse_pkcs11_uri
+	base64 parse_pkcs11_uri entersafe-mscp
 
 noinst_HEADERS = torture.h
 
@@ -46,6 +46,7 @@ check_macro_reference_loop_SOURCES = check_macro_reference_loop.c
 strip_pkcs1_2_padding_SOURCES = strip_pkcs1_2_padding.c
 base64_SOURCES = base64.c
 parse_pkcs11_uri_SOURCES = parse_pkcs11_uri.c
+entersafe_mscp_SOURCES = entersafe-mscp.c
 
 if ENABLE_ZLIB
 noinst_PROGRAMS += compression
