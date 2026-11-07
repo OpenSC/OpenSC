@@ -1924,7 +1924,6 @@ piv_send_vci_pairing_code(struct sc_card *card, u8 *paring_code)
 		LOG_FUNC_RETURN(card->ctx, r);
 	}
 
-	sm_apdu.flags += SC_APDU_FLAGS_NO_SM; /* run as is */
 	r = sc_transmit_apdu(card, &sm_apdu);
 	if (r < 0) {
 		free(sm_apdu.resp);
