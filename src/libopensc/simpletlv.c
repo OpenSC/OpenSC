@@ -86,11 +86,16 @@ sc_simpletlv_read_tag(const u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen
 {
 	u8 tag;
 	size_t left = buflen, len;
-	const u8 *p = *buf;
+	const u8 *p;
 
 	if (byte_order != SC_SIMPLETLV_LITTLE_ENDIAN && byte_order != SC_SIMPLETLV_BIG_ENDIAN)
 		return SC_ERROR_INVALID_ARGUMENTS;
+	if (!buf)
+		return SC_ERROR_INVALID_ARGUMENTS;
+	if (!*buf)
+		return SC_ERROR_INVALID_TLV_OBJECT;
 
+	p = *buf;
 	*buf = NULL;
 
 	if (left < 2) {
