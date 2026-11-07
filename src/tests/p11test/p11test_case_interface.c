@@ -24,6 +24,24 @@
 
 extern void *pkcs11_so;
 
+/* The checks below describe OpenSC's own interfaces. Other modules offer
+ * other sets, so they run only when C_GetInfo names OpenSC as manufacturer. */
+static int
+is_opensc_module(token_info_t *info)
+{
+	CK_INFO ck_info;
+	const char *name = OPENSC_VS_FF_COMPANY_NAME;
+	size_t len = strlen(name);
+
+	if (info->function_pointer->C_GetInfo(&ck_info) != CKR_OK)
+		return 0;
+	if (len > sizeof(ck_info.manufacturerID))
+		return 0;
+	/* manufacturerID is padded with spaces, not terminated */
+	return memcmp(ck_info.manufacturerID, name, len) == 0 &&
+	       (len == sizeof(ck_info.manufacturerID) || ck_info.manufacturerID[len] == ' ');
+}
+
 void interface_test(void **state)
 {
 	token_info_t *info = (token_info_t *) *state;
@@ -55,7 +73,7 @@ void interface_test(void **state)
 	/* Get the count of interfaces */
 	rv = C_GetInterfaceList(NULL, &count);
 	assert_int_equal(rv, CKR_OK);
-	/* Assume at least one interface here. Generally, OpenSC will provide two, 3.0 and 2.x */
+	/* Assume at least one interface here */
 	assert_true(count > 0);
 
 	interfaces = malloc(count * sizeof(CK_INTERFACE));
@@ -72,52 +90,42 @@ void interface_test(void **state)
 			interfaces[i].pFunctionList,
 			interfaces[i].flags);
 	}
-	/* run the rest only if we have 2 interfaces (assume OpenSC) */
-	if (count == 2) {
+	/* OpenSC offers three interfaces: 3.2 (the default), 3.0 and 2.x */
+	if (is_opensc_module(info)) {
 		CK_VERSION version2;
-		assert_string_equal((char *)interfaces[0].pInterfaceName, "PKCS 11");
+		assert_int_equal(count, 3);
+		for (i = 0; i < count; i++) {
+			assert_string_equal((char *)interfaces[i].pInterfaceName, "PKCS 11");
+			assert_int_equal(interfaces[i].flags, 0);
+		}
 		assert_int_equal(((CK_VERSION *)interfaces[0].pFunctionList)->major, 3);
-		assert_int_equal(((CK_VERSION *)interfaces[0].pFunctionList)->minor, 0);
-		assert_int_equal(interfaces[0].flags, 0);
-		assert_string_equal((char *)interfaces[1].pInterfaceName, "PKCS 11");
-		assert_int_equal(((CK_VERSION *)interfaces[1].pFunctionList)->major, 2);
-		// assert_int_equal(((CK_VERSION *)interfaces[1].pFunctionList)->minor, 20);
-		assert_int_equal(interfaces[1].flags, 0);
-		version2 = *(CK_VERSION *)interfaces[1].pFunctionList;
+		assert_int_equal(((CK_VERSION *)interfaces[0].pFunctionList)->minor, 2);
+		assert_int_equal(((CK_VERSION *)interfaces[1].pFunctionList)->major, 3);
+		assert_int_equal(((CK_VERSION *)interfaces[1].pFunctionList)->minor, 0);
+		assert_int_equal(((CK_VERSION *)interfaces[2].pFunctionList)->major, 2);
+		version2 = *(CK_VERSION *)interfaces[2].pFunctionList;
 
 		/* GetInterface with NULL name should give us default PKCS 11 one */
 		rv = C_GetInterface(NULL, NULL, &interface, 0);
 		assert_int_equal(rv, CKR_OK);
-		assert_string_equal((char *)interface->pInterfaceName, "PKCS 11");
-		assert_int_equal(((CK_VERSION *)interface->pFunctionList)->major, 3);
-		assert_int_equal(((CK_VERSION *)interface->pFunctionList)->minor, 0);
-		assert_int_equal(interface->flags, 0);
-		/* The function list should be the same */
 		assert_ptr_equal(interfaces[0].pFunctionList, interface->pFunctionList);
 
-		/* GetInterface with explicit 3.0 version */
+		/* GetInterface with an explicit version gives the listed function list */
 		version.major = 3;
+		version.minor = 2;
+		rv = C_GetInterface((CK_UTF8CHAR_PTR) "PKCS 11", &version, &interface, 0);
+		assert_int_equal(rv, CKR_OK);
+		assert_ptr_equal(interfaces[0].pFunctionList, interface->pFunctionList);
+
 		version.minor = 0;
 		rv = C_GetInterface((CK_UTF8CHAR_PTR) "PKCS 11", &version, &interface, 0);
 		assert_int_equal(rv, CKR_OK);
-		assert_string_equal((char *)interface->pInterfaceName, "PKCS 11");
-		assert_int_equal(((CK_VERSION *)interface->pFunctionList)->major, 3);
-		assert_int_equal(((CK_VERSION *)interface->pFunctionList)->minor, 0);
-		assert_int_equal(interface->flags, 0);
-		/* The function list should be the same */
-		assert_ptr_equal(interfaces[0].pFunctionList, interface->pFunctionList);
+		assert_ptr_equal(interfaces[1].pFunctionList, interface->pFunctionList);
 
-		/* GetInterface the other interface (with explicit 2.x version) */
-		version.major = 2; /* assumed 2 */
-		version.minor = version2.minor;
+		version = version2;
 		rv = C_GetInterface((CK_UTF8CHAR_PTR) "PKCS 11", &version, &interface, 0);
 		assert_int_equal(rv, CKR_OK);
-		assert_string_equal((char *)interface->pInterfaceName, "PKCS 11");
-		assert_int_equal(((CK_VERSION *)interface->pFunctionList)->major, 2);
-		// assert_int_equal(((CK_VERSION *)interface->pFunctionList)->minor, 20);
-		assert_int_equal(interface->flags, 0);
-		/* The function list should be the same here too */
-		assert_ptr_equal(interfaces[1].pFunctionList, interface->pFunctionList);
+		assert_ptr_equal(interfaces[2].pFunctionList, interface->pFunctionList);
 	}
 
 	/* GetInterface with unknown interface  */
