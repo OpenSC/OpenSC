@@ -276,49 +276,6 @@ cedulauy_match_contactless(struct sc_card *card)
 	return 1;
 }
 
-/* FIXME drop once #3778 (GET RESPONSE under SM) is merged */
-static int
-cedulauy_get_response(struct sc_card *card, size_t *count, u8 *buf)
-{
-	struct sc_apdu apdu = {0};
-	size_t rlen;
-	int r;
-
-	if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT)
-		return iso_ops->get_response(card, count, buf);
-
-	if (*count > sc_get_max_recv_size(card))
-		rlen = sc_get_max_recv_size(card);
-	else
-		rlen = *count;
-
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xC0, 0x00, 0x00);
-	apdu.le = rlen;
-	apdu.resplen = rlen;
-	apdu.resp = buf;
-
-	apdu.flags |= SC_APDU_FLAGS_NO_GET_RESP | SC_APDU_FLAGS_NO_SM;
-
-	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-
-	*count = apdu.resplen;
-
-	if (apdu.resplen == 0)
-		LOG_FUNC_RETURN(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2));
-
-	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00)
-		r = 0;
-	else if (apdu.sw1 == 0x61)
-		r = apdu.sw2 == 0 ? 256 : apdu.sw2;
-	else if (apdu.sw1 == 0x62 && apdu.sw2 == 0x82)
-		r = 0;
-	else
-		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-
-	return r;
-}
-
 #endif /* CEDULAUY_HAS_PACE */
 
 static int
@@ -565,9 +522,6 @@ sc_get_cedulauy_driver(void)
 	cedulauy_ops.get_challenge = cedulauy_get_challenge;
 	cedulauy_ops.logout = cedulauy_logout;
 	cedulauy_ops.card_reader_lock_obtained = cedulauy_card_reader_lock_obtained;
-#ifdef CEDULAUY_HAS_PACE
-	cedulauy_ops.get_response = cedulauy_get_response;
-#endif
 
 	return &cedulauy_drv;
 }
