@@ -84,6 +84,8 @@ static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pac
 				if ((can = scconf_get_str(blocks[j], "can", NULL)))
 					break;
 			free(blocks);
+			if (can)
+				break;
 		}
 	}
 
@@ -244,6 +246,10 @@ static int edo_compute_signature(struct sc_card* card, const u8* data, size_t da
 
 	r = sc_get_iso7816_driver()->ops->compute_signature(card, data, datalen, sig, sizeof sig);
 	LOG_TEST_RET(card->ctx, r, "Internal signature failed");
+
+	/* secp384r1 raw R||S signature is 96 bytes (2 * 48) */
+	if (outlen > 96)
+		outlen = 96;
 
 	r = sc_asn1_sig_value_sequence_to_rs(card->ctx, sig, r, out, outlen);
 	LOG_TEST_RET(card->ctx, r, "ASN.1 conversion failed");
