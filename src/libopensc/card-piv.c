@@ -793,7 +793,7 @@ static const struct sc_asn1_entry c_x509_certificate[] = {
 		SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "Error Detection Code",
 		SC_ASN1_OCTET_STRING, SC_ASN1_PRV|SC_ASN1_CONS|0x1E,
-		0, NULL, NULL },
+		SC_ASN1_OPTIONAL|SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 static const struct sc_asn1_entry c_proprietary_do[] = {
@@ -848,15 +848,17 @@ int encode_certificate(struct sc_context *ctx,
 		u8 certinfo, u8 **out, size_t *len)
 {
 	size_t certinfo_len = sizeof certinfo;
+	size_t edc_len = 0;
 	struct sc_asn1_entry x509_certificate[sizeof c_x509_certificate/sizeof *c_x509_certificate];
 	struct sc_asn1_entry proprietary_do[sizeof c_proprietary_do/sizeof *c_proprietary_do];
 
 	sc_copy_asn1_entry(c_x509_certificate, x509_certificate);
-	sc_format_asn1_entry(x509_certificate + 0, &certificate, &certificate_len, 1);
+	x509_certificate[0].flags &= ~SC_ASN1_ALLOC;
+	sc_format_asn1_entry(x509_certificate + 0, certificate, &certificate_len, 1);
 	sc_format_asn1_entry(x509_certificate + 1, &certinfo, &certinfo_len, 1);
-	sc_format_asn1_entry(x509_certificate + 2, NULL, NULL, 1); /* empty FE */
+	sc_format_asn1_entry(x509_certificate + 3, (void *)"", &edc_len, 1); /* empty FE */
 	sc_copy_asn1_entry(c_proprietary_do, proprietary_do);
-	sc_format_asn1_entry(proprietary_do + 0, &x509_certificate, NULL, 1);
+	sc_format_asn1_entry(proprietary_do + 0, x509_certificate, NULL, 1);
 
 	return sc_asn1_encode(ctx, proprietary_do, out, len);
 }
@@ -890,11 +892,14 @@ piv_cache_internal_data(sc_card_t *card, int enumtag)
 
 	/* get the certificate out */
 	 if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_CERT) {
-		decode_certificate(card->ctx,
+		r = decode_certificate(card->ctx,
 				priv->obj_cache[enumtag].obj_data,
 				priv->obj_cache[enumtag].obj_len,
 				&priv->obj_cache[enumtag].internal_obj_data,
 				&priv->obj_cache[enumtag].internal_obj_len);
+		LOG_TEST_RET(card->ctx, r, "Could not decode PIV certificate");
+		if (priv->obj_cache[enumtag].internal_obj_len == 0)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 
 	}
 	else if (piv_objects[enumtag].flags & PIV_OBJECT_TYPE_PUBKEY) {
@@ -1266,6 +1271,8 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 		}
 		memcpy(hexkey, keybuf, keylen);
 		hexkey[keylen] = '\0'; /* NUL termination is needed to avoid OOB read */
+		while (keylen > 0 && (hexkey[keylen - 1] == '\n' || hexkey[keylen - 1] == '\r' || hexkey[keylen - 1] == ' ' || hexkey[keylen - 1] == '\t'))
+			hexkey[--keylen] = '\0';
 
 		r = sc_hex_to_bin(hexkey, keybuf, &keylen);
 		free(hexkey);
@@ -1277,6 +1284,7 @@ static int piv_get_key(sc_card_t *card, unsigned int alg_id, u8 **key, size_t *l
 		}
 	}
 	*key = keybuf;
+	keybuf = NULL;
 	*len = keylen;
 	r = SC_SUCCESS;
 
@@ -1519,9 +1527,13 @@ static int piv_general_mutual_authenticate(sc_card_t *card,
 	}
 
 	r = decode_dynamic_authentication_template(card->ctx, rbuf, r,
-			NULL, NULL, &challenge_response, &challenge_response_len, NULL, NULL, NULL, NULL);
+			NULL, NULL, NULL, NULL, &challenge_response, &challenge_response_len, NULL, NULL);
 	if (r < 0)
 		goto err;
+	if (!challenge_response || !challenge_response_len) {
+		r = SC_ERROR_INVALID_DATA;
+		goto err;
+	}
 
 	/* Decrypt challenge and check against nonce */
 	decrypted_reponse = malloc(challenge_response_len);
@@ -1723,8 +1735,9 @@ static int piv_general_external_authenticate(sc_card_t *card,
 	 * Transmit
 	 */
 	r = encode_dynamic_authentication_template(card->ctx,
-			NULL, 0, cypher_text, cypher_text_len,
-			NULL, 0, NULL, 0, &output_buf, &output_len);
+			NULL, 0, NULL, 0,
+			cypher_text, cypher_text_len,
+			NULL, 0, &output_buf, &output_len);
 	if (r < 0) {
 		goto err;
 	}
@@ -1762,15 +1775,15 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 	int r;
 	u8 *rbuf = NULL;
 	size_t rbuflen = 0;
-	u8 fascn[25], guid[16], empty_guid[16] = { 0x00 };
+	u8 fascn[25] = { 0x00 }, guid[16] = { 0x00 }, empty_guid[16] = { 0x00 };
 	size_t fascn_len = sizeof fascn, guid_len = sizeof guid;
 	struct sc_asn1_entry chuid[] = {
-		{ "Buffer Lenght (Optional)",
+		{ "Buffer Length (Optional)",
 			SC_ASN1_OCTET_STRING, SC_ASN1_PRV|SC_ASN1_CONS|0x0E,
 			SC_ASN1_OPTIONAL, NULL, NULL },
 		{ "FASC-N",
 			SC_ASN1_OCTET_STRING, SC_ASN1_UNI|SC_ASN1_CONS|0x10,
-			0, NULL, 0 },
+			SC_ASN1_OPTIONAL, fascn, &fascn_len },
 		{ "Organizational Identifier (Optional)",
 			SC_ASN1_OCTET_STRING, SC_ASN1_UNI|SC_ASN1_CONS|0x12,
 			SC_ASN1_OPTIONAL, NULL, NULL },
@@ -1779,19 +1792,19 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 			SC_ASN1_OPTIONAL, NULL, NULL },
 		{ "GUID",
 			SC_ASN1_OCTET_STRING, SC_ASN1_UNI|SC_ASN1_CONS|0x14,
-			0, guid, &guid_len },
+			SC_ASN1_OPTIONAL, guid, &guid_len },
 		{ "Expiration Date",
 			SC_ASN1_OCTET_STRING, SC_ASN1_UNI|SC_ASN1_CONS|0x15,
-			0, NULL, NULL },
+			SC_ASN1_OPTIONAL, NULL, NULL },
 		{ "Cardholder UUID (Optional)",
 			SC_ASN1_OCTET_STRING, SC_ASN1_UNI|SC_ASN1_CONS|0x16,
 			SC_ASN1_OPTIONAL, NULL, NULL },
 		{ "Issuer Asymmetric Signature",
 			SC_ASN1_OCTET_STRING, SC_ASN1_UNI|SC_ASN1_CONS|0x1E,
-			0, NULL, NULL },
+			SC_ASN1_OPTIONAL|SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
 		{ "Error Detection Code",
 			SC_ASN1_OCTET_STRING, SC_ASN1_PRV|SC_ASN1_CONS|0x1E,
-			0, NULL, NULL },
+			SC_ASN1_OPTIONAL|SC_ASN1_EMPTY_ALLOWED, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
 	};
 	struct sc_asn1_entry proprietary_do[sizeof c_proprietary_do/sizeof *c_proprietary_do];
@@ -1816,10 +1829,10 @@ piv_get_serial_nr_from_CHUI(sc_card_t* card, sc_serial_number_t* serial)
 	r = sc_asn1_decode(card->ctx, proprietary_do, rbuf, rbuflen, NULL, NULL);
 	LOG_TEST_RET(card->ctx, r, "Failure parsing CHUI");
 
-	if (guid_len == sizeof guid && 0 != memcmp(guid, empty_guid, 16)) {
+	if ((chuid[4].flags & SC_ASN1_PRESENT) && guid_len == sizeof guid && 0 != memcmp(guid, empty_guid, 16)) {
 		serial->len = guid_len;
 		memcpy (serial->value, guid, guid_len);
-	} else if (fascn_len == sizeof fascn) {
+	} else if ((chuid[1].flags & SC_ASN1_PRESENT) && fascn_len == sizeof fascn) {
 		serial->len = fascn_len;
 		memcpy (serial->value, fascn, fascn_len);
 	}
@@ -1908,7 +1921,7 @@ static int piv_card_ctl(sc_card_t *card, unsigned long cmd, void *ptr)
 }
 
 #define TAG_DYNAMIC_AUTH_TEMPL 0x7C
-#define TAG_CHALLENGE 0x80
+#define TAG_CHALLENGE 0x81
 
 static int piv_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 {
@@ -2070,6 +2083,10 @@ static int piv_validate_general_authentication(sc_card_t *card,
 			NULL, NULL, NULL, NULL, &result, &result_len, NULL, NULL);
 	if (r < 0)
 		goto err;
+	if (!result) {
+		r = SC_ERROR_INVALID_DATA;
+		goto err;
+	}
 
 	if (result_len > outlen) {
 		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_DATA, "data read longer then buffer");
