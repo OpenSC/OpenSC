@@ -178,9 +178,11 @@ retry:
 			apdu->flags & SC_APDU_FLAGS_RETRY_WITH_SM_OPEN) {
 		sc_log(ctx, "Retry apdu with new SM session");
 		retries--;
-		if (card->sm_ctx.ops.open)
-			card->sm_ctx.ops.open(card);
-		goto retry;
+		if (card->sm_ctx.ops.open) {
+			rv = card->sm_ctx.ops.open(card);
+			if (rv == SC_SUCCESS)
+				goto retry;
+		}
 	}
 
 	if (rv < 0)

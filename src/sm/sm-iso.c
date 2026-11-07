@@ -381,7 +381,7 @@ static int sm_encrypt(const struct iso_sm_ctx *ctx, sc_card_t *card,
 						sm_capdu + 1, &fdata, &fdata_len);
 			} else {
 				r = format_data(card, ctx, 0, apdu->data, apdu->datalen,
-						sm_capdu + 1, &fdata, &fdata_len);
+						sm_capdu + 0, &fdata, &fdata_len);
 			}
 			if (r < 0) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not format data of SM apdu");
@@ -732,13 +732,14 @@ int iso_free_sm_apdu(struct sc_card *card, struct sc_apdu *apdu, struct sc_apdu 
 
 struct iso_sm_ctx *iso_sm_ctx_create(void)
 {
-	struct iso_sm_ctx *sctx = malloc(sizeof *sctx);
+	struct iso_sm_ctx *sctx = calloc(1, sizeof *sctx);
 	if (!sctx)
 		return NULL;
 
 	sctx->priv_data = NULL;
 	sctx->padding_indicator = SM_ISO_PADDING;
 	sctx->block_length = 0;
+	sctx->flags = 0;
 	sctx->authenticate = NULL;
 	sctx->verify_authentication = NULL;
 	sctx->encrypt = NULL;
