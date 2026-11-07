@@ -524,9 +524,11 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
 
 	rv = restore_login_state(slot);
 	if (rv == CKR_OK) {
-		if (slot->p11card == NULL)
-			return CKR_TOKEN_NOT_RECOGNIZED;
-		rv = slot->p11card->framework->change_pin(slot, pOldPin, ulOldLen, pNewPin, ulNewLen);
+		if (slot->p11card == NULL) {
+			rv = CKR_TOKEN_NOT_RECOGNIZED;
+			goto out;
+		}
+		rv = change_pin_with_login(slot, pOldPin, ulOldLen, pNewPin, ulNewLen);
 	}
 	rv = reset_login_state(slot, rv);
 
