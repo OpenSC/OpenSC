@@ -188,7 +188,7 @@ const char * sc_dump_oid(const struct sc_object_id *oid);
 		int _ret = (r); \
 		sc_do_log_color(ctx, SC_LOG_DEBUG_NORMAL, FILENAME, __LINE__, __FUNCTION__, SC_COLOR_FG_RED, \
 				"%s: %d (%s)\n", (text), (_ret), sc_strerror(_ret)); \
-		return (r); \
+		return (_ret); \
 	} while (0)
 
 #define LOG_ERROR_GOTO(ctx, r, text) \

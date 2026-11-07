@@ -269,6 +269,7 @@ ifd_DH(struct sc_card *card, const BIGNUM *prime /* N */, const BIGNUM *generato
 	*publicKeyLength = EVP_PKEY_get1_encoded_public_key(pkey, publicKey);
 
 err:
+	EVP_PKEY_free(dh_key_param);
 	OSSL_PARAM_BLD_free(param_builder);
 	OSSL_PARAM_free(params);
 	EVP_PKEY_CTX_free(dh_key_ctx);
@@ -586,6 +587,12 @@ jacartapki_sm_open(struct sc_card *card)
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	LOG_TEST_GOTO_ERR(ctx, rv, "'OPEN SM' failed");
 
+	if (dh_session->shared_secret.len < 24 + sizeof(dh_session->session_mac) ||
+	    apdu.resplen < sizeof(dh_session->card_challenge)) {
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_ERROR_GOTO(ctx, rv, "SM open: invalid key or response length");
+	}
+
 	memcpy(dh_session->session_enc, dh_session->shared_secret.value, sizeof(dh_session->session_enc));
 	memcpy(dh_session->session_mac, dh_session->shared_secret.value + 24, sizeof(dh_session->session_mac));
 	for (uu = 0; uu < sizeof(dh_session->session_enc); uu++) {
@@ -600,6 +607,8 @@ jacartapki_sm_open(struct sc_card *card)
 
 err:
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(LIBRESSL_VERSION_NUMBER)
+	BN_free(bn_g);
+	BN_free(bn_N);
 	EVP_PKEY_free(icc_pkey);
 	EVP_PKEY_free(ifd_pkey);
 	OPENSSL_free(ifd_public_key);

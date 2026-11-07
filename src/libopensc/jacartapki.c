@@ -179,7 +179,7 @@ _get_attr(unsigned char *data, size_t length, size_t *in_offs, struct jacartapki
 	size_t offs;
 	size_t attrLen;
 
-	if (!attr || !data || !in_offs)
+	if (!attr || !data || !in_offs || length < 4)
 		return;
 
 	/*
@@ -187,11 +187,11 @@ _get_attr(unsigned char *data, size_t length, size_t *in_offs, struct jacartapki
 	 */
 	for (offs = *in_offs; (offs < length - 4) && (data[offs] == 0xFF); offs++)
 		;
-	if (offs >= length - 4)
+	if (offs >= length - 4 || length - 4 - offs < 5)
 		return;
 
 	attrLen = data[offs + 3] * 0x100 + data[offs + 4];
-	if (offs + attrLen >= length - 4)
+	if (attrLen > length - 4 - offs - 5)
 		return;
 
 	if (data[offs] == 0x80)
@@ -435,8 +435,11 @@ jacartapki_attrs_cert_decode(struct sc_context *ctx,
 			rv = sc_pkcs15_pubkey_from_cert(ctx, &info->value, &pubkey);
 			LOG_TEST_RET(ctx, rv, "Cannot get public key from certificate data");
 
-			SHA1(pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len, info->id.value);
-			info->id.len = SHA_DIGEST_LENGTH;
+			if (pubkey->algorithm == SC_ALGORITHM_RSA) {
+				SHA1(pubkey->u.rsa.modulus.data, pubkey->u.rsa.modulus.len, info->id.value);
+				info->id.len = SHA_DIGEST_LENGTH;
+			}
+			sc_pkcs15_free_pubkey(pubkey);
 		}
 	}
 
@@ -753,6 +756,7 @@ jacartapki_attrs_prvkey_decode(struct sc_context *ctx,
 	/* not implemented:
 	sc_pkcs15_encode_prkey(ctx, &private_key, &object->content.value, &object->content.len);
 	 */
+	free(private_key.u.rsa.exponent.data);
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -854,7 +858,7 @@ jacartapki_md_cmap_record_decode(struct sc_context *ctx, const struct sc_pkcs15_
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	*out = NULL;
-	if (data->data_len - *offs < sizeof(jacartapki_cmap_record_t))
+	if (*offs > data->data_len || data->data_len - *offs < sizeof(jacartapki_cmap_record_t))
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 
 	*out = calloc(1, sizeof(jacartapki_cmap_record_t));
@@ -1219,6 +1223,7 @@ jacartapki_attrs_pubkey_encode(struct sc_pkcs15_card *p15card, struct sc_pkcs15_
 		data = NULL;
 	}
 err:
+	sc_pkcs15_erase_pubkey(&pubkey);
 	free(data);
 	LOG_FUNC_RETURN(ctx, rv);
 }

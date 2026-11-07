@@ -616,20 +616,20 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 
 		sc_log(ctx, "Use '%s' DATA object to update private key MD data", dobjs[ii]->label);
 		for (offs = 0, rec_num = 0; offs < data->data_len; rec_num++) {
+			unsigned char *guid = NULL;
 			rv = jacartapki_md_cmap_record_decode(ctx, data, &offs, &rec);
 			LOG_TEST_GOTO_ERR(ctx, rv, "Failed to decode CMAP entry");
 			if (rec == NULL)
 				break;
 			if (rec->keysize_sign != 0 || rec->keysize_keyexchange != 0) {
-				unsigned char *guid = NULL;
-				size_t guid_len = 0;
+				size_t guid_len = 0, jj;
 
 				rv = jacartapki_md_cmap_record_guid(ctx, rec, &guid, &guid_len);
 				LOG_TEST_GOTO_ERR(ctx, rv, "Cannot get GUID string");
 				sc_log(ctx, "CMAP record(%i) GUID 0x'%s'", rec_num, sc_dump_hex(guid, guid_len));
 
-				for (ii = 0; ii < prkeys_num; ii++) {
-					struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)prkeys[ii]->data;
+				for (jj = 0; jj < prkeys_num; jj++) {
+					struct sc_pkcs15_prkey_info *info = (struct sc_pkcs15_prkey_info *)prkeys[jj]->data;
 					int key_idx = (info->key_reference & JACARTAPKI_FS_REF_MASK) - JACARTAPKI_FS_KEY_REF_MIN;
 
 					sc_log(ctx, "Key(ref:0x%X)", info->key_reference);
@@ -656,7 +656,9 @@ _parse_fs_data(struct sc_pkcs15_card *p15card)
 						break;
 					}
 				}
-				if (ii == prkeys_num) {
+				free(guid);
+				guid = NULL;
+				if (jj == prkeys_num) {
 					LOG_ERROR_GOTO(ctx, rv = SC_ERROR_INVALID_DATA, "CMAP record without corresponding PKCS#15 private key object");
 				}
 			}

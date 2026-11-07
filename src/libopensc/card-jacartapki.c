@@ -994,6 +994,8 @@ jacartapki_list_files(struct sc_card *card, unsigned char *buf, size_t buflen)
 		for (oo = 4, jj = 0; jj < fileTLVs && oo + 4 <= apdu.resplen; jj++) {
 			if (rbuf[oo] != 0xD2)
 				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
+			if (rbuf[oo + 1] < 2 || apdu.resplen - oo - 2 < rbuf[oo + 1])
+				LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 			memcpy(buf + offs, rbuf + oo + 2, 2);
 			oo += 2 + rbuf[oo + 1]; /* rbuf[oo + 1]: (file_ID || file_name) length */
 			offs += 2;
@@ -1278,6 +1280,7 @@ jacartapki_pin_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 
 	chv_ref = 0;
 	entry = sc_file_get_acl_entry(pin_file, SC_AC_OP_PIN_CHANGE);
+	sc_file_free(pin_file);
 	if (entry != NULL) {
 #if defined(ENABLE_SM)
 		rv = jacartapki_sm_chv_change(card, data, chv_ref, entry->key_ref);
