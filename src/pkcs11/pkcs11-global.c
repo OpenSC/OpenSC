@@ -25,7 +25,9 @@
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
+#ifndef HAVE_GETTIMEOFDAY
 #include <sys/timeb.h>
+#endif
 
 #ifdef PKCS11_THREAD_LOCKING
 #if defined(HAVE_PTHREAD)

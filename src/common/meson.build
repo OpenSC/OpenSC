@@ -4,7 +4,6 @@ libcompat = static_library('compat',
     sources: files(
         'compat_dummy.c',
         'compat_getopt.c',
-        'compat_getopt_main.c',
         'compat_getpass.c',
         'compat___iob_func.c',
         'compat_overflow.c',
