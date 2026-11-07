@@ -942,8 +942,8 @@ epass2003_refresh(struct sc_card *card)
 			r = mutual_auth(card, g_init_key_enc, g_init_key_mac);
 			sc_unlock(card);
 		}
-		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 		LOG_TEST_RET(card->ctx, r, "mutual_auth failed");
+		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 	}
 
 	return r;
