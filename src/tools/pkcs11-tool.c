@@ -4750,8 +4750,8 @@ static int
 parse_gost_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *gost)
 {
 	unsigned char *pder;
-	BIGNUM *X, *Y;
-	int nid, rv;
+	BIGNUM *X = NULL, *Y = NULL;
+	int nid, rv = -1;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	const BIGNUM *bignum;
 	const EC_GROUP *group;
@@ -4775,11 +4775,13 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *gost)
 #endif
 	rv = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), NULL);
 	if (rv < 0)
-		return -1;
+		goto err;
 
 	gost->param_oid.value = OPENSSL_malloc(rv);
-	if (!gost->param_oid.value)
-		return -1;
+	if (!gost->param_oid.value) {
+		rv = -1;
+		goto err;
+	}
 
 	pder =  gost->param_oid.value;
 	rv = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), &pder);
@@ -4789,64 +4791,66 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *gost)
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		bignum = EC_KEY_get0_private_key(src);
 #else
-		if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY, &bignum) != 1)
-			return -1;
+		if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY, &bignum) != 1) {
+			rv = -1;
+			goto err;
+		}
 #endif
 		gost->private.len = BN_num_bytes(bignum);
 		gost->private.value = OPENSSL_malloc(gost->private.len);
 		if (!gost->private.value) {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-			BN_free(bignum);
-#endif
-			return -1;
+			rv = -1;
+			goto err;
 		}
 		BN_bn2bin(bignum, gost->private.value);
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		BN_free(bignum);
-#endif
-	}
-	else {
+	} else {
 		X = BN_new();
 		Y = BN_new();
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		point = EC_KEY_get0_public_key(src);
 #else
 		group = EC_GROUP_new_by_curve_name_ex(osslctx, NULL, nid);
-		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pubkey_len);
-		if (!(pubkey = OPENSSL_malloc(pubkey_len)) ||
-				EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len, NULL) != 1 ||
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pubkey_len) != 1 ||
+				!(pubkey = OPENSSL_malloc(pubkey_len)) || !group) {
+			rv = -1;
+			goto err;
+		}
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len, NULL) != 1 ||
 				!(point = EC_POINT_new(group)) ||
 				EC_POINT_oct2point(group, point, pubkey, pubkey_len, NULL) != 1) {
-			EC_GROUP_free(group);
-			EC_POINT_free(point);
-			return -1;
+			rv = -1;
+			goto err;
 		}
-		OPENSSL_free(pubkey);
 #endif
 		rv = -1;
 		if (X && Y && point && group)
 			rv = EC_POINT_get_affine_coordinates(group, point, X, Y, NULL);
-		if (rv == 1) {
-			gost->public.len = BN_num_bytes(X) + BN_num_bytes(Y);
-			gost->public.value = OPENSSL_malloc(gost->public.len);
-			if (!gost->public.value)
-				rv = -1;
-			else
-			{
-				BN_bn2bin(Y, gost->public.value);
-				BN_bn2bin(X, gost->public.value + BN_num_bytes(Y));
-			}
+		if (rv != 1) {
+			rv = -1;
+			goto err;
 		}
-		BN_free(X);
-		BN_free(Y);
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		EC_GROUP_free(group);
-		EC_POINT_free(point);
-#endif
-		if (rv != 1)
-			return -1;
+		gost->public.len = BN_num_bytes(X) + BN_num_bytes(Y);
+		gost->public.value = OPENSSL_malloc(gost->public.len);
+		if (!gost->public.value) {
+			rv = -1;
+			goto err;
+		}
+		BN_bn2bin(Y, gost->public.value);
+		BN_bn2bin(X, gost->public.value + BN_num_bytes(Y));
 	}
-	return 0;
+	rv = 0;
+
+err:
+	BN_free(X);
+	BN_free(Y);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	BN_free(bignum);
+	EC_GROUP_free(group);
+	EC_POINT_free(point);
+	OPENSSL_free(pubkey);
+#endif
+
+	return rv;
 }
 
 static int
@@ -4898,8 +4902,11 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *ec)
 			return -1;
 		point_len = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, sizeof(buf), NULL);
 #else
-		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, sizeof(buf), &point_len);
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, sizeof(buf), &point_len) != 1)
+			return -1;
 #endif
+		if (point_len == 0)
+			return -1;
 		ec->public.value = OPENSSL_malloc(MAX_HEADER_LEN + point_len);
 		if (!ec->public.value)
 			return -1;
