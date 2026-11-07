@@ -131,7 +131,7 @@ void *sc_dlsym(void *handle, const char *symbol)
 	if (dlhandle->address) {
 		Dl_info dli;
 
-		if (dladdr(symbol_handle, &dli) < 0)
+		if (dladdr(symbol_handle, &dli) == 0)
 			return NULL;
 		if (dli.dli_fbase != dlhandle->address)
 			return NULL;
