@@ -2037,7 +2037,7 @@ sm_nist_clear_free(const struct iso_sm_ctx *ctx)
 }
 
 static int
-sm_nist_load_cert_stack(sc_card_t *card, char *filename, STACK_OF(X509) **psk)
+sm_nist_load_cert_stack(sc_card_t *card, char *filename, STACK_OF(X509) * *psk)
 {
 	int r = 0;
 	X509 *i_cert = NULL;
