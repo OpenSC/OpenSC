@@ -237,12 +237,13 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
  * card needs to be converted to the raw concatenation of R,S for PKCS#11.
  */
 static int edo_compute_signature(struct sc_card* card, const u8* data, size_t datalen, u8* out, size_t outlen) {
-	LOG_FUNC_CALLED(card ? card->ctx : NULL);
 	u8 sig[SC_MAX_APDU_RESP_SIZE];
 	int r;
 
 	if (!card || !data || !out)
-		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	LOG_FUNC_CALLED(card->ctx);
 
 	r = sc_get_iso7816_driver()->ops->compute_signature(card, data, datalen, sig, sizeof sig);
 	LOG_TEST_RET(card->ctx, r, "Internal signature failed");
@@ -265,11 +266,12 @@ static int edo_compute_signature(struct sc_card* card, const u8* data, size_t da
  * where x is the key reference byte.
  */
 static int edo_set_security_env(struct sc_card* card, const struct sc_security_env* env, int se_num) {
-	LOG_FUNC_CALLED(card ? card->ctx : NULL);
 	struct sc_apdu apdu;
 
 	if (!card || !env)
-		LOG_FUNC_RETURN(card ? card->ctx : NULL, SC_ERROR_INVALID_ARGUMENTS);
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	LOG_FUNC_CALLED(card->ctx);
 
 	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN &&
 	    (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) && env->key_ref_len >= 1) {
