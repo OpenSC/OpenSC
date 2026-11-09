@@ -34,8 +34,8 @@ function initialize_token() {
 	fi
 	mkdir -p "${TMPPDIR}/tokens"
 	chmod -R 700 "${TMPPDIR}"
-	export FHSM_TOKENS_DIR=$(realpath "$TMPPDIR/tokens")
-	export TOKENCONFIGVARS="export FHSM_TOKENS_DIR=$FHSM_TOKENS_DIR FHSM_INTEGRITY_ALLOW_UNSIGNED=1 FHSM_MODE=permissive"
+	export FHSM_TOKENS_DIR="$(realpath "$TMPPDIR/tokens")"
+	export TOKENCONFIGVARS="export FHSM_TOKENS_DIR=\"$FHSM_TOKENS_DIR\" FHSM_INTEGRITY_ALLOW_UNSIGNED=1 FHSM_MODE=permissive"
 	export TOKENLABEL="FreeHSM Token"
 
 	# init token
