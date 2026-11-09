@@ -229,11 +229,9 @@ iso7816_read_record(struct sc_card *card, unsigned int rec_nr, unsigned int idx,
 	unsigned char *encoded_data = NULL, *decoded_data = NULL;
 	size_t encoded_data_len = 0, decoded_data_len = 0;
 
-	if (rec_nr > 0xFF)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	/* Record number/identifier 255 is reserved by ISO 7816-4. */
-	if (rec_nr == 0xFF)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_RECORD_NOT_FOUND);
+	if (rec_nr >= 0xFF)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (idx == 0) {
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_2, 0xB2, rec_nr, 0);

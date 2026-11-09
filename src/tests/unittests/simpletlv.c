@@ -210,6 +210,79 @@ torture_simpletlv_invalid_byte_order(void **state)
 	assert_ptr_equal(outptr, output);
 }
 
+static void
+torture_simpletlv_read_tag_null_arguments(void **state)
+{
+	const enum sc_simpletlv_byte_order orders[] = {
+			SC_SIMPLETLV_LITTLE_ENDIAN, SC_SIMPLETLV_BIG_ENDIAN};
+	const u8 header[] = {0x42, 0x00};
+	size_t i;
+
+	for (i = 0; i < sizeof(orders) / sizeof(orders[0]); i++) {
+		const u8 *ptr = header;
+		u8 tag = 0xa5;
+		size_t length = 7;
+		int rv;
+
+		rv = sc_simpletlv_read_tag(NULL, sizeof(header), &tag, &length, orders[i]);
+		assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
+		assert_int_equal(tag, 0xa5);
+		assert_int_equal(length, 7);
+
+		rv = sc_simpletlv_read_tag(&ptr, sizeof(header), NULL, &length, orders[i]);
+		assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
+		assert_ptr_equal(ptr, header);
+		assert_int_equal(length, 7);
+
+		rv = sc_simpletlv_read_tag(&ptr, sizeof(header), &tag, NULL, orders[i]);
+		assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
+		assert_ptr_equal(ptr, header);
+		assert_int_equal(tag, 0xa5);
+
+		rv = sc_simpletlv_read_tag(&ptr, sizeof(header), NULL, NULL, orders[i]);
+		assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
+		assert_ptr_equal(ptr, header);
+
+		ptr = NULL;
+		rv = sc_simpletlv_read_tag(&ptr, sizeof(header), &tag, &length, orders[i]);
+		assert_int_equal(rv, SC_ERROR_INVALID_TLV_OBJECT);
+		assert_null(ptr);
+		assert_int_equal(tag, 0xa5);
+		assert_int_equal(length, 7);
+	}
+}
+
+static void
+torture_simpletlv_put_tag_null_output(void **state)
+{
+	const enum sc_simpletlv_byte_order orders[] = {
+			SC_SIMPLETLV_LITTLE_ENDIAN, SC_SIMPLETLV_BIG_ENDIAN};
+	const size_t lengths[] = {2, 255, 600};
+	u8 sentinel = 0xa5;
+	size_t i, j;
+
+	for (i = 0; i < sizeof(orders) / sizeof(orders[0]); i++) {
+		for (j = 0; j < sizeof(lengths) / sizeof(lengths[0]); j++) {
+			u8 *ptr = &sentinel;
+			u8 output[4] = {0};
+			size_t outlen = lengths[j] < 255 ? 2 : 4;
+			int rv;
+
+			rv = sc_simpletlv_put_tag(0x42, lengths[j], NULL, outlen, &ptr, orders[i]);
+			assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
+			assert_ptr_equal(ptr, &sentinel);
+			assert_int_equal(sentinel, 0xa5);
+
+			rv = sc_simpletlv_put_tag(0x42, lengths[j], NULL, outlen, NULL, orders[i]);
+			assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
+
+			/* The optional end-pointer may still be omitted for valid output. */
+			rv = sc_simpletlv_put_tag(0x42, lengths[j], output, outlen, NULL, orders[i]);
+			assert_int_equal(rv, SC_SUCCESS);
+		}
+	}
+}
+
 int main(void)
 {
 	int rc;
@@ -217,6 +290,8 @@ int main(void)
 			cmocka_unit_test(torture_simpletlv_read_extended_byte_order),
 			cmocka_unit_test(torture_simpletlv_put_byte_order),
 			cmocka_unit_test(torture_simpletlv_invalid_byte_order),
+			cmocka_unit_test(torture_simpletlv_read_tag_null_arguments),
+			cmocka_unit_test(torture_simpletlv_put_tag_null_output),
 			/* simpletlv_read_tag() */
 			cmocka_unit_test(torture_simpletlv_read_tag_null),
 			cmocka_unit_test(torture_simpletlv_read_tag_short),

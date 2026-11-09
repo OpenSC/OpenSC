@@ -46,7 +46,7 @@ sc_simpletlv_put_tag(u8 tag, size_t datalen, u8 *out, size_t outlen, u8 **ptr,
 	if (byte_order != SC_SIMPLETLV_LITTLE_ENDIAN && byte_order != SC_SIMPLETLV_BIG_ENDIAN)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (outlen < 2 || (outlen < 4 && datalen >= 0xff))
+	if (out == NULL || outlen < 2 || (outlen < 4 && datalen >= 0xff))
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* tag is just number between 0x01 and 0xFE */
@@ -90,9 +90,9 @@ sc_simpletlv_read_tag(const u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen
 
 	if (byte_order != SC_SIMPLETLV_LITTLE_ENDIAN && byte_order != SC_SIMPLETLV_BIG_ENDIAN)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (!buf)
+	if (buf == NULL || tag_out == NULL || taglen == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
-	if (!*buf)
+	if (*buf == NULL)
 		return SC_ERROR_INVALID_TLV_OBJECT;
 
 	p = *buf;

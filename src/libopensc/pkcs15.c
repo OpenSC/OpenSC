@@ -2622,7 +2622,8 @@ sc_pkcs15_read_file(struct sc_pkcs15_card *p15card, const struct sc_path *in_pat
 			u8 record[256], tag;
 			const u8 *value;
 
-			for (i = 1;; i++) {
+			/* Stop before the reserved ISO 7816-4 record number 255. */
+			for (i = 1; i < 0xFF; i++) {
 				/* The aggregate size counts values, not record headers. */
 				r = sc_read_record(p15card->card, i, 0, record, sizeof(record), SC_RECORD_BY_REC_NR);
 				if (r == SC_ERROR_RECORD_NOT_FOUND)
