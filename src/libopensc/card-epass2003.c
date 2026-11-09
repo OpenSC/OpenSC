@@ -2001,7 +2001,7 @@ epass2003_select_fid_(struct sc_card *card, sc_path_t * in_path, sc_file_t ** fi
 }
 
 static void
-epass2003_forget_df(struct sc_card *card)
+epass2003_forget_cur_df(struct sc_card *card)
 {
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 
@@ -2013,7 +2013,7 @@ epass2003_forget_df(struct sc_card *card)
 }
 
 static void
-epass2003_set_df(struct sc_card *card, const u8 *path, size_t len,
+epass2003_set_cur_df(struct sc_card *card, const u8 *path, size_t len,
 		const sc_file_t *file)
 {
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
@@ -2022,12 +2022,12 @@ epass2003_set_df(struct sc_card *card, const u8 *path, size_t len,
 	if (!exdata)
 		return;
 	if (len > sizeof(exdata->cur_df)) {
-		epass2003_forget_df(card);
+		epass2003_forget_cur_df(card);
 		return;
 	}
 	sc_file_dup(&df, file);
 	if (!df) {
-		epass2003_forget_df(card);
+		epass2003_forget_cur_df(card);
 		return;
 	}
 	sc_file_free(exdata->cur_df_file);
@@ -2131,14 +2131,14 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 		/* inside the current DF: select only what follows it */
 		start = exdata->cur_df_len;
 	} else {
-		epass2003_forget_df(card);
+		epass2003_forget_cur_df(card);
 	}
 
 	for (i = start; i < pathlen - 2; i += 2) {
 		r = epass2003_select_fid(card, path[i], path[i + 1], &file);
 		LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
 		/* a FID that is followed by further FIDs is a DF */
-		epass2003_set_df(card, path, i + 2, file);
+		epass2003_set_cur_df(card, path, i + 2, file);
 		sc_file_free(file);
 		file = NULL;
 	}
@@ -2146,7 +2146,7 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 	r = epass2003_select_fid(card, path[pathlen - 2], path[pathlen - 1], &file);
 	/* selecting an EF or a failed select leaves the current DF unchanged */
 	if (r == SC_SUCCESS && file->type == SC_FILE_TYPE_DF)
-		epass2003_set_df(card, path, pathlen, file);
+		epass2003_set_cur_df(card, path, pathlen, file);
 
 	if (file_out)
 		*file_out = file;
@@ -2179,21 +2179,21 @@ epass2003_select_file_id(struct sc_card *card, u8 id_hi, u8 id_lo,
 		if (id_hi == 0x3f && id_lo == 0x00) {
 			df[0] = 0x3f;
 			df[1] = 0x00;
-			epass2003_set_df(card, df, 2, file);
+			epass2003_set_cur_df(card, df, 2, file);
 		} else if (len == 2) {
 			/* the MF has no parent, so this DF is below it */
 			df[len] = id_hi;
 			df[len + 1] = id_lo;
-			epass2003_set_df(card, df, len + 2, file);
+			epass2003_set_cur_df(card, df, len + 2, file);
 		} else if (len >= 4 && df[len - 2] == id_hi && df[len - 1] == id_lo) {
 			/* the current DF itself */
-			epass2003_set_df(card, df, len, file);
+			epass2003_set_cur_df(card, df, len, file);
 		} else if (len >= 6 && df[len - 4] == id_hi && df[len - 3] == id_lo) {
 			/* the parent DF */
-			epass2003_set_df(card, df, len - 2, file);
+			epass2003_set_cur_df(card, df, len - 2, file);
 		} else {
 			/* below the current DF or below its parent */
-			epass2003_forget_df(card);
+			epass2003_forget_cur_df(card);
 		}
 	}
 
@@ -2224,7 +2224,7 @@ epass2003_select_file(struct sc_card *card, const sc_path_t * in_path,
 		r = epass2003_select_aid(card, in_path, file_out);
 		/* the path of a DF selected by its name is not known */
 		if (r == SC_SUCCESS)
-			epass2003_forget_df(card);
+			epass2003_forget_cur_df(card);
 		return r;
 	case SC_PATH_TYPE_PATH:
 		return epass2003_select_path(card, in_path->value, in_path->len, file_out);
@@ -2239,7 +2239,7 @@ epass2003_card_reader_lock_obtained(struct sc_card *card, int was_reset)
 	/* after a reset the current DF is either not set or set to an unknown
 	 * value by a different application */
 	if (was_reset > 0)
-		epass2003_forget_df(card);
+		epass2003_forget_cur_df(card);
 	return SC_SUCCESS;
 }
 
@@ -2807,7 +2807,7 @@ epass2003_create_file(struct sc_card *card, sc_file_t * file)
 
 	/* creating an EF leaves the current DF unchanged */
 	if (file->type == SC_FILE_TYPE_DF)
-		epass2003_forget_df(card);
+		epass2003_forget_cur_df(card);
 	epass2003_hook_file(file, 1);
 
 	if (card->ops->construct_fci == NULL)
@@ -2845,7 +2845,7 @@ epass2003_delete_file(struct sc_card *card, const sc_path_t * path)
 	LOG_TEST_RET(card->ctx, r, "Can not select file");
 	/* deleting an EF leaves the current DF unchanged */
 	if (!file || file->type == SC_FILE_TYPE_DF)
-		epass2003_forget_df(card);
+		epass2003_forget_cur_df(card);
 	sc_file_free(file);
 	r = epass2003_hook_path((struct sc_path *)path, 1);
 	LOG_TEST_RET(card->ctx, r, "Can not hook path");
@@ -3193,7 +3193,7 @@ epass2003_erase_card(struct sc_card *card)
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
-	epass2003_forget_df(card);
+	epass2003_forget_cur_df(card);
 
 	/* install magic pin */
 	sc_format_apdu(card, &apdu, 0x03, 0xe3, 0x00, 0x00);
