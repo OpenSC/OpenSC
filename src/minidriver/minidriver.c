@@ -947,6 +947,7 @@ md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_obje
 {
 	struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
 	DWORD dwret = SCARD_S_SUCCESS;
+	int i;
 
 	szGuid[0] = '\0';
 	/* prioritize the use of the key id over the key label as a container name */
@@ -957,6 +958,15 @@ md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_obje
 		strlcpy(szGuid, key_obj->label, MAX_CONTAINER_NAME_LEN + 1);
 	} else {
 		dwret = md_contguid_get_guid_from_card(pCardData, key_obj, szGuid);
+	}
+
+	/* check if there is an active Windows container name mapping */
+	for (i = 0; i < MD_MAX_CONVERSIONS; i++) {
+		if (md_static_conversions[i].szWindowsGuid[0] != 0 &&
+		    strcmp(md_static_conversions[i].szOpenSCGuid, szGuid) == 0) {
+			strlcpy(szGuid, md_static_conversions[i].szWindowsGuid, MAX_CONTAINER_NAME_LEN + 1);
+			break;
+		}
 	}
 
 	return dwret;
