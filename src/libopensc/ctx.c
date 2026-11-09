@@ -771,12 +771,12 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	if (strcmp(ctx->app_name, "default") != 0) {
 		blocks = scconf_find_blocks(ctx->conf, NULL, "app", "default");
 		if (blocks && blocks[0])
-			ctx->conf_blocks[count] = blocks[0];
+			ctx->conf_blocks[count++] = blocks[0];
 		free(blocks);
 	}
 	/* Above we add 3 blocks at most, but conf_blocks has 4 elements,
 	 * so at least one is NULL */
-	for (i = 0; ctx->conf_blocks[i]; i++)
+	for (i = count - 1; i >= 0; i--)
 		load_parameters(ctx, ctx->conf_blocks[i], opts);
 }
 
