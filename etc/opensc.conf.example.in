@@ -131,6 +131,10 @@ app default {
 		# Default: autodetect
 		# max_send_size = 65535;
 		# max_recv_size = 65536;
+
+		# Enable/disable PIN pad usage. Default is true.
+		# Set to false for card readers falsely reporting PIN pad capabilities.
+		# enable_pinpad = false;
 	}
 
 	# Allowlist of card drivers to load at start-up

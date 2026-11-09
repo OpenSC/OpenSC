@@ -458,9 +458,9 @@ err:
 	LOG_FUNC_RETURN(reader->ctx, r);
 }
 
-void cryptotokenkit_detect_reader_features(struct sc_reader *reader, TKSmartCard* tksmartcard)
+void cryptotokenkit_detect_reader_features(struct sc_reader *reader, TKSmartCard* tksmartcard, int enable_pinpad)
 {
-	if (tksmartcard) {
+	if (tksmartcard && enable_pinpad) {
 		const u8 template[] = {tksmartcard.cla, 0x20, 0x00, 0x80, 0x08, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 		NSData *data = [NSData dataWithBytes:template length:sizeof template];
 		TKSmartCardPINFormat *PINFormat = [[TKSmartCardPINFormat alloc] init];
@@ -477,6 +477,7 @@ int cryptotokenkit_use_reader(sc_context_t *ctx, void *pcsc_context_handle, void
 	struct cryptotokenkit_private_data *priv;
 	sc_reader_t *reader = NULL;
 	scconf_block *conf_block = NULL;
+	int enable_pinpad = 1;
 	TKSmartCardSlot* tksmartcardslot = (__bridge TKSmartCardSlot *)(pcsc_context_handle);
 	TKSmartCard* tksmartcard = (__bridge TKSmartCard *)(pcsc_card_handle);
 	const char* utf8String;
@@ -520,6 +521,7 @@ int cryptotokenkit_use_reader(sc_context_t *ctx, void *pcsc_context_handle, void
 	if (conf_block) {
 		reader->max_send_size = scconf_get_int(conf_block, "max_send_size", reader->max_send_size);
 		reader->max_recv_size = scconf_get_int(conf_block, "max_recv_size", reader->max_recv_size);
+		enable_pinpad = scconf_get_bool(conf_block, "enable_pinpad", enable_pinpad);
 	}
 
 	/* attempt to detect protocol in use T0/T1/RAW */
@@ -527,7 +529,7 @@ int cryptotokenkit_use_reader(sc_context_t *ctx, void *pcsc_context_handle, void
 
 	cryptotokenkit_detect_card_presence(reader);
 
-	cryptotokenkit_detect_reader_features(reader, tksmartcard);
+	cryptotokenkit_detect_reader_features(reader, tksmartcard, enable_pinpad);
 
 	r = _sc_add_reader(ctx, reader);
 
