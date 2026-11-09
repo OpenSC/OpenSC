@@ -44,6 +44,8 @@ static int starcos_finalize_card(sc_card_t *card);
 
 static int starcos_erase_card(struct sc_profile *pro, sc_pkcs15_card_t *p15card)
 {
+	(void)pro;
+
 	return sc_card_ctl(p15card->card, SC_CARDCTL_ERASE_CARD, NULL);
 }
 
@@ -276,6 +278,8 @@ static int starcos_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15car
 {
 	int tmp;
 
+	(void)p15card;
+
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
 
@@ -491,6 +495,9 @@ static int starcos_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int starcos_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_prkey_info_t *prkey)
 {
+	(void)profile;
+	(void)p15card;
+
 	/* use (local) KIDs 0x91-0x9f for private rsa keys */
 	if (prkey->key_reference < STARCOS_MIN_LPKEY_ID)
 		prkey->key_reference = STARCOS_MIN_LPKEY_ID;

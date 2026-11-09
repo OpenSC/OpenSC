@@ -32,9 +32,12 @@
 #include "libopensc/cards.h"
 #include "pkcs15-init.h"
 #include "profile.h"
+
 static int epass2003_pkcs15_erase_card(struct sc_profile *profile,
 				       struct sc_pkcs15_card *p15card)
 {
+	(void)profile;
+
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (sc_select_file(p15card->card, sc_get_mf_path(), NULL) < 0)
@@ -97,6 +100,8 @@ static int epass2003_pkcs15_create_dir(struct sc_profile *profile,
 {
 	struct sc_card *card = p15card->card;
 	int ret;
+
+	(void)df;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -194,6 +199,8 @@ static int epass2003_pkcs15_pin_reference(struct sc_profile *profile,
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	(void)profile;
+
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
 
@@ -214,6 +221,8 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 	struct sc_card *card = p15card->card;
 	int r;
 	struct sc_pkcs15_auth_info *auth_info;
+
+	(void)df;
 
 	if (NULL == pin_obj)
 		return SC_ERROR_INVALID_ARGUMENTS;
@@ -297,6 +306,8 @@ static int epass2003_pkcs15_key_reference(struct sc_profile *profile,
 					  struct sc_pkcs15_card *p15card,
 					  struct sc_pkcs15_prkey_info *prkey)
 {
+	(void)profile;
+
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (prkey->path.len == 0)
 		SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
@@ -401,6 +412,9 @@ static int epass2003_pkcs15_create_key(struct sc_profile *profile,
 				       struct sc_pkcs15_object *obj)
 {
 	struct sc_card *card = p15card->card;
+
+	(void)profile;
+	(void)obj;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
@@ -699,6 +713,8 @@ static int epass2003_pkcs15_delete_object(struct sc_profile *profile,
 					  struct sc_pkcs15_object *object,
 					  const struct sc_path *path)
 {
+	(void)object;
+
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	return sc_pkcs15init_delete_by_path(profile, p15card, path);
 }

@@ -61,6 +61,8 @@ static u8 process_acl_entry(sc_file_t *in, unsigned int method, unsigned int in_
 
 static int entersafe_erase_card(struct sc_profile *profile, sc_pkcs15_card_t *p15card)
 {
+	(void)profile;
+
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (sc_select_file(p15card->card, sc_get_mf_path(), NULL) < 0)
@@ -252,6 +254,8 @@ static int entersafe_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15c
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	(void)profile;
+
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
 
@@ -271,6 +275,9 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 	struct sc_card *card = p15card->card;
 	int	r;
 	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
+
+	(void)profile;
+	(void)df;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -325,6 +332,8 @@ static int entersafe_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card
 static int entersafe_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 								   sc_pkcs15_prkey_info_t *prkey)
 {
+	(void)profile;
+
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (prkey->key_reference < ENTERSAFE_MIN_KEY_ID)
 		prkey->key_reference = ENTERSAFE_MIN_KEY_ID;
@@ -336,6 +345,9 @@ static int entersafe_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15c
 static int entersafe_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 								sc_pkcs15_object_t *obj)
 {
+	(void)profile;
+	(void)obj;
+
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	SC_FUNC_RETURN(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE,SC_SUCCESS);
 }

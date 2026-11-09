@@ -2591,6 +2591,8 @@ check_key_compatibility(struct sc_pkcs15_card *p15card, unsigned long alg,
 	unsigned int count;
 	unsigned long talg = alg;
 
+	(void)x509_usage;
+
 	LOG_FUNC_CALLED(ctx);
 
 	if (alg == SC_ALGORITHM_EDDSA || alg == SC_ALGORITHM_XEDDSA)
