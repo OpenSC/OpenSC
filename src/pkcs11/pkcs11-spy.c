@@ -1894,8 +1894,11 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 		}
 
 		/* We can not assume the version we told the caller matches the version in the underlying
-		 * pkcs11 module so map it back to the known ones */
-		if ((pInterfaceName == NULL || strcmp((char *)pInterfaceName, "PKCS 11") == 0) && pVersion) {
+		 * pkcs11 module so map it back to the known ones. Only the 2.x minor is faked (2.11);
+		 * 3.x versions are passed on as the module reported them, so a 3.2 request must not be
+		 * rewritten to the first 3.x interface the module lists. */
+		if ((pInterfaceName == NULL || strcmp((char *)pInterfaceName, "PKCS 11") == 0) && pVersion &&
+				pVersion->major == 2) {
 			for (unsigned long i = 0; i < num_orig_interfaces; i++) {
 				CK_VERSION *v = (CK_VERSION *)orig_interfaces[i].pFunctionList;
 				/* We found the same major version. Copy the minor and call it a day */
