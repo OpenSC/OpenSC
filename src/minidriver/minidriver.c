@@ -936,7 +936,7 @@ md_contguid_build_key_args_from_cont_guid(PCARD_DATA pCardData, __in_ecount(MAX_
 		memcpy(prkey_args->id.value, szGuid, strlen(szGuid));
 		prkey_args->id.len = strlen(szGuid);
 	}
-	if (md_is_guid_as_label(pCardData))  {
+	if (md_is_guid_as_label(pCardData) || prkey_args->label == NULL)  {
 		prkey_args->label =  szGuid;
 	}
 }
