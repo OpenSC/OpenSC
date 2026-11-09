@@ -914,14 +914,16 @@ app default {
 		# can be verified by OpenSSL.
 		# Either the calling application can read the certificate using pkcs11
 		# and verify the certificate or have OpenSC verify the certificate
-		# by providing the trusted and untrusted certificates
-		# in two files of PEM encoded certificates (without any extra text)
-		# in the trust path using the following:
-		
-		# signer_cert_untrusted for intermediate CAs. (may be empty or absent)
-		# signer_cert_untrusted = "";
-		# root CA certs that are trusted by your system admin are in
-		# signer_cert_trusted = "";
+		# by providing the trusted certificates file of PEM encoded
+		# certificates (without any extra text) in the trust path using
+		# the following:
+		# signer_cert_trusted = "<path-to-file>";
+
+		# Certificates of root CAs and/or intermediate certificates in the
+		# trust path of the "Secure Messaging Certificate Signer".
+		# The system admin is responsible for verifying these
+		# certificates and may want to check for revocation and experation
+		# from time to time.
 
 		# Other card drivers may also use NIST SM.
 

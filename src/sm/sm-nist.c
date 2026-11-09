@@ -243,7 +243,6 @@ sm_nist_params_cleanup(sm_nist_params_t *params)
 
 	free(params->signer_cert_der);
 	free(params->sm_in_cvc_der);
-	free(params->signer_cert_untrusted);
 	free(params->signer_cert_trusted);
 	memset(params, 0, sizeof(sm_nist_params_t));
 
@@ -458,13 +457,6 @@ sm_nist_load_options(sc_card_t *card, sm_nist_params_t *params, char *prefix)
 		option = scconf_get_str(block, bufl, "default");
 		sc_log(card->ctx, "conf: %s = \"%s\"", bufl, option);
 		sm_nist_set_use_option(card, params, &use_sm_found, option);
-	}
-
-	option = scconf_get_str(block, "signer_cert_untrusted", "");
-	if (option) {
-		sc_log(card->ctx, "conf: signer_cert_untrusted = \"%s\"", option);
-		if (strlen(option) > 0)
-			params->signer_cert_untrusted = strdup(option);
 	}
 
 	option = scconf_get_str(block, "signer_cert_trusted", "");
@@ -2037,36 +2029,8 @@ sm_nist_clear_free(const struct iso_sm_ctx *ctx)
 	}
 }
 
-static int
-sm_nist_load_cert_stack(sc_card_t *card, char *filename, STACK_OF(X509) * *psk)
-{
-	int r = 0;
-	X509 *i_cert = NULL;
-	FILE *fp = NULL;
-
-	if (!card || !filename || !psk)
-		return SC_ERROR_INVALID_ARGUMENTS;
-
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_SM);
-
-	fp = fopen(filename, "r");
-	if (fp == NULL) {
-		sc_log(card->ctx, "Failed to open file %s", filename);
-
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_FILE_NOT_FOUND);
-	}
-	*psk = sk_X509_new_null();
-	while ((i_cert = PEM_read_X509(fp, NULL, NULL, NULL)) != NULL) {
-		sk_X509_push(*psk, i_cert);
-	}
-	r = sk_X509_num(*psk);
-	fclose(fp);
-
-	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
-}
-
 /*
- * Verify SM signer cert using trusted and optional untrusted CA files
+ * Verify SM signer cert using trusted CA files
  */
 
 int
@@ -2074,7 +2038,6 @@ sm_nist_verify_cert_chain(sc_card_t *card, sm_nist_params_t *sm_params, X509 *si
 {
 	int r = SC_ERROR_INTERNAL;
 
-	STACK_OF(X509) *sk_untrusted = NULL;
 	X509_STORE *store = NULL;
 	X509_STORE_CTX *store_ctx = NULL;
 
@@ -2091,11 +2054,6 @@ sm_nist_verify_cert_chain(sc_card_t *card, sm_nist_params_t *sm_params, X509 *si
 	/* Verify not requested by user or opensc.conf */
 	if (sm_params->signer_cert_trusted == NULL)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
-
-	if (sm_params->signer_cert_untrusted != NULL) {
-		r = sm_nist_load_cert_stack(card, sm_params->signer_cert_untrusted, &sk_untrusted);
-		LOG_TEST_GOTO_ERR(card->ctx, r, "failed to load signer_cert_untrusted");
-	}
 
 	store = X509_STORE_new();
 	if (store == NULL) {
@@ -2126,7 +2084,7 @@ sm_nist_verify_cert_chain(sc_card_t *card, sm_nist_params_t *sm_params, X509 *si
 		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INTERNAL, "X509_STORE_CTX_new failed");
 	}
 
-	if (X509_STORE_CTX_init(store_ctx, store, signer_cert, sk_untrusted) != 1) {
+	if (X509_STORE_CTX_init(store_ctx, store, signer_cert, NULL) != 1) {
 		r = SC_ERROR_INTERNAL;
 		LOG_TEST_GOTO_ERR(card->ctx, r, "X509_STORE_CTX_init failed");
 	}
@@ -2142,8 +2100,6 @@ sm_nist_verify_cert_chain(sc_card_t *card, sm_nist_params_t *sm_params, X509 *si
 	r = 0;
 
 err:
-	if (sk_untrusted)
-		sk_X509_pop_free(sk_untrusted, X509_free);
 	if (store)
 		X509_STORE_free(store);
 	if (store_ctx)

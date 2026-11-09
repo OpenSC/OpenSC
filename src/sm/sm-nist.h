@@ -96,7 +96,6 @@ typedef struct sm_nist_params {
 	unsigned long flags; /* NIST_SM_* */
 	u8 *signer_cert_der; /* maybe compressed */
 	size_t signer_cert_der_len;
-	char *signer_cert_untrusted;
 	char *signer_cert_trusted;
 	u8 *sm_in_cvc_der;
 	size_t sm_in_cvc_der_len;
