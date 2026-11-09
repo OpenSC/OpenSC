@@ -1456,7 +1456,6 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 		goto err;
 	}
 	sctx->clear_free = sm_nist_clear_free;
-	card->sm_ctx.ops.close = sm_nist_close;
 	card->sm_ctx.ops.open = sm_nist_open;
 
 	/* *params is saved in priv_data */
@@ -1553,6 +1552,8 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 
 	/* We want to control if SM is on or not from driver, so set it off. */
 	card->sm_ctx.sm_mode = SM_MODE_NONE;
+
+	/* Add next line after iso_sm_start so not called from iso_sm_start before we really start */
 	card->sm_ctx.ops.close = sm_nist_close;
 
 	/* do not add to card->sm_ctx.open */
@@ -2058,6 +2059,7 @@ sm_nist_load_cert_stack(sc_card_t *card, char *filename, STACK_OF(X509) * *psk)
 	while ((i_cert = PEM_read_X509(fp, NULL, NULL, NULL)) != NULL) {
 		sk_X509_push(*psk, i_cert);
 	}
+	r = sk_X509_num(*psk);
 	fclose(fp);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
@@ -2114,7 +2116,11 @@ sm_nist_verify_cert_chain(sc_card_t *card, sm_nist_params_t *sm_params, X509 *si
 		LOG_TEST_GOTO_ERR(card->ctx, r, "X509_STORE_load_locations failed");
 	}
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	store_ctx = X509_STORE_CTX_new();
+#else
+	store_ctx = X509_STORE_CTX_new_ex(card->ctx->ossl3ctx->libctx, NULL);
+#endif
 	if (store_ctx == NULL) {
 		r = SC_ERROR_INTERNAL;
 		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INTERNAL, "X509_STORE_CTX_new failed");
