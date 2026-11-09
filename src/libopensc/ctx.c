@@ -410,7 +410,7 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 #endif
 		sc_ctx_log_to_file(ctx, val);
 	}
-	else if (ctx->debug)   {
+	else if (ctx->debug && !ctx->debug_file)   {
 		sc_ctx_log_to_file(ctx, NULL);
 	}
 
