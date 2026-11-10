@@ -1005,7 +1005,7 @@ err:
 		EAC_CTX_clear_free(eac_ctx);
 
 	if (free_output)
-		free_pace_output(&local_output);
+		pace_output_clear(&local_output);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
@@ -1817,7 +1817,7 @@ int perform_pace(sc_card_t *card,
 	}
 
 	if (free_output)
-		free_pace_output(&local_output);
+		pace_output_clear(&local_output);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }

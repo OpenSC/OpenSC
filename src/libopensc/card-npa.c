@@ -335,10 +335,7 @@ err:
 	npa_cache_or_free(card, &pace_output.ef_cardaccess,
 			&pace_output.ef_cardaccess_length,
 			&ef_cardsecurity, &ef_cardsecurity_len);
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
+	pace_output_clear(&pace_output);
 
 	return r;
 }
@@ -602,10 +599,7 @@ static int npa_pace_verify(struct sc_card *card,
 
 	npa_cache_or_free(card, &pace_output.ef_cardaccess,
 			&pace_output.ef_cardaccess_length, NULL, NULL);
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
+	pace_output_clear(&pace_output);
 
 	return r;
 }

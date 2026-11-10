@@ -104,17 +104,15 @@ static int edo_unlock(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	struct establish_pace_channel_input pace_input;
-	struct establish_pace_channel_output pace_output;
 
 	memset(&pace_input, 0, sizeof pace_input);
-	memset(&pace_output, 0, sizeof pace_output);
 
 	if (SC_SUCCESS != edo_get_can(card, &pace_input)) {
 		sc_log(card->ctx, "Error reading CAN.");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
 
-	if (SC_SUCCESS != perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02)) {
+	if (SC_SUCCESS != perform_pace(card, pace_input, NULL, EAC_TR_VERSION_2_02)) {
 		sc_log(card->ctx, "Error verifying CAN.");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
