@@ -431,6 +431,206 @@ torture_mscp_prkey_usage(void **state)
 	assert_int_equal(usage_of(1, 1, 1, 1), all);
 }
 
+/*
+ * es_resolve_ids(): one key pair is a certificate and a public key with the
+ * same modulus, plus the private key the containermap pairs with that public
+ * key. Whatever ids the card provides, all three must end up with one id.
+ */
+struct ids_fixture {
+	u8 mod_a[4], mod_b[4];
+	sc_pkcs15_id_t cert_id, pub_id, prk_id, cert2_id, lone_prk_id;
+	struct es_keylike items[3];
+	struct es_prkeylike prkeys[2];
+	struct es_containers cm;
+};
+
+static void
+set_id(sc_pkcs15_id_t *id, u8 v)
+{
+	memset(id, 0, sizeof *id);
+	if (v) {
+		id->value[0] = v;
+		id->len = 1;
+	}
+}
+
+/* cert_v / pub_v / prk_v: id byte on the card, 0 for none */
+static void
+ids_setup(struct ids_fixture *f, u8 cert_v, u8 pub_v, u8 prk_v)
+{
+	memset(f, 0, sizeof *f);
+	memcpy(f->mod_a, "\xC1\x01\x02\x03", 4);
+	memcpy(f->mod_b, "\xC2\x01\x02\x03", 4);
+	set_id(&f->cert_id, cert_v);
+	set_id(&f->pub_id, pub_v);
+	set_id(&f->prk_id, prk_v);
+	f->items[0] = (struct es_keylike){&f->cert_id, f->mod_a, 4, 0};
+	f->items[1] = (struct es_keylike){&f->pub_id, f->mod_a, 4, 0x8000};
+	f->prkeys[0] = (struct es_prkeylike){&f->prk_id, 0x20};
+	f->cm.n = 1;
+	f->cm.c[0].priv_handle = 0xA020;
+	f->cm.c[0].pub_handle = 0x8000;
+}
+
+static void
+ids_resolve(struct ids_fixture *f)
+{
+	es_resolve_ids(NULL, f->items, 2, f->prkeys, 1, &f->cm);
+}
+
+static void
+assert_same_id(const sc_pkcs15_id_t *a, const sc_pkcs15_id_t *b)
+{
+	assert_true(a->len > 0);
+	assert_true(sc_pkcs15_compare_id(a, b));
+}
+
+static void
+assert_pair_shares(const struct ids_fixture *f, const sc_pkcs15_id_t *expected)
+{
+	assert_same_id(&f->cert_id, expected);
+	assert_same_id(&f->pub_id, expected);
+	assert_same_id(&f->prk_id, expected);
+}
+
+/* review issue 1: the public key has no id and gets the certificate's, and
+ * the private key must follow it instead of getting a synthetic id */
+static void
+torture_mscp_ids_cert_only(void **state)
+{
+	struct ids_fixture f;
+	sc_pkcs15_id_t want;
+
+	(void)state;
+	ids_setup(&f, 0x11, 0, 0);
+	want = f.cert_id;
+	ids_resolve(&f);
+	assert_pair_shares(&f, &want);
+}
+
+static void
+torture_mscp_ids_pub_only(void **state)
+{
+	struct ids_fixture f;
+	sc_pkcs15_id_t want;
+
+	(void)state;
+	ids_setup(&f, 0, 0x22, 0);
+	want = f.pub_id;
+	ids_resolve(&f);
+	assert_pair_shares(&f, &want);
+}
+
+static void
+torture_mscp_ids_cert_and_pub(void **state)
+{
+	struct ids_fixture f;
+	sc_pkcs15_id_t want;
+
+	(void)state;
+	ids_setup(&f, 0x33, 0x33, 0);
+	want = f.pub_id;
+	ids_resolve(&f);
+	assert_pair_shares(&f, &want);
+}
+
+/* review issue 2: nothing has an id; one synthetic id for the whole pair */
+static void
+torture_mscp_ids_none(void **state)
+{
+	struct ids_fixture f;
+
+	(void)state;
+	ids_setup(&f, 0, 0, 0);
+	ids_resolve(&f);
+	assert_int_equal(f.cert_id.len, 2);
+	assert_int_equal(f.cert_id.value[0], 0xF0);
+	assert_pair_shares(&f, &f.cert_id);
+}
+
+/* only the private key has an id: it is kept, and the pair takes it */
+static void
+torture_mscp_ids_prkey_only(void **state)
+{
+	struct ids_fixture f;
+	sc_pkcs15_id_t want;
+
+	(void)state;
+	ids_setup(&f, 0, 0, 0x44);
+	want = f.prk_id;
+	ids_resolve(&f);
+	assert_pair_shares(&f, &want);
+}
+
+/* ids read from the card are never overwritten, even when they disagree */
+static void
+torture_mscp_ids_never_overwritten(void **state)
+{
+	struct ids_fixture f;
+
+	(void)state;
+	ids_setup(&f, 0x55, 0x66, 0x77);
+	ids_resolve(&f);
+	assert_int_equal(f.cert_id.value[0], 0x55);
+	assert_int_equal(f.pub_id.value[0], 0x66);
+	assert_int_equal(f.prk_id.value[0], 0x77);
+}
+
+/* unpaired objects each get their own synthetic id */
+static void
+torture_mscp_ids_unpaired(void **state)
+{
+	struct ids_fixture f;
+
+	(void)state;
+	ids_setup(&f, 0, 0, 0);
+	/* a second certificate with another modulus, and a private key that no
+	 * containermap record mentions */
+	set_id(&f.cert2_id, 0);
+	set_id(&f.lone_prk_id, 0);
+	f.items[2] = (struct es_keylike){&f.cert2_id, f.mod_b, 4, 0};
+	f.prkeys[1] = (struct es_prkeylike){&f.lone_prk_id, 0x60};
+	es_resolve_ids(NULL, f.items, 3, f.prkeys, 2, &f.cm);
+
+	assert_pair_shares(&f, &f.cert_id);
+	assert_int_equal(f.cert2_id.len, 2);
+	assert_int_equal(f.lone_prk_id.len, 2);
+	assert_false(sc_pkcs15_compare_id(&f.cert2_id, &f.cert_id));
+	assert_false(sc_pkcs15_compare_id(&f.lone_prk_id, &f.cert_id));
+	assert_false(sc_pkcs15_compare_id(&f.lone_prk_id, &f.cert2_id));
+}
+
+/* a public key without a vendor handle (pub_handle 0) cannot pair with a
+ * private key through the containermap */
+static void
+torture_mscp_ids_pub_without_handle(void **state)
+{
+	struct ids_fixture f;
+
+	(void)state;
+	ids_setup(&f, 0, 0, 0x44);
+	f.items[1].pub_handle = 0;
+	ids_resolve(&f);
+	assert_int_equal(f.prk_id.value[0], 0x44);
+	assert_same_id(&f.cert_id, &f.pub_id);
+	assert_false(sc_pkcs15_compare_id(&f.cert_id, &f.prk_id));
+}
+
+/* the same objects produce the same synthetic ids on every bind */
+static void
+torture_mscp_ids_deterministic(void **state)
+{
+	struct ids_fixture f1, f2;
+
+	(void)state;
+	ids_setup(&f1, 0, 0, 0);
+	ids_setup(&f2, 0, 0, 0);
+	ids_resolve(&f1);
+	ids_resolve(&f2);
+	assert_true(sc_pkcs15_compare_id(&f1.cert_id, &f2.cert_id));
+	assert_true(sc_pkcs15_compare_id(&f1.prk_id, &f2.prk_id));
+}
+
 int
 main(void)
 {
@@ -460,6 +660,16 @@ main(void)
 			cmocka_unit_test(torture_mscp_modulus_bytes),
 			/* es_prkey_usage() */
 			cmocka_unit_test(torture_mscp_prkey_usage),
+			/* es_resolve_ids() */
+			cmocka_unit_test(torture_mscp_ids_cert_only),
+			cmocka_unit_test(torture_mscp_ids_pub_only),
+			cmocka_unit_test(torture_mscp_ids_cert_and_pub),
+			cmocka_unit_test(torture_mscp_ids_none),
+			cmocka_unit_test(torture_mscp_ids_prkey_only),
+			cmocka_unit_test(torture_mscp_ids_never_overwritten),
+			cmocka_unit_test(torture_mscp_ids_unpaired),
+			cmocka_unit_test(torture_mscp_ids_pub_without_handle),
+			cmocka_unit_test(torture_mscp_ids_deterministic),
 	};
 
 	rc = cmocka_run_group_tests(tests, NULL, NULL);

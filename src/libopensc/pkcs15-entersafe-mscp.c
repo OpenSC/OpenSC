@@ -871,6 +871,12 @@ struct es_keylike {
 	sc_pkcs15_id_t *id;
 	u8 *modulus;
 	size_t modulus_len;
+	unsigned int pub_handle; /* public keys only, 0 otherwise */
+};
+
+struct es_prkeylike {
+	sc_pkcs15_id_t *id;
+	unsigned int key_ref; /* low byte of the private vendor handle */
 };
 
 static int
@@ -884,25 +890,116 @@ es_same_modulus(const struct es_keylike *a, const struct es_keylike *b)
 	return la == lb && la > 0 && memcmp(pa, pb, la) == 0;
 }
 
+static void
+es_set_synthetic_id(sc_pkcs15_id_t *id, unsigned int *synthetic)
+{
+	id->value[0] = 0xF0;
+	id->value[1] = (u8)(++*synthetic);
+	id->len = 2;
+}
+
+/* Give each id-less certificate/public key the id of an object with the same
+ * RSA modulus, i.e. the other half of its key pair. */
+static void
+es_share_ids_by_modulus(sc_context_t *ctx, struct es_keylike *items, size_t nitems)
+{
+	size_t i, j;
+
+	for (i = 0; i < nitems; i++) {
+		if (items[i].id->len != 0)
+			continue;
+		for (j = 0; j < nitems; j++) {
+			if (j == i || items[j].id->len == 0 || !es_same_modulus(&items[i], &items[j]))
+				continue;
+			*items[i].id = *items[j].id;
+			sc_log(ctx, "entersafe-mscp: id-less object %zu took id of paired object %zu", i, j);
+			break;
+		}
+	}
+}
+
 /* Some objects (cert0004/cert0005, pubk0003 on the observed card) carry no
  * CKA_ID of their own. Empty ids are not tolerated by CryptoTokenKit (its
  * objectID is a type byte plus the id, so two empty ids collide) and they break
- * certificate <-> key pairing. Certificates and public keys take the id of the
- * object with the same RSA modulus; private keys take the id of the public key
- * the containermap pairs them with. Whatever is still id-less gets a unique
- * synthetic id. */
+ * certificate <-> key pairing, so every object of a key pair must end up with
+ * the same id. The public key links the two sides: it shares the modulus with
+ * the certificate and the containermap record with the private key (which
+ * stores no modulus). Ids are therefore settled in this order:
+ *  1. certificate <-> public key by modulus;
+ *  2. public key <- its private key through the containermap, then 1 again;
+ *  3. a synthetic id for what is left, shared by objects with the same modulus;
+ *  4. private key <- its public key through the containermap;
+ *  5. a synthetic id for private keys that are still id-less.
+ * An id read from the card is never replaced. Synthetic ids follow the order
+ * of the objects, i.e. of the card's index, so they are stable across binds. */
+static void
+es_resolve_ids(sc_context_t *ctx, struct es_keylike *items, size_t nitems,
+		struct es_prkeylike *prkeys, size_t nprkeys, const struct es_containers *cm)
+{
+	unsigned int synthetic = 0, handle = 0;
+	size_t i, j;
+
+	es_share_ids_by_modulus(ctx, items, nitems);
+
+	for (i = 0; i < nitems; i++) {
+		if (items[i].id->len != 0 || items[i].pub_handle == 0 ||
+				!es_container_priv_for_pub(cm, items[i].pub_handle, &handle))
+			continue;
+		for (j = 0; j < nprkeys; j++) {
+			if (prkeys[j].key_ref == (handle & 0xff) && prkeys[j].id->len != 0) {
+				*items[i].id = *prkeys[j].id;
+				sc_log(ctx, "entersafe-mscp: public key %04X took the id of its private key",
+						items[i].pub_handle);
+				break;
+			}
+		}
+	}
+	es_share_ids_by_modulus(ctx, items, nitems);
+
+	for (i = 0; i < nitems; i++) {
+		if (items[i].id->len != 0)
+			continue;
+		es_set_synthetic_id(items[i].id, &synthetic);
+		sc_log(ctx, "entersafe-mscp: object %zu has no id on the card, using synthetic id F0%02X",
+				i, synthetic);
+		for (j = i + 1; j < nitems; j++)
+			if (items[j].id->len == 0 && es_same_modulus(&items[i], &items[j]))
+				*items[j].id = *items[i].id;
+	}
+
+	for (j = 0; j < nprkeys; j++) {
+		if (prkeys[j].id->len != 0 ||
+				!es_container_pub_for_priv_low(cm, prkeys[j].key_ref, &handle))
+			continue;
+		for (i = 0; i < nitems; i++) {
+			if (items[i].pub_handle == handle && items[i].id->len != 0) {
+				*prkeys[j].id = *items[i].id;
+				sc_log(ctx, "entersafe-mscp: private key %02X took the id of public key %04X",
+						prkeys[j].key_ref, handle);
+				break;
+			}
+		}
+	}
+
+	for (j = 0; j < nprkeys; j++) {
+		if (prkeys[j].id->len != 0)
+			continue;
+		es_set_synthetic_id(prkeys[j].id, &synthetic);
+		sc_log(ctx, "entersafe-mscp: private key %02X has no paired id, using synthetic id F0%02X",
+				prkeys[j].key_ref, synthetic);
+	}
+}
+
 static void
 es_fill_missing_ids(sc_pkcs15_card_t *p15card, const struct es_containers *cm)
 {
-	sc_context_t *ctx = p15card->card->ctx;
 	struct sc_pkcs15_object *objs[ES_MSCP_MAX_KEYLIKE];
-	struct sc_pkcs15_object *probjs[ES_MSCP_MAX_KEYLIKE];
 	struct es_keylike items[ES_MSCP_MAX_KEYLIKE];
+	struct es_prkeylike prkeys[ES_MSCP_MAX_KEYLIKE];
 	struct sc_pkcs15_cert *certs[ES_MSCP_MAX_KEYLIKE] = {0};
 	struct sc_pkcs15_pubkey *pubs[ES_MSCP_MAX_KEYLIKE] = {0};
-	size_t nitems = 0, i, j, k;
-	unsigned int synthetic = 0;
-	int n, npub, npr;
+	size_t nitems = 0, nprkeys = 0, i, k;
+	int n;
 
 	n = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_CERT_X509, objs, ES_MSCP_MAX_KEYLIKE);
 	for (k = 0; n > 0 && k < (size_t)n && nitems < ES_MSCP_MAX_KEYLIKE; k++) {
@@ -919,11 +1016,12 @@ es_fill_missing_ids(sc_pkcs15_card_t *p15card, const struct es_containers *cm)
 		items[nitems].id = &info->id;
 		items[nitems].modulus = cert->key->u.rsa.modulus.data;
 		items[nitems].modulus_len = cert->key->u.rsa.modulus.len;
+		items[nitems].pub_handle = 0;
 		nitems++;
 	}
 
-	npub = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY_RSA, objs, ES_MSCP_MAX_KEYLIKE);
-	for (k = 0; npub > 0 && k < (size_t)npub && nitems < ES_MSCP_MAX_KEYLIKE; k++) {
+	n = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PUBKEY_RSA, objs, ES_MSCP_MAX_KEYLIKE);
+	for (k = 0; n > 0 && k < (size_t)n && nitems < ES_MSCP_MAX_KEYLIKE; k++) {
 		struct sc_pkcs15_pubkey_info *info = objs[k]->data;
 		struct sc_pkcs15_pubkey *pub = NULL;
 
@@ -933,55 +1031,20 @@ es_fill_missing_ids(sc_pkcs15_card_t *p15card, const struct es_containers *cm)
 		items[nitems].id = &info->id;
 		items[nitems].modulus = pub->u.rsa.modulus.data;
 		items[nitems].modulus_len = pub->u.rsa.modulus.len;
+		items[nitems].pub_handle = info->key_reference > 0 ? (unsigned int)info->key_reference : 0;
 		nitems++;
 	}
 
-	for (i = 0; i < nitems; i++) {
-		if (items[i].id->len != 0)
-			continue;
-		for (j = 0; j < nitems; j++) {
-			if (j == i || items[j].id->len == 0 || !es_same_modulus(&items[i], &items[j]))
-				continue;
-			*items[i].id = *items[j].id;
-			sc_log(ctx, "entersafe-mscp: id-less object %zu took id of paired object %zu", i, j);
-			break;
-		}
+	n = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY_RSA, objs, ES_MSCP_MAX_KEYLIKE);
+	for (k = 0; n > 0 && k < (size_t)n; k++) {
+		struct sc_pkcs15_prkey_info *info = objs[k]->data;
+
+		prkeys[nprkeys].id = &info->id;
+		prkeys[nprkeys].key_ref = (unsigned int)info->key_reference & 0xff;
+		nprkeys++;
 	}
 
-	npr = sc_pkcs15_get_objects(p15card, SC_PKCS15_TYPE_PRKEY_RSA, probjs, ES_MSCP_MAX_KEYLIKE);
-	for (k = 0; npr > 0 && k < (size_t)npr; k++) {
-		struct sc_pkcs15_prkey_info *pr = probjs[k]->data;
-		unsigned int pub_handle = 0;
-
-		if (pr->id.len != 0 ||
-				!es_container_pub_for_priv_low(cm, (unsigned int)pr->key_reference & 0xff, &pub_handle))
-			continue;
-		for (j = 0; npub > 0 && j < (size_t)npub; j++) {
-			struct sc_pkcs15_pubkey_info *pi = objs[j]->data;
-
-			if ((unsigned int)pi->key_reference == pub_handle && pi->id.len != 0) {
-				pr->id = pi->id;
-				break;
-			}
-		}
-	}
-
-	for (i = 0; i < nitems; i++) {
-		if (items[i].id->len != 0)
-			continue;
-		items[i].id->value[0] = 0xF0;
-		items[i].id->value[1] = (u8)(++synthetic);
-		items[i].id->len = 2;
-	}
-	for (k = 0; npr > 0 && k < (size_t)npr; k++) {
-		struct sc_pkcs15_prkey_info *pr = probjs[k]->data;
-
-		if (pr->id.len != 0)
-			continue;
-		pr->id.value[0] = 0xF0;
-		pr->id.value[1] = (u8)(++synthetic);
-		pr->id.len = 2;
-	}
+	es_resolve_ids(p15card->card->ctx, items, nitems, prkeys, nprkeys, cm);
 
 	for (i = 0; i < nitems; i++) {
 		if (certs[i])
