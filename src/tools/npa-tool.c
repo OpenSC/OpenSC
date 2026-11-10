@@ -870,11 +870,7 @@ nopace:
 
 err:
 	cmdline_parser_free(&cmdline);
-	free(pace_output.ef_cardaccess);
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
+	pace_output_clear(&pace_output);
 	if (ef_cardsecurity) {
 		OPENSSL_cleanse(ef_cardsecurity, ef_cardsecurity_len);
 		free(ef_cardsecurity);
