@@ -22,6 +22,8 @@
 #define _PACE_H
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -99,6 +101,24 @@ struct establish_pace_channel_output {
 	/** PCD identifier */
 	unsigned char *id_pcd;
 };
+
+/**
+ * @brief Free memory dynamically allocated inside establish_pace_channel_output
+ *
+ * @param output The PACE channel output structure to clean
+ */
+static inline void
+pace_output_clear(struct establish_pace_channel_output *output)
+{
+	if (!output)
+		return;
+	free(output->ef_cardaccess);
+	free(output->recent_car);
+	free(output->previous_car);
+	free(output->id_icc);
+	free(output->id_pcd);
+	memset(output, 0, sizeof(*output));
+}
 
 #ifdef __cplusplus
 }
