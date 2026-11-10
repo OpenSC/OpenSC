@@ -1349,6 +1349,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 	p15card->opts.use_pin_cache = 1;
 	p15card->opts.pin_cache_counter = 10;
 	p15card->opts.pin_cache_ignore_user_consent = 0;
+	p15card->opts.allow_duplicate_object_ids = 0;
 	pin_protected_certificate = "protect";
 	private_certificate = "";
 
@@ -1359,6 +1360,7 @@ sc_pkcs15_bind(struct sc_card *card, struct sc_aid *aid,
 		p15card->opts.pin_cache_counter = scconf_get_int(conf_block, "pin_cache_counter", p15card->opts.pin_cache_counter);
 		p15card->opts.pin_cache_ignore_user_consent = scconf_get_bool(conf_block, "pin_cache_ignore_user_consent",
 				p15card->opts.pin_cache_ignore_user_consent);
+		p15card->opts.allow_duplicate_object_ids = scconf_get_bool(conf_block, "allow_duplicate_object_ids", p15card->opts.allow_duplicate_object_ids);
 		pin_protected_certificate = scconf_get_str(conf_block, "pin_protected_certificate", pin_protected_certificate);
 		/* read also the old value to keep backward compatibility */
 		private_certificate = scconf_get_str(conf_block, "private_certificate", private_certificate);
