@@ -93,7 +93,7 @@ sc_simpletlv_read_tag(const u8 **buf, size_t buflen, u8 *tag_out, size_t *taglen
 	if (buf == NULL || tag_out == NULL || taglen == NULL)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	if (*buf == NULL)
-		return SC_ERROR_INVALID_TLV_OBJECT;
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	p = *buf;
 	*buf = NULL;

@@ -32,7 +32,8 @@ static void torture_simpletlv_read_tag_null(void **state)
 	int rv;
 
 	rv = sc_simpletlv_read_tag(&data, datalen, &tag, &taglen, SC_SIMPLETLV_LITTLE_ENDIAN);
-	assert_int_equal(rv, SC_ERROR_INVALID_TLV_OBJECT);
+	assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
+	assert_null(data);
 	assert_int_equal(tag, 0);
 	assert_int_equal(taglen, 0);
 }
@@ -244,8 +245,14 @@ torture_simpletlv_read_tag_null_arguments(void **state)
 		assert_ptr_equal(ptr, header);
 
 		ptr = NULL;
+		rv = sc_simpletlv_read_tag(&ptr, 0, &tag, &length, orders[i]);
+		assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
+		assert_null(ptr);
+		assert_int_equal(tag, 0xa5);
+		assert_int_equal(length, 7);
+
 		rv = sc_simpletlv_read_tag(&ptr, sizeof(header), &tag, &length, orders[i]);
-		assert_int_equal(rv, SC_ERROR_INVALID_TLV_OBJECT);
+		assert_int_equal(rv, SC_ERROR_INVALID_ARGUMENTS);
 		assert_null(ptr);
 		assert_int_equal(tag, 0xa5);
 		assert_int_equal(length, 7);
