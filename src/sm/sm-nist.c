@@ -290,9 +290,11 @@ sm_nist_send_vci_pairing_code(struct sc_card *card, sm_nist_params_t *params)
 	if (params->flags & NIST_SM_VCI_WITHOUT_PC)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS); /* Not needed */
 
-	/* TODO for testing with contact will comment out next test */
-	//	if (!(params->flags & NIST_SM_CONTACTLESS))
-	//		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
+	if (!(params->flags & NIST_SM_CONTACTLESS))
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
+
+	if (params->pairing_code[0] == 0x00)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
 
 	if ((params->flags & NIST_SM_VCI_IMPL) == 0)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_SUCCESS);
@@ -1448,7 +1450,6 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 		goto err;
 	}
 	sctx->clear_free = sm_nist_clear_free;
-	card->sm_ctx.ops.open = sm_nist_open;
 
 	/* *params is saved in priv_data */
 	sctx->priv_data = sm_nist_private_data_create(params);
@@ -1547,6 +1548,7 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 
 	/* Add next line after iso_sm_start so not called from iso_sm_start before we really start */
 	card->sm_ctx.ops.close = sm_nist_close;
+	card->sm_ctx.ops.open = sm_nist_open;
 
 	/* do not add to card->sm_ctx.open */
 	r = sm_nist_open(card);
@@ -1561,8 +1563,11 @@ sm_nist_start(sc_card_t *card, sm_nist_params_t *params)
 
 err:
 	if (r < 0) {
-		if (sctx)
+		if (sctx) {
+			card->sm_ctx.info.cmd_data = NULL;
+			memset(&card->sm_ctx.ops, 0, sizeof(card->sm_ctx.ops));
 			iso_sm_ctx_clear_free(sctx);
+		}
 	}
 	free(cert_blob);
 
@@ -1662,7 +1667,7 @@ sm_nist_decrypt(sc_card_t *card, const struct iso_sm_ctx *ctx,
 	if (!card)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
-	if (!ctx || !data || !ctx->priv_data || !data)
+	if (!ctx || !data || !ctx->priv_data || !enc)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, SC_ERROR_INVALID_ARGUMENTS);
 
 	priv = (sm_nist_private_data_t *)ctx->priv_data;
