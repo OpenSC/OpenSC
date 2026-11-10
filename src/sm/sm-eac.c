@@ -664,9 +664,17 @@ int perform_pace(sc_card_t *card,
 	CVC_CERTIFICATE_DESCRIPTION *desc = NULL;
 	int r;
 	const unsigned char *pp;
+	struct establish_pace_channel_output local_output;
+	int free_output = 0;
 
-	if (!card || !card->reader || !card->reader->ops || !pace_output)
+	if (!card || !card->reader || !card->reader->ops)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (!pace_output) {
+		memset(&local_output, 0, sizeof(local_output));
+		pace_output = &local_output;
+		free_output = 1;
+	}
 
 	/* show description in advance to give the user more time to read it...
 	 * This behaviour differs from TR-03119 v1.1 p. 44. */
@@ -995,6 +1003,9 @@ err:
 
 	if (r < 0)
 		EAC_CTX_clear_free(eac_ctx);
+
+	if (free_output)
+		free_pace_output(&local_output);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
@@ -1784,10 +1795,18 @@ int perform_pace(sc_card_t *card,
 		struct establish_pace_channel_output *pace_output,
 		enum eac_tr_version tr_version)
 {
+	struct establish_pace_channel_output local_output;
+	int free_output = 0;
 	int r;
 
 	if (!card)
 	   return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (!pace_output) {
+		memset(&local_output, 0, sizeof(local_output));
+		pace_output = &local_output;
+		free_output = 1;
+	}
 
 	if (card->reader
 			&& card->reader->capabilities & SC_READER_CAP_PACE_GENERIC
@@ -1796,6 +1815,9 @@ int perform_pace(sc_card_t *card,
 	} else {
 		r = SC_ERROR_NOT_SUPPORTED;
 	}
+
+	if (free_output)
+		free_pace_output(&local_output);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
