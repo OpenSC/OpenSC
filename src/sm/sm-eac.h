@@ -129,7 +129,7 @@ const char *eac_secret_name(enum s_type pin_id);
  * 
  * @param[in,out] card
  * @param[in]     pace_input
- * @param[in,out] pace_output
+ * @param[in,out] pace_output Optional output data. May be NULL if not needed.
  * @param[in]     tr_version  Version of TR-03110 to use with PACE
  * 
  * @return \c SC_SUCCESS or error code if an error occurred
