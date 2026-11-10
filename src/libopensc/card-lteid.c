@@ -187,7 +187,6 @@ lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin
 
 	struct lteid_drv_data *drv_data = DRVDATA(card);
 	struct establish_pace_channel_input pace_input = {0};
-	struct establish_pace_channel_output pace_output = {0};
 
 	if (drv_data->pace) {
 		sc_sm_stop(card);
@@ -205,7 +204,7 @@ lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin
 		pace_input.pin_length = pinlen;
 	}
 
-	int rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+	int rv = perform_pace(card, pace_input, NULL, EAC_TR_VERSION_2_02);
 	if (rv != SC_SUCCESS) {
 		sc_log(card->ctx, "Error performing PACE for pin ref 0x%02x.", ref);
 
@@ -237,12 +236,6 @@ lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin
 	// Track PACE status
 	drv_data->pace = 1;
 	drv_data->pace_pin_ref = ref;
-
-	free(pace_output.ef_cardaccess);
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }

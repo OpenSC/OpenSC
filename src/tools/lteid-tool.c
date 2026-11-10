@@ -323,7 +323,6 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 	int rv;
 	struct sc_card *card = p15card->card;
 	struct establish_pace_channel_input pace_input = {0};
-	struct establish_pace_channel_output pace_output = {0};
 	struct sc_path path;
 	char *pin = NULL;
 	int tries_left;
@@ -379,7 +378,7 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 	pace_input.pin = (unsigned char *)pin;
 	pace_input.pin_length = strlen(pin);
 
-	rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+	rv = perform_pace(card, pace_input, NULL, EAC_TR_VERSION_2_02);
 	free(pin);
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(rv));

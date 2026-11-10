@@ -120,11 +120,7 @@ err:
 	fprintf(r < 0 ? stderr : stdout, "%s\n", sc_strerror(r));
 
 	/* Free up memory and wipe it if necessary (e.g. for keys stored in sm_ctx) */
-	free(pace_output.ef_cardaccess);
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
+	pace_output_clear(&pace_output);
 
 	sc_sm_stop(card);
 	sc_reset(card, 1);
