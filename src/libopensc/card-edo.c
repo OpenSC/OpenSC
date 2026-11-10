@@ -252,9 +252,10 @@ static int edo_compute_signature(struct sc_card* card, const u8* data, size_t da
 static int edo_set_security_env(struct sc_card* card, const struct sc_security_env* env, int se_num) {
 	LOG_FUNC_CALLED(card->ctx);
 	struct sc_apdu apdu;
+	u8 payload[] = {0x80, 0x01, 0xcc, 0x84, 0x01, 0x80};
 
 	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
-		u8 payload[] = {0x80, 0x01, 0xcc, 0x84, 0x01, 0x80 | env->key_ref[0]};
+		payload[5] |= env->key_ref[0];
 		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, payload, sizeof payload, NULL, 0);
 	} else
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
