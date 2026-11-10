@@ -2082,7 +2082,7 @@ sm_nist_verify_cert_chain(sc_card_t *card, sm_nist_params_t *sm_params, X509 *si
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	store_ctx = X509_STORE_CTX_new();
 #else
-	store_ctx = X509_STORE_CTX_new_ex(card->ctx->ossl3ctx->libctx, NULL);
+	store_ctx = X509_STORE_CTX_new_ex(NIST_LIBCTX, NULL);
 #endif
 	if (store_ctx == NULL) {
 		r = SC_ERROR_INTERNAL;
