@@ -54,7 +54,7 @@ jobs:
     env:
       SOURCE_PATH: ./
       BUILD_PATH: ./
-      FREEHSM_VERSION: v2.6.0
+      FREEHSM_VERSION: v2.7.0
     steps:
       - name: Install dependencies
         run: |
