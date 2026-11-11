@@ -410,7 +410,7 @@ if [[ -n $is_openssl_3 ]]; then
         assert $? "Failed to wrap RSA key"
         # Unwrap
         $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP --id $ID_AES_WRAP --iv $IV \
-            --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --input-file rsa_wrapped_key.data
+            --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --sensitive --input-file rsa_wrapped_key.data
         assert $? "Failed to unwrap RSA key with $MECH"
         rm rsa_wrapped_key.data
 
@@ -431,7 +431,7 @@ if [[ -n $is_openssl_3 ]]; then
         assert $? "Failed to wrap RSA key"
         # Unwrap
         $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-KEY-WRAP-PAD --id $ID_AES_WRAP --iv $IV \
-            --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --input-file rsa_wrapped_key.data
+            --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --sensitive --input-file rsa_wrapped_key.data
         assert $? "Failed to unwrap RSA key with $MECH"
         rm rsa_wrapped_key.data
 
@@ -453,7 +453,7 @@ if [[ "$TOKENTYPE" != "softhsm" ]]; then
     assert $? "Failed to wrap RSA key"
     # Unwrap
     $PKCS11_TOOL "${PRIV_ARGS[@]}" --unwrap -m AES-CBC-PAD --id $ID_AES_WRAP --iv $IV \
-        --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --input-file rsa_wrapped_key.data
+        --application-id $ID_RSA_UNWRAPPED --key-type RSA:2048 --sensitive --input-file rsa_wrapped_key.data
     assert $? "Failed to unwrap RSA key with $MECH"
     rm rsa_wrapped_key.data
 
