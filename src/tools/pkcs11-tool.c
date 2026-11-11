@@ -94,7 +94,7 @@
 #endif
 
 #ifndef ENABLE_SHARED
-extern CK_FUNCTION_LIST_3_0 pkcs11_function_list_3_0;
+extern CK_FUNCTION_LIST_3_2 pkcs11_function_list_3_2;
 #endif
 
 #if defined(_WIN32) || defined(HAVE_PTHREAD)
@@ -256,7 +256,7 @@ enum {
 	OPT_URI,
 	OPT_URI_WITH_SLOT_ID,
 	OPT_SIGN_CONTEXT,
-	OPT_SIGN_HEDGE
+	OPT_SIGN_HEDGE,
 };
 
 // clang-format off
@@ -543,7 +543,7 @@ static const char *opt_sign_context = NULL; /* context for PQC signing (hex stri
 static const char *opt_sign_hedge = NULL;   /* hedge variant for PQC signing */
 
 static void *module = NULL;
-static CK_FUNCTION_LIST_3_0_PTR p11 = NULL;
+static CK_FUNCTION_LIST_3_2_PTR p11 = NULL;
 static CK_SLOT_ID_PTR p11_slots = NULL;
 static CK_ULONG p11_num_slots = 0;
 static int suppress_warn = 0;
@@ -1434,7 +1434,7 @@ int main(int argc, char * argv[])
 
 #ifndef ENABLE_SHARED
 	if (strcmp(opt_module, DEFAULT_PKCS11_PROVIDER) == 0)
-		p11 = &pkcs11_function_list_3_0;
+		p11 = &pkcs11_function_list_3_2;
 	else
 #endif
 	{
@@ -1443,7 +1443,7 @@ int main(int argc, char * argv[])
 		module = C_LoadModule(opt_module, &p11_v2);
 		if (module == NULL)
 			util_fatal("Failed to load pkcs11 module");
-		p11 = (CK_FUNCTION_LIST_3_0_PTR) p11_v2;
+		p11 = (CK_FUNCTION_LIST_3_2_PTR)p11_v2;
 	}
 
 	/* This can be done even before initialization */
@@ -1601,7 +1601,7 @@ int main(int argc, char * argv[])
 		mf_flags = p11_mechanism_to_flags(opt_mechanism);
 	}
 
-	if (do_sign || do_derive) {
+	if (do_sign || do_derive || do_decapsulate) {
 		/*
 		 * Newer mechanisms have their details in the mechanism table, however
 		 * if it's not known fall back to the old code always assuming it was a
@@ -1765,6 +1765,7 @@ int main(int argc, char * argv[])
 	if (do_encapsulate)
 		encapsulate_key(opt_slot, session, object);
 
+	/* before list objects, so we can see a decapsulated key */
 	if (do_decapsulate)
 		decapsulate_key(opt_slot, session, object);
 
@@ -10538,7 +10539,7 @@ static CK_SESSION_HANDLE test_kpgen_certwrite(CK_SLOT_ID slot, CK_SESSION_HANDLE
 	module = C_LoadModule(opt_module, &p11_v2);
 	if (module == NULL)
 		util_fatal("Failed to load pkcs11 module");
-	p11 = (CK_FUNCTION_LIST_3_0_PTR ) p11_v2;
+	p11 = (CK_FUNCTION_LIST_3_2_PTR)p11_v2;
 
 	rv = p11->C_Initialize(c_initialize_args_ptr);
 	if (rv == CKR_CRYPTOKI_ALREADY_INITIALIZED)

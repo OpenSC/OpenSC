@@ -1204,13 +1204,19 @@ sc_algorithm_info_t *sc_card_find_alg(sc_card_t *card,
 	for (i = 0; i < card->algorithm_count; i++) {
 		sc_algorithm_info_t *info = &card->algorithms[i];
 
+		if (info->algorithm != algorithm)
+			continue;
+
 		if (param && (info->algorithm == SC_ALGORITHM_EC ||
 			info->algorithm == SC_ALGORITHM_EDDSA ||
 			info->algorithm == SC_ALGORITHM_XEDDSA)) {
 			if (sc_compare_oid((struct sc_object_id *)param, &info->u._ec.params.id))
 				return info;
-		} else if (info->algorithm != algorithm) {
-			continue;
+		} else if (param && (info->algorithm == SC_ALGORITHM_MLDSA ||
+			info->algorithm == SC_ALGORITHM_MLKEM ||
+			info->algorithm == SC_ALGORITHM_SLHDSA)) {
+			if (*(unsigned long *)param & info->flags)
+				return info;
 		} else if (info->key_length == key_length)
 			return info;
 	}
@@ -1256,6 +1262,45 @@ int _sc_card_add_rsa_alg(sc_card_t *card, size_t key_length,
 	return _sc_card_add_algorithm(card, &info);
 }
 
+int
+_sc_card_add_mldsa_alg(sc_card_t *card, size_t key_length, unsigned long flags)
+{
+	sc_algorithm_info_t info;
+
+	memset(&info, 0, sizeof(info));
+	info.algorithm = SC_ALGORITHM_MLDSA;
+	info.key_length = key_length;
+	info.flags = flags;
+
+	return _sc_card_add_algorithm(card, &info);
+}
+
+int
+_sc_card_add_mlkem_alg(sc_card_t *card, size_t key_length, unsigned long flags)
+{
+	sc_algorithm_info_t info;
+
+	memset(&info, 0, sizeof(info));
+	info.algorithm = SC_ALGORITHM_MLKEM;
+	info.key_length = key_length;
+	info.flags = flags;
+
+	return _sc_card_add_algorithm(card, &info);
+}
+
+int
+_sc_card_add_slhdsa_alg(sc_card_t *card, size_t key_length, unsigned long flags)
+{
+	sc_algorithm_info_t info;
+
+	memset(&info, 0, sizeof(info));
+	info.algorithm = SC_ALGORITHM_SLHDSA;
+	info.key_length = key_length;
+	info.flags = flags;
+
+	return _sc_card_add_algorithm(card, &info);
+}
+
 sc_algorithm_info_t *sc_card_find_rsa_alg(sc_card_t *card, size_t key_length)
 {
 	return sc_card_find_alg(card, SC_ALGORITHM_RSA, key_length, NULL);
@@ -1264,6 +1309,24 @@ sc_algorithm_info_t *sc_card_find_rsa_alg(sc_card_t *card, size_t key_length)
 sc_algorithm_info_t *sc_card_find_gostr3410_alg(sc_card_t *card, size_t key_length)
 {
 	return sc_card_find_alg(card, SC_ALGORITHM_GOSTR3410, key_length, NULL);
+}
+
+sc_algorithm_info_t *
+sc_card_find_mldsa_alg(sc_card_t *card, size_t key_length, unsigned long flags)
+{
+	return sc_card_find_alg(card, SC_ALGORITHM_MLDSA, key_length, &flags);
+}
+
+sc_algorithm_info_t *
+sc_card_find_mlkem_alg(sc_card_t *card, size_t key_length, unsigned long flags)
+{
+	return sc_card_find_alg(card, SC_ALGORITHM_MLKEM, key_length, &flags);
+}
+
+sc_algorithm_info_t *
+sc_card_find_slhdsa_alg(sc_card_t *card, size_t key_length, unsigned long flags)
+{
+	return sc_card_find_alg(card, SC_ALGORITHM_SLHDSA, key_length, &flags);
 }
 
 static int match_atr_table(sc_context_t *ctx, const struct sc_atr_table *table, struct sc_atr *atr)
