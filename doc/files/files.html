@@ -546,7 +546,16 @@ app <em class="replaceable"><code>application</code></em> {
 							<code class="literal">/usr/bin/pinentry</code>).
 							Only used if compiled with
 							<code class="option">--enable-dnie-ui</code>
-					</p></dd></dl></div></div><div class="refsect2"><a name="edo"></a><h3>Configuration Options for Polish eID Card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+					</p></dd><dt><span class="term">
+						<code class="option">can = <em class="replaceable"><code>value</code></em>;</code>
+					</span></dt><dd><p>
+						CAN (Card Access Number – 6 digit number printed on the right bottom corner
+						of the card's front side) is required to establish connection with the card
+						when using the contactless interface. It might be overwritten by the
+						<code class="literal">DNIE_CAN</code> environment variable. If not specified here,
+						the CAN will be read from an environment variable or prompted on the card
+						reader's PIN pad (if supported) in the following order of priority:
+						</p><div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><p>Environment variable <code class="literal">DTRUST_CAN</code></p></li><li class="listitem"><p>This configuration file option</p></li><li class="listitem"><p>Pin pad of a PACE-capable card reader</p></li></ol></div></dd></dl></div></div><div class="refsect2"><a name="edo"></a><h3>Configuration Options for Polish eID Card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 						<code class="option">can = <em class="replaceable"><code>value</code></em>;</code>
 					</span></dt><dd><p>
 							CAN (Card Access Number – 6 digit number
