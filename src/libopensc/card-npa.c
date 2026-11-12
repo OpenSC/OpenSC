@@ -168,22 +168,20 @@ static int npa_match_card(sc_card_t * card)
 }
 
 static void npa_get_cached_pace_params(sc_card_t *card,
-		struct establish_pace_channel_input *pace_input,
-		struct establish_pace_channel_output *pace_output)
+		struct establish_pace_channel_input *pace_input)
 {
 	struct npa_drv_data *drv_data;
 
 	if (card->drv_data) {
 		drv_data = card->drv_data;
-		
-		if (pace_output) {
-			pace_output->ef_cardaccess = drv_data->ef_cardaccess;
-			pace_output->ef_cardaccess_length = drv_data->ef_cardaccess_length;
-		}
 
-		if (pace_input && pace_input->pin_id == PACE_PIN_ID_CAN) {
-			pace_input->pin = (const unsigned char *) drv_data->can;
-			pace_input->pin_length = drv_data->can ? strlen(drv_data->can) : 0;
+		if (pace_input) {
+			pace_input->ef_cardaccess = drv_data->ef_cardaccess;
+			pace_input->ef_cardaccess_length = drv_data->ef_cardaccess_length;
+			if (pace_input->pin_id == PACE_PIN_ID_CAN) {
+				pace_input->pin = (const unsigned char *) drv_data->can;
+				pace_input->pin_length = drv_data->can ? strlen(drv_data->can) : 0;
+			}
 		}
 	}
 }
@@ -292,7 +290,7 @@ static int npa_unlock_esign(sc_card_t *card)
 	pace_input.chat = esign_chat;
 	pace_input.chat_length = sizeof esign_chat;
 	pace_input.pin_id = PACE_PIN_ID_CAN;
-	npa_get_cached_pace_params(card, &pace_input, &pace_output);
+	npa_get_cached_pace_params(card, &pace_input);
 	npa_get_cached_ta_params(card, certs, certs_lens, &st_key, &st_key_len);
 	npa_get_cached_ca_params(card, &ef_cardsecurity, &ef_cardsecurity_len);
 
@@ -533,7 +531,7 @@ static int npa_pace_verify(struct sc_card *card,
 		pace_input.pin = pin->data;
 		pace_input.pin_length = pin->len;
 	}
-	npa_get_cached_pace_params(card, &pace_input, &pace_output);
+	npa_get_cached_pace_params(card, &pace_input);
 
 	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 

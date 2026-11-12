@@ -62,6 +62,11 @@ struct establish_pace_channel_input {
 	size_t certificate_description_length;
 	/** Certificate description */
 	const unsigned char *certificate_description;
+
+	/** Length of pre-defined \a ef_cardaccess */
+	size_t ef_cardaccess_length;
+	/** Pre-defined EF.CardAccess (optional) */
+	const unsigned char *ef_cardaccess;
 };
 
 /**
