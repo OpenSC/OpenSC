@@ -687,6 +687,10 @@ iasecc_parse_docp(struct sc_card *card, unsigned char *data, size_t data_len, st
 			free(sdo->docp.tries_remaining.value);
 			sdo->docp.tries_remaining = tlv;
 		}
+		else if (tlv.tag == 0xC9)   {
+			/* ChipDoc-specific DOCP tag; not used for the PIN policy. */
+			free(tlv.value);
+		}
 		else   {
 			free(tlv.value);
 			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "parse error: non DOCP tag");
