@@ -28,7 +28,6 @@
 #include "libopensc/asn1.h"
 #include "libopensc/log.h"
 #include "libopensc/opensc.h"
-#include "libopensc/pace.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -136,7 +135,7 @@ const struct sc_asn1_entry g_EstablishPACEChannel[] = {
 };
 
 int escape_pace_input_to_buf(sc_context_t *ctx,
-		const struct establish_pace_channel_input *input,
+		const struct sc_establish_pace_channel_input *input,
 		unsigned char **asn1, size_t *asn1_len)
 {
 	size_t pin_id_len = sizeof input->pin_id;
@@ -204,7 +203,7 @@ int escape_pace_input_to_buf(sc_context_t *ctx,
 
 int escape_buf_to_pace_input(sc_context_t *ctx,
 		const unsigned char *asn1, size_t asn1_len,
-		struct establish_pace_channel_input *input)
+		struct sc_establish_pace_channel_input *input)
 {
 	size_t pin_id_len = sizeof input->pin_id;
 	struct sc_asn1_entry EstablishPACEChannelInput_data[
@@ -274,7 +273,7 @@ int escape_buf_to_pace_input(sc_context_t *ctx,
 }
 
 int escape_pace_output_to_buf(sc_context_t *ctx,
-		const struct establish_pace_channel_output *output,
+		const struct sc_establish_pace_channel_output *output,
 		unsigned char **asn1, size_t *asn1_len)
 {
 	uint16_t status_mse_set_at = ((output->mse_set_at_sw1 & 0xff) << 8) | output->mse_set_at_sw2;
@@ -361,7 +360,7 @@ int escape_pace_output_to_buf(sc_context_t *ctx,
 
 int escape_buf_to_pace_output(sc_context_t *ctx,
 		const unsigned char *asn1, size_t asn1_len,
-		struct establish_pace_channel_output *output)
+		struct sc_establish_pace_channel_output *output)
 {
 	uint16_t status_mse_set_at;
 	size_t result_len = sizeof output->result,
@@ -709,9 +708,9 @@ static int escape_perform_pace(struct sc_reader *reader,
 	u8 rbuf[0xffff];
 	sc_apdu_t apdu;
 	int r;
-	struct establish_pace_channel_input  *input  =
+	struct sc_establish_pace_channel_input  *input  =
 		establish_pace_channel_input;
-	struct establish_pace_channel_output *output =
+	struct sc_establish_pace_channel_output *output =
 		establish_pace_channel_output;
 
 	memset(&apdu, 0, sizeof(apdu));

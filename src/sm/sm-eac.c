@@ -649,8 +649,8 @@ get_psec(sc_card_t *card, const char *pin, size_t length_pin, enum s_type pin_id
 
 
 int perform_pace(sc_card_t *card,
-		struct establish_pace_channel_input pace_input,
-		struct establish_pace_channel_output *pace_output,
+		struct sc_establish_pace_channel_input pace_input,
+		struct sc_establish_pace_channel_output *pace_output,
 		enum eac_tr_version tr_version)
 {
 	u8 *p = NULL;
@@ -665,7 +665,7 @@ int perform_pace(sc_card_t *card,
 	int r;
 	const unsigned char *pp, *ef_cardaccess;
 	size_t ef_cardaccess_length;
-	struct establish_pace_channel_output local_output;
+	struct sc_establish_pace_channel_output local_output;
 	int free_output = 0;
 
 	if (!card || !card->reader || !card->reader->ops)
@@ -1011,7 +1011,7 @@ err:
 		EAC_CTX_clear_free(eac_ctx);
 
 	if (free_output)
-		pace_output_clear(&local_output);
+		sc_pace_output_clear(&local_output);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
@@ -1797,11 +1797,11 @@ eac_sm_clear_free(const struct iso_sm_ctx *ctx)
 #else
 
 int perform_pace(sc_card_t *card,
-		struct establish_pace_channel_input pace_input,
-		struct establish_pace_channel_output *pace_output,
+		struct sc_establish_pace_channel_input pace_input,
+		struct sc_establish_pace_channel_output *pace_output,
 		enum eac_tr_version tr_version)
 {
-	struct establish_pace_channel_output local_output;
+	struct sc_establish_pace_channel_output local_output;
 	int free_output = 0;
 	int r;
 
@@ -1823,7 +1823,7 @@ int perform_pace(sc_card_t *card,
 	}
 
 	if (free_output)
-		pace_output_clear(&local_output);
+		sc_pace_output_clear(&local_output);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }

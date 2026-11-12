@@ -111,7 +111,7 @@ static int
 chipdocit_sm_open(struct sc_card *card)
 {
 	struct chipdocit_privdata *priv = card->drv_data;
-	struct establish_pace_channel_input pace_input;
+	struct sc_establish_pace_channel_input pace_input;
 	int r;
 
 	if (!priv)
@@ -127,7 +127,7 @@ chipdocit_sm_open(struct sc_card *card)
 		return SC_ERROR_DECRYPT_FAILED;
 
 	memset(&pace_input, 0, sizeof pace_input);
-	pace_input.pin_id = PACE_PIN_ID_CAN;
+	pace_input.pin_id = SC_PACE_PIN_ID_CAN;
 	pace_input.pin = (u8 *)priv->can;
 	pace_input.pin_length = strlen(priv->can);
 

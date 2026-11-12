@@ -196,7 +196,7 @@ static int eoi_sm_open(struct sc_card *card)
 {
 	int r;
 	struct eoi_privdata *privdata = (struct eoi_privdata *)card->drv_data;
-	struct establish_pace_channel_input pace_input;
+	struct sc_establish_pace_channel_input pace_input;
 
 	if (!privdata)
 		return SC_ERROR_INTERNAL;
@@ -213,7 +213,7 @@ static int eoi_sm_open(struct sc_card *card)
 
 	memset(&pace_input, 0, sizeof pace_input);
 
-	pace_input.pin_id = PACE_PIN_ID_CAN;
+	pace_input.pin_id = SC_PACE_PIN_ID_CAN;
 	pace_input.pin = (u8 *)privdata->can;
 	pace_input.pin_length = strlen(privdata->can);
 
