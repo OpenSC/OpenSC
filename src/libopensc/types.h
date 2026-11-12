@@ -310,8 +310,7 @@ typedef struct sc_file {
  * returns 0x6Cxx (wrong length)
  */
 #define SC_APDU_FLAGS_NO_RETRY_WL	0x00000004UL
-/* APDU is from Secure Messaging  */
-#define SC_APDU_FLAGS_NO_SM		0x00000008UL
+/* 0x00000008UL (SC_APDU_FLAGS_NO_SM) is no longer used */
 /* let SM do the command chaining  */
 #define SC_APDU_FLAGS_SM_CHAINING	0x00000010UL
 
