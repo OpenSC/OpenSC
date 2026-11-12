@@ -40,7 +40,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libopensc/pace.h"
 
 #include "asn1.h"
 #include "card-cardos-common.h"
@@ -482,8 +481,8 @@ dtrust_perform_pace(struct sc_card *card,
 	u8 *can_ptr = can_buffer;
 	size_t can_len;
 	int r;
-	struct establish_pace_channel_input pace_input;
-	struct establish_pace_channel_output pace_output;
+	struct sc_establish_pace_channel_input pace_input;
+	struct sc_establish_pace_channel_output pace_output;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -514,7 +513,7 @@ dtrust_perform_pace(struct sc_card *card,
 	 *  5. If the reader supports the PACE protocol, we let it query for a
 	 *     CAN on the pin pad.
 	 *  6. Querying the user interactively if possible */
-	if (ref == PACE_PIN_ID_CAN) {
+	if (ref == SC_PACE_PIN_ID_CAN) {
 		/* Use CAN from environment variable or configuration file */
 		if (pin == NULL) {
 			pin = (const unsigned char *)drv_data->can_value;
@@ -573,7 +572,7 @@ dtrust_perform_pace(struct sc_card *card,
 
 	/* We further need to track whether we authenticated against CAN as
 	 * only this PINs allows us to verify the QES or AUT-PIN. */
-	if (ref == PACE_PIN_ID_CAN) {
+	if (ref == SC_PACE_PIN_ID_CAN) {
 		drv_data->can = r == SC_SUCCESS;
 	}
 
@@ -587,10 +586,10 @@ dtrust_perform_pace(struct sc_card *card,
 		}
 	}
 
-	pace_output_clear(&pace_output);
+	sc_pace_output_clear(&pace_output);
 
 	/* Write CAN to the cache, if it is correct and the cache was initially empty. */
-	if (ref == PACE_PIN_ID_CAN && pin != NULL && drv_data->can_cache &&
+	if (ref == SC_PACE_PIN_ID_CAN && pin != NULL && drv_data->can_cache &&
 			r == SC_SUCCESS && can_len == 0) {
 		sc_pkcs15_cache_file(drv_data->p15card, &can_path, pin, pinlen);
 	}
@@ -610,14 +609,14 @@ dtrust_pin_cmd_get_info(struct sc_card *card,
 	drv_data = card->drv_data;
 
 	switch (data->pin_reference) {
-	case PACE_PIN_ID_CAN:
+	case SC_PACE_PIN_ID_CAN:
 		/* unlimited number of retries */
 		data->pin1.max_tries = -1;
 		data->pin1.tries_left = -1;
 		r = SC_SUCCESS;
 		break;
 
-	case PACE_PIN_ID_PUK:
+	case SC_PACE_PIN_ID_PUK:
 	case DTRUST5_PIN_ID_PIN_T:
 	case DTRUST5_PIN_ID_PIN_T_AUT:
 		/* Select the right application for authentication. */
@@ -633,7 +632,7 @@ dtrust_pin_cmd_get_info(struct sc_card *card,
 		/* Check if CAN authentication is necessary */
 		if (!drv_data->can) {
 			/* Establish a secure channel with CAN to query PIN information. */
-			r = dtrust_perform_pace(card, PACE_PIN_ID_CAN, NULL, 0, NULL);
+			r = dtrust_perform_pace(card, SC_PACE_PIN_ID_CAN, NULL, 0, NULL);
 			LOG_TEST_RET(card->ctx, r, "CAN authentication failed");
 
 			/* Select the right application again. */
@@ -667,8 +666,8 @@ dtrust_pin_cmd_verify(struct sc_card *card,
 	 * transport PIN. Neither PIN ist required during normal operation. The
 	 * user has to resume a suspended PIN using dtrust-tool which manages
 	 * CAN authentication. */
-	case PACE_PIN_ID_CAN:
-	case PACE_PIN_ID_PUK:
+	case SC_PACE_PIN_ID_CAN:
+	case SC_PACE_PIN_ID_PUK:
 	case DTRUST5_PIN_ID_PIN_T:
 	case DTRUST5_PIN_ID_PIN_T_AUT:
 		/* Establish secure channel via PACE */
@@ -679,7 +678,7 @@ dtrust_pin_cmd_verify(struct sc_card *card,
 		/* Check if CAN authentication is necessary */
 		if (!drv_data->can) {
 			/* Establish a secure channel with CAN to to verify the PINs. */
-			r = dtrust_perform_pace(card, PACE_PIN_ID_CAN, NULL, 0, NULL);
+			r = dtrust_perform_pace(card, SC_PACE_PIN_ID_CAN, NULL, 0, NULL);
 			LOG_TEST_RET(card->ctx, r, "CAN authentication failed");
 
 			/* Select the right application again. */

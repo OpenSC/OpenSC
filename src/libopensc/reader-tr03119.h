@@ -22,7 +22,6 @@
 #define _READER_TR03119_H
 
 #include "libopensc/opensc.h"
-#include "libopensc/pace.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -85,17 +84,17 @@ int get_pace_capabilities(u8 *bitmap);
 void sc_detect_escape_cmds(sc_reader_t *reader);
 
 int escape_pace_input_to_buf(sc_context_t *ctx,
-		const struct establish_pace_channel_input *input,
+		const struct sc_establish_pace_channel_input *input,
 		unsigned char **asn1, size_t *asn1_len);
 int escape_buf_to_pace_input(sc_context_t *ctx,
 		const unsigned char *asn1, size_t asn1_len,
-		struct establish_pace_channel_input *input);
+		struct sc_establish_pace_channel_input *input);
 int escape_pace_output_to_buf(sc_context_t *ctx,
-		const struct establish_pace_channel_output *output,
+		const struct sc_establish_pace_channel_output *output,
 		unsigned char **asn1, size_t *asn1_len);
 int escape_buf_to_pace_output(sc_context_t *ctx,
 		const unsigned char *asn1, size_t asn1_len,
-		struct establish_pace_channel_output *output);
+		struct sc_establish_pace_channel_output *output);
 int escape_pace_capabilities_to_buf(sc_context_t *ctx,
 		const unsigned long sc_reader_t_capabilities,
 		unsigned char **asn1, size_t *asn1_len);
