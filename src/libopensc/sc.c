@@ -1132,3 +1132,16 @@ void sc_free(void *p)
 {
 	free(p);
 }
+
+void
+sc_pace_output_clear(struct sc_establish_pace_channel_output *output)
+{
+	if (!output)
+		return;
+	free(output->ef_cardaccess);
+	free(output->recent_car);
+	free(output->previous_car);
+	free(output->id_icc);
+	free(output->id_pcd);
+	memset(output, 0, sizeof(*output));
+}

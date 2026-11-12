@@ -61,7 +61,6 @@
 #define CEDULAUY_HAS_PACE 1
 
 #include "libopensc/card-cedulauy-cache.h"
-#include "libopensc/pace.h"
 #include "sm/sm-eac.h"
 #endif
 
@@ -194,7 +193,7 @@ cedulauy_get_mrz(sc_context_t *ctx, unsigned char *mrz)
 static int
 cedulauy_perform_pace(struct sc_card *card, const unsigned char *mrz)
 {
-	struct establish_pace_channel_input pace_input = {0};
+	struct sc_establish_pace_channel_input pace_input = {0};
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -203,7 +202,7 @@ cedulauy_perform_pace(struct sc_card *card, const unsigned char *mrz)
 	LOG_TEST_RET(card->ctx, r, "Cannot select the MF");
 
 	/* the card rejects the CAN, only the MRZ is accepted */
-	pace_input.pin_id = PACE_PIN_ID_MRZ;
+	pace_input.pin_id = SC_PACE_PIN_ID_MRZ;
 	pace_input.pin = mrz;
 	pace_input.pin_length = CEDULAUY_MRZ_LEN;
 	pace_input.ef_cardaccess = cedulauy_ef_cardaccess;
