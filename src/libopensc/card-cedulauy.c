@@ -195,8 +195,6 @@ static int
 cedulauy_perform_pace(struct sc_card *card, const unsigned char *mrz)
 {
 	struct establish_pace_channel_input pace_input = {0};
-	struct establish_pace_channel_output pace_output = {0};
-	unsigned char ef_cardaccess[sizeof cedulauy_ef_cardaccess];
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
@@ -208,17 +206,10 @@ cedulauy_perform_pace(struct sc_card *card, const unsigned char *mrz)
 	pace_input.pin_id = PACE_PIN_ID_MRZ;
 	pace_input.pin = mrz;
 	pace_input.pin_length = CEDULAUY_MRZ_LEN;
+	pace_input.ef_cardaccess = cedulauy_ef_cardaccess;
+	pace_input.ef_cardaccess_length = sizeof cedulauy_ef_cardaccess;
 
-	memcpy(ef_cardaccess, cedulauy_ef_cardaccess, sizeof ef_cardaccess);
-	pace_output.ef_cardaccess = ef_cardaccess;
-	pace_output.ef_cardaccess_length = sizeof ef_cardaccess;
-
-	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
-
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
+	r = perform_pace(card, pace_input, NULL, EAC_TR_VERSION_2_02);
 
 	LOG_TEST_RET(card->ctx, r, "PACE failed");
 

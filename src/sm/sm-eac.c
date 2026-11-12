@@ -663,7 +663,8 @@ int perform_pace(sc_card_t *card,
 	BIO *bio_stdout = NULL;
 	CVC_CERTIFICATE_DESCRIPTION *desc = NULL;
 	int r;
-	const unsigned char *pp;
+	const unsigned char *pp, *ef_cardaccess;
+	size_t ef_cardaccess_length;
 	struct establish_pace_channel_output local_output;
 	int free_output = 0;
 
@@ -769,23 +770,28 @@ int perform_pace(sc_card_t *card,
 		if (r < 0)
 			goto err;
 	} else {
-		if (!pace_output->ef_cardaccess_length || !pace_output->ef_cardaccess) {
+		if (pace_input.ef_cardaccess && pace_input.ef_cardaccess_length) {
+			ef_cardaccess = pace_input.ef_cardaccess;
+			ef_cardaccess_length = pace_input.ef_cardaccess_length;
+		} else {
 			r = get_ef_card_access(card, &pace_output->ef_cardaccess,
 					&pace_output->ef_cardaccess_length);
 			if (r < 0) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not get EF.CardAccess.");
 				goto err;
 			}
+			ef_cardaccess = pace_output->ef_cardaccess;
+			ef_cardaccess_length = pace_output->ef_cardaccess_length;
 		}
 
-		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "EF.CardAccess", pace_output->ef_cardaccess,
-				pace_output->ef_cardaccess_length);
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "EF.CardAccess", ef_cardaccess,
+				ef_cardaccess_length);
 
 		EAC_init();
 		eac_ctx = EAC_CTX_new();
 		if (!eac_ctx
-				|| !EAC_CTX_init_ef_cardaccess(pace_output->ef_cardaccess,
-					pace_output->ef_cardaccess_length, eac_ctx)
+				|| !EAC_CTX_init_ef_cardaccess(ef_cardaccess,
+					ef_cardaccess_length, eac_ctx)
 				|| !eac_ctx->pace_ctx) {
 			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not parse EF.CardAccess.");
