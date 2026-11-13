@@ -577,12 +577,6 @@ dtrust_perform_pace(struct sc_card *card,
 		drv_data->can = r == SC_SUCCESS;
 	}
 
-	free(pace_output.ef_cardaccess);
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
-
 	if (tries_left != NULL) {
 		if (r != SC_SUCCESS &&
 				pace_output.mse_set_at_sw1 == 0x63 &&
@@ -592,6 +586,8 @@ dtrust_perform_pace(struct sc_card *card,
 			*tries_left = -1;
 		}
 	}
+
+	pace_output_clear(&pace_output);
 
 	/* Write CAN to the cache, if it is correct and the cache was initially empty. */
 	if (ref == PACE_PIN_ID_CAN && pin != NULL && drv_data->can_cache &&
