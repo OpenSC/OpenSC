@@ -6804,6 +6804,10 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	if (rsa_flags & SC_ALGORITHM_RSA_PAD_OAEP) {
 		CK_FLAGS old_flags = mech_info.flags;
 		mech_info.flags &= ~(CKF_SIGN|CKF_VERIFY|CKF_SIGN_RECOVER|CKF_VERIFY_RECOVER);
+#ifdef ENABLE_OPENSSL
+		/* Encryption with the public key is done in software */
+		mech_info.flags |= CKF_ENCRYPT;
+#endif
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_OAEP, &mech_info, CKK_RSA, NULL, NULL, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
 		sc_pkcs11_free_mechanism(&mt);

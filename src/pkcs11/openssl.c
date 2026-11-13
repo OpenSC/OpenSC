@@ -1003,9 +1003,47 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 	return rv;
 }
 
+static EVP_MD *
+oaep_hash_md(CK_MECHANISM_TYPE hash)
+{
+	switch (hash) {
+	case CKM_SHA_1:
+		return sc_evp_md(context, "sha1");
+	case CKM_SHA224:
+		return sc_evp_md(context, "sha224");
+	case CKM_SHA256:
+		return sc_evp_md(context, "sha256");
+	case CKM_SHA384:
+		return sc_evp_md(context, "sha384");
+	case CKM_SHA512:
+		return sc_evp_md(context, "sha512");
+	default:
+		return NULL;
+	}
+}
+
+static EVP_MD *
+oaep_mgf_md(CK_RSA_PKCS_MGF_TYPE mgf)
+{
+	switch (mgf) {
+	case CKG_MGF1_SHA1:
+		return sc_evp_md(context, "sha1");
+	case CKG_MGF1_SHA224:
+		return sc_evp_md(context, "sha224");
+	case CKG_MGF1_SHA256:
+		return sc_evp_md(context, "sha256");
+	case CKG_MGF1_SHA384:
+		return sc_evp_md(context, "sha384");
+	case CKG_MGF1_SHA512:
+		return sc_evp_md(context, "sha512");
+	default:
+		return NULL;
+	}
+}
+
 /*
  * Encrypt data with a public key in software, as C_Verify does.
- * Only CKM_RSA_PKCS and CKM_RSA_X_509 are supported.
+ * Only CKM_RSA_PKCS, CKM_RSA_X_509 and CKM_RSA_PKCS_OAEP are supported.
  */
 CK_RV
 sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
@@ -1018,6 +1056,9 @@ sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 	EVP_PKEY_CTX *ctx = NULL;
 	const unsigned char *pubkey_tmp = pubkey;
 	unsigned char *padded = NULL;
+	const CK_RSA_PKCS_OAEP_PARAMS *oaep = NULL;
+	EVP_MD *oaep_md = NULL, *mgf_md = NULL;
+	unsigned char *label = NULL;
 	size_t len;
 	int padding;
 
@@ -1030,6 +1071,18 @@ sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 		break;
 	case CKM_RSA_X_509:
 		padding = RSA_NO_PADDING;
+		break;
+	case CKM_RSA_PKCS_OAEP:
+		padding = RSA_PKCS1_OAEP_PADDING;
+		if (mech->pParameter == NULL ||
+				mech->ulParameterLen != sizeof(CK_RSA_PKCS_OAEP_PARAMS))
+			return CKR_MECHANISM_PARAM_INVALID;
+		oaep = (const CK_RSA_PKCS_OAEP_PARAMS *)mech->pParameter;
+		if (oaep->source != 0 && oaep->source != CKZ_DATA_SPECIFIED)
+			return CKR_MECHANISM_PARAM_INVALID;
+		if ((oaep->pSourceData == NULL && oaep->ulSourceDataLen != 0) ||
+				oaep->ulSourceDataLen > INT_MAX)
+			return CKR_MECHANISM_PARAM_INVALID;
 		break;
 	default:
 		return CKR_MECHANISM_INVALID;
@@ -1045,10 +1098,22 @@ sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 		goto end;
 	}
 
+	if (oaep != NULL) {
+		oaep_md = oaep_hash_md(oaep->hashAlg);
+		mgf_md = oaep_mgf_md(oaep->mgf);
+		if (oaep_md == NULL || mgf_md == NULL) {
+			rv = CKR_MECHANISM_PARAM_INVALID;
+			goto end;
+		}
+	}
+
 	len = EVP_PKEY_size(pkey);
-	/* PKCS#1 v1.5 padding takes at least 11 bytes */
+	/* PKCS#1 v1.5 padding takes at least 11 bytes, OAEP 2 * hLen + 2 bytes */
 	if ((padding == RSA_PKCS1_PADDING && (len < 11 || data_len > len - 11)) ||
-			(padding == RSA_NO_PADDING && data_len > len)) {
+			(padding == RSA_NO_PADDING && data_len > len) ||
+			(padding == RSA_PKCS1_OAEP_PADDING &&
+					(len < 2 * (size_t)EVP_MD_size(oaep_md) + 2 ||
+							data_len > len - 2 * (size_t)EVP_MD_size(oaep_md) - 2))) {
 		rv = CKR_DATA_LEN_RANGE;
 		goto end;
 	}
@@ -1077,8 +1142,32 @@ sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 
 	ctx = sc_evp_pkey_ctx_new(context, pkey);
 	if (ctx == NULL || EVP_PKEY_encrypt_init(ctx) != 1 ||
-			EVP_PKEY_CTX_set_rsa_padding(ctx, padding) != 1 ||
-			EVP_PKEY_encrypt(ctx, out, &len, data, data_len) != 1) {
+			EVP_PKEY_CTX_set_rsa_padding(ctx, padding) != 1) {
+		sc_log_openssl(context);
+		goto end;
+	}
+	if (oaep != NULL) {
+		if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, oaep_md) != 1 ||
+				EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, mgf_md) != 1) {
+			sc_log_openssl(context);
+			goto end;
+		}
+		if (oaep->ulSourceDataLen > 0) {
+			/* OpenSSL takes ownership of the label */
+			label = OPENSSL_memdup(oaep->pSourceData, oaep->ulSourceDataLen);
+			if (label == NULL) {
+				rv = CKR_HOST_MEMORY;
+				goto end;
+			}
+			if (EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, label,
+					    (int)oaep->ulSourceDataLen) != 1) {
+				OPENSSL_free(label);
+				sc_log_openssl(context);
+				goto end;
+			}
+		}
+	}
+	if (EVP_PKEY_encrypt(ctx, out, &len, data, data_len) != 1) {
 		sc_log_openssl(context);
 		goto end;
 	}
@@ -1086,6 +1175,8 @@ sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 	rv = CKR_OK;
 
 end:
+	sc_evp_md_free(oaep_md);
+	sc_evp_md_free(mgf_md);
 	free(padded);
 	EVP_PKEY_CTX_free(ctx);
 	EVP_PKEY_free(pkey);
