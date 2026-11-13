@@ -464,6 +464,7 @@ CK_RV attr_find_var(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void *, size_t *);
 CK_RV attr_extract(CK_ATTRIBUTE_PTR, void *, size_t *);
 
 /* Generic Mechanism functions */
+CK_RV sc_pkcs11_validate_pss_params(CK_MECHANISM_PTR);
 CK_RV sc_pkcs11_register_mechanism(struct sc_pkcs11_card *,
 				sc_pkcs11_mechanism_type_t *, sc_pkcs11_mechanism_type_t **);
 CK_RV sc_pkcs11_get_mechanism_list(struct sc_pkcs11_card *,
