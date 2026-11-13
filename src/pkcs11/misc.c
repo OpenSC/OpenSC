@@ -146,6 +146,56 @@ struct sc_pkcs11_login {
 	CK_ULONG ulPinLen;
 };
 
+/* Called with the PKCS #11 lock held; change_pin does not alter the login list. */
+CK_RV
+change_pin_with_login(struct sc_pkcs11_slot *slot,
+		CK_CHAR_PTR pOldPin, CK_ULONG ulOldLen,
+		CK_CHAR_PTR pNewPin, CK_ULONG ulNewLen)
+{
+	struct sc_pkcs11_login *login = NULL, *candidate;
+	CK_CHAR_PTR replacement = NULL;
+	CK_RV rv;
+	unsigned int i;
+
+	if (!sc_pkcs11_conf.atomic)
+		return slot->p11card->framework->change_pin(slot, pOldPin, ulOldLen, pNewPin, ulNewLen);
+
+	if (slot->login_user == CKU_USER || slot->login_user == CKU_SO) {
+		for (i = 0; i < list_size(&slot->logins); i++) {
+			candidate = list_get_at(&slot->logins, i);
+			if (candidate && candidate->userType == (CK_USER_TYPE)slot->login_user) {
+				login = candidate;
+				break;
+			}
+		}
+		if (login && pNewPin && ulNewLen) {
+			/* Allocate before changing the token; retain any aliased inputs. */
+			replacement = sc_mem_secure_alloc(ulNewLen);
+			/* The secure allocator can return mmap's failure sentinel. */
+			if (!replacement || replacement == (void *)-1)
+				return CKR_HOST_MEMORY;
+			memcpy(replacement, pNewPin, ulNewLen);
+		}
+	}
+
+	rv = slot->p11card->framework->change_pin(slot, pOldPin, ulOldLen, pNewPin, ulNewLen);
+	if (rv == CKR_OK) {
+		if (login) {
+			sc_mem_secure_clear_free(login->pPin, login->ulPinLen);
+			login->pPin = replacement;
+			login->ulPinLen = ulNewLen;
+			replacement = NULL;
+		}
+	} else {
+		/* An error may have arrived after the token changed its PIN. */
+		pop_all_login_states(slot);
+		slot->login_user = -1;
+	}
+	if (replacement)
+		sc_mem_secure_clear_free(replacement, ulNewLen);
+	return rv;
+}
+
 CK_RV restore_login_state(struct sc_pkcs11_slot *slot)
 {
 	CK_RV r = CKR_OK;
@@ -161,6 +211,10 @@ CK_RV restore_login_state(struct sc_pkcs11_slot *slot)
 				login = list_iterator_next(&slot->logins);
 			}
 			list_iterator_stop(&slot->logins);
+		}
+		if (r != CKR_OK) {
+			pop_all_login_states(slot);
+			slot->login_user = -1;
 		}
 	}
 
