@@ -294,7 +294,7 @@ again:
 		rc = sc_connect_card(reader, &p11card->card);
 		if (rc != SC_SUCCESS) {
 			sc_log(context, "%s: SC connect card error %i", reader->name, rc);
-			rv = sc_to_cryptoki_error(rc, NULL);
+			rv = CKR_TOKEN_NOT_RECOGNIZED;
 			goto fail;
 		}
 
@@ -325,7 +325,7 @@ again:
 				break;
 		/*TODO: only first framework is used: pkcs15init framework is not reachable here */
 		if (frameworks[i] == NULL) {
-			rv = CKR_GENERAL_ERROR;
+			rv = CKR_TOKEN_NOT_RECOGNIZED;
 			goto fail;
 		}
 
@@ -357,6 +357,7 @@ again:
 				sc_log(context,
 				       "%s: cannot bind 'generic' token: rv 0x%lX",
 				       reader->name, rv);
+				rv = CKR_TOKEN_NOT_RECOGNIZED;
 				goto fail;
 			}
 
@@ -366,6 +367,7 @@ again:
 				sc_log(context,
 				       "%s: create 'generic' token error 0x%lX",
 				       reader->name, rv);
+				rv = CKR_TOKEN_NOT_RECOGNIZED;
 				goto fail;
 			}
 			/* p11card is now bound to some slot */
@@ -394,6 +396,7 @@ again:
 				sc_log(context,
 				       "%s: create %s token error 0x%lX",
 				       reader->name, app_name, rv);
+				rv = CKR_TOKEN_NOT_RECOGNIZED;
 				goto fail;
 			}
 			/* p11card is now bound to some slot */

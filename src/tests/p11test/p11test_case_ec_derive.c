@@ -340,7 +340,8 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	pub_len = EC_POINT_point2oct(group, publickey,
 		POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
 #else
-	EVP_PKEY_get_octet_string_param(evp_pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &pub_len);
+	if (EVP_PKEY_get_octet_string_param(evp_pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &pub_len) != 1)
+		pub_len = 0;
 #endif
 	/* Allocate memory for public key*/
 	if (pub_len == 0) {

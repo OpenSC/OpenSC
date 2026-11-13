@@ -523,6 +523,10 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 	CK_MECHANISM_PTR mech, sc_pkcs11_operation_t *md,
 	CK_BYTE_PTR inp, CK_ULONG inp_len,
 	CK_BYTE_PTR signat, CK_ULONG signat_len);
+CK_RV sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
+		CK_MECHANISM_PTR mech,
+		CK_BYTE_PTR inp, CK_ULONG inp_len,
+		CK_BYTE_PTR out, CK_ULONG_PTR out_len);
 #endif
 
 /* Load configuration defaults */

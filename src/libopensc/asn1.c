@@ -71,6 +71,7 @@ int sc_asn1_read_tag(const u8 ** buf, size_t buflen, unsigned int *cla_out,
 		return SC_ERROR_INVALID_ASN1_OBJECT;
 	if (*p == 0xff || *p == 0) {
 		/* end of data reached */
+		*cla_out = SC_ASN1_TAG_UNIVERSAL;
 		*taglen = 0;
 		*tag_out = SC_ASN1_TAG_EOC;
 		return SC_SUCCESS;
@@ -1588,7 +1589,8 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			} else
 				c = objlen > *len ? *len : objlen;
 
-			memcpy(parm, obj, c);
+			if (c > 0)
+				memcpy(parm, obj, c);
 			*len = c;
 		}
 		break;
@@ -1613,13 +1615,25 @@ static int asn1_decode_entry(sc_context_t *ctx,struct sc_asn1_entry *entry,
 			} else
 				c = objlen > *len ? *len : objlen;
 
-			memcpy(parm, obj, c);
+			if (c > 0)
+				memcpy(parm, obj, c);
 			*len = c;
 		}
 		break;
 	case SC_ASN1_OBJECT:
-		if (parm != NULL)
-			r = sc_asn1_decode_object_id(obj, objlen, (struct sc_object_id *) parm);
+		if (parm != NULL) {
+			if (objlen == 0) {
+				if (entry->flags & SC_ASN1_OPTIONAL) {
+					sc_debug(ctx, SC_LOG_DEBUG_ASN1, "decoding ASN.1 object '%s' with len=0 as invalid OID", entry->name);
+					sc_init_oid((struct sc_object_id *)parm);
+					return SC_SUCCESS;
+				} else {
+					sc_debug(ctx, SC_LOG_DEBUG_ASN1, "ignoring ASN.1 object '%s' with len=0 as invalid OID", entry->name);
+				}
+			} else {
+				r = sc_asn1_decode_object_id(obj, objlen, (struct sc_object_id *)parm);
+			}
+		}
 		break;
 	case SC_ASN1_PRINTABLESTRING:
 	case SC_ASN1_UTF8STRING:
@@ -2257,20 +2271,20 @@ int sc_asn1_decode_ecdsa_signature(sc_context_t *ctx, const u8 *data, size_t dat
 		r = sc_asn1_read_tag(&pint, (pend - pint), &cla, &tag, &intlen);
 		if (pint == NULL || r < 0 || intlen == 0 || (cla | tag) != 0x02) {
 			r = SC_ERROR_INVALID_DATA;
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Can not find 0x02");
+			LOG_TEST_GOTO_ERR(ctx, r, "Can not find 0x02");
 		}
 
 		if (intlen == fieldsize + 1) { /* drop leading 00 if present */
 			if (*pint != 0x00) {
 				r = SC_ERROR_INVALID_DATA;
-				LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Signature too long");
+				LOG_TEST_GOTO_ERR(ctx, r, "Signature too long");
 			}
 			pint++;
 			intlen--;
 		}
 		if (intlen > fieldsize) {
 			r = SC_ERROR_INVALID_DATA;
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Signature too long");
+			LOG_TEST_GOTO_ERR(ctx, r, "Signature too long");
 		}
 		memcpy(*out + fieldsize * i + fieldsize - intlen , pint, intlen);
 		pint += intlen; /* next integer */

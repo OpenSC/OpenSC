@@ -97,15 +97,15 @@ iasecc_sm_transmit_apdus(struct sc_card *card, struct sc_remote_data *rdata,
 	size_t offs = 0;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sm_transmit_apdus() rdata-length %i", rdata->length);
+	sc_log(ctx, "rdata-length %i", rdata->length);
 
 	while (rapdu)   {
-		sc_log(ctx, "iasecc_sm_transmit_apdus() rAPDU flags 0x%lX", rapdu->apdu.flags);
+		sc_log(ctx, "rAPDU flags 0x%lX", rapdu->apdu.flags);
 		rv = sc_transmit_apdu(card, &rapdu->apdu);
-		LOG_TEST_RET(ctx, rv, "iasecc_sm_transmit_apdus() failed to execute r-APDU");
+		LOG_TEST_RET(ctx, rv, "failed to execute r-APDU");
 		rv = sc_check_sw(card, rapdu->apdu.sw1, rapdu->apdu.sw2);
 		if (rv < 0 && !(rapdu->flags & SC_REMOTE_APDU_FLAG_NOT_FATAL))
-			LOG_TEST_RET(ctx, rv, "iasecc_sm_transmit_apdus() fatal error %i");
+			LOG_TEST_RET(ctx, rv, "fatal error %i");
 
 		if (out && out_len && (rapdu->flags & SC_REMOTE_APDU_FLAG_RETURN_ANSWER))   {
 			size_t len = rapdu->apdu.resplen > (*out_len - offs) ? (*out_len - offs) : rapdu->apdu.resplen;
@@ -159,7 +159,7 @@ iasecc_sm_external_authentication(struct sc_card *card, unsigned skey_ref, int *
 	int rv, offs;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sm_external_authentication(): SKey ref %i", skey_ref);
+	sc_log(ctx, "SKey ref %i", skey_ref);
 
 	if (card->sm_ctx.sm_mode == SM_MODE_NONE)
 		LOG_TEST_RET(ctx, SC_ERROR_NOT_SUPPORTED, "Cannot do 'External Authentication' without SM activated ");
@@ -187,12 +187,12 @@ iasecc_sm_external_authentication(struct sc_card *card, unsigned skey_ref, int *
 	apdu.lc = offs;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_external_authentication(): APDU transmit failed");
+	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_external_authentication(): set SE error");
+	LOG_TEST_RET(ctx, rv, "set SE error");
 
 	rv = sc_get_challenge(card, cwa_session->card_challenge, sizeof(cwa_session->card_challenge));
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_external_authentication(): set SE error");
+	LOG_TEST_RET(ctx, rv, "set SE error");
 
 	sc_remote_data_init(&rdata);
 
@@ -201,12 +201,12 @@ iasecc_sm_external_authentication(struct sc_card *card, unsigned skey_ref, int *
 	rv = card->sm_ctx.module.ops.initialize(ctx, sm_info, &rdata);
 	LOG_TEST_RET(ctx, rv, "SM: INITIALIZE failed");
 
-	sc_log(ctx, "sm_iasecc_external_authentication(): rdata length %i\n", rdata.length);
+	sc_log(ctx, "rdata length %i\n", rdata.length);
 
 	rv = iasecc_sm_transmit_apdus (card, &rdata, NULL, 0);
 	if (rv == SC_ERROR_PIN_CODE_INCORRECT && tries_left)
 		*tries_left = (rdata.data + rdata.length - 1)->apdu.sw2 & 0x0F;
-	LOG_TEST_RET(ctx, rv, "sm_iasecc_external_authentication(): execute failed");
+	LOG_TEST_RET(ctx, rv, "execute failed");
 
 	LOG_FUNC_RETURN(ctx, rv);
 #else
@@ -284,20 +284,20 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 	sm_info->sm_type = SM_TYPE_CWA14890;
 
 	rv = iasecc_sm_se_mutual_authentication(card, se_num);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_initialize() MUTUAL AUTHENTICATION failed");
+	LOG_TEST_RET(ctx, rv, "MUTUAL AUTHENTICATION failed");
 
 	rv = sc_get_challenge(card, cwa_session->card_challenge, SM_SMALL_CHALLENGE_LEN);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_initialize() GET CHALLENGE failed");
+	LOG_TEST_RET(ctx, rv, "GET CHALLENGE failed");
 
 	sc_remote_data_init(&rdata);
 
 	rv = sm_save_sc_context(card, sm_info);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_initialize() cannot save current context");
+	LOG_TEST_RET(ctx, rv, "cannot save current context");
 
 	if (!card->sm_ctx.module.ops.initialize)
-		LOG_TEST_RET(ctx, SC_ERROR_SM_NOT_INITIALIZED, "iasecc_sm_initialize() no SM module");
+		LOG_TEST_RET(ctx, SC_ERROR_SM_NOT_INITIALIZED, "no SM module");
 	rv = card->sm_ctx.module.ops.initialize(ctx, sm_info, &rdata);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_initialize() INITIALIZE failed");
+	LOG_TEST_RET(ctx, rv, "INITIALIZE failed");
 
 
 	if (rdata.length == 1)   {
@@ -312,14 +312,14 @@ iasecc_sm_initialize(struct sc_card *card, unsigned se_num, unsigned cmd)
 	rv = iasecc_sm_transmit_apdus (card, &rdata, cwa_session->mdata, &cwa_session->mdata_len);
 	if (rv == SC_ERROR_PIN_CODE_INCORRECT)
 		sc_log(ctx, "SM initialization failed, %i tries left", (rdata.data + rdata.length - 1)->apdu.sw2 & 0x0F);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_initialize() transmit APDUs failed");
+	LOG_TEST_RET(ctx, rv, "transmit APDUs failed");
 
 	rdata.free(&rdata);
 
 	sc_log(ctx, "MA data(len:%zu) '%s'", cwa_session->mdata_len,
 			sc_dump_hex(cwa_session->mdata, cwa_session->mdata_len));
 	if (cwa_session->mdata_len != 0x48)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "iasecc_sm_initialize() invalid MUTUAL AUTHENTICATE result data");
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "invalid MUTUAL AUTHENTICATE result data");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 #else
@@ -346,27 +346,27 @@ iasecc_sm_cmd(struct sc_card *card, struct sc_remote_data *rdata)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 
 	rv =  card->sm_ctx.module.ops.get_apdus(ctx, sm_info, session->mdata, session->mdata_len, rdata);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_cmd() 'GET APDUS' failed");
+	LOG_TEST_RET(ctx, rv, "'GET APDUS' failed");
 
-	sc_log(ctx, "iasecc_sm_cmd() %i remote APDUs to transmit", rdata->length);
+	sc_log(ctx, "%i remote APDUs to transmit", rdata->length);
 	for (rapdu = rdata->data; rapdu; rapdu = rapdu->next)   {
 		struct sc_apdu *apdu = &rapdu->apdu;
 
-		sc_log(ctx, "iasecc_sm_cmd() apdu->ins:0x%X, resplen %zu", apdu->ins, apdu->resplen);
+		sc_log(ctx, "apdu->ins:0x%X, resplen %zu", apdu->ins, apdu->resplen);
 		if (!apdu->ins)
 			break;
 		rv = sc_transmit_apdu(card, apdu);
 		if (rv < 0)   {
-			sc_log(ctx, "iasecc_sm_cmd() APDU transmit error rv:%i", rv);
+			sc_log(ctx, "APDU transmit error rv:%i", rv);
 			break;
 		}
 
 		rv = sc_check_sw(card, apdu->sw1, apdu->sw2);
 		if (rv < 0 && !(rapdu->flags & SC_REMOTE_APDU_FLAG_NOT_FATAL))   {
-			sc_log(ctx, "iasecc_sm_cmd() APDU error rv:%i", rv);
+			sc_log(ctx, "APDU error rv:%i", rv);
 			break;
 		}
-		sc_log(ctx, "iasecc_sm_cmd() apdu->resplen %zu", apdu->resplen);
+		sc_log(ctx, "apdu->resplen %zu", apdu->resplen);
 	}
 
 	LOG_FUNC_RETURN(ctx, rv);
@@ -384,19 +384,19 @@ iasecc_sm_rsa_generate(struct sc_card *card, unsigned se_num, struct iasecc_sdo 
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sm_rsa_generate() SE#%i, SDO(class:%X,ref:%X)", se_num, sdo->sdo_class, sdo->sdo_ref);
+	sc_log(ctx, "SE#%i, SDO(class:%X,ref:%X)", se_num, sdo->sdo_class, sdo->sdo_ref);
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_RSA_GENERATE);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_rsa_generate() SM initialize failed");
+	LOG_TEST_RET(ctx, rv, "SM initialize failed");
 
 	sm_info->cmd_data = sdo;
 
 	sc_remote_data_init(&rdata);
 	rv = iasecc_sm_cmd(card, &rdata);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_rsa_generate() SM cmd failed");
+	LOG_TEST_RET(ctx, rv, "SM cmd failed");
 
 	rv = sm_release (card, &rdata, NULL, 0);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_rsa_generate() SM release failed");
+	LOG_TEST_RET(ctx, rv, "SM release failed");
 
 	rdata.free(&rdata);
 	LOG_FUNC_RETURN(ctx, rv);
@@ -421,16 +421,16 @@ iasecc_sm_rsa_update(struct sc_card *card, unsigned se_num, struct iasecc_sdo_rs
 			udata->sdo_prv_key->sdo_class, udata->sdo_prv_key->sdo_ref);
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_RSA_UPDATE);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_rsa_update() SM initialize failed");
+	LOG_TEST_RET(ctx, rv, "SM initialize failed");
 
 	sm_info->cmd_data = udata;
 
 	sc_remote_data_init(&rdata);
 	rv = iasecc_sm_cmd(card, &rdata);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_rsa_update() SM cmd failed");
+	LOG_TEST_RET(ctx, rv, "SM cmd failed");
 
 	rv = sm_release (card, &rdata, NULL, 0);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_rsa_update() SM release failed");
+	LOG_TEST_RET(ctx, rv, "SM release failed");
 
 	rdata.free(&rdata);
 	LOG_FUNC_RETURN(ctx, rv);
@@ -451,10 +451,10 @@ iasecc_sm_pin_verify(struct sc_card *card, unsigned se_num, struct sc_pin_cmd_da
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sm_pin_verify() SE#%i, PIN(ref:%i,len:%zu)", se_num, data->pin_reference, data->pin1.len);
+	sc_log(ctx, "SE#%i, PIN(ref:%i,len:%zu)", se_num, data->pin_reference, data->pin1.len);
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_PIN_VERIFY);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_pin_verify() SM INITIALIZE failed");
+	LOG_TEST_RET(ctx, rv, "SM INITIALIZE failed");
 
 	sm_info->cmd_data = data;
 
@@ -464,10 +464,10 @@ iasecc_sm_pin_verify(struct sc_card *card, unsigned se_num, struct sc_pin_cmd_da
 		if (rdata.data->apdu.sw1 == 0x63 && (rdata.data->apdu.sw2 & 0xF0) == 0xC0)
 			data->pin1.tries_left = rdata.data->apdu.sw2 & 0x0F;
 
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_pin_verify() SM 'PIN VERIFY' failed");
+	LOG_TEST_RET(ctx, rv, "SM 'PIN VERIFY' failed");
 
 	rv = sm_release (card, &rdata, NULL, 0);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_pin_verify() SM release failed");
+	LOG_TEST_RET(ctx, rv, "SM release failed");
 
 	rdata.free(&rdata);
 	LOG_FUNC_RETURN(ctx, rv);
@@ -488,10 +488,10 @@ iasecc_sm_sdo_update(struct sc_card *card, unsigned se_num, struct iasecc_sdo_up
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sm_sdo_update() SE#%i, SDO(class:0x%X,ref:%i)", se_num, update->sdo_class, update->sdo_ref);
+	sc_log(ctx, "SE#%i, SDO(class:0x%X,ref:%i)", se_num, update->sdo_class, update->sdo_ref);
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_SDO_UPDATE);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_sdo_update() SM INITIALIZE failed");
+	LOG_TEST_RET(ctx, rv, "SM INITIALIZE failed");
 
 	sc_log(ctx, "current DF '%s'", sc_print_path(&sm_info->current_path_df));
 
@@ -499,10 +499,10 @@ iasecc_sm_sdo_update(struct sc_card *card, unsigned se_num, struct iasecc_sdo_up
 
 	sc_remote_data_init(&rdata);
 	rv = iasecc_sm_cmd(card, &rdata);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_sdo_update() SM 'SDO UPDATE' failed");
+	LOG_TEST_RET(ctx, rv, "SM 'SDO UPDATE' failed");
 
 	rv = sm_release (card, &rdata, NULL, 0);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_sdo_update() SM release failed");
+	LOG_TEST_RET(ctx, rv, "SM release failed");
 
 	rdata.free(&rdata);
 	LOG_FUNC_RETURN(ctx, rv);
@@ -523,19 +523,19 @@ iasecc_sm_pin_reset(struct sc_card *card, unsigned se_num, struct sc_pin_cmd_dat
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sm_pin_reset() SE#%i, PIN(ref:%i,len:%zu)", se_num, data->pin_reference, data->pin2.len);
+	sc_log(ctx, "SE#%i, PIN(ref:%i,len:%zu)", se_num, data->pin_reference, data->pin2.len);
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_PIN_RESET);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_pin_reset() SM INITIALIZE failed");
+	LOG_TEST_RET(ctx, rv, "SM INITIALIZE failed");
 
 	sm_info->cmd_data = data;
 
 	sc_remote_data_init(&rdata);
 	rv = iasecc_sm_cmd(card, &rdata);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_pin_reset() SM 'PIN RESET' failed");
+	LOG_TEST_RET(ctx, rv, "SM 'PIN RESET' failed");
 
 	rv = sm_release (card, &rdata, NULL, 0);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_pin_reset() SM release failed");
+	LOG_TEST_RET(ctx, rv, "SM release failed");
 
 	rdata.free(&rdata);
 	LOG_FUNC_RETURN(ctx, rv);
@@ -557,10 +557,10 @@ iasecc_sm_create_file(struct sc_card *card, unsigned se_num, unsigned char *fcp,
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sm_create_file() SE#%i, fcp(%zu) '%s'", se_num, fcp_len, sc_dump_hex(fcp, fcp_len));
+	sc_log(ctx, "SE#%i, fcp(%zu) '%s'", se_num, fcp_len, sc_dump_hex(fcp, fcp_len));
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_FILE_CREATE);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_create_file() SM INITIALIZE failed");
+	LOG_TEST_RET(ctx, rv, "SM INITIALIZE failed");
 
 	cmd_data.data = fcp;
 	cmd_data.size = fcp_len;
@@ -568,10 +568,10 @@ iasecc_sm_create_file(struct sc_card *card, unsigned se_num, unsigned char *fcp,
 
 	sc_remote_data_init(&rdata);
 	rv= iasecc_sm_cmd(card, &rdata);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_create_file() SM 'UPDATE BINARY' failed");
+	LOG_TEST_RET(ctx, rv, "SM 'UPDATE BINARY' failed");
 
 	rv = sm_release (card, &rdata, NULL, 0);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_create_file() SM release failed");
+	LOG_TEST_RET(ctx, rv, "SM release failed");
 
 	rdata.free(&rdata);
 	LOG_FUNC_RETURN(ctx, rv);
@@ -595,7 +595,7 @@ iasecc_sm_read_binary(struct sc_card *card, unsigned se_num, size_t offs, unsign
 	sc_log(ctx, "SM read binary: acl:%X, offs:%zu, count:%zu", se_num, offs, count);
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_FILE_READ);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_read_binary() SM INITIALIZE failed");
+	LOG_TEST_RET(ctx, rv, "SM INITIALIZE failed");
 
 	cmd_data.offs = offs;
 	cmd_data.count = count;
@@ -603,12 +603,12 @@ iasecc_sm_read_binary(struct sc_card *card, unsigned se_num, size_t offs, unsign
 
 	sc_remote_data_init(&rdata);
 	rv = iasecc_sm_cmd(card, &rdata);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_read_binary() SM 'READ BINARY' failed");
+	LOG_TEST_RET(ctx, rv, "SM 'READ BINARY' failed");
 
-	sc_log(ctx, "IAS/ECC decode answer() rdata length %i", rdata.length);
+	sc_log(ctx, "rdata length %i", rdata.length);
 
 	rv = sm_release (card, &rdata, buff, count);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_read_binary() SM release failed");
+	LOG_TEST_RET(ctx, rv, "SM release failed");
 
 	rdata.free(&rdata);
 	LOG_FUNC_RETURN(ctx, rv);
@@ -634,7 +634,7 @@ iasecc_sm_update_binary(struct sc_card *card, unsigned se_num, size_t offs,
 	sc_log(ctx, "SM update binary: acl:%X, offs:%zu, count:%zu", se_num, offs, count);
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_FILE_UPDATE);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_update_binary() SM INITIALIZE failed");
+	LOG_TEST_RET(ctx, rv, "SM INITIALIZE failed");
 
 	cmd_data.offs = offs;
 	cmd_data.count = count;
@@ -643,10 +643,10 @@ iasecc_sm_update_binary(struct sc_card *card, unsigned se_num, size_t offs,
 
 	sc_remote_data_init(&rdata);
 	rv = iasecc_sm_cmd(card, &rdata);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_update_binary() SM 'UPDATE BINARY' failed");
+	LOG_TEST_RET(ctx, rv, "SM 'UPDATE BINARY' failed");
 
 	rv = sm_release (card, &rdata, NULL, 0);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_update_binary() SM release failed");
+	LOG_TEST_RET(ctx, rv, "SM release failed");
 
 	rdata.free(&rdata);
 	LOG_FUNC_RETURN(ctx, (int)count);
@@ -670,16 +670,16 @@ iasecc_sm_delete_file(struct sc_card *card, unsigned se_num, unsigned int file_i
 	sc_log(ctx, "SM delete file: SE#:%X, file-id:%X", se_num, file_id);
 
 	rv = iasecc_sm_initialize(card, se_num, SM_CMD_FILE_DELETE);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_delete_file() SM INITIALIZE failed");
+	LOG_TEST_RET(ctx, rv, "SM INITIALIZE failed");
 
 	sm_info->cmd_data = (void *)(uintptr_t)file_id;
 
 	sc_remote_data_init(&rdata);
 	rv = iasecc_sm_cmd(card, &rdata);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_delete_file() SM 'FILE DELETE' failed");
+	LOG_TEST_RET(ctx, rv, "SM 'FILE DELETE' failed");
 
 	rv = sm_release (card, &rdata, NULL, 0);
-	LOG_TEST_RET(ctx, rv, "iasecc_sm_delete_file() SM release failed");
+	LOG_TEST_RET(ctx, rv, "SM release failed");
 
 	rdata.free(&rdata);
 	LOG_FUNC_RETURN(ctx, rv);

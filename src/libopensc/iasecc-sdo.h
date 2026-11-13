@@ -304,7 +304,8 @@ struct iasecc_sm_cmd_create_file {
 
 struct sc_card;
 int iasecc_sdo_convert_acl(struct sc_card *, struct iasecc_sdo *, unsigned char, unsigned *, unsigned *);
-void iasecc_sdo_free_fields(struct sc_card *, struct iasecc_sdo *);
+void iasecc_docp_free_fields(struct iasecc_sdo_docp *docp);
+void iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo);
 void iasecc_sdo_free(struct sc_card *, struct iasecc_sdo *);
 int iasecc_se_parse(struct sc_card *, unsigned char *, size_t, struct iasecc_se_info *);
 int iasecc_sdo_parse(struct sc_card *, unsigned char *, size_t, struct iasecc_sdo *);

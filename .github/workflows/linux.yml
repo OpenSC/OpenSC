@@ -112,7 +112,8 @@ jobs:
       - run: .github/build.sh ix86
 
   build-mingw:
-    runs-on: ubuntu-latest
+    # pinned until #3925 (%zu under msvcrt printf with ubuntu-26.04's gcc 15) is fixed
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - run: .github/setup-linux.sh mingw force-install
@@ -125,7 +126,8 @@ jobs:
             win32/Output/OpenSC*.exe
 
   build-mingw32:
-    runs-on: ubuntu-latest
+    # see build-mingw
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - run: .github/setup-linux.sh mingw32

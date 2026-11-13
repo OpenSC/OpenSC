@@ -42,7 +42,7 @@ struct pkcs11_uri {
 	char *object;
 	char *serial;
 	char *slot_description;
-	char *slot_id;
+	unsigned long slot_id;
 	char *slot_manufacturer;
 	char *token_label;
 	char *type;

@@ -151,6 +151,7 @@ static int list_sdos(char *sdo_tag)
 				for(jj=0; jj<SC_MAX_CRTS_IN_SE && se.crts[jj].tag; jj++)
 					_iasecc_print_crt(&se.crts[jj]);
 			}
+			/*iasecc_docp_free_fields(&se.docp);*/
 		}
 	}
 	else   {
@@ -164,6 +165,7 @@ static int list_sdos(char *sdo_tag)
 				printf("Found SDO class %X, reference %X\n", sdo.sdo_class, sdo.sdo_ref);
 				_iasecc_print_docp(&sdo.docp);
 			}
+			/*iasecc_sdo_free_fields(card, &sdo);*/
 		}
 	}
 	return 0;

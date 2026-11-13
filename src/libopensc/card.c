@@ -202,7 +202,7 @@ size_t sc_get_max_recv_size(const sc_card_t *card)
 
 	/*  Override card limitations with reader limitations. */
 	if (card->reader->max_recv_size != 0
-			&& (card->reader->max_recv_size < card->max_recv_size))
+			&& (card->reader->max_recv_size < max_recv_size))
 		max_recv_size = card->reader->max_recv_size;
 
 	return max_recv_size;
@@ -230,7 +230,7 @@ size_t sc_get_max_send_size(const sc_card_t *card)
 
 	/*  Override card limitations with reader limitations. */
 	if (card->reader->max_send_size != 0
-			&& (card->reader->max_send_size < card->max_send_size))
+			&& (card->reader->max_send_size < max_send_size))
 		max_send_size = card->reader->max_send_size;
 
 	return max_send_size;
@@ -516,6 +516,7 @@ int sc_unlock(sc_card_t *card)
 		LOG_FUNC_RETURN(card->ctx, r);
 
 	if (card->lock_count < 1) {
+		sc_mutex_unlock(card->ctx, card->mutex);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
 	if (--card->lock_count == 0) {

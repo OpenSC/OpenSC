@@ -136,7 +136,7 @@ OPENPACE_LIB = $(OPENPACE_DIR)\src\libeac.lib
 !ENDIF
 !IF "$(OPENSSL_DEF)" == "/DENABLE_OPENSSL"
 # Build only when OpenPACE and OpenSSL are available
-PROGRAMS_OPENPACE = npa-tool.exe
+PROGRAMS_OPENPACE = npa-tool.exe cedulauy-tool.exe
 !ENDIF
 WIXFLAGS = -d OpenPACE $(WIXFLAGS)
 !ENDIF
