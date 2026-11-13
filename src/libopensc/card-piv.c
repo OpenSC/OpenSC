@@ -5230,7 +5230,7 @@ piv_parse_ccc(sc_card_t *card, u8 *rbuf, size_t rbuflen)
 	/* CCC  entries are simple tlv */
 	end = body + bodylen;
 	for (; (body < end); body += len) {
-		r = sc_simpletlv_read_tag(&body, end - body, &tag, &len);
+		r = sc_simpletlv_read_tag(&body, end - body, &tag, &len, SC_SIMPLETLV_LITTLE_ENDIAN);
 		if (r < 0)
 			goto err;
 		switch (tag) {
