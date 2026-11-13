@@ -2680,8 +2680,7 @@ parse_pss_params(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key,
 static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
-	unsigned char *data;
-	size_t data_len;
+	unsigned char in_buffer[1025];
 	CK_BYTE_PTR sig_buffer = NULL;
 	CK_MECHANISM	mech;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
@@ -2693,6 +2692,8 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	};
 	CK_RV		rv;
 	CK_ULONG sig_len = 0;
+	int		fd;
+	ssize_t sz;
 	unsigned long	hashlen;
 	CK_BYTE_PTR sign_ctx_buf = NULL;
 	size_t sign_ctx_len = 0;
@@ -2713,7 +2714,14 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		}
 	}
 
-	data = read_input(opt_input, &data_len);
+	if (opt_input == NULL)
+		fd = 0;
+	else if ((fd = open(opt_input, O_RDONLY | O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %m", opt_input);
+
+	sz = read(fd, in_buffer, sizeof(in_buffer));
+	if (sz < 0)
+		util_fatal("Cannot read from %s: %m", opt_input);
 
 	switch (opt_mechanism) {
 	case CKM_EDDSA: {
@@ -2744,10 +2752,10 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		break;
 	}
 	case CKM_RSA_PKCS_PSS:
-		if (data_len != hashlen) {
-			util_fatal("For %s mechanism, message size (got %zu bytes) "
+		if ((size_t)sz != hashlen) {
+			util_fatal("For %s mechanism, message size (got %zd bytes) "
 				   "must be equal to specified digest length (%lu)\n",
-					p11_mechanism_to_name(opt_mechanism), data_len, hashlen);
+					p11_mechanism_to_name(opt_mechanism), sz, hashlen);
 		}
 		break;
 	case CKM_AES_CMAC_GENERAL:
@@ -2797,10 +2805,10 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 					p11_mechanism_to_name(opt_mechanism));
 		}
 		hashlen = hash_length(opt_hash_alg);
-		if (data_len != hashlen) {
-			util_fatal("For %s mechanism, message size (got %zu bytes) "
+		if ((size_t)sz != hashlen) {
+			util_fatal("For %s mechanism, message size (got %zd bytes) "
 				   "must be equal to specified digest length (%lu)\n",
-					p11_mechanism_to_name(opt_mechanism), data_len, hashlen);
+					p11_mechanism_to_name(opt_mechanism), sz, hashlen);
 		}
 		hash_sign_params.hash = opt_hash_alg;
 		if (opt_sign_hedge)
@@ -2812,18 +2820,21 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		break;
 	}
 
-	rv = p11->C_SignInit(session, &mech, key);
-	if (rv != CKR_OK)
-		p11_fatal("C_SignInit", rv);
-	if ((getCLASS(session, key) == CKO_PRIVATE_KEY) && getALWAYS_AUTHENTICATE(session, key))
-		login(session, CKU_CONTEXT_SPECIFIC);
+	rv = CKR_CANCEL;
+	if ((size_t)sz < sizeof(in_buffer)) {
+		rv = p11->C_SignInit(session, &mech, key);
+		if (rv != CKR_OK)
+			p11_fatal("C_SignInit", rv);
+		if ((getCLASS(session, key) == CKO_PRIVATE_KEY) && getALWAYS_AUTHENTICATE(session, key))
+			login(session,CKU_CONTEXT_SPECIFIC);
 
-	rv = p11->C_Sign(session, data, (CK_ULONG)data_len, sig_buffer, &sig_len);
-	if (rv == CKR_OK) {
-		sig_buffer = malloc(sig_len);
-		if (!sig_buffer)
-			util_fatal("malloc() failure\n");
-		rv = p11->C_Sign(session, data, (CK_ULONG)data_len, sig_buffer, &sig_len);
+		rv = p11->C_Sign(session, in_buffer, sz, sig_buffer, &sig_len);
+		if (rv == CKR_OK) {
+			sig_buffer = malloc(sig_len);
+			if (!sig_buffer)
+				util_fatal("malloc() failure\n");
+			rv = p11->C_Sign(session, in_buffer, sz, sig_buffer, &sig_len);
+		}
 	}
 
 	if (rv != CKR_OK)   {
@@ -2833,9 +2844,13 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		if ((getCLASS(session, key) == CKO_PRIVATE_KEY) && getALWAYS_AUTHENTICATE(session, key))
 			login(session,CKU_CONTEXT_SPECIFIC);
 
-		rv = p11->C_SignUpdate(session, data, (CK_ULONG)data_len);
-		if (rv != CKR_OK)
-			p11_fatal("C_SignUpdate", rv);
+		do   {
+			rv = p11->C_SignUpdate(session, in_buffer, sz);
+			if (rv != CKR_OK)
+				p11_fatal("C_SignUpdate", rv);
+
+			sz = read(fd, in_buffer, sizeof(in_buffer));
+		} while (sz > 0);
 
 		/* Signature buffer may have been allocated above */
 		free(sig_buffer);
@@ -2850,7 +2865,9 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		if (rv != CKR_OK)
 			p11_fatal("C_SignFinal", rv);
 	}
-	free(data);
+
+	if (fd != 0)
+		close(fd);
 
 	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1 ||
 		opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 ||
@@ -2880,8 +2897,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		CK_OBJECT_HANDLE key)
 {
-	unsigned char *data;
-	size_t data_len;
+	unsigned char in_buffer[1025];
 	CK_BYTE_PTR sig_buffer = NULL;
 	CK_MECHANISM	mech;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
@@ -2893,6 +2909,8 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_HASH_SIGN_ADDITIONAL_CONTEXT hash_sign_params = {0};
 	CK_RV		rv;
 	CK_ULONG sig_len = 0;
+	int fd;
+	ssize_t sz;
 	size_t sz2;
 	unsigned long   hashlen;
 	CK_BYTE_PTR sign_ctx_buf = NULL;
@@ -2928,7 +2946,16 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (opt_signature_file == NULL)
 		util_fatal("No file with signature provided. Use --signature-file");
 	sig_buffer = read_input(opt_signature_file, &sz2);
-	data = read_input(opt_input, &data_len);
+
+	/* Open the data file */
+	if (opt_input == NULL)
+		fd = 0;
+	else if ((fd = open(opt_input, O_RDONLY | O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %m", opt_input);
+
+	sz = read(fd, in_buffer, sizeof(in_buffer));
+	if (sz < 0)
+		util_fatal("Cannot read from %s: %m", opt_input);
 
 	switch (opt_mechanism) {
 	case CKM_EDDSA: {
@@ -3006,10 +3033,10 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		}
 		break;
 	case CKM_RSA_PKCS_PSS:
-		if (data_len != hashlen) {
-			util_fatal("For %s mechanism, message size (got %zu bytes)"
+		if ((size_t)sz != hashlen) {
+			util_fatal("For %s mechanism, message size (got %zd bytes)"
 				   " must be equal to specified digest length (%lu)\n",
-					p11_mechanism_to_name(opt_mechanism), data_len, hashlen);
+					p11_mechanism_to_name(opt_mechanism), sz, hashlen);
 		}
 		break;
 	case CKM_AES_CMAC_GENERAL:
@@ -3058,10 +3085,10 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 					p11_mechanism_to_name(opt_mechanism));
 		}
 		hashlen = hash_length(opt_hash_alg);
-		if (data_len != hashlen) {
-			util_fatal("For %s mechanism, message size (got %zu bytes) "
+		if ((size_t)sz != hashlen) {
+			util_fatal("For %s mechanism, message size (got %zd bytes) "
 				   "must be equal to specified digest length (%lu)\n",
-					p11_mechanism_to_name(opt_mechanism), data_len, hashlen);
+					p11_mechanism_to_name(opt_mechanism), sz, hashlen);
 		}
 		hash_sign_params.hash = opt_hash_alg;
 		if (opt_sign_hedge)
@@ -3073,28 +3100,37 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		break;
 	}
 
-	rv = p11->C_VerifyInit(session, &mech, key);
-	if (rv != CKR_OK)
-		p11_fatal("C_VerifyInit", rv);
+	rv = CKR_CANCEL;
+	if ((size_t)sz < sizeof(in_buffer)) {
+		rv = p11->C_VerifyInit(session, &mech, key);
+		if (rv != CKR_OK)
+			p11_fatal("C_VerifyInit", rv);
 
-	sig_len = sz2;
-	rv = p11->C_Verify(session, data, (CK_ULONG)data_len, sig_buffer, sig_len);
+		sig_len = sz2;
+		rv =  p11->C_Verify(session, in_buffer, sz, sig_buffer, sig_len);
+	}
 
 	if (rv != CKR_OK && rv != CKR_SIGNATURE_INVALID) {
 		rv = p11->C_VerifyInit(session, &mech, key);
 		if (rv != CKR_OK)
 			p11_fatal("C_VerifyInit", rv);
 
-		rv = p11->C_VerifyUpdate(session, data, (CK_ULONG)data_len);
-		if (rv != CKR_OK)
-			p11_fatal("C_VerifyUpdate", rv);
+		do   {
+			rv = p11->C_VerifyUpdate(session, in_buffer, sz);
+			if (rv != CKR_OK)
+				p11_fatal("C_VerifyUpdate", rv);
+
+			sz = read(fd, in_buffer, sizeof(in_buffer));
+		} while (sz > 0);
 
 		sig_len = sz2;
 		rv = p11->C_VerifyFinal(session, sig_buffer, sig_len);
 		if (rv != CKR_OK && rv != CKR_SIGNATURE_INVALID)
 			p11_fatal("C_VerifyFinal", rv);
 	}
-	free(data);
+
+	if (fd != 0)
+		close(fd);
 
 	if (rv == CKR_OK)
 		printf("Signature is valid\n");
