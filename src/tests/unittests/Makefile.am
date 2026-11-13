@@ -1,5 +1,6 @@
 MAINTAINERCLEANFILES = $(srcdir)/Makefile.in
 EXTRA_DIST = Makefile.mak
+CLEANFILES = scconf-test.conf
 
 if ENABLE_CMOCKA
 include $(top_srcdir)/aminclude_static.am
@@ -16,10 +17,10 @@ endif
 
 noinst_PROGRAMS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin \
 	decode_ecdsa_signature check_macro_reference_loop strip_pkcs1_2_padding \
-	base64 parse_pkcs11_uri
+	base64 parse_pkcs11_uri scconf
 TESTS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin \
 	decode_ecdsa_signature check_macro_reference_loop strip_pkcs1_2_padding \
-	base64 parse_pkcs11_uri
+	base64 parse_pkcs11_uri scconf
 
 noinst_HEADERS = torture.h
 
@@ -46,6 +47,7 @@ check_macro_reference_loop_SOURCES = check_macro_reference_loop.c
 strip_pkcs1_2_padding_SOURCES = strip_pkcs1_2_padding.c
 base64_SOURCES = base64.c
 parse_pkcs11_uri_SOURCES = parse_pkcs11_uri.c
+scconf_SOURCES = scconf.c
 
 if ENABLE_ZLIB
 noinst_PROGRAMS += compression
