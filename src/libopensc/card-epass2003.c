@@ -120,7 +120,7 @@ typedef struct epass2003_exdata_st {
 		((unsigned long)x & 0x0000FF00)<<  8	| \
 		((unsigned long)x & 0x000000FF)<< 24)
 
-
+// clang-format off
 static const struct sc_card_error epass2003_errors[] = {
 	{ 0x6200, SC_ERROR_CARD_CMD_FAILED,	"Warning: no information given, non-volatile memory is unchanged" },
 	{ 0x6281, SC_ERROR_CORRUPTED_DATA,	"Part of returned data may be corrupted" },
@@ -158,7 +158,7 @@ static const struct sc_card_error epass2003_errors[] = {
 	{ 0x6985, SC_ERROR_NOT_ALLOWED,		"Conditions of use not satisfied" },
 	{ 0x6986, SC_ERROR_NOT_ALLOWED,		"Command not allowed (no current EF)" },
 	{ 0x6987, SC_ERROR_INCORRECT_PARAMETERS,"Expected SM data objects missing" },
-	{ 0x6988, SC_ERROR_INCORRECT_PARAMETERS,"SM data objects incorrect" },
+	{ 0x6988, SC_ERROR_INCORRECT_SM_OBJECTS,"SM data objects incorrect" },
 
 	{ 0x6A00, SC_ERROR_INCORRECT_PARAMETERS,"Wrong parameter(s) P1-P2" },
 	{ 0x6A80, SC_ERROR_INCORRECT_PARAMETERS,"Incorrect parameters in the data field" },
@@ -180,6 +180,7 @@ static const struct sc_card_error epass2003_errors[] = {
 
 	{ 0x9000,SC_SUCCESS,                       NULL }
 };
+// clang-format on
 
 typedef struct sec_attr_to_acl_entries {
 	unsigned int file_type;		/* file->type */
@@ -933,10 +934,16 @@ epass2003_refresh(struct sc_card *card)
 	exdata = (epass2003_exdata *)card->drv_data;
 
 	if (exdata->sm) {
+		/* Hold the reader lock so that no other process can establish its own session in the
+		 * middle of the handshake. */
 		card->sm_ctx.sm_mode = 0;
-		r = mutual_auth(card, g_init_key_enc, g_init_key_mac);
-		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
+		r = sc_lock(card);
+		if (r == SC_SUCCESS) {
+			r = mutual_auth(card, g_init_key_enc, g_init_key_mac);
+			sc_unlock(card);
+		}
 		LOG_TEST_RET(card->ctx, r, "mutual_auth failed");
+		card->sm_ctx.sm_mode = SM_MODE_TRANSMIT;
 	}
 
 	return r;
@@ -1569,6 +1576,11 @@ epass2003_sm_unwrap_apdu(struct sc_card *card, struct sc_apdu *sm, struct sc_apd
 	if (exdata->sm) {
 		if (epass2003_check_response_mac_and_sw(card, sm)) {
 			sc_log(card->ctx, "MAC or SW incorrect");
+			/* The card answers 6988 in plain when our session keys are no longer valid,
+			 * e.g. because another process has established its own session. Let
+			 * sc_sm_single_transmit() re-establish secure messaging and retry. */
+			if (sc_check_sw(card, sm->sw1, sm->sw2) == SC_ERROR_INCORRECT_SM_OBJECTS)
+				return SC_ERROR_INCORRECT_SM_OBJECTS;
 			return SC_ERROR_CARD_CMD_FAILED;
 		}
 	}
@@ -1640,6 +1652,12 @@ epass2003_sm_get_wrapped_apdu(struct sc_card *card,
 	LOG_FUNC_CALLED(ctx);
 	if (!plain || !sm_apdu)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	/* A command rejected with 6988 has not been executed and can be sent again in a new
+	 * session, except EXTERNAL AUTHENTICATE: its cryptogram is computed over the preceding
+	 * GET CHALLENGE, which re-establishing secure messaging does not preserve. */
+	if (plain->ins != 0x82)
+		plain->flags |= SC_APDU_FLAGS_RETRY_WITH_SM_OPEN;
 
 	*sm_apdu = NULL;
 	//construct new SM apdu from original apdu
