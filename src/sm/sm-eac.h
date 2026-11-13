@@ -26,7 +26,6 @@
 #define _SC_EAC_H
 
 #include "libopensc/opensc.h"
-#include "libopensc/pace.h"
 #include "sm/sm-iso.h"
 
 #ifdef __cplusplus
@@ -112,7 +111,7 @@ enum eac_tr_version {
  */
 const char *eac_secret_name(enum s_type pin_id);
 
-/** 
+/**
  * @brief Establish secure messaging using PACE
  *
  * Modifies \a card to use the ISO SM driver and initializes the data
@@ -123,20 +122,20 @@ const char *eac_secret_name(enum s_type pin_id);
  * asked for it. Only \a pace_input.pin_id is mandatory, the other members of
  * \a pace_input can be set to \c 0 or \c NULL respectively.
  *
- * The buffers in \a pace_output are allocated using \c realloc() and should be
- * set to NULL, if empty. If an EF.CardAccess is already present, this file is
- * reused and not fetched from the card.
- * 
+ * The buffers in \a pace_output are allocated and should be cleared using
+ * sc_pace_output_clear(). If an EF.CardAccess is passed via \a pace_input,
+ * this data is used and not fetched from the card.
+ *
  * @param[in,out] card
  * @param[in]     pace_input
- * @param[in,out] pace_output
+ * @param[out]    pace_output Optional output data. May be NULL if not needed.
  * @param[in]     tr_version  Version of TR-03110 to use with PACE
- * 
+ *
  * @return \c SC_SUCCESS or error code if an error occurred
  */
 int perform_pace(sc_card_t *card,
-		struct establish_pace_channel_input pace_input,
-		struct establish_pace_channel_output *pace_output,
+		struct sc_establish_pace_channel_input pace_input,
+		struct sc_establish_pace_channel_output *pace_output,
 		enum eac_tr_version tr_version);
 
 /**
@@ -178,13 +177,13 @@ int perform_chip_authentication(sc_card_t *card,
 int perform_chip_authentication_ex(sc_card_t *card, void *eacsmctx,
 		unsigned char *picc_pubkey, size_t picc_pubkey_len);
 
-/** 
+/**
  * @brief Sends an MSE:Set AT to determine the number of remaining tries
  *
  * @param[in] card
  * @param[in] pin_id         Type of secret (usually PIN or CAN). You may use <tt>enum s_type</tt> from \c <openssl/pace.h>.
  * @param[in,out] tries_left Tries left or -1 if no specific number has been returned by the card (e.g. when there is no limit in retries).
- * 
+ *
  * @return \c SC_SUCCESS or error code if an error occurred
  */
 int eac_pace_get_tries_left(sc_card_t *card,

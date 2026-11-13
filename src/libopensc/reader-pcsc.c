@@ -40,7 +40,6 @@
 #include "internal-winscard.h"
 #include "card-sc-hsm.h"
 
-#include "pace.h"
 
 #ifndef MAXDWORD
 #define MAXDWORD UINT32_MAX
@@ -2407,7 +2406,7 @@ pcsc_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 	return SC_SUCCESS;
 }
 
-static int transform_pace_input(struct establish_pace_channel_input *pace_input,
+static int transform_pace_input(struct sc_establish_pace_channel_input *pace_input,
 		u8 *sbuf, size_t *scount)
 {
 	u8 *p = sbuf;
@@ -2463,7 +2462,7 @@ static int transform_pace_input(struct establish_pace_channel_input *pace_input,
 }
 
 static int transform_pace_output(u8 *rbuf, size_t rbuflen,
-		struct establish_pace_channel_output *pace_output)
+		struct sc_establish_pace_channel_output *pace_output)
 {
 	size_t parsed = 0;
 
@@ -2607,8 +2606,8 @@ static int transform_pace_output(u8 *rbuf, size_t rbuflen,
 static int
 pcsc_perform_pace(struct sc_reader *reader, void *input_pace, void *output_pace)
 {
-	struct establish_pace_channel_input *pace_input = (struct establish_pace_channel_input *) input_pace;
-	struct establish_pace_channel_output *pace_output = (struct establish_pace_channel_output *) output_pace;
+	struct sc_establish_pace_channel_input *pace_input = (struct sc_establish_pace_channel_input *) input_pace;
+	struct sc_establish_pace_channel_output *pace_output = (struct sc_establish_pace_channel_output *) output_pace;
 	struct pcsc_private_data *priv;
 	u8 rbuf[SC_MAX_EXT_APDU_BUFFER_SIZE], sbuf[SC_MAX_EXT_APDU_BUFFER_SIZE];
 	size_t rcount = sizeof rbuf, scount = sizeof sbuf;

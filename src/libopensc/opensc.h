@@ -504,8 +504,8 @@ struct sc_reader_operations {
 	int (*display_message)(struct sc_reader *, const char *);
 	int (*perform_verify)(struct sc_reader *, struct sc_pin_cmd_data *);
 	int (*perform_pace)(struct sc_reader *reader,
-			void *establish_pace_channel_input,
-			void *establish_pace_channel_output);
+			void *input_pace,
+			void *output_pace);
 
 	/* Wait for an event */
 	int (*wait_for_event)(struct sc_context *ctx, unsigned int event_mask,
@@ -1769,6 +1769,13 @@ int iso7816_select_aid(struct sc_card *card, const u8 *req,
  * @param[in] p the buffer
  */
 void sc_free(void *p);
+
+/**
+ * @brief Free memory dynamically allocated inside sc_establish_pace_channel_output
+ *
+ * @param output The PACE channel output structure to clean
+ */
+void sc_pace_output_clear(struct sc_establish_pace_channel_output *output);
 
 #ifdef __cplusplus
 }

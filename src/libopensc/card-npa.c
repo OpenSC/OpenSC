@@ -26,7 +26,6 @@
 #include "card-npa.h"
 #include "libopensc/internal.h"
 #include "libopensc/opensc.h"
-#include "libopensc/pace.h"
 #include "libopensc/sm.h"
 #include "sm/sm-eac.h"
 #include <string.h>
@@ -168,22 +167,20 @@ static int npa_match_card(sc_card_t * card)
 }
 
 static void npa_get_cached_pace_params(sc_card_t *card,
-		struct establish_pace_channel_input *pace_input,
-		struct establish_pace_channel_output *pace_output)
+		struct sc_establish_pace_channel_input *pace_input)
 {
 	struct npa_drv_data *drv_data;
 
 	if (card->drv_data) {
 		drv_data = card->drv_data;
-		
-		if (pace_output) {
-			pace_output->ef_cardaccess = drv_data->ef_cardaccess;
-			pace_output->ef_cardaccess_length = drv_data->ef_cardaccess_length;
-		}
 
-		if (pace_input && pace_input->pin_id == PACE_PIN_ID_CAN) {
-			pace_input->pin = (const unsigned char *) drv_data->can;
-			pace_input->pin_length = drv_data->can ? strlen(drv_data->can) : 0;
+		if (pace_input) {
+			pace_input->ef_cardaccess = drv_data->ef_cardaccess;
+			pace_input->ef_cardaccess_length = drv_data->ef_cardaccess_length;
+			if (pace_input->pin_id == SC_PACE_PIN_ID_CAN) {
+				pace_input->pin = (const unsigned char *) drv_data->can;
+				pace_input->pin_length = drv_data->can ? strlen(drv_data->can) : 0;
+			}
 		}
 	}
 }
@@ -272,8 +269,8 @@ static void npa_cache_or_free(sc_card_t *card,
 static int npa_unlock_esign(sc_card_t *card)
 {
 	int r = SC_ERROR_INTERNAL;
-	struct establish_pace_channel_input pace_input;
-	struct establish_pace_channel_output pace_output;
+	struct sc_establish_pace_channel_input pace_input;
+	struct sc_establish_pace_channel_output pace_output;
 	const unsigned char *certs[] = { NULL, NULL };
 	size_t certs_lens[] = { 0, 0};
 	const unsigned char *st_key = NULL;
@@ -291,8 +288,8 @@ static int npa_unlock_esign(sc_card_t *card)
 	sc_log(card->ctx, "Will verify CAN first for unlocking eSign application.\n");
 	pace_input.chat = esign_chat;
 	pace_input.chat_length = sizeof esign_chat;
-	pace_input.pin_id = PACE_PIN_ID_CAN;
-	npa_get_cached_pace_params(card, &pace_input, &pace_output);
+	pace_input.pin_id = SC_PACE_PIN_ID_CAN;
+	npa_get_cached_pace_params(card, &pace_input);
 	npa_get_cached_ta_params(card, certs, certs_lens, &st_key, &st_key_len);
 	npa_get_cached_ca_params(card, &ef_cardsecurity, &ef_cardsecurity_len);
 
@@ -335,10 +332,7 @@ err:
 	npa_cache_or_free(card, &pace_output.ef_cardaccess,
 			&pace_output.ef_cardaccess_length,
 			&ef_cardsecurity, &ef_cardsecurity_len);
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
+	sc_pace_output_clear(&pace_output);
 
 	return r;
 }
@@ -484,15 +478,15 @@ static int npa_pin_cmd_get_info(struct sc_card *card,
 
 	pin_reference = data->pin_reference;
 	switch (data->pin_reference) {
-		case PACE_PIN_ID_CAN:
-		case PACE_PIN_ID_MRZ:
+		case SC_PACE_PIN_ID_CAN:
+		case SC_PACE_PIN_ID_MRZ:
 			/* usually unlimited number of retries */
 			data->pin1.tries_left = -1;
 			data->pin1.max_tries = -1;
 			r = SC_SUCCESS;
 			break;
 
-		case PACE_PIN_ID_PUK:
+		case SC_PACE_PIN_ID_PUK:
 			/* usually 10 tries */
 			data->pin1.tries_left = 10;
 			data->pin1.max_tries = 10;
@@ -500,7 +494,7 @@ static int npa_pin_cmd_get_info(struct sc_card *card,
 					pin_reference, &data->pin1.tries_left);
 			break;
 
-		case PACE_PIN_ID_PIN:
+		case SC_PACE_PIN_ID_PIN:
 			/* usually 3 tries */
 			data->pin1.tries_left = 3;
 			data->pin1.max_tries = 3;
@@ -522,8 +516,8 @@ static int npa_pace_verify(struct sc_card *card,
 		const unsigned char *chat, size_t chat_length)
 {
 	int r;
-	struct establish_pace_channel_input pace_input;
-	struct establish_pace_channel_output pace_output;
+	struct sc_establish_pace_channel_input pace_input;
+	struct sc_establish_pace_channel_output pace_output;
 
 	memset(&pace_input, 0, sizeof pace_input);
 	memset(&pace_output, 0, sizeof pace_output);
@@ -536,7 +530,7 @@ static int npa_pace_verify(struct sc_card *card,
 		pace_input.pin = pin->data;
 		pace_input.pin_length = pin->len;
 	}
-	npa_get_cached_pace_params(card, &pace_input, &pace_output);
+	npa_get_cached_pace_params(card, &pace_input);
 
 	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
 
@@ -549,16 +543,16 @@ static int npa_pace_verify(struct sc_card *card,
 	}
 
 	/* resume the PIN if needed */
-	if (pin_reference == PACE_PIN_ID_PIN
+	if (pin_reference == SC_PACE_PIN_ID_PIN
 			&& r != SC_SUCCESS
 			&& pace_output.mse_set_at_sw1 == 0x63
 			&& (pace_output.mse_set_at_sw2 & 0xc0) == 0xc0
 			&& (pace_output.mse_set_at_sw2 & 0x0f) <= EAC_UC_PIN_SUSPENDED) {
 		/* TODO ask for user consent when automatically resuming the PIN */
 		sc_log(card->ctx, "%s is suspended. Will try to resume it with %s.\n",
-				eac_secret_name(pin_reference), eac_secret_name(PACE_PIN_ID_CAN));
+				eac_secret_name(pin_reference), eac_secret_name(SC_PACE_PIN_ID_CAN));
 
-		pace_input.pin_id = PACE_PIN_ID_CAN;
+		pace_input.pin_id = SC_PACE_PIN_ID_CAN;
 		pace_input.pin = NULL;
 		pace_input.pin_length = 0;
 
@@ -590,7 +584,7 @@ static int npa_pace_verify(struct sc_card *card,
 		}
 	}
 
-	if (pin && pin_reference == PACE_PIN_ID_PIN) {
+	if (pin && pin_reference == SC_PACE_PIN_ID_PIN) {
 		if (pin->tries_left == 0) {
 			sc_log(card->ctx, "%s is suspended and must be resumed.\n",
 					eac_secret_name(pin_reference));
@@ -602,10 +596,7 @@ static int npa_pace_verify(struct sc_card *card,
 
 	npa_cache_or_free(card, &pace_output.ef_cardaccess,
 			&pace_output.ef_cardaccess_length, NULL, NULL);
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
+	sc_pace_output_clear(&pace_output);
 
 	return r;
 }
@@ -731,7 +722,7 @@ static int npa_pin_cmd(struct sc_card *card,
 			 * checking if an SM channel has been established. */
 			if (card->sm_ctx.sm_mode != SM_MODE_TRANSMIT) {
 				/* PUK has not yet been verified */
-				r = npa_pace_verify(card, PACE_PIN_ID_PUK, &(data->pin1), NULL,
+				r = npa_pace_verify(card, SC_PACE_PIN_ID_PUK, &(data->pin1), NULL,
 						0);
 				if (r != SC_SUCCESS)
 					goto err;
@@ -746,10 +737,10 @@ static int npa_pin_cmd(struct sc_card *card,
 		case SC_PIN_CMD_CHANGE:
 		case SC_PIN_CMD_VERIFY:
 			switch (data->pin_reference) {
-				case PACE_PIN_ID_CAN:
-				case PACE_PIN_ID_PUK:
-				case PACE_PIN_ID_MRZ:
-				case PACE_PIN_ID_PIN:
+				case SC_PACE_PIN_ID_CAN:
+				case SC_PACE_PIN_ID_PUK:
+				case SC_PACE_PIN_ID_MRZ:
+				case SC_PACE_PIN_ID_PIN:
 					r = npa_pace_verify(card, data->pin_reference,
 							&(data->pin1), NULL, 0);
 					if (r != SC_SUCCESS)

@@ -196,8 +196,7 @@ static int eoi_sm_open(struct sc_card *card)
 {
 	int r;
 	struct eoi_privdata *privdata = (struct eoi_privdata *)card->drv_data;
-	struct establish_pace_channel_input pace_input;
-	struct establish_pace_channel_output pace_output;
+	struct sc_establish_pace_channel_input pace_input;
 
 	if (!privdata)
 		return SC_ERROR_INTERNAL;
@@ -213,9 +212,8 @@ static int eoi_sm_open(struct sc_card *card)
 		return SC_ERROR_DECRYPT_FAILED;
 
 	memset(&pace_input, 0, sizeof pace_input);
-	memset(&pace_output, 0, sizeof pace_output);
 
-	pace_input.pin_id = PACE_PIN_ID_CAN;
+	pace_input.pin_id = SC_PACE_PIN_ID_CAN;
 	pace_input.pin = (u8 *)privdata->can;
 	pace_input.pin_length = strlen(privdata->can);
 
@@ -223,7 +221,7 @@ static int eoi_sm_open(struct sc_card *card)
 	r = sc_select_file(card, sc_get_mf_path(), NULL);
 	LOG_TEST_RET(card->ctx, r, "sc_select_file failed");
 
-	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+	r = perform_pace(card, pace_input, NULL, EAC_TR_VERSION_2_02);
 	LOG_TEST_RET(card->ctx, r, "Error verifying CAN");
 
 	return SC_SUCCESS;
