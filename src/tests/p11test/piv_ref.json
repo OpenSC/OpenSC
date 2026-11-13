@@ -204,7 +204,7 @@
 		"RSA_PKCS_OAEP",
 		"2048",
 		"2048",
-		"CKF_HW,CKF_DECRYPT"
+		"CKF_HW,CKF_ENCRYPT,CKF_DECRYPT"
 	]],
 	"result": "pass"
 },
