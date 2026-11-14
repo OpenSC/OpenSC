@@ -1154,11 +1154,12 @@ sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 		}
 		if (oaep->ulSourceDataLen > 0) {
 			/* OpenSSL takes ownership of the label */
-			label = OPENSSL_memdup(oaep->pSourceData, oaep->ulSourceDataLen);
+			label = OPENSSL_malloc(oaep->ulSourceDataLen);
 			if (label == NULL) {
 				rv = CKR_HOST_MEMORY;
 				goto end;
 			}
+			memcpy(label, oaep->pSourceData, oaep->ulSourceDataLen);
 			if (EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, label,
 					    (int)oaep->ulSourceDataLen) != 1) {
 				OPENSSL_free(label);
