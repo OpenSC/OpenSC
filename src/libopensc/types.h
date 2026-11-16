@@ -227,6 +227,9 @@ typedef struct sc_acl_entry {
 #define SC_FILE_EF_CYCLIC_TLV		0x07
 
 /* File flags */
+#define SC_FILE_PROPERTY_FLAG_AUTO_SIZE 0x01
+
+/* File operation flags */
 #define SC_FILE_FLAG_COMPRESSED_AUTO		0x01
 #define SC_FILE_FLAG_COMPRESSED_ZLIB		0x02
 #define SC_FILE_FLAG_COMPRESSED_GZIP		0x04
@@ -283,6 +286,7 @@ typedef struct sc_file {
 	size_t encoded_content_len;	/* size of file's encoded content in bytes */
 
 	unsigned int magic;
+	int flags;
 } sc_file_t;
 
 

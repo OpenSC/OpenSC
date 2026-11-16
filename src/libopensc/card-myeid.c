@@ -447,6 +447,10 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 		if (tag != NULL && taglen > 0 && *tag == 17)
 			file->type = SC_FILE_TYPE_INTERNAL_EF;
 		break;
+	case SC_FILE_TYPE_WORKING_EF:
+		if (has_valid_prop_attr(file) && file->prop_attr[1] & 0x04)
+			file->flags |= SC_FILE_PROPERTY_FLAG_AUTO_SIZE;
+		break;
 	}
 
 	if(file->sec_attr_len >= 3)
