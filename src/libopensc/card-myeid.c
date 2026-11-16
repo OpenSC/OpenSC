@@ -422,6 +422,12 @@ static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	return (int)apdu.resplen;
 }
 
+static int
+has_valid_prop_attr(const struct sc_file *file)
+{
+	return file->prop_attr && file->prop_attr_len == 2;
+}
+
 static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 		const u8 *buf, size_t buflen)
 {
@@ -554,8 +560,8 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 	/* Proprietary Information */
 	buf[18] = 0x85;
 	buf[19] = 0x02;
-	if (file->prop_attr_len == 2 && file->prop_attr != NULL)
-	    memcpy(&buf[20], file->prop_attr, 2);
+	if (has_valid_prop_attr(file))
+		memcpy(&buf[20], file->prop_attr, 2);
 	else
 	{
 		buf[20] = 0x00;
