@@ -479,6 +479,12 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 		if (tag != NULL && taglen > 0 && *tag == 17)
 			file->type = SC_FILE_TYPE_INTERNAL_EF;
 		break;
+	case SC_FILE_TYPE_WORKING_EF:
+		if (priv->lifecycle == SC_CARDCTRL_LIFECYCLE_ADMIN &&
+				has_valid_prop_attr(file) &&
+				file->prop_attr[1] & MYEID_PROP_INFO_2_AUTO_SIZE)
+			file->size = MYEID_MAX_FILE_SIZE;
+		break;
 	}
 
 	if(file->sec_attr_len >= 3)
