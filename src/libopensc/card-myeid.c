@@ -446,6 +446,11 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 		if (tag != NULL && taglen > 0 && *tag == 17)
 			file->type = SC_FILE_TYPE_INTERNAL_EF;
 		break;
+	case SC_FILE_TYPE_WORKING_EF:
+		if (has_valid_prop_attr(file) &&
+				file->prop_attr[1] & MYEID_PROP_INFO_2_AUTO_SIZE)
+			file->flags |= SC_FILE_PROPERTY_FLAG_AUTO_SIZE;
+		break;
 	}
 
 	if(file->sec_attr_len >= 3)
@@ -566,6 +571,9 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 		buf[20] = 0x00;
 		buf[21] = 0x00;
 	}
+	if (card->version.fw_major >= 40 &&
+			file->flags & SC_FILE_PROPERTY_FLAG_AUTO_SIZE)
+		buf[21] |= MYEID_PROP_INFO_2_AUTO_SIZE;
 
 	/* Life Cycle Status tag */
 	buf[22] = 0x8A;
