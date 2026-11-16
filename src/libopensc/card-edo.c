@@ -105,6 +105,7 @@ static int edo_unlock(sc_card_t* card) {
 
 	struct establish_pace_channel_input pace_input;
 	struct establish_pace_channel_output pace_output;
+	int r;
 
 	memset(&pace_input, 0, sizeof pace_input);
 	memset(&pace_output, 0, sizeof pace_output);
@@ -114,7 +115,14 @@ static int edo_unlock(sc_card_t* card) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
 
-	if (SC_SUCCESS != perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02)) {
+	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+	/* These caller-owned outputs may also be allocated on failure. */
+	free(pace_output.ef_cardaccess);
+	free(pace_output.recent_car);
+	free(pace_output.previous_car);
+	free(pace_output.id_icc);
+	free(pace_output.id_pcd);
+	if (r != SC_SUCCESS) {
 		sc_log(card->ctx, "Error verifying CAN.");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
