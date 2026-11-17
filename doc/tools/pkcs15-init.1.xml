@@ -745,7 +745,7 @@
 					</term>
 					<listitem>
 						<para>
-							Specify application name of data object (use with <option>--store-data-object</option>)
+							Specify application name of data object (use with <option>--store-data</option>)
 						</para>
 					</listitem>
 				</varlistentry>

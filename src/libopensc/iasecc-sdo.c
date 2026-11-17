@@ -64,7 +64,7 @@ iasecc_parse_acls(struct sc_card *card, struct iasecc_sdo_docp *docp, int flags)
 			docp->scbs[ii] = *(acls->value + offs++);
 		}
 
-	sc_log(ctx, "iasecc_parse_docp() SCBs %02X:%02X:%02X:%02X:%02X:%02X:%02X",
+	sc_log(ctx, "SCBs %02X:%02X:%02X:%02X:%02X:%02X:%02X",
 			docp->scbs[0],docp->scbs[1],docp->scbs[2],docp->scbs[3],
 			docp->scbs[4],docp->scbs[5],docp->scbs[6]);
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -146,21 +146,41 @@ iasecc_sdo_convert_acl(struct sc_card *card, struct iasecc_sdo *sdo,
 
 
 void
+iasecc_docp_free_fields(struct iasecc_sdo_docp *docp)
+{
+	if (!docp)
+		return;
+
+	free(docp->tries_maximum.value);
+	free(docp->tries_remaining.value);
+	free(docp->usage_maximum.value);
+	free(docp->usage_remaining.value);
+	free(docp->non_repudiation.value);
+	free(docp->acls_contact.value);
+	free(docp->acls_contactless.value);
+	free(docp->size.value);
+	free(docp->name.value);
+	free(docp->issuer_data.value);
+	docp->tries_maximum.value = NULL;
+	docp->tries_remaining.value = NULL;
+	docp->usage_maximum.value = NULL;
+	docp->usage_remaining.value = NULL;
+	docp->non_repudiation.value = NULL;
+	docp->acls_contact.value = NULL;
+	docp->acls_contactless.value = NULL;
+	docp->size.value = NULL;
+	docp->name.value = NULL;
+	docp->issuer_data.value = NULL;
+}
+
+void
 iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 {
 	if (sdo == NULL) {
 		return;
 	}
 
-	free(sdo->docp.tries_maximum.value);
-	free(sdo->docp.tries_remaining.value);
-	free(sdo->docp.usage_remaining.value);
-	free(sdo->docp.non_repudiation.value);
-	free(sdo->docp.acls_contact.value);
-	free(sdo->docp.acls_contactless.value);
-	free(sdo->docp.size.value);
-	free(sdo->docp.name.value);
-	free(sdo->docp.issuer_data.value);
+	iasecc_docp_free_fields(&sdo->docp);
 
 	if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PUBLIC)   {
 		free(sdo->data.pub_key.n.value);
@@ -168,6 +188,11 @@ iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 		free(sdo->data.pub_key.compulsory.value);
 		free(sdo->data.pub_key.chr.value);
 		free(sdo->data.pub_key.cha.value);
+		sdo->data.pub_key.n.value = NULL;
+		sdo->data.pub_key.e.value = NULL;
+		sdo->data.pub_key.compulsory.value = NULL;
+		sdo->data.pub_key.chr.value = NULL;
+		sdo->data.pub_key.cha.value = NULL;
 	}
 	else if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PRIVATE)   {
 		free(sdo->data.prv_key.p.value);
@@ -176,14 +201,29 @@ iasecc_sdo_free_fields(struct sc_card *card, struct iasecc_sdo *sdo)
 		free(sdo->data.prv_key.dmp1.value);
 		free(sdo->data.prv_key.dmq1.value);
 		free(sdo->data.prv_key.compulsory.value);
+		sdo->data.prv_key.p.value = NULL;
+		sdo->data.prv_key.q.value = NULL;
+		sdo->data.prv_key.iqmp.value = NULL;
+		sdo->data.prv_key.dmp1.value = NULL;
+		sdo->data.prv_key.dmq1.value = NULL;
+		sdo->data.prv_key.compulsory.value = NULL;
 	}
 	else if (sdo->sdo_class == IASECC_SDO_CLASS_CHV)   {
 		free(sdo->data.chv.size_max.value);
 		free(sdo->data.chv.size_min.value);
 		free(sdo->data.chv.value.value);
+		sdo->data.chv.size_max.value = NULL;
+		sdo->data.chv.size_min.value = NULL;
+		sdo->data.chv.value.value = NULL;
 	}
-	/* invalidate all the other members too */
-	memset(sdo, 0, sizeof(struct iasecc_sdo));
+	else if (sdo->sdo_class == IASECC_SDO_CLASS_KEYSET)   {
+		free(sdo->data.keyset.mac.value);
+		free(sdo->data.keyset.enc.value);
+		free(sdo->data.keyset.compulsory.value);
+		sdo->data.keyset.mac.value = NULL;
+		sdo->data.keyset.enc.value = NULL;
+		sdo->data.keyset.compulsory.value = NULL;
+	}
 }
 
 
@@ -241,7 +281,7 @@ iasecc_crt_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 			break;
 
 	if (ii==SC_MAX_CRTS_IN_SE)
-		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "iasecc_crt_parse() error: too much CRTs in SE");
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "error: too much CRTs in SE");
 
 	memcpy(&se->crts[ii], &crt, sizeof(crt));
 	parsed_len = len + 2;
@@ -273,12 +313,12 @@ iasecc_se_get_crt(struct sc_card *card, struct iasecc_se_info *se, struct sc_crt
 
 		memcpy(crt, &se->crts[ii], sizeof(*crt));
 
-		sc_log(ctx, "iasecc_se_get_crt() found CRT with refs %X:%X:...",
+		sc_log(ctx, "found CRT with refs %X:%X:...",
 				se->crts[ii].refs[0], se->crts[ii].refs[1]);
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 
-	sc_log(ctx, "iasecc_se_get_crt() CRT is not found");
+	sc_log(ctx, "CRT is not found");
 	return SC_ERROR_DATA_OBJECT_NOT_FOUND;
 }
 
@@ -303,11 +343,11 @@ iasecc_se_get_crt_by_usage(struct sc_card *card, struct iasecc_se_info *se, unsi
 
 		memcpy(crt, &se->crts[ii], sizeof(*crt));
 
-		sc_log(ctx, "iasecc_se_get_crt() found CRT with refs %X:%X:...", crt->refs[0], crt->refs[1]);
+		sc_log(ctx, "found CRT with refs %X:%X:...", crt->refs[0], crt->refs[1]);
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 	}
 
-	sc_log(ctx, "iasecc_se_get_crt() CRT is not found");
+	sc_log(ctx, "CRT is not found");
 	LOG_FUNC_RETURN(ctx, SC_ERROR_DATA_OBJECT_NOT_FOUND);
 }
 
@@ -410,7 +450,7 @@ iasecc_parse_get_tlv(struct sc_card *card, unsigned char *data, size_t data_len,
 	int size_len, tag_len;
 
 	memset(tlv, 0, sizeof(*tlv));
-	sc_log(ctx, "iasecc_parse_get_tlv() called for tag 0x%X", *data);
+	sc_log(ctx, "called for tag 0x%X", *data);
 	if (data_len < 1)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 	if ((*data == 0x7F) || (*data == 0x5F))   {
@@ -424,7 +464,7 @@ iasecc_parse_get_tlv(struct sc_card *card, unsigned char *data, size_t data_len,
 		tag_len = 1;
 	}
 
-	sc_log(ctx, "iasecc_parse_get_tlv() tlv->tag 0x%X", tlv->tag);
+	sc_log(ctx, "tlv->tag 0x%X", tlv->tag);
 	size_len = iasecc_parse_size(data + tag_len, data_len - tag_len, &tlv->size);
 	LOG_TEST_RET(ctx, size_len, "parse error: invalid size data");
 	if (tag_len + size_len + tlv->size > data_len) {
@@ -438,7 +478,7 @@ iasecc_parse_get_tlv(struct sc_card *card, unsigned char *data, size_t data_len,
 
 	tlv->on_card = 1;
 
-	sc_log(ctx, "iasecc_parse_get_tlv() parsed %zu bytes", tag_len + size_len + tlv->size);
+	sc_log(ctx, "parsed %zu bytes", tag_len + size_len + tlv->size);
 	return (int)(tag_len + size_len + tlv->size);
 }
 
@@ -455,9 +495,9 @@ iasecc_parse_chv(struct sc_card *card, unsigned char *data, size_t data_len, str
 		struct iasecc_extended_tlv tlv;
 
 		rv = iasecc_parse_get_tlv(card, data + offs, data_len - offs, &tlv);
-		LOG_TEST_RET(ctx, rv, "iasecc_parse_chv() get and parse TLV error");
+		LOG_TEST_RET(ctx, rv, "get and parse TLV error");
 
-		sc_log(ctx, "iasecc_parse_chv() get and parse TLV returned %i; tag %X; size %zu",
+		sc_log(ctx, "get and parse TLV returned %i; tag %X; size %zu",
 				rv, tlv.tag, tlv.size);
 
 		if (tlv.tag == IASECC_SDO_CHV_TAG_SIZE_MAX) {
@@ -493,9 +533,9 @@ iasecc_parse_prvkey(struct sc_card *card, unsigned char *data, size_t data_len, 
 		struct iasecc_extended_tlv tlv;
 
 		rv = iasecc_parse_get_tlv(card, data + offs, data_len - offs, &tlv);
-		LOG_TEST_RET(ctx, rv, "iasecc_parse_prvkey() get and parse TLV error");
+		LOG_TEST_RET(ctx, rv, "get and parse TLV error");
 
-		sc_log(ctx, "iasecc_parse_prvkey() get and parse TLV returned %i; tag %X; size %zu",
+		sc_log(ctx, "get and parse TLV returned %i; tag %X; size %zu",
 				rv, tlv.tag, tlv.size);
 
 		if (tlv.tag == IASECC_SDO_PRVKEY_TAG_COMPULSORY) {
@@ -525,9 +565,9 @@ iasecc_parse_pubkey(struct sc_card *card, unsigned char *data, size_t data_len, 
 		struct iasecc_extended_tlv tlv;
 
 		rv = iasecc_parse_get_tlv(card, data + offs, data_len - offs, &tlv);
-		LOG_TEST_RET(ctx, rv, "iasecc_parse_pubkey() get and parse TLV error");
+		LOG_TEST_RET(ctx, rv, "get and parse TLV error");
 
-		sc_log(ctx, "iasecc_parse_pubkey() get and parse TLV returned %i; tag %X; size %zu",
+		sc_log(ctx, "get and parse TLV returned %i; tag %X; size %zu",
 				rv, tlv.tag, tlv.size);
 
 		if (tlv.tag == IASECC_SDO_PUBKEY_TAG_N) {
@@ -569,9 +609,9 @@ iasecc_parse_keyset(struct sc_card *card, unsigned char *data, size_t data_len, 
 		struct iasecc_extended_tlv tlv;
 
 		rv = iasecc_parse_get_tlv(card, data + offs, data_len - offs, &tlv);
-		LOG_TEST_RET(ctx, rv, "iasecc_parse_keyset() get and parse TLV error");
+		LOG_TEST_RET(ctx, rv, "get and parse TLV error");
 
-		sc_log(ctx, "iasecc_parse_prvkey() get and parse TLV returned %i; tag %X; size %zu",
+		sc_log(ctx, "get and parse TLV returned %i; tag %X; size %zu",
 				rv, tlv.tag, tlv.size);
 
 		if (tlv.tag == IASECC_SDO_KEYSET_TAG_COMPULSORY) {
@@ -601,9 +641,9 @@ iasecc_parse_docp(struct sc_card *card, unsigned char *data, size_t data_len, st
 		struct iasecc_extended_tlv tlv;
 
 		rv = iasecc_parse_get_tlv(card, data + offs, data_len - offs, &tlv);
-		LOG_TEST_RET(ctx, rv, "iasecc_parse_get_tlv() get and parse TLV error");
+		LOG_TEST_RET(ctx, rv, "get and parse TLV error");
 
-		sc_log(ctx, "iasecc_parse_docp() parse_get_tlv returned %i; tag %X; size %zu",
+		sc_log(ctx, "parse_get_tlv returned %i; tag %X; size %zu",
 				rv, tlv.tag, tlv.size);
 
 		if (tlv.tag == IASECC_DOCP_TAG_ACLS)   {
@@ -649,7 +689,7 @@ iasecc_parse_docp(struct sc_card *card, unsigned char *data, size_t data_len, st
 		}
 		else   {
 			free(tlv.value);
-			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "iasecc_parse_get_tlv() parse error: non DOCP tag");
+			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "parse error: non DOCP tag");
 		}
 
 		offs += rv;
@@ -670,17 +710,17 @@ iasecc_sdo_parse_data(struct sc_card *card, unsigned char *data, size_t data_len
 	int tlv_size, rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "iasecc_sdo_parse_data() class %X; ref %X", sdo->sdo_class, sdo->sdo_ref);
+	sc_log(ctx, "class %X; ref %X", sdo->sdo_class, sdo->sdo_ref);
 
 	tlv_size = iasecc_parse_get_tlv(card, data, data_len, &tlv);
 	LOG_TEST_RET(ctx, tlv_size, "parse error: get TLV");
 
-	sc_log(ctx, "iasecc_sdo_parse_data() tlv.tag 0x%X", tlv.tag);
+	sc_log(ctx, "tlv.tag 0x%X", tlv.tag);
 	if (tlv.tag == IASECC_DOCP_TAG)   {
-		sc_log(ctx, "iasecc_sdo_parse_data() parse IASECC_DOCP_TAG: 0x%X; size %zu",
+		sc_log(ctx, "parse IASECC_DOCP_TAG: 0x%X; size %zu",
 				tlv.tag, tlv.size);
 		rv = iasecc_parse_docp(card, tlv.value, tlv.size, sdo);
-		sc_log(ctx, "iasecc_sdo_parse_data() parsed IASECC_DOCP_TAG rv %i", rv);
+		sc_log(ctx, "parsed IASECC_DOCP_TAG rv %i", rv);
 		free(tlv.value);
 		LOG_TEST_RET(ctx, rv, "parse error: cannot parse DOCP");
 	}
@@ -741,7 +781,7 @@ iasecc_sdo_parse_data(struct sc_card *card, unsigned char *data, size_t data_len
 		LOG_TEST_RET(ctx, rv, "parse error: cannot parse SDO KEYSET data");
 	}
 	else   {
-		sc_log(ctx, "iasecc_sdo_parse_data() non supported tag 0x%X", tlv.tag);
+		sc_log(ctx, "non supported tag 0x%X", tlv.tag);
 		free(tlv.value);
 		LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_SUPPORTED);
 	}
@@ -799,7 +839,7 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 	offs = 3 + size_size;
 	for (; offs < data_len;)   {
 		rv = iasecc_sdo_parse_data(card, data + offs, data_len - offs, sdo);
-		if (rv != SC_SUCCESS) {
+		if (rv < 0) {
 			iasecc_sdo_free_fields(card, sdo);
 			LOG_TEST_RET(ctx, rv, "parse error: invalid SDO data");
 		}
@@ -807,8 +847,10 @@ iasecc_sdo_parse(struct sc_card *card, unsigned char *data, size_t data_len, str
 		offs += rv;
 	}
 
-	if (offs != data_len)
+	if (offs != data_len) {
+		iasecc_sdo_free_fields(card, sdo);
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totally parsed");
+	}
 
 	sc_log(ctx, "docp.acls_contact.size %zu, docp.size.size %zu",
 			sdo->docp.acls_contact.size, sdo->docp.size.size);
@@ -833,40 +875,55 @@ iasecc_sdo_allocate_and_parse(struct sc_card *card, unsigned char *data, size_t 
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_DATA);
 
 	sdo = calloc(1, sizeof(struct iasecc_sdo));
-	if (!sdo)
-		return SC_ERROR_OUT_OF_MEMORY;
-	*out = sdo;
+	if (!sdo) {
+		rv = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 
 	sdo->sdo_class = *(data + 1) & 0x7F;
 	sdo->sdo_ref = *(data + 2) & 0x3F;
 
 	sc_log(ctx, "sdo_class 0x%X, sdo_ref 0x%X", sdo->sdo_class, sdo->sdo_ref);
-	if (data_len == 3)
+	if (data_len == 3) {
+		*out = sdo;
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	}
 
-	size_size = iasecc_parse_size(data + 3, data_len - 3, &size);
-	LOG_TEST_RET(ctx, size_size, "parse error: invalid size data");
+	rv = iasecc_parse_size(data + 3, data_len - 3, &size);
+	LOG_TEST_GOTO_ERR(ctx, rv, "parse error: invalid size data");
+	size_size = rv;
 
-	if (data_len != size + size_size + 3)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: invalid SDO data size");
+	if (data_len != size + size_size + 3) {
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_TEST_GOTO_ERR(ctx, rv, "parse error: invalid SDO data size");
+	}
 
 	sc_log(ctx, "sz %zu, sz_size %d", size, size_size);
 
 	offs = 3 + size_size;
 	for (; offs < data_len;)   {
 		rv = iasecc_sdo_parse_data(card, data + offs, data_len - offs, sdo);
-		LOG_TEST_RET(ctx, rv, "parse error: invalid SDO data");
+		LOG_TEST_GOTO_ERR(ctx, rv, "parse error: invalid SDO data");
 
 		offs += rv;
 	}
 
-	if (offs != data_len)
-		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "parse error: not totally parsed");
+	if (offs != data_len) {
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_TEST_GOTO_ERR(ctx, rv, "parse error: not totally parsed");
+	}
 
 	sc_log(ctx, "docp.acls_contact.size %zu; docp.size.size %zu",
 			sdo->docp.acls_contact.size, sdo->docp.size.size);
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	rv = SC_SUCCESS;
+	*out = sdo;
+	sdo = NULL;
+
+err:
+	iasecc_sdo_free(card, sdo);
+
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -989,7 +1046,7 @@ err:
 	free(tmp_blob);
 	free(st_blob);
 
-	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	LOG_FUNC_RETURN(ctx, rv);
 }
 
 
@@ -1035,7 +1092,7 @@ iasecc_sdo_encode_create(struct sc_context *ctx, struct iasecc_sdo *sdo, unsigne
 	int rv;
 
 	LOG_FUNC_CALLED(ctx);
-	sc_log(ctx, "ecc_sdo_encode_create() sdo->sdo_class %X", sdo->sdo_class);
+	sc_log(ctx, "sdo->sdo_class %X", sdo->sdo_class);
 	sc_log(ctx, "id %02X%02X%02X", IASECC_SDO_TAG_HEADER, sdo->sdo_class | 0x80, sdo->sdo_ref);
 
 	if (out)
@@ -1121,7 +1178,7 @@ iasecc_sdo_encode_rsa_update(struct sc_context *ctx, struct iasecc_sdo *sdo, str
 {
 	LOG_FUNC_CALLED(ctx);
 
-	sc_log(ctx, "iasecc_sdo_encode_rsa_update() SDO class %X", sdo->sdo_class);
+	sc_log(ctx, "SDO class %X", sdo->sdo_class);
 	memset(sdo_update, 0, sizeof(*sdo_update));
 	if (sdo->sdo_class == IASECC_SDO_CLASS_RSA_PRIVATE)   {
 		int index = 0;
@@ -1261,7 +1318,7 @@ iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t
 
 		if (*(data + offs) == IASECC_CARD_ANSWER_TAG_DATA )   {
 			if (size > sizeof(out->data))
-				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "iasecc_sm_decode_answer() unbelievable !!!");
+				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "unbelievable !!!");
 
 			memcpy(out->data, data + offs + size_size + 1, size);
 			out->data_len = size;
@@ -1269,7 +1326,7 @@ iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t
 		}
 		else if (*(data + offs) == IASECC_CARD_ANSWER_TAG_SW )   {
 			if (size_size != 1 || size != 2)
-				LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "iasecc_sm_decode_answer() SW length not 2");
+				LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "SW length not 2");
 			out->sw = *(data + offs + 2) * 0x100 + *(data + offs + 3);
 
 			memcpy(out->ticket, data + offs, 4);
@@ -1279,7 +1336,7 @@ iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t
 		}
 		else if (*(data + offs) == IASECC_CARD_ANSWER_TAG_MAC )   {
 			if (size_size != 1 || size != 8)
-				LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "iasecc_sm_decode_answer() MAC length not 8");
+				LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "MAC length not 8");
 			memcpy(out->mac, data + offs + 2, 8);
 
 			memcpy(out->ticket + 4, data + offs, 10);
@@ -1288,12 +1345,12 @@ iasecc_sdo_parse_card_answer(struct sc_context *ctx, unsigned char *data, size_t
 			have_mac = 1;
 		}
 		else   {
-			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "iasecc_sm_decode_answer() invalid card answer tag");
+			LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "invalid card answer tag");
 		}
 	}
 
 	if (!have_mac || !have_status)
-		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "iasecc_sm_decode_answer() absent MAC or SW ");
+		LOG_TEST_RET(ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED, "absent MAC or SW ");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }

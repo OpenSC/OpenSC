@@ -224,7 +224,7 @@
 						<para>
 							To resume a suspended transport PIN use
 							<option>--unlock-transport-protection</option> together with
-							<option>--can</option>.
+							<option>--verify-can</option>.
 						</para>
 					</listitem>
 				</varlistentry>

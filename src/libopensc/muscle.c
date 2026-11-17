@@ -775,6 +775,14 @@ static int msc_compute_crypt_final_object(
 	u8 *ptr;
 	int r;
 
+	if (dataLength > sizeof(buffer) - 3)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	if (dataLength > *outputDataLength) {
+		*outputDataLength = dataLength;
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+	}
+
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x36, keyLocation, 0x03); /* Final */
 
 	apdu.data = buffer;
