@@ -201,7 +201,6 @@ static int edo_select_path(struct sc_card* card, const u8* path, size_t pathlen,
  */
 static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, struct sc_file** file_out) {
 	LOG_FUNC_CALLED(card->ctx);
-	/* An empty path must not leave an uninitialised FCI length. */
 	struct edo_buff buff = {0};
 
 	switch (in_path->type) {
