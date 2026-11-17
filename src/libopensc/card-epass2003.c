@@ -112,7 +112,18 @@ typedef struct epass2003_exdata_st {
 	unsigned char bFipsCertification;	/* fips mode Alg */
 	unsigned char currAlg;		/* current Alg */
 	unsigned int  ecAlgFlags; 	/* Ec Alg mechanism type*/
+	unsigned char cur_df[6];	/* path of the DF selected last, by path */
+	size_t cur_df_len;		/* 0: not known */
 } epass2003_exdata;
+
+/* Forget which DF is current: after anything but a SELECT by path, the
+ * driver no longer knows it. */
+static void
+epass2003_forget_df(struct sc_card *card)
+{
+	if (card && card->drv_data)
+		((epass2003_exdata *)card->drv_data)->cur_df_len = 0;
+}
 
 #define REVERSE_ORDER4(x)	(			  \
 		((unsigned long)x & 0xFF000000)>> 24	| \
@@ -2040,7 +2051,10 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 	u8 n_pathbuf[SC_MAX_PATH_SIZE];
 	const u8 *path = pathbuf;
 	size_t pathlen = len;
+	epass2003_exdata *exdata = NULL;
+	sc_file_t *file = NULL;
 	unsigned int i;
+	int in_df;
 	int r;
 
 	if (pathlen % 2 != 0 || pathlen > 6 || pathlen <= 0)
@@ -2059,12 +2073,44 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 		pathlen += 2;
 	}
 
-	for (i = 0; i < pathlen - 2; i += 2) {
-		r = epass2003_select_fid(card, path[i], path[i + 1], NULL);
-		LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
+	/* Selecting the MF again on the way to a file of the DF that is
+	 * already current leaves that DF, and some tokens then drop the
+	 * security status a VERIFY gave there: the next command that needs
+	 * the PIN fails with 6982. When the parent DF is the current one,
+	 * select only the file. */
+	exdata = (epass2003_exdata *)card->drv_data;
+	in_df = exdata && exdata->cur_df_len == pathlen - 2 &&
+		memcmp(exdata->cur_df, path, pathlen - 2) == 0;
+	if (exdata)
+		exdata->cur_df_len = 0;
+
+	if (!in_df) {
+		for (i = 0; i < pathlen - 2; i += 2) {
+			r = epass2003_select_fid(card, path[i], path[i + 1], NULL);
+			LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
+		}
 	}
 
-	return epass2003_select_fid(card, path[pathlen - 2], path[pathlen - 1], file_out);
+	r = epass2003_select_fid(card, path[pathlen - 2], path[pathlen - 1], &file);
+	LOG_TEST_RET(card->ctx, r, "SELECT FILE failed");
+
+	/* remember the DF that is now current: the file itself when it is a
+	 * DF, its parent otherwise */
+	if (exdata && file) {
+		size_t df_len = file->type == SC_FILE_TYPE_DF ? pathlen : pathlen - 2;
+
+		if (df_len > 0 && df_len <= sizeof(exdata->cur_df)) {
+			memcpy(exdata->cur_df, path, df_len);
+			exdata->cur_df_len = df_len;
+		}
+	}
+
+	if (file_out)
+		*file_out = file;
+	else
+		sc_file_free(file);
+
+	return SC_SUCCESS;
 }
 
 
@@ -2078,8 +2124,10 @@ epass2003_select_file(struct sc_card *card, const sc_path_t * in_path,
 	case SC_PATH_TYPE_FILE_ID:
 		if (in_path->len != 2)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		epass2003_forget_df(card);
 		return epass2003_select_fid(card, in_path->value[0], in_path->value[1], file_out);
 	case SC_PATH_TYPE_DF_NAME:
+		epass2003_forget_df(card);
 		return epass2003_select_aid(card, in_path, file_out);
 	case SC_PATH_TYPE_PATH:
 		return epass2003_select_path(card, in_path->value, in_path->len, file_out);
@@ -2649,6 +2697,7 @@ epass2003_create_file(struct sc_card *card, sc_file_t * file)
 	struct sc_apdu apdu;
 
 	len = SC_MAX_APDU_BUFFER_SIZE;
+	epass2003_forget_df(card);
 
 	epass2003_hook_file(file, 1);
 
@@ -2681,6 +2730,7 @@ epass2003_delete_file(struct sc_card *card, const sc_path_t * path)
 	struct sc_apdu apdu;
 
 	LOG_FUNC_CALLED(card->ctx);
+	epass2003_forget_df(card);
 
 	r = sc_select_file(card, path, NULL);
 	LOG_TEST_RET(card->ctx, r, "Can not select file");
@@ -3030,6 +3080,7 @@ epass2003_erase_card(struct sc_card *card)
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
+	epass2003_forget_df(card);
 
 	/* install magic pin */
 	sc_format_apdu(card, &apdu, 0x03, 0xe3, 0x00, 0x00);
