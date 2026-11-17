@@ -164,7 +164,6 @@ static int edo_select_ef(struct sc_card* card, const u8 path[2], struct edo_buff
 
 static int edo_select_name(struct sc_card* card, const u8* name, size_t namelen, struct edo_buff* buff) {
 	LOG_FUNC_CALLED(card->ctx);
-	/* SELECT AID takes response capacity, not the previous FCI length. */
 	buff->len = sizeof buff->val;
 	LOG_FUNC_RETURN(card->ctx, iso7816_select_aid(card, name, namelen, buff->val, &buff->len));
 }
