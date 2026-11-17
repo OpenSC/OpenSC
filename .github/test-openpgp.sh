@@ -26,12 +26,11 @@ echo "com.licel.jcardsim.card.ATR=3B80800101" >> openpgp_jcardsim.cfg;
 echo "com.licel.jcardsim.vsmartcard.host=localhost" >> openpgp_jcardsim.cfg;
 echo "com.licel.jcardsim.vsmartcard.port=35963" >> openpgp_jcardsim.cfg;
 
-
 # prepare pcscd
 PCSCD_DEBUG="-d -a"
 . .github/restart-pcscd.sh
-
 sleep 5
+
 echo "Is pcscd running:"
 ps -ef | grep  pcscd
 
@@ -56,8 +55,8 @@ ps  -ef |  grep pcsc
 # start the applet and run couple of commands against that
 java -noverify -cp ykneo-openpgp/applet/bin:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard openpgp_jcardsim.cfg >/dev/null &
 PID=$!;
-echo java pid $PID
 sleep 5;
+
 $VALGRIND opensc-tool --card-driver default --send-apdu 80b800002210D276000124010200000000000001000010D276000124010200000000000001000000;
 $VALGRIND opensc-tool -n;
 $VALGRIND openpgp-tool --verify CHV3 --pin 12345678 --gen-key 2;
@@ -68,7 +67,7 @@ $VALGRIND pkcs11-tool -l -t -p 123456;
 $VALGRIND openpgp-tool --verify CHV3 --pin 12345678 --gen-key 1;
 $VALGRIND openpgp-tool --verify CHV3 --pin 12345678 --gen-key 3;
 pushd src/tests/p11test/
-sleep 5
+
 # signing key 1 is on slot 1
 $VALGRIND ./p11test -v -s 0 -p 123456 -o openpgp_s0.json
 $VALGRIND ./p11test -v -s 1 -p 123456 -o openpgp_s1.json
