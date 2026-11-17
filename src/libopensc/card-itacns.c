@@ -81,6 +81,45 @@ static void itacns_init_cns_card(sc_card_t *card)
 	}
 }
 
+static const u8 itacns_cns_aid[] = {
+		0xA0, 0x00, 0x00, 0x00, 0x95, 0x01, 0x00, 0x4D};
+
+static int
+itacns_match_cns_model(sc_card_t *card)
+{
+	static const u8 model[] = {'J', 'S', 'i', 'g', 'n', '4'};
+	sc_apdu_t apdu;
+	u8 rbuf[16];
+	int r;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_2_SHORT, 0xCA, 0x01, 0x80);
+	apdu.le = sizeof model;
+	apdu.resp = rbuf;
+	apdu.resplen = sizeof rbuf;
+	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0)
+		return r;
+	if (sc_check_sw(card, apdu.sw1, apdu.sw2) != SC_SUCCESS)
+		return 0;
+
+	if (apdu.resplen < sizeof model ||
+			memcmp(rbuf, model, sizeof model) != 0)
+		return 0;
+
+	card->type = SC_CARD_TYPE_ITACNS_CNS_JSIGN4;
+	return 1;
+}
+
+static int
+itacns_match_cns_aid(sc_card_t *card)
+{
+	if (iso7816_select_aid(card, itacns_cns_aid, sizeof itacns_cns_aid,
+			    NULL, NULL) != SC_SUCCESS)
+		return 0;
+
+	return itacns_match_cns_model(card) > 0;
+}
+
 static int itacns_match_cns_card(sc_card_t *card)
 {
 	u8 manufacturer_code;
@@ -126,8 +165,18 @@ static int itacns_match_card(sc_card_t *card)
 	r = _sc_match_atr(card, itacns_atrs, &card->type);
 	if(r >= 0) return 1;
 
-	if (itacns_match_cns_card(card)) return 1;
+	if (itacns_match_cns_card(card)) {
+		if (card->type == SC_CARD_TYPE_ITACNS_CNS &&
+				card->reader->atr_info.hist_bytes[3] == ITACNS_MASKMAN_STINCARD) {
+			r = itacns_match_cns_model(card);
+			if (r == 0)
+				itacns_match_cns_aid(card);
+		}
+		return 1;
+	}
 	if (itacns_match_cie_card(card)) return 1;
+	if (itacns_match_cns_aid(card))
+		return 1;
 
 	/* No card type was matched. */
 	return 0;
@@ -150,13 +199,19 @@ static int itacns_init(sc_card_t *card)
 	if (!card->drv_data)
 		return SC_ERROR_OUT_OF_MEMORY;
 
-	if (card->type == SC_CARD_TYPE_ITACNS_CNS)
+	if (card->type == SC_CARD_TYPE_ITACNS_CNS ||
+			card->type == SC_CARD_TYPE_ITACNS_CNS_JSIGN4)
 		itacns_init_cns_card(card);
 
-	DRVDATA(card)->ic_manufacturer_code = card->reader->atr_info.hist_bytes[2];
-	DRVDATA(card)->mask_manufacturer_code = card->reader->atr_info.hist_bytes[3];
-	card->version.fw_major = card->reader->atr_info.hist_bytes[4];
-	card->version.fw_minor = card->reader->atr_info.hist_bytes[5];
+	if (card->reader->atr_info.hist_bytes_len >= 6) {
+		DRVDATA(card)->ic_manufacturer_code = card->reader->atr_info.hist_bytes[2];
+		DRVDATA(card)->mask_manufacturer_code = card->reader->atr_info.hist_bytes[3];
+		card->version.fw_major = card->reader->atr_info.hist_bytes[4];
+		card->version.fw_minor = card->reader->atr_info.hist_bytes[5];
+	}
+
+	if (card->type == SC_CARD_TYPE_ITACNS_CNS_JSIGN4)
+		card->caps |= SC_CARD_CAP_ISO7816_PIN_INFO;
 
 	/* Set up algorithm info. */
 	flags = SC_ALGORITHM_NEED_USAGE
@@ -164,14 +219,33 @@ static int itacns_init(sc_card_t *card)
 		| SC_ALGORITHM_RSA_HASHES
 		;
 
-	if ((card->version.hw_major >= 1 && card->version.hw_minor >= 1) ||
-	    card->type == SC_CARD_TYPE_ITACNS_CNS_IDEMIA_2021) {
+	if (card->type == SC_CARD_TYPE_ITACNS_CNS_JSIGN4 ||
+			(card->version.hw_major >= 1 && card->version.hw_minor >= 1) ||
+			card->type == SC_CARD_TYPE_ITACNS_CNS_IDEMIA_2021) {
 		card->caps |= SC_CARD_CAP_APDU_EXT;
 		_sc_card_add_rsa_alg(card, 2048, flags, 0);
 	} else {
 		_sc_card_add_rsa_alg(card, 1024, flags, 0);
 	}
 	return SC_SUCCESS;
+}
+
+static int
+itacns_card_reader_lock_obtained(sc_card_t *card, int was_reset)
+{
+	int r;
+
+	if (card->type != SC_CARD_TYPE_ITACNS_CNS_JSIGN4)
+		return SC_SUCCESS;
+
+	r = itacns_match_cns_model(card);
+	if (r < 0)
+		return r;
+	if (r > 0)
+		return SC_SUCCESS;
+
+	return iso7816_select_aid(card, itacns_cns_aid, sizeof itacns_cns_aid,
+			NULL, NULL);
 }
 
 static int itacns_finish(struct sc_card *card)
@@ -295,6 +369,13 @@ static int itacns_set_security_env(sc_card_t *card,
 static int
 itacns_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 {
+	if (data->cmd == SC_PIN_CMD_GET_INFO &&
+			card->type == SC_CARD_TYPE_ITACNS_CNS_JSIGN4 &&
+			data->pin_reference != 0x10 && data->pin_reference != 0x11) {
+		data->pin1.tries_left = -1;
+		return SC_ERROR_NOT_SUPPORTED;
+	}
+
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 	/* Enable backtracking for STIncard cards. */
 	if(DRVDATA(card)->mask_manufacturer_code == ITACNS_MASKMAN_STINCARD) {
@@ -508,6 +589,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	itacns_ops.match_card = itacns_match_card;
 	itacns_ops.init = itacns_init;
 	itacns_ops.finish = itacns_finish;
+	itacns_ops.card_reader_lock_obtained = itacns_card_reader_lock_obtained;
 	itacns_ops.set_security_env = itacns_set_security_env;
 	itacns_ops.restore_security_env = itacns_restore_security_env;
 	itacns_ops.pin_cmd = itacns_pin_cmd;

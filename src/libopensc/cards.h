@@ -169,6 +169,7 @@ enum {
 	SC_CARD_TYPE_ITACNS_CNS_IDEMIA_2021,
 	SC_CARD_TYPE_ITACNS_CIE_V2,
 	SC_CARD_TYPE_ITACNS_CIE_V1,
+	SC_CARD_TYPE_ITACNS_CNS_JSIGN4,
 
 	/* Generic JavaCards without supported applet */
 	SC_CARD_TYPE_JAVACARD_BASE = 24000,
@@ -291,6 +292,7 @@ enum {
 
 	/* Uruguayan eID card (cedula de identidad) */
 	SC_CARD_TYPE_CEDULAUY = 45000,
+	SC_CARD_TYPE_CEDULAUY_CONTACTLESS,
 
 	/* Bit4id Digital-DNA (NXP ChipDoc, Italian CNS/eID) */
 	SC_CARD_TYPE_CHIPDOC_IT = 46000,

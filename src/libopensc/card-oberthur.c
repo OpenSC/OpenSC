@@ -230,7 +230,7 @@ auth_init(struct sc_card *card)
 	if (auth_select_aid(card)) {
 		sc_log(card->ctx, "Failed to initialize %s", card->name);
 		rv = SC_ERROR_INVALID_CARD;
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_CARD, "Failed to initialize");
+		LOG_TEST_GOTO_ERR(card->ctx, rv, "Failed to initialize");
 	}
 
 	sc_format_path("3F00", &path);

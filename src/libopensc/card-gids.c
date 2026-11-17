@@ -1209,6 +1209,7 @@ static int gids_perform_create_keyfile(sc_card_t *card, u8 keytype, u8 kid, u8 a
 									0x83,0x01,kid,
 									0x95,0x01,0x40
 	};
+	/* clang-format off */
 	u8 sign[] = {0x62,0x26,
 					0x82,0x01,0x18,  // file type
 					0x83,0x02,0xB0,kid, // key id = 81
@@ -1216,12 +1217,13 @@ static int gids_perform_create_keyfile(sc_card_t *card, u8 keytype, u8 kid, u8 a
 					0xA5,0x16,
 						0xB6,0x09, // signature
 							0x80,0x01,0x10+ algid, // Full SHA off-card authorized
-							0x83,0x01,0x83, // key id
+							0x83,0x01,kid, // key id
 							0x95,0x01,0x40, // usage
 						0xB6,0x09, // signature
 							0x80,0x01,0x50 + algid, // RSASSA PKCS1-v 1_5 padding scheme (for RSA only; otherwise, RFU)
-							0x83,0x01,0x83,
+							0x83,0x01,kid,
 							0x95,0x01,0x40};
+	/* clang-format on */
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 

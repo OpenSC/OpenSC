@@ -18,15 +18,14 @@ export LD_LIBRARY_PATH=/usr/local/lib
 # The ISO applet
 if [ ! -d IsoApplet ]; then
 	if [ "$isoapplet_version" = "v0" ]; then
-		 isoapplet_branch="main-javacard-v2.2.2"
-		 git clone https://github.com/philipWendland/IsoApplet.git --branch $isoapplet_branch --depth 1
+		isoapplet_branch="main-javacard-v2.2.2"
 	elif [ "$isoapplet_version" = "v1" ]; then
-		 #isoapplet_branch="main"
-		 git clone https://github.com/philipWendland/IsoApplet.git --revision 9cf87af45dc2949730a700a52a2dceb87353734c --depth 1
+		isoapplet_branch="main"
 	else
-		 echo "Unknown IsoApplet version: $isoapplet_version"
-		 exit 1
+		echo "Unknown IsoApplet version: $isoapplet_version"
+		exit 1
 	fi
+	git clone https://github.com/philipWendland/IsoApplet.git --branch $isoapplet_branch --depth 1
 
 	# enable IsoApplet key import patch
 	sed "s/DEF_PRIVATE_KEY_IMPORT_ALLOWED = false/DEF_PRIVATE_KEY_IMPORT_ALLOWED = true/g" -i "IsoApplet/src/${isoapplet_pkgdir}/IsoApplet.java"
@@ -74,7 +73,17 @@ $VALGRIND pkcs15-tool --change-pin --pin 123456 --new-pin 654321
 $VALGRIND pkcs15-tool --unblock-pin --puk 0123456789abcdef --new-pin 123456
 $VALGRIND pkcs15-init --generate-key rsa/2048     --id 1 --key-usage decrypt,sign --auth-id FF --pin 123456
 $VALGRIND pkcs15-init --generate-key rsa/2048     --id 2 --key-usage decrypt      --auth-id FF --pin 123456
-$VALGRIND pkcs15-init --generate-key ec/secp256r1 --id 3 --key-usage sign         --auth-id FF --pin 123456
+if [ "$isoapplet_version" = "v0" ]; then
+	ECDSA_MECHANISM="ECDSA-SHA1"
+elif [ "$isoapplet_version" = "v1" ]; then
+	ECDSA_MECHANISM="ECDSA-SHA256"
+	$VALGRIND pkcs15-init --generate-key rsa/4096     --id 3 --key-usage decrypt,sign --auth-id FF --pin 123456
+	$VALGRIND pkcs15-init --generate-key rsa/4096     --id 4 --key-usage decrypt      --auth-id FF --pin 123456
+else
+	echo "Unknown IsoApplet version: $isoapplet_version"
+	exit 1
+fi
+$VALGRIND pkcs15-init --generate-key ec/secp256r1 --id 10 --key-usage sign        --auth-id FF --pin 123456
 $VALGRIND pkcs15-tool -D
 $VALGRIND pkcs11-tool -l -t -p 123456
 
@@ -87,15 +96,16 @@ popd
 # random data to be signed
 dd if=/dev/random of=/tmp/data.bin bs=300 count=1
 # sign & verify using secp256r1 key
-$VALGRIND pkcs11-tool -l -p 123456 -s -m ECDSA-SHA1 -d 3 -i /tmp/data.bin -o /tmp/data.sig
-$VALGRIND pkcs11-tool --verify -m ECDSA-SHA1 -d 3 -i /tmp/data.bin --signature-file /tmp/data.sig
+$VALGRIND pkcs11-tool -l -p 123456 -s -m "$ECDSA_MECHANISM" -d 10 -i /tmp/data.bin -o /tmp/data.sig
+$VALGRIND pkcs11-tool --verify -m "$ECDSA_MECHANISM" -d 10 -i /tmp/data.bin --signature-file /tmp/data.sig
 # import, sign & verify using another secp256r1 key
 openssl ecparam -name secp256r1 -genkey -noout -out /tmp/ECprivKey.pem
 openssl ec -in /tmp/ECprivKey.pem -pubout -out /tmp/ECpubKey.pem
-$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECprivKey.pem -y privkey -d 4
-$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECpubKey.pem -y pubkey -d 4
-$VALGRIND pkcs11-tool -l -p 123456 -s -m ECDSA-SHA1 -d 4 -i /tmp/data.bin -o /tmp/data.sig
-$VALGRIND pkcs11-tool --verify -m ECDSA-SHA1 -d 4 -i /tmp/data.bin --signature-file /tmp/data.sig
+$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECprivKey.pem -y privkey -d 11
+$VALGRIND pkcs11-tool -l -p 123456 -w /tmp/ECpubKey.pem -y pubkey -d 11
+$VALGRIND pkcs11-tool -l -p 123456 -s -m "$ECDSA_MECHANISM" -d 11 -i /tmp/data.bin -o /tmp/data.sig
+$VALGRIND pkcs11-tool --verify -m "$ECDSA_MECHANISM" -d 11 -i /tmp/data.bin --signature-file /tmp/data.sig
+
 # cleanup
 rm /tmp/ECprivKey.pem /tmp/ECpubKey.pem /tmp/data.bin /tmp/data.sig
 

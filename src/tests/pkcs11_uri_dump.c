@@ -59,6 +59,14 @@ print_str(const char *key, const char *val)
 	printf("%s=%s\n", key, val);
 }
 
+static void
+print_ulong(const char *key, unsigned long val)
+{
+	if (val == CK_UNAVAILABLE_INFORMATION)
+		return;
+	printf("%s=%lu\n", key, val);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -88,7 +96,8 @@ main(int argc, char **argv)
 	print_hex_str("model", uri->token_model);
 	print_hex_str("serial", uri->serial);
 	print_hex_str("slot-description", uri->slot_description);
-	print_str("slot-id", uri->slot_id);
+	print_hex_str("slot-manufacturer", uri->slot_manufacturer);
+	print_ulong("slot-id", uri->slot_id);
 	print_hex_attr("id", uri->id, uri->id_len);
 	print_hex_str("object", uri->object);
 	print_str("type", uri->type);

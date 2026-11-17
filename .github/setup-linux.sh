@@ -68,7 +68,9 @@ fi
 if [ "$1" == "mingw" -o "$1" == "mingw32" -o "$1" == "ix86" ]; then
 	$SUDO rm -f /etc/apt/sources.list.d/microsoft-prod.list
 	$SUDO apt-get update -qq
-	$SUDO apt-get purge -yqq libmono* moby* mono* php* libgdiplus libpcre2-posix3 libzip4
+	# Plain package names fail apt-get when absent from the image (ubuntu-26.04
+	# dropped libzip4 and libpcre2-posix3) — regex patterns are skipped silently.
+	$SUDO apt-get purge -yqq libmono* moby* mono* php* libgdiplus 'libpcre2-posix[0-9]' 'libzip[0-9]'
 	$SUDO dpkg --add-architecture i386
 fi
 
