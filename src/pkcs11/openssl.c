@@ -877,11 +877,12 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 			EVP_MD *mgf_md = NULL, *pss_md = NULL;
 			unsigned char digest[EVP_MAX_MD_SIZE];
 
-			if (mech->pParameter == NULL) {
+			rv = sc_pkcs11_validate_pss_params(mech);
+			if (rv != CKR_OK) {
 				free(rsa_out);
 				EVP_PKEY_free(pkey);
-				sc_log(context, "PSS mechanism requires parameter");
-				return CKR_MECHANISM_PARAM_INVALID;
+				sc_log(context, "Invalid PSS mechanism parameters");
+				return rv;
 			}
 
 			param = (CK_RSA_PKCS_PSS_PARAMS*)mech->pParameter;
@@ -1000,6 +1001,95 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 		free(rsa_out);
 	}
 
+	return rv;
+}
+
+/*
+ * Encrypt data with a public key in software, as C_Verify does.
+ * Only CKM_RSA_PKCS and CKM_RSA_X_509 are supported.
+ */
+CK_RV
+sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
+		CK_MECHANISM_PTR mech,
+		CK_BYTE_PTR data, CK_ULONG data_len,
+		CK_BYTE_PTR out, CK_ULONG_PTR out_len)
+{
+	CK_RV rv = CKR_GENERAL_ERROR;
+	EVP_PKEY *pkey = NULL;
+	EVP_PKEY_CTX *ctx = NULL;
+	const unsigned char *pubkey_tmp = pubkey;
+	unsigned char *padded = NULL;
+	size_t len;
+	int padding;
+
+	if (out_len == NULL)
+		return CKR_ARGUMENTS_BAD;
+
+	switch (mech->mechanism) {
+	case CKM_RSA_PKCS:
+		padding = RSA_PKCS1_PADDING;
+		break;
+	case CKM_RSA_X_509:
+		padding = RSA_NO_PADDING;
+		break;
+	default:
+		return CKR_MECHANISM_INVALID;
+	}
+
+	pkey = d2i_PUBKEY(NULL, &pubkey_tmp, pubkey_len);
+	if (pkey == NULL) {
+		sc_log_openssl(context);
+		return CKR_GENERAL_ERROR;
+	}
+	if (EVP_PKEY_base_id(pkey) != EVP_PKEY_RSA) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto end;
+	}
+
+	len = EVP_PKEY_size(pkey);
+	/* PKCS#1 v1.5 padding takes at least 11 bytes */
+	if ((padding == RSA_PKCS1_PADDING && (len < 11 || data_len > len - 11)) ||
+			(padding == RSA_NO_PADDING && data_len > len)) {
+		rv = CKR_DATA_LEN_RANGE;
+		goto end;
+	}
+	if (out == NULL) {
+		*out_len = len;
+		rv = CKR_OK;
+		goto end;
+	}
+	if (*out_len < len) {
+		*out_len = len;
+		rv = CKR_BUFFER_TOO_SMALL;
+		goto end;
+	}
+
+	/* Raw RSA input shorter than the modulus gets leading zeros */
+	if (padding == RSA_NO_PADDING && data_len < len) {
+		padded = calloc(1, len);
+		if (padded == NULL) {
+			rv = CKR_HOST_MEMORY;
+			goto end;
+		}
+		memcpy(padded + len - data_len, data, data_len);
+		data = padded;
+		data_len = len;
+	}
+
+	ctx = sc_evp_pkey_ctx_new(context, pkey);
+	if (ctx == NULL || EVP_PKEY_encrypt_init(ctx) != 1 ||
+			EVP_PKEY_CTX_set_rsa_padding(ctx, padding) != 1 ||
+			EVP_PKEY_encrypt(ctx, out, &len, data, data_len) != 1) {
+		sc_log_openssl(context);
+		goto end;
+	}
+	*out_len = len;
+	rv = CKR_OK;
+
+end:
+	free(padded);
+	EVP_PKEY_CTX_free(ctx);
+	EVP_PKEY_free(pkey);
 	return rv;
 }
 #endif

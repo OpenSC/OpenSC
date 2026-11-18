@@ -113,8 +113,10 @@ empty_wait_for_event(sc_context_t *ctx, unsigned int event_mask, sc_reader_t **e
 	return SC_SUCCESS;
 }
 
-int
-empty_perform_pace(struct sc_reader *reader, void *input_pace, void *output_pace)
+static int
+empty_perform_pace(struct sc_reader *reader,
+		struct sc_establish_pace_channel_input *input_pace,
+		struct sc_establish_pace_channel_output *output_pace)
 {
 	return SC_SUCCESS;
 }

@@ -1488,8 +1488,9 @@ static int verify_certificate(sc_card_t *card, sc_cvc_t *cvc,
 		/* already known */
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
-	if (apdu.sw1 != 0x6A && apdu.sw2 != 0x88) {
-		LOG_TEST_RET(card->ctx, SC_ERROR_UNKNOWN, "Check SW error");
+	if (r != SC_ERROR_DATA_OBJECT_NOT_FOUND) {
+		/* only a key the card does not have yet is imported below */
+		LOG_TEST_RET(card->ctx, r, "Check SW error");
 	}
 
 	if ((r = sc_asn1_put_tag(tag, (u8 *)cvc->car, cvc->carLen,

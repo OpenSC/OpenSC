@@ -37,10 +37,9 @@ echo "com.licel.jcardsim.card.ATR=3B80800101" >> isoapplet_jcardsim.cfg
 echo "com.licel.jcardsim.vsmartcard.host=localhost" >> isoapplet_jcardsim.cfg
 echo "com.licel.jcardsim.vsmartcard.port=35963" >> isoapplet_jcardsim.cfg
 
-
 # prepare pcscd
 . .github/restart-pcscd.sh
-
+sleep 5
 
 # start the applet and run couple of commands against that
 java -noverify -cp IsoApplet/src/:jcardsim/target/jcardsim-3.0.5-SNAPSHOT.jar com.licel.jcardsim.remote.VSmartCard isoapplet_jcardsim.cfg >/dev/null &
@@ -89,7 +88,6 @@ $VALGRIND pkcs11-tool -l -t -p 123456
 
 # run the tests
 pushd src/tests/p11test/
-sleep 5
 $VALGRIND ./p11test -s 0 -p 123456 -o isoapplet.json
 popd
 
