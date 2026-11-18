@@ -163,6 +163,7 @@ static int edo_select_ef(struct sc_card* card, const u8 path[2], struct edo_buff
 
 static int edo_select_name(struct sc_card* card, const u8* name, size_t namelen, struct edo_buff* buff) {
 	LOG_FUNC_CALLED(card->ctx);
+	buff->len = sizeof buff->val;
 	LOG_FUNC_RETURN(card->ctx, iso7816_select_aid(card, name, namelen, buff->val, &buff->len));
 }
 
@@ -198,7 +199,7 @@ static int edo_select_path(struct sc_card* card, const u8* path, size_t pathlen,
  */
 static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, struct sc_file** file_out) {
 	LOG_FUNC_CALLED(card->ctx);
-	struct edo_buff buff;
+	struct edo_buff buff = {0};
 
 	switch (in_path->type) {
 		case SC_PATH_TYPE_PATH:
