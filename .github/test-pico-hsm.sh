@@ -26,17 +26,16 @@ fi
 # prepare pcscd
 #PCSCD_DEBUG="-d -a"
 . .github/restart-pcscd.sh
+sleep 5
 
-sleep 2
 rm -f memory.flash
 tar -xf pico-hsm/tests/memory.tar.gz
 pico-hsm/build/pico_hsm &
 PID=$!
-sleep 2
+sleep 5
 
 # run the tests
 pushd src/tests/p11test/
-sleep 5
 $VALGRIND sc-hsm-tool --initialize --so-pin 3537363231383830 --pin 648219
 $VALGRIND ./p11test -s 0 -p 648219 -o pico-hsm.json
 diff -u3 pico-hsm_ref.json pico-hsm.json

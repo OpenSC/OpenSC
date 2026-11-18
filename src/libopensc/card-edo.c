@@ -25,7 +25,6 @@
 
 #include "libopensc/internal.h"
 #include "libopensc/opensc.h"
-#include "libopensc/pace.h"
 #include "libopensc/sm.h"
 #include "libopensc/asn1.h"
 #include "sm/sm-eac.h"
@@ -69,7 +68,9 @@ static int edo_match_card(sc_card_t* card) {
 }
 
 
-static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pace_input) {
+static int
+edo_get_can(sc_card_t *card, struct sc_establish_pace_channel_input *pace_input)
+{
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	const char* can;
 
@@ -92,7 +93,7 @@ static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pac
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
 
-	pace_input->pin_id = PACE_PIN_ID_CAN;
+	pace_input->pin_id = SC_PACE_PIN_ID_CAN;
 	pace_input->pin = (const unsigned char*)can;
 	pace_input->pin_length = 6;
 
@@ -101,28 +102,20 @@ static int edo_get_can(sc_card_t* card, struct establish_pace_channel_input* pac
 
 
 static int edo_unlock(sc_card_t* card) {
-	struct establish_pace_channel_input pace_input;
-	struct establish_pace_channel_output pace_output;
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	int r;
 
-	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	struct sc_establish_pace_channel_input pace_input;
 
 	memset(&pace_input, 0, sizeof pace_input);
-	memset(&pace_output, 0, sizeof pace_output);
 
 	if (SC_SUCCESS != edo_get_can(card, &pace_input)) {
 		sc_log(card->ctx, "Error reading CAN.");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
 
-	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
-	free(pace_output.ef_cardaccess);
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
+	r = perform_pace(card, pace_input, NULL, EAC_TR_VERSION_2_02);
 	sc_mem_clear(&pace_input, sizeof pace_input);
-
 	if (SC_SUCCESS != r) {
 		sc_log(card->ctx, "Error verifying CAN.");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
@@ -173,6 +166,7 @@ static int edo_select_ef(struct sc_card* card, const u8 path[2], struct edo_buff
 
 static int edo_select_name(struct sc_card* card, const u8* name, size_t namelen, struct edo_buff* buff) {
 	LOG_FUNC_CALLED(card->ctx);
+	buff->len = sizeof buff->val;
 	LOG_FUNC_RETURN(card->ctx, iso7816_select_aid(card, name, namelen, buff->val, &buff->len));
 }
 
@@ -207,15 +201,12 @@ static int edo_select_path(struct sc_card* card, const u8* path, size_t pathlen,
  * 4. Select EF if provided.
  */
 static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, struct sc_file** file_out) {
-	struct edo_buff buff;
+	struct edo_buff buff = {0};
 	int r;
-
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (!in_path)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-	memset(&buff, 0, sizeof(buff));
 
 	switch (in_path->type) {
 		case SC_PATH_TYPE_PATH:

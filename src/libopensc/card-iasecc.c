@@ -1422,19 +1422,21 @@ iasecc_finish(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_private_data *private_data = (struct iasecc_private_data *)card->drv_data;
-	struct iasecc_se_info *se_info, *next;
 
 	LOG_FUNC_CALLED(ctx);
 
 	sc_invalidate_cache(card);
 
-	while (se_info)   {
-		sc_file_free(se_info->df);
-		next = se_info->next;
-		iasecc_docp_free_fields(&se_info->docp);
-		free(se_info);
-		se_info = next;
-	}
+	if (private_data) {
+		struct iasecc_se_info *se_info = private_data->se_info, *next;
+
+		while (se_info)   {
+			sc_file_free(se_info->df);
+			next = se_info->next;
+			iasecc_docp_free_fields(&se_info->docp);
+			free(se_info);
+			se_info = next;
+		}
 
 		sc_mem_clear(private_data, sizeof(struct iasecc_private_data));
 		free(card->drv_data);
@@ -3381,7 +3383,6 @@ iasecc_compute_signature_dst(struct sc_card *card,
 	sc_log(ctx, "DST resplen %zu", apdu.resplen);
 	if (apdu.resplen > out_len)
 		LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Result buffer too small for the DST signature");
-	}
 
 	memcpy(out, apdu.resp, apdu.resplen);
 	sc_mem_clear(sbuf, sizeof(sbuf));

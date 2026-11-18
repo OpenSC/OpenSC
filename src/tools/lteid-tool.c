@@ -116,8 +116,8 @@ display_pin_tries_left(sc_pkcs15_card_t *p15card)
 {
 	int pace_pin_tries_left, qes_pin_tries_left, puk_tries_left;
 
-	get_tries_left(p15card, PACE_PIN_ID_PUK, &puk_tries_left);
-	get_tries_left(p15card, PACE_PIN_ID_PIN, &pace_pin_tries_left);
+	get_tries_left(p15card, SC_PACE_PIN_ID_PUK, &puk_tries_left);
+	get_tries_left(p15card, SC_PACE_PIN_ID_PIN, &pace_pin_tries_left);
 	get_tries_left(p15card, 0x81, &qes_pin_tries_left);
 
 	printf("\n");
@@ -217,7 +217,7 @@ verify_and_cache_pace_can(sc_card_t *card, const char *opt_can)
 
 	can_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
 	can_verify_cmd.pin_type = SC_AC_CHV;
-	can_verify_cmd.pin_reference = PACE_PIN_ID_CAN;
+	can_verify_cmd.pin_reference = SC_PACE_PIN_ID_CAN;
 	can_verify_cmd.pin1.data = (unsigned char *)can;
 	can_verify_cmd.pin1.len = strlen(can);
 
@@ -279,7 +279,7 @@ change_pin(sc_card_t *card, const char *opt_pin)
 
 	pin_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
 	pin_verify_cmd.pin_type = SC_AC_CHV;
-	pin_verify_cmd.pin_reference = PACE_PIN_ID_PIN;
+	pin_verify_cmd.pin_reference = SC_PACE_PIN_ID_PIN;
 	pin_verify_cmd.pin1.data = (unsigned char *)pin;
 	pin_verify_cmd.pin1.len = strlen(pin);
 
@@ -311,7 +311,7 @@ change_pin(sc_card_t *card, const char *opt_pin)
 
 	pace_pin_cmd.cmd = SC_PIN_CMD_CHANGE;
 	pace_pin_cmd.pin_type = SC_AC_CHV;
-	pace_pin_cmd.pin_reference = PACE_PIN_ID_PIN;
+	pace_pin_cmd.pin_reference = SC_PACE_PIN_ID_PIN;
 	pace_pin_cmd.pin2.data = (unsigned char *)new_pin;
 	pace_pin_cmd.pin2.len = strlen(new_pin);
 
@@ -371,14 +371,13 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 {
 	int rv;
 	struct sc_card *card = p15card->card;
-	struct establish_pace_channel_input pace_input = {0};
-	struct establish_pace_channel_output pace_output = {0};
+	struct sc_establish_pace_channel_input pace_input = {0};
 	struct sc_path path;
 	char *pin = NULL;
 	int tries_left;
 	struct sc_pin_cmd_data can_verify_cmd = {0};
 
-	rv = get_tries_left(p15card, PACE_PIN_ID_PIN, &tries_left);
+	rv = get_tries_left(p15card, SC_PACE_PIN_ID_PIN, &tries_left);
 
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "Cannot get remaining tries left: %s\n", sc_strerror(rv));
@@ -411,7 +410,7 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 
 	can_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
 	can_verify_cmd.pin_type = SC_AC_CHV;
-	can_verify_cmd.pin_reference = PACE_PIN_ID_CAN;
+	can_verify_cmd.pin_reference = SC_PACE_PIN_ID_CAN;
 	can_verify_cmd.pin1.data = (unsigned char *)opt_can;
 	if (opt_can)
 		can_verify_cmd.pin1.len = strlen(opt_can);
@@ -424,11 +423,11 @@ resume(sc_pkcs15_card_t *p15card, const char *opt_can, const char *opt_pin)
 		goto end;
 	}
 
-	pace_input.pin_id = PACE_PIN_ID_PIN;
+	pace_input.pin_id = SC_PACE_PIN_ID_PIN;
 	pace_input.pin = (unsigned char *)pin;
 	pace_input.pin_length = strlen(pin);
 
-	rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+	rv = perform_pace(card, pace_input, NULL, EAC_TR_VERSION_2_02);
 	if (rv != SC_SUCCESS) {
 		fprintf(stderr, "PIN code verification failed: %s\n", sc_strerror(rv));
 		rv = SC_ERROR_PIN_CODE_INCORRECT;
@@ -456,7 +455,7 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 	int pace_pin_tries_left, qes_pin_tries_left;
 	struct sc_pin_cmd_data puk_verify_cmd = {0};
 
-	get_tries_left(p15card, PACE_PIN_ID_PIN, &pace_pin_tries_left);
+	get_tries_left(p15card, SC_PACE_PIN_ID_PIN, &pace_pin_tries_left);
 	get_tries_left(p15card, 0x81, &qes_pin_tries_left);
 
 	if (pace_pin_tries_left > 0 && qes_pin_tries_left > 0) {
@@ -480,7 +479,7 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 
 	puk_verify_cmd.cmd = SC_PIN_CMD_VERIFY;
 	puk_verify_cmd.pin_type = SC_AC_CHV;
-	puk_verify_cmd.pin_reference = PACE_PIN_ID_PUK;
+	puk_verify_cmd.pin_reference = SC_PACE_PIN_ID_PUK;
 	puk_verify_cmd.pin1.data = (unsigned char *)puk;
 	puk_verify_cmd.pin1.len = strlen(puk);
 
@@ -496,7 +495,7 @@ unblock_using_puk(sc_pkcs15_card_t *p15card, const char *opt_puk)
 		struct sc_pin_cmd_data pace_pin_cmd = {0};
 		pace_pin_cmd.cmd = SC_PIN_CMD_UNBLOCK;
 		pace_pin_cmd.pin_type = SC_AC_CHV;
-		pace_pin_cmd.pin_reference = PACE_PIN_ID_PIN;
+		pace_pin_cmd.pin_reference = SC_PACE_PIN_ID_PIN;
 
 		rv = card->ops->pin_cmd(card, &pace_pin_cmd);
 

@@ -39,6 +39,7 @@ popd
 
 # prepare pcscd
 . .github/restart-pcscd.sh
+sleep 5
 
 
 # start the applet and run couple of commands against that
@@ -71,7 +72,6 @@ $VALGRIND pkcs11-tool -l -t -p "$PIN"
 
 # run p11test
 pushd src/tests/p11test/
-sleep 5
 $VALGRIND ./p11test -v -s 0 -p "$PIN" -o piv.json
 popd
 diff -u3 src/tests/p11test/piv{_ref,}.json 

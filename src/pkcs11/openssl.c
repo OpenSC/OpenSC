@@ -941,6 +941,13 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 				EVP_PKEY_free(pkey);
 				sc_log(context, "PSS mechanism requires valid parameter");
 				return CKR_MECHANISM_PARAM_INVALID;
+      }
+			rv = sc_pkcs11_validate_pss_params(mech);
+			if (rv != CKR_OK) {
+				free(rsa_out);
+				EVP_PKEY_free(pkey);
+				sc_log(context, "Invalid PSS mechanism parameters");
+				return rv;
 			}
 
 			param = (CK_RSA_PKCS_PSS_PARAMS*)mech->pParameter;

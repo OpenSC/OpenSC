@@ -336,8 +336,8 @@ main (int argc, char **argv)
 	sc_context_param_t ctx_param;
 
 	int r, tr_version = EAC_TR_VERSION_2_02;
-	struct establish_pace_channel_input pace_input;
-	struct establish_pace_channel_output pace_output;
+	struct sc_establish_pace_channel_input pace_input;
+	struct sc_establish_pace_channel_output pace_output;
 	struct timeval tv;
 	size_t i;
 	FILE *input = NULL;
@@ -919,11 +919,7 @@ err:
 	if (cmdline.mrz_arg)
 		sc_mem_clear(cmdline.mrz_arg, strlen(cmdline.mrz_arg));
 	cmdline_parser_free(&cmdline);
-	free(pace_output.ef_cardaccess);
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
+	sc_pace_output_clear(&pace_output);
 	if (ef_cardsecurity) {
 		OPENSSL_cleanse(ef_cardsecurity, ef_cardsecurity_len);
 		free(ef_cardsecurity);

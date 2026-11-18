@@ -111,8 +111,7 @@ static int
 chipdocit_sm_open(struct sc_card *card)
 {
 	struct chipdocit_privdata *priv = card->drv_data;
-	struct establish_pace_channel_input pace_input;
-	struct establish_pace_channel_output pace_output;
+	struct sc_establish_pace_channel_input pace_input;
 	int r;
 
 	if (!priv)
@@ -128,8 +127,7 @@ chipdocit_sm_open(struct sc_card *card)
 		return SC_ERROR_DECRYPT_FAILED;
 
 	memset(&pace_input, 0, sizeof pace_input);
-	memset(&pace_output, 0, sizeof pace_output);
-	pace_input.pin_id = PACE_PIN_ID_CAN;
+	pace_input.pin_id = SC_PACE_PIN_ID_CAN;
 	pace_input.pin = (u8 *)priv->can;
 	pace_input.pin_length = strlen(priv->can);
 
@@ -137,7 +135,7 @@ chipdocit_sm_open(struct sc_card *card)
 	r = sc_select_file(card, sc_get_mf_path(), NULL);
 	LOG_TEST_RET(card->ctx, r, "SELECT MF failed");
 
-	r = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+	r = perform_pace(card, pace_input, NULL, EAC_TR_VERSION_2_02);
 	sc_log_openssl(card->ctx);
 	LOG_TEST_RET(card->ctx, r, "PACE (CAN) failed");
 	sc_log(card->ctx, "ChipDoc-IT: PACE channel established");
