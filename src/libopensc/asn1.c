@@ -2166,10 +2166,9 @@ static struct sc_asn1_entry c_asn1_sig_value_coefficients[C_ASN1_SIG_VALUE_COEFF
 		{ NULL, 0, 0, 0, NULL, NULL }
 };
 
-
 int
 sc_asn1_sig_value_rs_to_sequence(struct sc_context *ctx, unsigned char *in, size_t inlen,
-		unsigned char **buf, size_t *buflen)
+		unsigned char **out, size_t *outlen)
 {
 	struct sc_asn1_entry asn1_sig_value[C_ASN1_SIG_VALUE_SIZE];
 	struct sc_asn1_entry asn1_sig_value_coefficients[C_ASN1_SIG_VALUE_COEFFICIENTS_SIZE];
@@ -2196,71 +2195,29 @@ sc_asn1_sig_value_rs_to_sequence(struct sc_context *ctx, unsigned char *in, size
 	sc_format_asn1_entry(asn1_sig_value_coefficients + 0, r, &r_len, 1);
 	sc_format_asn1_entry(asn1_sig_value_coefficients + 1, s, &s_len, 1);
 
-	rv = sc_asn1_encode(ctx, asn1_sig_value, buf, buflen);
+	rv = sc_asn1_encode(ctx, asn1_sig_value, out, outlen);
 	LOG_TEST_RET(ctx, rv, "ASN.1 encoding ECDSA-SIg-Value failed");
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
 
-
 int
-sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx, const unsigned char *in, size_t inlen,
-		unsigned char *buf, size_t buflen)
+sc_asn1_decode_ecdsa_signature(sc_context_t *ctx,
+		const u8 *data, size_t datalen, size_t fieldsize,
+		u8 **out, size_t outlen)
 {
-	struct sc_asn1_entry asn1_sig_value[C_ASN1_SIG_VALUE_SIZE];
-	struct sc_asn1_entry asn1_sig_value_coefficients[C_ASN1_SIG_VALUE_COEFFICIENTS_SIZE];
-	unsigned char *r = NULL, *s = NULL;
-	size_t r_len = 0, s_len = 0, halflen = buflen/2;
-	int rv;
-
-	LOG_FUNC_CALLED(ctx);
-	if (!buf || !buflen)
-		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-
-	sc_copy_asn1_entry(c_asn1_sig_value, asn1_sig_value);
-	sc_format_asn1_entry(asn1_sig_value + 0, asn1_sig_value_coefficients, NULL, 0);
-
-	sc_copy_asn1_entry(c_asn1_sig_value_coefficients, asn1_sig_value_coefficients);
-	sc_format_asn1_entry(asn1_sig_value_coefficients + 0, &r, &r_len, 0);
-	sc_format_asn1_entry(asn1_sig_value_coefficients + 1, &s, &s_len, 0);
-
-	rv = sc_asn1_decode(ctx, asn1_sig_value, in, inlen, NULL, NULL);
-	LOG_TEST_GOTO_ERR(ctx, rv, "ASN.1 decoding ECDSA-Sig-Value failed");
-
-	if (halflen < r_len || halflen < s_len)   {
-		rv = SC_ERROR_BUFFER_TOO_SMALL;
-		goto err;
-	}
-
-	memset(buf, 0, buflen);
-	if (r_len > 0)
-		memcpy(buf + (halflen - r_len), r, r_len);
-	if (s_len > 0)
-		memcpy(buf + (buflen - s_len), s, s_len);
-
-	sc_log(ctx, "r(%zu): %s", halflen, sc_dump_hex(buf, halflen));
-	sc_log(ctx, "s(%zu): %s", halflen, sc_dump_hex(buf + halflen, halflen));
-
-	rv = SC_SUCCESS;
-err:
-	free(r);
-	free(s);
-
-	LOG_FUNC_RETURN(ctx, rv);
-}
-
-int sc_asn1_decode_ecdsa_signature(sc_context_t *ctx, const u8 *data, size_t datalen, size_t fieldsize, u8 **out, size_t outlen) {
 	int i, r;
 	const unsigned char *pseq, *pint, *pend;
 	unsigned int cla, tag;
 	size_t seqlen, intlen;
 
-	if (!ctx || !data || !out || !(*out)) {
+	LOG_FUNC_CALLED(ctx);
+
+	if (!data || !out || !(*out) || fieldsize == 0)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
-	}
-	if (outlen < 2 * fieldsize) {
+
+	if (outlen < 2 * fieldsize)
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "Output too small for EC signature");
-	}
 
 	memset(*out, 0, outlen);
 
@@ -2278,7 +2235,8 @@ int sc_asn1_decode_ecdsa_signature(sc_context_t *ctx, const u8 *data, size_t dat
 			LOG_TEST_GOTO_ERR(ctx, r, "Can not find 0x02");
 		}
 
-		if (intlen == fieldsize + 1) { /* drop leading 00 if present */
+		if (intlen == fieldsize + 1) {
+			/* drop leading 0x00 (sign byte) if present */
 			if (*pint != 0x00) {
 				r = SC_ERROR_INVALID_DATA;
 				LOG_TEST_GOTO_ERR(ctx, r, "Signature too long");
@@ -2290,11 +2248,28 @@ int sc_asn1_decode_ecdsa_signature(sc_context_t *ctx, const u8 *data, size_t dat
 			r = SC_ERROR_INVALID_DATA;
 			LOG_TEST_GOTO_ERR(ctx, r, "Signature too long");
 		}
-		memcpy(*out + fieldsize * i + fieldsize - intlen , pint, intlen);
+		if (intlen > 0)
+			memcpy(*out + fieldsize * i + fieldsize - intlen, pint, intlen);
+
 		pint += intlen; /* next integer */
 	}
+
+	sc_log(ctx, "r(%zu): %s", fieldsize, sc_dump_hex(*out, fieldsize));
+	sc_log(ctx, "s(%zu): %s", fieldsize, sc_dump_hex(*out + fieldsize, fieldsize));
+
 	r = (int)(2 * fieldsize);
 err:
 	LOG_FUNC_RETURN(ctx, r);
 }
 
+int
+sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx,
+		const unsigned char *in, size_t inlen,
+		unsigned char *out, size_t outlen)
+{
+	/* r and s must have the same length, so outlen has to be even */
+	if (outlen % 2 != 0)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	return sc_asn1_decode_ecdsa_signature(ctx, in, inlen, outlen / 2, &out, outlen);
+}

@@ -120,17 +120,41 @@ void sc_asn1_clear_algorithm_id(struct sc_algorithm_id *);
 int sc_asn1_write_element(sc_context_t *ctx, unsigned int tag,
 		const u8 * data, size_t datalen, u8 ** out, size_t * outlen);
 
+/**
+ * @brief Convert raw signature to X9.62 format
+ *
+ * From `r||s` to
+ * ECDSA-Sig-Value ::= SEQUENCE {
+ *   r INTEGER,
+ *   s INTEGER
+ * }
+ *
+ * @see sc_asn1_sig_value_sequence_to_rs()
+ */
 int sc_asn1_sig_value_rs_to_sequence(struct sc_context *ctx,
 		unsigned char *in, size_t inlen,
-                unsigned char **buf, size_t *buflen);
+		unsigned char **out, size_t *outlen);
+/**
+ * @brief Convert X9.62 signature to raw format
+ *
+ * From
+ * ECDSA-Sig-Value ::= SEQUENCE {
+ *   r INTEGER,
+ *   s INTEGER
+ * }
+ * to `r||s`
+ *
+ * @return Number of bytes written to `out` on success, or a negative error code
+ * @see sc_asn1_sig_value_rs_to_sequence()
+ */
 int sc_asn1_sig_value_sequence_to_rs(struct sc_context *ctx,
 		const unsigned char *in, size_t inlen,
-                unsigned char *buf, size_t buflen);
+		unsigned char *out, size_t outlen);
 
-/* ECDSA signature decoding*/
-int sc_asn1_decode_ecdsa_signature(sc_context_t *ctx, const u8 *data, size_t datalen,
-		size_t fieldsize, u8 **out, size_t outlen);
-
+/** @see sc_asn1_sig_value_sequence_to_rs() */
+int sc_asn1_decode_ecdsa_signature(sc_context_t *ctx,
+		const u8 *in, size_t inlen, size_t fieldsize,
+		u8 **out, size_t outlen);
 /* long form tags use these */
 /* Same as  SC_ASN1_TAG_* shifted left by 24 bits  */
 #define SC_ASN1_CLASS_MASK		0xC0000000
