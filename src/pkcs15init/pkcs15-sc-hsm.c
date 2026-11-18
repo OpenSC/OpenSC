@@ -412,6 +412,8 @@ static int sc_hsm_emu_store_cert(struct sc_pkcs15_card *p15card, struct sc_profi
 	u8 id[2];
 	int r;
 
+	(void)profile;
+
 	r = sc_pkcs15_find_object_by_id(p15card, SC_PKCS15_TYPE_PRKEY, &cert_info->id , &prkey);
 
 	if (r == SC_ERROR_OBJECT_NOT_FOUND) {
@@ -442,6 +444,8 @@ static int sc_hsm_emu_delete_cert(struct sc_pkcs15_card *p15card, struct sc_prof
 {
 	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) object->data;
 
+	(void)profile;
+
 	return sc_hsm_delete_ef(p15card, cert_info->path.value[0], cert_info->path.value[1]);
 }
 
@@ -456,6 +460,8 @@ static int sc_hsm_emu_store_binary(struct sc_pkcs15_card *p15card, struct sc_pro
 	sc_path_t path;
 	u8 id[2];
 	int r;
+
+	(void)profile;
 
 	r = sc_hsm_determine_free_id(p15card, DCOD_PREFIX);
 	LOG_TEST_RET(p15card->card->ctx, r, "Out of identifier to store data description");
@@ -567,6 +573,8 @@ static int sc_hsm_emu_update_dcod(struct sc_profile *profile, struct sc_pkcs15_c
 	size_t buflen;
 	int r;
 
+	(void)profile;
+
 	r = sc_pkcs15_encode_dodf_entry(p15card->card->ctx, object, &buf, &buflen);
 	LOG_TEST_RET(p15card->card->ctx, r, "Error encoding DCOD entry");
 
@@ -584,6 +592,8 @@ static int sc_hsm_emu_update_cd(struct sc_profile *profile, struct sc_pkcs15_car
 	u8 *buf;
 	size_t buflen;
 	int r;
+
+	(void)profile;
 
 	if ((cert_info->path.len < 2) ||
 		((cert_info->path.value[cert_info->path.len - 2]) != CA_CERTIFICATE_PREFIX)) {
@@ -605,6 +615,8 @@ static int sc_hsm_emu_delete_cd(struct sc_profile *profile, struct sc_pkcs15_car
 		struct sc_pkcs15_object *object)
 {
 	struct sc_pkcs15_cert_info *cert_info = (struct sc_pkcs15_cert_info *) object->data;
+
+	(void)profile;
 
 	if ((cert_info->path.len < 2) ||
 		((cert_info->path.value[cert_info->path.len - 2]) != CA_CERTIFICATE_PREFIX)) {

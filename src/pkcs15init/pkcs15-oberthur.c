@@ -240,6 +240,8 @@ cosm_create_dir(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		NULL
 	};
 
+	(void)df;
+
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* Oberthur AWP file system is expected.*/
@@ -426,6 +428,8 @@ cosm_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_pin_attributes *pin_attrs;
 	struct sc_file *pin_file;
 	int rv = 0;
+
+	(void)df;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
@@ -814,6 +818,9 @@ static int
 cosm_emu_update_dir (struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_app_info *info)
 {
+	(void)profile;
+	(void)info;
+
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	/* No DIR file in the native Oberthur card */
 	SC_FUNC_RETURN(p15card->card->ctx, 1, SC_SUCCESS);
@@ -895,6 +902,9 @@ static int
 cosm_emu_write_info(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 		struct sc_pkcs15_object *pin_obj)
 {
+	(void)profile;
+	(void)pin_obj;
+
 	SC_FUNC_CALLED(p15card->card->ctx, 1);
 	/* No OpenSC Info file in the native Oberthur card */
 	SC_FUNC_RETURN(p15card->card->ctx, 1, SC_SUCCESS);

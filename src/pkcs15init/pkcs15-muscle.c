@@ -61,6 +61,9 @@ static int muscle_erase_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 
 static int muscle_init_card(sc_profile_t *profile, sc_pkcs15_card_t *p15card)
 {
+	(void)profile;
+	(void)p15card;
+
 	return 0;
 }
 
@@ -101,6 +104,11 @@ muscle_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 	int r;
 
+	(void)pin;
+	(void)pin_len;
+	(void)puk;
+	(void)puk_len;
+
 	if ((r = sc_select_file(p15card->card, &df->path, &file)) < 0)
 		return r;
 	if ((r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_WRITE)) < 0) {
@@ -114,10 +122,13 @@ muscle_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 }
 
 static int
-muscle_select_pin_reference(sc_profile_t *profike, sc_pkcs15_card_t *p15card,
+muscle_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		sc_pkcs15_auth_info_t *auth_info)
 {
 	int	preferred;
+
+	(void)profile;
+	(void)p15card;
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
@@ -146,6 +157,9 @@ static int
 muscle_select_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_prkey_info_t *key_info)
 {
+	(void)profile;
+	(void)p15card;
+
 	if (key_info->key_reference < MUSCLE_KEY_ID_MIN)
 		key_info->key_reference = MUSCLE_KEY_ID_MIN;
 	if (key_info->key_reference > MUSCLE_KEY_ID_MAX)
@@ -161,6 +175,10 @@ static int
 muscle_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 			sc_pkcs15_object_t *obj)
 {
+	(void)profile;
+	(void)p15card;
+	(void)obj;
+
 	return 0;
 }
 

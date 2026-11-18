@@ -213,7 +213,7 @@ static BOOL DeleteNotificationIcon(void)
 
 	nid.cbSize = sizeof(NOTIFYICONDATA);
 	nid.uFlags = NIF_GUID;
-	nid.guidItem = myGUID; 
+	nid.guidItem = myGUID;
 
 	r  = Shell_NotifyIcon(NIM_DELETE, &nid);
 
@@ -231,7 +231,7 @@ static BOOL RestoreTooltip()
 
 	nid.cbSize = sizeof(NOTIFYICONDATA);
     nid.uFlags = NIF_SHOWTIP | NIF_GUID;
-	nid.guidItem = myGUID; 
+	nid.guidItem = myGUID;
 
     return Shell_NotifyIcon(NIM_MODIFY, &nid);
 }
@@ -531,9 +531,19 @@ static void notify_gio(struct sc_context *ctx,
 
 void sc_notify_init(void) {}
 void sc_notify_close(void) {}
-void sc_notify(const char *title, const char *text) {}
+void sc_notify(const char *title, const char *text)
+{
+	(void)title;
+	(void)text;
+}
 void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
-		struct sc_pkcs15_card *p15card, enum ui_str id) {}
+		struct sc_pkcs15_card *p15card, enum ui_str id)
+{
+	(void)ctx;
+	(void)atr;
+	(void)p15card;
+	(void)id;
+}
 
 #endif
 

@@ -58,7 +58,10 @@ _add_supported_algo(struct sc_profile *profile, struct sc_pkcs15_card *p15card, 
 /* For Myeid, all objects are files that can be deleted in any order */
 static int
 myeid_delete_object(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
-		struct sc_pkcs15_object *object, const struct sc_path *path) {
+		struct sc_pkcs15_object *object, const struct sc_path *path)
+{
+	(void)object;
+
 	LOG_FUNC_CALLED(p15card->card->ctx);
 	return sc_pkcs15init_delete_by_path(profile, p15card, path);
 }
@@ -277,7 +280,10 @@ myeid_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t *df
  */
 static int
 myeid_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
-		sc_pkcs15_auth_info_t *auth_info) {
+		sc_pkcs15_auth_info_t *auth_info)
+{
+	(void)profile;
+
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
@@ -314,6 +320,8 @@ myeid_create_pin(struct sc_profile *profile, struct sc_pkcs15_card *p15card,
 	struct sc_pkcs15_auth_info *auth_info = (struct sc_pkcs15_auth_info *) pin_obj->data;
 	struct sc_pkcs15_auth_info puk_ainfo = {0};
 	int r;
+
+	(void)df;
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(ctx, "PIN('%s',ref:%i,flags:0x%X,pin_len:%zu,puk_len:%zu)", pin_obj->label,
@@ -461,7 +469,14 @@ myeid_new_file(sc_profile_t *profile, sc_card_t *card,
 static int
 myeid_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 		struct sc_pkcs15_prkey_rsa *rsa, u8 *key,
-		size_t *keysize, int key_ref) {
+		size_t *keysize, int key_ref)
+{
+	(void)profile;
+	(void)rsa;
+	(void)key;
+	(void)keysize;
+	(void)key_ref;
+
 	LOG_FUNC_CALLED(card->ctx);
 	LOG_FUNC_RETURN(card->ctx, 0);
 }
@@ -469,7 +484,14 @@ myeid_encode_private_key(sc_profile_t *profile, sc_card_t *card,
 static int
 myeid_encode_public_key(sc_profile_t *profile, sc_card_t *card,
 		struct sc_pkcs15_prkey_rsa *rsa, u8 *key,
-		size_t *keysize, int key_ref) {
+		size_t *keysize, int key_ref)
+{
+	(void)profile;
+	(void)rsa;
+	(void)key;
+	(void)keysize;
+	(void)key_ref;
+
 	LOG_FUNC_CALLED(card->ctx);
 	LOG_FUNC_RETURN(card->ctx, 0);
 }

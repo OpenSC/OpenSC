@@ -844,6 +844,8 @@ init_state(struct state *cur_state, struct state *new_state)
 static int
 do_card_driver(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	free(cur->profile->driver);
 	cur->profile->driver = strdup(argv[0]);
 	return 0;
@@ -852,18 +854,24 @@ do_card_driver(struct state *cur, int argc, char **argv)
 static int
 do_maxpinlength(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	return get_uint(cur, argv[0], &cur->profile->pin_maxlen);
 }
 
 static int
 do_minpinlength(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	return get_uint(cur, argv[0], &cur->profile->pin_minlen);
 }
 
 static int
 do_default_pin_type(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	return map_str2int(cur, argv[0],
 		       	&cur->profile->pin_encoding, pinTypeNames);
 }
@@ -871,12 +879,16 @@ do_default_pin_type(struct state *cur, int argc, char **argv)
 static int
 do_pin_pad_char(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	return get_uint(cur, argv[0], &cur->profile->pin_pad_char);
 }
 
 static int
 do_pin_domains(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	return get_bool(cur, argv[0], &cur->profile->pin_domains);
 }
 
@@ -885,6 +897,8 @@ do_card_label(struct state *cur, int argc, char **argv)
 {
 	struct sc_pkcs15_card	*p15card = cur->profile->p15_spec;
 
+	(void)argc;
+
 	return setstr(&p15card->tokeninfo->label, argv[0]);
 }
 
@@ -892,6 +906,8 @@ static int
 do_card_manufacturer(struct state *cur, int argc, char **argv)
 {
 	struct sc_pkcs15_card	*p15card = cur->profile->p15_spec;
+
+	(void)argc;
 
 	return setstr(&p15card->tokeninfo->manufacturer_id, argv[0]);
 }
@@ -902,30 +918,40 @@ do_card_manufacturer(struct state *cur, int argc, char **argv)
 static int
 do_direct_certificates(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	return get_bool(cur, argv[0], &cur->profile->pkcs15.direct_certificates);
 }
 
 static int
 do_encode_df_length(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	return get_bool(cur, argv[0], &cur->profile->pkcs15.encode_df_length);
 }
 
 static int
 do_encode_update_field(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	return get_bool(cur, argv[0], &cur->profile->pkcs15.do_last_update);
 }
 
 static int
 do_pkcs15_id_style(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	return map_str2int(cur, argv[0], &cur->profile->id_style, idStyleNames);
 }
 
 static int
 do_minidriver_support_style(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	return map_str2int(cur, argv[0], &cur->profile->md_style, mdStyleNames);
 }
 
@@ -990,6 +1016,8 @@ do_key_value(struct state *cur, int argc, char **argv)
 	const char	*key = argv[0];
 	size_t		key_len;
 	unsigned char	keybuf[32];
+
+	(void)argc;
 
 	if (key[0] == '=') {
 		++key;
@@ -1305,6 +1333,8 @@ do_file_type(struct state *cur, int argc, char **argv)
 {
 	unsigned int	type;
 
+	(void)argc;
+
 	if (!cur->file) {
 		parse_error(cur, "Invalid state\n");
 		return 1;
@@ -1321,6 +1351,8 @@ do_file_path(struct state *cur, int argc, char **argv)
 {
 	struct sc_file	*file = NULL;
 	struct sc_path	*path = NULL;
+
+	(void)argc;
 
 	if (!cur->file) {
 		parse_error(cur, "Invalid state\n");
@@ -1346,6 +1378,8 @@ do_fileid(struct state *cur, int argc, char **argv)
 	struct file_info *fi;
 	struct sc_file	*df, *file = NULL;
 	struct sc_path	temp, *path = NULL;
+
+	(void)argc;
 
 	if (!cur->file) {
 		parse_error(cur, "Invalid state\n");
@@ -1390,6 +1424,8 @@ do_structure(struct state *cur, int argc, char **argv)
 {
 	unsigned int	ef_structure;
 
+	(void)argc;
+
 	if (!cur->file) {
 		parse_error(cur, "Invalid state\n");
 		return 1;
@@ -1422,6 +1458,8 @@ do_reclength(struct state *cur, int argc, char **argv)
 {
 	unsigned int	reclength;
 
+	(void)argc;
+
 	if (!cur->file) {
 		parse_error(cur, "Invalid state\n");
 		return 1;
@@ -1439,6 +1477,8 @@ do_content(struct state *cur, int argc, char **argv)
 	struct sc_file *file = NULL;
 	size_t len = (strlen(argv[0]) + 1) / 2;
 	int rv = 0;
+
+	(void)argc;
 
 	if (!cur->file) {
 		parse_error(cur, "Invalid state\n");
@@ -1463,6 +1503,8 @@ do_prop_attr(struct state *cur, int argc, char **argv)
 	size_t len = (strlen(argv[0]) + 1) / 2;
 	int rv = 0;
 
+	(void)argc;
+
 	if (!cur->file) {
 		parse_error(cur, "Invalid state\n");
 		return 1;
@@ -1485,6 +1527,8 @@ do_aid(struct state *cur, int argc, char **argv)
 	const char	*name = argv[0];
 	size_t len;
 	int		res = 0;
+
+	(void)argc;
 
 	if (!cur->file) {
 		parse_error(cur, "Invalid state\n");
@@ -1515,6 +1559,8 @@ do_exclusive_aid(struct state *cur, int argc, char **argv)
 	const char	*name = argv[0];
 	size_t len;
 	int		res = 0;
+
+	(void)argc;
 
 	if (!cur->file) {
 		parse_error(cur, "Invalid state\n");
@@ -1560,6 +1606,8 @@ do_exclusive_aid(struct state *cur, int argc, char **argv)
 static int
 do_profile_extension(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	if (!cur->file) {
 		parse_error(cur, "Invalid state\n");
 		return 1;
@@ -1711,6 +1759,8 @@ static void set_pin_defaults(struct sc_profile *profile, struct pin_info *pi)
 static int
 do_pin_file(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	free(cur->pin->file_name);
 	cur->pin->file_name = strdup(argv[0]);
 	return 0;
@@ -1719,6 +1769,8 @@ do_pin_file(struct state *cur, int argc, char **argv)
 static int
 do_pin_offset(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	return get_uint(cur, argv[0], &cur->pin->file_offset);
 }
 
@@ -1727,6 +1779,8 @@ do_pin_attempts(struct state *cur, int argc, char **argv)
 {
 	struct pin_info	*pi = cur->pin;
 	unsigned int	count;
+
+	(void)argc;
 
 	if (get_uint(cur, argv[0], &count))
 		return 1;
@@ -1740,6 +1794,8 @@ do_pin_maxunlocks(struct state *cur, int argc, char **argv)
 	struct pin_info	*pi = cur->pin;
 	unsigned int	count;
 
+	(void)argc;
+
 	if (get_uint(cur, argv[0], &count))
 		return 1;
 	pi->pin.max_unlocks = count;
@@ -1750,6 +1806,8 @@ static int
 do_pin_type(struct state *cur, int argc, char **argv)
 {
 	unsigned int	type;
+
+	(void)argc;
 
 	if (map_str2int(cur, argv[0], &type, pinTypeNames))
 		return 1;
@@ -1764,6 +1822,8 @@ do_pin_reference(struct state *cur, int argc, char **argv)
 {
 	unsigned int	reference;
 
+	(void)argc;
+
 	if (get_uint(cur, argv[0], &reference))
 		return 1;
 	if (cur->pin->pin.auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
@@ -1775,6 +1835,8 @@ do_pin_reference(struct state *cur, int argc, char **argv)
 static int
 do_pin_authid(struct state *cur, int argc, char **argv)
 {
+	(void)argc;
+
 	sc_pkcs15_format_id(argv[0], &cur->pin->pin.auth_id);
 	return 0;
 }
@@ -1783,6 +1845,8 @@ static int
 do_pin_minlength(struct state *cur, int argc, char **argv)
 {
 	unsigned int	len;
+
+	(void)argc;
 
 	if (get_uint(cur, argv[0], &len))
 		return 1;
@@ -1797,6 +1861,8 @@ do_pin_maxlength(struct state *cur, int argc, char **argv)
 {
 	unsigned int	len;
 
+	(void)argc;
+
 	if (get_uint(cur, argv[0], &len))
 		return 1;
 	if (cur->pin->pin.auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
@@ -1809,6 +1875,8 @@ static int
 do_pin_storedlength(struct state *cur, int argc, char **argv)
 {
 	unsigned int	len;
+
+	(void)argc;
 
 	if (get_uint(cur, argv[0], &len))
 		return 1;
@@ -1844,6 +1912,9 @@ process_macros(struct state *cur, struct block *info,
 	scconf_item	*item;
 	const char	*name;
 	int		 r;
+
+	(void)info;
+	(void)dummy;
 
 	for (item = blk->items; item; item = item->next) {
 		char *s = item->key;
@@ -2199,6 +2270,8 @@ process_block(struct state *cur, struct block *info,
 	struct block	*bp;
 	const char	*cmd, *ident;
 	int		res = 0;
+
+	(void)name;
 
 	for (item = blk->items; res == 0 && item; item = item->next) {
 		cmd = item->key;
