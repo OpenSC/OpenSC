@@ -17,7 +17,7 @@ endif
 
 noinst_PROGRAMS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin \
 	decode_ecdsa_signature check_macro_reference_loop strip_pkcs1_2_padding \
-	base64 parse_pkcs11_uri scconf pkcs11-pss-params
+	base64 parse_pkcs11_uri scconf pkcs11-pss-params pkcs15-tlv-record
 TESTS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin \
 	decode_ecdsa_signature check_macro_reference_loop strip_pkcs1_2_padding \
 	base64 parse_pkcs11_uri scconf pkcs11-pss-params pkcs15-tlv-record
