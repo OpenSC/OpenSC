@@ -1449,7 +1449,11 @@ awp_update_df_create_prvkey(struct sc_pkcs15_card *p15card, struct sc_profile *p
 
 	rv = sc_pkcs15_find_pubkey_by_id(p15card, &key_info->id, &pubkey_obj);
 	if (!rv)   {
-		path = ((struct sc_pkcs15_cert_info *)pubkey_obj->data)->path;
+		path = ((struct sc_pkcs15_pubkey_info *)pubkey_obj->data)->path;
+		if (path.len < 2 || path.len > sizeof(path.value)) {
+			rv = SC_ERROR_INVALID_DATA;
+			goto err;
+		}
 		cc.pubkey_id = (path.value[path.len-1] & 0xFF) + (path.value[path.len-2] & 0xFF) * 0x100;
 	}
 

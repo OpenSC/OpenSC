@@ -72,6 +72,7 @@
 #include "libopensc/internal.h"
 #include "libopensc/log.h"
 #include "libopensc/sc-ossl-compat.h"
+#include "pkcs11/pkcs11-display.h"
 #include "pkcs11/pkcs11-opensc.h"
 #include "pkcs11/pkcs11.h"
 #include "pkcs11_uri.h"
@@ -199,6 +200,8 @@ enum {
 	OPT_INIT_TOKEN,
 	OPT_INIT_PIN,
 	OPT_ATTR_FROM,
+	OPT_READ_ATTRIBUTE,
+	OPT_SET_ATTRIBUTE,
 	OPT_KEY_TYPE,
 	OPT_KEY_USAGE_SIGN,
 	OPT_KEY_USAGE_DECRYPT,
@@ -218,6 +221,9 @@ enum {
 	OPT_TEST_EC,
 	OPT_DERIVE,
 	OPT_DERIVE_PASS_DER,
+	OPT_ENCAPSULATE,
+	OPT_DECAPSULATE,
+	OPT_SECRET_FILE,
 	OPT_DECRYPT,
 	OPT_ENCRYPT,
 	OPT_UNWRAP,
@@ -272,6 +278,9 @@ static const struct option options[] = {
 	{ "hash",		0, NULL,		'h' },
 	{ "derive",		0, NULL,		OPT_DERIVE },
 	{ "derive-pass-der",	0, NULL,		OPT_DERIVE_PASS_DER },
+	{ "encapsulate",	0, NULL,		OPT_ENCAPSULATE },
+	{ "decapsulate",	0, NULL,		OPT_DECAPSULATE },
+	{ "secret-file",	1, NULL,		OPT_SECRET_FILE },
 	{ "mechanism",		1, NULL,		'm' },
 	{ "hash-algorithm",	1, NULL,		OPT_HASH_ALGORITHM },
 	{ "mgf",		1, NULL,		OPT_MGF },
@@ -313,6 +322,8 @@ static const struct option options[] = {
 	{ "token-label",	1, NULL,		OPT_TOKEN_LABEL },
 	{ "set-id",		1, NULL,		'e' },
 	{ "attr-from",		1, NULL,		OPT_ATTR_FROM },
+	{ "read-attribute",	1, NULL,		OPT_READ_ATTRIBUTE },
+	{ "set-attribute",	1, NULL,		OPT_SET_ATTRIBUTE },
 	{ "input-file",		1, NULL,		'i' },
 	{ "signature-file",	1, NULL,		OPT_SIGNATURE_FILE },
 	{ "output-file",	1, NULL,		'o' },
@@ -371,6 +382,9 @@ static const char *option_help[] = {
 		"Hash some data",
 		"Derive a secret key using another key and some data",
 		"Derive ECDHpass DER encoded pubkey for compatibility with some PKCS#11 implementations",
+		"Encapsulate a shared secret to a public key (e.g. ML-KEM): the ciphertext goes to --output-file, the shared secret to --secret-file",
+		"Decapsulate the ciphertext from --input-file with a private key: the shared secret goes to --secret-file (default stdout)",
+		"File for the shared secret of --encapsulate and --decapsulate (needs --extractable)",
 		"Specify mechanism (use -M for a list of supported mechanisms), or by hexadecimal, e.g., 0x80001234",
 		"Specify hash algorithm used with RSA-PKCS-PSS, HASH-ML-DSA and HASH-SLH-DSA signatures and RSA-PKCS-OAEP decryption",
 		"Specify MGF (Message Generation Function) used for RSA-PSS signature and RSA-OAEP decryption (possible values are MGF1-SHA1 to MGF1-SHA512)",
@@ -410,8 +424,10 @@ static const char *option_help[] = {
 		"Specify the index of the slot to use",
 		"Specify the index of the object to use",
 		"Specify the token label of the slot to use",
-		"Set the CKA_ID of an object, <args>= the (new) CKA_ID",
+		"Set the CKA_ID of an object, <args>= the (new) CKA_ID (deprecated, use --set-attribute ID=<hex>)",
 		"Use <arg> to create some attributes when writing an object",
+		"Print the named attributes of an object, <arg>= comma-separated names (e.g. CKA_LABEL,sensitive,0x80000001)",
+		"Set an attribute of an object, <arg>= NAME=VALUE; may be repeated, all are set in one call",
 		"Specify the input file",
 		"Specify the file with signature for verification",
 		"Specify the output file",
@@ -466,6 +482,11 @@ static CK_ULONG		opt_slot_index = 0;
 static int		opt_slot_index_set = 0;
 static CK_ULONG		opt_object_index = 0;
 static int		opt_object_index_set = 0;
+#define MAX_ATTRIBUTE_ARGS 32
+static const char *opt_read_attributes[MAX_ATTRIBUTE_ARGS];
+static size_t opt_read_attributes_count = 0;
+static const char *opt_set_attributes[MAX_ATTRIBUTE_ARGS];
+static size_t opt_set_attributes_count = 0;
 static CK_MECHANISM_TYPE opt_mechanism = 0;
 static int		opt_mechanism_used = 0;
 static const char *	opt_file_to_write = NULL;
@@ -501,6 +522,7 @@ static int		opt_key_usage_wrap = 0;
 static int		opt_key_usage_encapsulate = 0;
 static int		opt_key_usage_default = 1; /* uses defaults if no opt_key_usage options */
 static int		opt_derive_pass_der = 0;
+static const char *opt_secret_file = NULL;
 static unsigned long	opt_random_bytes = 0;
 static CK_MECHANISM_TYPE opt_hash_alg = 0;
 static unsigned long	opt_mgf = 0;
@@ -638,6 +660,8 @@ static void		decrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		encrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		hash_data(CK_SLOT_ID, CK_SESSION_HANDLE);
 static void		derive_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+static void encapsulate_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
+static void decapsulate_key(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static int		gen_keypair(CK_SLOT_ID slot, CK_SESSION_HANDLE,
 				CK_OBJECT_HANDLE *, CK_OBJECT_HANDLE *, const char *);
 static int		gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE, CK_OBJECT_HANDLE *, const char *, char *);
@@ -659,6 +683,8 @@ static int		find_object(CK_SESSION_HANDLE, CK_OBJECT_CLASS,
 static int		find_object_flags(CK_SESSION_HANDLE, uint16_t flags,
 				CK_OBJECT_HANDLE_PTR,
 				const unsigned char *, size_t id_len, const char *label, int obj_index);
+static void read_attributes(CK_SESSION_HANDLE session);
+static void set_attributes(CK_SESSION_HANDLE session);
 static int find_object_flags_and_type_or_id_or_label(CK_SESSION_HANDLE sess,
 		uint16_t mf_flags, CK_OBJECT_HANDLE_PTR ret,
 		CK_OBJECT_CLASS cls, int cls_set,
@@ -825,12 +851,16 @@ int main(int argc, char * argv[])
 	int do_wrap = 0;
 	int do_hash = 0;
 	int do_derive = 0;
+	int do_encapsulate = 0;
+	int do_decapsulate = 0;
 	int do_gen_keypair = 0;
 	int do_gen_key = 0;
 	int do_write_object = 0;
 	int do_read_object = 0;
 	int do_delete_object = 0;
 	int do_set_id = 0;
+	int do_read_attribute = 0;
+	int do_set_attribute = 0;
 	int do_test = 0;
 	int do_test_kpgen_certwrite = 0;
 	int do_test_ec = 0;
@@ -931,6 +961,7 @@ int main(int argc, char * argv[])
 			action_count++;
 			break;
 		case 'e':
+			util_warn("--set-id is deprecated, use --set-attribute ID=%s", optarg);
 			need_session |= NEED_SESSION_RW;
 			do_set_id = 1;
 			new_object_id_len = sizeof(new_object_id);
@@ -942,6 +973,26 @@ int main(int argc, char * argv[])
 			break;
 		case OPT_ATTR_FROM:
 			opt_attr_from_file = optarg;
+			break;
+		case OPT_READ_ATTRIBUTE:
+			for (s = strtok(optarg, ","); s != NULL; s = strtok(NULL, ",")) {
+				if (opt_read_attributes_count == MAX_ATTRIBUTE_ARGS)
+					util_fatal("Too many attributes for --read-attribute");
+				opt_read_attributes[opt_read_attributes_count++] = s;
+			}
+			need_session |= NEED_SESSION_RO;
+			if (!do_read_attribute)
+				action_count++;
+			do_read_attribute = 1;
+			break;
+		case OPT_SET_ATTRIBUTE:
+			if (opt_set_attributes_count == MAX_ATTRIBUTE_ARGS)
+				util_fatal("Too many --set-attribute options");
+			opt_set_attributes[opt_set_attributes_count++] = optarg;
+			need_session |= NEED_SESSION_RW;
+			if (!do_set_attribute)
+				action_count++;
+			do_set_attribute = 1;
 			break;
 		case 'y':
 			opt_object_class_str = optarg;
@@ -1218,6 +1269,19 @@ int main(int argc, char * argv[])
 			do_derive = 1;
 			action_count++;
 			break;
+		case OPT_ENCAPSULATE:
+			need_session |= NEED_SESSION_RW;
+			do_encapsulate = 1;
+			action_count++;
+			break;
+		case OPT_DECAPSULATE:
+			need_session |= NEED_SESSION_RW;
+			do_decapsulate = 1;
+			action_count++;
+			break;
+		case OPT_SECRET_FILE:
+			opt_secret_file = optarg;
+			break;
 #ifndef _WIN32
 		case OPT_TEST_FORK:
 			do_test_fork = 1;
@@ -1319,8 +1383,8 @@ int main(int argc, char * argv[])
 				fprintf(stderr, "Options specifying object cannot be specified with --uri option\n");
 			util_print_usage_and_die(app_name, options, option_help, NULL);
 		}
-		if (opt_uri->slot_id) {
-			opt_slot = (CK_SLOT_ID)strtoul(opt_uri->slot_id, NULL, 0);
+		if (opt_uri->slot_id != CK_UNAVAILABLE_INFORMATION) {
+			opt_slot = opt_uri->slot_id;
 			opt_slot_set = 1;
 		}
 		opt_module = opt_uri->module_path;
@@ -1475,7 +1539,7 @@ int main(int argc, char * argv[])
 	if (do_list_mechs)
 		list_mechs(opt_slot);
 
-	if (do_sign || do_decrypt || do_encrypt || do_unwrap || do_wrap) {
+	if (do_sign || do_decrypt || do_encrypt || do_unwrap || do_wrap || do_decapsulate) {
 		CK_TOKEN_INFO info;
 
 		get_token_info(opt_slot, &info);
@@ -1569,6 +1633,20 @@ int main(int argc, char * argv[])
 					    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0))
 				util_fatal("Private/secret key not found");
 		}
+	}
+
+	if (do_encapsulate || do_decapsulate) {
+		CK_OBJECT_CLASS kem_class = do_encapsulate ? CKO_PUBLIC_KEY : CKO_PRIVATE_KEY;
+
+		if (do_encapsulate && do_decapsulate)
+			util_fatal("--encapsulate and --decapsulate cannot be used together");
+		if (do_decapsulate && opt_output)
+			util_fatal("--decapsulate writes the shared secret to --secret-file, not --output-file");
+		if (opt_uri && opt_uri->type && opt_object_class != kem_class)
+			util_fatal("Incorrect type of key");
+		if (!find_object(session, kem_class, &object,
+				    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, opt_object_label, 0))
+			util_fatal("%s key not found", do_encapsulate ? "Public" : "Private");
 	}
 
 	if (do_decrypt) {
@@ -1684,6 +1762,12 @@ int main(int argc, char * argv[])
 	if (do_derive)
 		derive_key(opt_slot, session, object);
 
+	if (do_encapsulate)
+		encapsulate_key(opt_slot, session, object);
+
+	if (do_decapsulate)
+		decapsulate_key(opt_slot, session, object);
+
 	if (do_list_objects)
 		list_objects(session);
 
@@ -1747,6 +1831,13 @@ int main(int argc, char * argv[])
 			util_fatal("You should specify the current object with the -d or -a option");
 		set_id_attr(session);
 	}
+
+	/* Set before read, so that one call can change an attribute and show it */
+	if (do_set_attribute)
+		set_attributes(session);
+
+	if (do_read_attribute)
+		read_attributes(session);
 
 	if (do_test)
 		p11_test(session);
@@ -2068,6 +2159,14 @@ static void list_mechs(CK_SLOT_ID slot)
 			if (info.flags & CKF_DERIVE) {
 				printf(", derive");
 				info.flags &= ~CKF_DERIVE;
+			}
+			if (info.flags & CKF_ENCAPSULATE) {
+				printf(", encapsulate");
+				info.flags &= ~CKF_ENCAPSULATE;
+			}
+			if (info.flags & CKF_DECAPSULATE) {
+				printf(", decapsulate");
+				info.flags &= ~CKF_DECAPSULATE;
 			}
 			if (info.flags & CKF_EC_F_P) {
 				printf(", EC F_P");
@@ -4651,8 +4750,8 @@ static int
 parse_gost_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *gost)
 {
 	unsigned char *pder;
-	BIGNUM *X, *Y;
-	int nid, rv;
+	BIGNUM *X = NULL, *Y = NULL;
+	int nid, oid_len, rv = -1;
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	const BIGNUM *bignum;
 	const EC_GROUP *group;
@@ -4674,80 +4773,88 @@ parse_gost_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *gost)
 
 	nid = OBJ_txt2nid(name);
 #endif
-	rv = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), NULL);
-	if (rv < 0)
-		return -1;
+	oid_len = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), NULL);
+	if (oid_len <= 0)
+		goto err;
 
-	gost->param_oid.value = OPENSSL_malloc(rv);
+	gost->param_oid.value = OPENSSL_malloc(oid_len);
 	if (!gost->param_oid.value)
-		return -1;
+		goto err;
 
 	pder =  gost->param_oid.value;
-	rv = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), &pder);
-	gost->param_oid.len = rv;
+	oid_len = i2d_ASN1_OBJECT(OBJ_nid2obj(nid), &pder);
+	if (oid_len <= 0)
+		goto err;
+	gost->param_oid.len = (size_t)oid_len;
 
 	if (private) {
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		bignum = EC_KEY_get0_private_key(src);
+		if (!bignum) {
+			rv = -1;
+			goto err;
+		}
 #else
-		if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY, &bignum) != 1)
-			return -1;
+		if (EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY, &bignum) != 1) {
+			rv = -1;
+			goto err;
+		}
 #endif
 		gost->private.len = BN_num_bytes(bignum);
 		gost->private.value = OPENSSL_malloc(gost->private.len);
 		if (!gost->private.value) {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-			BN_free(bignum);
-#endif
-			return -1;
+			rv = -1;
+			goto err;
 		}
 		BN_bn2bin(bignum, gost->private.value);
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		BN_free(bignum);
-#endif
-	}
-	else {
+	} else {
 		X = BN_new();
 		Y = BN_new();
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 		point = EC_KEY_get0_public_key(src);
 #else
 		group = EC_GROUP_new_by_curve_name_ex(osslctx, NULL, nid);
-		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pubkey_len);
-		if (!(pubkey = OPENSSL_malloc(pubkey_len)) ||
-				EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len, NULL) != 1 ||
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, NULL, 0, &pubkey_len) != 1 ||
+				!(pubkey = OPENSSL_malloc(pubkey_len)) || !group) {
+			rv = -1;
+			goto err;
+		}
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, pubkey, pubkey_len, NULL) != 1 ||
 				!(point = EC_POINT_new(group)) ||
 				EC_POINT_oct2point(group, point, pubkey, pubkey_len, NULL) != 1) {
-			EC_GROUP_free(group);
-			EC_POINT_free(point);
-			return -1;
+			rv = -1;
+			goto err;
 		}
-		OPENSSL_free(pubkey);
 #endif
 		rv = -1;
 		if (X && Y && point && group)
 			rv = EC_POINT_get_affine_coordinates(group, point, X, Y, NULL);
-		if (rv == 1) {
-			gost->public.len = BN_num_bytes(X) + BN_num_bytes(Y);
-			gost->public.value = OPENSSL_malloc(gost->public.len);
-			if (!gost->public.value)
-				rv = -1;
-			else
-			{
-				BN_bn2bin(Y, gost->public.value);
-				BN_bn2bin(X, gost->public.value + BN_num_bytes(Y));
-			}
+		if (rv != 1) {
+			rv = -1;
+			goto err;
 		}
-		BN_free(X);
-		BN_free(Y);
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		EC_GROUP_free(group);
-		EC_POINT_free(point);
-#endif
-		if (rv != 1)
-			return -1;
+		gost->public.len = BN_num_bytes(X) + BN_num_bytes(Y);
+		gost->public.value = OPENSSL_malloc(gost->public.len);
+		if (!gost->public.value) {
+			rv = -1;
+			goto err;
+		}
+		BN_bn2bin(Y, gost->public.value);
+		BN_bn2bin(X, gost->public.value + BN_num_bytes(Y));
 	}
-	return 0;
+	rv = 0;
+
+err:
+	BN_free(X);
+	BN_free(Y);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	BN_clear_free(bignum);
+	EC_GROUP_free(group);
+	EC_POINT_free(point);
+	OPENSSL_free(pubkey);
+#endif
+
+	return rv;
 }
 
 static int
@@ -4799,8 +4906,11 @@ parse_ec_pkey(EVP_PKEY *pkey, int private, struct generalkey_info *ec)
 			return -1;
 		point_len = EC_POINT_point2oct(ecgroup, ecpoint, POINT_CONVERSION_UNCOMPRESSED, buf, sizeof(buf), NULL);
 #else
-		EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, sizeof(buf), &point_len);
+		if (EVP_PKEY_get_octet_string_param(pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, buf, sizeof(buf), &point_len) != 1)
+			return -1;
 #endif
+		if (point_len == 0)
+			return -1;
 		ec->public.value = OPENSSL_malloc(MAX_HEADER_LEN + point_len);
 		if (!ec->public.value)
 			return -1;
@@ -5803,6 +5913,433 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 	return 1;
 }
 
+/*
+ * --read-attribute and --set-attribute.
+ *
+ * Attribute names come from ck_attribute_specs in pkcs11-display.c, the table
+ * pkcs11-spy prints with, so a name known there is known here. Its printers
+ * are made for spy logs (a hex dump preceded by a buffer address), so values
+ * are formatted here, by the kind of attribute they hold.
+ */
+enum attr_kind {
+	ATTR_BYTES,  /* hex */
+	ATTR_BOOL,   /* CK_BBOOL */
+	ATTR_ULONG,  /* CK_ULONG, decimal */
+	ATTR_ENUM,   /* CK_ULONG named by an enum_spec (class, key type, ...) */
+	ATTR_MECH,   /* one CK_MECHANISM_TYPE */
+	ATTR_MECHS,  /* an array of CK_MECHANISM_TYPE */
+	ATTR_STRING, /* UTF-8 */
+	ATTR_DATE    /* CK_DATE */
+};
+
+/* The length of a pkcs11-display.c name without the trailing padding it
+ * carries for spy's columns; attribute and enum names alike have it */
+static size_t
+spy_name_len(const char *name)
+{
+	size_t n = strlen(name);
+
+	while (n > 0 && name[n - 1] == ' ')
+		n--;
+	return n;
+}
+
+static void
+attr_spec_name(const type_spec *spec, char *out, size_t out_len)
+{
+	size_t n = spy_name_len(spec->name);
+
+	if (n >= out_len)
+		n = out_len - 1;
+	memcpy(out, spec->name, n);
+	out[n] = '\0';
+}
+
+static const type_spec *
+attr_spec_by_type(CK_ATTRIBUTE_TYPE type)
+{
+	CK_ULONG i;
+
+	for (i = 0; i < ck_attribute_num; i++)
+		if (ck_attribute_specs[i].type == type)
+			return &ck_attribute_specs[i];
+	return NULL;
+}
+
+/* "CKA_LABEL", "label" or "0x80000001" */
+static int
+attr_from_name(const char *name, CK_ATTRIBUTE_TYPE *type)
+{
+	char spec_name[64];
+	CK_ULONG i;
+
+	if (strncasecmp(name, "0x", 2) == 0) {
+		char *end = NULL;
+
+		*type = strtoul(name, &end, 16);
+		return end != NULL && *end == '\0' && end != name + 2;
+	}
+	if (strncasecmp(name, "CKA_", 4) == 0)
+		name += 4;
+	for (i = 0; i < ck_attribute_num; i++) {
+		attr_spec_name(&ck_attribute_specs[i], spec_name, sizeof(spec_name));
+		if (strncmp(spec_name, "CKA_", 4) == 0 && strcasecmp(spec_name + 4, name) == 0) {
+			*type = ck_attribute_specs[i].type;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static enum attr_kind
+attr_kind_of(CK_ATTRIBUTE_TYPE type, const type_spec *spec)
+{
+	switch (type) {
+	case CKA_VALUE_LEN:
+	case CKA_MODULUS_BITS:
+	case CKA_PRIME_BITS:
+	case CKA_SUBPRIME_BITS:
+	case CKA_VALUE_BITS:
+	case CKA_CERTIFICATE_CATEGORY:
+	case CKA_JAVA_MIDP_SECURITY_DOMAIN:
+	case CKA_PARAMETER_SET:
+		return ATTR_ULONG;
+	case CKA_KEY_GEN_MECHANISM:
+	case CKA_MECHANISM_TYPE:
+	case CKA_NAME_HASH_ALGORITHM:
+		return ATTR_MECH;
+	case CKA_ALLOWED_MECHANISMS:
+		return ATTR_MECHS;
+	case CKA_START_DATE:
+	case CKA_END_DATE:
+		return ATTR_DATE;
+	default:
+		break;
+	}
+	if (spec == NULL)
+		return ATTR_BYTES;
+	if (spec->display == print_boolean)
+		return ATTR_BOOL;
+	if (spec->display == print_enum && spec->arg != NULL)
+		return ATTR_ENUM;
+	if (spec->display == print_print)
+		return ATTR_STRING;
+	return ATTR_BYTES;
+}
+
+static void
+print_attr_value(enum attr_kind kind, const type_spec *spec,
+		const unsigned char *value, CK_ULONG len)
+{
+	CK_ULONG i, v;
+
+	switch (kind) {
+	case ATTR_BOOL:
+		if (len == sizeof(CK_BBOOL)) {
+			printf("%s\n", value[0] ? "true" : "false");
+			return;
+		}
+		break;
+	case ATTR_ULONG:
+	case ATTR_ENUM:
+	case ATTR_MECH:
+		if (len != sizeof(CK_ULONG))
+			break;
+		memcpy(&v, value, sizeof(v));
+		if (kind == ATTR_ULONG) {
+			printf("%lu\n", v);
+		} else if (kind == ATTR_MECH) {
+			printf("%s\n", p11_mechanism_to_name(v));
+		} else {
+			const char *n = lookup_enum_spec((enum_spec *)spec->arg, v);
+
+			if (n)
+				printf("%.*s\n", (int)spy_name_len(n), n);
+			else
+				printf("0x%lx\n", v);
+		}
+		return;
+	case ATTR_MECHS:
+		if (len % sizeof(CK_ULONG) != 0)
+			break;
+		for (i = 0; i < len / sizeof(CK_ULONG); i++) {
+			memcpy(&v, value + i * sizeof(CK_ULONG), sizeof(v));
+			printf("%s%s", i ? "," : "", p11_mechanism_to_name(v));
+		}
+		printf("\n");
+		return;
+	case ATTR_STRING:
+		for (i = 0; i < len; i++)
+			if (value[i] < 0x20 || value[i] == 0x7f)
+				goto hex;
+		printf("%.*s\n", (int)len, value ? (const char *)value : "");
+		return;
+	case ATTR_DATE:
+		if (len == 0) {
+			printf("(empty)\n");
+			return;
+		}
+		if (len == sizeof(CK_DATE)) {
+			printf("%.4s-%.2s-%.2s\n", value, value + 4, value + 6);
+			return;
+		}
+		break;
+	case ATTR_BYTES:
+		break;
+	}
+hex:
+	for (i = 0; i < len; i++)
+		printf("%02x", value[i]);
+	printf("\n");
+}
+
+/* The object --read-attribute or --set-attribute acts on */
+static CK_OBJECT_HANDLE
+attr_target(CK_SESSION_HANDLE session, const char *what)
+{
+	CK_OBJECT_HANDLE obj;
+
+	if (opt_object_class_str == NULL && opt_object_id_len == 0 && opt_object_label == NULL)
+		util_fatal("%s: specify the object with --uri, or with --type, --id or --label", what);
+	if (!find_object_type_or_id_or_label(session, opt_object_class, opt_object_class_str != NULL,
+			    &obj, opt_object_id, opt_object_id_len, opt_object_label, (int)opt_object_index))
+		util_fatal("%s: no object matches", what);
+	return obj;
+}
+
+static void
+read_attributes(CK_SESSION_HANDLE session)
+{
+	CK_OBJECT_HANDLE obj = attr_target(session, "--read-attribute");
+	size_t a;
+
+	for (a = 0; a < opt_read_attributes_count; a++) {
+		const char *name = opt_read_attributes[a];
+		CK_ATTRIBUTE attr = {0, NULL, 0};
+		const type_spec *spec;
+		char shown[64];
+		CK_RV rv;
+
+		if (!attr_from_name(name, &attr.type))
+			util_fatal("Unknown attribute \"%s\"", name);
+		spec = attr_spec_by_type(attr.type);
+		if (spec)
+			attr_spec_name(spec, shown, sizeof(shown));
+		else
+			snprintf(shown, sizeof(shown), "0x%08lx", (unsigned long)attr.type);
+
+		rv = p11->C_GetAttributeValue(session, obj, &attr, 1);
+		if (rv == CKR_OK && attr.ulValueLen != CK_UNAVAILABLE_INFORMATION && attr.ulValueLen > 0) {
+			attr.pValue = malloc(attr.ulValueLen);
+			if (attr.pValue == NULL)
+				util_fatal("out of memory");
+			rv = p11->C_GetAttributeValue(session, obj, &attr, 1);
+		}
+		printf("%s: ", shown);
+		if (rv == CKR_OK && attr.ulValueLen == CK_UNAVAILABLE_INFORMATION)
+			printf("(unavailable)\n");
+		else if (rv == CKR_ATTRIBUTE_SENSITIVE)
+			printf("(sensitive)\n");
+		else if (rv == CKR_ATTRIBUTE_TYPE_INVALID)
+			printf("(not present)\n");
+		else if (rv != CKR_OK)
+			printf("(%s)\n", CKR2Str(rv));
+		else
+			print_attr_value(attr_kind_of(attr.type, spec), spec,
+					attr.pValue, attr.ulValueLen);
+		free(attr.pValue);
+	}
+}
+
+/* A mechanism named as pkcs11-tool names it (AES-CBC) or as PKCS#11 does
+ * (CKM_AES_CBC) */
+static CK_MECHANISM_TYPE
+attr_mech_from_name(const char *name)
+{
+	CK_MECHANISM_TYPE mech;
+	char *s, *p;
+
+	if (strncasecmp(name, "CKM_", 4) != 0)
+		return p11_name_to_mechanism(name);
+	s = strdup(name + 4);
+	if (s == NULL)
+		util_fatal("out of memory");
+	for (p = s; *p; p++)
+		if (*p == '_')
+			*p = '-';
+	mech = p11_name_to_mechanism(s);
+	free(s);
+	return mech;
+}
+
+/* Parse VALUE for an attribute of this kind into a fresh buffer */
+static void
+parse_attr_value(enum attr_kind kind, const type_spec *spec, const char *name,
+		const char *value, CK_ATTRIBUTE *attr)
+{
+	CK_ULONG v = 0;
+	char *end = NULL;
+
+	switch (kind) {
+	case ATTR_BOOL: {
+		CK_BBOOL *b = malloc(sizeof(*b));
+
+		if (b == NULL)
+			util_fatal("out of memory");
+		if (!strcasecmp(value, "true") || !strcasecmp(value, "yes") || !strcmp(value, "1"))
+			*b = CK_TRUE;
+		else if (!strcasecmp(value, "false") || !strcasecmp(value, "no") || !strcmp(value, "0"))
+			*b = CK_FALSE;
+		else
+			util_fatal("%s: \"%s\" is not true or false", name, value);
+		attr->pValue = b;
+		attr->ulValueLen = sizeof(*b);
+		return;
+	}
+	case ATTR_ENUM:
+	case ATTR_ULONG:
+	case ATTR_MECH: {
+		CK_ULONG *p = malloc(sizeof(*p));
+		enum_spec *es = kind == ATTR_ENUM ? (enum_spec *)spec->arg : NULL;
+		CK_ULONG i;
+		int found = 0;
+
+		if (p == NULL)
+			util_fatal("out of memory");
+		if (kind == ATTR_MECH) {
+			v = attr_mech_from_name(value);
+			found = 1;
+		} else {
+			for (i = 0; es && i < es->size; i++) {
+				size_t n = spy_name_len(es->specs[i].name);
+
+				if (!strncasecmp(es->specs[i].name, value, n) && value[n] == '\0') {
+					v = es->specs[i].type;
+					found = 1;
+					break;
+				}
+			}
+		}
+		if (!found) {
+			v = strtoul(value, &end, 0);
+			if (end == value || *end != '\0')
+				util_fatal("%s: \"%s\" is not a number%s", name, value,
+						es ? " or a known name" : "");
+		}
+		*p = v;
+		attr->pValue = p;
+		attr->ulValueLen = sizeof(*p);
+		return;
+	}
+	case ATTR_MECHS: {
+		char *list = strdup(value), *m;
+		CK_ULONG *mechs = NULL, n = 0;
+
+		if (list == NULL)
+			util_fatal("out of memory");
+		for (m = strtok(list, ","); m; m = strtok(NULL, ",")) {
+			CK_ULONG *grown = realloc(mechs, (n + 1) * sizeof(*mechs));
+
+			if (grown == NULL)
+				util_fatal("out of memory");
+			mechs = grown;
+			mechs[n++] = attr_mech_from_name(m);
+		}
+		free(list);
+		attr->pValue = mechs;
+		attr->ulValueLen = n * sizeof(*mechs);
+		return;
+	}
+	case ATTR_STRING:
+		attr->pValue = strdup(value);
+		if (attr->pValue == NULL)
+			util_fatal("out of memory");
+		attr->ulValueLen = strlen(value);
+		return;
+	case ATTR_DATE: {
+		CK_DATE *d;
+		char digits[8];
+		size_t i;
+
+		if (value[0] == '\0') {
+			attr->pValue = NULL;
+			attr->ulValueLen = 0;
+			return;
+		}
+		/* YYYY-MM-DD is what --read-attribute prints */
+		if (strlen(value) == 10 && value[4] == '-' && value[7] == '-') {
+			memcpy(digits, value, 4);
+			memcpy(digits + 4, value + 5, 2);
+			memcpy(digits + 6, value + 8, 2);
+		} else if (strlen(value) == 8) {
+			memcpy(digits, value, 8);
+		} else {
+			util_fatal("%s: \"%s\" is not YYYYMMDD or YYYY-MM-DD", name, value);
+		}
+		for (i = 0; i < sizeof(digits); i++)
+			if (digits[i] < '0' || digits[i] > '9')
+				util_fatal("%s: \"%s\" is not YYYYMMDD or YYYY-MM-DD", name, value);
+		d = malloc(sizeof(*d));
+		if (d == NULL)
+			util_fatal("out of memory");
+		memcpy(d->year, digits, 4);
+		memcpy(d->month, digits + 4, 2);
+		memcpy(d->day, digits + 6, 2);
+		attr->pValue = d;
+		attr->ulValueLen = sizeof(*d);
+		return;
+	}
+	case ATTR_BYTES: {
+		size_t len = strlen(value) / 2 + 1;
+		unsigned char *buf = malloc(len);
+
+		if (buf == NULL)
+			util_fatal("out of memory");
+		if (strncasecmp(value, "0x", 2) == 0)
+			value += 2;
+		if (sc_hex_to_bin(value, buf, &len))
+			util_fatal("%s: \"%s\" is not hexadecimal", name, value);
+		attr->pValue = buf;
+		attr->ulValueLen = len;
+		return;
+	}
+	}
+}
+
+static void
+set_attributes(CK_SESSION_HANDLE session)
+{
+	CK_OBJECT_HANDLE obj = attr_target(session, "--set-attribute");
+	CK_ATTRIBUTE attrs[MAX_ATTRIBUTE_ARGS];
+	size_t i;
+	CK_RV rv;
+
+	for (i = 0; i < opt_set_attributes_count; i++) {
+		char *arg = strdup(opt_set_attributes[i]);
+		char *eq;
+		const type_spec *spec;
+
+		if (arg == NULL)
+			util_fatal("out of memory");
+		eq = strchr(arg, '=');
+		if (eq == NULL)
+			util_fatal("--set-attribute \"%s\": expected NAME=VALUE", arg);
+		*eq = '\0';
+		if (!attr_from_name(arg, &attrs[i].type))
+			util_fatal("Unknown attribute \"%s\"", arg);
+		spec = attr_spec_by_type(attrs[i].type);
+		parse_attr_value(attr_kind_of(attrs[i].type, spec), spec, arg, eq + 1, &attrs[i]);
+		free(arg);
+	}
+
+	/* One call for all of them; which may change is the token's decision */
+	rv = p11->C_SetAttributeValue(session, obj, attrs, (CK_ULONG)opt_set_attributes_count);
+	for (i = 0; i < opt_set_attributes_count; i++)
+		free(attrs[i].pValue);
+	if (rv != CKR_OK)
+		p11_fatal("C_SetAttributeValue", rv);
+}
+
 static void set_id_attr(CK_SESSION_HANDLE session)
 {
 	CK_OBJECT_HANDLE obj;
@@ -5891,13 +6428,12 @@ find_slot_by_uri(struct pkcs11_uri *uri, CK_SLOT_ID_PTR result)
 static int find_slot_by_description(const char *label, CK_SLOT_ID_PTR result)
 {
 	CK_SLOT_INFO	info;
-	CK_ULONG	n, len;
+	CK_ULONG n;
 	CK_RV		rv;
 
 	if (!p11_num_slots)
 		return 0;
 
-	len = strlen(label);
 	for (n = 0; n < p11_num_slots; n++) {
 		const char	*slot_label;
 
@@ -5905,7 +6441,7 @@ static int find_slot_by_description(const char *label, CK_SLOT_ID_PTR result)
 		if (rv != CKR_OK)
 			continue;
 		slot_label = p11_utf8_to_local(info.slotDescription, sizeof(info.slotDescription));
-		if (!strncmp(label, slot_label, len)) {
+		if (!strcmp(label, slot_label)) {
 			*result = p11_slots[n];
 			return 1;
 		}
@@ -5916,13 +6452,12 @@ static int find_slot_by_description(const char *label, CK_SLOT_ID_PTR result)
 static int find_slot_by_token_label(const char *label, CK_SLOT_ID_PTR result)
 {
 	CK_TOKEN_INFO	info;
-	CK_ULONG	n, len;
+	CK_ULONG n;
 	CK_RV		rv;
 
 	if (!p11_num_slots)
 		return 0;
 
-	len = strlen(label);
 	for (n = 0; n < p11_num_slots; n++) {
 		const char	*token_label;
 
@@ -5930,7 +6465,7 @@ static int find_slot_by_token_label(const char *label, CK_SLOT_ID_PTR result)
 		if (rv != CKR_OK)
 			continue;
 		token_label = p11_utf8_to_local(info.label, sizeof(info.label));
-		if (!strncmp(label, token_label, len)) {
+		if (!strcmp(label, token_label)) {
 			*result = p11_slots[n];
 			return 1;
 		}
@@ -6523,6 +7058,200 @@ derive_hkdf(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	free(salt);
 	free(info);
 	return newkey;
+}
+
+/*
+ * C_EncapsulateKey and C_DecapsulateKey. libpkcs11 loads the module's default
+ * interface, which is used when it is 3.2. A module may make an older one its
+ * default and offer 3.2 alongside (FreeHSM defaults to 3.0), so 3.2 is then
+ * asked for by version.
+ */
+static CK_FUNCTION_LIST_3_2_PTR
+get_function_list_3_2(void)
+{
+	CK_VERSION_PTR version = module ? C_GetModuleVersion(module) : NULL;
+	CK_VERSION want = {3, 2};
+	CK_INTERFACE_PTR interface = NULL;
+	CK_FUNCTION_LIST_3_2_PTR funcs;
+	CK_RV rv;
+
+	if (version == NULL || version->major < 3)
+		util_fatal("Encapsulation needs a PKCS #11 3.2 module");
+	if (version->major == 3 && version->minor >= 2) {
+		interface = C_GetModuleInterface(module);
+	} else {
+		rv = p11->C_GetInterface((CK_UTF8CHAR_PTR) "PKCS 11", &want, &interface, 0);
+		if (rv != CKR_OK)
+			interface = NULL;
+	}
+	if (interface == NULL)
+		util_fatal("The module has no PKCS #11 3.2 interface");
+	funcs = (CK_FUNCTION_LIST_3_2_PTR)interface->pFunctionList;
+	if (funcs->version.major != 3 || funcs->version.minor < 2)
+		util_fatal("The module has no PKCS #11 3.2 interface");
+	return funcs;
+}
+
+/* The whole of the input file (or stdin), whatever its size */
+static unsigned char *
+read_input(const char *path, size_t *len)
+{
+	unsigned char *buf = NULL;
+	size_t cap = 0;
+	ssize_t sz;
+	int fd = 0;
+
+	*len = 0;
+	if (path != NULL && (fd = open(path, O_RDONLY | O_BINARY)) < 0)
+		util_fatal("Cannot open %s: %s", path, strerror(errno));
+	do {
+		if (*len == cap) {
+			unsigned char *grown = realloc(buf, cap ? cap * 2 : 4096);
+
+			if (grown == NULL)
+				util_fatal("out of memory");
+			buf = grown;
+			cap = cap ? cap * 2 : 4096;
+		}
+		sz = read(fd, buf + *len, cap - *len);
+		if (sz > 0)
+			*len += (size_t)sz;
+	} while (sz > 0);
+	if (sz < 0)
+		util_fatal("Cannot read from %s: %s", path ? path : "stdin", strerror(errno));
+	if (path != NULL)
+		close(fd);
+	return buf;
+}
+
+static void
+write_value(const char *path, const void *value, size_t value_len)
+{
+	int fd = STDOUT_FILENO;
+	ssize_t sz;
+
+	if (path) {
+		fd = open(path, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR);
+		if (fd < 0)
+			util_fatal("failed to open %s: %s", path, strerror(errno));
+	}
+	sz = write(fd, value, value_len);
+	if (sz < 0 || (size_t)sz != value_len)
+		util_fatal("Failed to write to %s: %s", path ? path : "stdout", strerror(errno));
+	if (path)
+		close(fd);
+}
+
+static CK_MECHANISM_TYPE
+kem_mechanism(CK_SLOT_ID slot, CK_FLAGS flags)
+{
+	if (!opt_mechanism_used)
+		if (!find_mechanism(slot, flags | opt_allow_sw, NULL, 0, &opt_mechanism))
+			util_fatal("No mechanism found for this operation");
+	return opt_mechanism;
+}
+
+/*
+ * The shared secret is a session object. Its CKA_PRIVATE, CKA_SENSITIVE and
+ * CKA_EXTRACTABLE follow --private, --sensitive and --extractable, as for
+ * --derive with HKDF, so it can only be written out with --extractable.
+ */
+static CK_ULONG
+kem_secret_template(CK_ATTRIBUTE *tmpl, int max_attrs)
+{
+	static CK_OBJECT_CLASS secret_class = CKO_SECRET_KEY;
+	static CK_KEY_TYPE secret_type = CKK_GENERIC_SECRET;
+	int n_attrs = 0;
+
+	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_TOKEN, &s_false, sizeof(CK_BBOOL));
+	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_CLASS, &secret_class, sizeof(secret_class));
+	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_KEY_TYPE, &secret_type, sizeof(secret_type));
+	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_PRIVATE, opt_is_private ? &s_true : &s_false, sizeof(CK_BBOOL));
+	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_SENSITIVE, opt_is_sensitive ? &s_true : &s_false, sizeof(CK_BBOOL));
+	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_EXTRACTABLE, opt_is_extractable ? &s_true : &s_false, sizeof(CK_BBOOL));
+	if (opt_allowed_mechanisms_len > 0)
+		FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_ALLOWED_MECHANISMS, opt_allowed_mechanisms,
+				sizeof(CK_MECHANISM_TYPE) * opt_allowed_mechanisms_len);
+	return (CK_ULONG)n_attrs;
+}
+
+/* Write the shared secret to --secret-file, or to stdout if decapsulating
+ * without one; then destroy the session object */
+static void
+kem_write_secret(CK_SESSION_HANDLE session, CK_OBJECT_HANDLE secret, int to_stdout)
+{
+	CK_BYTE *value;
+	CK_ULONG value_len = 0;
+
+	if (opt_secret_file != NULL || to_stdout) {
+		value = getVALUE(session, secret, &value_len);
+		if (value == NULL || value_len == 0)
+			util_fatal("Cannot read the shared secret (use --extractable, without --sensitive)");
+		write_value(opt_secret_file, value, value_len);
+		free(value);
+	}
+	p11->C_DestroyObject(session, secret);
+}
+
+static void
+encapsulate_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
+{
+	CK_FUNCTION_LIST_3_2_PTR p11_3_2 = get_function_list_3_2();
+	CK_MECHANISM mech = {0};
+	CK_BYTE *ciphertext = NULL;
+	CK_ULONG ciphertext_len = 0;
+	CK_OBJECT_HANDLE secret = CK_INVALID_HANDLE;
+	CK_RV rv;
+	CK_ATTRIBUTE secret_template[8];
+	CK_ULONG n_attrs = kem_secret_template(secret_template, ARRAY_SIZE(secret_template));
+
+	mech.mechanism = kem_mechanism(slot, CKF_ENCAPSULATE);
+	fprintf(stderr, "Using encapsulation algorithm %s\n", p11_mechanism_to_name(mech.mechanism));
+
+	rv = p11_3_2->C_EncapsulateKey(session, &mech, key, secret_template, n_attrs,
+			NULL, &ciphertext_len, &secret);
+	if (rv != CKR_OK)
+		p11_fatal("C_EncapsulateKey", rv);
+	ciphertext = malloc(ciphertext_len);
+	if (ciphertext == NULL)
+		util_fatal("malloc() failure");
+	rv = p11_3_2->C_EncapsulateKey(session, &mech, key, secret_template, n_attrs,
+			ciphertext, &ciphertext_len, &secret);
+	if (rv != CKR_OK)
+		p11_fatal("C_EncapsulateKey", rv);
+
+	write_value(opt_output, ciphertext, ciphertext_len);
+	free(ciphertext);
+
+	kem_write_secret(session, secret, 0);
+}
+
+static void
+decapsulate_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
+{
+	CK_FUNCTION_LIST_3_2_PTR p11_3_2 = get_function_list_3_2();
+	CK_MECHANISM mech = {0};
+	unsigned char *ciphertext;
+	size_t ciphertext_len = 0;
+	CK_OBJECT_HANDLE secret = CK_INVALID_HANDLE;
+	CK_RV rv;
+	CK_ATTRIBUTE secret_template[8];
+	CK_ULONG n_attrs = kem_secret_template(secret_template, ARRAY_SIZE(secret_template));
+
+	mech.mechanism = kem_mechanism(slot, CKF_DECAPSULATE);
+	fprintf(stderr, "Using decapsulation algorithm %s\n", p11_mechanism_to_name(mech.mechanism));
+
+	ciphertext = read_input(opt_input, &ciphertext_len);
+
+	if ((getCLASS(session, key) == CKO_PRIVATE_KEY) && getALWAYS_AUTHENTICATE(session, key))
+		login(session, CKU_CONTEXT_SPECIFIC);
+	rv = p11_3_2->C_DecapsulateKey(session, &mech, key, secret_template, n_attrs,
+			ciphertext, (CK_ULONG)ciphertext_len, &secret);
+	free(ciphertext);
+	if (rv != CKR_OK)
+		p11_fatal("C_DecapsulateKey", rv);
+
+	kem_write_secret(session, secret, 1);
 }
 
 static void

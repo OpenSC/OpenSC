@@ -36,7 +36,7 @@ enum sc_simpletlv_byte_order {
 };
 
 /*
- * Create a tag/length file in Simple TLV based on the  val_len  content length
+ * Create a tag/length file in Simple TLV based on the  datalen  content length
  * @param  tag       Tag to store into the TL file
  * @param  datalen   Data length to store into the TL file
  * @param  out       TL byte array to write into
@@ -49,7 +49,7 @@ int sc_simpletlv_put_tag(u8 tag, size_t datalen, u8 *out, size_t outlen, u8 **pt
 		enum sc_simpletlv_byte_order byte_order);
 
 /* get the Simple TLV tag and length.
- * @param  buf       Pointer to the TL file
+ * @param  buf       Pointer to the TL file; *buf is an in-out pointer advanced past the tag and length on success
  * @param  buflen    The length of TL file
  * @param  tag_out   The tag from the TL file
  * @param  taglen    The length of the V record

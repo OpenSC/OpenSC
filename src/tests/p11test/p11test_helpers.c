@@ -126,6 +126,7 @@ int group_setup(void **state)
 	info->pin_length = token.pin_length;
 	info->interactive = token.interactive;
 	info->slot_id = token.slot_id;
+	info->encrypt_support = token.encrypt_support;
 
 	if (load_pkcs11_module(info, token.library_path)) {
 		free(info);

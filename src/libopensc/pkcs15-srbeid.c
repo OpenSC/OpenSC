@@ -289,13 +289,16 @@ srbeid_enum_certs(sc_card_t *card, cert_entry_t **certs_out)
 
 	/* Read cmapfile and resolve key FIDs. */
 	if (cmap_fid != 0) {
+		/* cmapfile is listed, so a failed read is a real error. */
 		r = srbeid_read_file(card, cmap_fid, &cmap_buf, &cmap_len);
-		if (r == SC_SUCCESS) {
-			/* Optional 2-byte prefix present when (len-2) is a multiple of 86. */
-			if (cmap_len >= 2 && (cmap_len - 2) % CE_CMAP_RECORD_SIZE == 0)
-				cmap_offset = 2;
-			cmap_nrec = (cmap_len - cmap_offset) / CE_CMAP_RECORD_SIZE;
+		if (r < 0) {
+			sc_log(card->ctx, "srbeid: could not read cmapfile: %d", r);
+			goto out;
 		}
+		/* Optional 2-byte prefix present when (len-2) is a multiple of 86. */
+		if (cmap_len >= 2 && (cmap_len - 2) % CE_CMAP_RECORD_SIZE == 0)
+			cmap_offset = 2;
+		cmap_nrec = (cmap_len - cmap_offset) / CE_CMAP_RECORD_SIZE;
 	}
 
 	for (i = 0; i < ncerts; i++) {
@@ -496,9 +499,7 @@ sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 		key_info.id.value[0] = (u8)(i + 1);
 		key_info.native = 1;
 		key_info.key_reference = (int)certs[i].key_fid;
-		key_info.modulus_length = certs[i].key_size_bits
-							  ? certs[i].key_size_bits
-							  : 2048;
+		key_info.modulus_length = certs[i].key_size_bits;
 
 		/*
 		 * Key usage flags by type:
@@ -529,10 +530,15 @@ sc_pkcs15emu_srbeid_init(sc_pkcs15_card_t *p15card)
 		key_obj.auth_id.len = 1;
 		key_obj.auth_id.value[0] = 1;
 
-		r = sc_pkcs15emu_add_rsa_prkey(p15card, &key_obj, &key_info);
-		if (r < 0) {
-			sc_log(card->ctx, "srbeid: add prkey[%d] failed: %d", i, r);
-			goto out;
+		if (certs[i].key_size_bits == 0) {
+			/* No valid container. Keep the certificate, skip the key. */
+			sc_log(card->ctx, "srbeid: cert[%d] has no private key, skipping", i);
+		} else {
+			r = sc_pkcs15emu_add_rsa_prkey(p15card, &key_obj, &key_info);
+			if (r < 0) {
+				sc_log(card->ctx, "srbeid: add prkey[%d] failed: %d", i, r);
+				goto out;
+			}
 		}
 
 		/* ---- Certificate object ---- */

@@ -127,7 +127,7 @@ lteid_clear_cached_can(sc_card_t *card)
 }
 
 static int
-lteid_get_can(sc_card_t *card, struct establish_pace_channel_input *pace_input)
+lteid_get_can(sc_card_t *card, struct sc_establish_pace_channel_input *pace_input)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	struct lteid_drv_data *drv_data = DRVDATA(card);
@@ -173,7 +173,7 @@ lteid_get_can(sc_card_t *card, struct establish_pace_channel_input *pace_input)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
 
-	pace_input->pin_id = PACE_PIN_ID_CAN;
+	pace_input->pin_id = SC_PACE_PIN_ID_CAN;
 	pace_input->pin = drv_data->can;
 	pace_input->pin_length = LTEID_CAN_LENGTH;
 
@@ -186,8 +186,7 @@ lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	struct lteid_drv_data *drv_data = DRVDATA(card);
-	struct establish_pace_channel_input pace_input = {0};
-	struct establish_pace_channel_output pace_output = {0};
+	struct sc_establish_pace_channel_input pace_input = {0};
 
 	if (drv_data->pace) {
 		sc_sm_stop(card);
@@ -195,7 +194,7 @@ lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin
 		drv_data->pace_pin_ref = 0;
 	}
 
-	if (ref == PACE_PIN_ID_CAN && !pin) {
+	if (ref == SC_PACE_PIN_ID_CAN && !pin) {
 		if (SC_SUCCESS != lteid_get_can(card, &pace_input)) {
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 		}
@@ -205,7 +204,7 @@ lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin
 		pace_input.pin_length = pinlen;
 	}
 
-	int rv = perform_pace(card, pace_input, &pace_output, EAC_TR_VERSION_2_02);
+	int rv = perform_pace(card, pace_input, NULL, EAC_TR_VERSION_2_02);
 	if (rv != SC_SUCCESS) {
 		sc_log(card->ctx, "Error performing PACE for pin ref 0x%02x.", ref);
 
@@ -213,14 +212,14 @@ lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin
 		drv_data->pace_pin_ref = 0;
 
 		// Special case after entering incorrect PACE PIN twice. Card locks with 1 PIN attempt remaining.
-		if (ref == PACE_PIN_ID_PIN && rv == SC_ERROR_NO_CARD_SUPPORT) {
+		if (ref == SC_PACE_PIN_ID_PIN && rv == SC_ERROR_NO_CARD_SUPPORT) {
 			rv = SC_ERROR_AUTH_METHOD_BLOCKED;
 		}
 
 		// When CAN code authentication fails and CAN code comes from cache - clear it.
 		// We don't want to make multiple attempts if code is wrong. User should run lteid-tool
 		// again to set up the card.
-		if (ref == PACE_PIN_ID_CAN && drv_data->can_from_cache && rv != SC_ERROR_INTERNAL) {
+		if (ref == SC_PACE_PIN_ID_CAN && drv_data->can_from_cache && rv != SC_ERROR_INTERNAL) {
 			if (lteid_clear_cached_can(card)) {
 				drv_data->can_from_cache = 0;
 			}
@@ -230,19 +229,13 @@ lteid_perform_pace(struct sc_card *card, const int ref, const unsigned char *pin
 	}
 
 	// If caller provided CAN is valid - cache it.
-	if (ref == PACE_PIN_ID_CAN && pin) {
+	if (ref == SC_PACE_PIN_ID_CAN && pin) {
 		lteid_cache_can(card, (const char *)pin);
 	}
 
 	// Track PACE status
 	drv_data->pace = 1;
 	drv_data->pace_pin_ref = ref;
-
-	free(pace_output.ef_cardaccess);
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -252,7 +245,7 @@ lteid_unlock(sc_card_t *card)
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	if (SC_SUCCESS != lteid_perform_pace(card, PACE_PIN_ID_CAN, NULL, 0, NULL)) {
+	if (SC_SUCCESS != lteid_perform_pace(card, SC_PACE_PIN_ID_CAN, NULL, 0, NULL)) {
 		sc_log(card->ctx, "Unlock with CAN code failed. No CAN found in environment, opensc.conf nor cache.");
 	}
 
@@ -324,9 +317,9 @@ lteid_pin_cmd_verify(struct sc_card *card, struct sc_pin_cmd_data *data)
 	// Authentication key refers to PACE PIN -> 0x03
 	// Meanwhile, signing key refers to PIN.QES -> 0x81. This pin is verifiable via regular iso7816 cmd verify call.
 	switch (data->pin_reference) {
-	case PACE_PIN_ID_CAN:
-	case PACE_PIN_ID_PIN:
-	case PACE_PIN_ID_PUK:
+	case SC_PACE_PIN_ID_CAN:
+	case SC_PACE_PIN_ID_PIN:
+	case SC_PACE_PIN_ID_PUK:
 		rv = lteid_perform_pace(card, data->pin_reference, data->pin1.data, data->pin1.len, &data->pin1.tries_left);
 		break;
 	default:
@@ -346,7 +339,7 @@ lteid_pin_cmd_get_info(struct sc_card *card, struct sc_pin_cmd_data *data)
 	int rv;
 
 	// PACE CAN code info: as far as we know there's no limit to CAN verification attempts
-	if (data->pin_reference == PACE_PIN_ID_CAN) {
+	if (data->pin_reference == SC_PACE_PIN_ID_CAN) {
 		data->pin1.max_tries = -1;
 		data->pin1.tries_left = -1;
 
@@ -354,17 +347,17 @@ lteid_pin_cmd_get_info(struct sc_card *card, struct sc_pin_cmd_data *data)
 	}
 
 	// PACE PIN and PUK codes: max and remaining attempts are stored in ACE3 and ACE4 files.
-	if (data->pin_reference == PACE_PIN_ID_PIN || data->pin_reference == PACE_PIN_ID_PUK) {
+	if (data->pin_reference == SC_PACE_PIN_ID_PIN || data->pin_reference == SC_PACE_PIN_ID_PUK) {
 		struct sc_apdu apdu;
 		unsigned char buf[0xbe] = {0};
 		u8 id[] = {0xac, 0x00};
 		size_t taglen = 0;
 
 		switch (data->pin_reference) {
-		case PACE_PIN_ID_PIN:
+		case SC_PACE_PIN_ID_PIN:
 			id[1] = 0xe3;
 			break;
-		case PACE_PIN_ID_PUK:
+		case SC_PACE_PIN_ID_PUK:
 			id[1] = 0xe4;
 			break;
 		default:
@@ -415,7 +408,7 @@ lteid_pin_cmd_unblock(struct sc_card *card, struct sc_pin_cmd_data *data)
 	int rv;
 
 	// PACE PIN for unblocking command is known as pin ref 0x07
-	if (data->pin_reference == PACE_PIN_ID_PIN) {
+	if (data->pin_reference == SC_PACE_PIN_ID_PIN) {
 		struct sc_pin_cmd_data with_changed_pin_ref = *data;
 
 		with_changed_pin_ref.pin_reference = 0x07;
@@ -440,7 +433,7 @@ lteid_pin_cmd_change(struct sc_card *card, struct sc_pin_cmd_data *data)
 	int rv;
 
 	// PACE PIN for unblocking command is known as pin ref 0x07
-	if (data->pin_reference == PACE_PIN_ID_PIN) {
+	if (data->pin_reference == SC_PACE_PIN_ID_PIN) {
 		struct sc_pin_cmd_data with_changed_pin_ref = *data;
 
 		with_changed_pin_ref.pin_reference = 0x07;

@@ -35,16 +35,13 @@
 #include <config.h>
 #endif
 
+#include "card-cedulauy.h"
 #include "common/compat_strlcpy.h"
 #include "internal.h"
 #include "log.h"
 #include "pkcs15.h"
 #include <stdlib.h>
 #include <string.h>
-
-/* IAS application AID (AGESIC, documented) */
-static const unsigned char cedulauy_aid[] = {
-		0xA0, 0x00, 0x00, 0x00, 0x18, 0x40, 0x00, 0x00, 0x01, 0x63, 0x42, 0x00};
 
 #define CEDULAUY_CERT_FID "B001" /* signing certificate EF */
 #define CEDULAUY_KEY_REF  0x01	 /* signing private key reference */
@@ -59,10 +56,10 @@ static const struct {
 	const char *path; /* absolute path; the MF is emulated by the driver */
 	const char *label;
 } cedulauy_data_files[] = {
-		{"3F0070007001", "Numero de documento"},
-		{"3F0070007002", "Datos biograficos"  },
-		{"3F0070007004", "Fotografia"	     },
-		{"3F007000700B", "MRZ"		      },
+		{CEDULAUY_DOC_NUMBER_PATH, "Numero de documento"},
+		{CEDULAUY_BIO_DATA_PATH,	 "Datos biograficos"  },
+		{CEDULAUY_PHOTO_PATH,      "Fotografia"	  },
+		{CEDULAUY_MRZ_PATH,	    "MRZ"		 },
 };
 
 static int
@@ -194,7 +191,8 @@ sc_pkcs15emu_cedulauy_init(struct sc_pkcs15_card *p15card)
 int
 sc_pkcs15emu_cedulauy_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 {
-	if (p15card->card->type != SC_CARD_TYPE_CEDULAUY)
+	if (p15card->card->type != SC_CARD_TYPE_CEDULAUY &&
+			p15card->card->type != SC_CARD_TYPE_CEDULAUY_CONTACTLESS)
 		return SC_ERROR_WRONG_CARD;
 
 	return sc_pkcs15emu_cedulauy_init(p15card);

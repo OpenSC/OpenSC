@@ -1633,7 +1633,8 @@ authentic_manage_sdo_encode(struct sc_card *card, struct sc_authentic_sdo *sdo, 
 			LOG_TEST_GOTO_ERR(ctx, rv, "SDO RSA encode error");
 		}
 		else  {
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "Cryptographic object unsupported for encoding");
+			rv = SC_ERROR_NOT_SUPPORTED;
+			LOG_TEST_GOTO_ERR(ctx, rv, "Cryptographic object unsupported for encoding");
 		}
 	}
 	else if (cmd == SC_CARDCTL_AUTHENTIC_SDO_GENERATE)   {
@@ -1647,7 +1648,8 @@ authentic_manage_sdo_encode(struct sc_card *card, struct sc_authentic_sdo *sdo, 
 		data_tag = AUTHENTIC_TAG_RSA_GENERATE_DATA;
 	}
 	else if (cmd != SC_CARDCTL_AUTHENTIC_SDO_DELETE)   {
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Invalid SDO operation");
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_TEST_GOTO_ERR(ctx, rv, "Invalid SDO operation");
 	}
 
 	rv = authentic_update_blob(ctx, data_tag, data, data_len, out, out_len);

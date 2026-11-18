@@ -210,8 +210,10 @@ static int myeid_init(struct sc_card *card)
 
 	appletInfoLen = 20;
 
-	if (0 > myeid_get_info(card, appletInfo, appletInfoLen))
-		LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_CARD, "Failed to get MyEID applet information.");
+	if (0 > myeid_get_info(card, appletInfo, appletInfoLen)) {
+		rv = SC_ERROR_INVALID_CARD;
+		LOG_TEST_GOTO_ERR(card->ctx, rv, "Failed to get MyEID applet information.");
+	}
 
 	priv->change_counter = appletInfo[19] | appletInfo[18] << 8;
 
@@ -2041,9 +2043,10 @@ myeid_enc_dec_sym(struct sc_card *card, const u8 *data, size_t datalen,
 	len -= (len % block_size);
 
 	/* application can request buffer size or actual buffer size is too small */
-	*outlen = len;
-	if (out == NULL)
+	if (out == NULL) {
+		*outlen = len;
 		LOG_FUNC_RETURN(ctx, SC_SUCCESS);
+	}
 	/* application buffer is too small */
 	if (*outlen < len)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);

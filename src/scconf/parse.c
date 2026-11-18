@@ -111,15 +111,26 @@ static scconf_item *scconf_item_add_internal(scconf_parser * parser, int type)
 	}
 	item->type = type;
 
-	item->key = parser->key;
-	parser->key = NULL;
+	/*
+	 * A comment is a standalone item and has no key. Assigning the key
+	 * here would let a comment swallow the key of the item that is still
+	 * being parsed, and the following block or value would then be added
+	 * with key == NULL, which crashes the lookup and write functions.
+	 */
+	if (type != SCCONF_ITEM_TYPE_COMMENT) {
+		item->key = parser->key;
+		parser->key = NULL;
+	}
 
 	if (parser->last_item) {
 		parser->last_item->next = item;
 	} else {
 		parser->block->items = item;
 	}
-	parser->current_item = parser->last_item = item;
+	parser->last_item = item;
+	if (type != SCCONF_ITEM_TYPE_COMMENT) {
+		parser->current_item = item;
+	}
 	return item;
 }
 
@@ -127,6 +138,7 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 {
 	scconf_parser parser;
 	scconf_block *dst = NULL;
+	scconf_item *added;
 
 	if (!config && !block)
 		return NULL;
@@ -135,7 +147,7 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 
 	memset(&parser, 0, sizeof(scconf_parser));
 	parser.config = config ? config : NULL;
-	parser.key = key ? strdup(key) : NULL;
+	parser.key = (key && type != SCCONF_ITEM_TYPE_COMMENT) ? strdup(key) : NULL;
 	parser.block = block ? block : config->root;
 	parser.name = NULL;
 	parser.last_item = scconf_get_last_item(parser.block);
@@ -145,28 +157,29 @@ scconf_item *scconf_item_add(scconf_context * config, scconf_block * block, scco
 		scconf_block_copy((const scconf_block *) data, &dst);
 		scconf_list_copy(dst->name, &parser.name);
 	}
-	if (scconf_item_add_internal(&parser, type)) {
-		switch (parser.current_item->type) {
-			case SCCONF_ITEM_TYPE_COMMENT:
-				parser.current_item->value.comment = strdup((const char *) data);
-				break;
-			case SCCONF_ITEM_TYPE_BLOCK:
-				if (!dst)
-					return NULL;
-				dst->parent = parser.block;
-				parser.current_item->value.block = dst;
-				scconf_list_destroy(parser.name);
-				break;
-			case SCCONF_ITEM_TYPE_VALUE:
-				scconf_list_copy((const scconf_list *) data, &parser.current_item->value.list);
-				break;
+	added = scconf_item_add_internal(&parser, type);
+	if (added) {
+		switch (added->type) {
+		case SCCONF_ITEM_TYPE_COMMENT:
+			added->value.comment = strdup((const char *)data);
+			break;
+		case SCCONF_ITEM_TYPE_BLOCK:
+			if (!dst)
+				return NULL;
+			dst->parent = parser.block;
+			added->value.block = dst;
+			scconf_list_destroy(parser.name);
+			break;
+		case SCCONF_ITEM_TYPE_VALUE:
+			scconf_list_copy((const scconf_list *)data, &added->value.list);
+			break;
 		}
 	} else {
 		/* FIXME is it an error if item is NULL? */
 		free(parser.key);
 		parser.key = NULL;
 	}
-	return parser.current_item;
+	return added;
 }
 
 static void scconf_block_add_internal(scconf_parser * parser)
@@ -402,6 +415,8 @@ int scconf_parse(scconf_context * config)
 	} else {
 		r = 1;
 	}
+
+	scconf_parse_reset_state(&p);
 
 	if (r <= 0)
 		config->errmsg = buffer;

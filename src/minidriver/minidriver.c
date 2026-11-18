@@ -2124,11 +2124,15 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 
 			if (vs->p15_containers[ii].cert_obj)   {
 				char k_name[6];
+				CARD_FILE_ACCESS_CONDITION cert_acl = file->acl;
+
+				if (vs->p15_containers[ii].cert_obj->flags & SC_PKCS15_CO_FLAG_PRIVATE)
+					cert_acl = UserReadWriteAc;
 
 				if (vs->p15_containers[ii].size_key_exchange)   {
 					snprintf(k_name, sizeof(k_name), "kxc%02i", ii);
 					k_name[sizeof(k_name) - 1] = 0;
-					dwret = md_fs_add_file(pCardData, &(file->next), k_name, file->acl, NULL, 0, NULL);
+					dwret = md_fs_add_file(pCardData, &(file->next), k_name, cert_acl, NULL, 0, NULL);
 					if (dwret != SCARD_S_SUCCESS)
 						return dwret;
 				}
@@ -2136,7 +2140,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 				if (vs->p15_containers[ii].size_sign)   {
 					snprintf(k_name, sizeof(k_name), "ksc%02i", ii);
 					k_name[sizeof(k_name) - 1] = 0;
-					dwret = md_fs_add_file(pCardData, &(file->next), k_name, file->acl, NULL, 0, NULL);
+					dwret = md_fs_add_file(pCardData, &(file->next), k_name, cert_acl, NULL, 0, NULL);
 					if (dwret != SCARD_S_SUCCESS)
 						return dwret;
 				}
@@ -4967,31 +4971,34 @@ DWORD WINAPI CardSignData(__in PCARD_DATA pCardData, __inout PCARD_SIGNING_INFO 
 		goto err;
 	}
 
-	if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PSS) {
-		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PSS)) {
+	/* RSA padding flags are meaningless for EC keys (cleared below) */
+	if (prkey_info->modulus_length > 0) {
+		if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PSS) {
+			if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PSS)) {
 #ifdef ENABLE_OPENSSL
-			if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
-				logprintf(pCardData, 2, "PSS padding requires native PSS or RAW RSA support\n");
+				if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+					logprintf(pCardData, 2, "PSS padding requires native PSS or RAW RSA support\n");
+					dwret = SCARD_E_UNSUPPORTED_FEATURE;
+					goto err;
+				}
+#else
+				logprintf(pCardData, 2, "PSS padding requires native PSS support\n");
+				dwret = SCARD_E_UNSUPPORTED_FEATURE;
+				goto err;
+#endif
+			}
+		} else if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01) {
+			if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1) && !(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+				logprintf(pCardData, 2, "PKCS1 padding requires native PKCS1 or RAW RSA support\n");
 				dwret = SCARD_E_UNSUPPORTED_FEATURE;
 				goto err;
 			}
-#else
-			logprintf(pCardData, 2, "PSS padding requires native PSS support\n");
-			dwret = SCARD_E_UNSUPPORTED_FEATURE;
-			goto err;
-#endif
-		}
-	} else if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_PKCS1_TYPE_01) {
-		if (!(alg_info->flags & SC_ALGORITHM_RSA_PAD_PKCS1) && !(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
-			logprintf(pCardData, 2, "PKCS1 padding requires native PKCS1 or RAW RSA support\n");
-			dwret = SCARD_E_UNSUPPORTED_FEATURE;
-			goto err;
-		}
-	} else if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_NONE) {
-		if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
-			logprintf(pCardData, 2, "No padding requires RAW RSA support\n");
-			dwret = SCARD_E_UNSUPPORTED_FEATURE;
-			goto err;
+		} else if (opt_crypt_flags & SC_ALGORITHM_RSA_PAD_NONE) {
+			if (!(alg_info->flags & SC_ALGORITHM_RSA_RAW)) {
+				logprintf(pCardData, 2, "No padding requires RAW RSA support\n");
+				dwret = SCARD_E_UNSUPPORTED_FEATURE;
+				goto err;
+			}
 		}
 	}
 
