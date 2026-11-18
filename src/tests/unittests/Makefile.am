@@ -17,10 +17,10 @@ endif
 
 noinst_PROGRAMS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin \
 	decode_ecdsa_signature check_macro_reference_loop strip_pkcs1_2_padding \
-	base64 parse_pkcs11_uri scconf pkcs11-pss-params
+	base64 parse_pkcs11_uri scconf pkcs11-pss-params pkcs15-read-pubkey
 TESTS = asn1 simpletlv cachedir pkcs15filter openpgp-tool hextobin \
 	decode_ecdsa_signature check_macro_reference_loop strip_pkcs1_2_padding \
-	base64 parse_pkcs11_uri scconf pkcs11-pss-params
+	base64 parse_pkcs11_uri scconf pkcs11-pss-params pkcs15-read-pubkey
 
 noinst_HEADERS = torture.h
 
@@ -47,6 +47,7 @@ check_macro_reference_loop_SOURCES = check_macro_reference_loop.c
 strip_pkcs1_2_padding_SOURCES = strip_pkcs1_2_padding.c
 base64_SOURCES = base64.c
 parse_pkcs11_uri_SOURCES = parse_pkcs11_uri.c
+pkcs15_read_pubkey_SOURCES = pkcs15-read-pubkey.c
 scconf_SOURCES = scconf.c
 pkcs11_pss_params_SOURCES = pkcs11-pss-params.c
 

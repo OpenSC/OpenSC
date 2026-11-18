@@ -889,6 +889,24 @@ int
 sc_pkcs15_decode_pubkey(sc_context_t *ctx, struct sc_pkcs15_pubkey *key,
 		const u8 *buf, size_t len)
 {
+	if (!key || !buf || !len)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if ((key->algorithm == SC_ALGORITHM_EC || key->algorithm == SC_ALGORITHM_EDDSA ||
+				key->algorithm == SC_ALGORITHM_XEDDSA) &&
+			*buf == (SC_ASN1_TAG_SEQUENCE | SC_ASN1_TAG_CONSTRUCTED)) {
+		struct sc_pkcs15_pubkey *spki_key = NULL;
+		int r = sc_pkcs15_pubkey_from_spki_sequence(ctx, buf, len, &spki_key);
+		if (r == SC_SUCCESS && spki_key) {
+			sc_pkcs15_erase_pubkey(key);
+			*key = *spki_key;
+			free(spki_key);
+			return SC_SUCCESS;
+		}
+		if (r != SC_SUCCESS)
+			return r;
+	}
+
 	if (key->algorithm == SC_ALGORITHM_RSA)
 		return sc_pkcs15_decode_pubkey_rsa(ctx, &key->u.rsa, buf, len);
 	if (key->algorithm == SC_ALGORITHM_GOSTR3410)
@@ -989,11 +1007,7 @@ sc_pkcs15_read_pubkey(struct sc_pkcs15_card *p15card, const struct sc_pkcs15_obj
 		r = sc_pkcs15_read_file(p15card, &info->path, &data, &len, private_obj);
 		LOG_TEST_GOTO_ERR(ctx, r, "Failed to read public key file.");
 
-		if ((algorithm == SC_ALGORITHM_EC || algorithm == SC_ALGORITHM_EDDSA || algorithm == SC_ALGORITHM_XEDDSA)
-				&& len > 0 && *data == (SC_ASN1_TAG_SEQUENCE | SC_ASN1_TAG_CONSTRUCTED))
-			r = sc_pkcs15_pubkey_from_spki_sequence(ctx, data, len, &pubkey);
-		else
-			r = sc_pkcs15_decode_pubkey(ctx, pubkey, data, len);
+		r = sc_pkcs15_decode_pubkey(ctx, pubkey, data, len);
 		LOG_TEST_GOTO_ERR(ctx, r, "Decode public key error");
 	}
 	else {
