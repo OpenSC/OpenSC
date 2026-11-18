@@ -936,7 +936,7 @@ md_contguid_build_key_args_from_cont_guid(PCARD_DATA pCardData, __in_ecount(MAX_
 		memcpy(prkey_args->id.value, szGuid, strlen(szGuid));
 		prkey_args->id.len = strlen(szGuid);
 	}
-	if (md_is_guid_as_label(pCardData))  {
+	if (md_is_guid_as_label(pCardData) || prkey_args->label == NULL)  {
 		prkey_args->label =  szGuid;
 	}
 }
@@ -947,6 +947,7 @@ md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_obje
 {
 	struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)key_obj->data;
 	DWORD dwret = SCARD_S_SUCCESS;
+	int i;
 
 	szGuid[0] = '\0';
 	/* prioritize the use of the key id over the key label as a container name */
@@ -957,6 +958,15 @@ md_contguid_build_cont_guid_from_key(PCARD_DATA pCardData, struct sc_pkcs15_obje
 		strlcpy(szGuid, key_obj->label, MAX_CONTAINER_NAME_LEN + 1);
 	} else {
 		dwret = md_contguid_get_guid_from_card(pCardData, key_obj, szGuid);
+	}
+
+	/* check if there is an active Windows container name mapping */
+	for (i = 0; i < MD_MAX_CONVERSIONS; i++) {
+		if (md_static_conversions[i].szWindowsGuid[0] != 0 &&
+		    strcmp(md_static_conversions[i].szOpenSCGuid, szGuid) == 0) {
+			strlcpy(szGuid, md_static_conversions[i].szWindowsGuid, MAX_CONTAINER_NAME_LEN + 1);
+			break;
+		}
 	}
 
 	return dwret;
@@ -2124,11 +2134,15 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 
 			if (vs->p15_containers[ii].cert_obj)   {
 				char k_name[6];
+				CARD_FILE_ACCESS_CONDITION cert_acl = file->acl;
+
+				if (vs->p15_containers[ii].cert_obj->flags & SC_PKCS15_CO_FLAG_PRIVATE)
+					cert_acl = UserReadWriteAc;
 
 				if (vs->p15_containers[ii].size_key_exchange)   {
 					snprintf(k_name, sizeof(k_name), "kxc%02i", ii);
 					k_name[sizeof(k_name) - 1] = 0;
-					dwret = md_fs_add_file(pCardData, &(file->next), k_name, file->acl, NULL, 0, NULL);
+					dwret = md_fs_add_file(pCardData, &(file->next), k_name, cert_acl, NULL, 0, NULL);
 					if (dwret != SCARD_S_SUCCESS)
 						return dwret;
 				}
@@ -2136,7 +2150,7 @@ md_set_cmapfile(PCARD_DATA pCardData, struct md_file *file)
 				if (vs->p15_containers[ii].size_sign)   {
 					snprintf(k_name, sizeof(k_name), "ksc%02i", ii);
 					k_name[sizeof(k_name) - 1] = 0;
-					dwret = md_fs_add_file(pCardData, &(file->next), k_name, file->acl, NULL, 0, NULL);
+					dwret = md_fs_add_file(pCardData, &(file->next), k_name, cert_acl, NULL, 0, NULL);
 					if (dwret != SCARD_S_SUCCESS)
 						return dwret;
 				}

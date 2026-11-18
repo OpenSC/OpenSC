@@ -649,8 +649,8 @@ get_psec(sc_card_t *card, const char *pin, size_t length_pin, enum s_type pin_id
 
 
 int perform_pace(sc_card_t *card,
-		struct establish_pace_channel_input pace_input,
-		struct establish_pace_channel_output *pace_output,
+		struct sc_establish_pace_channel_input pace_input,
+		struct sc_establish_pace_channel_output *pace_output,
 		enum eac_tr_version tr_version)
 {
 	u8 *p = NULL;
@@ -663,10 +663,19 @@ int perform_pace(sc_card_t *card,
 	BIO *bio_stdout = NULL;
 	CVC_CERTIFICATE_DESCRIPTION *desc = NULL;
 	int r;
-	const unsigned char *pp;
+	const unsigned char *pp, *ef_cardaccess;
+	size_t ef_cardaccess_length;
+	struct sc_establish_pace_channel_output local_output;
+	int free_output = 0;
 
-	if (!card || !card->reader || !card->reader->ops || !pace_output)
+	if (!card || !card->reader || !card->reader->ops)
 		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (!pace_output) {
+		memset(&local_output, 0, sizeof(local_output));
+		pace_output = &local_output;
+		free_output = 1;
+	}
 
 	/* show description in advance to give the user more time to read it...
 	 * This behaviour differs from TR-03119 v1.1 p. 44. */
@@ -761,23 +770,28 @@ int perform_pace(sc_card_t *card,
 		if (r < 0)
 			goto err;
 	} else {
-		if (!pace_output->ef_cardaccess_length || !pace_output->ef_cardaccess) {
+		if (pace_input.ef_cardaccess && pace_input.ef_cardaccess_length) {
+			ef_cardaccess = pace_input.ef_cardaccess;
+			ef_cardaccess_length = pace_input.ef_cardaccess_length;
+		} else {
 			r = get_ef_card_access(card, &pace_output->ef_cardaccess,
 					&pace_output->ef_cardaccess_length);
 			if (r < 0) {
 				sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not get EF.CardAccess.");
 				goto err;
 			}
+			ef_cardaccess = pace_output->ef_cardaccess;
+			ef_cardaccess_length = pace_output->ef_cardaccess_length;
 		}
 
-		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "EF.CardAccess", pace_output->ef_cardaccess,
-				pace_output->ef_cardaccess_length);
+		sc_debug_hex(card->ctx, SC_LOG_DEBUG_SM, "EF.CardAccess", ef_cardaccess,
+				ef_cardaccess_length);
 
 		EAC_init();
 		eac_ctx = EAC_CTX_new();
 		if (!eac_ctx
-				|| !EAC_CTX_init_ef_cardaccess(pace_output->ef_cardaccess,
-					pace_output->ef_cardaccess_length, eac_ctx)
+				|| !EAC_CTX_init_ef_cardaccess(ef_cardaccess,
+					ef_cardaccess_length, eac_ctx)
 				|| !eac_ctx->pace_ctx) {
 			sc_log_openssl(card->ctx);
 			sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE, "Could not parse EF.CardAccess.");
@@ -995,6 +1009,9 @@ err:
 
 	if (r < 0)
 		EAC_CTX_clear_free(eac_ctx);
+
+	if (free_output)
+		sc_pace_output_clear(&local_output);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
@@ -1780,14 +1797,22 @@ eac_sm_clear_free(const struct iso_sm_ctx *ctx)
 #else
 
 int perform_pace(sc_card_t *card,
-		struct establish_pace_channel_input pace_input,
-		struct establish_pace_channel_output *pace_output,
+		struct sc_establish_pace_channel_input pace_input,
+		struct sc_establish_pace_channel_output *pace_output,
 		enum eac_tr_version tr_version)
 {
+	struct sc_establish_pace_channel_output local_output;
+	int free_output = 0;
 	int r;
 
 	if (!card)
 	   return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (!pace_output) {
+		memset(&local_output, 0, sizeof(local_output));
+		pace_output = &local_output;
+		free_output = 1;
+	}
 
 	if (card->reader
 			&& card->reader->capabilities & SC_READER_CAP_PACE_GENERIC
@@ -1796,6 +1821,9 @@ int perform_pace(sc_card_t *card,
 	} else {
 		r = SC_ERROR_NOT_SUPPORTED;
 	}
+
+	if (free_output)
+		sc_pace_output_clear(&local_output);
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_SM, r);
 }
