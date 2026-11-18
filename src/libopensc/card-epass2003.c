@@ -112,6 +112,13 @@ typedef struct epass2003_exdata_st {
 	unsigned char bFipsCertification;	/* fips mode Alg */
 	unsigned char currAlg;		/* current Alg */
 	unsigned int  ecAlgFlags; 	/* Ec Alg mechanism type*/
+	/* Absolute path (starting with 3F00) of the DF that was selected last,
+	 * or cur_df_len == 0 if it is not known. Try to avoid selecting the same
+	 * DF twice to preserve the security status which would otherwise be
+	 * reset. */
+	u8 cur_df[SC_MAX_PATH_SIZE];
+	size_t cur_df_len;
+	sc_file_t *cur_df_file; /* FCI of that DF */
 } epass2003_exdata;
 
 #define REVERSE_ORDER4(x)	(			  \
@@ -942,6 +949,17 @@ epass2003_refresh(struct sc_card *card)
 	return r;
 }
 
+/* SM was stopped (e.g. after an SM error): re-establish it instead of sending
+ * the next command in plain */
+static int
+epass2003_sm_restart(struct sc_card *card)
+{
+	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
+
+	if (exdata && exdata->sm && card->sm_ctx.sm_mode == SM_MODE_NONE)
+		return epass2003_refresh(card);
+	return SC_SUCCESS;
+}
 
 /* Data(TLV)=0x87|L|0x01+Cipher */
 static int
@@ -1828,8 +1846,10 @@ epass2003_finish(sc_card_t *card)
 {
 	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
 
-	if (exdata)
+	if (exdata) {
+		sc_file_free(exdata->cur_df_file);
 		free(exdata);
+	}
 	return SC_SUCCESS;
 }
 
@@ -1980,6 +2000,41 @@ epass2003_select_fid_(struct sc_card *card, sc_path_t * in_path, sc_file_t ** fi
 	return 0;
 }
 
+static void
+epass2003_forget_cur_df(struct sc_card *card)
+{
+	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
+
+	if (exdata) {
+		exdata->cur_df_len = 0;
+		sc_file_free(exdata->cur_df_file);
+		exdata->cur_df_file = NULL;
+	}
+}
+
+static void
+epass2003_set_cur_df(struct sc_card *card, const u8 *path, size_t len,
+		const sc_file_t *file)
+{
+	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
+	sc_file_t *df = NULL;
+
+	if (!exdata)
+		return;
+	if (len > sizeof(exdata->cur_df)) {
+		epass2003_forget_cur_df(card);
+		return;
+	}
+	sc_file_dup(&df, file);
+	if (!df) {
+		epass2003_forget_cur_df(card);
+		return;
+	}
+	sc_file_free(exdata->cur_df_file);
+	exdata->cur_df_file = df;
+	memcpy(exdata->cur_df, path, len);
+	exdata->cur_df_len = len;
+}
 
 static int
 epass2003_select_fid(struct sc_card *card, unsigned int id_hi, unsigned int id_lo,
@@ -2040,8 +2095,10 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 	u8 n_pathbuf[SC_MAX_PATH_SIZE];
 	const u8 *path = pathbuf;
 	size_t pathlen = len;
-	unsigned int i;
+	size_t i, start = 0;
 	int r;
+	sc_file_t *file = NULL;
+	epass2003_exdata *exdata;
 
 	if (pathlen % 2 != 0 || pathlen > 6 || pathlen <= 0)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
@@ -2059,33 +2116,131 @@ epass2003_select_path(struct sc_card *card, const u8 pathbuf[16], const size_t l
 		pathlen += 2;
 	}
 
-	for (i = 0; i < pathlen - 2; i += 2) {
-		r = epass2003_select_fid(card, path[i], path[i + 1], NULL);
-		LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
+	exdata = (epass2003_exdata *)card->drv_data;
+	if (exdata && exdata->cur_df_len > 0 && exdata->cur_df_len <= pathlen &&
+			memcmp(path, exdata->cur_df, exdata->cur_df_len) == 0) {
+		if (exdata->cur_df_len == pathlen) {
+			/* already in the requested DF */
+			if (file_out) {
+				sc_file_dup(file_out, exdata->cur_df_file);
+				if (!*file_out)
+					LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+			}
+			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+		}
+		/* inside the current DF: select only what follows it */
+		start = exdata->cur_df_len;
+	} else {
+		epass2003_forget_cur_df(card);
 	}
 
-	return epass2003_select_fid(card, path[pathlen - 2], path[pathlen - 1], file_out);
+	for (i = start; i < pathlen - 2; i += 2) {
+		r = epass2003_select_fid(card, path[i], path[i + 1], &file);
+		LOG_TEST_RET(card->ctx, r, "SELECT FILE (DF-ID) failed");
+		/* a FID that is followed by further FIDs is a DF */
+		epass2003_set_cur_df(card, path, i + 2, file);
+		sc_file_free(file);
+		file = NULL;
+	}
+
+	r = epass2003_select_fid(card, path[pathlen - 2], path[pathlen - 1], &file);
+	/* selecting an EF or a failed select leaves the current DF unchanged */
+	if (r == SC_SUCCESS && file->type == SC_FILE_TYPE_DF)
+		epass2003_set_cur_df(card, path, pathlen, file);
+
+	if (file_out)
+		*file_out = file;
+	else
+		sc_file_free(file);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+/* A file identifier (P1 = 00) can select the MF, the current DF, its parent or
+ * a file below either of them (ISO 7816-4). Track the current DF where the
+ * result tells which DF it is, otherwise forget it. This COS looks for an EF
+ * only in the current DF, so selecting an EF keeps it. */
+static int
+epass2003_select_file_id(struct sc_card *card, u8 id_hi, u8 id_lo,
+		sc_file_t **file_out)
+{
+	epass2003_exdata *exdata = (epass2003_exdata *)card->drv_data;
+	sc_file_t *file = NULL;
+	u8 df[SC_MAX_PATH_SIZE];
+	size_t len;
+	int r;
+
+	r = epass2003_select_fid(card, id_hi, id_lo, &file);
+	/* a failed select leaves the current DF unchanged */
+	LOG_TEST_RET(card->ctx, r, "SELECT FILE failed");
+
+	if (exdata && file->type == SC_FILE_TYPE_DF) {
+		len = exdata->cur_df_len;
+		memcpy(df, exdata->cur_df, len);
+		if (id_hi == 0x3f && id_lo == 0x00) {
+			df[0] = 0x3f;
+			df[1] = 0x00;
+			epass2003_set_cur_df(card, df, 2, file);
+		} else if (len == 2) {
+			/* the MF has no parent, so this DF is below it */
+			df[len] = id_hi;
+			df[len + 1] = id_lo;
+			epass2003_set_cur_df(card, df, len + 2, file);
+		} else if (len >= 4 && df[len - 2] == id_hi && df[len - 1] == id_lo) {
+			/* the current DF itself */
+			epass2003_set_cur_df(card, df, len, file);
+		} else if (len >= 6 && df[len - 4] == id_hi && df[len - 3] == id_lo) {
+			/* the parent DF */
+			epass2003_set_cur_df(card, df, len - 2, file);
+		} else {
+			/* below the current DF or below its parent */
+			epass2003_forget_cur_df(card);
+		}
+	}
+
+	if (file_out)
+		*file_out = file;
+	else
+		sc_file_free(file);
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
 
 static int
 epass2003_select_file(struct sc_card *card, const sc_path_t * in_path,
 		sc_file_t ** file_out)
 {
+	int r;
+
 	LOG_FUNC_CALLED(card->ctx);
+
+	r = epass2003_sm_restart(card);
+	LOG_TEST_RET(card->ctx, r, "Can not re-establish SM");
 
 	switch (in_path->type) {
 	case SC_PATH_TYPE_FILE_ID:
 		if (in_path->len != 2)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-		return epass2003_select_fid(card, in_path->value[0], in_path->value[1], file_out);
+		return epass2003_select_file_id(card, in_path->value[0], in_path->value[1], file_out);
 	case SC_PATH_TYPE_DF_NAME:
-		return epass2003_select_aid(card, in_path, file_out);
+		r = epass2003_select_aid(card, in_path, file_out);
+		/* the path of a DF selected by its name is not known */
+		if (r == SC_SUCCESS)
+			epass2003_forget_cur_df(card);
+		return r;
 	case SC_PATH_TYPE_PATH:
 		return epass2003_select_path(card, in_path->value, in_path->len, file_out);
 	default:
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
+}
+
+static int
+epass2003_card_reader_lock_obtained(struct sc_card *card, int was_reset)
+{
+	/* after a reset the current DF is either not set or set to an unknown
+	 * value by a different application */
+	if (was_reset > 0)
+		epass2003_forget_cur_df(card);
+	return SC_SUCCESS;
 }
 
 static int
@@ -2650,6 +2805,9 @@ epass2003_create_file(struct sc_card *card, sc_file_t * file)
 
 	len = SC_MAX_APDU_BUFFER_SIZE;
 
+	/* creating an EF leaves the current DF unchanged */
+	if (file->type == SC_FILE_TYPE_DF)
+		epass2003_forget_cur_df(card);
 	epass2003_hook_file(file, 1);
 
 	if (card->ops->construct_fci == NULL)
@@ -2679,11 +2837,16 @@ epass2003_delete_file(struct sc_card *card, const sc_path_t * path)
 	int r;
 	u8 sbuf[2];
 	struct sc_apdu apdu;
+	sc_file_t *file = NULL;
 
 	LOG_FUNC_CALLED(card->ctx);
 
-	r = sc_select_file(card, path, NULL);
+	r = sc_select_file(card, path, &file);
 	LOG_TEST_RET(card->ctx, r, "Can not select file");
+	/* deleting an EF leaves the current DF unchanged */
+	if (!file || file->type == SC_FILE_TYPE_DF)
+		epass2003_forget_cur_df(card);
+	sc_file_free(file);
 	r = epass2003_hook_path((struct sc_path *)path, 1);
 	LOG_TEST_RET(card->ctx, r, "Can not hook path");
 
@@ -3030,6 +3193,7 @@ epass2003_erase_card(struct sc_card *card)
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
+	epass2003_forget_cur_df(card);
 
 	/* install magic pin */
 	sc_format_apdu(card, &apdu, 0x03, 0xe3, 0x00, 0x00);
@@ -3180,6 +3344,9 @@ epass2003_get_challenge(sc_card_t *card, u8 *rnd, size_t len)
 
 	if (!rnd || len == 0)
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	r = epass2003_sm_restart(card);
+	LOG_TEST_RET(card->ctx, r, "Can not re-establish SM");
 
 	r = iso_ops->get_challenge(card, rbuf, sizeof rbuf);
 	LOG_TEST_RET(card->ctx, r, "GET CHALLENGE cmd failed");
@@ -3384,6 +3551,7 @@ static struct sc_card_driver *sc_get_driver(void)
 	epass2003_ops.check_sw = epass2003_check_sw;
 	epass2003_ops.get_challenge = epass2003_get_challenge;
 	epass2003_ops.logout = epass2003_logout;
+	epass2003_ops.card_reader_lock_obtained = epass2003_card_reader_lock_obtained;
 	return &epass2003_drv;
 }
 
