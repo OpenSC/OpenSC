@@ -63,6 +63,16 @@ int sc_pkcs15emu_eoi_init_ex(struct sc_pkcs15_card *p15card, struct sc_aid *aid)
 	LOG_TEST_RET(card->ctx, sc_pkcs15_bind_internal(p15card, aid),
 		"sc_pkcs15_bind_internal failed");
 
+	/* If no specific AID was requested and card has multiple applications,
+	 * bind remaining applications to aggregate all objects into a single token */
+	if (!aid && card->app_count > 1) {
+		for (i = 1; i < card->app_count; i++) {
+			sc_file_free(p15card->file_odf);
+			p15card->file_odf = NULL;
+			sc_pkcs15_bind_internal(p15card, &card->app[i]->aid);
+		}
+	}
+
 	/*
 	 * PIN objects:
 	 * 1) Find the "Card CAN" PIN and store it's path, so we'll be able to fetch the CAN and do the PACE auth
