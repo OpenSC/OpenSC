@@ -100,6 +100,11 @@ struct hash_signature_info {
 	sc_pkcs11_mechanism_type_t *hash_type;
 };
 
+enum hash_location {
+	HASH_SOFTWARE = 0,
+	HASH_ON_CARD,
+};
+
 /* Also used for verification and decryption data */
 struct operation_data {
 	struct sc_pkcs11_object *key;
@@ -567,7 +572,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 	struct hash_signature_info *info;
 	struct operation_data *data;
 	CK_RV rv;
-	int can_do_it = 0;
+	enum hash_location hash_loc = HASH_SOFTWARE;
 
 	LOG_FUNC_CALLED(context);
 	if (!(data = new_operation_data()))
@@ -579,28 +584,18 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 	if (key->ops->can_do)   {
 		rv = key->ops->can_do(operation->session, key, operation->type->mech, CKF_SIGN);
 		if (rv == CKR_OK)   {
-			/* Mechanism recognised and can be performed by pkcs#15 card */
-			can_do_it = 1;
+			/* Mechanism recognised and can be performed entirely by pkcs#15 card */
+			hash_loc = HASH_ON_CARD;
 		}
-		else if (rv == CKR_FUNCTION_NOT_SUPPORTED)   {
-			/* Mechanism not recognised by pkcs#15 card */
-			can_do_it = 0;
-		}
-		else if (info != NULL) {
+		else if (rv != CKR_FUNCTION_NOT_SUPPORTED) {
 			/* Combined sign+hash mechanism: check if key can perform the base signing mechanism */
-			rv = key->ops->can_do(operation->session, key, info->sign_mech, CKF_SIGN);
-			if (rv == CKR_OK || rv == CKR_FUNCTION_NOT_SUPPORTED) {
-				can_do_it = 0;
-			}
-			else {
+			if (info != NULL)
+				rv = key->ops->can_do(operation->session, key, info->sign_mech, CKF_SIGN);
+
+			if (rv != CKR_OK) {
 				operation_data_release(data);
 				LOG_FUNC_RETURN(context, (int) rv);
 			}
-		}
-		else  {
-			/* Mechanism recognised but cannot be performed by pkcs#15 card, or some general error. */
-			operation_data_release(data);
-			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
 
@@ -617,7 +612,7 @@ sc_pkcs11_signature_init(sc_pkcs11_operation_t *operation,
 	/* If this is a signature with hash operation,
 	 * and card cannot perform itself signature with hash operation,
 	 * set up the hash operation */
-	if (info != NULL && !can_do_it) {
+	if (info != NULL && hash_loc == HASH_SOFTWARE) {
 		/* Initialize hash operation */
 
 		data->md = sc_pkcs11_new_operation(operation->session, info->hash_type);
@@ -860,21 +855,15 @@ sc_pkcs11_verify_init(sc_pkcs11_operation_t *operation,
 
 	if (key->ops->can_do)   {
 		rv = key->ops->can_do(operation->session, key, operation->type->mech, CKF_SIGN);
-		if ((rv == CKR_OK) || (rv == CKR_FUNCTION_NOT_SUPPORTED))   {
-			/* Mechanism recognized and can be performed by pkcs#15 card or algorithm references not supported */
-		}
-		else if (info != NULL) {
+		if (rv != CKR_OK && rv != CKR_FUNCTION_NOT_SUPPORTED) {
 			/* Combined sign+hash mechanism: check if key can perform the base signing mechanism */
-			rv = key->ops->can_do(operation->session, key, info->sign_mech, CKF_SIGN);
-			if (rv != CKR_OK && rv != CKR_FUNCTION_NOT_SUPPORTED) {
+			if (info != NULL)
+				rv = key->ops->can_do(operation->session, key, info->sign_mech, CKF_SIGN);
+
+			if (rv != CKR_OK) {
 				free(data);
 				LOG_FUNC_RETURN(context, (int) rv);
 			}
-		}
-		else {
-			/* Mechanism cannot be performed by pkcs#15 card, or some general error. */
-			free(data);
-			LOG_FUNC_RETURN(context, (int) rv);
 		}
 	}
 

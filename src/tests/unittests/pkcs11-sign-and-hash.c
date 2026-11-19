@@ -165,7 +165,7 @@ test_sign_init_fallback_to_software_hash(void **state)
 
 /*
  * When the key supports CKM_ECDSA_SHA256 directly on-card,
- * software hashing must not be initialized (can_do_it = 1).
+ * software hashing must not be initialized (hash_loc = HASH_ON_CARD).
  */
 static void
 test_sign_init_on_card_hashing(void **state)
