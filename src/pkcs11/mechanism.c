@@ -32,6 +32,22 @@
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #endif
 
+/* MGF1 types supported for RSA-PSS and RSA-OAEP */
+static int
+sc_pkcs11_supported_mgf1(CK_RSA_PKCS_MGF_TYPE mgf)
+{
+	switch (mgf) {
+	case CKG_MGF1_SHA1:
+	case CKG_MGF1_SHA224:
+	case CKG_MGF1_SHA256:
+	case CKG_MGF1_SHA384:
+	case CKG_MGF1_SHA512:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 /* Validate the mechanism-level RSA-PSS parameters without requiring OpenSSL.
  * Extracted from framework-pkcs15.c. Salt-length bounds depend on the key and
  * padding implementation.
@@ -53,16 +69,8 @@ sc_pkcs11_validate_pss_params(CK_MECHANISM_PTR pMechanism)
 		return CKR_MECHANISM_PARAM_INVALID;
 
 	pss_params = (CK_RSA_PKCS_PSS_PARAMS *)pMechanism->pParameter;
-	switch (pss_params->mgf) {
-	case CKG_MGF1_SHA1:
-	case CKG_MGF1_SHA224:
-	case CKG_MGF1_SHA256:
-	case CKG_MGF1_SHA384:
-	case CKG_MGF1_SHA512:
-		break;
-	default:
+	if (!sc_pkcs11_supported_mgf1(pss_params->mgf))
 		return CKR_MECHANISM_PARAM_INVALID;
-	}
 
 	/* CKM_RSA_PKCS_PSS accepts any supported hash. Combined mechanisms
 	 * require the hash declared in the mechanism.
@@ -87,6 +95,46 @@ sc_pkcs11_validate_pss_params(CK_MECHANISM_PTR pMechanism)
 	}
 
 	if (expected_hash == 0 || expected_hash != pss_params->hashAlg)
+		return CKR_MECHANISM_PARAM_INVALID;
+
+	return CKR_OK;
+}
+
+/* Validate the mechanism-level RSA-OAEP parameters without requiring OpenSSL.
+ * Shared by decryption on the card and encryption with a public key in
+ * software. Limits of the padding implementation are checked by the caller.
+ */
+CK_RV
+sc_pkcs11_validate_oaep_params(CK_MECHANISM_PTR pMechanism)
+{
+	const CK_RSA_PKCS_OAEP_PARAMS *oaep_params;
+
+	if (pMechanism == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
+	if (!pMechanism->pParameter ||
+			pMechanism->ulParameterLen != sizeof(CK_RSA_PKCS_OAEP_PARAMS))
+		return CKR_MECHANISM_PARAM_INVALID;
+
+	oaep_params = (const CK_RSA_PKCS_OAEP_PARAMS *)pMechanism->pParameter;
+	switch (oaep_params->hashAlg) {
+	case CKM_SHA_1:
+	case CKM_SHA224:
+	case CKM_SHA256:
+	case CKM_SHA384:
+	case CKM_SHA512:
+		break;
+	default:
+		return CKR_MECHANISM_PARAM_INVALID;
+	}
+
+	if (!sc_pkcs11_supported_mgf1(oaep_params->mgf))
+		return CKR_MECHANISM_PARAM_INVALID;
+
+	/* CKZ_DATA_SPECIFIED is the only defined source; 0 means no label */
+	if (oaep_params->source != 0 && oaep_params->source != CKZ_DATA_SPECIFIED)
+		return CKR_MECHANISM_PARAM_INVALID;
+	if (oaep_params->pSourceData == NULL && oaep_params->ulSourceDataLen != 0)
 		return CKR_MECHANISM_PARAM_INVALID;
 
 	return CKR_OK;
