@@ -103,6 +103,7 @@ edo_get_can(sc_card_t *card, struct sc_establish_pace_channel_input *pace_input)
 
 static int edo_unlock(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	int r;
 
 	struct sc_establish_pace_channel_input pace_input;
 
@@ -113,7 +114,9 @@ static int edo_unlock(sc_card_t* card) {
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
 
-	if (SC_SUCCESS != perform_pace(card, pace_input, NULL, EAC_TR_VERSION_2_02)) {
+	r = perform_pace(card, pace_input, NULL, EAC_TR_VERSION_2_02);
+	sc_mem_clear(&pace_input, sizeof pace_input);
+	if (SC_SUCCESS != r) {
 		sc_log(card->ctx, "Error verifying CAN.");
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN);
 	}
@@ -198,18 +201,26 @@ static int edo_select_path(struct sc_card* card, const u8* path, size_t pathlen,
  * 4. Select EF if provided.
  */
 static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, struct sc_file** file_out) {
-	LOG_FUNC_CALLED(card->ctx);
 	struct edo_buff buff = {0};
+	int r;
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (!in_path)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	switch (in_path->type) {
 		case SC_PATH_TYPE_PATH:
 		case SC_PATH_TYPE_FILE_ID:
+			if (!in_path->aid.len && !in_path->len)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 			if (in_path->aid.len)
 				LOG_TEST_RET(card->ctx, edo_select_name(card, in_path->aid.value, in_path->aid.len, &buff), "Select AID failed");
 			if (in_path->len)
 				LOG_TEST_RET(card->ctx, edo_select_path(card, in_path->value, in_path->len, &buff), "Select path failed");
 			break;
 		case SC_PATH_TYPE_DF_NAME:
+			if (!in_path->len)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 			LOG_TEST_RET(card->ctx, edo_select_name(card, in_path->value, in_path->len, &buff), "Select AID failed");
 			break;
 		default:
@@ -217,12 +228,20 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
 	}
 
 	if (file_out) {
+		struct sc_file *file;
+
 		if (buff.len < 2)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-		if (!(*file_out = sc_file_new()))
+		file = sc_file_new();
+		if (!file)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-		(*file_out)->path = *in_path;
-		LOG_TEST_RET(card->ctx, card->ops->process_fci(card, *file_out, buff.val, buff.len), "Process FCI failed");
+		file->path = *in_path;
+		r = card->ops->process_fci(card, file, buff.val, buff.len);
+		if (r < 0) {
+			sc_file_free(file);
+			LOG_TEST_RET(card->ctx, r, "Process FCI failed");
+		}
+		*file_out = file;
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
@@ -235,11 +254,23 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
  * card needs to be converted to the raw concatenation of R,S for PKCS#11.
  */
 static int edo_compute_signature(struct sc_card* card, const u8* data, size_t datalen, u8* out, size_t outlen) {
-	LOG_FUNC_CALLED(card->ctx);
 	u8 sig[SC_MAX_APDU_RESP_SIZE];
-	LOG_TEST_RET(card->ctx, sc_get_iso7816_driver()->ops->compute_signature(card, data, datalen, sig, sizeof sig), "Internal signature failed");
-	LOG_TEST_RET(card->ctx, sc_asn1_sig_value_sequence_to_rs(card->ctx, sig, sizeof sig, out, outlen), "ASN.1 conversion failed");
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (!data || !out)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	r = sc_get_iso7816_driver()->ops->compute_signature(card, data, datalen, sig, sizeof sig);
+	if (r < 0) {
+		sc_mem_clear(sig, sizeof(sig));
+		LOG_TEST_RET(card->ctx, r, "Internal signature failed");
+	}
+	r = sc_asn1_sig_value_sequence_to_rs(card->ctx, sig, (size_t)r, out, outlen);
+	sc_mem_clear(sig, sizeof(sig));
+	LOG_TEST_RET(card->ctx, r, "ASN.1 conversion failed");
+	LOG_FUNC_RETURN(card->ctx, (int)outlen);
 }
 
 
@@ -250,7 +281,6 @@ static int edo_compute_signature(struct sc_card* card, const u8* data, size_t da
  * where x is the key reference byte.
  */
 static int edo_set_security_env(struct sc_card* card, const struct sc_security_env* env, int se_num) {
-	LOG_FUNC_CALLED(card->ctx);
 	struct sc_apdu apdu;
 	u8 payload[] = {0x80, 0x01, 0xcc, 0x84, 0x01, 0x80};
 

@@ -1121,9 +1121,13 @@ pgp_finish(sc_card_t *card)
 			pgp_free_blobs(priv->mf);
 
 			/* delete kdf do related data if exists */
-			free(priv->pin_kdf_info);
+			if (priv->pin_kdf_info) {
+				sc_mem_clear(priv->pin_kdf_info, sizeof(*priv->pin_kdf_info));
+				free(priv->pin_kdf_info);
+			}
 
 			/* delete private data */
+			sc_mem_clear(priv, sizeof(*priv));
 			free(priv);
 		}
 		card->drv_data = NULL;
@@ -1595,13 +1599,15 @@ pgp_strip_path(sc_card_t *card, const sc_path_t *path)
 {
 	unsigned int start_point = 0;
 	/* start_point will move through the path string */
-	if (path->len == 0)
+	if (!path || path->len < 2)
 		return 0;
 
 	/* ignore 3F00 (MF) at the beginning */
-	start_point = (memcmp(path->value, "\x3f\x00", 2) == 0) ? 2 : 0;
+	if (memcmp(path->value, "\x3f\x00", 2) == 0)
+		start_point = 2;
 	/* strip path of PKCS15-App DF (5015) */
-	start_point += (memcmp(path->value + start_point, "\x50\x15", 2) == 0) ? 2 : 0;
+	if (path->len >= start_point + 2 && memcmp(path->value + start_point, "\x50\x15", 2) == 0)
+		start_point += 2;
 	return start_point;
 }
 
@@ -1619,6 +1625,9 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	sc_path_t dummy_path;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!path)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (path->type == SC_PATH_TYPE_DF_NAME)
 		LOG_FUNC_RETURN(card->ctx, iso_ops->select_file(card, path, ret));
@@ -1641,6 +1650,8 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	if (sc_compare_path(path, &dummy_path)) {
 		if (ret != NULL) {
 			*ret = sc_file_new();
+			if (!*ret)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 			/* One use case of this dummy file is after writing certificate in pkcs15init.
 			 * So we set its size to be the same as max certificate size the card supports. */
 			(*ret)->size = priv->max_cert_size;
@@ -1667,6 +1678,8 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 
 			/* Else, need to return file */
 			*ret = sc_file_new();
+			if (!*ret)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 			(*ret)->size = priv->max_cert_size;
 			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		}
@@ -1679,8 +1692,13 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	/* success: select file = set "current" pointer to blob found */
 	priv->current = blob;
 
-	if (ret)
+	if (ret) {
+		if (!blob || !blob->file)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 		sc_file_dup(ret, blob->file);
+		if (!*ret)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -1698,6 +1716,9 @@ pgp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	int		r;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!priv || !priv->current || !priv->current->file)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 
 	/* jump to selected file */
 	blob = priv->current;
@@ -2650,6 +2671,9 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!data || !out)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	if (env->operation != SC_SEC_OPERATION_SIGN)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid operation");
@@ -2710,6 +2734,9 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!in || !out)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	/* padding according to OpenPGP card spec 1.1 & 2.x section 7.2.9 / 3.x section 7.2.11
 	 * The longest possible prefix is 10 bytes for ECDH */
 	templen = inlen + 10;
@@ -2732,6 +2759,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		/* Calculate length of External Public Key (0x86) */
 		r = sc_asn1_put_tag(0x86, NULL, inlen, NULL, 0, NULL);
 		if (r <= 0) {
+			sc_mem_clear(temp, templen);
 			free(temp);
 			LOG_FUNC_RETURN(card->ctx, r);
 		}
@@ -2740,6 +2768,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		/* Calculate length of Public Key DO (0x7F49) */
 		r = sc_asn1_put_tag(0x7f49, NULL, pklen, NULL, 0, NULL);
 		if (r <= 0) {
+			sc_mem_clear(temp, templen);
 			free(temp);
 			LOG_FUNC_RETURN(card->ctx, r);
 		}
@@ -2749,6 +2778,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		/* This is 0xA6 Cipher DO with associated length field */
 		r = sc_asn1_put_tag(0xA6, NULL, dolen, p, templen - (p - temp), &p);
 		if (r != SC_SUCCESS) {
+			sc_mem_clear(temp, templen);
 			free(temp);
 			LOG_FUNC_RETURN(card->ctx, r);
 		}
@@ -2756,6 +2786,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		/* Public Key DO (0x7F49) with associated length field */
 		r = sc_asn1_put_tag(0x7F49, NULL, pklen, p, templen - (p - temp), &p);
 		if (r != SC_SUCCESS) {
+			sc_mem_clear(temp, templen);
 			free(temp);
 			LOG_FUNC_RETURN(card->ctx, r);
 		}
@@ -2763,6 +2794,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		/* External Public Key (0x86) with associated length */
 		r = sc_asn1_put_tag(0x86, in, inlen, p, templen - (p - temp), &p);
 		if (r != SC_SUCCESS) {
+			sc_mem_clear(temp, templen);
 			free(temp);
 			LOG_FUNC_RETURN(card->ctx, r);
 		}
@@ -2777,6 +2809,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		*/
 		/* fall through */
 	default:
+		sc_mem_clear(temp, templen);
 		free(temp);
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	}
@@ -2785,6 +2818,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 
 	if (env->operation != SC_SEC_OPERATION_DECIPHER &&
 			env->operation != SC_SEC_OPERATION_DERIVE) {
+		sc_mem_clear(temp, templen);
 		free(temp);
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid operation");
@@ -2798,6 +2832,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		break;
 	case 0x00: /* signature key */
 	default:
+		sc_mem_clear(temp, templen);
 		free(temp);
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid key reference");
@@ -2826,6 +2861,7 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
+	sc_mem_clear(temp, templen);
 	free(temp);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 

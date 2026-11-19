@@ -348,6 +348,10 @@ cflex_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		goto out;
 
 	keybits = key_info->modulus_length;
+	if (keybits == 0 || (keybits % 8) != 0 || (keybits / 8) > sizeof(raw_pubkey)) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto out;
+	}
 
 	/* Perform key generation */
 	memset(&args, 0, sizeof(args));
@@ -359,19 +363,37 @@ cflex_generate_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		goto out;
 
 	/* extract public key */
-	pubkey->algorithm = SC_ALGORITHM_RSA;
-	pubkey->u.rsa.modulus.len   = keybits / 8;
-	pubkey->u.rsa.modulus.data  = malloc(keybits / 8);
-	pubkey->u.rsa.exponent.len  = 3;
-	pubkey->u.rsa.exponent.data = malloc(3);
-	memcpy(pubkey->u.rsa.exponent.data, "\x01\x00\x01", 3);
-	if ((r = sc_select_file(card, &pukf->path, NULL)) < 0
-	 || (r = sc_read_binary(card, 3, raw_pubkey, keybits / 8, 0)) < 0)
-		goto out;
+	if (pubkey != NULL) {
+		pubkey->algorithm = SC_ALGORITHM_RSA;
+		pubkey->u.rsa.modulus.len   = keybits / 8;
+		pubkey->u.rsa.modulus.data  = malloc(keybits / 8);
+		pubkey->u.rsa.exponent.len  = 3;
+		pubkey->u.rsa.exponent.data = malloc(3);
+		if (!pubkey->u.rsa.modulus.data || !pubkey->u.rsa.exponent.data) {
+			free(pubkey->u.rsa.modulus.data);
+			free(pubkey->u.rsa.exponent.data);
+			pubkey->u.rsa.modulus.data = NULL;
+			pubkey->u.rsa.exponent.data = NULL;
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto out;
+		}
+		memcpy(pubkey->u.rsa.exponent.data, "\x01\x00\x01", 3);
+		if ((r = sc_select_file(card, &pukf->path, NULL)) < 0
+		 || (r = sc_read_binary(card, 3, raw_pubkey, keybits / 8, 0)) < 0) {
+			free(pubkey->u.rsa.modulus.data);
+			free(pubkey->u.rsa.exponent.data);
+			pubkey->u.rsa.modulus.data = NULL;
+			pubkey->u.rsa.exponent.data = NULL;
+			goto out;
+		}
 
-	invert_buf(pubkey->u.rsa.modulus.data, raw_pubkey, pubkey->u.rsa.modulus.len);
+		invert_buf(pubkey->u.rsa.modulus.data, raw_pubkey, pubkey->u.rsa.modulus.len);
+	}
 
-out:	sc_file_free(pukf);
+out:
+	sc_mem_clear(raw_pubkey, sizeof(raw_pubkey));
+	sc_mem_clear(&args, sizeof(args));
+	sc_file_free(pukf);
 	sc_file_free(prkf);
 	return r;
 }
@@ -391,10 +413,19 @@ cflex_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	size_t		size;
 	int		r;
 
-	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA) {
+	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA || !key || key->algorithm != SC_ALGORITHM_RSA) {
 		sc_log(card->ctx,  "Cryptoflex supports only RSA keys.");
 		return SC_ERROR_NOT_SUPPORTED;
 	}
+	if (!key->u.rsa.p.len || !key->u.rsa.p.data ||
+	    !key->u.rsa.q.len || !key->u.rsa.q.data ||
+	    !key->u.rsa.iqmp.len || !key->u.rsa.iqmp.data ||
+	    !key->u.rsa.dmp1.len || !key->u.rsa.dmp1.data ||
+	    !key->u.rsa.dmq1.len || !key->u.rsa.dmq1.data ||
+	    !key->u.rsa.modulus.len || !key->u.rsa.modulus.data ||
+	    !key->u.rsa.exponent.len || !key->u.rsa.exponent.data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	/* Get the public and private key file */
 	r = cflex_get_keyfiles(profile, card, &key_info->path, &prkf, &pukf);
 	if (r < 0)
@@ -422,7 +453,9 @@ cflex_store_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 
 	r = sc_pkcs15init_update_file(profile, p15card, pukf, keybuf, (unsigned)size);
 
-out:	sc_file_free(prkf);
+out:
+	sc_mem_clear(keybuf, sizeof(keybuf));
+	sc_file_free(prkf);
 	sc_file_free(pukf);
 	return r;
 }
@@ -587,10 +620,13 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 		pin_cmd.pin1.len = sizeof(dummy_pin_value);
 
 		r = sc_pin_cmd(p15card->card, &pin_cmd);
-		if (r < 0)
+		sc_mem_clear(&pin_cmd, sizeof(pin_cmd));
+		if (r < 0) {
+			sc_mem_clear(buffer, sizeof(buffer));
 			sc_file_free(file);
-		LOG_TEST_RET(ctx, r, "Cannot verify dummy PIN");
-	};
+			LOG_TEST_RET(ctx, r, "Cannot verify dummy PIN");
+		}
+	}
 
 	if (ref == 2)   {
 		/* Cache dummy SOPIN value */
@@ -600,11 +636,14 @@ cflex_create_pin_file(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	}
 
 	r = sc_pkcs15init_create_file(profile, p15card, file);
-	if (r < 0)
+	if (r < 0) {
+		sc_mem_clear(buffer, sizeof(buffer));
 		sc_file_free(file);
-	LOG_TEST_RET(ctx, r, "Failed to create PIN file");
+		LOG_TEST_RET(ctx, r, "Failed to create PIN file");
+	}
 
 	r = sc_update_binary(p15card->card, 0, buffer, 23, 0);
+	sc_mem_clear(buffer, sizeof(buffer));
 	if (r < 0 || file_ret == NULL)
 		sc_file_free(file);
 	else
@@ -698,7 +737,7 @@ bn2cf(sc_pkcs15_bignum_t *num, u8 *buf, size_t bufsize)
 {
 	size_t	len = num->len;
 
-	if (len > bufsize)
+	if (!num->data || len > bufsize)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	invert_buf(buf, num->data, len);
@@ -712,7 +751,7 @@ bn2cft(sc_pkcs15_bignum_t *num, u8 tag, u8 *buf, size_t bufsize)
 {
 	size_t	len = num->len;
 
-	if (len + 3 > bufsize)
+	if (!num->data || len + 3 > bufsize || len + 1 > 0xFF)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	memset(buf, 0, bufsize);
 	buf[0] = tag;

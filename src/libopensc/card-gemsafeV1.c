@@ -429,7 +429,6 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 	size_t data_len, u8 * out, size_t outlen)
 {
 	int r;
-	size_t len;
 	struct sc_apdu apdu;
 	u8 rbuf[MAX_RESP_BUFFER_SIZE];
 	u8 sbuf[MAX_RESP_BUFFER_SIZE];
@@ -437,9 +436,8 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
 
-	/* the card can sign 36 bytes of free form data */
-	if (data_len > 36) {
-		sc_log(ctx, "error: input data too long: %zu bytes", data_len);
+	if (data == NULL || out == NULL || data_len == 0 || data_len > 36) {
+		sc_log(ctx, "error: invalid data arguments: %zu bytes", data_len);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 
@@ -479,14 +477,25 @@ static int gemsafe_compute_signature(struct sc_card *card, const u8 * data,
 			}
 			r = sc_transmit_apdu(card, &apdu);
 			LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-			if(apdu.sw1 != 0x90 || apdu.sw2 != 0x00)
+			if(apdu.sw1 != 0x90 || apdu.sw2 != 0x00) {
+				sc_mem_clear(sbuf, sizeof(sbuf));
+				sc_mem_clear(rbuf, sizeof(rbuf));
 				SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
+			}
 		}
-		len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		if (outlen < apdu.resplen) {
+			sc_mem_clear(sbuf, sizeof(sbuf));
+			sc_mem_clear(rbuf, sizeof(rbuf));
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		}
 
-		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
+		memcpy(out, apdu.resp, apdu.resplen);
+		sc_mem_clear(sbuf, sizeof(sbuf));
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
 	}
+	sc_mem_clear(sbuf, sizeof(sbuf));
+	sc_mem_clear(rbuf, sizeof(rbuf));
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 
@@ -499,7 +508,7 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 	sc_context_t *ctx = card->ctx;
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_VERBOSE);
-	if (crgram_len > 255)
+	if (crgram == NULL || out == NULL || crgram_len == 0 || crgram_len > 255)
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x80, 0x84);
@@ -514,11 +523,16 @@ static int gemsafe_decipher(struct sc_card *card, const u8 * crgram,
 	r = sc_transmit_apdu(card, &apdu);
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
 	if (apdu.sw1 == 0x90 && apdu.sw2 == 0x00) {
-		size_t len = apdu.resplen > outlen ? outlen : apdu.resplen;
+		if (outlen < apdu.resplen) {
+			sc_mem_clear(rbuf, sizeof(rbuf));
+			return SC_ERROR_BUFFER_TOO_SMALL;
+		}
 
-		memcpy(out, apdu.resp, len);
-		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)len);
+		memcpy(out, apdu.resp, apdu.resplen);
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, (int)apdu.resplen);
 	}
+	sc_mem_clear(rbuf, sizeof(rbuf));
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, sc_check_sw(card, apdu.sw1, apdu.sw2));
 }
 

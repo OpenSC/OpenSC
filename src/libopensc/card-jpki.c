@@ -84,6 +84,7 @@ jpki_finish(sc_card_t * card)
 	LOG_FUNC_CALLED(card->ctx);
 	if (drvdata) {
 		sc_file_free(drvdata->mf);
+		sc_mem_clear(drvdata, sizeof(struct jpki_private_data));
 		free(drvdata);
 		card->drv_data = NULL;
 	}
@@ -145,6 +146,8 @@ jpki_select_file(struct sc_card *card,
 	struct sc_file *file = NULL;
 
 	LOG_FUNC_CALLED(card->ctx);
+	if (!path)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	sc_log(card->ctx, "jpki_select_file: path=%s, len=%zu", sc_print_path(path), path->len);
 	if (path->len == 2 && memcmp(path->value, "\x3F\x00", 2) == 0) {
 		drvdata->selected = SELECT_MF;
@@ -214,6 +217,8 @@ jpki_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data)
 	int max_tries = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
+	if (!data)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	switch (data->pin_reference) {
 	case 1:
@@ -283,6 +288,8 @@ jpki_set_security_env(sc_card_t * card,
 	sc_path_t path;
 
 	LOG_FUNC_CALLED(card->ctx);
+	if (!env)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 	sc_log(card->ctx, "flags=%08lx op=%d alg=%lu algf=%08lx algr=%08lx kr0=%02x, krfl=%zu",
 			env->flags, env->operation, env->algorithm, env->algorithm_flags, env->algorithm_ref,
 			env->key_ref[0], env->key_ref_len);
@@ -320,6 +327,8 @@ jpki_compute_signature(sc_card_t * card,
 	unsigned char resp[SC_MAX_APDU_BUFFER_SIZE];
 
 	LOG_FUNC_CALLED(card->ctx);
+	if (!data || !out)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0x2A, 0x00, 0x80);
 	apdu.cla = 0x80;
@@ -330,13 +339,21 @@ jpki_compute_signature(sc_card_t * card,
 	apdu.resplen = sizeof(resp);
 	apdu.le = 0;
 	rc = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, rc, "APDU transmit failed");
+	if (rc < 0) {
+		sc_mem_clear(resp, sizeof(resp));
+		LOG_TEST_RET(card->ctx, rc, "APDU transmit failed");
+	}
 	rc = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, rc, "SW Check failed");
+	if (rc < 0) {
+		sc_mem_clear(resp, sizeof(resp));
+		LOG_TEST_RET(card->ctx, rc, "SW Check failed");
+	}
 	if (apdu.resplen > outlen) {
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		sc_mem_clear(resp, sizeof(resp));
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
 	}
 	memcpy(out, resp, apdu.resplen);
+	sc_mem_clear(resp, sizeof(resp));
 	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 

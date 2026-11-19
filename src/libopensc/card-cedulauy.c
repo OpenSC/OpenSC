@@ -414,7 +414,12 @@ static int
 cedulauy_select_file(struct sc_card *card, const struct sc_path *in_path,
 		struct sc_file **file_out)
 {
-	struct sc_path path = *in_path;
+	struct sc_path path;
+
+	if (!in_path)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	path = *in_path;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -427,7 +432,12 @@ cedulauy_select_file(struct sc_card *card, const struct sc_path *in_path,
 		path.len -= 2;
 	}
 	if (path.type == SC_PATH_TYPE_PATH && path.len == 0) {
-		sc_file_dup(file_out, cedulauy_get_mf());
+		/* Selection of MF was requested */
+		if (file_out) {
+			sc_file_dup(file_out, cedulauy_get_mf());
+			if (*file_out == NULL)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+		}
 		LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 	}
 
@@ -471,6 +481,7 @@ cedulauy_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
 	unsigned char sbuf[64];
 	unsigned char rbuf[256];
 	size_t offs = 0;
+	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -497,16 +508,38 @@ cedulauy_compute_signature(struct sc_card *card, const u8 *data, size_t datalen,
 #else
 	sc_format_apdu_ex(&apdu, card->cla, 0x2A, 0x90, 0xA0, sbuf, offs, NULL, 0);
 #endif
-	SC_TRANSMIT_TEST_RET(card, apdu, "PSO HASH failed");
+	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0) {
+		sc_mem_clear(sbuf, sizeof(sbuf));
+		LOG_TEST_RET(card->ctx, r, "PSO HASH failed");
+	}
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (r < 0) {
+		sc_mem_clear(sbuf, sizeof(sbuf));
+		LOG_TEST_RET(card->ctx, r, "PSO HASH failed");
+	}
+	sc_mem_clear(sbuf, sizeof(sbuf));
 
 	/* PSO COMPUTE DIGITAL SIGNATURE */
 	sc_format_apdu_ex(&apdu, card->cla, 0x2A, 0x9E, 0x9A, NULL, 0, rbuf, sizeof rbuf);
-	SC_TRANSMIT_TEST_RET(card, apdu, "PSO COMPUTE DIGITAL SIGNATURE failed");
+	r = sc_transmit_apdu(card, &apdu);
+	if (r < 0) {
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		LOG_TEST_RET(card->ctx, r, "PSO COMPUTE DIGITAL SIGNATURE failed");
+	}
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (r < 0) {
+		sc_mem_clear(rbuf, sizeof(rbuf));
+		LOG_TEST_RET(card->ctx, r, "PSO COMPUTE DIGITAL SIGNATURE failed");
+	}
 
-	if (apdu.resplen > outlen)
+	if (apdu.resplen > outlen) {
+		sc_mem_clear(rbuf, sizeof(rbuf));
 		LOG_TEST_RET(card->ctx, SC_ERROR_BUFFER_TOO_SMALL,
 				"Signature buffer too small");
+	}
 	memcpy(out, apdu.resp, apdu.resplen);
+	sc_mem_clear(rbuf, sizeof(rbuf));
 	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
 }
 
@@ -516,6 +549,9 @@ cedulauy_get_challenge(struct sc_card *card, u8 *rnd, size_t len)
 	/* GET CHALLENGE only handles a length of 8 */
 	unsigned char rbuf[8];
 	int r;
+
+	if (rnd == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	LOG_FUNC_CALLED(card->ctx);
 

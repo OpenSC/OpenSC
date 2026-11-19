@@ -806,6 +806,7 @@ static void coolkey_free_private_data(coolkey_private_data_t *priv)
 
 	list_destroy(&priv->objects_list);
 	free(priv->token_name);
+	sc_mem_clear(priv, sizeof(*priv));
 	free(priv);
 	return;
 }
@@ -1143,6 +1144,9 @@ static int coolkey_write_object(sc_card_t *card, unsigned long object_id,
 	size_t left = buf_len;
 	int r;
 	size_t max_operation_len;
+
+	if (card->max_send_size < sizeof(coolkey_read_object_param_t) + nonce_size)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* set limit for the card's maximum send size and short write */
 	max_operation_len = MIN(COOLKEY_MAX_CHUNK_SIZE, (card->max_send_size - sizeof(coolkey_read_object_param_t) - nonce_size));
@@ -1758,7 +1762,10 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 		}
 
 		out_length = bebytes2ushort(len_buf);
-		out_length = MIN(out_length,max_out_len);
+		if (out_length > max_out_len) {
+			r = SC_ERROR_BUFFER_TOO_SMALL;
+			goto done;
+		}
 
 		r = coolkey_read_object(card, COOLKEY_DL_OBJECT_ID, sizeof(len_buf), out, out_length,
 					priv->nonce, sizeof(priv->nonce));
@@ -1774,12 +1781,17 @@ static int coolkey_rsa_op(sc_card_t *card, const u8 * data, size_t datalen,
 			r = SC_ERROR_WRONG_LENGTH;
 			goto done;
 		}
-		out_length = MIN(out_length, max_out_len);
+		if (out_length > max_out_len) {
+			r = SC_ERROR_BUFFER_TOO_SMALL;
+			goto done;
+		}
 		memcpy(out, buf + 2, out_length);
 		r = (int)out_length;
 	}
 
 done:
+	sc_mem_clear(&params, sizeof(params));
+	sc_mem_clear(buf, sizeof(buf));
 	return r;
 }
 
@@ -1800,7 +1812,7 @@ static int coolkey_ecc_op(sc_card_t *card,
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	sc_log(card->ctx, "datalen=%zu outlen=%zu\n", datalen, outlen);
 
-	if (datalen > sizeof(params.buf)) {
+	if (data == NULL || out == NULL || datalen > sizeof(params.buf)) {
 		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto done;
 	}
@@ -1843,6 +1855,7 @@ static int coolkey_ecc_op(sc_card_t *card,
 			crypt_out_p, crypt_out_len_p, priv->nonce, sizeof(priv->nonce));
 
 done:
+	sc_mem_clear(&params, sizeof(params));
 	return r;
 }
 
@@ -1854,6 +1867,9 @@ static int coolkey_compute_crypt(sc_card_t *card,
 	coolkey_private_data_t * priv = COOLKEY_DATA(card);
 	int r;
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	if (data == NULL || out == NULL || priv == NULL)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	switch (priv->algorithm) {
 	case SC_ALGORITHM_RSA:
@@ -1910,6 +1926,8 @@ static int coolkey_select_file(sc_card_t *card, const sc_path_t *in_path, sc_fil
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	priv = COOLKEY_DATA(card);
+	if (priv == NULL)
+		return SC_ERROR_INTERNAL;
 
 	if (in_path->len != 4) {
 		return SC_ERROR_OBJECT_NOT_FOUND;
@@ -1951,6 +1969,7 @@ static int coolkey_finish(sc_card_t *card)
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (priv) {
 		coolkey_free_private_data(priv);
+		card->drv_data = NULL;
 	}
 	return SC_SUCCESS;
 }

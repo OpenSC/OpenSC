@@ -317,6 +317,9 @@ CK_RV attr_extract(CK_ATTRIBUTE_PTR pAttr, void *ptr, size_t * sizep)
 {
 	size_t size;
 
+	if (!pAttr || !ptr)
+		return CKR_ARGUMENTS_BAD;
+
 	if (sizep) {
 		size = *sizep;
 		if (size < pAttr->ulValueLen)
@@ -350,7 +353,11 @@ CK_RV attr_extract(CK_ATTRIBUTE_PTR pAttr, void *ptr, size_t * sizep)
 		if (size != pAttr->ulValueLen)
 			return CKR_ATTRIBUTE_VALUE_INVALID;
 	}
-	memcpy(ptr, pAttr->pValue, pAttr->ulValueLen);
+	if (pAttr->ulValueLen) {
+		if (!pAttr->pValue)
+			return CKR_ATTRIBUTE_VALUE_INVALID;
+		memcpy(ptr, pAttr->pValue, pAttr->ulValueLen);
+	}
 	return CKR_OK;
 }
 
@@ -393,6 +400,15 @@ CK_RV attr_find_and_allocate_ptr(CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, C
 	rv = attr_find_ptr(pTemplate, ulCount, type, &ptr, &len);
 	if (rv != CKR_OK)
 		return rv;
+
+	if (len == 0) {
+		*out = NULL;
+		*out_len = 0;
+		return CKR_OK;
+	}
+
+	if (ptr == NULL)
+		return CKR_ATTRIBUTE_VALUE_INVALID;
 
 	*out = calloc(1, len);
 	if (*out == NULL)
@@ -524,17 +540,19 @@ void load_pkcs11_parameters(struct sc_pkcs11_config *conf, sc_context_t * ctx)
 	create_slots_for_pins = (char *)scconf_get_str(conf_block, "create_slots_for_pins", "all");
 	conf->create_slots_flags = 0;
 	tmp = strdup(create_slots_for_pins);
-	op = strtok(tmp, " ,");
-	while (op) {
-		if (!strcmp(op, "user"))
-			conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_PIN_USER;
-		else if (!strcmp(op, "sign"))
-			conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_PIN_SIGN;
-		else if (!strcmp(op, "all"))
-			conf->create_slots_flags |= SC_PKCS11_SLOT_CREATE_ALL;
-		op = strtok(NULL, " ,");
+	if (tmp) {
+		op = strtok(tmp, " ,");
+		while (op) {
+			if (!strcmp(op, "user"))
+				conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_PIN_USER;
+			else if (!strcmp(op, "sign"))
+				conf->create_slots_flags |= SC_PKCS11_SLOT_FOR_PIN_SIGN;
+			else if (!strcmp(op, "all"))
+				conf->create_slots_flags |= SC_PKCS11_SLOT_CREATE_ALL;
+			op = strtok(NULL, " ,");
+		}
+		free(tmp);
 	}
-	free(tmp);
 
 out:
 	sc_log(ctx, "PKCS#11 options: max_virtual_slots=%d slots_per_card=%d "

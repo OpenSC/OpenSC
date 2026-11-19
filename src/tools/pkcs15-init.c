@@ -1068,6 +1068,8 @@ do_store_private_key(struct sc_profile *profile)
 
 	r = sc_pkcs15_convert_prkey(&args.key, pkey);
 	if (r < 0) {
+		for (i = 0; i < ncerts; i++)
+			X509_free(cert[i]);
 		EVP_PKEY_free(pkey);
 		sc_log_openssl(g_ctx);
 		return r;
@@ -1108,6 +1110,8 @@ do_store_private_key(struct sc_profile *profile)
 
 	r = sc_lock(g_p15card->card);
 	if (r < 0) {
+		for (i = 0; i < ncerts; i++)
+			X509_free(cert[i]);
 		EVP_PKEY_free(pkey);
 		sc_pkcs15_erase_prkey(&(args.key));
 		return r;
@@ -1115,6 +1119,8 @@ do_store_private_key(struct sc_profile *profile)
 	r = sc_pkcs15init_store_private_key(g_p15card, profile, &args, NULL);
 	sc_pkcs15_erase_prkey(&(args.key));
 	if (r < 0) {
+		for (i = 0; i < ncerts; i++)
+			X509_free(cert[i]);
 		EVP_PKEY_free(pkey);
 		sc_unlock(g_p15card->card);
 		return r;
@@ -1135,6 +1141,8 @@ do_store_private_key(struct sc_profile *profile)
 
 		/* Encode the cert */
 		if ((r = do_convert_cert(&cargs.der_encoded, cert[i])) < 0) {
+			for (i = 0; i < ncerts; i++)
+				X509_free(cert[i]);
 			EVP_PKEY_free(pkey);
 			sc_unlock(g_p15card->card);
 			return r;
@@ -1180,6 +1188,9 @@ next_cert:
 	/* No certificates - store the public key */
 	if (ncerts == 0)
 		r = do_store_public_key(profile, pkey);
+
+	for (i = 0; i < ncerts; i++)
+		X509_free(cert[i]);
 
 	EVP_PKEY_free(pkey);
 	sc_unlock(g_p15card->card);
@@ -2302,20 +2313,31 @@ static int pass_cb(char *buf, int len, int flags, void *d)
 	size_t pass_len = 0;
 	int  plen, r;
 	char *pass = (char *)d;
+	int allocated = 0;
 
 	if (!pass)   {
 		printf("Please enter passphrase to unlock secret key: ");
 		r = util_getpass(&pass, &pass_len, stdin);
 		if (r < 0 || !pass)
 			return 0;
+		allocated = 1;
 	}
 
 	plen = (int)strlen(pass);
-	if (plen <= 0)
+	if (plen <= 0) {
+		if (allocated) {
+			sc_mem_clear(pass, pass_len);
+			free(pass);
+		}
 		return 0;
+	}
 	if (plen > len)
 		plen = len;
 	memcpy(buf, pass, plen);
+	if (allocated) {
+		sc_mem_clear(pass, pass_len);
+		free(pass);
+	}
 	return plen;
 }
 
@@ -2360,32 +2382,38 @@ do_read_pkcs12_private_key(const char *filename, const char *passphrase,
 	 || !PKCS12_parse(p12, passphrase, &user_key, &user_cert, &cacerts))
 		goto error;
 
+	PKCS12_free(p12);
+	p12 = NULL;
+
 	if (!user_key) {
 		util_error("No key in pkcs12 file?!\n");
+		if (user_cert)
+			X509_free(user_cert);
+		if (cacerts)
+			sk_X509_pop_free(cacerts, X509_free);
 		return SC_ERROR_CANNOT_LOAD_KEY;
 	}
 
-	EVP_PKEY_up_ref(user_key);
-
 	if (user_cert && max_certs)
 		certs[ncerts++] = user_cert;
+	else if (user_cert)
+		X509_free(user_cert);
 
 	/* Extract CA certificates, if any */
-	for(i = 0; cacerts && ncerts < (int)max_certs && i < sk_X509_num(cacerts); i++)
+	for(i = 0; cacerts && ncerts < (int)max_certs && i < sk_X509_num(cacerts); i++) {
 		certs[ncerts++] = sk_X509_value(cacerts, i);
-
-	/* bump reference counts for certificates */
-	for (i = 0; i < ncerts; i++) {
-		X509_up_ref(certs[i]);
+		X509_up_ref(certs[ncerts - 1]);
 	}
 
 	if (cacerts)
-		sk_X509_free(cacerts);
+		sk_X509_pop_free(cacerts, X509_free);
 
 	*key = user_key;
 	return ncerts;
 
 error:
+	if (p12)
+		PKCS12_free(p12);
 	sc_log_openssl(g_ctx);
 	return SC_ERROR_CANNOT_LOAD_KEY;
 }
@@ -2428,8 +2456,10 @@ do_read_private_key(const char *filename, const char *format,
 		return SC_ERROR_NOT_SUPPORTED;
 	}
 
-	if (NULL == opt_passphrase)
+	if (NULL == opt_passphrase && passphrase) {
+		sc_mem_clear(passphrase, len ? len : strlen(passphrase));
 		free(passphrase);
+	}
 
 	if (r < 0)
 		util_fatal("Unable to read private key from %s\n", filename);
@@ -2582,15 +2612,21 @@ do_read_data_object(const char *name, u8 **out, size_t *outlen, size_t expected)
 	inf = fopen(name, "rb");
 	if (inf == NULL) {
 		fprintf(stderr, "Unable to open '%s' for reading.\n", name);
+		free(*out);
+		*out = NULL;
 		return SC_ERROR_FILE_NOT_FOUND;
 	}
 	sz = fread(*out, 1, filesize, inf);
 	fclose(inf);
 	if (sz < 0) {
 		perror("read");
+		free(*out);
+		*out = NULL;
 		return SC_ERROR_FILE_NOT_FOUND;
 	}
 	if ((size_t)sz < filesize) {
+		free(*out);
+		*out = NULL;
 		return SC_ERROR_FILE_TOO_SMALL;
 	}
 
@@ -2626,7 +2662,7 @@ cert_common_name(X509 *x509)
 	}
 
 	out_len = ASN1_STRING_to_UTF8(&tmp, a_str);
-	if (!tmp) {
+	if (out_len < 0 || !tmp) {
 		sc_log_openssl(g_ctx);
 		return NULL;
 	}
@@ -3091,14 +3127,19 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 		if (r < 0 || !pin)
 			return SC_ERROR_INTERNAL;
 
-		if (!strlen(pin) && (flags & SC_UI_PIN_OPTIONAL))
+		if (!strlen(pin) && (flags & SC_UI_PIN_OPTIONAL)) {
+			sc_mem_clear(pin, len);
+			free(pin);
 			return 0;
+		}
 
 		if (pin_info && (flags & SC_UI_PIN_CHECK_LENGTH)) {
 			if (strlen(pin) < pin_info->attrs.pin.min_length) {
 				fprintf(stderr,
 					"PIN too short (min %lu characters)\n",
 					(unsigned long) pin_info->attrs.pin.min_length);
+				sc_mem_clear(pin, len);
+				free(pin);
 				continue;
 			}
 			if (pin_info->attrs.pin.max_length
@@ -3106,30 +3147,43 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 				fprintf(stderr,
 					"PIN too long (max %lu characters)\n",
 					(unsigned long) pin_info->attrs.pin.max_length);
+				sc_mem_clear(pin, len);
+				free(pin);
 				continue;
 			}
 		}
 
 		*out = strdup(pin);
 		sc_mem_clear(pin, len);
+		free(pin);
+		pin = NULL;
+		if (!*out)
+			return SC_ERROR_OUT_OF_MEMORY;
 
 		if (!(flags & SC_UI_PIN_RETYPE))
 			break;
 
 		printf("Please type again to verify: ");
 		r = util_getpass(&pin, &len, stdin);
-		if (r < 0 || !pin)
+		if (r < 0 || !pin) {
+			sc_mem_clear(*out, strlen(*out));
+			free(*out);
+			*out = NULL;
 			return SC_ERROR_INTERNAL;
+		}
 		if (!strcmp(*out, pin)) {
 			sc_mem_clear(pin, len);
+			free(pin);
 			break;
 		}
 
+		sc_mem_clear(*out, strlen(*out));
 		free(*out);
 		*out = NULL;
 
 		if (!(flags & SC_UI_PIN_MISMATCH_RETRY)) {
 			fprintf(stderr, "PINs do not match.\n");
+			sc_mem_clear(pin, len);
 			free(pin);
 			return SC_ERROR_KEYPAD_PIN_MISMATCH;
 		}
@@ -3137,7 +3191,8 @@ int get_pin(sc_ui_hints_t *hints, char **out)
 		fprintf(stderr,
 			"Sorry, the two pins did not match. "
 			"Please try again.\n");
-		sc_mem_clear(pin, strlen(pin));
+		sc_mem_clear(pin, len);
+		free(pin);
 
 		/* Currently, there's no way out of this dialog.
 		 * We should allow the user to bail out after n
@@ -3181,7 +3236,11 @@ static int verify_pin(struct sc_pkcs15_card *p15card, char *auth_id_str)
 	else   {
 		struct sc_pkcs15_id auth_id;
 
-		sc_pkcs15_hex_string_to_id(auth_id_str, &auth_id);
+		r = sc_pkcs15_hex_string_to_id(auth_id_str, &auth_id);
+		if (r < 0) {
+			fprintf(stderr, "Invalid auth ID: %s\n", auth_id_str);
+			return r;
+		}
 		r = sc_pkcs15_find_pin_by_auth_id(p15card, &auth_id, &pin_obj);
 		if (r) {
 			fprintf(stderr, "Unable to find PIN code: %s\n", sc_strerror(r));

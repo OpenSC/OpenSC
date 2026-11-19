@@ -215,7 +215,7 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 	int r;
 	struct sc_pkcs15_auth_info *auth_info;
 
-	if (NULL == pin_obj)
+	if (NULL == pin_obj || NULL == pin_obj->data)
 		return SC_ERROR_INVALID_ARGUMENTS;
 
 	auth_info = (struct sc_pkcs15_auth_info *)pin_obj->data;
@@ -232,6 +232,7 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 		if (!pin || !pin_len || pin_len > 16)
 			return SC_ERROR_INVALID_ARGUMENTS;
 
+		memset(&data, 0, sizeof(data));
 		data.type = SC_EPASS2003_SECRET_PIN;
 		data.key_data.es_secret.kid = auth_info->attrs.pin.reference;
 		data.key_data.es_secret.ac[0] =
@@ -240,8 +241,10 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 		    EPASS2003_AC_MAC_NOLESS | EPASS2003_AC_USER;
 
 		r = sc_profile_get_pin_id(profile, 2, &id);
-		LOG_TEST_RET(card->ctx, r,
-			    "Get User PIN id error!");
+		if (r < 0) {
+			sc_mem_clear(&data, sizeof(data));
+			LOG_TEST_RET(card->ctx, r, "Get User PIN id error!");
+		}
 		data.key_data.es_secret.EC =
 		    sc_profile_get_pin_retries(profile, id);
 
@@ -252,6 +255,7 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 		data.key_data.es_secret.key_len = pin_len;
 
 		r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
+		sc_mem_clear(&data, sizeof(data));
 		if (r < 0)
 			SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 		if (pin_obj) {
@@ -267,6 +271,7 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 		if (!puk || !puk_len || puk_len > 16)
 			return SC_ERROR_INVALID_ARGUMENTS;
 
+		memset(&data, 0, sizeof(data));
 		data.type = SC_EPASS2003_SECRET_PIN;
 		data.key_data.es_secret.kid =
 		    auth_info->attrs.pin.reference + 1;
@@ -276,8 +281,10 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 		    EPASS2003_AC_MAC_EQUAL | EPASS2003_AC_SO;
 
 		r = sc_profile_get_pin_id(profile, 1, &id);
-		LOG_TEST_RET(card->ctx, r,
-			    "Get User PIN id error!");
+		if (r < 0) {
+			sc_mem_clear(&data, sizeof(data));
+			LOG_TEST_RET(card->ctx, r, "Get User PIN id error!");
+		}
 		data.key_data.es_secret.EC =
 		    sc_profile_get_pin_retries(profile, id);
 
@@ -288,6 +295,7 @@ static int epass2003_pkcs15_create_pin(struct sc_profile *profile,
 		data.key_data.es_secret.key_len = puk_len;
 
 		r = sc_card_ctl(card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
+		sc_mem_clear(&data, sizeof(data));
 	}
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
@@ -412,10 +420,9 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 				      struct sc_pkcs15_prkey *key)
 {
 	struct sc_card *card = p15card->card;
-	struct sc_pkcs15_prkey_info *key_info =
-	    (struct sc_pkcs15_prkey_info *)obj->data;
-	size_t idx = key_info->key_reference;
-	size_t keybits = key_info->modulus_length;
+	struct sc_pkcs15_prkey_info *key_info;
+	size_t idx;
+	size_t keybits;
 	struct sc_path path;
 	struct sc_file *tfile = NULL;
 	struct sc_file *file = NULL;
@@ -425,14 +432,25 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	sc_log(card->ctx, "index %zu; id %s\n", idx, sc_pkcs15_print_id(&key_info->id));
-	if (key->algorithm != SC_ALGORITHM_RSA || key->algorithm != SC_ALGORITHM_RSA)
+	if (!obj || !obj->data || !key)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
+	if (key->algorithm != SC_ALGORITHM_RSA)
 		LOG_TEST_RET(card->ctx, SC_ERROR_NOT_SUPPORTED, "store key: only support RSA");
+
+	key_info = (struct sc_pkcs15_prkey_info *)obj->data;
+	idx = key_info->key_reference;
+	keybits = key_info->modulus_length;
+
+	sc_log(card->ctx, "index %zu; id %s\n", idx, sc_pkcs15_print_id(&key_info->id));
 
 	sc_log(card->ctx,
 		 "store key: with ID:%s and path:%s",
 		 sc_pkcs15_print_id(&key_info->id),
 		 sc_print_path(&key_info->path));
+
+	if (key_info->path.len < 2)
+		return SC_ERROR_INVALID_ARGUMENTS;
 
 	/* allocate key object */
 	r = cosm_new_file(profile, card, SC_PKCS15_TYPE_PRKEY_RSA,
@@ -447,11 +465,14 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 	sc_delete_file(p15card->card, &file->path);
 	/* create */
 	r = sc_pkcs15init_create_file(profile, p15card, file);
-	LOG_TEST_RET(card->ctx, r,
-		    "create key: failed to create key file");
+	if (r < 0) {
+		sc_file_free(file);
+		LOG_TEST_RET(card->ctx, r, "create key: failed to create key file");
+	}
 
 	sc_log(card->ctx, "index %zu; keybits %zu", idx, keybits);
 	if (keybits < 1024 || keybits > 2048 || (keybits % 0x20)) {
+		sc_file_free(file);
 		sc_debug(card->ctx, SC_LOG_DEBUG_VERBOSE_TOOL, "Unsupported key size %zu", keybits);
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
@@ -460,26 +481,29 @@ static int epass2003_pkcs15_store_key(struct sc_profile *profile,
 	path.len -= 2;
 
 	r = sc_select_file(card, &path, &tfile);
-	LOG_TEST_RET(card->ctx, r,
-		    "generate key: no private object DF");
+	if (r < 0) {
+		sc_file_free(file);
+		LOG_TEST_RET(card->ctx, r, "generate key: no private object DF");
+	}
 
 	r = sc_pkcs15init_authenticate(profile, p15card, file, SC_AC_OP_UPDATE);
-	LOG_TEST_RET(card->ctx, r,
-		    "No authorisation to store private key");
-
 	sc_file_free(tfile);
+	if (r < 0) {
+		sc_file_free(file);
+		LOG_TEST_RET(card->ctx, r, "No authorisation to store private key");
+	}
 
 	fidl = (file->id & 0xff) * FID_STEP;
 	file->id = (file->id & 0xff00) + fidl;
+	memset(&data, 0, sizeof(data));
 	data.type = SC_EPASS2003_KEY_RSA;
 	data.key_data.es_key.fid = file->id;
 	data.key_data.es_key.rsa = (void *)&key->u.rsa;
 
 	r = sc_card_ctl(p15card->card, SC_CARDCTL_ENTERSAFE_WRITE_KEY, &data);
-	LOG_TEST_RET(card->ctx, r,
-		    "store key: cannot update private key");
-
+	sc_mem_clear(&data, sizeof(data));
 	sc_file_free(file);
+	LOG_TEST_RET(card->ctx, r, "store key: cannot update private key");
 
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
@@ -492,10 +516,9 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	struct sc_card *card = p15card->card;
 	int r;
 	sc_epass2003_gen_key_data gendat;
-	struct sc_pkcs15_prkey_info *key_info =
-	    (struct sc_pkcs15_prkey_info *)obj->data;
-	int idx = key_info->key_reference;
-	size_t keybits = key_info->modulus_length;
+	struct sc_pkcs15_prkey_info *key_info;
+	int idx;
+	size_t keybits;
 	struct sc_file *tfile = NULL, *pukf = NULL;
 	struct sc_path path;
 	struct sc_file *file = NULL;
@@ -503,8 +526,16 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
+	if (!obj || !obj->data)
+		return SC_ERROR_INVALID_ARGUMENTS;
+
 	if (obj->type != SC_PKCS15_TYPE_PRKEY_RSA && obj->type != SC_PKCS15_TYPE_PRKEY_EC)
 		return SC_ERROR_NOT_SUPPORTED;
+
+	memset(&gendat, 0, sizeof(gendat));
+	key_info = (struct sc_pkcs15_prkey_info *)obj->data;
+	idx = key_info->key_reference;
+	keybits = key_info->modulus_length;
 
 	if(obj->type == SC_PKCS15_TYPE_PRKEY_EC && keybits == 0)
 		keybits = 256; 	//EC key length is 256 ...
@@ -544,6 +575,11 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		}
 	}
 
+	if (key_info->path.len < 2) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto err;
+	}
+
 	path = key_info->path;
 	path.len -= 2;
 
@@ -570,6 +606,11 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 	if (r < 0) {
 		sc_log(card->ctx,
 			 "generate key: create temporary pukf failed\n");
+		goto err;
+	}
+
+	if (pukf->path.len < 2) {
+		r = SC_ERROR_INVALID_ARGUMENTS;
 		goto err;
 	}
 
@@ -634,6 +675,10 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		/* set the exponent (always 0x10001) */
 		buf = (u8 *) malloc(3);
 		if (!buf) {
+			free(gendat.modulus);
+			gendat.modulus = NULL;
+			rsa->modulus.data = NULL;
+			rsa->modulus.len = 0;
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
@@ -645,12 +690,21 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 
 		pubkey->algorithm = SC_ALGORITHM_RSA;
 	}
-	else if(pubkey && (obj->type == SC_PKCS15_TYPE_PRKEY_EC)){
+	else if (pubkey && (obj->type == SC_PKCS15_TYPE_PRKEY_EC)) {
 		struct sc_ec_parameters *ecparams = (struct
 				sc_ec_parameters *)key_info->params.data;
+
+		if (!ecparams || !ecparams->named_curve) {
+			free(gendat.modulus);
+			gendat.modulus = NULL;
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			goto err;
+		}
 		pubkey->algorithm = SC_ALGORITHM_EC;
 		pubkey->u.ec.ecpointQ.value = (u8 *)malloc(gendat.modulus_len + 1);
 		if (!pubkey->u.ec.ecpointQ.value) {
+			free(gendat.modulus);
+			gendat.modulus = NULL;
 			r = SC_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}
@@ -659,6 +713,7 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 		memcpy(&pubkey->u.ec.ecpointQ.value[1], gendat.modulus, gendat.modulus_len);
 		pubkey->u.ec.ecpointQ.len = gendat.modulus_len + 1;
 		free(gendat.modulus);
+		gendat.modulus = NULL;
 
 		free(pubkey->u.ec.params.named_curve);
 		pubkey->u.ec.params.named_curve = NULL;
@@ -675,22 +730,43 @@ static int epass2003_pkcs15_generate_key(struct sc_profile *profile,
 
 		r = sc_pkcs15_fix_ec_parameters(card->ctx, &pubkey->u.ec.params);
 	}
-	else
+	else {
 		/* free public key */
 		free(gendat.modulus);
+		gendat.modulus = NULL;
+	}
 
 err:
 	sc_file_free(pukf);
 	sc_file_free(file);
 	sc_file_free(tfile);
 
-	if(r < 0 && pubkey->u.ec.ecpointQ.value)
-	{
-		free(pubkey->u.ec.ecpointQ.value);
-		pubkey->u.ec.ecpointQ.value = NULL;
-		pubkey->u.ec.ecpointQ.len = 0;
+	if (r < 0 && pubkey != NULL) {
+		if (obj->type == SC_PKCS15_TYPE_PRKEY_RSA) {
+			if (pubkey->u.rsa.modulus.data) {
+				free(pubkey->u.rsa.modulus.data);
+				pubkey->u.rsa.modulus.data = NULL;
+				pubkey->u.rsa.modulus.len = 0;
+			}
+			if (pubkey->u.rsa.exponent.data) {
+				free(pubkey->u.rsa.exponent.data);
+				pubkey->u.rsa.exponent.data = NULL;
+				pubkey->u.rsa.exponent.len = 0;
+			}
+		} else if (obj->type == SC_PKCS15_TYPE_PRKEY_EC) {
+			if (pubkey->u.ec.ecpointQ.value) {
+				free(pubkey->u.ec.ecpointQ.value);
+				pubkey->u.ec.ecpointQ.value = NULL;
+				pubkey->u.ec.ecpointQ.len = 0;
+			}
+			if (pubkey->u.ec.params.named_curve) {
+				free(pubkey->u.ec.params.named_curve);
+				pubkey->u.ec.params.named_curve = NULL;
+			}
+		}
 	}
 
+	sc_mem_clear(&gendat, sizeof(gendat));
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 

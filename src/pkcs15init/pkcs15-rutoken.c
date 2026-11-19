@@ -188,6 +188,7 @@ static int create_pins(sc_card_t *card)
 		r = sc_card_ctl(card, SC_CARDCTL_RUTOKEN_CREATE_DO, &param_do);
 		if (r != SC_SUCCESS) break;
 	}
+	sc_mem_clear(&param_do, sizeof(param_do));
 	return r;
 }
 

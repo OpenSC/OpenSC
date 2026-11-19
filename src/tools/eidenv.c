@@ -142,31 +142,28 @@ static const char hextable[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
 static void bintohex(char *buf, size_t len)
 {
 	size_t i;
-	for (i = 0; i < len; i++) {
-		buf[2 * i + 1] = hextable[((unsigned char) buf[i]) % 16];
-		buf[2 * i] = hextable[((unsigned char) buf[i]) / 16];
+	buf[2 * len] = '\0';
+	for (i = len; i > 0; i--) {
+		unsigned char val = (unsigned char) buf[i - 1];
+		buf[2 * (i - 1) + 1] = hextable[val % 16];
+		buf[2 * (i - 1)] = hextable[val / 16];
 	}
 }
 
 static void exportprint(const char *key, const char *val)
 {
 	if (exec_program) {
-		char *cp;
-		size_t cp_size = strlen(key) + strlen(val) + 2;
-		cp = malloc(cp_size);
-		if (cp) {
-			strlcpy(cp, key, cp_size);
-			strlcat(cp, "=", cp_size);
-			strlcat(cp, val, cp_size);
-			putenv(cp);
-			free(cp);
-		}
+#ifdef _WIN32
+		_putenv_s(key, val);
+#else
+		setenv(key, val, 1);
+#endif
 	} else
 		printf("%s: %s\n", key, val);
 }
 
 #define MAX_CHIPNUMBER_SIZE 16
-static void do_belpic(sc_card_t *card)
+static int do_belpic(sc_card_t *card)
 {
 	/* Contents of the ID file (3F00\DF01\4031) */
 	struct {
@@ -244,14 +241,14 @@ static void do_belpic(sc_card_t *card)
 
 	r = read_transp(card, "3f00df014031", buff, sizeof(buff));
 	if (r < 0)
-		goto out;
+		return -1;
 
 	memset(&id_data, 0, sizeof(id_data));
 
 	r = sc_asn1_decode(card->ctx, id, buff, r, NULL, NULL);
 	if (r < 0) {
 		fprintf(stderr, "\nFailed to decode the ID file: %s\n", sc_strerror(r));
-		goto out;
+		return -1;
 	}
 
 	exportprint("BELPIC_CARDNUMBER", id_data.cardnumber);
@@ -274,22 +271,21 @@ static void do_belpic(sc_card_t *card)
 
 	r = read_transp(card, "3f00df014033", buff, sizeof(buff));
 	if (r < 0)
-		goto out;
+		return -1;
 
 	memset(&address_data, 0, sizeof(address_data));
 
 	r = sc_asn1_decode(card->ctx, address, buff, r, NULL, NULL);
 	if (r < 0) {
 		fprintf(stderr, "\nFailed to decode the Address file: %s\n", sc_strerror(r));
-		goto out;
+		return -1;
 	}
 
 	exportprint("BELPIC_STREETANDNUMBER", address_data.streetandnumber);
 	exportprint("BELPIC_ZIPCODE", address_data.zipcode);
 	exportprint("BELPIC_MUNICIPALITY", address_data.municipality);
 
-out:
-	return;
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -321,12 +317,15 @@ int main(int argc, char **argv)
 	}
 
 	/* Check card type */
-	if (card->type == SC_CARD_TYPE_BELPIC_EID)
-		do_belpic(card);
-	else {
+	if (card->type == SC_CARD_TYPE_BELPIC_EID) {
+		if (do_belpic(card) < 0)
+			goto out;
+	} else {
 		fprintf(stderr, "Not an Belpic card!\n");
 		goto out;
 	}
+
+	exit_status = EXIT_SUCCESS;
 
 	if (exec_program) {
 		char *const largv[] = {exec_program, NULL};
@@ -340,8 +339,9 @@ int main(int argc, char **argv)
 	}
 
 out:
+	free(exec_program);
 	sc_unlock(card);
 	sc_disconnect_card(card);
 	sc_release_context(ctx);
-	exit(exit_status);
+	return exit_status;
 }

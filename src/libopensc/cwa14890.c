@@ -338,6 +338,11 @@ static int cwa_verify_icc_certificates(sc_card_t * card,
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* retrieve root ca pkey from provider */
+	if (!provider->cwa_get_root_ca_pubkey) {
+		msg = "No root CA public key provider";
+		res = SC_ERROR_NOT_SUPPORTED;
+		goto verify_icc_certificates_end;
+	}
 	res = provider->cwa_get_root_ca_pubkey(card, &root_ca_key);
 	if (res != SC_SUCCESS) {
 		msg = "Cannot get root CA public key";
@@ -485,7 +490,7 @@ static int cwa_internal_auth(sc_card_t * card, u8 * sig, size_t sig_len, u8 * da
 		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
-	if (!data || (datalen <= 0))	/* check received arguments */
+	if (!sig || !data || (datalen <= 0))	/* check received arguments */
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* compose apdu for Internal Authenticate cmd */
@@ -548,6 +553,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	 */
 	char *msg = NULL;		/* to store error messages */
 	int res = SC_SUCCESS;
+	int bn_len = 0;
 	u8 *buf1 = NULL;		/* where to encrypt with icc pub key */
 	u8 *buf2 = NULL;		/* where to encrypt with ifd pub key */
 	u8 *buf3 = NULL;		/* where to compose message to be encrypted */
@@ -579,7 +585,7 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
 	/* check received arguments */
-	if (!icc_pubkey || !ifd_privkey || !sm)
+	if (!icc_pubkey || !ifd_privkey || !sm || !sig || sig_len != 128)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 	buf1 = calloc(128, sizeof(u8));
 	buf2 = calloc(128, sizeof(u8));
@@ -656,19 +662,22 @@ static int cwa_prepare_external_auth(sc_card_t * card,
 		goto prepare_external_auth_end;
 	}
 	bnres = (BN_cmp(bn, bnsub) < 0) ? bn : bnsub;	/* choose min(SIG,N.IFD-SIG) */
-	if (BN_num_bytes(bnres) > 128) {
+	bn_len = BN_num_bytes(bnres);
+	if (bn_len <= 0 || bn_len > 128) {
 		sc_log_openssl(ctx);
-		msg = "Prepare external auth: BN sigmin result is too big";
+		msg = "Prepare external auth: BN sigmin result is invalid size";
 		res = SC_ERROR_INTERNAL;
 		goto prepare_external_auth_end;
 	}
-	len3 = BN_bn2bin(bnres, buf3);	/* convert result back into buf3 */
+	memset(buf3, 0, 128);
+	len3 = BN_bn2bin(bnres, buf3 + (128 - bn_len));	/* convert result back into buf3 */
 	if (len3 <= 0) {
 		sc_log_openssl(ctx);
 		msg = "Prepare external auth: BN to buffer conversion failed";
 		res = SC_ERROR_INTERNAL;
 		goto prepare_external_auth_end;
 	}
+	len3 = 128;
 
 	/* re-encrypt result with icc public key */
 	pctx = EVP_PKEY_CTX_new(icc_pubkey, NULL);
@@ -740,6 +749,8 @@ static int cwa_external_auth(sc_card_t * card, u8 * sig, size_t sig_len)
 		return SC_ERROR_INVALID_ARGUMENTS;
 	ctx = card->ctx;
 	LOG_FUNC_CALLED(ctx);
+	if (!sig || sig_len == 0)
+		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* compose apdu for External Authenticate cmd */
 	dnie_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x82, 0x00, 0x00, 0, sig_len,
@@ -853,7 +864,7 @@ static int cwa_compare_signature(u8 * data, size_t dlen, u8 * ifd_data)
 		goto compare_signature_end;
 	}
 	res = SC_ERROR_INVALID_DATA;
-	if (dlen != 128)
+	if (!data || !ifd_data || dlen != 128)
 		goto compare_signature_end;	/* check length */
 	if (data[0] != 0x6a)
 		goto compare_signature_end;	/* iso 9796-2 padding */
@@ -926,9 +937,9 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		msg = "Null buffers received as parameters";
 		goto verify_internal_done;
 	}
-	if (!icc_pubkey || !ifd_privkey) {
+	if (!icc_pubkey || !ifd_privkey || !sig || sig_len != 128) {
 		res = SC_ERROR_SM_NO_SESSION_KEYS;
-		msg = "Either provided icc_pubk or ifd_privk are null";
+		msg = "Either provided icc_pubk, ifd_privk, or sig is null/invalid";
 		goto verify_internal_done;
 	}
 	buf1 = (u8 *) calloc(128, sizeof(u8));	/* 128: RSA key len in bytes */
@@ -1019,18 +1030,20 @@ static int cwa_verify_internal_auth(sc_card_t * card,
 		goto verify_internal_done;
 	}
 	bn_len = (size_t)BN_num_bytes(sigbn);
-	if (bn_len == 0 || bn_len > len2) {
+	if (bn_len == 0 || bn_len > 128) {
 		msg = "Verify Signature: unsupported RSA size";
 		res = SC_ERROR_INVALID_DATA;
 		goto verify_internal_done;
 	}
-	len2 = BN_bn2bin(sigbn, buf2);	/* copy result to buffer */
+	memset(buf2, 0, 128);
+	len2 = BN_bn2bin(sigbn, buf2 + (128 - bn_len));	/* copy result to buffer */
 	if (len2 <= 0) {
 		sc_log_openssl(ctx);
 		msg = "Verify Signature: cannot convert bignum to buffer";
 		res = SC_ERROR_INTERNAL;
 		goto verify_internal_done;
 	}
+	len2 = 128;
 	/* ok: check again with new data */
 	/* evaluate DS[SK.ICC.AUTH](I.ICC-SIG) trying to decrypt with icc pubk */
 	pctx = EVP_PKEY_CTX_new(icc_pubkey, NULL);
@@ -1100,6 +1113,7 @@ int cwa_create_secure_channel(sc_card_t * card,
 
 	int res = SC_SUCCESS;
 	char *msg = "Success";
+	u8 *new_tlv = NULL;
 
 	/* data to get and parse certificates */
 	X509 *icc_cert = NULL;
@@ -1340,7 +1354,14 @@ int cwa_create_secure_channel(sc_card_t * card,
 		msg = "Cannot get icc private key reference from provider";
 		goto csc_end;
 	}
-	/* add this tlv to old one; do not call calloc */
+	/* add this tlv to old one; realloc to avoid buffer overflow */
+	new_tlv = realloc(tlv, tlvlen + 10 + bufferlen);
+	if (!new_tlv) {
+		msg = "realloc error";
+		res = SC_ERROR_OUT_OF_MEMORY;
+		goto csc_end;
+	}
+	tlv = new_tlv;
 	res = cwa_compose_tlv(card, 0x84, bufferlen, buffer, &tlv, &tlvlen);
 	if (res != SC_SUCCESS) {
 		msg = "Cannot compose tlv for setting ifd pubkey reference";
@@ -1682,7 +1703,7 @@ int cwa_encode_apdu(sc_card_t * card,
 	}
 
 	/* compose and add computed MAC TLV to result buffer */
-	tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
+	tlv_len = (card->atr.len > 15 && card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
 	sc_log(ctx, "Using TLV length: %zu", tlv_len);
 	res = cwa_compose_tlv(card, 0x8E, tlv_len, macbuf, &apdubuf, &apdulen);
 	if (res != SC_SUCCESS) {
@@ -1832,7 +1853,7 @@ int cwa_decode_response(sc_card_t * card,
 		res = SC_ERROR_INVALID_DATA;
 		goto response_decode_end;
 	}
-	tlv_len = (card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
+	tlv_len = (card->atr.len > 15 && card->atr.value[15] >= DNIE_30_VERSION)? 8 : 4;
 	if (m_tlv->len != tlv_len) {
 		msg = "Invalid MAC TAG Length";
 		res = SC_ERROR_INVALID_DATA;
@@ -1941,7 +1962,7 @@ int cwa_decode_response(sc_card_t * card,
 
 	/* allocate response buffer */
 	resplen = 10 + MAX(p_tlv->len, e_tlv->len);	/* estimate response buflen */
-	if (apdu->resplen < resplen) {
+	if ((p_tlv->buf || e_tlv->buf) && (!apdu->resp || apdu->resplen < resplen)) {
 		msg = "Cannot allocate buffer to store response";
 		res = SC_ERROR_BUFFER_TOO_SMALL;
 		goto response_decode_end;
@@ -1995,7 +2016,7 @@ int cwa_decode_response(sc_card_t * card,
 		/* remove iso padding from response length */
 		for (; (apdu->resplen > 0) && *(apdu->resp + apdu->resplen - 1) == 0x00; apdu->resplen--) ;	/* empty loop */
 
-		if (*(apdu->resp + apdu->resplen - 1) != 0x80) {	/* check padding byte */
+		if (apdu->resplen == 0 || *(apdu->resp + apdu->resplen - 1) != 0x80) {	/* check padding byte */
 			msg = "Decrypted TLV has no 0x80 iso padding indicator!";
 			res = SC_ERROR_INVALID_DATA;
 			goto response_decode_end;
