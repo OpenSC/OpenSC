@@ -3461,6 +3461,7 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 
 	internal_sanitize_pin_info(&data->pin1, 0);
 	internal_sanitize_pin_info(&data->pin2, 1);
+	data->pin1.tries_left = -1;
 	data->flags |= SC_PIN_CMD_NEED_PADDING;
 	kid = data->pin_reference;
 
@@ -3486,6 +3487,9 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 	if (data->cmd == SC_PIN_CMD_UNBLOCK) {
 		r = external_key_auth(card, (kid + 1), (unsigned char *)data->pin1.data,
 				data->pin1.len);
+		if (r == SC_ERROR_PIN_CODE_INCORRECT &&
+				get_external_key_retries(card, 0x80 | (kid + 1), &retries) == SC_SUCCESS)
+			data->pin1.tries_left = retries;
 		LOG_TEST_RET(card->ctx, r, "verify unblock pin failed");
 
 		if (data->pin2.data && data->pin2.len > 0) {
@@ -3499,6 +3503,9 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
 				data->pin1.len);
+		if (r == SC_ERROR_PIN_CODE_INCORRECT &&
+				get_external_key_retries(card, 0x80 | kid, &retries) == SC_SUCCESS)
+			data->pin1.tries_left = retries;
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 
 		r = update_secret_key(card, 0x04, kid, data->pin2.data,
@@ -3507,6 +3514,9 @@ epass2003_pin_cmd(struct sc_card *card, struct sc_pin_cmd_data *data)
 	} else {
 		r = external_key_auth(card, kid, (unsigned char *)data->pin1.data,
 				data->pin1.len);
+		if (r == SC_ERROR_PIN_CODE_INCORRECT &&
+				get_external_key_retries(card, 0x80 | kid, &retries) == SC_SUCCESS)
+			data->pin1.tries_left = retries;
 		LOG_TEST_RET(card->ctx, r, "verify pin failed");
 
 		r = get_external_key_retries(card, 0x80 | kid, &retries);
