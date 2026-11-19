@@ -587,6 +587,46 @@ static CK_RV gostr3410_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len
  * If a hash function was used, we can make a big shortcut by
  *   finishing with EVP_VerifyFinal().
  */
+/* Digest for a PKCS#11 hash mechanism, used by RSA-PSS and RSA-OAEP */
+static EVP_MD *
+hash_mech_md(CK_MECHANISM_TYPE hash)
+{
+	switch (hash) {
+	case CKM_SHA_1:
+		return sc_evp_md(context, "sha1");
+	case CKM_SHA224:
+		return sc_evp_md(context, "sha224");
+	case CKM_SHA256:
+		return sc_evp_md(context, "sha256");
+	case CKM_SHA384:
+		return sc_evp_md(context, "sha384");
+	case CKM_SHA512:
+		return sc_evp_md(context, "sha512");
+	default:
+		return NULL;
+	}
+}
+
+/* Digest for a PKCS#11 MGF1 type, used by RSA-PSS and RSA-OAEP */
+static EVP_MD *
+mgf1_md(CK_RSA_PKCS_MGF_TYPE mgf)
+{
+	switch (mgf) {
+	case CKG_MGF1_SHA1:
+		return sc_evp_md(context, "sha1");
+	case CKG_MGF1_SHA224:
+		return sc_evp_md(context, "sha224");
+	case CKG_MGF1_SHA256:
+		return sc_evp_md(context, "sha256");
+	case CKG_MGF1_SHA384:
+		return sc_evp_md(context, "sha384");
+	case CKG_MGF1_SHA512:
+		return sc_evp_md(context, "sha512");
+	default:
+		return NULL;
+	}
+}
+
 CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 			const CK_BYTE_PTR pubkey_params, CK_ULONG pubkey_params_len,
 			CK_MECHANISM_PTR mech, sc_pkcs11_operation_t *md,
@@ -886,45 +926,15 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 			}
 
 			param = (CK_RSA_PKCS_PSS_PARAMS*)mech->pParameter;
-			switch (param->mgf) {
-			case CKG_MGF1_SHA1:
-				mgf_md = sc_evp_md(context, "sha1");
-				break;
-			case CKG_MGF1_SHA224:
-				mgf_md = sc_evp_md(context, "sha224");
-				break;
-			case CKG_MGF1_SHA256:
-				mgf_md = sc_evp_md(context, "sha256");
-				break;
-			case CKG_MGF1_SHA384:
-				mgf_md = sc_evp_md(context, "sha384");
-				break;
-			case CKG_MGF1_SHA512:
-				mgf_md = sc_evp_md(context, "sha512");
-				break;
-			default:
+			mgf_md = mgf1_md(param->mgf);
+			if (mgf_md == NULL) {
 				free(rsa_out);
 				EVP_PKEY_free(pkey);
 				return CKR_MECHANISM_PARAM_INVALID;
 			}
 
-			switch (param->hashAlg) {
-			case CKM_SHA_1:
-				pss_md = sc_evp_md(context, "sha1");
-				break;
-			case CKM_SHA224:
-				pss_md = sc_evp_md(context, "sha224");
-				break;
-			case CKM_SHA256:
-				pss_md = sc_evp_md(context, "sha256");
-				break;
-			case CKM_SHA384:
-				pss_md = sc_evp_md(context, "sha384");
-				break;
-			case CKM_SHA512:
-				pss_md = sc_evp_md(context, "sha512");
-				break;
-			default:
+			pss_md = hash_mech_md(param->hashAlg);
+			if (pss_md == NULL) {
 				sc_evp_md_free(mgf_md);
 				free(rsa_out);
 				EVP_PKEY_free(pkey);
@@ -1004,44 +1014,6 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 	return rv;
 }
 
-static EVP_MD *
-oaep_hash_md(CK_MECHANISM_TYPE hash)
-{
-	switch (hash) {
-	case CKM_SHA_1:
-		return sc_evp_md(context, "sha1");
-	case CKM_SHA224:
-		return sc_evp_md(context, "sha224");
-	case CKM_SHA256:
-		return sc_evp_md(context, "sha256");
-	case CKM_SHA384:
-		return sc_evp_md(context, "sha384");
-	case CKM_SHA512:
-		return sc_evp_md(context, "sha512");
-	default:
-		return NULL;
-	}
-}
-
-static EVP_MD *
-oaep_mgf_md(CK_RSA_PKCS_MGF_TYPE mgf)
-{
-	switch (mgf) {
-	case CKG_MGF1_SHA1:
-		return sc_evp_md(context, "sha1");
-	case CKG_MGF1_SHA224:
-		return sc_evp_md(context, "sha224");
-	case CKG_MGF1_SHA256:
-		return sc_evp_md(context, "sha256");
-	case CKG_MGF1_SHA384:
-		return sc_evp_md(context, "sha384");
-	case CKG_MGF1_SHA512:
-		return sc_evp_md(context, "sha512");
-	default:
-		return NULL;
-	}
-}
-
 /*
  * Encrypt data with a public key in software, as C_Verify does.
  * Only CKM_RSA_PKCS, CKM_RSA_X_509 and CKM_RSA_PKCS_OAEP are supported.
@@ -1063,7 +1035,7 @@ sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 	size_t len;
 	int padding;
 
-	if (out_len == NULL)
+	if (out_len == NULL || mech == NULL)
 		return CKR_ARGUMENTS_BAD;
 
 	switch (mech->mechanism) {
@@ -1075,14 +1047,12 @@ sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 		break;
 	case CKM_RSA_PKCS_OAEP:
 		padding = RSA_PKCS1_OAEP_PADDING;
-		if (mech->pParameter == NULL ||
-				mech->ulParameterLen != sizeof(CK_RSA_PKCS_OAEP_PARAMS))
-			return CKR_MECHANISM_PARAM_INVALID;
+		rv = sc_pkcs11_validate_oaep_params(mech);
+		if (rv != CKR_OK)
+			return rv;
 		oaep = (const CK_RSA_PKCS_OAEP_PARAMS *)mech->pParameter;
-		if (oaep->source != 0 && oaep->source != CKZ_DATA_SPECIFIED)
-			return CKR_MECHANISM_PARAM_INVALID;
-		if ((oaep->pSourceData == NULL && oaep->ulSourceDataLen != 0) ||
-				oaep->ulSourceDataLen > INT_MAX)
+		/* OpenSSL takes the label length as an int */
+		if (oaep->ulSourceDataLen > INT_MAX)
 			return CKR_MECHANISM_PARAM_INVALID;
 		break;
 	default:
@@ -1100,8 +1070,8 @@ sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 	}
 
 	if (oaep != NULL) {
-		oaep_md = oaep_hash_md(oaep->hashAlg);
-		mgf_md = oaep_mgf_md(oaep->mgf);
+		oaep_md = hash_mech_md(oaep->hashAlg);
+		mgf_md = mgf1_md(oaep->mgf);
 		if (oaep_md == NULL || mgf_md == NULL) {
 			rv = CKR_MECHANISM_PARAM_INVALID;
 			goto end;
