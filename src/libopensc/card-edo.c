@@ -239,23 +239,14 @@ static int edo_compute_signature(struct sc_card* card, const u8* data, size_t da
 	u8 sig[SC_MAX_APDU_RESP_SIZE];
 	int r;
 
-	/* The edo driver currently supports secp384r1 only. */
-	if (!out)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
-	if (outlen < 96)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
-
 	r = sc_get_iso7816_driver()->ops->compute_signature(
 			card, data, datalen, sig, sizeof sig);
 	LOG_TEST_RET(card->ctx, r, "Internal signature failed");
-	if ((size_t)r > sizeof sig)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 
-	/* Decode the received DER bytes, not the response buffer capacity. */
+	/* The edo driver currently supports secp384r1 only. */
 	r = sc_asn1_decode_ecdsa_signature(
 			card->ctx, sig, (size_t)r, 48, &out, outlen);
 	LOG_TEST_RET(card->ctx, r, "ASN.1 conversion failed");
-	/* Signature callbacks return the number of output bytes. */
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
