@@ -237,9 +237,16 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
 static int edo_compute_signature(struct sc_card* card, const u8* data, size_t datalen, u8* out, size_t outlen) {
 	LOG_FUNC_CALLED(card->ctx);
 	u8 sig[SC_MAX_APDU_RESP_SIZE];
-	LOG_TEST_RET(card->ctx, sc_get_iso7816_driver()->ops->compute_signature(card, data, datalen, sig, sizeof sig), "Internal signature failed");
-	LOG_TEST_RET(card->ctx, sc_asn1_sig_value_sequence_to_rs(card->ctx, sig, sizeof sig, out, outlen), "ASN.1 conversion failed");
-	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+	int r;
+
+	r = sc_get_iso7816_driver()->ops->compute_signature(
+			card, data, datalen, sig, sizeof sig);
+	LOG_TEST_RET(card->ctx, r, "Internal signature failed");
+
+	/* The edo driver currently supports secp384r1 only. */
+	r = sc_asn1_decode_ecdsa_signature(
+			card->ctx, sig, (size_t)r, edo_curves[0].len / 8, &out, outlen);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
