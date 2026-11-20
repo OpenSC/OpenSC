@@ -654,6 +654,8 @@ static void		show_key(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_cert(CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		show_dobj(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj);
 static void		show_profile(CK_SESSION_HANDLE sess, CK_OBJECT_HANDLE obj);
+static unsigned char *read_input(const char *path, size_t *len);
+static void write_value(const char *path, const void *value, size_t value_len);
 static void		sign_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		verify_signature(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
 static void		decrypt_data(CK_SLOT_ID, CK_SESSION_HANDLE, CK_OBJECT_HANDLE);
@@ -2911,12 +2913,6 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	if (fd != 0)
 		close(fd);
 
-	if (opt_output == NULL)
-		fd = 1;
-	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, S_IRUSR|S_IWUSR)) < 0) {
-		util_fatal("failed to open %s: %m", opt_output);
-	}
-
 	if (opt_mechanism == CKM_ECDSA || opt_mechanism == CKM_ECDSA_SHA1 ||
 		opt_mechanism == CKM_ECDSA_SHA256 || opt_mechanism == CKM_ECDSA_SHA384 ||
 		opt_mechanism == CKM_ECDSA_SHA512 || opt_mechanism == CKM_ECDSA_SHA224 ||
@@ -2937,12 +2933,7 @@ static void sign_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 			sig_len = seqlen;
 		}
 	}
-	sz = write(fd, sig_buffer, sig_len);
-
-	if (sz < 0)
-		util_fatal("Failed to write to %s: %m", opt_output);
-	if (fd != 1)
-		close(fd);
+	write_value(opt_output, sig_buffer, sig_len);
 	free(sig_buffer);
 	free(sign_ctx_buf);
 }
@@ -2962,9 +2953,9 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 	CK_HASH_SIGN_ADDITIONAL_CONTEXT hash_sign_params = {0};
 	CK_RV		rv;
 	CK_ULONG sig_len = 0;
-	int		fd, fd2;
-	struct stat sig_st;
-	ssize_t sz, sz2;
+	int fd;
+	ssize_t sz;
+	size_t sz2;
 	unsigned long   hashlen;
 	CK_BYTE_PTR sign_ctx_buf = NULL;
 	size_t sign_ctx_len = 0;
@@ -2996,22 +2987,9 @@ static void verify_signature(CK_SLOT_ID slot, CK_SESSION_HANDLE session,
 		}
 	}
 
-	/* Open a signature file */
 	if (opt_signature_file == NULL)
 		util_fatal("No file with signature provided. Use --signature-file");
-	else if ((fd2 = open(opt_signature_file, O_RDONLY | O_BINARY)) < 0)
-		util_fatal("Cannot open %s: %m", opt_signature_file);
-	else if (fstat(fd2, &sig_st) != 0)
-		util_fatal("Couldn't get size of file \"", opt_signature_file);
-	sig_len = sig_st.st_size;
-	sig_buffer = malloc(sig_len);
-	if (!sig_buffer)
-		util_fatal("malloc() failure\n");
-	sz2 = read(fd2, sig_buffer, sig_len);
-	if (sz2 < 0)
-		util_fatal("Cannot read from %s: %m", opt_signature_file);
-
-	close(fd2);
+	sig_buffer = read_input(opt_signature_file, &sz2);
 
 	/* Open the data file */
 	if (opt_input == NULL)
@@ -3635,16 +3613,7 @@ static void hash_data(CK_SLOT_ID slot, CK_SESSION_HANDLE session)
 	if (rv != CKR_OK)
 		p11_fatal("C_DigestFinal", rv);
 
-	if (opt_output == NULL)
-		fd = 1;
-	else if ((fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, S_IRUSR|S_IWUSR)) < 0)
-		util_fatal("failed to open %s: %m", opt_output);
-
-	sz = write(fd, buffer, hash_len);
-	if (sz < 0)
-		util_fatal("Failed to write to %s: %m", opt_output);
-	if (fd != 1)
-		close(fd);
+	write_value(opt_output, buffer, hash_len);
 }
 
 #define FILL_ATTR(attr, typ, val, len) {(attr).type=(typ); (attr).pValue=(val); (attr).ulValueLen=len;}
@@ -4338,15 +4307,12 @@ unwrap_key(CK_SESSION_HANDLE session)
 	CK_OBJECT_HANDLE hSecretKey;
 	int n_attr = 2;
 	CK_RV rv;
-	int fd;
-	unsigned char in_buffer[16384];
-	CK_ULONG wrapped_key_length;
+	size_t wrapped_key_length;
 	CK_BYTE_PTR pWrappedKey;
 	params_t params = {0};
 	CK_BYTE_PTR iv = NULL;
 	CK_BYTE_PTR aad = NULL;
 	CK_OBJECT_HANDLE hUnwrappingKey;
-	ssize_t sz;
 
 	if (!find_object(session, CKO_PRIVATE_KEY, &hUnwrappingKey,
 			    opt_object_id_len ? opt_object_id : NULL, opt_object_id_len, NULL, 0))
@@ -4361,18 +4327,7 @@ unwrap_key(CK_SESSION_HANDLE session)
 	mechanism.pParameter = NULL_PTR;
 	mechanism.ulParameterLen = 0;
 
-	if (opt_input == NULL)
-		fd = 0;
-	else if ((fd = open(opt_input, O_RDONLY | O_BINARY)) < 0)
-		util_fatal("Cannot open %s: %m", opt_input);
-
-	sz = read(fd, in_buffer, sizeof(in_buffer));
-	if (sz < 0)
-		util_fatal("Cannot read from %s: %m", opt_input);
-	wrapped_key_length = sz;
-	if (fd != 0)
-		close(fd);
-	pWrappedKey = in_buffer;
+	pWrappedKey = read_input(opt_input, &wrapped_key_length);
 
 	build_params(&params, &mechanism, &iv, &aad);
 
@@ -4474,10 +4429,11 @@ unwrap_key(CK_SESSION_HANDLE session)
 		n_attr++;
 	}
 	rv = p11->C_UnwrapKey(session, &mechanism, hUnwrappingKey,
-			pWrappedKey, wrapped_key_length, keyTemplate, n_attr, &hSecretKey);
+			pWrappedKey, (CK_ULONG)wrapped_key_length, keyTemplate, n_attr, &hSecretKey);
 	if (rv != CKR_OK)
 		p11_fatal("C_UnwrapKey", rv);
 
+	free(pWrappedKey);
 	free(iv);
 	free(aad);
 	printf("Key unwrapped\n");
@@ -4496,8 +4452,6 @@ wrap_key(CK_SESSION_HANDLE session)
 	CK_RV rv;
 	CK_BYTE hkey_id[100];
 	size_t hkey_id_len;
-	int fd;
-	ssize_t sz;
 	params_t params = {0};
 	CK_BYTE_PTR iv = NULL;
 	CK_BYTE_PTR aad = NULL;
@@ -4532,17 +4486,7 @@ wrap_key(CK_SESSION_HANDLE session)
 		p11_fatal("C_WrapKey", rv);
 	printf("Key wrapped\n");
 
-	if (opt_output == NULL)
-		fd = 1;
-	else if ((fd = open(opt_output, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR)) < 0)
-		util_fatal("failed to open %s: %m", opt_output);
-
-	sz = write(fd, pWrappedKey, pulWrappedKeyLen);
-
-	if (sz < 0)
-		util_fatal("Failed to write to %s: %m", opt_output);
-	if (fd != 1)
-		close(fd);
+	write_value(opt_output, pWrappedKey, pulWrappedKeyLen);
 	free(iv);
 	free(aad);
 	return 1;
@@ -7128,16 +7072,25 @@ static void
 write_value(const char *path, const void *value, size_t value_len)
 {
 	int fd = STDOUT_FILENO;
-	ssize_t sz;
+	size_t written = 0;
+	const char *ptr = (const char *)value;
 
 	if (path) {
 		fd = open(path, O_CREAT | O_TRUNC | O_WRONLY | O_BINARY, S_IRUSR | S_IWUSR);
 		if (fd < 0)
 			util_fatal("failed to open %s: %s", path, strerror(errno));
 	}
-	sz = write(fd, value, value_len);
-	if (sz < 0 || (size_t)sz != value_len)
-		util_fatal("Failed to write to %s: %s", path ? path : "stdout", strerror(errno));
+	while (written < value_len) {
+		ssize_t sz = write(fd, ptr + written, value_len - written);
+		if (sz < 0) {
+			if (errno == EINTR)
+				continue;
+			util_fatal("Failed to write to %s: %s", path ? path : "stdout", strerror(errno));
+		}
+		if (sz == 0)
+			util_fatal("Failed to write to %s: unexpected end of stream", path ? path : "stdout");
+		written += (size_t)sz;
+	}
 	if (path)
 		close(fd);
 }
@@ -7260,8 +7213,6 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 	CK_BYTE *value = NULL;
 	CK_ULONG value_len = 0;
 	CK_OBJECT_HANDLE derived_key = 0;
-	int fd;
-	ssize_t sz;
 	CK_KEY_TYPE key_type = getKEY_TYPE(session, key);
 
 	if (!opt_mechanism_used)
@@ -7283,20 +7234,8 @@ derive_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key)
 
 	value = getVALUE(session, derived_key, &value_len);
 	if (value && value_len > 0) {
-		fd = STDOUT_FILENO;
-		if (opt_output)   {
-			fd = open(opt_output, O_CREAT|O_TRUNC|O_WRONLY|O_BINARY, S_IRUSR|S_IWUSR);
-			if (fd < 0)
-				util_fatal("failed to open %s: %m", opt_output);
-		}
-
-		sz = write(fd, value, value_len);
+		write_value(opt_output, value, value_len);
 		free(value);
-		if (sz < 0)
-			util_fatal("Failed to write to %s: %m", opt_output);
-
-		if (opt_output)
-			close(fd);
 	}
 }
 
