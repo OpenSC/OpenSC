@@ -204,7 +204,7 @@
 		"RSA_PKCS_OAEP",
 		"2048",
 		"2048",
-		"CKF_HW,CKF_DECRYPT"
+		"CKF_HW,CKF_ENCRYPT,CKF_DECRYPT"
 	]],
 	"result": "pass"
 },
@@ -529,6 +529,42 @@
 		"RSA_PKCS_OAEP",
 		"SHA_1",
 		"MGF1_SHA_1",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"01",
+		"RSA_PKCS_OAEP",
+		"SHA_1",
+		"MGF1_SHA224",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"01",
+		"RSA_PKCS_OAEP",
+		"SHA_1",
+		"MGF1_SHA256",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"01",
+		"RSA_PKCS_OAEP",
+		"SHA_1",
+		"MGF1_SHA384",
+		"0",
+		"",
+		"YES"
+	],
+	[
+		"01",
+		"RSA_PKCS_OAEP",
+		"SHA_1",
+		"MGF1_SHA512",
 		"0",
 		"",
 		"YES"

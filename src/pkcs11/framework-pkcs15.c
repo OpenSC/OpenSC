@@ -4804,8 +4804,6 @@ static CK_RV
 pkcs15_key_init_params(struct sc_pkcs11_session *session,
 		CK_MECHANISM_PTR pMechanism)
 {
-	const CK_RSA_PKCS_OAEP_PARAMS *oaep_params;
-
 	switch (pMechanism->mechanism) {
 	case CKM_RSA_PKCS_PSS:
 	case CKM_SHA1_RSA_PKCS_PSS:
@@ -4816,24 +4814,7 @@ pkcs15_key_init_params(struct sc_pkcs11_session *session,
 		return sc_pkcs11_validate_pss_params(pMechanism);
 
 	case CKM_RSA_PKCS_OAEP:
-		if (!pMechanism->pParameter ||
-			pMechanism->ulParameterLen != sizeof(CK_RSA_PKCS_OAEP_PARAMS))
-			return CKR_MECHANISM_PARAM_INVALID;
-
-		oaep_params = (CK_RSA_PKCS_OAEP_PARAMS*)pMechanism->pParameter;
-		switch (oaep_params->mgf) {
-		case CKG_MGF1_SHA1:
-		case CKG_MGF1_SHA224:
-		case CKG_MGF1_SHA256:
-		case CKG_MGF1_SHA384:
-		case CKG_MGF1_SHA512:
-			/* OK */
-			break;
-		default:
-			return CKR_MECHANISM_PARAM_INVALID;
-		}
-		/* TODO is there something more to check */
-		break;
+		return sc_pkcs11_validate_oaep_params(pMechanism);
 	}
 	return CKR_OK;
 }
@@ -6766,6 +6747,10 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 	if (rsa_flags & SC_ALGORITHM_RSA_PAD_OAEP) {
 		CK_FLAGS old_flags = mech_info.flags;
 		mech_info.flags &= ~(CKF_SIGN|CKF_VERIFY|CKF_SIGN_RECOVER|CKF_VERIFY_RECOVER);
+#ifdef ENABLE_OPENSSL
+		/* Encryption with the public key is done in software */
+		mech_info.flags |= CKF_ENCRYPT;
+#endif
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS_OAEP, &mech_info, CKK_RSA, NULL, NULL, NULL);
 		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
 		sc_pkcs11_free_mechanism(&mt);

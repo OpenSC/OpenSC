@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
-/* Operation initialization must reject invalid RSA-PSS parameters before
- * accessing a card. These tests need no PKCS#11 session or hardware.
+/* Operation initialization must reject invalid RSA-PSS and RSA-OAEP
+ * parameters before accessing a card. These tests need no PKCS#11 session
+ * or hardware.
  */
 #include <stdarg.h>
 #include <stddef.h>
@@ -86,7 +87,7 @@ static const struct {
 };
 
 static void
-reject_unknown_hash_including_zero(void **state)
+pss_reject_unknown_hash_including_zero(void **state)
 {
 	const CK_MECHANISM_TYPE invalid[] = {
 			0, CKM_RSA_PKCS, CKM_SHA256_RSA_PKCS, CKM_VENDOR_DEFINED};
@@ -104,7 +105,7 @@ reject_unknown_hash_including_zero(void **state)
 }
 
 static void
-accept_supported_hash_and_mgf_combinations(void **state)
+pss_accept_supported_hash_and_mgf_combinations(void **state)
 {
 	const CK_RSA_PKCS_MGF_TYPE mgfs[] = {
 			CKG_MGF1_SHA1, CKG_MGF1_SHA224, CKG_MGF1_SHA256,
@@ -132,7 +133,7 @@ accept_supported_hash_and_mgf_combinations(void **state)
 }
 
 static void
-reject_combined_mechanism_hash_mismatch(void **state)
+pss_reject_combined_mechanism_hash_mismatch(void **state)
 {
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
 	CK_MECHANISM mechanism = {CKM_SHA256_RSA_PKCS_PSS, &params, sizeof(params)};
@@ -154,7 +155,7 @@ reject_combined_mechanism_hash_mismatch(void **state)
 }
 
 static void
-reject_invalid_parameter_storage(void **state)
+pss_reject_invalid_parameter_storage(void **state)
 {
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_PSS, NULL, sizeof(params)};
@@ -178,7 +179,7 @@ reject_invalid_parameter_storage(void **state)
 }
 
 static void
-reject_invalid_mgf(void **state)
+pss_reject_invalid_mgf(void **state)
 {
 	const CK_RSA_PKCS_MGF_TYPE invalid[] = {0, CKG_MGF1_SHA3_224, ~0UL};
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
@@ -195,7 +196,7 @@ reject_invalid_mgf(void **state)
 }
 
 static void
-accept_non_default_salt_lengths(void **state)
+pss_accept_non_default_salt_lengths(void **state)
 {
 	const CK_ULONG lengths[] = {0, 1, 20, 32, 222};
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
@@ -214,16 +215,126 @@ accept_non_default_salt_lengths(void **state)
 	}
 }
 
+static void
+oaep_accept_supported_parameters(void **state)
+{
+	const CK_RSA_PKCS_MGF_TYPE mgfs[] = {
+			CKG_MGF1_SHA1, CKG_MGF1_SHA224, CKG_MGF1_SHA256,
+			CKG_MGF1_SHA384, CKG_MGF1_SHA512};
+	CK_BYTE label[] = {'l', 'a', 'b', 'e', 'l'};
+	CK_RSA_PKCS_OAEP_PARAMS params = {0, 0, CKZ_DATA_SPECIFIED, NULL, 0};
+	CK_MECHANISM mechanism = {CKM_RSA_PKCS_OAEP, &params, sizeof(params)};
+	CK_RV rc;
+	size_t i, j;
+
+	(void)state;
+	for (i = 0; i < sizeof(hashes) / sizeof(hashes[0]); i++) {
+		params.hashAlg = hashes[i].hash;
+		for (j = 0; j < sizeof(mgfs) / sizeof(mgfs[0]); j++) {
+			params.mgf = mgfs[j];
+			params.source = CKZ_DATA_SPECIFIED;
+			params.pSourceData = NULL;
+			params.ulSourceDataLen = 0;
+			rc = sc_pkcs11_validate_oaep_params(&mechanism);
+			assert_int_equal(rc, CKR_OK);
+			params.pSourceData = label;
+			params.ulSourceDataLen = sizeof(label);
+			rc = sc_pkcs11_validate_oaep_params(&mechanism);
+			assert_int_equal(rc, CKR_OK);
+			/* Callers that pass no label may leave the source as 0 */
+			params.source = 0;
+			params.pSourceData = NULL;
+			params.ulSourceDataLen = 0;
+			rc = sc_pkcs11_validate_oaep_params(&mechanism);
+			assert_int_equal(rc, CKR_OK);
+		}
+	}
+}
+
+static void
+oaep_reject_invalid_parameter_storage(void **state)
+{
+	CK_RSA_PKCS_OAEP_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256,
+			CKZ_DATA_SPECIFIED, NULL, 0};
+	CK_MECHANISM mechanism = {CKM_RSA_PKCS_OAEP, NULL, sizeof(params)};
+	CK_RV rc;
+
+	(void)state;
+	rc = sc_pkcs11_validate_oaep_params(NULL_PTR);
+	assert_int_equal(rc, CKR_ARGUMENTS_BAD);
+	rc = sc_pkcs11_validate_oaep_params(&mechanism);
+	assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
+	mechanism.pParameter = &params;
+	mechanism.ulParameterLen = 0;
+	rc = sc_pkcs11_validate_oaep_params(&mechanism);
+	assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
+	mechanism.ulParameterLen = sizeof(params) - 1;
+	rc = sc_pkcs11_validate_oaep_params(&mechanism);
+	assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
+	mechanism.ulParameterLen = sizeof(params) + 1;
+	rc = sc_pkcs11_validate_oaep_params(&mechanism);
+	assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
+}
+
+static void
+oaep_reject_unknown_hash_and_mgf(void **state)
+{
+	const CK_MECHANISM_TYPE bad_hashes[] = {
+			0, CKM_RSA_PKCS, CKM_SHA256_RSA_PKCS, CKM_VENDOR_DEFINED};
+	const CK_RSA_PKCS_MGF_TYPE bad_mgfs[] = {0, CKG_MGF1_SHA3_224, ~0UL};
+	CK_RSA_PKCS_OAEP_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256,
+			CKZ_DATA_SPECIFIED, NULL, 0};
+	CK_MECHANISM mechanism = {CKM_RSA_PKCS_OAEP, &params, sizeof(params)};
+	CK_RV rc;
+	size_t i;
+
+	(void)state;
+	for (i = 0; i < sizeof(bad_hashes) / sizeof(bad_hashes[0]); i++) {
+		params.hashAlg = bad_hashes[i];
+		rc = sc_pkcs11_validate_oaep_params(&mechanism);
+		assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
+	}
+	params.hashAlg = CKM_SHA256;
+	for (i = 0; i < sizeof(bad_mgfs) / sizeof(bad_mgfs[0]); i++) {
+		params.mgf = bad_mgfs[i];
+		rc = sc_pkcs11_validate_oaep_params(&mechanism);
+		assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
+	}
+}
+
+static void
+oaep_reject_invalid_source(void **state)
+{
+	CK_RSA_PKCS_OAEP_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256,
+			CKZ_DATA_SPECIFIED, NULL, 0};
+	CK_MECHANISM mechanism = {CKM_RSA_PKCS_OAEP, &params, sizeof(params)};
+	CK_RV rc;
+
+	(void)state;
+	params.source = CKZ_DATA_SPECIFIED + 1;
+	rc = sc_pkcs11_validate_oaep_params(&mechanism);
+	assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
+	/* A label length without label data */
+	params.source = CKZ_DATA_SPECIFIED;
+	params.ulSourceDataLen = 5;
+	rc = sc_pkcs11_validate_oaep_params(&mechanism);
+	assert_int_equal(rc, CKR_MECHANISM_PARAM_INVALID);
+}
+
 int
 main(void)
 {
 	const struct CMUnitTest tests[] = {
-			cmocka_unit_test(reject_unknown_hash_including_zero),
-			cmocka_unit_test(accept_supported_hash_and_mgf_combinations),
-			cmocka_unit_test(reject_combined_mechanism_hash_mismatch),
-			cmocka_unit_test(reject_invalid_parameter_storage),
-			cmocka_unit_test(reject_invalid_mgf),
-			cmocka_unit_test(accept_non_default_salt_lengths),
+			cmocka_unit_test(pss_reject_unknown_hash_including_zero),
+			cmocka_unit_test(pss_accept_supported_hash_and_mgf_combinations),
+			cmocka_unit_test(pss_reject_combined_mechanism_hash_mismatch),
+			cmocka_unit_test(pss_reject_invalid_parameter_storage),
+			cmocka_unit_test(pss_reject_invalid_mgf),
+			cmocka_unit_test(pss_accept_non_default_salt_lengths),
+			cmocka_unit_test(oaep_accept_supported_parameters),
+			cmocka_unit_test(oaep_reject_invalid_parameter_storage),
+			cmocka_unit_test(oaep_reject_unknown_hash_and_mgf),
+			cmocka_unit_test(oaep_reject_invalid_source),
 	};
 	return cmocka_run_group_tests(tests, NULL, NULL);
 }
