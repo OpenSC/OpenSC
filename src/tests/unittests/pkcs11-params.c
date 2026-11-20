@@ -87,7 +87,7 @@ static const struct {
 };
 
 static void
-reject_unknown_hash_including_zero(void **state)
+pss_reject_unknown_hash_including_zero(void **state)
 {
 	const CK_MECHANISM_TYPE invalid[] = {
 			0, CKM_RSA_PKCS, CKM_SHA256_RSA_PKCS, CKM_VENDOR_DEFINED};
@@ -105,7 +105,7 @@ reject_unknown_hash_including_zero(void **state)
 }
 
 static void
-accept_supported_hash_and_mgf_combinations(void **state)
+pss_accept_supported_hash_and_mgf_combinations(void **state)
 {
 	const CK_RSA_PKCS_MGF_TYPE mgfs[] = {
 			CKG_MGF1_SHA1, CKG_MGF1_SHA224, CKG_MGF1_SHA256,
@@ -133,7 +133,7 @@ accept_supported_hash_and_mgf_combinations(void **state)
 }
 
 static void
-reject_combined_mechanism_hash_mismatch(void **state)
+pss_reject_combined_mechanism_hash_mismatch(void **state)
 {
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
 	CK_MECHANISM mechanism = {CKM_SHA256_RSA_PKCS_PSS, &params, sizeof(params)};
@@ -155,7 +155,7 @@ reject_combined_mechanism_hash_mismatch(void **state)
 }
 
 static void
-reject_invalid_parameter_storage(void **state)
+pss_reject_invalid_parameter_storage(void **state)
 {
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
 	CK_MECHANISM mechanism = {CKM_RSA_PKCS_PSS, NULL, sizeof(params)};
@@ -179,7 +179,7 @@ reject_invalid_parameter_storage(void **state)
 }
 
 static void
-reject_invalid_mgf(void **state)
+pss_reject_invalid_mgf(void **state)
 {
 	const CK_RSA_PKCS_MGF_TYPE invalid[] = {0, CKG_MGF1_SHA3_224, ~0UL};
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
@@ -196,7 +196,7 @@ reject_invalid_mgf(void **state)
 }
 
 static void
-accept_non_default_salt_lengths(void **state)
+pss_accept_non_default_salt_lengths(void **state)
 {
 	const CK_ULONG lengths[] = {0, 1, 20, 32, 222};
 	CK_RSA_PKCS_PSS_PARAMS params = {CKM_SHA256, CKG_MGF1_SHA256, 32};
@@ -325,12 +325,12 @@ int
 main(void)
 {
 	const struct CMUnitTest tests[] = {
-			cmocka_unit_test(reject_unknown_hash_including_zero),
-			cmocka_unit_test(accept_supported_hash_and_mgf_combinations),
-			cmocka_unit_test(reject_combined_mechanism_hash_mismatch),
-			cmocka_unit_test(reject_invalid_parameter_storage),
-			cmocka_unit_test(reject_invalid_mgf),
-			cmocka_unit_test(accept_non_default_salt_lengths),
+			cmocka_unit_test(pss_reject_unknown_hash_including_zero),
+			cmocka_unit_test(pss_accept_supported_hash_and_mgf_combinations),
+			cmocka_unit_test(pss_reject_combined_mechanism_hash_mismatch),
+			cmocka_unit_test(pss_reject_invalid_parameter_storage),
+			cmocka_unit_test(pss_reject_invalid_mgf),
+			cmocka_unit_test(pss_accept_non_default_salt_lengths),
 			cmocka_unit_test(oaep_accept_supported_parameters),
 			cmocka_unit_test(oaep_reject_invalid_parameter_storage),
 			cmocka_unit_test(oaep_reject_unknown_hash_and_mgf),
