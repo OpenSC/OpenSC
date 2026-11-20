@@ -245,7 +245,7 @@ static int edo_compute_signature(struct sc_card* card, const u8* data, size_t da
 
 	/* The edo driver currently supports secp384r1 only. */
 	r = sc_asn1_decode_ecdsa_signature(
-			card->ctx, sig, (size_t)r, 48, &out, outlen);
+			card->ctx, sig, (size_t)r, edo_curves[0].len / 8, &out, outlen);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
