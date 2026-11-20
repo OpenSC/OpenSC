@@ -51,7 +51,7 @@ if [ "$1" == "mingw" -o "$1" == "mingw32" ]; then
 	# no point in running tests on mingw
 else
 	if [ "$1" == "ix86" ]; then
-		export CFLAGS="-m32"
+		export SET_CFLAGS="-m32"
 		export LDFLAGS="-m32"
 	fi
 	if [ "$1" == "fips" ]; then
@@ -81,9 +81,8 @@ else
 	if [ "$1" == "no-readers" ]; then
 		CONFIGURE_FLAGS="$CONFIGURE_FLAGS --disable-pcsc --disable-cryptotokenkit --disable-openct --disable-ctapi"
 	fi
-	export CFLAGS="-DDEBUG_PROFILE=1 $CFLAGS"
 	./configure $CONFIGURE_FLAGS
-	make -j 4 V=1
+	make -j 4 V=1 CFLAGS="-DDEBUG_PROFILE=1 $SET_CFLAGS"
 	# 32b build has some issues to find openssl correctly
 	if [ "$1" == "valgrind" ]; then
 		set +e

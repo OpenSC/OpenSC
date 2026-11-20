@@ -20,7 +20,7 @@ dist_pkgdata_DATA = \
 	epass2003.profile \
 	rutoken_ecp.profile \
 	rutoken_lite.profile \
-	myeid.profile \
+	myeid.profile myeid_so_unblock.profile myeid_unblock_with_other_pin.profile myeid_unblocking_pin.profile\
 	authentic.profile \
 	iasecc.profile \
 	ias_adele_admin1.profile ias_adele_admin2.profile ias_adele_common.profile \

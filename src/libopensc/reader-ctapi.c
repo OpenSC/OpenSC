@@ -23,7 +23,6 @@
 #endif
 
 #ifdef ENABLE_CTAPI
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 

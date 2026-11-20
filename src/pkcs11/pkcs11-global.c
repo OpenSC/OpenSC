@@ -649,14 +649,14 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo)
 			now = get_current_time();
 			if (now >= slot->slot_state_expires || now == 0) {
 				/* Update slot status */
-				rv = card_detect(slot->reader, slot->reader_events);
+				rv = card_detect(slot->reader, &slot->reader_events);
 				sc_log(context, "C_GetSlotInfo() card detect rv 0x%lX", rv);
 
 				if (rv == CKR_TOKEN_NOT_RECOGNIZED || rv == CKR_OK)
 					slot->slot_info.flags |= CKF_TOKEN_PRESENT;
 
 				/* Don't ask again within the next second */
-				slot->slot_state_expires = now + 1000;
+				slot->slot_state_expires = get_current_time() + 1000;
 			}
 		}
 	}

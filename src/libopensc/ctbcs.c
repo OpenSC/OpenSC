@@ -22,7 +22,6 @@
 #include "config.h"
 #endif
 
-#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -223,7 +222,7 @@ ctbcs_pin_cmd(sc_reader_t *reader, struct sc_pin_cmd_data *data)
 		return s;
 	}
 	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	
+
 	/* Check CTBCS status word */
 	switch (((unsigned int) apdu.sw1 << 8) | apdu.sw2) {
 	case 0x9000:

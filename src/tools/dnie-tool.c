@@ -67,15 +67,16 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
-	"Uses reader number <arg> [0]",
-	"Wait for a card to be inserted",
-	"Specify PIN",
-	"Retrieve IDESP",
-	"Gets DNIe software version",
-	"Show DNIe number, Name, and SurName",
-	"Show DNIe serial number",
-	"Display all the information available",
-	"Verbose operation, may be used several times",
+		"Uses reader number <arg> [0]",
+		"Wait for a card to be inserted",
+		"Specify PIN",
+		"Retrieve IDESP",
+		"Gets DNIe software version",
+		"Show DNIe number, Name, and SurName",
+		"Show DNIe serial number",
+		"Display all the information available",
+		"Verbose operation, may be used several times",
+		"",
 };
 
 /*  Get DNIe device extra information  */

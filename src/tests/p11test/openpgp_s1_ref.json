@@ -66,7 +66,7 @@
 		"RSA_PKCS",
 		"2048",
 		"2048",
-		"CKF_HW,CKF_DECRYPT,CKF_SIGN,CKF_VERIFY"
+		"CKF_HW,CKF_ENCRYPT,CKF_DECRYPT,CKF_SIGN,CKF_VERIFY"
 	],
 	[
 		"SHA1_RSA_PKCS",
@@ -145,12 +145,6 @@
 	],
 	[
 		"01",
-		"SHA1_RSA_PKCS",
-		"YES",
-		""
-	],
-	[
-		"01",
 		"RIPEMD160_RSA_PKCS",
 		"YES",
 		""
@@ -192,11 +186,6 @@
 	[
 		"01",
 		"MD5_RSA_PKCS",
-		"YES"
-	],
-	[
-		"01",
-		"SHA1_RSA_PKCS",
 		"YES"
 	],
 	[
@@ -304,6 +293,16 @@
 		"MECHANISM",
 		"WRAP WORKS",
 		"UNWRAP WORKS"
+	]],
+	"result": "pass"
+},
+{
+	"test_id": "kem_tests",
+	"data": [
+	[
+		"KEY ID",
+		"MECHANISM",
+		"KEM WORKS"
 	]],
 	"result": "pass"
 }]

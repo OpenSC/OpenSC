@@ -64,24 +64,24 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
-	"Uses reader number <arg> [0]",
-	"Wait for card insertion",
-	"Generate key 1536 default",
-	"Overwrite key if already exist",
-	"Key length <arg> [512,1024,1536]",
-	"Install pin",
-	"Pin value <arg>",
-	"Puk value <arg>",
-	"Change pin (new pin in puk value)",
-	"Unblock pin",
-	"Write certificate <arg> (in pem format)",
-	"Finalize card(!!! MANDATORY FOR SECURITY !!!)",
-	"Read file <arg>",
-	"Write file <arg> (ex 0002 write file 0002 to 0002)",
-	"This message",
-	"Verbose operation, may be used several times",
+		"Uses reader number <arg> [0]",
+		"Wait for card insertion",
+		"Generate key 1536 default",
+		"Overwrite key if already exist",
+		"Key length <arg> [512,1024,1536]",
+		"Install pin",
+		"Pin value <arg>",
+		"Puk value <arg>",
+		"Change pin (new pin in puk value)",
+		"Unblock pin",
+		"Write certificate <arg> (in pem format)",
+		"Finalize card(!!! MANDATORY FOR SECURITY !!!)",
+		"Read file <arg>",
+		"Write file <arg> (ex 0002 write file 0002 to 0002)",
+		"This message",
+		"Verbose operation, may be used several times",
+		"",
 };
-
 
 static int opt_wait = 0, verbose = 0;
 static const char *opt_driver = NULL;

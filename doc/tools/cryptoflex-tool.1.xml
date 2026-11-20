@@ -52,7 +52,7 @@
 
 				<varlistentry>
 					<term>
-						<option>--create-pin-files</option> <replaceable>id</replaceable>,
+						<option>--create-pin-file</option> <replaceable>id</replaceable>,
 						<option>-P</option> <replaceable>id</replaceable>
 					</term>
 					<listitem><para>Creates new PIN file for CHV<replaceable>id</replaceable></para></listitem>
@@ -107,15 +107,6 @@
 						<option>-p</option> <replaceable>id</replaceable>
 					</term>
 					<listitem><para>Specifies the private key file id, <replaceable>id</replaceable>,
-					to use</para></listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--pubkey-file</option> <replaceable>id</replaceable>,
-						<option>-u</option> <replaceable>id</replaceable>
-					</term>
-					<listitem><para>Specifies the public key file id, <replaceable>id</replaceable>,
 					to use</para></listitem>
 				</varlistentry>
 

@@ -79,23 +79,24 @@ static const struct option options[] = {
 // clang-format on
 
 static const char *option_help[] = {
-	"Prints OpenSC package revision",
-	"Prints information about OpenSC",
-	"Prints the ATR bytes of the card",
-	"Prints the card serial number",
-	"Identify the card and print its name",
-	"Get configuration, e.g. section:name:key",
-	"Set configuration, e.g. section:name:key:val",
-	"Lists readers",
-	"Lists all installed card drivers",
-	"Recursively lists files stored on card",
-	"Sends an APDU (may need '-c default')",
-	"Uses reader number <arg> [0]",
-	"Does card reset of type <cold|warm> [cold]",
-	"Forces a card driver (use '?' for list)",
-	"Lists algorithms supported by card",
-	"Wait for a card to be inserted",
-	"Verbose operation, may be used several times",
+		"Prints OpenSC package revision",
+		"Prints information about OpenSC",
+		"Prints the ATR bytes of the card",
+		"Prints the card serial number",
+		"Identify the card and print its name",
+		"Get configuration, e.g. section:name:key",
+		"Set configuration, e.g. section:name:key:val",
+		"Lists readers",
+		"Lists all installed card drivers",
+		"Recursively lists files stored on card",
+		"Sends an APDU (may need '-c default')",
+		"Uses reader number <arg> [0]",
+		"Does card reset of type <cold|warm> [cold]",
+		"Forces a card driver (use '?' for list)",
+		"Lists algorithms supported by card",
+		"Wait for a card to be inserted",
+		"Verbose operation, may be used several times",
+		"",
 };
 
 static sc_context_t *ctx = NULL;
@@ -416,11 +417,12 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		}
 
 		r = sc_lock(card);
-		if (r == SC_SUCCESS)
+		if (r == SC_SUCCESS) {
 			r = sc_read_binary(in_card, 0, buf, file->size, 0);
+			if (r > 0)
+				util_hex_dump_asc(stdout, buf, r, 0);
+		}
 		sc_unlock(card);
-		if (r > 0)
-			util_hex_dump_asc(stdout, buf, r, 0);
 		free(buf);
 	} else {
 		unsigned char buf[256];
@@ -429,11 +431,12 @@ static int print_file(sc_card_t *in_card, const sc_file_t *file,
 		for (rec_nr = 1; rec_nr <= file->record_count; rec_nr++) {
 			printf("Record %u\n", rec_nr);
 			r = sc_lock(card);
-			if (r == SC_SUCCESS)
+			if (r == SC_SUCCESS) {
 				r = sc_read_record(in_card, rec_nr, 0, buf, sizeof(buf), SC_RECORD_BY_REC_NR);
+				if (r > 0)
+					util_hex_dump_asc(stdout, buf, r, 0);
+			}
 			sc_unlock(card);
-			if (r > 0)
-				util_hex_dump_asc(stdout, buf, r, 0);
 		}
 	}
 	return 0;

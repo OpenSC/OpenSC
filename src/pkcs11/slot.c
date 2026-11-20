@@ -210,7 +210,7 @@ CK_RV card_removed(sc_reader_t * reader)
 }
 
 CK_RV
-card_detect(sc_reader_t *reader, void *reader_states)
+card_detect(sc_reader_t *reader, void **reader_states)
 {
 	struct sc_pkcs11_card *p11card = NULL;
 	int free_p11card = 0;
@@ -230,7 +230,7 @@ card_detect(sc_reader_t *reader, void *reader_states)
 		sc_reader_t *event_reader;
 		/* Detect card and reader events */
 		mask = SC_EVENT_CARD_EVENTS | SC_EVENT_READER_EVENTS;
-		int r = sc_wait_for_event(context, mask, &event_reader, &events, 0, &reader_states);
+		int r = sc_wait_for_event(context, mask, &event_reader, &events, 0, reader_states);
 		if (r == SC_ERROR_EVENT_TIMEOUT || reader != event_reader)
 			/* no change happened */
 			no_change = 1;
@@ -294,7 +294,7 @@ again:
 		rc = sc_connect_card(reader, &p11card->card);
 		if (rc != SC_SUCCESS) {
 			sc_log(context, "%s: SC connect card error %i", reader->name, rc);
-			rv = sc_to_cryptoki_error(rc, NULL);
+			rv = CKR_TOKEN_NOT_RECOGNIZED;
 			goto fail;
 		}
 
@@ -325,7 +325,7 @@ again:
 				break;
 		/*TODO: only first framework is used: pkcs15init framework is not reachable here */
 		if (frameworks[i] == NULL) {
-			rv = CKR_GENERAL_ERROR;
+			rv = CKR_TOKEN_NOT_RECOGNIZED;
 			goto fail;
 		}
 
@@ -357,6 +357,7 @@ again:
 				sc_log(context,
 				       "%s: cannot bind 'generic' token: rv 0x%lX",
 				       reader->name, rv);
+				rv = CKR_TOKEN_NOT_RECOGNIZED;
 				goto fail;
 			}
 
@@ -366,6 +367,7 @@ again:
 				sc_log(context,
 				       "%s: create 'generic' token error 0x%lX",
 				       reader->name, rv);
+				rv = CKR_TOKEN_NOT_RECOGNIZED;
 				goto fail;
 			}
 			/* p11card is now bound to some slot */
@@ -394,6 +396,7 @@ again:
 				sc_log(context,
 				       "%s: create %s token error 0x%lX",
 				       reader->name, app_name, rv);
+				rv = CKR_TOKEN_NOT_RECOGNIZED;
 				goto fail;
 			}
 			/* p11card is now bound to some slot */
@@ -445,7 +448,7 @@ card_detect_all(void)
 				sc_pkcs11_slot_t *slot = (sc_pkcs11_slot_t *) list_get_at(&virtual_slots, j);
 				if (slot->reader == reader) {
 					found = 1;
-					card_detect(slot->reader, slot->reader_events);
+					card_detect(slot->reader, &slot->reader_events);
 					break;
 				}
 			}
@@ -508,7 +511,7 @@ CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot ** slot)
 		if ((*slot)->reader == NULL)
 			return CKR_TOKEN_NOT_PRESENT;
 		sc_log(context, "Slot(id=0x%lX): get token: now detect card", id);
-		rv = card_detect((*slot)->reader, (*slot)->reader_events);
+		rv = card_detect((*slot)->reader, &(*slot)->reader_events);
 		if (rv != CKR_OK)
 			return rv;
 	}

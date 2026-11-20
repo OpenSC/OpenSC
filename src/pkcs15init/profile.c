@@ -34,7 +34,6 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#include <assert.h>
 #include <stdlib.h>
 
 #ifdef _WIN32
@@ -358,10 +357,12 @@ sc_profile_load(struct sc_profile *profile, const char *filename)
 	sc_log(ctx, "Using profile directory '%s'.", profile_dir);
 
 #ifdef _WIN32
-	snprintf(path, sizeof(path), "%s\\%s.%s", profile_dir, filename, SC_PKCS15_PROFILE_SUFFIX);
+	res = snprintf(path, sizeof(path), "%s\\%s.%s", profile_dir, filename, SC_PKCS15_PROFILE_SUFFIX);
 #else /* _WIN32 */
-	snprintf(path, sizeof(path), "%s/%s.%s", profile_dir, filename, SC_PKCS15_PROFILE_SUFFIX);
+	res = snprintf(path, sizeof(path), "%s/%s.%s", profile_dir, filename, SC_PKCS15_PROFILE_SUFFIX);
 #endif /* _WIN32 */
+	if (res < 0 || (size_t)res >= sizeof(path))
+		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
 
 	sc_log(ctx, "Trying profile file %s", path);
 

@@ -72,9 +72,11 @@ allocate_function_list(int v)
 	CK_FUNCTION_LIST_3_2_PTR list_3_2 = NULL;
 
 	if (v == 30) {
-		list = (CK_FUNCTION_LIST_PTR)malloc(sizeof(CK_FUNCTION_LIST_3_0));
+		list_3_0 = malloc(sizeof(CK_FUNCTION_LIST_3_0));
+		list = (CK_FUNCTION_LIST_PTR)list_3_0;
 	} else if (v == 32) {
-		list = (CK_FUNCTION_LIST_PTR)malloc(sizeof(CK_FUNCTION_LIST_3_2));
+		list_3_2 = malloc(sizeof(CK_FUNCTION_LIST_3_2));
+		list = (CK_FUNCTION_LIST_PTR)list_3_2;
 	} else {
 		list = malloc(sizeof(CK_FUNCTION_LIST));
 	}
@@ -221,6 +223,7 @@ CK_INTERFACE spy_interface = {(CK_UTF8CHAR_PTR) "PKCS 11", NULL, 0};
 static CK_RV
 init_spy(void)
 {
+	CK_VERSION_PTR version = NULL;
 	CK_FUNCTION_LIST_PTR po_v2 = NULL;
 	const char *output, *module;
 	CK_RV rv = CKR_GENERAL_ERROR;
@@ -256,12 +259,9 @@ init_spy(void)
 
 #ifdef _WIN32
 	if (!spy_output) {
-		/* try for the machine version first, as we may be running
-		 * without a user during login
-		 */
-		rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX, 0, KEY_QUERY_VALUE, &hKey);
+		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX, 0, KEY_QUERY_VALUE, &hKey);
 		if (rc != ERROR_SUCCESS )
-			rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX, 0, KEY_QUERY_VALUE, &hKey);
+			rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX, 0, KEY_QUERY_VALUE, &hKey);
 
 		if( rc == ERROR_SUCCESS ) {
 			temp_len = PATH_MAX;
@@ -291,13 +291,10 @@ init_spy(void)
 	module = getenv("PKCS11SPY");
 #ifdef _WIN32
 	if (!module) {
-		/* try for the machine version first, as we may be running
-		 * without a user during login
-		 */
-		rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX,
+		rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX,
 				0, KEY_QUERY_VALUE, &hKey);
 		if (rc != ERROR_SUCCESS)
-			rc = RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX,
+			rc = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "Software\\" OPENSC_VS_FF_COMPANY_NAME "\\PKCS11-Spy" OPENSC_ARCH_SUFFIX,
 					0, KEY_QUERY_VALUE, &hKey);
 
 		if (rc == ERROR_SUCCESS) {
@@ -330,19 +327,48 @@ init_spy(void)
 		rv = CKR_DEVICE_ERROR;
 		goto err;
 	}
+	version = C_GetModuleVersion(modhandle);
+	if (version == NULL) {
+		fprintf(spy_output, "Error: Could not get interface version from \"%s\".\n", module);
+		rv = CKR_DEVICE_ERROR;
+		goto err;
+	}
 
-	/* Make sure we do not overrun underlying list if broken
-	 * module returns version 3 from GetFuntionList()
-	 * https://github.com/softhsm/SoftHSMv2/issues/839
-	 */
 	po = calloc(1, sizeof(CK_FUNCTION_LIST_3_2));
 	if (po == NULL) {
 		rv = CKR_HOST_MEMORY;
 		goto err;
 	}
 
-	memcpy(po, po_v2, sizeof(CK_FUNCTION_LIST));
-	fprintf(spy_output, "Loaded: \"%s\"\n", module);
+	if (version->major < 3) {
+		memcpy(po, po_v2, sizeof(CK_FUNCTION_LIST));
+		if (po_v2->version.major > 2) {
+			/* SoftHSM bug: The version in function list SHOULD NOT be > 2. Override with last
+			 * valid 2.* version also on the SPY interface.
+			 * https://github.com/softhsm/SoftHSMv2/issues/839
+			 */
+			po_v2->version.major = 2;
+			po_v2->version.minor = 40;
+		}
+	} else {
+		/* this function works only with PKCS#11 3.* */
+		CK_FUNCTION_LIST_3_0_PTR funcs;
+		CK_INTERFACE_PTR interface = C_GetModuleInterface(modhandle);
+		if (interface == NULL) {
+			free(po);
+			fprintf(spy_output, "Error: Could not get interface from \"%s\".\n", module);
+			rv = CKR_DEVICE_ERROR;
+			goto err;
+		}
+
+		funcs = interface->pFunctionList;
+		if (funcs->version.minor < 2) {
+			memcpy(po, (CK_FUNCTION_LIST_3_0_PTR)funcs, sizeof(CK_FUNCTION_LIST_3_0));
+		} else {
+			memcpy(po, (CK_FUNCTION_LIST_3_2_PTR)funcs, sizeof(CK_FUNCTION_LIST_3_2));
+		}
+	}
+	fprintf(spy_output, "Loaded: \"%s\", PKCS#11 v. %d.%d\n", module, version->major, version->minor);
 
 	return CKR_OK;
 
@@ -716,6 +742,8 @@ C_Initialize(CK_VOID_PTR pInitArgs)
 		if (rv != CKR_OK)
 			return rv;
 	}
+	if (po == NULL)
+		return CKR_CRYPTOKI_NOT_INITIALIZED;
 
 	enter("C_Initialize");
 	print_ptr_in("pInitArgs", pInitArgs);
@@ -1739,7 +1767,18 @@ spy_interface_function_list(CK_INTERFACE_PTR pInterface, CK_INTERFACE_PTR_PTR re
 	}
 
 	version = (CK_VERSION *)pInterface->pFunctionList;
-	if (version->major == 3 && version->minor == 0) {
+	if (version->major == 3 && version->minor >= 2) {
+		/* init_spy() recorded the module's default interface in po. That
+		 * one can be older than 3.2 while the module also offers 3.2 as a
+		 * non-default interface, which the caller is now asking for. Record
+		 * the 3.2 function list here, so that the 3.2 functions of
+		 * pkcs11_spy_3_2 have somewhere to forward the calls. When a newer
+		 * function list is added, this needs the same treatment. */
+		if (po->version.minor < 2) {
+			memcpy(po, pInterface->pFunctionList, sizeof(CK_FUNCTION_LIST_3_2));
+		}
+		(*retInterface)->pFunctionList = pkcs11_spy_3_2;
+	} else if (version->major == 3) {
 		(*retInterface)->pFunctionList = pkcs11_spy_3_0;
 	} else {
 		(*retInterface)->pFunctionList = pkcs11_spy;
@@ -1841,8 +1880,8 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 	} else {
 		fprintf(spy_output, "[in] pVersion = NULL\n");
 	}
-	fprintf(spy_output, "[in] flags = %s\n",
-		(flags & CKF_INTERFACE_FORK_SAFE ? "CKF_INTERFACE_FORK_SAFE" : ""));
+	fprintf(spy_output, "[in] flags = %s (%lx)\n",
+			(flags & CKF_INTERFACE_FORK_SAFE ? "CKF_INTERFACE_FORK_SAFE" : "<UNKNOWN_VALUE>"), flags);
 	if (po->version.major >= 3 && po->C_GetInterface != NULL) {
 		CK_VERSION in_version = {0, 0};
 		CK_VERSION_PTR fakeVersion = NULL;
@@ -1855,8 +1894,11 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 		}
 
 		/* We can not assume the version we told the caller matches the version in the underlying
-		 * pkcs11 module so map it back to the known ones */
-		if ((pInterfaceName == NULL || strcmp((char *)pInterfaceName, "PKCS 11") == 0) && pVersion) {
+		 * pkcs11 module so map it back to the known ones. Only the 2.x minor is faked (2.11);
+		 * 3.x versions are passed on as the module reported them, so a 3.2 request must not be
+		 * rewritten to the first 3.x interface the module lists. */
+		if ((pInterfaceName == NULL || strcmp((char *)pInterfaceName, "PKCS 11") == 0) && pVersion &&
+				pVersion->major == 2) {
 			for (unsigned long i = 0; i < num_orig_interfaces; i++) {
 				CK_VERSION *v = (CK_VERSION *)orig_interfaces[i].pFunctionList;
 				/* We found the same major version. Copy the minor and call it a day */

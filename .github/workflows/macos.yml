@@ -20,7 +20,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-26, macos-15, macos-14]
+        os: [xcode-27, macos-26, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -76,7 +76,7 @@ jobs:
   build-libressl:
     strategy:
       matrix:
-        os: [macos-26, macos-15, macos-14]
+        os: [xcode-27, macos-26, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -100,9 +100,3 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: opensc-build-macos-15
-      - run: git config --global user.email "builds@github.com"
-      - run: git config --global user.name "Github Actions";
-      - run: .github/push_artifacts.sh "Github Actions ${GITHUB_REF}"
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        if: ${{ github.repository == 'OpenSC/OpenSC' }}

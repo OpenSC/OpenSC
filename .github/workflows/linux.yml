@@ -112,7 +112,8 @@ jobs:
       - run: .github/build.sh ix86
 
   build-mingw:
-    runs-on: ubuntu-latest
+    # pinned until #3925 (%zu under msvcrt printf with ubuntu-26.04's gcc 15) is fixed
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - run: .github/setup-linux.sh mingw force-install
@@ -125,7 +126,8 @@ jobs:
             win32/Output/OpenSC*.exe
 
   build-mingw32:
-    runs-on: ubuntu-latest
+    # see build-mingw
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - run: .github/setup-linux.sh mingw32
@@ -175,7 +177,7 @@ jobs:
     steps:
       - *use_cache
       - run: git clone $JCARDSIM
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: 'semeru'
           java-version: '8'
@@ -283,7 +285,3 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: opensc-build-mingw
-      - run: git config --global user.email "builds@github.com"
-      - run: git config --global user.name "Github Actions";
-      - run: .github/push_artifacts.sh "Github Actions ${GITHUB_REF}"
-        if: ${{ github.repository == 'OpenSC/OpenSC' }}

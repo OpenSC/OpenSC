@@ -667,8 +667,10 @@ int sc_pkcs15_compute_signature(struct sc_pkcs15_card *p15card,
 				r = sc_pkcs15_decipher(p15card, obj, flags, in, inlen, out, outlen, NULL);
 				goto err;
 			}
-			if (modlen > tmplen)
-				LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ALLOWED, "Buffer too small, needs recompile!");
+			if (modlen > tmplen) {
+				r = SC_ERROR_NOT_ALLOWED;
+				LOG_TEST_GOTO_ERR(ctx, r, "Buffer too small, needs recompile!");
+			}
 
 			/* XXX Assuming RSA key here */
 			r = sc_pkcs1_encode(ctx, flags, in, inlen, buf, &tmplen, prkey->modulus_length, pMechanism);

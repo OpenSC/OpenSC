@@ -416,7 +416,7 @@ CK_RV card_removed(sc_reader_t *reader);
 CK_RV card_detect_all(void);
 CK_RV create_slot(sc_reader_t *reader);
 void init_slot_info(CK_SLOT_INFO_PTR pInfo, sc_reader_t *reader);
-CK_RV card_detect(sc_reader_t *reader, void *reader_states);
+CK_RV card_detect(sc_reader_t *reader, void **reader_states);
 CK_RV slot_get_slot(CK_SLOT_ID id, struct sc_pkcs11_slot **);
 CK_RV slot_get_token(CK_SLOT_ID id, struct sc_pkcs11_slot **);
 CK_RV slot_token_removed(CK_SLOT_ID id);
@@ -464,6 +464,7 @@ CK_RV attr_find_var(CK_ATTRIBUTE_PTR, CK_ULONG, CK_ULONG, void *, size_t *);
 CK_RV attr_extract(CK_ATTRIBUTE_PTR, void *, size_t *);
 
 /* Generic Mechanism functions */
+CK_RV sc_pkcs11_validate_pss_params(CK_MECHANISM_PTR);
 CK_RV sc_pkcs11_register_mechanism(struct sc_pkcs11_card *,
 				sc_pkcs11_mechanism_type_t *, sc_pkcs11_mechanism_type_t **);
 CK_RV sc_pkcs11_get_mechanism_list(struct sc_pkcs11_card *,
@@ -522,6 +523,10 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 	CK_MECHANISM_PTR mech, sc_pkcs11_operation_t *md,
 	CK_BYTE_PTR inp, CK_ULONG inp_len,
 	CK_BYTE_PTR signat, CK_ULONG signat_len);
+CK_RV sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
+		CK_MECHANISM_PTR mech,
+		CK_BYTE_PTR inp, CK_ULONG inp_len,
+		CK_BYTE_PTR out, CK_ULONG_PTR out_len);
 #endif
 
 /* Load configuration defaults */

@@ -23,12 +23,17 @@
 
 #include "config.h"
 
+#include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "pkcs11/pkcs11.h"
 #include "pkcs11_uri.h"
+
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 static struct pkcs11_uri_attr path_attr[] = {
 		{"id",		       PKCS11_ID		},
@@ -54,6 +59,102 @@ static struct pkcs11_uri_attr query_attr[] = {
 		{"module-path", PKCS11_MODULE_PATH},
 		{NULL,	       0			}
 };
+
+static int
+is_unreserved(char c)
+{
+	if (isalnum((unsigned char)c))
+		return 1;
+	switch (c) {
+	case '-':
+	case '.':
+	case '_':
+	case '~':
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+static int
+is_sub_delim(char c)
+{
+	switch (c) {
+	case '!':
+	case '$':
+	case '&':
+	case '\'':
+	case '(':
+	case ')':
+	case '*':
+	case '+':
+	case ',':
+	case ';':
+	case '=':
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+static int
+is_pchar(const char *s, size_t *consumed)
+{
+	if (is_unreserved(*s) || is_sub_delim(*s) || *s == ':' || *s == '@') {
+		*consumed = 1;
+		return 1;
+	}
+	if (*s == '%') {
+		if (isxdigit((unsigned char)s[1]) && isxdigit((unsigned char)s[2])) {
+			*consumed = 3;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int
+is_qchar(const char *s, size_t *consumed)
+{
+	if (is_pchar(s, consumed)) {
+		return 1;
+	}
+	if (*s == '/' || *s == '?') {
+		*consumed = 1;
+		return 1;
+	}
+	return 0;
+}
+
+static int
+validate_path(const char *path)
+{
+	const char *p = path;
+	size_t consumed = 0;
+
+	while (*p != '\0') {
+		if (!is_pchar(p, &consumed)) {
+			return 0;
+		}
+		p += consumed;
+	}
+	return 1;
+}
+
+static int
+validate_query(const char *query)
+{
+	const char *p = query;
+	size_t consumed = 0;
+
+	while (*p != '\0') {
+		if (!is_qchar(p, &consumed)) {
+			return 0;
+		}
+		p += consumed;
+	}
+	return 1;
+}
 
 static int
 get_attr(struct pkcs11_uri_attr attr[], char *token)
@@ -148,10 +249,89 @@ end:
 	return rv;
 }
 
+static int
+parse_ulong(char *argument, unsigned long *out)
+{
+	unsigned long value;
+	char *tmp = NULL;
+
+	if (out == NULL) {
+		fprintf(stderr, "Wrong parameters provided\n");
+		return 1;
+	}
+	if (*out != CK_UNAVAILABLE_INFORMATION) {
+		fprintf(stderr, "Attribute already set\n");
+		return 1;
+	}
+	if (*argument == '-') {
+		fprintf(stderr, "Negative values not supported\n");
+		return 1;
+	}
+	errno = 0;
+	value = strtoul(argument, &tmp, 10);
+	if (errno != 0) {
+		fprintf(stderr, "Failed to decode unsigned long\n");
+		return 1;
+	}
+	if (tmp == argument || *tmp != '\0') {
+		fprintf(stderr, "Invalid numerical value (missing value or trailing data)\n");
+		return 1;
+	}
+	*out = value;
+	return 0;
+}
+
+static int
+validate_library_version(const char *ver)
+{
+	int digits = 0;
+
+	if (!ver || *ver == '\0')
+		return 0;
+
+	while (*ver >= '0' && *ver <= '9') {
+		digits++;
+		ver++;
+	}
+	if (digits < 1 || digits > 2)
+		return 0;
+
+	if (*ver == '\0')
+		return 1;
+
+	if (*ver != '.')
+		return 0;
+	ver++;
+
+	digits = 0;
+	while (*ver >= '0' && *ver <= '9') {
+		digits++;
+		ver++;
+	}
+	if (digits < 1 || digits > 2)
+		return 0;
+
+	return *ver == '\0';
+}
+
+static int
+validate_object_type(const char *type)
+{
+	const char *types[] = {"cert", "data", "private", "public", "secret-key"};
+
+	for (size_t i = 0; i < ARRAY_SIZE(types); i++) {
+		if (strcmp(types[i], type) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 struct pkcs11_uri *
 pkcs11_uri_new()
 {
 	struct pkcs11_uri *uri = calloc(1, sizeof(struct pkcs11_uri));
+	uri->slot_id = CK_UNAVAILABLE_INFORMATION;
 	return uri;
 }
 
@@ -160,7 +340,7 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 {
 	size_t length = 0;
 	char *uri;
-	char *path, *query, *token;
+	char *path, *query, *token, *qmark;
 	int rv = 0;
 
 	if (!input_string || !result) {
@@ -179,15 +359,30 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 		fprintf(stderr, "Error when allocating memory\n");
 		goto end;
 	}
-	path = uri;
-	path = strtok(path, "?");
-	query = strtok(NULL, "?");
-	if (path == NULL) {
-		rv = 1;
-		goto end;
+
+	qmark = strchr(uri, '?');
+	if (qmark != NULL) {
+		*qmark = '\0';
+		query = qmark + 1;
+	} else {
+		query = NULL;
 	}
+	path = uri;
+
 	/* Skip PKCS#11 URI scheme*/
 	path = path + length;
+
+	/* Validate path and query characters */
+	if (!validate_path(path)) {
+		rv = 1;
+		fprintf(stderr, "Invalid character in PKCS#11 URI path\n");
+		goto end;
+	}
+	if (query != NULL && !validate_query(query)) {
+		rv = 1;
+		fprintf(stderr, "Invalid character in PKCS#11 URI query\n");
+		goto end;
+	}
 
 	/* parse path */
 	token = strtok(path, ";");
@@ -195,6 +390,7 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 		char *argument = NULL, **result_ptr = NULL;
 		int *result_len = NULL;
 		int max_len = -1;
+
 		int id = get_attr(path_attr, token);
 		if (id == -1) {
 			rv = 1;
@@ -209,19 +405,13 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 			result_len = &result->id_len;
 			break;
 		case PKCS11_LIB_DESCRIPTION:
-			rv = 1;
-			fprintf(stderr, "PKCS#11 library description not supported\n");
-			goto end;
+			result_ptr = &result->library_description;
 			break;
 		case PKCS11_LIB_MANUFACTURER:
-			rv = 1;
-			fprintf(stderr, "PKCS#11 manufacturer ID not supported\n");
-			goto end;
+			result_ptr = &result->library_manufacturer;
 			break;
 		case PKCS11_LIB_VERSION:
-			rv = 1;
-			fprintf(stderr, "PKCS#11 library version not supported\n");
-			goto end;
+			result_ptr = &result->library_version;
 			break;
 		case PKCS11_MANUFACTURER:
 			result_ptr = &result->token_manufacturer;
@@ -242,7 +432,7 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 			result_ptr = &result->slot_description;
 			break;
 		case PKCS11_SLOT_ID:
-			result_ptr = &result->slot_id;
+			/* parsed separately */
 			break;
 		case PKCS11_SLOT_MANUFACTURER:
 			result_ptr = &result->slot_manufacturer;
@@ -255,8 +445,23 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 			result_ptr = &result->type;
 			break;
 		}
-		if (parse_string(argument, result_ptr, result_len, max_len) != 0) {
+		if (id == PKCS11_SLOT_ID) {
+			rv = parse_ulong(argument, &result->slot_id);
+			if (rv != 0) {
+				goto end;
+			}
+		} else if (parse_string(argument, result_ptr, result_len, max_len) != 0) {
 			rv = 1;
+			goto end;
+		}
+		if (id == PKCS11_LIB_VERSION && !validate_library_version(result->library_version)) {
+			rv = 1;
+			fprintf(stderr, "Invalid PKCS#11 library version\n");
+			goto end;
+		}
+		if (id == PKCS11_TYPE && !validate_object_type(result->type)) {
+			rv = 1;
+			fprintf(stderr, "Invalid PKCS#11 object type\n");
 			goto end;
 		}
 		token = strtok(NULL, ";");
@@ -266,7 +471,7 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 	if (query == NULL) {
 		goto end;
 	}
-	token = strtok(query, ";");
+	token = strtok(query, ";&");
 	while (token != NULL) {
 		char *argument = NULL, **result_ptr = NULL;
 		int id = get_attr(query_attr, token);
@@ -295,9 +500,7 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 			result_ptr = &result->pin_value;
 			break;
 		case PKCS11_MODULE_NAME:
-			rv = 1;
-			fprintf(stderr, "PKCS#11 module name for query not supported\n");
-			goto end;
+			result_ptr = &result->module_name;
 			break;
 		case PKCS11_MODULE_PATH:
 			result_ptr = &result->module_path;
@@ -307,7 +510,7 @@ parse_pkcs11_uri(const char *input_string, struct pkcs11_uri *result)
 			rv = 1;
 			goto end;
 		}
-		token = strtok(NULL, ";");
+		token = strtok(NULL, ";&");
 	}
 
 end:
@@ -331,7 +534,6 @@ pkcs11_uri_free(struct pkcs11_uri *uri)
 	free(uri->object);
 	free(uri->serial);
 	free(uri->slot_description);
-	free(uri->slot_id);
 	free(uri->slot_manufacturer);
 	free(uri->token_label);
 	free(uri->type);

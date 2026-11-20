@@ -26,7 +26,7 @@ pkcs11_derive(test_cert_t *o, token_info_t * info,
 	unsigned char *pub, size_t pub_len, test_mech_t *mech, unsigned char **secret)
 {
 	CK_RV rv;
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_ECDH1_DERIVE_PARAMS params = {CKD_NULL, 0, NULL_PTR, 0, NULL_PTR};
 	CK_MECHANISM mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_OBJECT_HANDLE newkey;
@@ -300,6 +300,7 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 		EVP_PKEY_derive_init(pctx) != 1 ||
 		EVP_PKEY_derive_set_peer(pctx, o->key) != 1) {
 		debug_print(" [ KEY %s ] Cannot derive key", o->id_str);
+		EVP_PKEY_CTX_free(pctx);
 		EVP_PKEY_free(evp_pkey);
 		return 1;
 	}
@@ -339,7 +340,8 @@ int test_derive(test_cert_t *o, token_info_t *info, test_mech_t *mech)
 	pub_len = EC_POINT_point2oct(group, publickey,
 		POINT_CONVERSION_UNCOMPRESSED, NULL, 0, NULL);
 #else
-	EVP_PKEY_get_octet_string_param(evp_pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &pub_len);
+	if (EVP_PKEY_get_octet_string_param(evp_pkey, OSSL_PKEY_PARAM_ENCODED_PUBLIC_KEY, NULL, 0, &pub_len) != 1)
+		pub_len = 0;
 #endif
 	/* Allocate memory for public key*/
 	if (pub_len == 0) {

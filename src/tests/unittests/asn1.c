@@ -23,6 +23,28 @@
 #include "libopensc/log.c"
 #include "libopensc/asn1.c"
 
+static void
+torture_asn1_read_tag_eoc(void **state)
+{
+	const u8 inputs[] = {0x00, 0xff};
+	size_t i;
+
+	for (i = 0; i < sizeof(inputs) / sizeof(inputs[0]); i++) {
+		const u8 *p = &inputs[i];
+		unsigned int cla = 0xdeadbeefU;
+		unsigned int tag = 0xdeadbeefU;
+		size_t taglen = (size_t)-1;
+		int rv;
+
+		rv = sc_asn1_read_tag(&p, 1, &cla, &tag, &taglen);
+		assert_int_equal(rv, SC_SUCCESS);
+		assert_null(p);
+		assert_int_equal(cla, SC_ASN1_TAG_UNIVERSAL);
+		assert_int_equal(tag, SC_ASN1_TAG_EOC);
+		assert_int_equal(taglen, 0);
+	}
+}
+
 /* The last argument is an OID value */
 #define TORTURE_OID(name, asn1_data, ...) \
 	static void torture_asn1_oid_## name (void **state) \
@@ -160,7 +182,7 @@ TORTURE_INTEGER(min2, "\x80\x00", -32768)
 
 #if INT_MAX == 2147483647
 TORTURE_INTEGER(max4, "\x7F\xFF\xFF\xFF", 2147483647)
-TORTURE_INTEGER(min4, "\x80\x00\x00\x00", -2147483648)
+TORTURE_INTEGER(min4, "\x80\x00\x00\x00", INT_MIN)
 #else
 TORTURE_INTEGER_ERROR(max4, "\x7F\xFF\xFF\xFF", SC_ERROR_NOT_SUPPORTED)
 TORTURE_INTEGER_ERROR(min4, "\x80\x00\x00\x00", SC_ERROR_NOT_SUPPORTED)
@@ -267,7 +289,7 @@ static void torture_asn1_decode_entry_octet_string_empty(void **state)
 {
 	sc_context_t *ctx = *state;
 	/* Skipped the Tag and Length (0x04, 0x00) */
-	const u8 octet_string[0] = {};
+	const u8 octet_string[1] = {0};
 	struct sc_asn1_entry asn1_struct[2] = {
 		{ "direct",     SC_ASN1_OCTET_STRING, SC_ASN1_CTX | SC_ASN1_CONS, SC_ASN1_ALLOC, NULL, NULL },
 		{ NULL, 0, 0, 0, NULL, NULL }
@@ -793,6 +815,8 @@ int main(void)
 	int rc;
 	// clang-format off
 	struct CMUnitTest tests[] = {
+		/* read_tag() */
+		cmocka_unit_test(torture_asn1_read_tag_eoc),
 		/* INTEGER */
 		cmocka_unit_test(torture_asn1_integer_zero),
 		cmocka_unit_test(torture_asn1_integer_one),

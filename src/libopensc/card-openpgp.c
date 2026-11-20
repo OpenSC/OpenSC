@@ -380,6 +380,10 @@ pgp_match_card(sc_card_t *card)
 int populate_blobs_to_mf(sc_card_t *card, struct pgp_priv_data *priv)
 {
 	pgp_do_info_t	*info;
+
+	if (priv->mf == NULL)
+		return SC_ERROR_INTERNAL;
+
 	for (info = priv->pgp_objects; (info != NULL) && (info->id > 0); info++) {
 		if (((info->access & READ_MASK) != READ_NEVER) && (info->get_fn != NULL)) {
 			pgp_blob_t *child = NULL;
@@ -3749,8 +3753,10 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 	len = 2 + tlvlen_7f48 + tlvlen_5f48;
 	/* set data part content */
 	data = calloc(1, len);
-	if (data == NULL)
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_ENOUGH_MEMORY, "Not enough memory");
+	if (data == NULL) {
+		r = SC_ERROR_NOT_ENOUGH_MEMORY;
+		LOG_TEST_GOTO_ERR(ctx, r, "Not enough memory");
+	}
 
 	switch (key_info->key_id) {
 		case SC_OPENPGP_KEY_SIGN:
@@ -3763,8 +3769,8 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 			ushort2bebytes(data, DO_AUTH);
 			break;
 		default:
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_ARGUMENTS,
-						"Invalid key ID; must be 1, 2, or 3");
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			LOG_TEST_GOTO_ERR(ctx, r, "Invalid key ID; must be 1, 2, or 3");
 	}
 	memcpy(data + 2, tlv_7f48, tlvlen_7f48);
 	memcpy(data + 2 + tlvlen_7f48, tlv_5f48, tlvlen_5f48);

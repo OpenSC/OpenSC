@@ -294,6 +294,8 @@ authentic_parse_credential_data(struct sc_context *ctx, struct sc_pin_cmd_data *
 
 	rv = authentic_get_tagged_data(ctx, blob, blob_len, AUTHENTIC_TAG_CREDENTIAL_TRYLIMIT, &data, &data_len);
 	LOG_TEST_RET(ctx, rv, "cannot get try limit");
+	if (data_len < 1)
+		LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "invalid try limit");
 	pin_cmd->pin1.max_tries = *data;
 
 	rv = authentic_get_tagged_data(ctx, blob, blob_len, AUTHENTIC_TAG_DOCP_MECH, &data, &data_len);
@@ -344,10 +346,14 @@ authentic_parse_credential_data(struct sc_context *ctx, struct sc_pin_cmd_data *
 
 		rv = authentic_get_tagged_data(ctx, blob, blob_len, AUTHENTIC_TAG_CREDENTIAL_PINPOLICY_MAXLENGTH, &data, &data_len);
 		LOG_TEST_RET(ctx, rv, "failed to get PIN max.length value");
+		if (data_len < 1)
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "invalid PIN max.length value");
 		pin_cmd->pin1.max_length = *data;
 
 		rv = authentic_get_tagged_data(ctx, blob, blob_len, AUTHENTIC_TAG_CREDENTIAL_PINPOLICY_MINLENGTH, &data, &data_len);
 		LOG_TEST_RET(ctx, rv, "failed to get PIN min.length value");
+		if (data_len < 1)
+			LOG_TEST_RET(ctx, SC_ERROR_INVALID_DATA, "invalid PIN min.length value");
 		pin_cmd->pin1.min_length = *data;
 	}
 
@@ -1627,7 +1633,8 @@ authentic_manage_sdo_encode(struct sc_card *card, struct sc_authentic_sdo *sdo, 
 			LOG_TEST_GOTO_ERR(ctx, rv, "SDO RSA encode error");
 		}
 		else  {
-			LOG_TEST_GOTO_ERR(ctx, SC_ERROR_NOT_SUPPORTED, "Cryptographic object unsupported for encoding");
+			rv = SC_ERROR_NOT_SUPPORTED;
+			LOG_TEST_GOTO_ERR(ctx, rv, "Cryptographic object unsupported for encoding");
 		}
 	}
 	else if (cmd == SC_CARDCTL_AUTHENTIC_SDO_GENERATE)   {
@@ -1641,7 +1648,8 @@ authentic_manage_sdo_encode(struct sc_card *card, struct sc_authentic_sdo *sdo, 
 		data_tag = AUTHENTIC_TAG_RSA_GENERATE_DATA;
 	}
 	else if (cmd != SC_CARDCTL_AUTHENTIC_SDO_DELETE)   {
-		LOG_TEST_GOTO_ERR(ctx, SC_ERROR_INVALID_DATA, "Invalid SDO operation");
+		rv = SC_ERROR_INVALID_DATA;
+		LOG_TEST_GOTO_ERR(ctx, rv, "Invalid SDO operation");
 	}
 
 	rv = authentic_update_blob(ctx, data_tag, data, data_len, out, out_len);

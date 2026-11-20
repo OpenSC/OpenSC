@@ -28,6 +28,7 @@
 #include "config.h"
 #endif
 
+#include <assert.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -2002,7 +2003,7 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 	unsigned short compressed_offset;
 	unsigned short compressed_length;
 	unsigned short compressed_type;
-	unsigned short object_offset;
+	size_t object_offset;
 	unsigned short object_count;
 	coolkey_decompressed_header_t *decompressed_header;
 	u8 *decompressed_object = NULL;
@@ -2078,6 +2079,10 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 	priv->token_name[decompressed_header->token_name_length] = '\0';
 	priv->token_name_length = decompressed_header->token_name_length;
 
+	if (object_count > decompressed_object_len / sizeof(coolkey_combined_object_header_t)) {
+		r = SC_ERROR_CORRUPTED_DATA;
+		goto done;
+	}
 
 	for (i=0; i < object_count; i++) {
 		u8 *current_object = NULL;
@@ -2086,7 +2091,8 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 		int current_object_len;
 
 		/* Can we read the object header at all? */
-		if ((object_offset + sizeof(coolkey_combined_object_header_t)) > decompressed_object_len) {
+		if (decompressed_object_len < sizeof(coolkey_combined_object_header_t) ||
+		    object_offset > decompressed_object_len - sizeof(coolkey_combined_object_header_t)) {
 			r = SC_ERROR_CORRUPTED_DATA;
 			goto done;
 		}
@@ -2102,7 +2108,7 @@ coolkey_process_combined_object(sc_card_t *card, coolkey_private_data_t *priv, u
 		if (r < 0) {
 			goto done;
 		}
-		if ((size_t)r + object_offset > decompressed_object_len) {
+		if ((size_t)r > decompressed_object_len - object_offset) {
 			r = SC_ERROR_CORRUPTED_DATA;
 			goto done;
 		}

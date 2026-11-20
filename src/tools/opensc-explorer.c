@@ -83,13 +83,13 @@ static const struct option options[] = {
 	{ NULL, 0, NULL, 0 }
 };
 static const char *option_help[] = {
-	"Uses reader number <arg> [0]",
-	"Forces the use of driver <arg> [auto-detect; '?' for list]",
-	"Selects path <arg> on start-up, or none if empty [3F00]",
-	"Wait for card insertion",
-	"Verbose operation, may be used several times",
+		"Uses reader number <arg> [0]",
+		"Forces the use of driver <arg> [auto-detect; '?' for list]",
+		"Selects path <arg> on start-up, or none if empty [3F00]",
+		"Wait for card insertion",
+		"Verbose operation, may be used several times",
+		"",
 };
-
 
 /* declare functions called by user commands */
 static int do_echo(int argc, char **argv);

@@ -235,50 +235,6 @@ static CK_RV	set_gost3410_params(struct sc_pkcs15init_prkeyargs *,
 static CK_RV	pkcs15_create_slot(struct sc_pkcs11_card *p11card, struct pkcs15_fw_data *fw_data,
 			struct sc_pkcs15_object *auth, struct sc_app_info *app,
 			struct sc_pkcs11_slot **out);
-static int pkcs11_get_pin_callback(struct sc_profile *profile, int id,
-		const struct sc_pkcs15_auth_info *info, const char *label,
-		unsigned char *pinbuf, size_t *pinsize);
-
-static struct sc_pkcs15init_callbacks pkcs15init_callbacks = {
-	pkcs11_get_pin_callback,       /* get_pin() */
-	NULL
-};
-static char *pkcs15init_sopin = NULL;
-static size_t pkcs15init_sopin_len = 0;
-
-static int pkcs11_get_pin_callback(struct sc_profile *profile, int id,
-		const struct sc_pkcs15_auth_info *info, const char *label,
-		unsigned char *pinbuf, size_t *pinsize)
-{
-	char	*secret = NULL;
-	size_t	len = 0;
-
-	if (info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
-		return SC_ERROR_NOT_SUPPORTED;
-
-	sc_log(context, "pkcs11_get_pin_callback() auth-method %X", info->auth_method);
-	if (info->auth_method == SC_AC_CHV)   {
-		unsigned int flags = info->attrs.pin.flags;
-
-		sc_log(context, "pkcs11_get_pin_callback() PIN flags %X", flags);
-		if ((flags & SC_PKCS15_PIN_FLAG_SO_PIN) && !(flags & SC_PKCS15_PIN_FLAG_UNBLOCKING_PIN))    {
-			if (pkcs15init_sopin_len)
-				secret = pkcs15init_sopin;
-		}
-	}
-	if (secret)
-		len = strlen(secret);
-
-	sc_log(context, "pkcs11_get_pin_callback() secret '%s'", secret ? secret : "<null>");
-
-	if (!secret)
-		return SC_ERROR_OBJECT_NOT_FOUND;
-	if (len > *pinsize)
-		return SC_ERROR_BUFFER_TOO_SMALL;
-	memcpy(pinbuf, secret, len + 1);
-	*pinsize = len;
-	return 0;
-}
 #endif
 
 /* Returns FW data corresponding to the given application or,
@@ -2151,11 +2107,6 @@ pkcs15_initialize(struct sc_pkcs11_slot *slot, void *ptr,
 			return sc_to_cryptoki_error(rc, "C_InitToken");
 		}
 
-		sc_log(context, "set pkcs15init callbacks");
-		pkcs15init_sopin = (char *)pPin;
-		pkcs15init_sopin_len = ulPinLen;
-		sc_pkcs15init_set_callbacks(&pkcs15init_callbacks);
-
 		if (p15card)   {
 			sc_log(context, "pkcs15init erase card");
 			sc_pkcs15init_erase_card(p15card, profile, NULL);
@@ -2166,14 +2117,12 @@ pkcs15_initialize(struct sc_pkcs11_slot *slot, void *ptr,
 			rc = sc_pkcs15init_bind(p11card->card, "pkcs15", NULL, NULL, &profile);
 			if (rc < 0) {
 				sc_log(context, "pkcs15init bind error %i", rc);
-				sc_pkcs15init_set_callbacks(NULL);
 				sc_unlock(p11card->card);
 				return sc_to_cryptoki_error(rc, "C_InitToken");
 			}
 
 			rc = sc_pkcs15init_finalize_profile(p11card->card, profile, NULL);
 			if (rc) {
-				sc_pkcs15init_set_callbacks(NULL);
 				sc_log(context, "Cannot finalize profile: %i", rc);
 				return sc_to_cryptoki_error(rc, "C_InitToken");
 			}
@@ -2194,12 +2143,6 @@ pkcs15_initialize(struct sc_pkcs11_slot *slot, void *ptr,
 			rc = sc_pkcs15init_add_app(p11card->card, profile, &init_args);
 			sc_log(context, "pkcs15init: create application returns %i", rc);
 		}
-
-		pkcs15init_sopin = NULL;
-		pkcs15init_sopin_len = 0;
-
-		sc_log(context, "pkcs15init: unset callbacks");
-		sc_pkcs15init_set_callbacks(NULL);
 
 		sc_log(context, "pkcs15init: unbind");
 		sc_pkcs15init_unbind(profile);
@@ -4857,15 +4800,10 @@ pkcs15_prkey_can_do(struct sc_pkcs11_session *session, void *obj,
 	LOG_FUNC_RETURN(context, CKR_OK);
 }
 
-
 static CK_RV
-pkcs15_prkey_init_params(struct sc_pkcs11_session *session,
-			CK_MECHANISM_PTR pMechanism)
+pkcs15_key_init_params(struct sc_pkcs11_session *session,
+		CK_MECHANISM_PTR pMechanism)
 {
-	const CK_RSA_PKCS_PSS_PARAMS *pss_params;
-	unsigned int expected_hash = 0, i;
-	const unsigned int hashes[5] = { CKM_SHA_1, CKM_SHA256,
-		CKM_SHA384, CKM_SHA512, CKM_SHA224 };
 	const CK_RSA_PKCS_OAEP_PARAMS *oaep_params;
 
 	switch (pMechanism->mechanism) {
@@ -4875,40 +4813,8 @@ pkcs15_prkey_init_params(struct sc_pkcs11_session *session,
 	case CKM_SHA256_RSA_PKCS_PSS:
 	case CKM_SHA384_RSA_PKCS_PSS:
 	case CKM_SHA512_RSA_PKCS_PSS:
-		if (!pMechanism->pParameter ||
-			pMechanism->ulParameterLen != sizeof(CK_RSA_PKCS_PSS_PARAMS))
-			return CKR_MECHANISM_PARAM_INVALID;
+		return sc_pkcs11_validate_pss_params(pMechanism);
 
-		pss_params = (CK_RSA_PKCS_PSS_PARAMS*)pMechanism->pParameter;
-		if (pss_params->mgf < CKG_MGF1_SHA1 || pss_params->mgf > CKG_MGF1_SHA224)
-			return CKR_MECHANISM_PARAM_INVALID;
-
-		/* The hashAlg field can have any value for CKM_RSA_PKCS_PSS and must be
-		 * used again in the PSS padding; for the other mechanisms it strictly
-		 * must match the padding declared in the mechanism.
-		 */
-		if (pMechanism->mechanism == CKM_SHA1_RSA_PKCS_PSS) {
-			expected_hash = CKM_SHA_1;
-		} else if (pMechanism->mechanism == CKM_SHA224_RSA_PKCS_PSS) {
-			expected_hash = CKM_SHA224;
-		} else if (pMechanism->mechanism == CKM_SHA256_RSA_PKCS_PSS) {
-			expected_hash = CKM_SHA256;
-		} else if (pMechanism->mechanism == CKM_SHA384_RSA_PKCS_PSS) {
-			expected_hash = CKM_SHA384;
-		} else if (pMechanism->mechanism == CKM_SHA512_RSA_PKCS_PSS) {
-			expected_hash = CKM_SHA512;
-		} else if (pMechanism->mechanism == CKM_RSA_PKCS_PSS) {
-			for (i = 0; i < 5; ++i) {
-				if (hashes[i] == pss_params->hashAlg) {
-					expected_hash = hashes[i];
-				}
-			}
-		}
-
-		if (expected_hash != pss_params->hashAlg)
-			return CKR_MECHANISM_PARAM_INVALID;
-
-		break;
 	case CKM_RSA_PKCS_OAEP:
 		if (!pMechanism->pParameter ||
 			pMechanism->ulParameterLen != sizeof(CK_RSA_PKCS_OAEP_PARAMS))
@@ -4932,22 +4838,21 @@ pkcs15_prkey_init_params(struct sc_pkcs11_session *session,
 	return CKR_OK;
 }
 
-
 struct sc_pkcs11_object_ops pkcs15_prkey_ops = {
-	pkcs15_prkey_release,
-	pkcs15_prkey_set_attribute,
-	pkcs15_prkey_get_attribute,
-	sc_pkcs11_any_cmp_attribute,
-	pkcs15_any_destroy,
-	NULL,	/* get_size */
-	pkcs15_prkey_sign,
-	pkcs15_prkey_unwrap,
-	pkcs15_prkey_decrypt,
-	NULL,	/* encrypt */
-	pkcs15_prkey_derive,
-	pkcs15_prkey_can_do,
-	pkcs15_prkey_init_params,
-	NULL	/* wrap_key */
+		pkcs15_prkey_release,
+		pkcs15_prkey_set_attribute,
+		pkcs15_prkey_get_attribute,
+		sc_pkcs11_any_cmp_attribute,
+		pkcs15_any_destroy,
+		NULL, /* get_size */
+		pkcs15_prkey_sign,
+		pkcs15_prkey_unwrap,
+		pkcs15_prkey_decrypt,
+		NULL, /* encrypt */
+		pkcs15_prkey_derive,
+		pkcs15_prkey_can_do,
+		pkcs15_key_init_params,
+		NULL /* wrap_key */
 };
 
 /*
@@ -5190,23 +5095,63 @@ pkcs15_pubkey_get_attribute(struct sc_pkcs11_session *session, void *object, CK_
 	return CKR_OK;
 }
 
-struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
-	pkcs15_pubkey_release,
-	pkcs15_pubkey_set_attribute,
-	pkcs15_pubkey_get_attribute,
-	sc_pkcs11_any_cmp_attribute,
-	pkcs15_any_destroy,
-	NULL,	/* get_size */
-	NULL,	/* sign */
-	NULL,	/* unwrap_key */
-	NULL,	/* decrypt */
-	NULL,	/* ecrypt */
-	NULL,	/* derive */
-	NULL,	/* can_do */
-	NULL,	/* init_params */
-	NULL	/* wrap_key */
-};
+static CK_RV
+pkcs15_pubkey_encrypt(struct sc_pkcs11_session *session, void *obj,
+		CK_MECHANISM_PTR pMechanism,
+		CK_BYTE_PTR pData, CK_ULONG ulDataLen,
+		CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+#ifdef ENABLE_OPENSSL
+	CK_ATTRIBUTE spki = {CKA_SPKI, NULL, 0};
+	CK_RV rv;
 
+	if (pMechanism == NULL)
+		return CKR_ARGUMENTS_BAD;
+
+	if (pulEncryptedDataLen == NULL) {
+		/* This is call from the C_EncryptInit function */
+		return CKR_OK;
+	}
+	if (pData == NULL && ulDataLen == 0) {
+		/* This is call from the C_EncryptFinalize function */
+		*pulEncryptedDataLen = 0;
+		return CKR_OK;
+	}
+	/* EncryptUpdate: the whole input is encrypted at once, as in pkcs15_prkey_decrypt() */
+
+	rv = pkcs15_pubkey_get_attribute(session, obj, &spki);
+	if (rv != CKR_OK)
+		return rv;
+	spki.pValue = malloc(spki.ulValueLen);
+	if (spki.pValue == NULL)
+		return CKR_HOST_MEMORY;
+	rv = pkcs15_pubkey_get_attribute(session, obj, &spki);
+	if (rv == CKR_OK)
+		rv = sc_pkcs11_encrypt_data(spki.pValue, spki.ulValueLen, pMechanism,
+				pData, ulDataLen, pEncryptedData, pulEncryptedDataLen);
+	free(spki.pValue);
+	return rv;
+#else
+	return CKR_FUNCTION_NOT_SUPPORTED;
+#endif
+}
+
+struct sc_pkcs11_object_ops pkcs15_pubkey_ops = {
+		pkcs15_pubkey_release,
+		pkcs15_pubkey_set_attribute,
+		pkcs15_pubkey_get_attribute,
+		sc_pkcs11_any_cmp_attribute,
+		pkcs15_any_destroy,
+		NULL,			/* get_size */
+		NULL,			/* sign */
+		NULL,			/* unwrap_key */
+		NULL,			/* decrypt */
+		pkcs15_pubkey_encrypt,	/* encrypt */
+		NULL,			/* derive */
+		NULL,			/* can_do */
+		pkcs15_key_init_params, /* init_params */
+		NULL			/* wrap_key */
+};
 
 /* PKCS#15 Data Object*/
 static void
@@ -5831,6 +5776,7 @@ pkcs15_skey_encrypt(struct sc_pkcs11_session *session, void *obj,
 		return sc_to_cryptoki_error(rv, "C_Encrypt...");
 
 	/* pointer CK_ULONG_PTR to size_t conversion */
+	lEncryptedDataLen = pulEncryptedDataLen ? *pulEncryptedDataLen : 0;
 	lpEncryptedDataLen = pulEncryptedDataLen ? &lEncryptedDataLen : NULL;
 
 	rv = sc_pkcs15_encrypt_sym(fw_data->p15_card, skey->prv_p15obj, flags,
@@ -6423,9 +6369,7 @@ static CK_RV register_eddsa_mechanisms(struct sc_pkcs11_card *p11card, int flags
 	mech_info.ulMaxKeySize = max_key_size;
 
 #ifdef ENABLE_OPENSSL
-	/* TODO verification using EDDSA
 	mech_info.flags |= CKF_VERIFY;
-	*/
 #endif
 	if (flags & SC_ALGORITHM_EDDSA_RAW) {
 		mt = sc_pkcs11_new_fw_mechanism(CKM_EDDSA, &mech_info, CKK_EC_EDWARDS, NULL, NULL, NULL);
@@ -6666,7 +6610,13 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	/* Check if we support raw RSA */
 	if (rsa_flags & SC_ALGORITHM_RSA_RAW) {
+		CK_FLAGS old_flags = mech_info.flags;
+#ifdef ENABLE_OPENSSL
+		/* Encryption with the public key is done in software */
+		mech_info.flags |= CKF_ENCRYPT;
+#endif
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_X_509, &mech_info, CKK_RSA, NULL, NULL, NULL);
+		mech_info.flags = old_flags;
 		rc = sc_pkcs11_register_mechanism(p11card, mt, NULL);
 		sc_pkcs11_free_mechanism(&mt);
 		if (rc != CKR_OK)
@@ -6703,7 +6653,13 @@ register_mechanisms(struct sc_pkcs11_card *p11card)
 
 	/* No need to Check for PKCS1  We support it in software and turned it on above so always added it */
 	if (rsa_flags & SC_ALGORITHM_RSA_PAD_PKCS1) {
+		CK_FLAGS old_flags = mech_info.flags;
+#ifdef ENABLE_OPENSSL
+		/* Encryption with the public key is done in software */
+		mech_info.flags |= CKF_ENCRYPT;
+#endif
 		mt = sc_pkcs11_new_fw_mechanism(CKM_RSA_PKCS, &mech_info, CKK_RSA, NULL, NULL, NULL);
+		mech_info.flags = old_flags;
 		rc = sc_pkcs11_register_mechanism(p11card, mt, &registered_mt);
 		sc_pkcs11_free_mechanism(&mt);
 		if (rc != CKR_OK)

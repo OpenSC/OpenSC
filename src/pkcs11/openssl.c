@@ -260,27 +260,10 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
  * When GOST developers convert to provider, we can load the provider
  */
 #if !defined(OPENSSL_NO_ENGINE)
-	ENGINE *e;
-/* crypto locking removed in 1.1 */
-#if OPENSSL_VERSION_NUMBER  < 0x10100000L
-	void (*locking_cb)(int, int, const char *, int);
-
-	locking_cb = CRYPTO_get_locking_callback();
-	if (locking_cb)
-		CRYPTO_set_locking_callback(NULL);
-#endif
-
-	e = ENGINE_by_id("gost");
+	ENGINE *e = ENGINE_by_id("gost");
 	if (!e)
 	{
-#if !defined(OPENSSL_NO_STATIC_ENGINE) && !defined(OPENSSL_NO_GOST) && !defined(LIBRESSL_VERSION_NUMBER)
-
-/* ENGINE_load_gost removed in 1.1 */
-#if OPENSSL_VERSION_NUMBER  < 0x10100000L
-		ENGINE_load_gost();
-#endif
-		e = ENGINE_by_id("gost");
-#else
+#if defined(OPENSSL_NO_STATIC_ENGINE) || defined(OPENSSL_NO_GOST) || defined(LIBRESSL_VERSION_NUMBER)
 		/* try to load dynamic gost engine */
 		e = ENGINE_by_id("dynamic");
 		if (!e) {
@@ -292,17 +275,13 @@ sc_pkcs11_register_openssl_mechanisms(struct sc_pkcs11_card *p11card)
 			ENGINE_free(e);
 			e = NULL;
 		}
-#endif /* !OPENSSL_NO_STATIC_ENGINE && !OPENSSL_NO_GOST && !LIBRESSL_VERSION_NUMBER */
+#endif /* OPENSSL_NO_STATIC_ENGINE || OPENSSL_NO_GOST || LIBRESSL_VERSION_NUMBER */
 	}
 	if (e) {
 		ENGINE_set_default(e, ENGINE_METHOD_ALL);
 		ENGINE_free(e);
 	}
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	if (locking_cb)
-		CRYPTO_set_locking_callback(locking_cb);
-#endif
 #endif /* !defined(OPENSSL_NO_ENGINE) */
 
 	openssl_sha1_mech.mech_data = sc_evp_md(context, "sha1");
@@ -618,6 +597,7 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 	CK_RV rv = CKR_GENERAL_ERROR;
 	EVP_PKEY *pkey = NULL;
 	const unsigned char *pubkey_tmp = NULL;
+	EVP_MD_CTX *md_ctx = NULL;
 	int sLen;
 
 	if (mech->mechanism == CKM_GOSTR3410)
@@ -659,7 +639,7 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 		|| mech->mechanism == CKM_ECDSA_SHA384
 		|| mech->mechanism == CKM_ECDSA_SHA512
 		)) {
-		EVP_MD_CTX *md_ctx = DIGEST_CTX(md);
+		md_ctx = DIGEST_CTX(md);
 
 		/* This does not really use the data argument, but the data
 		 * are already collected in the md_ctx
@@ -778,16 +758,44 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 		}
 
 		res = 0;
-		r = sc_asn1_sig_value_rs_to_sequence(NULL, signat, signat_len,
-						     &signat_tmp, &signat_len_tmp);
-		ctx = sc_evp_pkey_ctx_new(context, pkey);
-		if (r == 0 && EVP_PKEY_base_id(pkey) == EVP_PKEY_EC && ctx && EVP_PKEY_verify_init(ctx) == 1)
-			res = EVP_PKEY_verify(ctx, signat_tmp, signat_len_tmp, data, data_len);
+		switch (EVP_PKEY_base_id(pkey)) {
+		case EVP_PKEY_EC:
+			ctx = sc_evp_pkey_ctx_new(context, pkey);
+			r = sc_asn1_sig_value_rs_to_sequence(NULL, signat, signat_len,
+					&signat_tmp, &signat_len_tmp);
+			if (r == 0 && ctx && EVP_PKEY_verify_init(ctx) == 1) {
+				res = EVP_PKEY_verify(ctx, signat_tmp, signat_len_tmp, data, data_len);
+			}
+			free(signat_tmp);
+			EVP_PKEY_CTX_free(ctx);
+			break;
+#ifdef EVP_PKEY_ED25519
+		case EVP_PKEY_ED25519:
+#endif
+#ifdef EVP_PKEY_ED448
+		case EVP_PKEY_ED448:
+#endif
+#if defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_ED448)
+			md_ctx = EVP_MD_CTX_create();
+			if (md_ctx == NULL) {
+				EVP_PKEY_free(pkey);
+				free(mdbuf);
+				return CKR_GENERAL_ERROR;
+			}
 
-		EVP_PKEY_CTX_free(ctx);
-		EVP_PKEY_free(pkey);
-		free(signat_tmp);
+			rv = EVP_DigestVerifyInit(md_ctx, NULL, NULL, NULL, pkey);
+			if (rv == 1) {
+				res = EVP_DigestVerify(md_ctx, signat, signat_len, data, data_len);
+			}
+			EVP_MD_CTX_free(md_ctx);
+			break;
+#endif /* defined(EVP_PKEY_ED25519) || defined(EVP_PKEY_ED448) */
+		default:
+			sc_log(context, "Unknown base type %u.", EVP_PKEY_base_id(pkey));
+		}
+
 		free(mdbuf);
+		EVP_PKEY_free(pkey);
 
 		if (res == 1) {
 			return CKR_OK;
@@ -869,11 +877,12 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 			EVP_MD *mgf_md = NULL, *pss_md = NULL;
 			unsigned char digest[EVP_MAX_MD_SIZE];
 
-			if (mech->pParameter == NULL) {
+			rv = sc_pkcs11_validate_pss_params(mech);
+			if (rv != CKR_OK) {
 				free(rsa_out);
 				EVP_PKEY_free(pkey);
-				sc_log(context, "PSS mechanism requires parameter");
-				return CKR_MECHANISM_PARAM_INVALID;
+				sc_log(context, "Invalid PSS mechanism parameters");
+				return rv;
 			}
 
 			param = (CK_RSA_PKCS_PSS_PARAMS*)mech->pParameter;
@@ -992,6 +1001,95 @@ CK_RV sc_pkcs11_verify_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
 		free(rsa_out);
 	}
 
+	return rv;
+}
+
+/*
+ * Encrypt data with a public key in software, as C_Verify does.
+ * Only CKM_RSA_PKCS and CKM_RSA_X_509 are supported.
+ */
+CK_RV
+sc_pkcs11_encrypt_data(const CK_BYTE_PTR pubkey, CK_ULONG pubkey_len,
+		CK_MECHANISM_PTR mech,
+		CK_BYTE_PTR data, CK_ULONG data_len,
+		CK_BYTE_PTR out, CK_ULONG_PTR out_len)
+{
+	CK_RV rv = CKR_GENERAL_ERROR;
+	EVP_PKEY *pkey = NULL;
+	EVP_PKEY_CTX *ctx = NULL;
+	const unsigned char *pubkey_tmp = pubkey;
+	unsigned char *padded = NULL;
+	size_t len;
+	int padding;
+
+	if (out_len == NULL)
+		return CKR_ARGUMENTS_BAD;
+
+	switch (mech->mechanism) {
+	case CKM_RSA_PKCS:
+		padding = RSA_PKCS1_PADDING;
+		break;
+	case CKM_RSA_X_509:
+		padding = RSA_NO_PADDING;
+		break;
+	default:
+		return CKR_MECHANISM_INVALID;
+	}
+
+	pkey = d2i_PUBKEY(NULL, &pubkey_tmp, pubkey_len);
+	if (pkey == NULL) {
+		sc_log_openssl(context);
+		return CKR_GENERAL_ERROR;
+	}
+	if (EVP_PKEY_base_id(pkey) != EVP_PKEY_RSA) {
+		rv = CKR_KEY_TYPE_INCONSISTENT;
+		goto end;
+	}
+
+	len = EVP_PKEY_size(pkey);
+	/* PKCS#1 v1.5 padding takes at least 11 bytes */
+	if ((padding == RSA_PKCS1_PADDING && (len < 11 || data_len > len - 11)) ||
+			(padding == RSA_NO_PADDING && data_len > len)) {
+		rv = CKR_DATA_LEN_RANGE;
+		goto end;
+	}
+	if (out == NULL) {
+		*out_len = len;
+		rv = CKR_OK;
+		goto end;
+	}
+	if (*out_len < len) {
+		*out_len = len;
+		rv = CKR_BUFFER_TOO_SMALL;
+		goto end;
+	}
+
+	/* Raw RSA input shorter than the modulus gets leading zeros */
+	if (padding == RSA_NO_PADDING && data_len < len) {
+		padded = calloc(1, len);
+		if (padded == NULL) {
+			rv = CKR_HOST_MEMORY;
+			goto end;
+		}
+		memcpy(padded + len - data_len, data, data_len);
+		data = padded;
+		data_len = len;
+	}
+
+	ctx = sc_evp_pkey_ctx_new(context, pkey);
+	if (ctx == NULL || EVP_PKEY_encrypt_init(ctx) != 1 ||
+			EVP_PKEY_CTX_set_rsa_padding(ctx, padding) != 1 ||
+			EVP_PKEY_encrypt(ctx, out, &len, data, data_len) != 1) {
+		sc_log_openssl(context);
+		goto end;
+	}
+	*out_len = len;
+	rv = CKR_OK;
+
+end:
+	free(padded);
+	EVP_PKEY_CTX_free(ctx);
+	EVP_PKEY_free(pkey);
 	return rv;
 }
 #endif

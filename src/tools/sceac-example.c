@@ -51,8 +51,8 @@ main (int argc, char **argv)
 	sc_apdu_t apdu;
 	u8 buf[0xffff];
 
-	struct establish_pace_channel_input pace_input;
-	struct establish_pace_channel_output pace_output;
+	struct sc_establish_pace_channel_input pace_input;
+	struct sc_establish_pace_channel_output pace_output;
 
 	memset(&pace_input, 0, sizeof pace_input);
 	memset(&pace_output, 0, sizeof pace_output);
@@ -120,11 +120,7 @@ err:
 	fprintf(r < 0 ? stderr : stdout, "%s\n", sc_strerror(r));
 
 	/* Free up memory and wipe it if necessary (e.g. for keys stored in sm_ctx) */
-	free(pace_output.ef_cardaccess);
-	free(pace_output.recent_car);
-	free(pace_output.previous_car);
-	free(pace_output.id_icc);
-	free(pace_output.id_pcd);
+	sc_pace_output_clear(&pace_output);
 
 	sc_sm_stop(card);
 	sc_reset(card, 1);

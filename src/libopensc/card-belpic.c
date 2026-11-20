@@ -90,10 +90,6 @@
 #include "internal.h"
 #include "log.h"
 
-/* To be removed */
-#include <time.h>
-static long t1, t2, tot_read = 0, tot_dur = 0, dur;
-
 #define BELPIC_VERSION			"1.4"
 
 /* Most of the #defines here are also present in the pkcs15 files, but
@@ -314,9 +310,7 @@ static int belpic_read_binary(sc_card_t *card,
 	if (next_idx == idx)
 		return 0;	/* File was already read entirely */
 
-	t1 = clock();
 	r = iso_ops->read_binary(card, idx, buf, count, flags);
-	t2 = clock();
 
 	/* If the 'next_idx trick' shouldn't work, we hope this error
 	 * means that an attempt was made to read beyond the file's
@@ -327,9 +321,6 @@ static int belpic_read_binary(sc_card_t *card,
 	if (r >= 0 && (size_t)r < count)
 		next_idx = idx + (size_t)r;
 
-	dur = t2 - t1;
-	tot_dur += dur;
-	tot_read += r;
 	return r;
 }
 

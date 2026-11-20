@@ -908,6 +908,11 @@ static int sc_pkcs15emu_sc_hsm_get_rsa_public_key(struct sc_context *ctx, sc_cvc
 {
 	pubkey->algorithm = SC_ALGORITHM_RSA;
 
+	if (!cvc->primeOrModuluslen || !cvc->coefficientAorExponentlen ||
+			!cvc->primeOrModulus || !cvc->coefficientAorExponent) {
+		return SC_ERROR_INVALID_DATA;
+	}
+
 	pubkey->alg_id = (struct sc_algorithm_id *)calloc(1, sizeof(struct sc_algorithm_id));
 	if (!pubkey->alg_id)
 		return SC_ERROR_OUT_OF_MEMORY;
@@ -941,6 +946,10 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 
 	pubkey->algorithm = SC_ALGORITHM_EC;
 
+	if (!cvc->publicPointlen || !cvc->publicPoint) {
+		return SC_ERROR_INVALID_DATA;
+	}
+
 	r = sc_pkcs15emu_sc_hsm_get_curve_oid(cvc, &oid);
 	if (r != SC_SUCCESS)
 		return r;
@@ -970,7 +979,6 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 
 	pubkey->alg_id->algorithm = SC_ALGORITHM_EC;
 	pubkey->alg_id->params = ecp;
-
 	pubkey->u.ec.ecpointQ.value = malloc(cvc->publicPointlen);
 	if (!pubkey->u.ec.ecpointQ.value) {
 		free(pubkey->alg_id);
@@ -992,8 +1000,10 @@ static int sc_pkcs15emu_sc_hsm_get_ec_public_key(struct sc_context *ctx, sc_cvc_
 	memcpy(pubkey->u.ec.params.der.value, ecp->der.value, ecp->der.len);
 	pubkey->u.ec.params.der.len = ecp->der.len;
 
-	/* FIXME: check return value? */
-	sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
+	r = sc_pkcs15_fix_ec_parameters(ctx, &pubkey->u.ec.params);
+	if (r != SC_SUCCESS) {
+		sc_log(ctx, "Error %d fixing EC parameters, continuing anyway", r);
+	}
 
 	return SC_SUCCESS;
 }

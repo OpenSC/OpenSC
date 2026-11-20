@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 
 #include "common/libscdl.h"
 #include "internal.h"
@@ -63,6 +62,7 @@ struct sc_pkcs15_emulator_handler builtin_emulators[] = {
 	{ "nqapplet",   sc_pkcs15emu_nqapplet_init_ex },
 	{ "esign",      sc_pkcs15emu_starcos_esign_init_ex },
 	{ "eOI",        sc_pkcs15emu_eoi_init_ex },
+	{ "chipdoc-it", sc_pkcs15emu_chipdocit_init_ex },
 	{ "dtrust",     sc_pkcs15emu_dtrust_init_ex },
 	{ "lteid",      sc_pkcs15emu_lteid_init_ex },
 	{ "srbeid",     sc_pkcs15emu_srbeid_init_ex },
@@ -119,6 +119,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_SKEID_V3:
 		case SC_CARD_TYPE_EOI:
 		case SC_CARD_TYPE_EOI_CONTACTLESS:
+		case SC_CARD_TYPE_CHIPDOC_IT:
 		case SC_CARD_TYPE_DTRUST_V4_1_STD:
 		case SC_CARD_TYPE_DTRUST_V4_4_STD:
 		case SC_CARD_TYPE_DTRUST_V4_1_MULTI:
@@ -131,6 +132,7 @@ int sc_pkcs15_is_emulation_only(sc_card_t *card)
 		case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
 		case SC_CARD_TYPE_LTEID:
 		case SC_CARD_TYPE_CEDULAUY:
+		case SC_CARD_TYPE_CEDULAUY_CONTACTLESS:
 			return 1;
 		default:
 			return 0;
@@ -542,6 +544,26 @@ int sc_pkcs15emu_object_add(sc_pkcs15_card_t *p15card, unsigned int type,
 	obj->df = sc_pkcs15emu_get_df(p15card, df_type);
 	sc_pkcs15_add_object(p15card, obj);
 
+	/* release memory ownership of buffers that are now contained in `p15card` */
+	switch (type & SC_PKCS15_TYPE_CLASS_MASK) {
+	default:
+		/* `data`'s members copied by value, no buffer to release */
+		break;
+	case SC_PKCS15_TYPE_PRKEY:
+		((struct sc_pkcs15_prkey_info *)data)->subject.value = NULL;
+		break;
+	case SC_PKCS15_TYPE_PUBKEY:
+		((struct sc_pkcs15_pubkey_info *)data)->subject.value = NULL;
+		((struct sc_pkcs15_pubkey_info *)data)->direct.raw.value = NULL;
+		((struct sc_pkcs15_pubkey_info *)data)->direct.spki.value = NULL;
+		break;
+	case SC_PKCS15_TYPE_CERT:
+		((struct sc_pkcs15_cert_info *)data)->value.value = NULL;
+		break;
+	case SC_PKCS15_TYPE_DATA_OBJECT:
+		((struct sc_pkcs15_data_info *)data)->data.value = NULL;
+		break;
+	}
+
 	LOG_FUNC_RETURN(p15card->card->ctx, SC_SUCCESS);
 }
-

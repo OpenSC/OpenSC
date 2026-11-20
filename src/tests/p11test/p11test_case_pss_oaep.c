@@ -60,25 +60,19 @@ get_oaep_mechanism_hashes(CK_MECHANISM_TYPE mech)
 const CK_MECHANISM_TYPE *
 get_pss_mechanism_hashes(CK_MECHANISM_TYPE mech)
 {
-	static CK_MECHANISM_TYPE h[10];
+	static CK_MECHANISM_TYPE h[9];
 
 	switch (mech) {
 	case CKM_RSA_PKCS_PSS:
-		h[0] = CKM_SHA_1;
-		h[1] = CKM_SHA224;
-		h[2] = CKM_SHA256;
-		h[3] = CKM_SHA384;
-		h[4] = CKM_SHA512;
-		h[5] = CKM_SHA3_224;
-		h[6] = CKM_SHA3_256;
-		h[7] = CKM_SHA3_384;
-		h[8] = CKM_SHA3_512;
-		h[9] = -1;
-		break;
-
-	case CKM_SHA1_RSA_PKCS_PSS:
-		h[0] = CKM_SHA_1;
-		h[1] = -1;
+		h[0] = CKM_SHA224;
+		h[1] = CKM_SHA256;
+		h[2] = CKM_SHA384;
+		h[3] = CKM_SHA512;
+		h[4] = CKM_SHA3_224;
+		h[5] = CKM_SHA3_256;
+		h[6] = CKM_SHA3_384;
+		h[7] = CKM_SHA3_512;
+		h[8] = -1;
 		break;
 
 	case CKM_SHA224_RSA_PKCS_PSS:
@@ -184,7 +178,6 @@ const EVP_MD *mgf_cryptoki_to_ossl(CK_RSA_PKCS_MGF_TYPE mgf)
 	case CKG_MGF1_SHA3_512:
 		return EVP_sha3_512();
 
-	case CKG_MGF1_SHA1:
 	default:
 		return EVP_sha1();
 
@@ -245,8 +238,8 @@ size_t get_hash_length(CK_MECHANISM_TYPE mech)
 		return 384 / 8;
 	case CKM_SHA3_512:
 		return 512 / 8;
-	default:
 	case CKM_SHA_1:
+	default:
 		return SHA_DIGEST_LENGTH;
 	}
 }
@@ -299,7 +292,6 @@ CK_BYTE *hash_message(const CK_BYTE *message, size_t message_length,
 		md = EVP_sha3_512();
 		break;
 
-	case CKM_SHA_1:
 	default:
 		digest_len = SHA_DIGEST_LENGTH;
 		md = EVP_sha1();
@@ -370,7 +362,7 @@ int oaep_encrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
     CK_ULONG message_length, test_mech_t *mech, unsigned char **enc_message)
 {
 	CK_RV rv;
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_MECHANISM enc_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 	CK_ULONG enc_message_length;
@@ -423,7 +415,7 @@ int oaep_decrypt_message(test_cert_t *o, token_info_t *info, CK_BYTE *enc_messag
     CK_ULONG enc_message_length, test_mech_t *mech, unsigned char **dec_message)
 {
 	CK_RV rv;
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_MECHANISM dec_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_RSA_PKCS_OAEP_PARAMS oaep_params;
 	CK_ULONG dec_message_length = BUFFER_SIZE;
@@ -574,7 +566,7 @@ int pss_sign_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
     CK_ULONG message_length, test_mech_t *mech, unsigned char **sign)
 {
 	CK_RV rv;
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_ULONG sign_length = 0;
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
@@ -682,7 +674,7 @@ int pss_verify_message(test_cert_t *o, token_info_t *info, CK_BYTE *message,
     CK_ULONG sign_length)
 {
 	CK_RV rv;
-	CK_FUNCTION_LIST_PTR fp = info->function_pointer;
+	CK_FUNCTION_LIST_3_2_PTR fp = info->function_pointer;
 	CK_MECHANISM sign_mechanism = { mech->mech, NULL_PTR, 0 };
 	CK_RSA_PKCS_PSS_PARAMS pss_params;
 	static int verify_support = 1;
@@ -806,11 +798,15 @@ void fill_object_pss_mechanisms(token_info_t *info, test_cert_t *o)
 		for (; *h != (CK_MECHANISM_TYPE) -1; h++) {
 			mgf = get_mgfs();
 			for (; *mgf != (CK_RSA_PKCS_MGF_TYPE) -1; mgf++) {
-				/* OAEP does not have salt */
-				if (source_mech->mech == CKM_RSA_PKCS_OAEP)
+				if (source_mech->mech == CKM_RSA_PKCS_OAEP) {
+					/* OAEP does not have salt */
 					s = 0;
-				else
+				} else {
+					/* Skip SHA1 MGF combinations in RSA-PSS mechanisms */
+					if (source_mech->mech != CKM_RSA_PKCS_OAEP && *mgf == CKG_MGF1_SHA1)
+						continue;
 					s = -2;
+				}
 
 				for (; s <= 0; s++) {
 					test_mech_t *mech = &o->mechs[n++];

@@ -64,6 +64,9 @@ void initilize_global()
 	optind = 0;
 	opterr = 0; /* do not print out error messages */
 	optopt = 0;
+
+	verbose = 0;
+	opt_wait = 0;
 }
 
 void test_load(char *op, const uint8_t *data, size_t size)

@@ -290,9 +290,11 @@ static void print_cert_info(const struct sc_pkcs15_object *obj)
 	private_obj = obj->flags & SC_PKCS15_CO_FLAG_PRIVATE;
 	rv = sc_pkcs15_read_certificate(p15card, cert_info, private_obj, &cert_parsed);
 	if (rv >= 0 && cert_parsed)   {
-		printf("\tEncoded serial : %02X %02X ", *(cert_parsed->serial), *(cert_parsed->serial + 1));
-		util_hex_dump(stdout, cert_parsed->serial + 2, cert_parsed->serial_len - 2, "");
-		printf("\n");
+		if (cert_parsed->serial && cert_parsed->serial_len >= 2) {
+			printf("\tEncoded serial : %02X %02X ", *(cert_parsed->serial), *(cert_parsed->serial + 1));
+			util_hex_dump(stdout, cert_parsed->serial + 2, cert_parsed->serial_len - 2, "");
+			printf("\n");
+		}
 		sc_pkcs15_free_certificate(cert_parsed);
 	}
 }
@@ -1010,6 +1012,12 @@ static int read_ssh_key(void)
 		return 1;
 	}
 
+	if (!pubkey) {
+		fprintf(stderr, "Public key not available\n");
+		r = 1;
+		goto fail2;
+	}
+
 	if (pubkey->algorithm == SC_ALGORITHM_EDDSA) {
 		// SSH supports only ed25519 key now
 
@@ -1021,7 +1029,7 @@ static int read_ssh_key(void)
 		size_t n, len;
 
 		n = pubkey->u.ec.ecpointQ.len;
-		if (n != 32) {
+		if (n != 32 || !pubkey->u.ec.ecpointQ.value) {
 			fprintf(stderr, "Wrong public key length\n");
 			goto fail2;
 		}
@@ -1080,10 +1088,12 @@ static int read_ssh_key(void)
 		}
 
 		len = snprintf(alg, sizeof alg, "ecdsa-sha2-nistp%zu", n);
-		if (len < 0) {
+		if (len < 0 || len >= (int)sizeof(alg)) {
 			fprintf(stderr, "failed to write algorithm\n");
 			goto fail2;
 		}
+		if (4 + len > (int)sizeof(buf))
+			goto fail2;
 		buf[0] = 0;
 		buf[1] = 0;
 		buf[2] = 0;
@@ -1091,6 +1101,8 @@ static int read_ssh_key(void)
 		memcpy(buf+4, alg, len);
 		len += 4;
 
+		if (len + 4 + 9 > (int)sizeof(buf))
+			goto fail2;
 		buf[len++] = 0;
 		buf[len++] = 0;
 		buf[len++] = 0;
@@ -1099,10 +1111,12 @@ static int read_ssh_key(void)
 		len += tmp;
 
 		n = pubkey->u.ec.ecpointQ.len;
-		if(n > 255) {
+		if (n == 0 || n > 255 || !pubkey->u.ec.ecpointQ.value) {
 			fprintf(stderr, "Wrong public key length\n");
 			goto fail2;
 		}
+		if (len + 4 + (int)n > (int)sizeof(buf))
+			goto fail2;
 		buf[len++] = 0;
 		buf[len++] = 0;
 		buf[len++] = 0;
@@ -1176,7 +1190,7 @@ static int read_ssh_key(void)
 		sc_pkcs15_free_pubkey(pubkey);
 	return 0;
 fail:
-	printf("can't convert key: buffer too small\n");
+	fprintf(stderr, "can't convert key: buffer too small\n");
 fail2:
 	if (opt_outfile != NULL && outf != NULL)
 		fclose(outf);
@@ -1184,7 +1198,7 @@ fail2:
 		sc_pkcs15_free_certificate(cert);
 	else
 		sc_pkcs15_free_pubkey(pubkey);
-	return SC_ERROR_OUT_OF_MEMORY;
+	return 1;
 }
 
 #endif
@@ -2399,7 +2413,9 @@ int main(int argc, char *argv[])
 		r = sc_pkcs15_bind(card, &aid, &p15card);
 	}
 	else   {
-		r = sc_pkcs15_bind(card, NULL, &p15card);
+		struct sc_app_info *app_generic = sc_pkcs15_get_application_by_type(card, "generic");
+		struct sc_aid *aid = app_generic ? &app_generic->aid : NULL;
+		r = sc_pkcs15_bind(card, aid, &p15card);
 	}
 
 	if (r) {

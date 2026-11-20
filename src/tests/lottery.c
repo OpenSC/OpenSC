@@ -41,7 +41,12 @@ int main(int argc, char *argv[])
 				return 1;
 			}
 		}
-		sc_lock(card);
+		r = sc_lock(card);
+		if (r != SC_SUCCESS) {
+			fprintf(stderr, "sc_lock() failed: %s\n", sc_strerror(r));
+			sc_test_cleanup();
+			return 1;
+		}
 		r = sc_get_challenge(card, buf, 14);
 		sc_unlock(card);
 		if (r == 0) {

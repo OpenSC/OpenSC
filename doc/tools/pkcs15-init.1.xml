@@ -745,7 +745,7 @@
 					</term>
 					<listitem>
 						<para>
-							Specify application name of data object (use with <option>--store-data-object</option>)
+							Specify application name of data object (use with <option>--store-data</option>)
 						</para>
 					</listitem>
 				</varlistentry>
@@ -757,18 +757,6 @@
 					<listitem>
 						<para>
 							Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)
-						</para>
-					</listitem>
-				</varlistentry>
-
-				<varlistentry>
-					<term>
-						<option>--output-file</option> <replaceable>filename</replaceable>
-						<option>-o</option> <replaceable>filename</replaceable>,
-					</term>
-					<listitem>
-						<para>
-							Output public portion of generated key to file
 						</para>
 					</listitem>
 				</varlistentry>

@@ -234,6 +234,8 @@ struct sc_pkcs15init_prkeyargs {
 		struct sc_pkcs15init_keyarg_gost_params gost;
 	} params;
 
+	struct sc_auxiliary_data *aux_data;
+
 	struct sc_pkcs15_prkey	key;
 };
 

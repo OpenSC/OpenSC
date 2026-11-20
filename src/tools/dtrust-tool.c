@@ -75,6 +75,7 @@ static const char *option_help[] = {
 	"Unblock blocked PIN",
 	"This message",
 	"Verbose operation, may be used several times",
+	"",
 };
 // clang-format on
 
@@ -190,7 +191,7 @@ parse_pin(sc_card_t *card, const char *pinstr, const char *label, unsigned char 
 			valid = "PUK.CH, PIN.T, PIN.QES";
 
 		if (!strcasecmp(pinstr, "PUK.CH"))
-			return PACE_PIN_ID_PUK;
+			return SC_PACE_PIN_ID_PUK;
 		if (!strcasecmp(pinstr, "PIN.T"))
 			return DTRUST5_PIN_ID_PIN_T;
 		if (!strcasecmp(pinstr, "PIN.QES")) {
@@ -517,7 +518,7 @@ change_pin(sc_card_t *card, int ref_verify, int ref_change)
 		else if (ref_change == DTRUST5_PIN_ID_AUT)
 			pathstr = "3F000102";
 
-		if (ref_change != PACE_PIN_ID_PUK &&
+		if (ref_change != SC_PACE_PIN_ID_PUK &&
 				ref_change != DTRUST5_PIN_ID_QES &&
 				ref_change != DTRUST5_PIN_ID_AUT) {
 			fprintf(stderr, "Invalid change PIN. Only PUK.CH, PIN.QES or PIN.AUT may be changed.\n");
@@ -525,7 +526,7 @@ change_pin(sc_card_t *card, int ref_verify, int ref_change)
 		}
 
 		/* PUK has to be verified via PACE */
-		if (ref_verify == PACE_PIN_ID_PUK)
+		if (ref_verify == SC_PACE_PIN_ID_PUK)
 			pace = 1;
 
 		/* Every PIN can change itself */
@@ -618,7 +619,7 @@ resume_pin(sc_card_t *card, int ref_pin)
 		data.pin1.min_length = 8;
 		data.pin1.max_length = 8;
 
-		if (ref_pin == PACE_PIN_ID_PUK)
+		if (ref_pin == SC_PACE_PIN_ID_PUK)
 			break;
 
 		/* Resuming a transport PIN leads to decreasing its use
@@ -627,7 +628,7 @@ resume_pin(sc_card_t *card, int ref_pin)
 		 * card useless. Thus we enforce the user to resume the PIN
 		 * during the regular unlock procedure. */
 		fprintf(stderr, "Invalid PIN to resume. Only the PUK can be resumed with this command.\n");
-		fprintf(stderr, "To resume a transport PIN call this tool with --can and --unlock-transport-protection parameter.\n");
+		fprintf(stderr, "To resume a transport PIN call this tool with --verify-can and --unlock-transport-protection parameter.\n");
 		return;
 
 	default:
@@ -712,7 +713,7 @@ unblock_pin(sc_card_t *card, int ref_pin)
 	case SC_CARD_TYPE_DTRUST_V5_4_STD:
 	case SC_CARD_TYPE_DTRUST_V5_4_MULTI:
 		pace = 1;
-		data_verify.pin_reference = PACE_PIN_ID_PUK;
+		data_verify.pin_reference = SC_PACE_PIN_ID_PUK;
 		data_verify.pin1.min_length = 8;
 		data_verify.pin1.max_length = 8;
 
@@ -904,7 +905,7 @@ main(int argc, char *argv[])
 		memset(&data, 0, sizeof(data));
 		data.cmd = SC_PIN_CMD_VERIFY;
 		data.pin_type = SC_AC_CHV;
-		data.pin_reference = PACE_PIN_ID_CAN;
+		data.pin_reference = SC_PACE_PIN_ID_CAN;
 
 		if (opt_can_enter) {
 			/* To determine whether we need to query for the CAN,
@@ -988,7 +989,7 @@ main(int argc, char *argv[])
 			if (r)
 				goto out;
 
-			pin_status(card, PACE_PIN_ID_PUK, "Card Holder PUK", 0);
+			pin_status(card, SC_PACE_PIN_ID_PUK, "Card Holder PUK", 0);
 			pin_status(card, DTRUST5_PIN_ID_PIN_T, "Transport PIN (Signature)", 1);
 
 			/* We have to select the QES app to verify and change the Signature PIN. */

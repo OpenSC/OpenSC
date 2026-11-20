@@ -30,7 +30,7 @@ if ENABLE_OPENSSL
 bin_PROGRAMS += cryptoflex-tool pkcs15-init netkey-tool piv-tool \
 	westcos-tool sc-hsm-tool dnie-tool gids-tool
 if ENABLE_OPENPACE
-bin_PROGRAMS += npa-tool
+bin_PROGRAMS += npa-tool cedulauy-tool
 endif
 endif
 
@@ -67,6 +67,9 @@ pkcs11_tool_LDADD = \
 	$(top_builddir)/src/common/libpkcs11.la \
 	$(OPTIONAL_OPENSSL_LIBS)
 if ENABLE_SHARED
+# The attribute names of --read-attribute and --set-attribute; a static build
+# gets this file from libopensc-pkcs11 below
+pkcs11_tool_SOURCES += ../pkcs11/pkcs11-display.c ../pkcs11/pkcs11-display.h
 else
 pkcs11_tool_LDADD += \
 	$(top_builddir)/src/pkcs11/libopensc-pkcs11.la
@@ -117,6 +120,10 @@ endif
 lteid_tool_SOURCES = lteid-tool.c util.c
 lteid_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS) $(OPENPACE_LIBS)
 lteid_tool_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS) $(OPENPACE_CFLAGS)
+
+cedulauy_tool_SOURCES = cedulauy-tool.c util.c
+cedulauy_tool_LDADD = $(OPTIONAL_OPENSSL_LIBS)
+cedulauy_tool_CFLAGS = $(OPTIONAL_OPENSSL_CFLAGS)
 
 opensc_notify_SOURCES = opensc-notify.c opensc-notify-cmdline.c
 opensc_notify_CFLAGS = $(PTHREAD_CFLAGS)

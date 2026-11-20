@@ -74,6 +74,14 @@ void initialize_global()
 	optind = 0;
 	opterr = 0; /* do not print out error messages */
 	optopt = 0;
+
+	verbose = 0;
+	compact = 0;
+	opt_no_cache = 0;
+	opt_clear_cache = 0;
+	opt_wait = 0;
+	opt_raw = 0;
+	opt_use_pinpad = 0;
 }
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)

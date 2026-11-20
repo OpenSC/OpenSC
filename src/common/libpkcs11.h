@@ -22,5 +22,7 @@
 #define __LIBPKCS11_H
 #include "pkcs11/pkcs11.h"
 void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
+CK_VERSION_PTR C_GetModuleVersion(void *module);
+CK_INTERFACE_PTR C_GetModuleInterface(void *module);
 CK_RV C_UnloadModule(void *module);
 #endif

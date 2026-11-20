@@ -97,7 +97,8 @@ sc_pkcs15emu_esteid2025_init(sc_pkcs15_card_t *p15card)
 		for (int j = 0; j < r; j++) {
 			if (!isalnum(buf[j])) {
 				free(buf);
-				LOG_TEST_GOTO_ERR(card->ctx, SC_ERROR_INVALID_CARD, "Invalid character in document number");
+				r = SC_ERROR_INVALID_CARD;
+				LOG_TEST_GOTO_ERR(card->ctx, r, "Invalid character in document number");
 			}
 		}
 		buf[r] = '\0';

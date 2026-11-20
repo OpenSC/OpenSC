@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <errno.h>
 #include <sys/stat.h>
 #include <limits.h>
@@ -135,7 +134,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #endif
 	{ "masktech",	(void *(*)(void)) sc_get_masktech_driver },
 	{ "idprime",	(void *(*)(void)) sc_get_idprime_driver },
-	{ "cedulauy",	(void *(*)(void)) sc_get_cedulauy_driver },
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 	{ "edo",        (void *(*)(void)) sc_get_edo_driver },
 	{ "lteid", (void *(*)(void)) sc_get_lteid_driver },
@@ -157,6 +155,10 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "setcos",	(void *(*)(void)) sc_get_setcos_driver },
 	{ "PIV-II",	(void *(*)(void)) sc_get_piv_driver },
 	{ "cac",	(void *(*)(void)) sc_get_cac_driver },
+#if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
+	/* Match before itacns: this ChipDoc CNS also matches the generic itacns. */
+	{ "chipdoc-it",	(void *(*)(void)) sc_get_chipdocit_driver },
+#endif
 	{ "itacns",	(void *(*)(void)) sc_get_itacns_driver },
 	{ "isoApplet",	(void *(*)(void)) sc_get_isoApplet_driver },
 #ifdef ENABLE_ZLIB
@@ -170,6 +172,7 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 #if defined(ENABLE_SM) && defined(ENABLE_OPENPACE)
 	{ "eOI",	(void *(*)(void)) sc_get_eoi_driver },
 #endif
+	{ "cedulauy",	(void *(*)(void)) sc_get_cedulauy_driver },
 	/* The default driver should be last, as it handles all the
 	 * unrecognized cards. */
 	{ "default",	(void *(*)(void)) sc_get_default_driver },
@@ -407,7 +410,7 @@ load_parameters(sc_context_t *ctx, scconf_block *block, struct _sc_ctx_options *
 #endif
 		sc_ctx_log_to_file(ctx, val);
 	}
-	else if (ctx->debug)   {
+	else if (ctx->debug && !ctx->debug_file)   {
 		sc_ctx_log_to_file(ctx, NULL);
 	}
 
@@ -768,12 +771,12 @@ static void process_config_file(sc_context_t *ctx, struct _sc_ctx_options *opts)
 	if (strcmp(ctx->app_name, "default") != 0) {
 		blocks = scconf_find_blocks(ctx->conf, NULL, "app", "default");
 		if (blocks && blocks[0])
-			ctx->conf_blocks[count] = blocks[0];
+			ctx->conf_blocks[count++] = blocks[0];
 		free(blocks);
 	}
 	/* Above we add 3 blocks at most, but conf_blocks has 4 elements,
 	 * so at least one is NULL */
-	for (i = 0; ctx->conf_blocks[i]; i++)
+	for (i = count - 1; i >= 0; i--)
 		load_parameters(ctx, ctx->conf_blocks[i], opts);
 }
 

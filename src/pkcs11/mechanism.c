@@ -28,6 +28,70 @@
 #include "sc-pkcs11.h"
 #include "libopensc/internal.h"
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#endif
+
+/* Validate the mechanism-level RSA-PSS parameters without requiring OpenSSL.
+ * Extracted from framework-pkcs15.c. Salt-length bounds depend on the key and
+ * padding implementation.
+ */
+CK_RV
+sc_pkcs11_validate_pss_params(CK_MECHANISM_PTR pMechanism)
+{
+	const CK_RSA_PKCS_PSS_PARAMS *pss_params;
+	CK_MECHANISM_TYPE expected_hash = 0;
+	unsigned int i;
+	const CK_MECHANISM_TYPE hashes[] = {CKM_SHA_1, CKM_SHA256,
+			CKM_SHA384, CKM_SHA512, CKM_SHA224};
+
+	if (pMechanism == NULL_PTR)
+		return CKR_ARGUMENTS_BAD;
+
+	if (!pMechanism->pParameter ||
+			pMechanism->ulParameterLen != sizeof(CK_RSA_PKCS_PSS_PARAMS))
+		return CKR_MECHANISM_PARAM_INVALID;
+
+	pss_params = (CK_RSA_PKCS_PSS_PARAMS *)pMechanism->pParameter;
+	switch (pss_params->mgf) {
+	case CKG_MGF1_SHA1:
+	case CKG_MGF1_SHA224:
+	case CKG_MGF1_SHA256:
+	case CKG_MGF1_SHA384:
+	case CKG_MGF1_SHA512:
+		break;
+	default:
+		return CKR_MECHANISM_PARAM_INVALID;
+	}
+
+	/* CKM_RSA_PKCS_PSS accepts any supported hash. Combined mechanisms
+	 * require the hash declared in the mechanism.
+	 */
+	if (pMechanism->mechanism == CKM_SHA1_RSA_PKCS_PSS) {
+		expected_hash = CKM_SHA_1;
+	} else if (pMechanism->mechanism == CKM_SHA224_RSA_PKCS_PSS) {
+		expected_hash = CKM_SHA224;
+	} else if (pMechanism->mechanism == CKM_SHA256_RSA_PKCS_PSS) {
+		expected_hash = CKM_SHA256;
+	} else if (pMechanism->mechanism == CKM_SHA384_RSA_PKCS_PSS) {
+		expected_hash = CKM_SHA384;
+	} else if (pMechanism->mechanism == CKM_SHA512_RSA_PKCS_PSS) {
+		expected_hash = CKM_SHA512;
+	} else if (pMechanism->mechanism == CKM_RSA_PKCS_PSS) {
+		for (i = 0; i < ARRAY_SIZE(hashes); ++i) {
+			if (hashes[i] == pss_params->hashAlg) {
+				expected_hash = hashes[i];
+				break;
+			}
+		}
+	}
+
+	if (expected_hash == 0 || expected_hash != pss_params->hashAlg)
+		return CKR_MECHANISM_PARAM_INVALID;
+
+	return CKR_OK;
+}
+
 /* Also used for verification data */
 struct hash_signature_info {
 	CK_MECHANISM_TYPE	mech;
@@ -945,18 +1009,15 @@ sc_pkcs11_encr_init(struct sc_pkcs11_session *session,
 		operation->mechanism.pParameter = &operation->mechanism_params;
 	}
 	rv = mt->encrypt_init(operation, key);
-	if (rv != CKR_OK)
-		goto out;
 
 	/* Validate the mechanism parameters */
-	if (key->ops->init_params) {
+	if (rv == CKR_OK && key->ops->init_params) {
 		rv = key->ops->init_params(operation->session, &operation->mechanism);
-		if (rv != CKR_OK)
-			goto out;
 	}
-	LOG_FUNC_RETURN(context, (int)rv);
-out:
-	session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+
+	if (rv != CKR_OK)
+		session_stop_operation(session, SC_PKCS11_OPERATION_ENCRYPT);
+
 	LOG_FUNC_RETURN(context, (int)rv);
 }
 
@@ -1079,14 +1140,14 @@ sc_pkcs11_decr_init(struct sc_pkcs11_session *session,
 	rv = mt->decrypt_init(operation, key);
 
 	/* Validate the mechanism parameters */
-	if (key->ops->init_params) {
+	if (rv == CKR_OK && key->ops->init_params) {
 		rv = key->ops->init_params(operation->session, &operation->mechanism);
 	}
 
 	if (rv != CKR_OK)
 		session_stop_operation(session, SC_PKCS11_OPERATION_DECRYPT);
 
-	return rv;
+	LOG_FUNC_RETURN(context, (int)rv);
 }
 
 CK_RV

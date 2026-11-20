@@ -218,6 +218,8 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 
 	/* Type */
 	if (file->type_attr_len) {
+		if (file->type_attr_len > sizeof(buf))
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		memcpy(buf, file->type_attr, file->type_attr_len);
 		sc_asn1_put_tag(0x82, buf, file->type_attr_len, p, *outlen - (p - out), &p);
 	} else {
@@ -271,11 +273,15 @@ static int setcos_construct_fci_44(sc_card_t *card, const sc_file_t *file, u8 *o
 	}
 
 	/* Security Attributes */
+	if (file->sec_attr_len > sizeof(buf))
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 	memcpy(buf, file->sec_attr, file->sec_attr_len);
 	sc_asn1_put_tag(0x86, buf, file->sec_attr_len, p, *outlen - (p - out), &p);
 
 	/* Life cycle status */
 	if (file->prop_attr_len) {
+		if (file->prop_attr_len > sizeof(buf))
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
 		memcpy(buf, file->prop_attr, file->prop_attr_len);
 		sc_asn1_put_tag(0x8A, buf, file->prop_attr_len, p, *outlen - (p - out), &p);
 	}

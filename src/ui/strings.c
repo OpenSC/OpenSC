@@ -80,12 +80,12 @@ static const char *ui_get_config_str(struct sc_context *ctx,
 static int find_lang_str(const char *str, enum ui_langs *lang)
 {
 	if (str) {
-		if (0 == strncmp(str, "de", 2)) {
+		if (0 == strncmp(str, "de", 2) && (str[2] == '\0' || str[2] == '-' || str[2] == '_')) {
 			if (lang) {
 				*lang = DE;
 			}
 			return 1;
-		} else if (0 == strncmp(str, "en", 2)) {
+		} else if (0 == strncmp(str, "en", 2) && (str[2] == '\0' || str[2] == '-' || str[2] == '_')) {
 			if (lang) {
 				*lang = EN;
 			}

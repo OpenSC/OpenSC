@@ -44,7 +44,6 @@
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
 #endif
-#include <assert.h>
 #ifdef ENABLE_OPENSSL
 #include <openssl/opensslv.h>
 #include <openssl/bn.h>
@@ -1578,9 +1577,13 @@ sc_pkcs15init_generate_key(struct sc_pkcs15_card *p15card, struct sc_profile *pr
 
 	key_info = (struct sc_pkcs15_prkey_info *) object->data;
 
-	r = _pkcd15init_set_aux_md_data(p15card, &key_info->aux_data,
-			keygen_args->prkey_args.guid, keygen_args->prkey_args.guid_len);
-	LOG_TEST_GOTO_ERR(ctx, r, "Failed to set aux MD data");
+	if (keygen_args->prkey_args.guid) {
+		r = _pkcd15init_set_aux_md_data(p15card, &key_info->aux_data,
+				keygen_args->prkey_args.guid, keygen_args->prkey_args.guid_len);
+		LOG_TEST_GOTO_ERR(ctx, r, "Failed to set aux MD data");
+	} else {
+		key_info->aux_data = keygen_args->prkey_args.aux_data;
+	}
 
 	/* Set up the PuKDF info. The public key will be filled in
 	 * by the card driver's generate_key function called below.
@@ -3332,8 +3335,11 @@ sc_pkcs15init_update_any_df(struct sc_pkcs15_card *p15card,
 		LOG_TEST_RET(ctx, SC_ERROR_INVALID_ARGUMENTS, "DF missing");
 
 	r = sc_profile_get_file_by_path(profile, &df->path, &file);
-	if (r < 0 || file == NULL)
-		sc_select_file(card, &df->path, &file);
+	if (r < 0 || file == NULL) {
+		r = sc_select_file(card, &df->path, &file);
+		if (r < 0)
+			sc_log(ctx, "Failed to select DF: %s", sc_strerror(r));
+	}
 
 	r = sc_pkcs15_encode_df(card->ctx, p15card, df, &buf, &bufsize);
 	if (r >= 0) {
@@ -3951,10 +3957,11 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		struct sc_path tmp_path = *path;
 		int iter;
 		r = SC_ERROR_OBJECT_NOT_FOUND;
-		for (iter = (int)tmp_path.len/2; iter >= 0 && r == SC_ERROR_OBJECT_NOT_FOUND; iter--, tmp_path.len -= 2) {
+		for (iter = (int)tmp_path.len / 2; iter >= 0 && r == SC_ERROR_OBJECT_NOT_FOUND; iter--) {
 			r = sc_pkcs15_find_pin_by_type_and_reference(p15card,
 					tmp_path.len ? &tmp_path : NULL,
 					type, reference, &pin_obj);
+			tmp_path.len = tmp_path.len >= 2 ? tmp_path.len - 2 : 0;
 		}
 	}
 	else {
@@ -3964,6 +3971,18 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 	if (!r && pin_obj)   {
 		memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
 		sc_log(ctx, "found PIN object '%.*s'", (int) sizeof pin_obj->label, pin_obj->label);
+
+		/* Check if the PIN has been already verified and the access condition
+		 * is still open on card to avoid needless card operations and user
+		 * prompts. */
+		if (pinsize == 0) {
+			r = sc_pkcs15_get_pin_info(p15card, pin_obj);
+			/* update local copy of auth info */
+			memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
+
+			if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN)
+				LOG_FUNC_RETURN(ctx, r);
+		}
 	}
 
 	if (pin_obj)   {
@@ -4015,23 +4034,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 	}
 
 found:
-	if (pin_obj)   {
-		/*
-		 * If pin cache is disabled or the reader is using pinpad, we can get here
-		 * with no PIN data. This is ok as we can not asynchronously invoke the prompt
-		 * (unless the pinpad is in use).
-		 * In this case, check if the PIN has been already verified and
-		 * the access condition is still open on card.
-		 */
-		if (pinsize == 0) {
-			r = sc_pkcs15_get_pin_info(p15card, pin_obj);
-			/* update local copy of auth info */
-			memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
-
-			if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN)
-				LOG_FUNC_RETURN(ctx, r);
-		}
-
+	if (pin_obj) {
 		r = sc_pkcs15_verify_pin(p15card, pin_obj, use_pinpad || pinsize == 0 ? NULL : pinbuf, use_pinpad ? 0 : pinsize);
 		LOG_TEST_RET(ctx, r, "Cannot validate pkcs15 PIN");
 	}

@@ -8,7 +8,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
 
 #include "libopensc/opensc.h"
 #include "libopensc/pkcs15.h"

@@ -33,6 +33,10 @@
 #include "ui/notify.h"
 #include "common/compat_strlcat.h"
 
+/* util.h wraps these in compile-time checking macros */
+#undef util_print_usage
+#undef util_print_usage_and_die
+
 int
 is_string_valid_atr(const char *atr_str)
 {
@@ -255,8 +259,8 @@ void util_hex_dump_asc(FILE *f, const u8 *in, size_t count, int addr)
 }
 
 void
-util_print_usage(const char *app_name, const struct option options[],
-	const char *option_help[], const char *args)
+util_print_usage_internal(const char *app_name, const struct option options[],
+		const char *option_help[], const char *args)
 {
 	int i;
 	int header_shown = 0;
@@ -304,10 +308,10 @@ util_print_usage(const char *app_name, const struct option options[],
 }
 
 NORETURN void
-util_print_usage_and_die(const char *app_name, const struct option options[],
-	const char *option_help[], const char *args)
+util_print_usage_and_die_internal(const char *app_name, const struct option options[],
+		const char *option_help[], const char *args)
 {
-	util_print_usage(app_name, options, option_help, args);
+	util_print_usage_internal(app_name, options, option_help, args);
 	exit(2);
 }
 
@@ -444,12 +448,16 @@ util_getpass (char **lineptr, size_t *len, FILE *stream)
 	struct termios old, new;
 
 	fflush(stdout);
-	if (tcgetattr (fileno (stdout), &old) != 0)
+	if (tcgetattr (fileno (stdout), &old) != 0) {
+		fprintf(stderr, "\nWARNING: not prompting for input, because stdout is not a TTY\n");
 		return -1;
+	}
 	new = old;
 	new.c_lflag &= ~ECHO;
-	if (tcsetattr (fileno (stdout), TCSAFLUSH, &new) != 0)
+	if (tcsetattr (fileno (stdout), TCSAFLUSH, &new) != 0) {
+		fprintf(stderr, "\nWARNING: not prompting for input, because echo cannot be disabled\n");
 		return -1;
+	}
 #endif
 
 	buf = calloc(1, MAX_PASS_SIZE);

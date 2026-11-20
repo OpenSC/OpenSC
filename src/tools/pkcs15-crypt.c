@@ -82,26 +82,27 @@ static const struct option options[] = {
 };
 
 static const char *option_help[] = {
-	"Print OpenSC package version",
-	"Performs digital signature operation",
-	"Decipher operation",
-	"Selects the private key ID to use",
-	"Uses reader number <arg>",
-	"Selects the input file to use (defaults to stdin)",
-	"Outputs to file <arg> (defaults to stdout)",
-	"Format for ECDSA signature <arg>: 'rs' (default), 'sequence', 'openssl'",
-	"Outputs raw 8 bit data",
-	"Input file is a SHA-1 hash",
-	"Input file is a SHA-256 hash",
-	"Input file is a SHA-384 hash",
-	"Input file is a SHA-512 hash",
-	"Input file is a SHA-224 hash",
-	"Input file is a MD5 hash",
-	"Use PKCS #1 v1.5 padding",
-	"Uses password (PIN) <arg> (use - for reading PIN from STDIN)",
-	"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
-	"Wait for card insertion",
-	"Verbose operation, may be used several times",
+		"Print OpenSC package version",
+		"Performs digital signature operation",
+		"Decipher operation",
+		"Selects the private key ID to use",
+		"Uses reader number <arg>",
+		"Selects the input file to use (defaults to stdin)",
+		"Outputs to file <arg> (defaults to stdout)",
+		"Format for ECDSA signature <arg>: 'rs' (default), 'sequence', 'openssl'",
+		"Outputs raw 8 bit data",
+		"Input file is a SHA-1 hash",
+		"Input file is a SHA-256 hash",
+		"Input file is a SHA-384 hash",
+		"Input file is a SHA-512 hash",
+		"Input file is a SHA-224 hash",
+		"Input file is a MD5 hash",
+		"Use PKCS #1 v1.5 padding",
+		"Uses password (PIN) <arg> (use - for reading PIN from STDIN)",
+		"Specify AID of the on-card PKCS#15 application to be binded to (in hexadecimal form)",
+		"Wait for card insertion",
+		"Verbose operation, may be used several times",
+		"",
 };
 
 static sc_context_t *ctx = NULL;
@@ -510,7 +511,9 @@ int main(int argc, char *argv[])
 		r = sc_pkcs15_bind(card, &aid, &p15card);
 	}
 	else   {
-		r = sc_pkcs15_bind(card, NULL, &p15card);
+		struct sc_app_info *app_generic = sc_pkcs15_get_application_by_type(card, "generic");
+		struct sc_aid *aid = app_generic ? &app_generic->aid : NULL;
+		r = sc_pkcs15_bind(card, aid, &p15card);
 	}
 	if (r) {
 		fprintf(stderr, "PKCS #15 binding failed: %s\n", sc_strerror(r));
