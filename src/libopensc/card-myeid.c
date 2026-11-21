@@ -360,9 +360,6 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 
 	const int *ops;
 
-	if (len < 2)
-		return;
-
 	switch (file->type) {
 	case SC_FILE_TYPE_WORKING_EF:
 		ops = ef_ops;
@@ -387,20 +384,6 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 		else
 			add_acl_entry(file, ops[i], (u8)(buf[i / 2] & 0x0F));
 	}
-}
-
-static int myeid_select_file(struct sc_card *card, const struct sc_path *in_path,
-		struct sc_file **file)
-{
-	int r;
-
-	LOG_FUNC_CALLED(card->ctx);
-	r = iso_ops->select_file(card, in_path, file);
-
-	if (r == 0 && file != NULL && *file != NULL)
-		parse_sec_attr(*file, (*file)->sec_attr, (*file)->sec_attr_len);
-
-	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 static int myeid_logout(struct sc_card *card)
@@ -439,6 +422,12 @@ static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	return (int)apdu.resplen;
 }
 
+static int
+has_valid_prop_attr(const struct sc_file *file)
+{
+	return file->prop_attr && file->prop_attr_len == 2;
+}
+
 static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 		const u8 *buf, size_t buflen)
 {
@@ -452,18 +441,23 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 	if (r < 0)
 	 LOG_FUNC_RETURN(card->ctx, r);
 
-	if(file->type == SC_FILE_EF_UNKNOWN)
-	{
+	switch (file->type) {
+	case SC_FILE_EF_UNKNOWN:
 		tag = sc_asn1_find_tag(NULL, buf, buflen, 0x82, &taglen);
 		if (tag != NULL && taglen > 0 && *tag == 17)
-		{
 			file->type = SC_FILE_TYPE_INTERNAL_EF;
-		}
+		break;
+	case SC_FILE_TYPE_WORKING_EF:
+		if (has_valid_prop_attr(file) && file->prop_attr[1] & 0x04)
+			file->flags |= SC_FILE_PROPERTY_FLAG_AUTO_SIZE;
+		break;
 	}
+
 	if(file->sec_attr_len >= 3)
 	{
 		sc_log(card->ctx, "id (%X) sec_attr (%X %X %X)", file->id,
 			file->sec_attr[0],file->sec_attr[1],file->sec_attr[2]);
+		parse_sec_attr(file, file->sec_attr, file->sec_attr_len);
 	}
 
 	priv->card_state = file->status;
@@ -570,8 +564,8 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 	/* Proprietary Information */
 	buf[18] = 0x85;
 	buf[19] = 0x02;
-	if (file->prop_attr_len == 2 && file->prop_attr != NULL)
-	    memcpy(&buf[20], file->prop_attr, 2);
+	if (has_valid_prop_attr(file))
+		memcpy(&buf[20], file->prop_attr, 2);
 	else
 	{
 		buf[20] = 0x00;
@@ -2163,7 +2157,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.write_record		= NULL;
 	myeid_ops.append_record		= NULL;
 	myeid_ops.update_record		= NULL;
-	myeid_ops.select_file		= myeid_select_file;
+	myeid_ops.select_file		= iso_ops->select_file;
 	myeid_ops.get_response		= iso_ops->get_response;
 	myeid_ops.logout		= myeid_logout;
 	myeid_ops.create_file		= myeid_create_file;
