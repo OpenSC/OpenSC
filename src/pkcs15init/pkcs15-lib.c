@@ -3968,22 +3968,19 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		r = sc_pkcs15_find_pin_by_type_and_reference(p15card, NULL, type, reference, &pin_obj);
 	}
 
-	if (!r && pin_obj)   {
-		memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
+	if (!r && pin_obj) {
 		sc_log(ctx, "found PIN object '%.*s'", (int) sizeof pin_obj->label, pin_obj->label);
 
 		/* Check if the PIN has been already verified and the access condition
 		 * is still open on card to avoid needless card operations and user
 		 * prompts. */
-		if (pinsize == 0) {
-			r = sc_pkcs15_get_pin_info(p15card, pin_obj);
-			/* update local copy of auth info */
-			memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
+		r = sc_pkcs15_get_pin_info(p15card, pin_obj);
+		/* update local copy of auth info */
+		memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
 
-			if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN) {
-				sc_log(ctx, "PIN already verified");
-				goto err;
-			}
+		if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN) {
+			sc_log(ctx, "PIN already verified");
+			goto err;
 		}
 	}
 
