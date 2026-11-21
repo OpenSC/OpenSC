@@ -389,20 +389,6 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 	}
 }
 
-static int myeid_select_file(struct sc_card *card, const struct sc_path *in_path,
-		struct sc_file **file)
-{
-	int r;
-
-	LOG_FUNC_CALLED(card->ctx);
-	r = iso_ops->select_file(card, in_path, file);
-
-	if (r == 0 && file != NULL && *file != NULL)
-		parse_sec_attr(*file, (*file)->sec_attr, (*file)->sec_attr_len);
-
-	LOG_FUNC_RETURN(card->ctx, r);
-}
-
 static int myeid_logout(struct sc_card *card)
 {
 	sc_apdu_t apdu;
@@ -464,6 +450,7 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 	{
 		sc_log(card->ctx, "id (%X) sec_attr (%X %X %X)", file->id,
 			file->sec_attr[0],file->sec_attr[1],file->sec_attr[2]);
+		parse_sec_attr(file, file->sec_attr, file->sec_attr_len);
 	}
 
 	priv->card_state = file->status;
@@ -2163,7 +2150,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.write_record		= NULL;
 	myeid_ops.append_record		= NULL;
 	myeid_ops.update_record		= NULL;
-	myeid_ops.select_file		= myeid_select_file;
+	myeid_ops.select_file		= iso_ops->select_file;
 	myeid_ops.get_response		= iso_ops->get_response;
 	myeid_ops.logout		= myeid_logout;
 	myeid_ops.create_file		= myeid_create_file;
