@@ -38,6 +38,12 @@ struct eoi_privdata {
 	struct sc_path *pin_paths[MAX_OBJECTS];
 	/* PrKey reference to eOI mappings */
 	int prkey_mappings[MAX_OBJECTS][2];
+	/* ChipDoc cards without PACE use Chip Authentication. */
+	int chipdoc_ca;
+	/* Cached ChipDoc applet/key selection for repeated signatures. */
+	int chipdoc_aid_selected;
+	int chipdoc_mse_valid;
+	unsigned char chipdoc_mse[4];
 };
 
 /* Decrypt the 24-byte encrypted CAN blob into its 16-byte plaintext block;
