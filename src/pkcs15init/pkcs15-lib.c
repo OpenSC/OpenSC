@@ -4274,14 +4274,20 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 			LOG_FUNC_RETURN(ctx, SC_ERROR_INTERNAL);
 		}
 
-		copy = calloc(1, selected_file->size);
-		if (copy == NULL) {
-			sc_file_free(selected_file);
-			return SC_ERROR_OUT_OF_MEMORY;
-		}
-		memcpy(copy, data, datalen);
-		datalen = selected_file->size;
-		data = copy;
+		r = sc_erase_binary(p15card->card, datalen, selected_file->size - datalen, 0);
+		if (r == SC_ERROR_NOT_SUPPORTED) {
+			sc_log(ctx, "Erasing not supported, falling back to overwrite");
+
+			copy = calloc(1, selected_file->size);
+			if (copy == NULL) {
+				sc_file_free(selected_file);
+				return SC_ERROR_OUT_OF_MEMORY;
+			}
+			memcpy(copy, data, datalen);
+			datalen = selected_file->size;
+			data = copy;
+		} else
+			LOG_TEST_RET(ctx, r, "Erase file failed");
 	}
 
 	/* Present authentication info needed */
