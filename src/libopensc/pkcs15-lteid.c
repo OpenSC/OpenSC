@@ -18,8 +18,6 @@
 #include "config.h"
 #endif
 
-#include <string.h>
-
 #include "internal.h"
 #include "pkcs15.h"
 
@@ -51,7 +49,6 @@ lteid_parse_df(struct sc_pkcs15_card *p15card, struct sc_pkcs15_df *df)
 	for (int i = 0; i < count; i++) {
 		struct sc_pkcs15_prkey_info *prkey_info = (struct sc_pkcs15_prkey_info *)pkobjs[i]->data;
 		prkey_info->field_length = 384;
-		memset(prkey_info->algo_refs, 0, sizeof(prkey_info->algo_refs));
 	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
