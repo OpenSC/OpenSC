@@ -2164,7 +2164,6 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.append_record = NULL;
 	myeid_ops.update_record = NULL;
 	myeid_ops.select_file = myeid_select_file;
-	myeid_ops.get_response = iso_ops->get_response;
 	myeid_ops.logout = myeid_logout;
 	myeid_ops.create_file = myeid_create_file;
 	myeid_ops.delete_file = myeid_delete_file;
