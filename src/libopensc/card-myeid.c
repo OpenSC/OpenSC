@@ -2154,31 +2154,31 @@ static struct sc_card_driver * sc_get_driver(void)
 	if (iso_ops == NULL)
 		iso_ops = iso_drv->ops;
 
-	myeid_ops			= *iso_drv->ops;
-	myeid_ops.match_card		= myeid_match_card;
-	myeid_ops.init			= myeid_init;
-	myeid_ops.finish		= myeid_finish;
+	myeid_ops = *iso_drv->ops;
+	myeid_ops.match_card = myeid_match_card;
+	myeid_ops.init = myeid_init;
+	myeid_ops.finish = myeid_finish;
 	/* no record oriented file services */
-	myeid_ops.read_record		= NULL;
-	myeid_ops.write_record		= NULL;
-	myeid_ops.append_record		= NULL;
-	myeid_ops.update_record		= NULL;
-	myeid_ops.select_file		= myeid_select_file;
-	myeid_ops.get_response		= iso_ops->get_response;
-	myeid_ops.logout		= myeid_logout;
-	myeid_ops.create_file		= myeid_create_file;
-	myeid_ops.delete_file		= myeid_delete_file;
-	myeid_ops.list_files		= myeid_list_files;
-	myeid_ops.set_security_env	= myeid_set_security_env;
-	myeid_ops.compute_signature	= myeid_compute_signature;
-	myeid_ops.decipher		= myeid_decipher;
-	myeid_ops.process_fci		= myeid_process_fci;
-	myeid_ops.card_ctl		= myeid_card_ctl;
-	myeid_ops.pin_cmd		= myeid_pin_cmd;
-	myeid_ops.wrap			= myeid_wrap_key;
-	myeid_ops.unwrap		= myeid_unwrap_key;
-	myeid_ops.encrypt_sym		= myeid_encrypt_sym;
-	myeid_ops.decrypt_sym		= myeid_decrypt_sym;
+	myeid_ops.read_record = NULL;
+	myeid_ops.write_record = NULL;
+	myeid_ops.append_record = NULL;
+	myeid_ops.update_record = NULL;
+	myeid_ops.select_file = myeid_select_file;
+	myeid_ops.get_response = iso_ops->get_response;
+	myeid_ops.logout = myeid_logout;
+	myeid_ops.create_file = myeid_create_file;
+	myeid_ops.delete_file = myeid_delete_file;
+	myeid_ops.list_files = myeid_list_files;
+	myeid_ops.set_security_env = myeid_set_security_env;
+	myeid_ops.compute_signature = myeid_compute_signature;
+	myeid_ops.decipher = myeid_decipher;
+	myeid_ops.process_fci = myeid_process_fci;
+	myeid_ops.card_ctl = myeid_card_ctl;
+	myeid_ops.pin_cmd = myeid_pin_cmd;
+	myeid_ops.wrap = myeid_wrap_key;
+	myeid_ops.unwrap = myeid_unwrap_key;
+	myeid_ops.encrypt_sym = myeid_encrypt_sym;
+	myeid_ops.decrypt_sym = myeid_decrypt_sym;
 	return &myeid_drv;
 }
 
