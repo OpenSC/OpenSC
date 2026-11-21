@@ -55,7 +55,7 @@ sc_simpletlv_put_tag(u8 tag, size_t datalen, u8 *out, size_t outlen, u8 **ptr)
 
 	*p++ = tag; /* tag is single byte */
 	if (datalen < 0xff) {
-		/* short value up to 255 */
+		/* short value up to 254 */
 		*p++ = (u8)datalen; /* is in the second byte */
 	} else {
 		/* longer values up to 65535 */

@@ -25,6 +25,7 @@ popd
 # prepare pcscd
 PCSCD_DEBUG="-d -a"
 . .github/restart-pcscd.sh
+sleep 5
 
 # virt_cacard
 if [ ! -d "virt_cacard" ]; then
@@ -38,11 +39,11 @@ pushd virt_cacard
 export SOFTHSM2_CONF=$PWD/softhsm2.conf
 ./virt_cacard 2>&1 | sed -e 's/^/virt_cacard: /;' &
 PID=$!
+sleep 5
 popd
 
 # run the tests
 pushd src/tests/p11test/
-sleep 5
 $VALGRIND ./p11test -s 0 -p 12345678 -o virt_cacard.json
 popd
 

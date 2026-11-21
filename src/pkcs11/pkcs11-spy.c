@@ -1768,6 +1768,15 @@ spy_interface_function_list(CK_INTERFACE_PTR pInterface, CK_INTERFACE_PTR_PTR re
 
 	version = (CK_VERSION *)pInterface->pFunctionList;
 	if (version->major == 3 && version->minor >= 2) {
+		/* init_spy() recorded the module's default interface in po. That
+		 * one can be older than 3.2 while the module also offers 3.2 as a
+		 * non-default interface, which the caller is now asking for. Record
+		 * the 3.2 function list here, so that the 3.2 functions of
+		 * pkcs11_spy_3_2 have somewhere to forward the calls. When a newer
+		 * function list is added, this needs the same treatment. */
+		if (po->version.minor < 2) {
+			memcpy(po, pInterface->pFunctionList, sizeof(CK_FUNCTION_LIST_3_2));
+		}
 		(*retInterface)->pFunctionList = pkcs11_spy_3_2;
 	} else if (version->major == 3) {
 		(*retInterface)->pFunctionList = pkcs11_spy_3_0;
@@ -1885,8 +1894,11 @@ C_GetInterface(CK_UTF8CHAR_PTR pInterfaceName, CK_VERSION_PTR pVersion,
 		}
 
 		/* We can not assume the version we told the caller matches the version in the underlying
-		 * pkcs11 module so map it back to the known ones */
-		if ((pInterfaceName == NULL || strcmp((char *)pInterfaceName, "PKCS 11") == 0) && pVersion) {
+		 * pkcs11 module so map it back to the known ones. Only the 2.x minor is faked (2.11);
+		 * 3.x versions are passed on as the module reported them, so a 3.2 request must not be
+		 * rewritten to the first 3.x interface the module lists. */
+		if ((pInterfaceName == NULL || strcmp((char *)pInterfaceName, "PKCS 11") == 0) && pVersion &&
+				pVersion->major == 2) {
 			for (unsigned long i = 0; i < num_orig_interfaces; i++) {
 				CK_VERSION *v = (CK_VERSION *)orig_interfaces[i].pFunctionList;
 				/* We found the same major version. Copy the minor and call it a day */

@@ -453,9 +453,10 @@ int sc_pkcs15_verify_pin_with_session_pin(struct sc_pkcs15_card *p15card,
 	}
 
 	if (auth_info->auth_type == SC_PKCS15_PIN_AUTH_TYPE_PIN
-			&& auth_info->auth_method != SC_AC_SESSION) {
-		sc_notify_id(card->ctx, &card->reader->atr, p15card,
-				r == SC_SUCCESS ? NOTIFY_PIN_GOOD : NOTIFY_PIN_BAD);
+			&& auth_info->auth_method != SC_AC_SESSION
+			&& r == SC_SUCCESS
+			&& (data.flags & SC_PIN_CMD_USE_PINPAD)) {
+		sc_notify_id(card->ctx, &card->reader->atr, p15card, NOTIFY_PIN_GOOD);
 	}
 
 out:

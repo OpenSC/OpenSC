@@ -318,8 +318,15 @@ void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
 	const char *title, *text;
 	LPCTSTR icon_path = NULL;
 	int icon_index = 0;
+
+	if (ctx && (ctx->flags & SC_CTX_FLAG_DISABLE_POPUPS))
+		return;
+
 	title = ui_get_str(ctx, atr, p15card, id);
 	text = ui_get_str(ctx, atr, p15card, id+1);
+
+	if ((!title || !*title) && (!text || !*text))
+		return;
 
 	switch (id) {
 		case NOTIFY_CARD_INSERTED:
@@ -432,8 +439,15 @@ void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
 		struct sc_pkcs15_card *p15card, enum ui_str id)
 {
 	const char *title, *text, *icon, *group;
+
+	if (ctx && (ctx->flags & SC_CTX_FLAG_DISABLE_POPUPS))
+		return;
+
 	title = ui_get_str(ctx, atr, p15card, id);
 	text = ui_get_str(ctx, atr, p15card, id+1);
+
+	if ((!title || !*title) && (!text || !*text))
+		return;
 
 	if (p15card && p15card->card && p15card->card->reader) {
 		group = p15card->card->reader->name;
@@ -547,8 +561,15 @@ void sc_notify_id(struct sc_context *ctx, struct sc_atr *atr,
 		struct sc_pkcs15_card *p15card, enum ui_str id)
 {
 	const char *title, *text, *icon, *group;
+
+	if (ctx && (ctx->flags & SC_CTX_FLAG_DISABLE_POPUPS))
+		return;
+
 	title = ui_get_str(ctx, atr, p15card, id);
 	text = ui_get_str(ctx, atr, p15card, id+1);
+
+	if ((!title || !*title) && (!text || !*text))
+		return;
 
 	if (p15card && p15card->card && p15card->card->reader) {
 		group = p15card->card->reader->name;
