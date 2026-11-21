@@ -473,14 +473,14 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 	if (r < 0)
 	 LOG_FUNC_RETURN(card->ctx, r);
 
-	if(file->type == SC_FILE_EF_UNKNOWN)
-	{
+	switch (file->type) {
+	case SC_FILE_EF_UNKNOWN:
 		tag = sc_asn1_find_tag(NULL, buf, buflen, 0x82, &taglen);
 		if (tag != NULL && taglen > 0 && *tag == 17)
-		{
 			file->type = SC_FILE_TYPE_INTERNAL_EF;
-		}
+		break;
 	}
+
 	if(file->sec_attr_len >= 3)
 	{
 		sc_log(card->ctx, "id (%X) sec_attr (%X %X %X)", file->id,
