@@ -361,9 +361,6 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 
 	const int *ops;
 
-	if (len < 2)
-		return;
-
 	switch (file->type) {
 	case SC_FILE_TYPE_WORKING_EF:
 		ops = ef_ops;
