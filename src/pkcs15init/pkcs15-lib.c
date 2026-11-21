@@ -3980,8 +3980,10 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 			/* update local copy of auth info */
 			memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
 
-			if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN)
-				LOG_FUNC_RETURN(ctx, r);
+			if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN) {
+				sc_log(ctx, "PIN already verified");
+				goto err;
+			}
 		}
 	}
 
@@ -3989,8 +3991,10 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		sc_log(ctx, "PIN object '%.*s'; pin_obj->content.len:%zu",
 				(int)sizeof(pin_obj->label), pin_obj->label, pin_obj->content.len);
 		if (pin_obj->content.value && pin_obj->content.len)   {
-			if (pin_obj->content.len > sizeof(pinbuf))
-				LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "PIN buffer is too small");
+			if (pin_obj->content.len > sizeof(pinbuf)) {
+				r = SC_ERROR_BUFFER_TOO_SMALL;
+				LOG_TEST_GOTO_ERR(ctx, r, "PIN buffer is too small");
+			}
 			memcpy(pinbuf, pin_obj->content.value, pin_obj->content.len);
 			pinsize = pin_obj->content.len;
 			sc_log(ctx, "'ve got '%s' value from cache", ident);
@@ -4036,15 +4040,8 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 found:
 	if (pin_obj) {
 		r = sc_pkcs15_verify_pin(p15card, pin_obj, use_pinpad || pinsize == 0 ? NULL : pinbuf, use_pinpad ? 0 : pinsize);
-		LOG_TEST_RET(ctx, r, "Cannot validate pkcs15 PIN");
-	}
-
-	if (file)   {
-		r = sc_select_file(p15card->card, &file->path, NULL);
-		LOG_TEST_RET(ctx, r, "Failed to select PIN path");
-	}
-
-	if (!pin_obj) {
+		LOG_TEST_GOTO_ERR(ctx, r, "Cannot validate pkcs15 PIN");
+	} else {
 		struct sc_pin_cmd_data pin_cmd;
 
 		memset(&pin_cmd, 0, sizeof(pin_cmd));
@@ -4055,7 +4052,17 @@ found:
 		pin_cmd.pin1.len = use_pinpad ? 0: pinsize;
 
 		r = sc_pin_cmd(p15card->card, &pin_cmd);
-		LOG_TEST_RET(ctx, r, "'VERIFY' pin cmd failed");
+		LOG_TEST_GOTO_ERR(ctx, r, "'VERIFY' pin cmd failed");
+	}
+
+err:
+	if (file) {
+		int rs = sc_select_file(p15card->card, &file->path, NULL);
+		if (rs) {
+			sc_log(ctx, "Failed to reselect the file");
+			if (!r)
+				r = rs;
+		}
 	}
 
 	LOG_FUNC_RETURN(ctx, r);
