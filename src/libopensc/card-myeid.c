@@ -54,8 +54,9 @@
 #define MYEID_CARD_CAP_GRIDPIN		0x10
 #define MYEID_CARD_CAP_PIV_EMU		0x20
 
-#define MYEID_MAX_APDU_DATA_LEN		0xFF
-#define MYEID_MAX_RSA_KEY_LEN		4096
+#define MYEID_MAX_FILE_SIZE	0x7FFF
+#define MYEID_MAX_APDU_DATA_LEN 0xFF
+#define MYEID_MAX_RSA_KEY_LEN	4096
 
 #define MYEID_MAX_EXT_APDU_BUFFER_SIZE	(MYEID_MAX_RSA_KEY_LEN/8+16)
 
@@ -387,6 +388,35 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 		else
 			add_acl_entry(file, ops[i], (u8)(buf[i / 2] & 0x0F));
 	}
+}
+
+static int
+myeid_erase_binary(struct sc_card *card, unsigned int idx, size_t count, unsigned long flags)
+{
+	sc_apdu_t apdu;
+	int r;
+
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (idx + count < MYEID_MAX_FILE_SIZE)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
+	if (idx > MYEID_MAX_FILE_SIZE)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OFFSET_TOO_LARGE);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x0E, idx >> 8, idx & 0xFF);
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	if ((apdu.sw1 == 0x67 || apdu.sw1 == 0x6B) && apdu.sw2 == 0x00)
+		sc_log(card->ctx, "Offset exceeded the file size");
+	else {
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		LOG_TEST_RET(card->ctx, r, "Erasing binary file failed");
+	}
+
+	LOG_FUNC_RETURN(card->ctx, count);
 }
 
 static int myeid_select_file(struct sc_card *card, const struct sc_path *in_path,
@@ -2158,6 +2188,7 @@ static struct sc_card_driver * sc_get_driver(void)
 	myeid_ops.match_card = myeid_match_card;
 	myeid_ops.init = myeid_init;
 	myeid_ops.finish = myeid_finish;
+	myeid_ops.erase_binary = myeid_erase_binary;
 	/* no record oriented file services */
 	myeid_ops.read_record = NULL;
 	myeid_ops.write_record = NULL;
