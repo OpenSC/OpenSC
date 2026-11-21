@@ -3982,9 +3982,7 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 			sc_log(ctx, "PIN already verified");
 			goto select;
 		}
-	}
 
-	if (pin_obj)   {
 		sc_log(ctx, "PIN object '%.*s'; pin_obj->content.len:%zu",
 				(int)sizeof(pin_obj->label), pin_obj->label, pin_obj->content.len);
 		if (pin_obj->content.value && pin_obj->content.len)   {
@@ -3995,10 +3993,10 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 			sc_log(ctx, "'ve got '%s' value from cache", ident);
 			goto found;
 		}
-	}
 
-	if (pin_obj && pin_obj->label[0])
-		label = pin_obj->label;
+		if (pin_obj->label[0])
+			label = pin_obj->label;
+	}
 
 	switch (type) {
 	case SC_AC_CHV:
