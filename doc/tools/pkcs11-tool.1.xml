@@ -601,7 +601,11 @@
 						<option>--private</option>
 					</term>
 					<listitem><para>Set the CKA_PRIVATE attribute (object is only
-					viewable after a login).</para></listitem>
+					viewable after a login). Without it, certificates, data objects and
+					public keys are made public, and a secret key gets the token's
+					default. The secret of <option>--encapsulate</option>, which needs
+					no login, is made public. A private key that is generated or
+					imported is always private.</para></listitem>
 				</varlistentry>
 
 				<varlistentry>

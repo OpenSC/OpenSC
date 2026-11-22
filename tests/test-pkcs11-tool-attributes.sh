@@ -41,6 +41,13 @@ assert $? "CKA_KEY_TYPE not read back"
 grep -qx "CKA_VALUE_LEN: 32" attrs.out
 assert $? "CKA_VALUE_LEN not read back"
 
+# Generated without --private, the key gets the token's default (#3950),
+# which is private on the tokens this test runs on.
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --type secrkey --id 21 --read-attribute CKA_PRIVATE > attrs.out
+assert $? "Failed to read CKA_PRIVATE from the secret key"
+grep -qx "CKA_PRIVATE: true" attrs.out
+assert $? "The secret key was not private by default"
+
 $PKCS11_TOOL "${PRIV_ARGS[@]}" --type secrkey --id 21 --read-attribute no_such_attribute > /dev/null 2>&1
 [[ $? != 0 ]]
 assert $? "An unknown attribute name was accepted"
