@@ -45,7 +45,7 @@ static struct sc_card_driver edo_drv = {
 static const struct sc_atr_table edo_atrs[] = {
 		{"3b:89:80:01:02:4d:4b:4d:57:4b:53:4b:54:11", NULL, NULL, SC_CARD_TYPE_EDO_MK, 0, NULL},
 		{"3b:84:80:01:47:43:50:43:12",		       NULL, NULL, SC_CARD_TYPE_EDO,    0, NULL},
-		{NULL,					       NULL, NULL, 0,		      0, NULL}
+		{NULL,					NULL, NULL, 0,		      0, NULL}
 };
 
 static int
