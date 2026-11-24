@@ -8289,16 +8289,27 @@ static int read_object(CK_SESSION_HANDLE session)
 				value = getEC_POINT(session, obj, &len);
 				/* PKCS11 3.0 errata and 3.1 say Edwards and Montgomery
 				 * return raw byte strings, convert to OCTET string for OpenSSL
-				 * Will accept as OCTET STRING and BIT_STRING
+				 * Will accept as OCTET STRING and BIT_STRING, but only when
+				 * the DER covers the whole value: a raw key can start with
+				 * bytes that read as a shorter OCTET STRING or BIT STRING
 				 */
 				a = value;
 				os = d2i_ASN1_OCTET_STRING(NULL, &a, (long)len);
-				if (!os) {
-					os = d2i_ASN1_BIT_STRING(NULL, &a, (long)len);
-					if (os)
-						len = BYTES4BITS(len);
+				if (os && a != value + len) {
+					ASN1_STRING_free(os);
+					os = NULL;
 				}
 				if (!os) {
+					a = value;
+					os = d2i_ASN1_BIT_STRING(NULL, &a, (long)len);
+					if (os && a != value + len) {
+						ASN1_STRING_free(os);
+						os = NULL;
+					}
+				}
+				if (os) {
+					len = (CK_ULONG)ASN1_STRING_length(os);
+				} else {
 					if ((os = ASN1_OCTET_STRING_new()) == NULL)
 						util_fatal("cannot decode EC_POINT");
 					if (ASN1_OCTET_STRING_set(os, value, (int)len) == 0) {
