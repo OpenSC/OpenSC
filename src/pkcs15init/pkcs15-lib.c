@@ -4260,13 +4260,14 @@ sc_pkcs15init_update_file(struct sc_profile *profile,
 		LOG_TEST_RET(ctx, r, "Failed to select file");
 	}
 
-	if (selected_file->size < datalen) {
+	if (!(selected_file->flags & SC_FILE_PROPERTY_FLAG_AUTO_SIZE) &&
+			selected_file->size < datalen) {
+
 		sc_log(ctx, "File %s too small (require %zu, have %zu)",
 				sc_print_path(&file->path), datalen, selected_file->size);
 		sc_file_free(selected_file);
 		LOG_TEST_RET(ctx, SC_ERROR_FILE_TOO_SMALL, "Update file failed");
-	}
-	else if (selected_file->size > datalen && need_to_zap) {
+	} else if (selected_file->size > datalen && need_to_zap) {
 		/* zero out the rest of the file - we may have shrunk
 		 * the file contents */
 		if (selected_file->size > MAX_FILE_SIZE) {
