@@ -25,9 +25,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "internal.h"
 #include "asn1.h"
+#include "card-myeid.h"
 #include "cardctl.h"
+#include "internal.h"
 #include "types.h"
 
 /* Low byte is the MyEID card's key type specific component ID. High byte is used
@@ -56,7 +57,6 @@
 
 #define MYEID_MAX_FILE_SIZE	0x7FFF
 #define MYEID_MAX_APDU_DATA_LEN 0xFF
-#define MYEID_MAX_RSA_KEY_LEN	4096
 
 #define MYEID_MAX_EXT_APDU_BUFFER_SIZE	(MYEID_MAX_RSA_KEY_LEN/8+16)
 
