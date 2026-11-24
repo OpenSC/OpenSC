@@ -41,11 +41,6 @@
 unsigned char MYEID_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 #define MYEID_DEFAULT_PUBKEY_LEN       sizeof(MYEID_DEFAULT_PUBKEY)
 
-#define MYEID_PROP_INFO_2_EXCTRACTABLE			0x08;
-#define MYEID_PROP_INFO_1_TRUSTED				0x04;
-#define MYEID_PROP_INFO_1_WRAP_WITH_TRUSTED		0x08;
-#define MYEID_PROP_INFO_2_SESSION_OBJECT		0x01;
-
 static const struct sc_object_id id_aes128_ecb = { { 2, 16, 840, 1, 101, 3, 4, 1, 1, -1 } };
 static const struct sc_object_id id_aes128_cbc = { { 2, 16, 840, 1, 101, 3, 4, 1, 2, -1 } };
 static const struct sc_object_id id_aes256_ecb = { { 2, 16, 840, 1, 101, 3, 4, 1, 41, -1 } };
