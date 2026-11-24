@@ -54,10 +54,9 @@ static struct {
 	int len;
 	struct sc_object_id oid;
 } edo_curves[] = {
-	// secp384r1
-	{EDO_EC_FIELD_BITS, {{1, 3, 132, 0, 34, -1}}}
+		// secp384r1
+		{EDO_EC_FIELD_BITS, {{1, 3, 132, 0, 34, -1}}}
 };
-
 
 static int edo_match_card(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
