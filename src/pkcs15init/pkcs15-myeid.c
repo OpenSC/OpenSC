@@ -24,19 +24,19 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "libopensc/opensc.h"
+#include "libopensc/asn1.h"
+#include "libopensc/card-myeid.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/internal.h"
 #include "libopensc/log.h"
+#include "libopensc/opensc.h"
+#include "pkcs11/pkcs11.h"
 #include "pkcs15-init.h"
 #include "profile.h"
-#include "libopensc/asn1.h"
-#include "pkcs11/pkcs11.h"
 
 #undef KEEP_AC_NONE_FOR_INIT_APPLET
 
-#define MYEID_MAX_PINS   14
-#define MYEID_MAX_RSA_KEY_LEN 4096
+#define MYEID_MAX_PINS 14
 
 unsigned char MYEID_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 #define MYEID_DEFAULT_PUBKEY_LEN       sizeof(MYEID_DEFAULT_PUBKEY)
