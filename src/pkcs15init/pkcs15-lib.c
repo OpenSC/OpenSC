@@ -3980,8 +3980,10 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 			/* update local copy of auth info */
 			memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
 
-			if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN)
-				LOG_FUNC_RETURN(ctx, r);
+			if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN) {
+				sc_log(ctx, "PIN already verified");
+				goto select;
+			}
 		}
 	}
 
@@ -4039,7 +4041,8 @@ found:
 		LOG_TEST_RET(ctx, r, "Cannot validate pkcs15 PIN");
 	}
 
-	if (file)   {
+select:
+	if (file) {
 		r = sc_select_file(p15card->card, &file->path, NULL);
 		LOG_TEST_RET(ctx, r, "Failed to select the file");
 	}
