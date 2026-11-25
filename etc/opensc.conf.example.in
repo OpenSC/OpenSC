@@ -249,6 +249,21 @@ app default {
 		# Environment variables override opensc.conf
 	}
 
+	# Configuration block for MyEID
+	card_driver myeid {
+		# Since MyEID version 4.9.10 crypto-operations are disabled in Creation State, unless explicitly enabled until next reset.
+		# This feature has been added to make sure it will be noticed if the card is unintentionally left in creation state.
+		# OpenSC can enable crypto in creation state with this option. Default = false.
+	
+		# enable_crypto_in_creation_state = false;
+
+		# With this option PKCS#1 padding on card can be disabled for RSA operations, which enables raw RSA operations. Default = 0.
+		# Hardware PKCS#1 padding can be also controlled with a global option. If the global option is set, hw PKCS#1 padding is disabled even if this
+		# option is not set for the MyEID driver.
+
+		# disable_hw_pkcs1_padding = 0;
+	}
+
 	# In addition to the built-in list of known cards in the
 	# card driver, you can configure a new card for the driver
 	# using the card_atr block. The goal is to centralize

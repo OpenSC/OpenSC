@@ -1,4 +1,4 @@
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>OpenSC Manual Pages: Section 5</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"><style type="text/css"><!--
+<html><head><meta charset="UTF-8"><title>OpenSC Manual Pages: Section 5</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"><style type="text/css"><!--
 			body {
   font-family: Verdana, Arial;
   font-size: 0.9em;
@@ -497,7 +497,22 @@ app <em class="replaceable"><code>application</code></em> {
 					</p><p>
 							PKCS#1 v1.5 padding in HW can be globally disabled by option <code class="literal">disable_hw_pkcs1_padding</code>.
 							When the global option is used to disable padding, the padding will be disabled even though the MyEID-specific option does not turn it off.
-					</p></dd></dl></div></div><div class="refsect2"><a name="npa"></a><h3>Configuration Options for German ID Card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
+					</p></dd><dt><span class="term">
+						<code class="option">
+							enable_crypto_in_creation_state = <em class="replaceable"><code>bool</code></em>;
+						</code>
+					</span></dt><dd><p>
+							The MyEID card has a global state called "Creation State"
+							which is intended to simplify personalization of the card
+							in a secure environment. In Creation State access conditions
+							are not effective and the card must be finalized to enter
+							Operational State before delivery to end-user. Since version
+							4.9.10 crypto-operations are not allowed in Creation State,
+							unless enabled with this option. This is to prevent leaving
+							the card in Creation State unintentionally. If this option
+							is set to true, the card will allow crypto-operations until
+							the next reset.
+						</p></dd></dl></div></div><div class="refsect2"><a name="npa"></a><h3>Configuration Options for German ID Card</h3><div class="variablelist"><dl class="variablelist"><dt><span class="term">
 						<code class="option">can = <em class="replaceable"><code>value</code></em>;</code>
 					</span></dt><dd><p>
 							German ID card requires the CAN to

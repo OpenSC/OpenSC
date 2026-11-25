@@ -725,7 +725,27 @@ app <replaceable>application</replaceable> {
 							When the global option is used to disable padding, the padding will be disabled even though the MyEID-specific option does not turn it off.
 					</para></listitem>
 				</varlistentry>
-
+				<varlistentry>
+					<term>
+						<option>
+							enable_crypto_in_creation_state = <replaceable>bool</replaceable>;
+						</option>
+					</term>
+					<listitem>
+						<para>
+							The MyEID card has a global state called "Creation State"
+							which is intended to simplify personalization of the card
+							in a secure environment. In Creation State access conditions
+							are not effective and the card must be finalized to enter
+							Operational State before delivery to end-user. Since version
+							4.9.10 crypto-operations are not allowed in Creation State,
+							unless enabled with this option. This is to prevent leaving
+							the card in Creation State unintentionally. If this option
+							is set to true, the card will allow crypto-operations until
+							the next reset.
+						</para>
+					</listitem>
+				</varlistentry>
 			</variablelist>
 		</refsect2>
 

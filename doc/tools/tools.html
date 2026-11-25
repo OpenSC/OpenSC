@@ -1,4 +1,4 @@
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>OpenSC Manual Pages: Section 1</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"><style type="text/css"><!--
+<html><head><meta charset="UTF-8"><title>OpenSC Manual Pages: Section 1</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"><style type="text/css"><!--
 			body {
   font-family: Verdana, Arial;
   font-size: 0.9em;
@@ -2946,7 +2946,8 @@ pkcs11-tool --login --decapsulate --mechanism ML-KEM --id 31 --extractable \
 							  SmartCard-HSM has been initialized with <code class="option">--public-key-auth</code> and <code class="option">--required-pub-keys</code>
 							  and fewer than N public keys have been registered. Use <code class="option">--public-key-auth-status</code> to check the
 							  how many public keys have been registered.
-						</p></dd><dt><span class="term">
+						</p><p>The SmartCard-HSM requires an authenticated session to register a public key.
+							  Use <code class="option">--pin</code> to provide a user PIN on the command line.</p></dd><dt><span class="term">
 						<code class="option">--export-for-pub-key-auth</code> <em class="replaceable"><code>output-public-key-file</code></em>,
 						<code class="option">-e</code> <em class="replaceable"><code>output-public-key-file</code></em>
 					</span></dt><dd><p>Export a public key to be used for M-of-N public key authentication. This should be used with
