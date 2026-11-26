@@ -4041,7 +4041,7 @@ found:
 
 	if (file)   {
 		r = sc_select_file(p15card->card, &file->path, NULL);
-		LOG_TEST_RET(ctx, r, "Failed to select PIN path");
+		LOG_TEST_RET(ctx, r, "Failed to select the file");
 	}
 
 	if (!pin_obj) {
