@@ -92,6 +92,7 @@ typedef struct myeid_private_data {
 	uint8_t sym_plain_buffer_len;
 	/* PSO for AES/DES need algo+flags from sec env */
 	unsigned long algorithm, algorithm_flags;
+	int lifecycle;
 } myeid_private_data_t;
 
 typedef struct myeid_card_caps {
@@ -201,6 +202,7 @@ static int myeid_init(struct sc_card *card)
 	LOG_TEST_GOTO_ERR(card->ctx, rv, "Unable to read options from opensc.conf");
 
 	priv->card_state = SC_FILE_STATUS_CREATION;
+	priv->lifecycle = SC_CARDCTRL_LIFECYCLE_USER;
 	card->drv_data = priv;
 
 	/* Ensure that the MyEID applet is selected. */
@@ -1878,6 +1880,7 @@ static int myeid_get_card_caps(struct sc_card *card, myeid_card_caps_t* card_cap
 
 static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
+	struct myeid_private_data *priv = (struct myeid_private_data *)card->drv_data;
 	int r = SC_ERROR_NOT_SUPPORTED;
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1903,9 +1906,15 @@ static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_GET_CHANGE_COUNTER:
 		r = myeid_get_change_counter(card, (size_t *)ptr);
 		break;
-	case SC_CARDCTL_GET_DEFAULT_KEY:
 	case SC_CARDCTL_LIFECYCLE_SET:
+		priv->lifecycle = *((int *)ptr);
+		r = SC_SUCCESS;
+		break;
 	case SC_CARDCTL_LIFECYCLE_GET:
+		*((int *)ptr) = priv->lifecycle;
+		r = SC_SUCCESS;
+		break;
+	case SC_CARDCTL_GET_DEFAULT_KEY:
 		break;
 	}
 	LOG_FUNC_RETURN(card->ctx, r);
