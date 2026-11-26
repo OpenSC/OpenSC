@@ -507,11 +507,11 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 				val_len -= len, tlv_len -= len, val_ptr += len, tlv_ptr += len) {
 			/* get the tag and the length */
 			tl_start = tl_ptr;
-			r = sc_simpletlv_read_tag(&tl_ptr, tl_len, &tag, &len);
+			r = sc_simpletlv_read_tag(&tl_ptr, tl_len, &tag, &len, SC_SIMPLETLV_LITTLE_ENDIAN);
 			if (r != SC_SUCCESS && r != SC_ERROR_TLV_END_OF_CONTENTS)
 				break;
 			tl_head_len = (tl_ptr - tl_start);
-			sc_simpletlv_put_tag(tag, len, tlv_ptr, tlv_len, &tlv_ptr);
+			sc_simpletlv_put_tag(tag, len, tlv_ptr, tlv_len, &tlv_ptr, SC_SIMPLETLV_LITTLE_ENDIAN);
 			tlv_len -= tl_head_len;
 			tl_len -= tl_head_len;
 
@@ -540,7 +540,7 @@ static int cac_read_binary(sc_card_t *card, unsigned int idx,
 		for (tl_ptr = tl, val_ptr = val; tl_len >= 2;
 		    val_len -= len, val_ptr += len, tl_len -= tl_head_len) {
 			tl_start = tl_ptr;
-			r = sc_simpletlv_read_tag(&tl_ptr, tl_len, &tag, &len);
+			r = sc_simpletlv_read_tag(&tl_ptr, tl_len, &tag, &len, SC_SIMPLETLV_LITTLE_ENDIAN);
 			if (r != SC_SUCCESS && r != SC_ERROR_TLV_END_OF_CONTENTS)
 				break;
 			tl_head_len = tl_ptr - tl_start;
@@ -857,7 +857,7 @@ static int cac_parse_properties_object(sc_card_t *card, u8 type,
 	val_end = data + data_len;
 	for (; val < val_end; val += len) {
 		/* get the tag and the length */
-		if (sc_simpletlv_read_tag(&val, val_end - val, &tag, &len) != SC_SUCCESS)
+		if (sc_simpletlv_read_tag(&val, val_end - val, &tag, &len, SC_SIMPLETLV_LITTLE_ENDIAN) != SC_SUCCESS)
 			break;
 
 		switch (tag) {
@@ -936,7 +936,7 @@ static int cac_get_properties(sc_card_t *card, cac_properties_t *prop)
 	val_end = val + rbuflen;
 	for (; val < val_end; val += len) {
 		/* get the tag and the length */
-		if (sc_simpletlv_read_tag(&val, val_end - val, &tag, &len) != SC_SUCCESS)
+		if (sc_simpletlv_read_tag(&val, val_end - val, &tag, &len, SC_SIMPLETLV_LITTLE_ENDIAN) != SC_SUCCESS)
 			break;
 
 		switch (tag) {
@@ -1399,7 +1399,7 @@ static int cac_parse_CCC(sc_card_t *card, cac_private_data_t *priv, const u8 *tl
 	for (; (tl < tl_end) && (val< val_end); val += len) {
 		/* get the tag and the length */
 		u8 tag;
-		r = sc_simpletlv_read_tag(&tl, tl_end - tl, &tag, &len);
+		r = sc_simpletlv_read_tag(&tl, tl_end - tl, &tag, &len, SC_SIMPLETLV_LITTLE_ENDIAN);
 		if (r != SC_SUCCESS && r != SC_ERROR_TLV_END_OF_CONTENTS) {
 			sc_log(card->ctx, "Failed to parse tag from buffer");
 			break;
@@ -1537,7 +1537,7 @@ static int cac_parse_ACA_service(sc_card_t *card, cac_private_data_t *priv,
 	for (; val < val_end; val += len) {
 		/* get the tag and the length */
 		u8 tag;
-		if (sc_simpletlv_read_tag(&val, val_end - val, &tag, &len) != SC_SUCCESS)
+		if (sc_simpletlv_read_tag(&val, val_end - val, &tag, &len, SC_SIMPLETLV_LITTLE_ENDIAN) != SC_SUCCESS)
 			break;
 
 		switch (tag) {
