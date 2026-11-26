@@ -79,7 +79,7 @@ export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
 $SUDO apt-get update -qq
 
-$SUDO apt-get install -y build-essential $DEPS
+$SUDO apt-get install -y -o Dpkg::Options::="--force-overwrite" build-essential $DEPS
 
 # install libressl if needed
 if [ "$1" == "libressl" -o "$2" == "libressl" ]; then
