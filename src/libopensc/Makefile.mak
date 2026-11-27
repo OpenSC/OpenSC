@@ -47,6 +47,7 @@ LIBS = $(TOPDIR)\src\scconf\scconf.lib \
 	   $(TOPDIR)\src\ui\notify.lib \
 	   $(TOPDIR)\src\sm\libsmiso.lib \
 	   $(TOPDIR)\src\sm\libsmeac.lib \
+	   $(TOPDIR)\src\sm\libsmidprime.lib \
 	   $(TOPDIR)\src\pkcs15init\pkcs15init.lib
 
 all: $(TOPDIR)\win32\versioninfo.res $(TARGET)
