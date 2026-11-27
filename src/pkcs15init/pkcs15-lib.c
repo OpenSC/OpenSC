@@ -3968,24 +3968,21 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 		r = sc_pkcs15_find_pin_by_type_and_reference(p15card, NULL, type, reference, &pin_obj);
 	}
 
-	if (!r && pin_obj)   {
-		memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
+	if (!r && pin_obj) {
 		sc_log(ctx, "found PIN object '%.*s'", (int) sizeof pin_obj->label, pin_obj->label);
 
 		/* Check if the PIN has been already verified and the access condition
 		 * is still open on card to avoid needless card operations and user
 		 * prompts. */
-		if (pinsize == 0) {
-			r = sc_pkcs15_get_pin_info(p15card, pin_obj);
-			/* update local copy of auth info */
-			memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
+		r = sc_pkcs15_get_pin_info(p15card, pin_obj);
+		/* update local copy of auth info */
+		memcpy(&auth_info, pin_obj->data, sizeof(auth_info));
 
-			if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN)
-				LOG_FUNC_RETURN(ctx, r);
+		if (r == SC_SUCCESS && auth_info.logged_in & SC_PIN_STATE_LOGGED_IN) {
+			sc_log(ctx, "PIN already verified");
+			goto select;
 		}
-	}
 
-	if (pin_obj)   {
 		sc_log(ctx, "PIN object '%.*s'; pin_obj->content.len:%zu",
 				(int)sizeof(pin_obj->label), pin_obj->label, pin_obj->content.len);
 		if (pin_obj->content.value && pin_obj->content.len)   {
@@ -3996,10 +3993,10 @@ sc_pkcs15init_verify_secret(struct sc_profile *profile, struct sc_pkcs15_card *p
 			sc_log(ctx, "'ve got '%s' value from cache", ident);
 			goto found;
 		}
-	}
 
-	if (pin_obj && pin_obj->label[0])
-		label = pin_obj->label;
+		if (pin_obj->label[0])
+			label = pin_obj->label;
+	}
 
 	switch (type) {
 	case SC_AC_CHV:
@@ -4039,9 +4036,10 @@ found:
 		LOG_TEST_RET(ctx, r, "Cannot validate pkcs15 PIN");
 	}
 
-	if (file)   {
+select:
+	if (file) {
 		r = sc_select_file(p15card->card, &file->path, NULL);
-		LOG_TEST_RET(ctx, r, "Failed to select PIN path");
+		LOG_TEST_RET(ctx, r, "Failed to select the file");
 	}
 
 	if (!pin_obj) {
