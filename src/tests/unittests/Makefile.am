@@ -67,5 +67,18 @@ sm_SOURCES = sm.c
 sm_LDADD = $(top_builddir)/src/sm/libsm.la $(LDADD)
 endif
 
+if ENABLE_SM
+if ENABLE_OPENPACE
+if ENABLE_ZLIB
+noinst_PROGRAMS += chipdocit
+TESTS += chipdocit
+
+chipdocit_SOURCES = chipdocit.c
+chipdocit_LDADD = $(LDADD) $(OPENPACE_LIBS) $(OPTIONAL_ZLIB_LIBS)
+# Static link: the card driver and emulator entry points are internal symbols.
+chipdocit_LDFLAGS = -static
+endif
+endif
+endif
 
 endif

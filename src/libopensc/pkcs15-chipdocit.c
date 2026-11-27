@@ -54,7 +54,7 @@ static const u8 CHIPDOCIT_GENERIC_AID[] = {
 /* Read cert EF <fid> under the Generic applet and inflate the 7A82 container. */
 static int
 read_ds_cert(sc_pkcs15_card_t *p15card, unsigned fid,
-		const sc_pkcs15_id_t *cert_id, const char *label, int user_consent_hint)
+		const sc_pkcs15_id_t *cert_id, const char *label)
 {
 	sc_card_t *card = p15card->card;
 	struct sc_apdu apdu;
@@ -67,8 +67,6 @@ read_ds_cert(sc_pkcs15_card_t *p15card, unsigned fid,
 	z_stream z;
 	sc_pkcs15_cert_info_t cinfo;
 	sc_pkcs15_object_t cobj;
-
-	(void)user_consent_hint;
 
 	/* SELECT Generic AID, then SELECT the cert EF by file id (clear reads). */
 	sc_format_apdu(card, &apdu, SC_APDU_CASE_4_SHORT, 0xA4, 0x04, 0x04);
@@ -253,14 +251,15 @@ sc_pkcs15emu_chipdocit_init_ex(sc_pkcs15_card_t *p15card, struct sc_aid *aid)
 	LOG_TEST_RET(card->ctx, r, "add PIN failed");
 
 	/* Auth key/cert: LCNS0, key ref 0x10, EF 0001. */
-	r = read_ds_cert(p15card, 0x0001, &id_auth, "CNS", 0);
+	r = read_ds_cert(p15card, 0x0001, &id_auth, "CNS");
 	LOG_TEST_RET(card->ctx, r, "read auth cert failed");
+	/* No ChipDoc-specific decipher operation is implemented. */
 	r = add_prkey(p15card, &id_auth, "CNS",
-			0x10, SC_PKCS15_PRKEY_USAGE_SIGN | SC_PKCS15_PRKEY_USAGE_DECRYPT, 0);
+			0x10, SC_PKCS15_PRKEY_USAGE_SIGN, 0);
 	LOG_TEST_RET(card->ctx, r, "add auth key failed");
 
 	/* Qualified-signature key/cert: DS3, key ref 0x11, EF 0002, nonRepudiation. */
-	r = read_ds_cert(p15card, 0x0002, &id_ds, "DS3", 1);
+	r = read_ds_cert(p15card, 0x0002, &id_ds, "DS3");
 	LOG_TEST_RET(card->ctx, r, "read DS cert failed");
 	r = add_prkey(p15card, &id_ds, "DS3",
 			0x11, SC_PKCS15_PRKEY_USAGE_NONREPUDIATION, 1);
