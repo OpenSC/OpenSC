@@ -41,6 +41,13 @@ assert $? "CKA_KEY_TYPE not read back"
 grep -qx "CKA_VALUE_LEN: 32" attrs.out
 assert $? "CKA_VALUE_LEN not read back"
 
+# Generated without --private, the key gets the token's default (#3950),
+# which is private on the tokens this test runs on.
+$PKCS11_TOOL "${PRIV_ARGS[@]}" --type secrkey --id 21 --read-attribute CKA_PRIVATE > attrs.out
+assert $? "Failed to read CKA_PRIVATE from the secret key"
+grep -qx "CKA_PRIVATE: true" attrs.out
+assert $? "The secret key was not private by default"
+
 $PKCS11_TOOL "${PRIV_ARGS[@]}" --type secrkey --id 21 --read-attribute no_such_attribute > /dev/null 2>&1
 [[ $? != 0 ]]
 assert $? "An unknown attribute name was accepted"
@@ -70,16 +77,20 @@ else
 	[[ $? != 0 ]]
 	assert $? "--set-attribute without a value was accepted"
 
-	# What --read-attribute prints is accepted back
-	$PKCS11_TOOL "${PRIV_ARGS[@]}" --type secrkey --id 22 --set-attribute START_DATE=20260102
+	# What --read-attribute prints is accepted back. On a public key: SoftHSM
+	# stores dates unencrypted but decrypts them on read when the object is
+	# private, and the secret key above is private on tokens that default to it.
+	$PKCS11_TOOL "${PRIV_ARGS[@]}" --keypairgen --key-type EC:prime256v1 --label attr-ec --id 24
+	assert $? "Failed to generate EC key pair"
+	$PKCS11_TOOL "${PRIV_ARGS[@]}" --type pubkey --id 24 --set-attribute START_DATE=20260102
 	assert $? "Failed to set CKA_START_DATE as YYYYMMDD"
-	$PKCS11_TOOL "${PRIV_ARGS[@]}" --type secrkey --id 22 --read-attribute start_date > attrs.out
+	$PKCS11_TOOL "${PRIV_ARGS[@]}" --type pubkey --id 24 --read-attribute start_date > attrs.out
 	assert $? "Failed to read CKA_START_DATE"
 	grep -qx "CKA_START_DATE: 2026-01-02" attrs.out
 	assert $? "CKA_START_DATE was not set"
-	$PKCS11_TOOL "${PRIV_ARGS[@]}" --type secrkey --id 22 --set-attribute START_DATE=2026-01-03
+	$PKCS11_TOOL "${PRIV_ARGS[@]}" --type pubkey --id 24 --set-attribute START_DATE=2026-01-03
 	assert $? "Failed to set CKA_START_DATE as YYYY-MM-DD"
-	$PKCS11_TOOL "${PRIV_ARGS[@]}" --type secrkey --id 22 --read-attribute start_date > attrs.out
+	$PKCS11_TOOL "${PRIV_ARGS[@]}" --type pubkey --id 24 --read-attribute start_date > attrs.out
 	assert $? "Failed to read CKA_START_DATE"
 	grep -qx "CKA_START_DATE: 2026-01-03" attrs.out
 	assert $? "CKA_START_DATE was not changed"

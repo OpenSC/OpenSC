@@ -438,7 +438,7 @@ static const char *option_help[] = {
 		"Test hotplug capabilities (C_GetSlotList + C_WaitForSlotEvent)",
 		"Test Mozilla-like key pair gen and cert req, <arg>=certfile",
 		"Verbose operation. (Set OPENSC_DEBUG to enable OpenSC specific debugging)",
-		"Set the CKA_PRIVATE attribute (object is only viewable after a login)",
+		"Set the CKA_PRIVATE attribute (object is only viewable after a login). Without it, a secret key gets the token's default",
 		"Set the CKA_SENSITIVE attribute (object cannot be revealed in plaintext)",
 		"Set the CKA_EXTRACTABLE attribute (object can be extracted)",
 		"Set the CKA_DESTROYABLE attribute to false (object cannot be destroyed)",
@@ -4215,11 +4215,9 @@ gen_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE *hSecretKey
 			n_attr++;
 		}
 
+		/* Without --private, a secret key gets the token's default */
 		if (opt_is_private != 0) {
 			FILL_ATTR(keyTemplate[n_attr], CKA_PRIVATE, &_true, sizeof(_true));
-			n_attr++;
-		} else {
-			FILL_ATTR(keyTemplate[n_attr], CKA_PRIVATE, &_false, sizeof(_false));
 			n_attr++;
 		}
 
@@ -5683,12 +5681,9 @@ static CK_RV write_object(CK_SESSION_HANDLE session)
 		FILL_ATTR(seckey_templ[3], CKA_VALUE, contents, contents_len);
 		n_seckey_attr = 4;
 
+		/* Without --private, a secret key gets the token's default */
 		if (opt_is_private != 0) {
 			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_PRIVATE, &_true, sizeof(_true));
-			n_seckey_attr++;
-		}
-		else {
-			FILL_ATTR(seckey_templ[n_seckey_attr], CKA_PRIVATE, &_false, sizeof(_false));
 			n_seckey_attr++;
 		}
 
@@ -6885,7 +6880,9 @@ static CK_BBOOL s_false = FALSE;
 static void
 fill_attributes_seckey(CK_ATTRIBUTE *template, int *n_attrs, int max_attrs)
 {
-	FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_PRIVATE, opt_is_private ? &s_true : &s_false, sizeof(CK_BBOOL));
+	if (opt_is_private != 0) {
+		FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_PRIVATE, &s_true, sizeof(CK_BBOOL));
+	}
 	FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_SENSITIVE, opt_is_sensitive ? &s_true : &s_false, sizeof(CK_BBOOL));
 	FILL_ATTR_EX(template, n_attrs, max_attrs, CKA_EXTRACTABLE, opt_is_extractable ? &s_true : &s_false, sizeof(CK_BBOOL));
 
@@ -7105,12 +7102,15 @@ kem_mechanism(CK_SLOT_ID slot, CK_FLAGS flags)
 }
 
 /*
- * The shared secret is a session object. Its CKA_PRIVATE, CKA_SENSITIVE and
- * CKA_EXTRACTABLE follow --private, --sensitive and --extractable, as for
- * --derive with HKDF, so it can only be written out with --extractable.
+ * The shared secret is a session object. Its CKA_SENSITIVE and
+ * CKA_EXTRACTABLE follow --sensitive and --extractable, as for --derive with
+ * HKDF, so it can only be written out with --extractable. With --private it
+ * is private. Without it, the secret from --decapsulate, which needs a login,
+ * gets the token's default; the one from --encapsulate, which does not, is
+ * made public, as a private object cannot be created without a login.
  */
 static CK_ULONG
-kem_secret_template(CK_ATTRIBUTE *tmpl, int max_attrs)
+kem_secret_template(CK_ATTRIBUTE *tmpl, int max_attrs, bool public_by_default)
 {
 	static CK_OBJECT_CLASS secret_class = CKO_SECRET_KEY;
 	static CK_KEY_TYPE secret_type = CKK_GENERIC_SECRET;
@@ -7119,7 +7119,9 @@ kem_secret_template(CK_ATTRIBUTE *tmpl, int max_attrs)
 	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_TOKEN, &s_false, sizeof(CK_BBOOL));
 	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_CLASS, &secret_class, sizeof(secret_class));
 	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_KEY_TYPE, &secret_type, sizeof(secret_type));
-	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_PRIVATE, opt_is_private ? &s_true : &s_false, sizeof(CK_BBOOL));
+	if (opt_is_private != 0 || public_by_default) {
+		FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_PRIVATE, opt_is_private ? &s_true : &s_false, sizeof(CK_BBOOL));
+	}
 	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_SENSITIVE, opt_is_sensitive ? &s_true : &s_false, sizeof(CK_BBOOL));
 	FILL_ATTR_EX(tmpl, &n_attrs, max_attrs, CKA_EXTRACTABLE, opt_is_extractable ? &s_true : &s_false, sizeof(CK_BBOOL));
 	if (opt_allowed_mechanisms_len > 0)
@@ -7156,7 +7158,7 @@ encapsulate_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key
 	CK_OBJECT_HANDLE secret = CK_INVALID_HANDLE;
 	CK_RV rv;
 	CK_ATTRIBUTE secret_template[8];
-	CK_ULONG n_attrs = kem_secret_template(secret_template, ARRAY_SIZE(secret_template));
+	CK_ULONG n_attrs = kem_secret_template(secret_template, ARRAY_SIZE(secret_template), true);
 
 	mech.mechanism = kem_mechanism(slot, CKF_ENCAPSULATE);
 	fprintf(stderr, "Using encapsulation algorithm %s\n", p11_mechanism_to_name(mech.mechanism));
@@ -7189,7 +7191,7 @@ decapsulate_key(CK_SLOT_ID slot, CK_SESSION_HANDLE session, CK_OBJECT_HANDLE key
 	CK_OBJECT_HANDLE secret = CK_INVALID_HANDLE;
 	CK_RV rv;
 	CK_ATTRIBUTE secret_template[8];
-	CK_ULONG n_attrs = kem_secret_template(secret_template, ARRAY_SIZE(secret_template));
+	CK_ULONG n_attrs = kem_secret_template(secret_template, ARRAY_SIZE(secret_template), false);
 
 	mech.mechanism = kem_mechanism(slot, CKF_DECAPSULATE);
 	fprintf(stderr, "Using decapsulation algorithm %s\n", p11_mechanism_to_name(mech.mechanism));
