@@ -84,6 +84,7 @@ typedef struct myeid_private_data {
 	 after this pair of calls and must not be used elsewhere. */
 	const struct sc_security_env* sec_env;
 	int disable_hw_pkcs1_padding;
+	int enable_crypto_in_creation_state;
 	/* buffers for AES(DES) block cipher */
 	uint8_t sym_crypt_buffer[16];
 	uint8_t sym_plain_buffer[16];
@@ -150,6 +151,7 @@ static int myeid_load_options(sc_context_t *ctx, myeid_private_data_t *priv)
 		goto err;
 	}
 	priv->disable_hw_pkcs1_padding = 0;
+	priv->enable_crypto_in_creation_state = 0;
 	for (i = 0; ctx->conf_blocks[i]; i++) {
 		found_blocks = scconf_find_blocks(ctx->conf, ctx->conf_blocks[i],
 				"card_driver", "myeid");
@@ -157,7 +159,13 @@ static int myeid_load_options(sc_context_t *ctx, myeid_private_data_t *priv)
 			continue;
 		for (j = 0, block = found_blocks[j]; block; j++, block = found_blocks[j]) {
 			priv->disable_hw_pkcs1_padding = scconf_get_int(block, "disable_hw_pkcs1_padding", 0);
-			sc_log(ctx,"Found config option: disable_hw_pkcs1_padding = %d\n", priv->disable_hw_pkcs1_padding);
+			if (scconf_find_list(block, "disable_hw_pkcs1_padding")) {
+				sc_log(ctx, "Found config option: disable_hw_pkcs1_padding = %d\n", priv->disable_hw_pkcs1_padding);
+			}
+			priv->enable_crypto_in_creation_state = scconf_get_bool(block, "enable_crypto_in_creation_state", 0);
+			if (scconf_find_list(block, "enable_crypto_in_creation_state")) {
+				sc_log(ctx, "Found config option: enable_crypto_in_creation_state = %d\n", priv->enable_crypto_in_creation_state);
+			}
 		}
 		free(found_blocks);
 	}
@@ -166,6 +174,8 @@ static int myeid_load_options(sc_context_t *ctx, myeid_private_data_t *priv)
 err:
 	return r;
 }
+
+static const struct sc_card_operations *iso_ops = NULL;
 
 static int myeid_init(struct sc_card *card)
 {
@@ -177,6 +187,9 @@ static int myeid_init(struct sc_card *card)
 	static struct sc_aid myeid_aid = { "\xA0\x00\x00\x00\x63\x50\x4B\x43\x53\x2D\x31\x35", 0x0C };
 	int rv = 0;
 	void *old_drv_data = card->drv_data;
+	u8 applet_fci[256];
+	size_t app_fci_len = sizeof(applet_fci);
+	struct sc_file app_file;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -203,8 +216,12 @@ static int myeid_init(struct sc_card *card)
 	card->drv_data = priv;
 
 	/* Ensure that the MyEID applet is selected. */
-	rv = iso7816_select_aid(card, myeid_aid.value, myeid_aid.len, NULL, NULL);
+	rv = iso7816_select_aid(card, myeid_aid.value, myeid_aid.len, applet_fci, &app_fci_len);
 	LOG_TEST_GOTO_ERR(card->ctx, rv, "Failed to select MyEID applet.");
+
+	/* Find out the life cycle state of the applet, letting the iso driver parse the FCI. */
+	rv = iso_ops->process_fci(card, &app_file, applet_fci, app_fci_len);
+	LOG_TEST_GOTO_ERR(card->ctx, rv, "Failed to process the FCI structure returned in MyEID's SELECT AID response.");
 
 	/* find out MyEID version */
 
@@ -294,6 +311,25 @@ static int myeid_init(struct sc_card *card)
 		card->max_recv_size = 255;
 	card->max_send_size = 255;
 
+	if (priv->enable_crypto_in_creation_state && card->version.fw_major >= 49 && app_file.status == SC_FILE_STATUS_CREATION) {
+		u8 sbuf[2];
+		size_t buflen = sizeof sbuf;
+		sbuf[1] = 0x01;
+		struct sc_apdu apdu;
+		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xDA, 0x01, 0xE5);
+		apdu.data = sbuf;
+		apdu.datalen = buflen;
+		apdu.lc = buflen;
+		rv = sc_transmit_apdu(card, &apdu);
+		LOG_TEST_RET(card->ctx, rv, "APDU transmit failed");
+		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+
+		if (rv != SC_SUCCESS)
+			LOG_FUNC_RETURN(card->ctx, rv);
+
+		sc_log(card->ctx, "MyEID driver: Crypto-operations enabled in Creation State until the next reset.");
+	}
+
 	rv = SC_SUCCESS;
 
 err:
@@ -304,8 +340,6 @@ err:
 
 	LOG_FUNC_RETURN(card->ctx, rv);
 }
-
-static const struct sc_card_operations *iso_ops = NULL;
 
 static int acl_to_byte(const struct sc_acl_entry *e)
 {
