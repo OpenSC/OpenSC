@@ -42,21 +42,21 @@ static struct sc_card_driver edo_drv = {
 	NULL, 0, NULL
 };
 
-
 static const struct sc_atr_table edo_atrs[] = {
-	{ "3b:84:80:01:47:43:50:43:12", NULL, NULL, SC_CARD_TYPE_EDO, 0, NULL },
-	{ NULL, NULL, NULL, 0, 0, NULL }
+		{"3b:89:80:01:02:4d:4b:4d:57:4b:53:4b:54:11", NULL, NULL, SC_CARD_TYPE_EDO_MK, 0, NULL},
+		{"3b:84:80:01:47:43:50:43:12",		       NULL, NULL, SC_CARD_TYPE_EDO,    0, NULL},
+		{NULL,					NULL, NULL, 0,		      0, NULL}
 };
 
+#define EDO_EC_FIELD_BITS 384
 
 static struct {
 	int len;
 	struct sc_object_id oid;
 } edo_curves[] = {
-	// secp384r1
-	{384, {{1, 3, 132, 0, 34, -1}}}
+		// secp384r1
+		{EDO_EC_FIELD_BITS, {{1, 3, 132, 0, 34, -1}}}
 };
-
 
 static int edo_match_card(sc_card_t* card) {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
@@ -153,7 +153,9 @@ static int edo_select_df(struct sc_card* card, const u8 path[2], struct edo_buff
 static int edo_select_ef(struct sc_card* card, const u8 path[2], struct edo_buff* buff) {
 	LOG_FUNC_CALLED(card->ctx);
 	struct sc_apdu apdu;
-	sc_format_apdu_ex(&apdu, 00, 0xA4, 0x02, 0x04, path, 2, buff->val, sizeof buff->val);
+	sc_format_apdu_ex(&apdu, 0x00, 0xA4, 0x02, 0x04, path, 2, buff->val, sizeof buff->val);
+	if (card->type == SC_CARD_TYPE_EDO_MK)
+		apdu.p2 = 0x00;
 	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
 	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SW check failed");
 	buff->len = apdu.resplen;
@@ -170,10 +172,11 @@ static int edo_select_name(struct sc_card* card, const u8* name, size_t namelen,
 
 static int edo_select_path(struct sc_card* card, const u8* path, size_t pathlen, struct edo_buff* buff) {
 	LOG_FUNC_CALLED(card->ctx);
+	/* pathlen counts remaining bytes: non-final MK components are DFs. */
 	while (pathlen >= 2) {
 		if (path[0] == 0x3F && path[1]  == 0x00)
 			LOG_TEST_RET(card->ctx, edo_select_mf(card, buff), "MF select failed");
-		else if (path[0] == 0xDF)
+		else if ((card->type == SC_CARD_TYPE_EDO_MK && pathlen > 2) || path[0] == 0xDF)
 			LOG_TEST_RET(card->ctx, edo_select_df(card, path, buff), "DF select failed");
 		else if (pathlen == 2)
 			LOG_TEST_RET(card->ctx, edo_select_ef(card, path, buff), "EF select failed");
@@ -228,52 +231,115 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+/* Left zero padding preserves the ECDSA input integer at the P-384 field width. */
+static int
+edo_sign_padded(struct sc_card *card, const u8 *data, size_t datalen,
+		u8 *out, size_t outlen)
+{
+	u8 padded_digest[EDO_EC_FIELD_BITS / 8] = {0};
+	int r;
 
-/*! Computes ECDSA signature.
- *
- * If ECDSA was used, the ASN.1 sequence of integers R,S returned by the
- * card needs to be converted to the raw concatenation of R,S for PKCS#11.
- */
-static int edo_compute_signature(struct sc_card* card, const u8* data, size_t datalen, u8* out, size_t outlen) {
 	LOG_FUNC_CALLED(card->ctx);
+	if (!data || !datalen)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
+	if (datalen < sizeof padded_digest) {
+		memcpy(padded_digest + sizeof padded_digest - datalen, data, datalen);
+		data = padded_digest;
+	}
+	/* For longer inputs, P-384 uses the leftmost 384 bits. */
+	datalen = sizeof padded_digest;
+
+	r = sc_get_iso7816_driver()->ops->compute_signature(
+			card, data, datalen, out, outlen);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/* Convert the card's DER-encoded ECDSA signature to fixed-width R || S. */
+static int
+edo_compute_signature_der(struct sc_card *card, const u8 *data, size_t datalen,
+		u8 *out, size_t outlen)
+{
 	u8 sig[SC_MAX_APDU_RESP_SIZE];
 	int r;
 
-	r = sc_get_iso7816_driver()->ops->compute_signature(
-			card, data, datalen, sig, sizeof sig);
+	LOG_FUNC_CALLED(card->ctx);
+	r = edo_sign_padded(card, data, datalen, sig, sizeof sig);
 	LOG_TEST_RET(card->ctx, r, "Internal signature failed");
 
 	/* The edo driver currently supports secp384r1 only. */
 	r = sc_asn1_decode_ecdsa_signature(
-			card->ctx, sig, (size_t)r, edo_curves[0].len / 8, &out, outlen);
+			card->ctx, sig, (size_t)r, EDO_EC_FIELD_BITS / 8, &out, outlen);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
+/* The card returns R || S directly; no DER conversion is needed. */
+static int
+edo_compute_signature_raw(struct sc_card *card, const u8 *data, size_t datalen,
+		u8 *out, size_t outlen)
+{
+	u8 sig[SC_MAX_APDU_RESP_SIZE];
+	const size_t signature_length = 2 * (EDO_EC_FIELD_BITS / 8);
+	int r;
 
-/*! Sets security environment
- *
- * Card expects key file to be selected first, followed by the
- * set security env packet with: 0x80, 0x01, 0xcc, 0x84, 0x01, 0x80|x,
- * where x is the key reference byte.
- */
-static int edo_set_security_env(struct sc_card* card, const struct sc_security_env* env, int se_num) {
 	LOG_FUNC_CALLED(card->ctx);
+	if (!out)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+	if (outlen < signature_length)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+
+	r = edo_sign_padded(card, data, datalen, sig, sizeof sig);
+	LOG_TEST_RET(card->ctx, r, "Internal signature failed");
+	if ((size_t)r != signature_length)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_DATA);
+
+	memcpy(out, sig, signature_length);
+	LOG_FUNC_RETURN(card->ctx, r);
+}
+
+/* Select the key file and configure the mode returning DER signatures. */
+static int
+edo_set_security_env_der(struct sc_card *card,
+		const struct sc_security_env *env, int se_num)
+{
 	struct sc_apdu apdu;
 	u8 payload[] = {0x80, 0x01, 0xcc, 0x84, 0x01, 0x80};
 
-	if (env->algorithm == SC_ALGORITHM_EC && env->operation == SC_SEC_OPERATION_SIGN && env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
-		payload[5] |= env->key_ref[0];
-		sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, payload, sizeof payload, NULL, 0);
-	} else
+	LOG_FUNC_CALLED(card->ctx);
+	if (env->algorithm != SC_ALGORITHM_EC ||
+			env->operation != SC_SEC_OPERATION_SIGN ||
+			!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT))
 		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
+	payload[5] |= env->key_ref[0];
+	sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x41, 0xB6, payload, sizeof payload, NULL, 0);
 	LOG_TEST_RET(card->ctx, sc_select_file(card, &env->file_ref, NULL), "SELECT file failed");
 	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
 	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SW check failed");
-
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
+/* Configure the raw-signature mode after PKCS#15 has selected the key path. */
+static int
+edo_set_security_env_raw(struct sc_card *card,
+		const struct sc_security_env *env, int se_num)
+{
+	struct sc_apdu apdu;
+	u8 payload[] = {0x91, 0x02, 0x22, 0x00};
+
+	LOG_FUNC_CALLED(card->ctx);
+	if (env->algorithm != SC_ALGORITHM_EC ||
+			env->operation != SC_SEC_OPERATION_SIGN ||
+			!(env->flags & SC_SEC_ENV_KEY_REF_PRESENT))
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+
+	payload[3] = 0x80 | env->key_ref[0];
+	sc_format_apdu_ex(&apdu, 0x00, 0x22, 0x81, 0xB6,
+			payload, sizeof payload, NULL, 0);
+	LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
+	LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "SW check failed");
+	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
+}
 
 /*! Initializes card driver.
  *
@@ -288,6 +354,11 @@ static int edo_init(sc_card_t* card) {
 
 	card->max_send_size = SC_MAX_APDU_RESP_SIZE;
 	card->max_recv_size = SC_MAX_APDU_RESP_SIZE;
+
+	if (card->type == SC_CARD_TYPE_EDO_MK) {
+		card->ops->set_security_env = edo_set_security_env_raw;
+		card->ops->compute_signature = edo_compute_signature_raw;
+	}
 
 	for (size_t i = 0; i < sizeof edo_curves / sizeof * edo_curves; ++i) {
 		LOG_TEST_RET(card->ctx, _sc_card_add_ec_alg(
@@ -316,8 +387,8 @@ struct sc_card_driver* sc_get_edo_driver(void) {
 	edo_ops.match_card = edo_match_card;
 	edo_ops.init = edo_init;
 	edo_ops.select_file = edo_select_file;
-	edo_ops.set_security_env = edo_set_security_env;
-	edo_ops.compute_signature = edo_compute_signature;
+	edo_ops.set_security_env = edo_set_security_env_der;
+	edo_ops.compute_signature = edo_compute_signature_der;
 	edo_ops.logout = edo_logout;
 
 	return &edo_drv;

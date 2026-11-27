@@ -259,6 +259,7 @@ enum {
 
 	/* eDO cards */
 	SC_CARD_TYPE_EDO = 38000,
+	SC_CARD_TYPE_EDO_MK,
 
 	/* JCOP4 cards with NQ-Applet */
 	SC_CARD_TYPE_NQ_APPLET = 39000,
