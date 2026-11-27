@@ -25,9 +25,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "internal.h"
 #include "asn1.h"
+#include "card-myeid.h"
 #include "cardctl.h"
+#include "internal.h"
 #include "types.h"
 
 /* Low byte is the MyEID card's key type specific component ID. High byte is used
@@ -54,8 +55,8 @@
 #define MYEID_CARD_CAP_GRIDPIN		0x10
 #define MYEID_CARD_CAP_PIV_EMU		0x20
 
-#define MYEID_MAX_APDU_DATA_LEN		0xFF
-#define MYEID_MAX_RSA_KEY_LEN		4096
+#define MYEID_MAX_FILE_SIZE	0x7FFF
+#define MYEID_MAX_APDU_DATA_LEN 0xFF
 
 #define MYEID_MAX_EXT_APDU_BUFFER_SIZE	(MYEID_MAX_RSA_KEY_LEN/8+16)
 
@@ -91,6 +92,7 @@ typedef struct myeid_private_data {
 	uint8_t sym_plain_buffer_len;
 	/* PSO for AES/DES need algo+flags from sec env */
 	unsigned long algorithm, algorithm_flags;
+	int lifecycle;
 } myeid_private_data_t;
 
 typedef struct myeid_card_caps {
@@ -200,6 +202,7 @@ static int myeid_init(struct sc_card *card)
 	LOG_TEST_GOTO_ERR(card->ctx, rv, "Unable to read options from opensc.conf");
 
 	priv->card_state = SC_FILE_STATUS_CREATION;
+	priv->lifecycle = SC_CARDCTRL_LIFECYCLE_USER;
 	card->drv_data = priv;
 
 	/* Ensure that the MyEID applet is selected. */
@@ -360,9 +363,6 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 
 	const int *ops;
 
-	if (len < 2)
-		return;
-
 	switch (file->type) {
 	case SC_FILE_TYPE_WORKING_EF:
 		ops = ef_ops;
@@ -389,18 +389,33 @@ static void parse_sec_attr(struct sc_file *file, const u8 *buf, size_t len)
 	}
 }
 
-static int myeid_select_file(struct sc_card *card, const struct sc_path *in_path,
-		struct sc_file **file)
+static int
+myeid_erase_binary(struct sc_card *card, unsigned int idx, size_t count, unsigned long flags)
 {
+	sc_apdu_t apdu;
 	int r;
 
 	LOG_FUNC_CALLED(card->ctx);
-	r = iso_ops->select_file(card, in_path, file);
 
-	if (r == 0 && file != NULL && *file != NULL)
-		parse_sec_attr(*file, (*file)->sec_attr, (*file)->sec_attr_len);
+	if (idx + count < MYEID_MAX_FILE_SIZE)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
 
-	LOG_FUNC_RETURN(card->ctx, r);
+	if (idx > MYEID_MAX_FILE_SIZE)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OFFSET_TOO_LARGE);
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_1, 0x0E, idx >> 8, idx & 0xFF);
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+
+	if ((apdu.sw1 == 0x67 || apdu.sw1 == 0x6B) && apdu.sw2 == 0x00)
+		sc_log(card->ctx, "Offset exceeded the file size");
+	else {
+		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		LOG_TEST_RET(card->ctx, r, "Erasing binary file failed");
+	}
+
+	LOG_FUNC_RETURN(card->ctx, count);
 }
 
 static int myeid_logout(struct sc_card *card)
@@ -439,6 +454,12 @@ static int myeid_list_files(struct sc_card *card, u8 *buf, size_t buflen)
 	return (int)apdu.resplen;
 }
 
+static int
+has_valid_prop_attr(const struct sc_file *file)
+{
+	return file->prop_attr && file->prop_attr_len == 2;
+}
+
 static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 		const u8 *buf, size_t buflen)
 {
@@ -452,18 +473,25 @@ static int myeid_process_fci(struct sc_card *card, struct sc_file *file,
 	if (r < 0)
 	 LOG_FUNC_RETURN(card->ctx, r);
 
-	if(file->type == SC_FILE_EF_UNKNOWN)
-	{
+	switch (file->type) {
+	case SC_FILE_EF_UNKNOWN:
 		tag = sc_asn1_find_tag(NULL, buf, buflen, 0x82, &taglen);
 		if (tag != NULL && taglen > 0 && *tag == 17)
-		{
 			file->type = SC_FILE_TYPE_INTERNAL_EF;
-		}
+		break;
+	case SC_FILE_TYPE_WORKING_EF:
+		if (priv->lifecycle == SC_CARDCTRL_LIFECYCLE_ADMIN &&
+				has_valid_prop_attr(file) &&
+				file->prop_attr[1] & MYEID_PROP_INFO_2_AUTO_SIZE)
+			file->size = MYEID_MAX_FILE_SIZE;
+		break;
 	}
+
 	if(file->sec_attr_len >= 3)
 	{
 		sc_log(card->ctx, "id (%X) sec_attr (%X %X %X)", file->id,
 			file->sec_attr[0],file->sec_attr[1],file->sec_attr[2]);
+		parse_sec_attr(file, file->sec_attr, file->sec_attr_len);
 	}
 
 	priv->card_state = file->status;
@@ -570,8 +598,8 @@ static int encode_file_structure(sc_card_t *card, const sc_file_t *file,
 	/* Proprietary Information */
 	buf[18] = 0x85;
 	buf[19] = 0x02;
-	if (file->prop_attr_len == 2 && file->prop_attr != NULL)
-	    memcpy(&buf[20], file->prop_attr, 2);
+	if (has_valid_prop_attr(file))
+		memcpy(&buf[20], file->prop_attr, 2);
 	else
 	{
 		buf[20] = 0x00;
@@ -1858,6 +1886,7 @@ static int myeid_get_card_caps(struct sc_card *card, myeid_card_caps_t* card_cap
 
 static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 {
+	struct myeid_private_data *priv = (struct myeid_private_data *)card->drv_data;
 	int r = SC_ERROR_NOT_SUPPORTED;
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -1883,9 +1912,15 @@ static int myeid_card_ctl(struct sc_card *card, unsigned long cmd, void *ptr)
 	case SC_CARDCTL_GET_CHANGE_COUNTER:
 		r = myeid_get_change_counter(card, (size_t *)ptr);
 		break;
-	case SC_CARDCTL_GET_DEFAULT_KEY:
 	case SC_CARDCTL_LIFECYCLE_SET:
+		priv->lifecycle = *((int *)ptr);
+		r = SC_SUCCESS;
+		break;
 	case SC_CARDCTL_LIFECYCLE_GET:
+		*((int *)ptr) = priv->lifecycle;
+		r = SC_SUCCESS;
+		break;
+	case SC_CARDCTL_GET_DEFAULT_KEY:
 		break;
 	}
 	LOG_FUNC_RETURN(card->ctx, r);
@@ -2154,31 +2189,30 @@ static struct sc_card_driver * sc_get_driver(void)
 	if (iso_ops == NULL)
 		iso_ops = iso_drv->ops;
 
-	myeid_ops			= *iso_drv->ops;
-	myeid_ops.match_card		= myeid_match_card;
-	myeid_ops.init			= myeid_init;
-	myeid_ops.finish		= myeid_finish;
+	myeid_ops = *iso_drv->ops;
+	myeid_ops.match_card = myeid_match_card;
+	myeid_ops.init = myeid_init;
+	myeid_ops.finish = myeid_finish;
+	myeid_ops.erase_binary = myeid_erase_binary;
 	/* no record oriented file services */
-	myeid_ops.read_record		= NULL;
-	myeid_ops.write_record		= NULL;
-	myeid_ops.append_record		= NULL;
-	myeid_ops.update_record		= NULL;
-	myeid_ops.select_file		= myeid_select_file;
-	myeid_ops.get_response		= iso_ops->get_response;
-	myeid_ops.logout		= myeid_logout;
-	myeid_ops.create_file		= myeid_create_file;
-	myeid_ops.delete_file		= myeid_delete_file;
-	myeid_ops.list_files		= myeid_list_files;
-	myeid_ops.set_security_env	= myeid_set_security_env;
-	myeid_ops.compute_signature	= myeid_compute_signature;
-	myeid_ops.decipher		= myeid_decipher;
-	myeid_ops.process_fci		= myeid_process_fci;
-	myeid_ops.card_ctl		= myeid_card_ctl;
-	myeid_ops.pin_cmd		= myeid_pin_cmd;
-	myeid_ops.wrap			= myeid_wrap_key;
-	myeid_ops.unwrap		= myeid_unwrap_key;
-	myeid_ops.encrypt_sym		= myeid_encrypt_sym;
-	myeid_ops.decrypt_sym		= myeid_decrypt_sym;
+	myeid_ops.read_record = NULL;
+	myeid_ops.write_record = NULL;
+	myeid_ops.append_record = NULL;
+	myeid_ops.update_record = NULL;
+	myeid_ops.logout = myeid_logout;
+	myeid_ops.create_file = myeid_create_file;
+	myeid_ops.delete_file = myeid_delete_file;
+	myeid_ops.list_files = myeid_list_files;
+	myeid_ops.set_security_env = myeid_set_security_env;
+	myeid_ops.compute_signature = myeid_compute_signature;
+	myeid_ops.decipher = myeid_decipher;
+	myeid_ops.process_fci = myeid_process_fci;
+	myeid_ops.card_ctl = myeid_card_ctl;
+	myeid_ops.pin_cmd = myeid_pin_cmd;
+	myeid_ops.wrap = myeid_wrap_key;
+	myeid_ops.unwrap = myeid_unwrap_key;
+	myeid_ops.encrypt_sym = myeid_encrypt_sym;
+	myeid_ops.decrypt_sym = myeid_decrypt_sym;
 	return &myeid_drv;
 }
 

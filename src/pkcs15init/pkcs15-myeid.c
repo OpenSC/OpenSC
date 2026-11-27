@@ -24,27 +24,22 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "libopensc/opensc.h"
+#include "libopensc/asn1.h"
+#include "libopensc/card-myeid.h"
 #include "libopensc/cardctl.h"
 #include "libopensc/internal.h"
 #include "libopensc/log.h"
+#include "libopensc/opensc.h"
+#include "pkcs11/pkcs11.h"
 #include "pkcs15-init.h"
 #include "profile.h"
-#include "libopensc/asn1.h"
-#include "pkcs11/pkcs11.h"
 
 #undef KEEP_AC_NONE_FOR_INIT_APPLET
 
-#define MYEID_MAX_PINS   14
-#define MYEID_MAX_RSA_KEY_LEN 4096
+#define MYEID_MAX_PINS 14
 
 unsigned char MYEID_DEFAULT_PUBKEY[] = {0x01, 0x00, 0x01};
 #define MYEID_DEFAULT_PUBKEY_LEN       sizeof(MYEID_DEFAULT_PUBKEY)
-
-#define MYEID_PROP_INFO_2_EXCTRACTABLE			0x08;
-#define MYEID_PROP_INFO_1_TRUSTED				0x04;
-#define MYEID_PROP_INFO_1_WRAP_WITH_TRUSTED		0x08;
-#define MYEID_PROP_INFO_2_SESSION_OBJECT		0x01;
 
 static const struct sc_object_id id_aes128_ecb = { { 2, 16, 840, 1, 101, 3, 4, 1, 1, -1 } };
 static const struct sc_object_id id_aes128_cbc = { { 2, 16, 840, 1, 101, 3, 4, 1, 2, -1 } };
