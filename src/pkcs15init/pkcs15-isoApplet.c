@@ -210,6 +210,8 @@ isoApplet_select_pin_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 	int	preferred;
 	int current;
 
+	(void)profile;
+
 	LOG_FUNC_CALLED(card->ctx);
 
 	if (auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
@@ -261,6 +263,8 @@ isoApplet_create_pin(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_file_t
 	sc_pkcs15_auth_info_t *auth_info = (sc_pkcs15_auth_info_t *) pin_obj->data;
 	struct sc_pkcs15_pin_attributes *pin_attrs = &auth_info->attrs.pin;
 	int r;
+
+	(void)profile;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -655,6 +659,10 @@ static int
 isoApplet_create_key(sc_profile_t *profile, sc_pkcs15_card_t *p15card, sc_pkcs15_object_t *obj)
 {
 	sc_card_t *card = p15card->card;
+
+	(void)profile;
+	(void)obj;
+
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -667,6 +675,8 @@ isoApplet_select_key_reference(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 {
 	int rv = SC_SUCCESS;
 	sc_card_t *card = p15card->card;
+
+	(void)profile;
 
 	LOG_FUNC_CALLED(card->ctx);
 

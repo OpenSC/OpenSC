@@ -170,6 +170,9 @@ static int asepcos_create_dir(sc_profile_t *profile, sc_pkcs15_card_t *p15card,
 static int asepcos_select_pin_reference(sc_profile_t *profile,
 		sc_pkcs15_card_t *p15card, sc_pkcs15_auth_info_t *auth_info)
 {
+	(void)profile;
+	(void)p15card;
+
 	if (auth_info->attrs.pin.flags & SC_PKCS15_PIN_FLAG_SO_PIN)
 		return SC_SUCCESS;
 	if (auth_info->attrs.pin.reference <= 0)
@@ -222,6 +225,8 @@ static int asepcos_do_store_pin(sc_profile_t *profile, sc_card_t *card,
 	sc_file_t *nfile = NULL;
 	u8  buf[64], sbuf[64], *p = buf, *q = sbuf;
 	int r, akn = 0;
+
+	(void)profile;
 
 	if (auth_info == NULL || auth_info->auth_type != SC_PKCS15_PIN_AUTH_TYPE_PIN)
 		return SC_ERROR_OBJECT_NOT_VALID;
