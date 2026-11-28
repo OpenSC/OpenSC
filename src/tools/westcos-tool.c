@@ -103,11 +103,17 @@ static char *put_filename = NULL;
 
 static int do_convert_bignum(sc_pkcs15_bignum_t *dst, const BIGNUM *src)
 {
-	if (src == 0) return 0;
+	if (src == NULL || dst == NULL)
+		return 0;
 	dst->len = BN_num_bytes(src);
 	dst->data = malloc(dst->len);
 	if (!dst->data) return 0;
-	if (!BN_bn2bin(src, dst->data)) return 0;
+	if (!BN_bn2bin(src, dst->data)) {
+		free(dst->data);
+		dst->data = NULL;
+		dst->len = 0;
+		return 0;
+	}
 	return 1;
 }
 
@@ -289,8 +295,14 @@ static int cert2der(X509 *in_cert, u8 **value)
 {
 	int len;
 	u8 *p;
+	if (!in_cert || !value)
+		return -1;
 	len = i2d_X509(in_cert, NULL);
+	if (len <= 0)
+		return -1;
 	p = *value = malloc(len);
+	if (!p)
+		return -1;
 	i2d_X509(in_cert, &p);
 	return len;
 }
@@ -308,7 +320,7 @@ static int create_file_cert(sc_card_t *card)
 
 	if(file)
 	{
-		size = (file->size) - 32;
+		size = (file->size > 32) ? (file->size - 32) : 2048;
 		sc_file_free(file);
 		file = NULL;
 	} else {
@@ -325,6 +337,7 @@ static int create_file_cert(sc_card_t *card)
 		if(file == NULL)
 		{
 			printf("Memory error.\n");
+			r = SC_ERROR_OUT_OF_MEMORY;
 			goto out;
 		}
 
@@ -364,6 +377,7 @@ int main(int argc, char *argv[])
 	EVP_PKEY *pkey = NULL;
 	BIGNUM	*bn = NULL;
 	BIO	*mem = NULL;
+	X509 *xp = NULL;
 	static const char *pin = NULL;
 	static const char *puk = NULL;
 
@@ -469,6 +483,7 @@ int main(int argc, char *argv[])
 			if(file == NULL)
 			{
 				printf("Not enough memory.\n");
+				r = SC_ERROR_OUT_OF_MEMORY;
 				goto out;
 			}
 
@@ -496,7 +511,6 @@ int main(int argc, char *argv[])
 		{
 			sc_changekey_t ck;
 			struct sc_pin_cmd_pin pin_cmd;
-			int ret;
 
 			memset(&pin_cmd, 0, sizeof(pin_cmd));
 			memset(&ck, 0, sizeof(ck));
@@ -508,13 +522,16 @@ int main(int argc, char *argv[])
 			pin_cmd.data = (u8*)pin;
 			pin_cmd.max_length = 8;
 
-			ret = sc_build_pin(ck.new_key.key_value,
-				sizeof(ck.new_key.key_value), &pin_cmd, 1);
-			if(ret < 0)
+			r = sc_build_pin(ck.new_key.key_value,
+					sizeof(ck.new_key.key_value), &pin_cmd, 1);
+			if (r < 0) {
+				sc_mem_clear(&ck, sizeof(ck));
 				goto out;
+			}
 
-			ck.new_key.key_len = ret;
+			ck.new_key.key_len = r;
 			r = sc_card_ctl(card, SC_CARDCTL_WESTCOS_CHANGE_KEY, &ck);
+			sc_mem_clear(&ck, sizeof(ck));
 			if(r) goto out;
 		}
 
@@ -522,7 +539,6 @@ int main(int argc, char *argv[])
 		{
 			sc_changekey_t ck;
 			struct sc_pin_cmd_pin puk_cmd;
-			int ret;
 
 			memset(&puk_cmd, 0, sizeof(puk_cmd));
 			memset(&ck, 0, sizeof(ck));
@@ -534,35 +550,37 @@ int main(int argc, char *argv[])
 			puk_cmd.data = (u8*)puk;
 			puk_cmd.max_length = 8;
 
-			ret = sc_build_pin(ck.new_key.key_value,
-				sizeof(ck.new_key.key_value), &puk_cmd, 1);
-			if(ret < 0)
+			r = sc_build_pin(ck.new_key.key_value,
+					sizeof(ck.new_key.key_value), &puk_cmd, 1);
+			if (r < 0) {
+				sc_mem_clear(&ck, sizeof(ck));
 				goto out;
+			}
 
-			ck.new_key.key_len = ret;
+			ck.new_key.key_len = r;
 			r = sc_card_ctl(card, SC_CARDCTL_WESTCOS_CHANGE_KEY, &ck);
+			sc_mem_clear(&ck, sizeof(ck));
 			if(r) goto out;
 		}
 	}
 
 	if(new_pin)
 	{
-		if(change_pin(card, 0, pin, puk))
+		if ((r = change_pin(card, 0, pin, puk)))
 			printf("Wrong pin.\n");
 		goto out;
 	}
 
 	if(unlock)
 	{
-		if(unlock_pin(card, 0, puk, pin))
+		if ((r = unlock_pin(card, 0, puk, pin)))
 			printf("Error unblocking pin.\n");
 		goto out;
 	}
 
 	printf("verify pin.\n");
 	{
-		if(verify_pin(card, 0, pin))
-		{
+		if ((r = verify_pin(card, 0, pin))) {
 			printf("Wrong pin.\n");
 			goto out;
 		}
@@ -590,6 +608,7 @@ int main(int argc, char *argv[])
 			printf("Not enough memory.\n");
 			if (pctx)
 				EVP_PKEY_CTX_free(pctx);
+			r = SC_ERROR_OUT_OF_MEMORY;
 			goto out;
 		}
 
@@ -599,6 +618,7 @@ int main(int argc, char *argv[])
 		{
 			printf("Key generation failed.\n");
 			EVP_PKEY_CTX_free(pctx);
+			r = SC_ERROR_INTERNAL;
 			goto out;
 		}
 		EVP_PKEY_CTX_free(pctx);
@@ -606,6 +626,7 @@ int main(int argc, char *argv[])
 		if(!i2d_PrivateKey_bio(mem, pkey))
 		{
 			printf("i2d_RSAPrivateKey_bio return %ld\n", ERR_get_error());
+			r = SC_ERROR_INTERNAL;
 			goto out;
 		}
 
@@ -617,10 +638,14 @@ int main(int argc, char *argv[])
 		{
 			if(r != SC_ERROR_FILE_NOT_FOUND) goto out;
 
+			if (file) {
+				sc_file_free(file);
+				file = NULL;
+			}
 			file = sc_file_new();
-			if(file == NULL)
-			{
+			if (file == NULL) {
 				printf("Not enough memory.\n");
+				r = SC_ERROR_OUT_OF_MEMORY;
 				goto out;
 			}
 
@@ -650,6 +675,7 @@ int main(int argc, char *argv[])
 			{
 				printf("Key file already exist,"\
 						" use -o to replace it.\n");
+				r = SC_ERROR_INTERNAL;
 				goto out;
 			}
 		}
@@ -689,7 +715,10 @@ int main(int argc, char *argv[])
 				BN_free(rsa_e);
 #endif
 				free(dst->modulus.data);
+				dst->modulus.data = NULL;
 				free(dst->exponent.data);
+				dst->exponent.data = NULL;
+				r = SC_ERROR_INTERNAL;
 				goto out;
 			}
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -702,17 +731,24 @@ int main(int argc, char *argv[])
 
 		r = sc_pkcs15_encode_pubkey(ctx, &key, &pdata, &lg);
 		free(dst->modulus.data);
+		dst->modulus.data = NULL;
 		free(dst->exponent.data);
+		dst->exponent.data = NULL;
 		if(r) goto out;
 
 		printf("Public key length %zd\n", lg);
 
 		sc_format_path("3F000002", &path);
 		r = sc_select_file(card, &path, NULL);
-		if(r) goto out;
+		if (r) {
+			free(pdata);
+			r = SC_ERROR_INTERNAL;
+			goto out;
+		}
 
 		printf("Write public key.\n");
 		r = sc_update_binary(card,0,pdata,lg,0);
+		free(pdata);
 		if(r<0) goto out;
 		printf("Public key correctly written.\n");
 
@@ -721,14 +757,19 @@ int main(int argc, char *argv[])
 	if(cert)
 	{
 		BIO *bio;
-		X509 *xp;
-		u8 *pdata;
+		u8 *pdata = NULL;
 
 		bio = BIO_new(BIO_s_file());
+		if (!bio) {
+			printf("Not enough memory.\n");
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto out;
+		}
 		if (BIO_read_filename(bio, cert) <= 0)
 		{
 			BIO_free(bio);
 			printf("Can't open file %s.\n", cert);
+			r = SC_ERROR_FILE_NOT_FOUND;
 			goto out;
 		}
 		xp = PEM_read_bio_X509(bio, NULL, NULL, NULL);
@@ -736,15 +777,24 @@ int main(int argc, char *argv[])
 		if (xp == NULL)
 		{
 			print_openssl_error();
+			r = SC_ERROR_INTERNAL;
 			goto out;
 		}
 		else
 		{
 			int lg = cert2der(xp, &pdata);
+			if (lg <= 0 || !pdata) {
+				printf("Failed to convert certificate to DER.\n");
+				r = SC_ERROR_INTERNAL;
+				goto out;
+			}
 
 			sc_format_path("0002", &path);
 			r = sc_select_file(card, &path, NULL);
-			if(r) goto out;
+			if (r) {
+				free(pdata);
+				goto out;
+			}
 
 			/* FIXME: verify if the file has a compatible size... */
 			printf("Write certificate %s.\n", cert);
@@ -761,13 +811,10 @@ int main(int argc, char *argv[])
 					r = sc_update_binary(card,0,pdata,lg,0);
 				}
 			}
-			if(r<0)
-			{
-				if(pdata) free(pdata);
+			free(pdata);
+			if (r < 0) {
 				goto out;
 			}
-			if(xp) X509_free(xp);
-			if(pdata) free(pdata);
 
 			printf("Certificate correctly written.\n");
 		}
@@ -777,8 +824,7 @@ int main(int argc, char *argv[])
 	{
 		int mode = SC_CARDCTRL_LIFECYCLE_USER;
 
-		if(card->atr.value[10] != 0x82)
-		{
+		if (card->atr.len <= 10 || card->atr.value[10] != 0x82) {
 			sc_format_path("0001", &path);
 			r = sc_select_file(card, &path, NULL);
 			if(r)
@@ -793,6 +839,7 @@ int main(int argc, char *argv[])
 			{
 				printf("Error finalizing card,"\
 					" card isn't secure.\n");
+				r = SC_ERROR_INTERNAL;
 				goto out;
 			}
 		}
@@ -812,38 +859,50 @@ int main(int argc, char *argv[])
 
 		sc_format_path(get_filename, &path);
 		r = sc_select_file(card, &path, &file);
-		if(r)
-		{
-				printf("Error file not found.\n");
-				goto out;
+		if (r || !file) {
+			printf("Error file not found.\n");
+			r = r ? r : SC_ERROR_FILE_NOT_FOUND;
+			goto out;
 		}
 
 		b = malloc(file->size);
 		if(b == NULL)
 		{
-				printf("Not enough memory.\n");
-				goto out;
+			printf("Not enough memory.\n");
+			r = SC_ERROR_OUT_OF_MEMORY;
+			goto out;
 		}
 
 		r = sc_read_binary(card, 0, b, file->size, 0);
-		if(r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED)
-		{
-			if(verify_pin(card, 0, pin))
-			{
+		if (r == SC_ERROR_SECURITY_STATUS_NOT_SATISFIED) {
+			if ((r = verify_pin(card, 0, pin))) {
 				printf("Wrong pin.\n");
+				free(b);
 				goto out;
 			}
 			r = sc_read_binary(card, 0, b, file->size, 0);
 		}
 
-		if(r<0)
-		{
-				printf("Error reading file.\n");
-				goto out;
+		if (r < 0) {
+			printf("Error reading file.\n");
+			free(b);
+			goto out;
 		}
 
 		fp = fopen(get_filename, "wb");
-		fwrite(b, 1, file->size, fp);
+		if (fp == NULL) {
+			printf("Error opening %s for writing.\n", get_filename);
+			free(b);
+			r = SC_ERROR_INTERNAL;
+			goto out;
+		}
+		if (fwrite(b, 1, file->size, fp) != file->size) {
+			printf("Error writing to %s.\n", get_filename);
+			fclose(fp);
+			free(b);
+			r = SC_ERROR_INTERNAL;
+			goto out;
+		}
 		fclose(fp);
 
 		free(b);
@@ -862,25 +921,34 @@ int main(int argc, char *argv[])
 
 		sc_format_path(put_filename, &path);
 		r = sc_select_file(card, &path, &file);
-		if(r)
-		{
-				printf("File not found.\n");
-				goto out;
+		if (r || !file) {
+			printf("File not found.\n");
+			r = r ? r : SC_ERROR_FILE_NOT_FOUND;
+			goto out;
 		}
 
 		b = malloc(file->size);
 		if(b == NULL)
 		{
 			printf("Not enough memory.\n");
+			r = SC_ERROR_OUT_OF_MEMORY;
 			goto out;
 		}
 
 		memset(b, 0, file->size);
 
 		fp = fopen(put_filename, "rb");
-		if (fp == NULL || file->size != fread(b, 1, file->size, fp))
-		{
+		if (fp == NULL) {
+			printf("could not open %s.\n", put_filename);
+			free(b);
+			r = SC_ERROR_FILE_NOT_FOUND;
+			goto out;
+		}
+		if (file->size != fread(b, 1, file->size, fp)) {
 			printf("could not read %s.\n", put_filename);
+			fclose(fp);
+			free(b);
+			r = SC_ERROR_INTERNAL;
 			goto out;
 		}
 		fclose(fp);
@@ -897,14 +965,12 @@ int main(int argc, char *argv[])
 				r = sc_update_binary(card, 0, b, file->size, 0);
 			}
 		}
+		free(b);
 		if(r<0)
 		{
-				free(b);
-				printf("Error writing file.\n");
-				goto out;
+			printf("Error writing file.\n");
+			goto out;
 		}
-
-		free(b);
 	}
 
 out:
@@ -915,6 +981,8 @@ out:
 		BN_free(bn);
 	if(pkey)
 		EVP_PKEY_free(pkey);
+	if (xp)
+		X509_free(xp);
 
 	if(file)
 		sc_file_free(file);
@@ -927,6 +995,6 @@ out:
 
 	sc_release_context(ctx);
 
-	return EXIT_SUCCESS;
+	return r < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

@@ -793,7 +793,11 @@ sc_pkcs15emu_oberthur_add_prvkey(struct sc_pkcs15_card *p15card,
 		for (ii=0; ii<rv; ii++) {
 			struct sc_pkcs15_cert_info *cert = (struct sc_pkcs15_cert_info *)objs[ii]->data;
 			struct sc_path path = cert->path;
-			unsigned int id = path.value[path.len - 2] * 0x100 + path.value[path.len - 1];
+			unsigned int id;
+
+			if (path.len < 2)
+				continue;
+			id = path.value[path.len - 2] * 0x100 + path.value[path.len - 1];
 
 			if (id == ccont.id_cert)   {
 				strlcpy(kobj.label, objs[ii]->label, sizeof(kobj.label));

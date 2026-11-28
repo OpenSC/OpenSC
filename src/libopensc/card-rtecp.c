@@ -542,8 +542,8 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	while (newlen)
 	{
 		if (buf_end - p < (int)(newlen + 2)) {
-			free(buf);
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+			r = SC_ERROR_INTERNAL;
+			goto err;
 		}
 		if ((p - buf) % max_transmit_length + newlen + 2 > max_transmit_length)
 			val_length = max_transmit_length - (p - buf) % max_transmit_length - 2;
@@ -553,8 +553,8 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 		*p++ = 0xA5;
 		*p++ = (u8)val_length;
 		if (val_length > newlen) {
-			free(buf);
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+			r = SC_ERROR_INTERNAL;
+			goto err;
 		}
 		memcpy(p, newref, val_length);
 		p += val_length;
@@ -568,10 +568,11 @@ static int rtecp_change_reference_data(sc_card_t *card, unsigned int type,
 	apdu.datalen = p - buf;
 
 	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+err:
 	sc_mem_clear(buf, buf_length);
 	free(buf);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
-	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
@@ -580,6 +581,7 @@ static int rtecp_reset_retry_counter(sc_card_t *card, unsigned int type,
 		const u8 *newref, size_t newlen)
 {
 	sc_apdu_t apdu;
+	u8 buf[SC_MAX_APDU_BUFFER_SIZE];
 	int r;
 
 	(void)type, (void)puk, (void)puklen; /* no warning */
@@ -594,14 +596,14 @@ static int rtecp_reset_retry_counter(sc_card_t *card, unsigned int type,
 	LOG_TEST_RET(card->ctx, r, "Unblock card failed");
 
 	if (newref && newlen)   {
-        	u8 tmp[2], buf[SC_MAX_APDU_BUFFER_SIZE];
+		u8 tmp[2];
 		u8 *p = buf;
 
 		tmp[0] = (newlen >> 8) & 0xFF;
 		tmp[1] = newlen & 0xFF;
 		sc_asn1_put_tag(0x80, tmp, sizeof(tmp), p, sizeof(buf) - (p - buf), &p);
 		r = sc_asn1_put_tag(0xA5, newref, newlen, p, sizeof(buf) - (p - buf), &p);
-		LOG_TEST_RET(card->ctx, r, "Invalid new PIN length");
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Invalid new PIN length");
 
 		sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0x24, 0x01, ref_qualifier);
 		apdu.lc = p - buf;
@@ -609,11 +611,13 @@ static int rtecp_reset_retry_counter(sc_card_t *card, unsigned int type,
 		apdu.datalen = p - buf;
 
 		r = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+		LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
 		r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		LOG_TEST_RET(card->ctx, r, "Set PIN failed");
+		LOG_TEST_GOTO_ERR(card->ctx, r, "Set PIN failed");
 	}
 
+err:
+	sc_mem_clear(buf, sizeof(buf));
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
@@ -763,23 +767,22 @@ static int rtecp_card_ctl(sc_card_t *card, unsigned long request, void *data)
 	if (!r && request == SC_CARDCTL_RTECP_GENERATE_KEY)
 	{
 		if (genkey_data->type == SC_ALGORITHM_RSA &&
+				genkey_data->u.rsa.modulus &&
+				genkey_data->u.rsa.exponent &&
 				genkey_data->u.rsa.modulus_len >= apdu.resplen &&
-				genkey_data->u.rsa.exponent_len >= 3)
-		{
+				genkey_data->u.rsa.exponent_len >= 3) {
 			memcpy(genkey_data->u.rsa.modulus, apdu.resp, apdu.resplen);
 			genkey_data->u.rsa.modulus_len = apdu.resplen;
 			reverse(genkey_data->u.rsa.modulus,
 					genkey_data->u.rsa.modulus_len);
 			memcpy(genkey_data->u.rsa.exponent, "\x01\x00\x01", 3);
 			genkey_data->u.rsa.exponent_len = 3;
-		}
-		else if (genkey_data->type == SC_ALGORITHM_GOSTR3410 &&
-				genkey_data->u.gostr3410.xy_len >= apdu.resplen)
-		{
+		} else if (genkey_data->type == SC_ALGORITHM_GOSTR3410 &&
+				genkey_data->u.gostr3410.xy &&
+				genkey_data->u.gostr3410.xy_len >= apdu.resplen) {
 			memcpy(genkey_data->u.gostr3410.xy, apdu.resp, apdu.resplen);
 			genkey_data->u.gostr3410.xy_len = apdu.resplen;
-		}
-		else
+		} else
 			r = SC_ERROR_BUFFER_TOO_SMALL;
 	}
 	else if (!r && request == SC_CARDCTL_GET_SERIALNR)

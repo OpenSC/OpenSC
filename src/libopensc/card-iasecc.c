@@ -318,6 +318,8 @@ iasecc_select_mf(struct sc_card *card, struct sc_file **file_out)
 		LOG_TEST_RET(card->ctx, rv, "Cannot select MF");
 	}
 	else   {
+		if (card->ef_atr->aid.len > sizeof(path.value))
+			LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "AID length too large");
 		memset(&path, 0, sizeof(path));
 		path.type = SC_PATH_TYPE_DF_NAME;
 		memcpy(path.value, card->ef_atr->aid.value, card->ef_atr->aid.len);
@@ -894,6 +896,11 @@ iasecc_select_file(struct sc_card *card, const struct sc_path *path,
 		struct sc_file *file = NULL;
 		struct sc_path ppath;
 
+		if (lpath.aid.len > sizeof(ppath.value)) {
+			rv = SC_ERROR_INVALID_ARGUMENTS;
+			LOG_TEST_GOTO_ERR(ctx, rv, "AID length too large");
+		}
+
 		sc_log(ctx, "select parent AID:%p/%zu", lpath.aid.value, lpath.aid.len);
 		sc_log(ctx, "select parent AID:%s", sc_dump_hex(lpath.aid.value, lpath.aid.len));
 		memset(&ppath, 0, sizeof(ppath));
@@ -1400,6 +1407,8 @@ iasecc_logout(struct sc_card *card)
 
 	memset(&path, 0, sizeof(struct sc_path));
 	path.type = SC_PATH_TYPE_DF_NAME;
+	if (card->ef_atr->aid.len > sizeof(path.value))
+		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_DATA, "AID length too large");
 	memcpy(path.value, card->ef_atr->aid.value, card->ef_atr->aid.len);
 	path.len = card->ef_atr->aid.len;
 
@@ -1415,22 +1424,25 @@ iasecc_finish(struct sc_card *card)
 {
 	struct sc_context *ctx = card->ctx;
 	struct iasecc_private_data *private_data = (struct iasecc_private_data *)card->drv_data;
-	struct iasecc_se_info *se_info = private_data->se_info, *next;
 
 	LOG_FUNC_CALLED(ctx);
 
 	sc_invalidate_cache(card);
 
-	while (se_info)   {
-		sc_file_free(se_info->df);
-		next = se_info->next;
-		iasecc_docp_free_fields(&se_info->docp);
-		free(se_info);
-		se_info = next;
-	}
+	if (private_data) {
+		struct iasecc_se_info *se_info = private_data->se_info, *next;
 
-	free(card->drv_data);
-	card->drv_data = NULL;
+		while (se_info) {
+			sc_file_free(se_info->df);
+			next = se_info->next;
+			iasecc_docp_free_fields(&se_info->docp);
+			free(se_info);
+			se_info = next;
+		}
+
+		free(card->drv_data);
+		card->drv_data = NULL;
+	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
 }
@@ -2693,11 +2705,13 @@ iasecc_sdo_put_data(struct sc_card *card, struct iasecc_sdo_update *update)
 		apdu.flags |= SC_APDU_FLAGS_CHAINING;
 
 		rv = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(ctx, rv, "APDU transmit failed");
-		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-		LOG_TEST_RET(ctx, rv, "SDO put data error");
-
+		sc_mem_clear(encoded, encoded_len);
 		free(encoded);
+		if (rv < 0)
+			LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+		rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
+		if (rv < 0)
+			LOG_TEST_RET(ctx, rv, "SDO put data error");
 	}
 
 	LOG_FUNC_RETURN(ctx, SC_SUCCESS);
@@ -3051,7 +3065,7 @@ iasecc_decipher(struct sc_card *card,
 
 	LOG_FUNC_CALLED(ctx);
 	sc_log(card->ctx, "crgram_len %zu;  outlen %zu", in_len, out_len);
-	if (!out || !out_len || in_len > SC_MAX_APDU_BUFFER_SIZE)
+	if (!in || !out || !out_len || in_len > SC_MAX_APDU_BUFFER_SIZE)
 		LOG_FUNC_RETURN(ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	offs = 0;
@@ -3069,15 +3083,25 @@ iasecc_decipher(struct sc_card *card,
 	apdu.le = 256;
 
 	rv = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+	sc_mem_clear(sbuf, sizeof(sbuf));
+	if (rv < 0) {
+		sc_mem_clear(resp, sizeof(resp));
+		LOG_TEST_RET(ctx, rv, "APDU transmit failed");
+	}
 	rv = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(ctx, rv, "Card returned error");
+	if (rv < 0) {
+		sc_mem_clear(resp, sizeof(resp));
+		LOG_TEST_RET(ctx, rv, "Card returned error");
+	}
 
-	if (out_len > apdu.resplen)
-		out_len = apdu.resplen;
+	if (out_len < apdu.resplen) {
+		sc_mem_clear(resp, sizeof(resp));
+		LOG_FUNC_RETURN(ctx, SC_ERROR_BUFFER_TOO_SMALL);
+	}
 
-	memcpy(out, apdu.resp, out_len);
-	rv = (int)out_len;
+	memcpy(out, apdu.resp, apdu.resplen);
+	sc_mem_clear(resp, sizeof(resp));
+	rv = (int)apdu.resplen;
 
 	LOG_FUNC_RETURN(ctx, rv);
 }
@@ -3355,6 +3379,8 @@ iasecc_compute_signature_dst(struct sc_card *card,
 		LOG_TEST_RET(ctx, SC_ERROR_BUFFER_TOO_SMALL, "Result buffer too small for the DST signature");
 
 	memcpy(out, apdu.resp, apdu.resplen);
+	sc_mem_clear(sbuf, sizeof(sbuf));
+	sc_mem_clear(rbuf, sizeof(rbuf));
 
 	LOG_FUNC_RETURN(ctx, (int)apdu.resplen);
 }

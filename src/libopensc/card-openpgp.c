@@ -1595,13 +1595,15 @@ pgp_strip_path(sc_card_t *card, const sc_path_t *path)
 {
 	unsigned int start_point = 0;
 	/* start_point will move through the path string */
-	if (path->len == 0)
+	if (!path || path->len < 2)
 		return 0;
 
 	/* ignore 3F00 (MF) at the beginning */
-	start_point = (memcmp(path->value, "\x3f\x00", 2) == 0) ? 2 : 0;
+	if (memcmp(path->value, "\x3f\x00", 2) == 0)
+		start_point = 2;
 	/* strip path of PKCS15-App DF (5015) */
-	start_point += (memcmp(path->value + start_point, "\x50\x15", 2) == 0) ? 2 : 0;
+	if (path->len >= start_point + 2 && memcmp(path->value + start_point, "\x50\x15", 2) == 0)
+		start_point += 2;
 	return start_point;
 }
 
@@ -1619,6 +1621,9 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	sc_path_t dummy_path;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!path)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	if (path->type == SC_PATH_TYPE_DF_NAME)
 		LOG_FUNC_RETURN(card->ctx, iso_ops->select_file(card, path, ret));
@@ -1641,6 +1646,8 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	if (sc_compare_path(path, &dummy_path)) {
 		if (ret != NULL) {
 			*ret = sc_file_new();
+			if (!*ret)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 			/* One use case of this dummy file is after writing certificate in pkcs15init.
 			 * So we set its size to be the same as max certificate size the card supports. */
 			(*ret)->size = priv->max_cert_size;
@@ -1667,6 +1674,8 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 
 			/* Else, need to return file */
 			*ret = sc_file_new();
+			if (!*ret)
+				LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
 			(*ret)->size = priv->max_cert_size;
 			LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 		}
@@ -1679,8 +1688,13 @@ pgp_select_file(sc_card_t *card, const sc_path_t *path, sc_file_t **ret)
 	/* success: select file = set "current" pointer to blob found */
 	priv->current = blob;
 
-	if (ret)
+	if (ret) {
+		if (!blob || !blob->file)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 		sc_file_dup(ret, blob->file);
+		if (!*ret)
+			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
@@ -1698,6 +1712,9 @@ pgp_list_files(sc_card_t *card, u8 *buf, size_t buflen)
 	int		r;
 
 	LOG_FUNC_CALLED(card->ctx);
+
+	if (!priv || !priv->current || !priv->current->file)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_FILE_NOT_FOUND);
 
 	/* jump to selected file */
 	blob = priv->current;
@@ -2650,6 +2667,9 @@ pgp_compute_signature(sc_card_t *card, const u8 *data,
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!data || !out)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	if (env->operation != SC_SEC_OPERATION_SIGN)
 		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
 				"invalid operation");
@@ -2705,16 +2725,21 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	sc_apdu_t	apdu;
 	u8 apdu_case = SC_APDU_CASE_4;
 	u8		*temp = NULL, *p = NULL;
-	size_t		templen, pklen, dolen;
+	size_t templen = 0, pklen, dolen;
 	int		r;
 
 	LOG_FUNC_CALLED(card->ctx);
 
+	if (!in || !out)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	/* padding according to OpenPGP card spec 1.1 & 2.x section 7.2.9 / 3.x section 7.2.11
 	 * The longest possible prefix is 10 bytes for ECDH */
 	templen = inlen + 10;
-	if (!(temp = malloc(templen)))
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
+	if (!(temp = malloc(templen))) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
 
 	/* padding byte: 0xa6 = ECC; 0x00 = RSA; 0x02 = AES */
 	switch (env->algorithm) {
@@ -2731,41 +2756,26 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	case SC_ALGORITHM_XEDDSA:
 		/* Calculate length of External Public Key (0x86) */
 		r = sc_asn1_put_tag(0x86, NULL, inlen, NULL, 0, NULL);
-		if (r <= 0) {
-			free(temp);
-			LOG_FUNC_RETURN(card->ctx, r);
-		}
+		LOG_TEST_GOTO_ERR(card->ctx, r, "");
 		pklen = r;
 
 		/* Calculate length of Public Key DO (0x7F49) */
 		r = sc_asn1_put_tag(0x7f49, NULL, pklen, NULL, 0, NULL);
-		if (r <= 0) {
-			free(temp);
-			LOG_FUNC_RETURN(card->ctx, r);
-		}
+		LOG_TEST_GOTO_ERR(card->ctx, r, "");
 		dolen = r;
 
 		p = temp;
 		/* This is 0xA6 Cipher DO with associated length field */
 		r = sc_asn1_put_tag(0xA6, NULL, dolen, p, templen - (p - temp), &p);
-		if (r != SC_SUCCESS) {
-			free(temp);
-			LOG_FUNC_RETURN(card->ctx, r);
-		}
+		LOG_TEST_GOTO_ERR(card->ctx, r, "");
 
 		/* Public Key DO (0x7F49) with associated length field */
 		r = sc_asn1_put_tag(0x7F49, NULL, pklen, p, templen - (p - temp), &p);
-		if (r != SC_SUCCESS) {
-			free(temp);
-			LOG_FUNC_RETURN(card->ctx, r);
-		}
+		LOG_TEST_GOTO_ERR(card->ctx, r, "");
 
 		/* External Public Key (0x86) with associated length */
 		r = sc_asn1_put_tag(0x86, in, inlen, p, templen - (p - temp), &p);
-		if (r != SC_SUCCESS) {
-			free(temp);
-			LOG_FUNC_RETURN(card->ctx, r);
-		}
+		LOG_TEST_GOTO_ERR(card->ctx, r, "");
 		inlen = (p - temp);
 		break;
 	case SC_ALGORITHM_AES:
@@ -2777,17 +2787,16 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		*/
 		/* fall through */
 	default:
-		free(temp);
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		goto err;
 	}
 
 	in = temp;
 
 	if (env->operation != SC_SEC_OPERATION_DECIPHER &&
 			env->operation != SC_SEC_OPERATION_DERIVE) {
-		free(temp);
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
-				"invalid operation");
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "invalid operation");
 	}
 
 	switch (env->key_ref[0]) {
@@ -2798,9 +2807,8 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 		break;
 	case 0x00: /* signature key */
 	default:
-		free(temp);
-		LOG_TEST_RET(card->ctx, SC_ERROR_INVALID_ARGUMENTS,
-				"invalid key reference");
+		r = SC_ERROR_INVALID_ARGUMENTS;
+		LOG_TEST_GOTO_ERR(card->ctx, r, "invalid key reference");
 	}
 
 	/* Gnuk only supports short APDU, so we need to use command chaining */
@@ -2826,18 +2834,21 @@ pgp_decipher(sc_card_t *card, const u8 *in, size_t inlen,
 	}
 
 	r = sc_transmit_apdu(card, &apdu);
-	free(temp);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
 
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "Card returned error");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Card returned error");
 
 	/* For OpenPGP Card >=v3.3, use key slot 2 for deciphering again (set to default) */
 	if (priv->bcd_version >= OPENPGP_CARD_3_3 && env->key_ref[0] == 0x02){
 		pgp_set_MSE(card, 2, 0xb8);
 	}
 
-	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
+	r = (int)apdu.resplen;
+err:
+	sc_mem_clear(temp, templen);
+	free(temp);
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 
@@ -3007,6 +3018,8 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	pgp_blob_t *fpseq_blob = NULL;
 	u8 *newdata = NULL;
 	int r;
+	u8 *oidv = NULL;
+	size_t oidv_len = 0;
 
 	LOG_FUNC_CALLED(card->ctx);
 
@@ -3020,7 +3033,8 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 			|| (key_info->u.rsa.exponent_len) == 0) {
 
 			sc_log(card->ctx, "Null data (modulus or exponent)");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			goto err;
 		}
 
 		/* https://tools.ietf.org/html/rfc4880  page 41, 72 */
@@ -3039,7 +3053,15 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 			key_info->algorithm == SC_OPENPGP_KEYALGO_EDDSA) {
 		if (key_info->u.ec.ecpointQ == NULL || (key_info->u.ec.ecpointQ_len) == 0) {
 			sc_log(card->ctx, "Error: ecpoint required!");
-			LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+			r = SC_ERROR_INVALID_ARGUMENTS;
+			goto err;
+		}
+
+		/* TODO check if we need OID conversion similar as in `pgp_update_new_algo_attr()` */
+		if (SC_SUCCESS == sc_asn1_encode_object_id(&oidv, &oidv_len, &key_info->u.ec.oidv)) {
+			key_info->u.ec.oidv_len = oidv_len;
+		} else {
+			key_info->u.ec.oidv_len = 0;
 		}
 
 		/* https://tools.ietf.org/html/rfc4880  page 41, 72
@@ -3059,14 +3081,18 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 					 + 1	/* KDF algo */
 					 + 1;	/* KEK algo */
 		}
-	} else
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	} else {
+		r = SC_ERROR_NOT_SUPPORTED;
+		goto err;
+	}
 	sc_log(card->ctx, "pk_packet_len is %zu", pk_packet_len);
 
 	fp_buffer_len = 3 + pk_packet_len;
 	p = fp_buffer = calloc(1, fp_buffer_len);
-	if (p == NULL)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
+	if (p == NULL) {
+		r = SC_ERROR_NOT_ENOUGH_MEMORY;
+		goto err;
+	}
 
 	/* constructing public-key packet */
 	p[0] = 0x99;   /* http://tools.ietf.org/html/rfc4880  page 71 */
@@ -3104,10 +3130,12 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 		/* Algorithm ID, see https://tools.ietf.org/html/rfc6637#section-5 */
 		*p = key_info->algorithm + 6;
 		p += 1;
-		*p = key_info->u.ec.oidv_len;
+		*p = oidv_len;
 		p += 1;
-		memcpy(p, key_info->u.ec.oidv.value, key_info->u.ec.oidv_len);
-		p += key_info->u.ec.oidv_len;
+		if (oidv != NULL) {
+			memcpy(p, oidv, oidv_len);
+			p += oidv_len;
+		}
 		memcpy(p, key_info->u.ec.ecpointQ, key_info->u.ec.ecpointQ_len);
 
 		/* KDF parameters for ECDH */
@@ -3130,19 +3158,20 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 				*(p+1) = 0x09;	/* KEK algo */
 			}
 		}
-	} else
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_NOT_SUPPORTED);
+	} else {
+		r = SC_ERROR_NOT_SUPPORTED;
+		goto err;
+	}
 
 	p = NULL;
 
 	/* hash with SHA-1 */
 	SHA1(fp_buffer, fp_buffer_len, fingerprint);
-	free(fp_buffer);
 
 	/* store to DO */
 	sc_log(card->ctx, "Writing to DO %04X.", tag);
 	r = pgp_put_data(card, tag, fingerprint, SHA_DIGEST_LENGTH);
-	LOG_TEST_RET(card->ctx, r, "Cannot write to DO");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "Cannot write to DO");
 
 	/* update the blob containing fingerprints (00C5) */
 	sc_log(card->ctx, "Updating fingerprint blob 00C5.");
@@ -3170,9 +3199,11 @@ pgp_calculate_and_store_fingerprint(sc_card_t *card, time_t ctime,
 	memcpy(p, fingerprint, 20);
 	/* set blob's data */
 	pgp_set_blob(fpseq_blob, newdata, fpseq_blob->len);
-	free(newdata);
 
 err:
+	free(fp_buffer);
+	free(newdata);
+	free(oidv);
 	LOG_FUNC_RETURN(card->ctx, r);
 }
 
@@ -3624,6 +3655,7 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 	size_t comp_to_add;
 	u8 i;
 	int r;
+	u8 *exponent[BYTES4BITS(SC_OPENPGP_MAX_EXP_BITS)];
 
 	LOG_FUNC_CALLED(ctx);
 
@@ -3674,17 +3706,8 @@ pgp_build_extended_header_list(sc_card_t *card, sc_cardctl_openpgp_key_gen_store
 		/* We need to right justify the exponent with allowed exponent length,
 		 * e.g. from '01 00 01' to '00 01 00 01' */
 		if (key_info->u.rsa.exponent_len < SC_OPENPGP_MAX_EXP_BITS) {
-			/* create new buffer */
-			p = calloc(1, max_e_len_bytes);
-			if (!p)
-				LOG_FUNC_RETURN(ctx, SC_ERROR_NOT_ENOUGH_MEMORY);
-
-			memcpy(p + (max_e_len_bytes - e_len_bytes), key_info->u.rsa.exponent, e_len_bytes);
-			/* set key_info->u.rsa.e to new buffer */
-			free(key_info->u.rsa.exponent);
-			key_info->u.rsa.exponent = p;
-			components[0] = p;
-			key_info->u.rsa.exponent_len = SC_OPENPGP_MAX_EXP_BITS; /* we store info in bits */
+			memcpy(exponent + (max_e_len_bytes - e_len_bytes), key_info->u.rsa.exponent, e_len_bytes);
+			components[0] = (u8 *)exponent;
 			componentlens[0] = max_e_len_bytes; /* ... but in bytes for header list */
 		}
 	}

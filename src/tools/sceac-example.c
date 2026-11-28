@@ -49,7 +49,7 @@ main (int argc, char **argv)
 	sc_reader_t *reader = NULL;
 
 	sc_apdu_t apdu;
-	u8 buf[0xffff];
+	u8 *buf = NULL;
 
 	struct sc_establish_pace_channel_input pace_input;
 	struct sc_establish_pace_channel_output pace_output;
@@ -108,9 +108,15 @@ main (int argc, char **argv)
 	if (r < 0)
 		goto err;
 
+	buf = malloc(0xffff);
+	if (!buf) {
+		r = SC_ERROR_OUT_OF_MEMORY;
+		goto err;
+	}
+
 	/* write the response data to buf */
 	apdu.resp = buf;
-	apdu.resplen = sizeof buf;
+	apdu.resplen = 0xffff;
 
 	/* Transmit the APDU with SM */
 	r = sc_transmit_apdu(card, &apdu);
@@ -122,11 +128,16 @@ err:
 	/* Free up memory and wipe it if necessary (e.g. for keys stored in sm_ctx) */
 	sc_pace_output_clear(&pace_output);
 
+	if (buf) {
+		sc_mem_clear(buf, 0xffff);
+		free(buf);
+	}
+
 	sc_sm_stop(card);
 	sc_reset(card, 1);
 	sc_disconnect_card(card);
 	sc_release_context(ctx);
 
-	return -r;
+	return r < 0 ? 1 : 0;
 }
 

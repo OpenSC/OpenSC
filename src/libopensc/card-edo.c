@@ -197,9 +197,15 @@ static int edo_select_path(struct sc_card* card, const u8* path, size_t pathlen,
  * 3. Select DF until provided,
  * 4. Select EF if provided.
  */
-static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, struct sc_file** file_out) {
-	LOG_FUNC_CALLED(card->ctx);
+static int
+edo_select_file(struct sc_card *card, const struct sc_path *in_path, struct sc_file **file_out)
+{
 	struct edo_buff buff = {0};
+	int r;
+	LOG_FUNC_CALLED(card->ctx);
+
+	if (!in_path)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	switch (in_path->type) {
 		case SC_PATH_TYPE_PATH:
@@ -217,17 +223,24 @@ static int edo_select_file(struct sc_card* card, const struct sc_path* in_path, 
 	}
 
 	if (file_out) {
+		struct sc_file *file;
+
 		if (buff.len < 2)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_UNKNOWN_DATA_RECEIVED);
-		if (!(*file_out = sc_file_new()))
+		file = sc_file_new();
+		if (!file)
 			LOG_FUNC_RETURN(card->ctx, SC_ERROR_OUT_OF_MEMORY);
-		(*file_out)->path = *in_path;
-		LOG_TEST_RET(card->ctx, card->ops->process_fci(card, *file_out, buff.val, buff.len), "Process FCI failed");
+		file->path = *in_path;
+		r = card->ops->process_fci(card, file, buff.val, buff.len);
+		if (r < 0) {
+			sc_file_free(file);
+			LOG_TEST_RET(card->ctx, r, "Process FCI failed");
+		}
+		*file_out = file;
 	}
 
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
-
 
 /*! Computes ECDSA signature.
  *

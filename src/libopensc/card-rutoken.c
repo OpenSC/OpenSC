@@ -96,6 +96,7 @@ static int rutoken_finish(sc_card_t *card)
 	if (!card->drv_data)
 		return SC_ERROR_INTERNAL;
 	free(card->drv_data);
+	card->drv_data = NULL;
 	LOG_FUNC_RETURN(card->ctx, SC_SUCCESS);
 }
 
@@ -1039,12 +1040,17 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 		apdu.resp = buf;
 
 		ret = sc_transmit_apdu(card, &apdu);
-		LOG_TEST_RET(card->ctx, ret, "APDU transmit failed");
+		if (ret < 0)
+			break;
 		ret = sc_check_sw(card, apdu.sw1, apdu.sw2);
 		if (ret == SC_SUCCESS)
 		{
 			if (isIV)
 			{
+				if (apdu.resplen < 8) {
+					ret = SC_ERROR_WRONG_LENGTH;
+					break;
+				}
 				apdu.resp += 8;
 				apdu.resplen -= 8;
 				isIV = 0;
@@ -1059,6 +1065,7 @@ static int rutoken_cipher_p(sc_card_t *card, const u8 * crgram, size_t crgram_le
 			}
 		}
 	} while (ret == SC_SUCCESS  &&  crgram_len != 0);
+	sc_mem_clear(buf, sizeof(buf));
 	sc_log(card->ctx, "len out cipher %zu\n", outlen - outlen_tail);
 	if (ret == SC_SUCCESS)
 		ret = (outlen_tail == 0) ? (int)outlen : SC_ERROR_WRONG_LENGTH;

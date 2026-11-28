@@ -115,6 +115,9 @@ srbeid_select_file(sc_card_t *card, const sc_path_t *in_path,
 	sc_file_t *file;
 	int r;
 
+	if (!in_path)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
+
 	if (in_path->type == SC_PATH_TYPE_DF_NAME)
 		return iso_ops->select_file(card, in_path, file_out);
 
@@ -183,6 +186,9 @@ srbeid_set_security_env(sc_card_t *card,
 
 	LOG_FUNC_CALLED(card->ctx);
 	(void)se_num;
+
+	if (!env)
+		LOG_FUNC_RETURN(card->ctx, SC_ERROR_INVALID_ARGUMENTS);
 
 	/* Extract key FID. */
 	if ((env->flags & SC_SEC_ENV_FILE_REF_PRESENT) && env->file_ref.len >= 2) {
@@ -265,14 +271,20 @@ srbeid_pso(sc_card_t *card, u8 p1, const u8 *data, size_t datalen, u8 *out,
 	apdu.le = sizeof(resp);
 
 	r = sc_transmit_apdu(card, &apdu);
-	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "APDU transmit failed");
 	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
-	LOG_TEST_RET(card->ctx, r, "PSO failed");
+	LOG_TEST_GOTO_ERR(card->ctx, r, "PSO failed");
 
-	if (apdu.resplen > outlen)
-		LOG_FUNC_RETURN(card->ctx, SC_ERROR_BUFFER_TOO_SMALL);
+	if (apdu.resplen > outlen) {
+		r = SC_ERROR_BUFFER_TOO_SMALL;
+		goto err;
+	}
 	memcpy(out, resp, apdu.resplen);
-	LOG_FUNC_RETURN(card->ctx, (int)apdu.resplen);
+	r = (int)apdu.resplen;
+
+err:
+	sc_mem_clear(resp, sizeof(resp));
+	LOG_FUNC_RETURN(card->ctx, r);
 }
 
 /* Signing: PSO COMPUTE SIGNATURE (00 2A 9E). */
