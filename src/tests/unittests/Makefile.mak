@@ -6,7 +6,8 @@ default: all
 
 TARGETS = asn1.exe base64.exe check_macro_reference_loop.exe decode_ecdsa_signature.exe \
 	hextobin.exe openpgp-tool.exe parse_pkcs11_uri.exe pkcs15-emulator-filter.exe \
-	scconf.exe simpletlv.exe strip_pkcs1_2_padding.exe pkcs11-params.exe pkcs15-tlv-record.exe
+	scconf.exe simpletlv.exe strip_pkcs1_2_padding.exe pkcs11-params.exe \
+	pkcs15-tlv-record.exe pkcs11-pin-cache.exe
 
 !IF "$(ZLIB_DEF)" == "/DENABLE_ZLIB"
 TARGETS = $(TARGETS) compression.exe
@@ -35,6 +36,10 @@ $(TARGETS): $(LIBS)
 openpgp-tool.exe: $(TOPDIR)\src\tools\openpgp-tool-helpers.obj
 	cl $(COPTS) $(CMOCKA_CFLAGS) /c $*.c
 	link $(LINKFLAGS) /out:$@ $*.obj $(TOPDIR)\src\tools\openpgp-tool-helpers.obj $(LIBS) $(EXTRA_LIBS)
+
+pkcs11-pin-cache.exe: $(TOPDIR)\src\pkcs11\opensc-pkcs11_a.lib
+	cl $(COPTS) $(CMOCKA_CFLAGS) /c $*.c
+	link $(LINKFLAGS) /out:$@ $*.obj $(TOPDIR)\src\pkcs11\opensc-pkcs11_a.lib $(LIBS) $(EXTRA_LIBS)
 
 sm.exe: $(TOPDIR)\src\sm\libsm.lib
 	cl $(COPTS) $(CMOCKA_CFLAGS) /c $*.c

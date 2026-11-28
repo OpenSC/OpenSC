@@ -5,7 +5,7 @@ TARGET3			= pkcs11-spy.dll
 
 OBJECTS			= pkcs11-global.obj pkcs11-session.obj pkcs11-object.obj misc.obj slot.obj \
 				  mechanism.obj openssl.obj framework-pkcs15.obj framework-pkcs15init.obj \
-				  debug.obj pkcs11-display.obj versioninfo-pkcs11.res
+				  debug.obj pkcs11-display.obj
 OBJECTS3		= pkcs11-spy.obj pkcs11-display.obj versioninfo-pkcs11-spy.res
 
 LIBS = $(TOPDIR)\src\libopensc\opensc_a.lib \
@@ -24,8 +24,16 @@ all: $(TARGET1) $(TARGET3)
 
 !INCLUDE $(TOPDIR)\win32\Make.rules.mak
 
-$(TARGET1): $(OBJECTS) $(LIBS) pkcs11.def
-	link /dll $(LINKFLAGS) /out:$@ /def:pkcs11.def /implib:$*.lib $(OBJECTS) $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib Shell32.lib user32.lib advapi32.lib ws2_32.lib Shell32.lib shlwapi.lib
+!IF "$(TESTS_DEF)" == "/DENABLE_TESTS"
+all: opensc-pkcs11_a.lib
+
+# Unit tests also need the unexported session/login helpers.
+opensc-pkcs11_a.lib: $(OBJECTS)
+	lib $(LIBFLAGS) /out:$@ $(OBJECTS)
+!ENDIF
+
+$(TARGET1): $(OBJECTS) $(LIBS) pkcs11.def versioninfo-pkcs11.res
+	link /dll $(LINKFLAGS) /out:$@ /def:pkcs11.def /implib:$*.lib $(OBJECTS) versioninfo-pkcs11.res $(LIBS) $(OPENPACE_LIB) $(OPENSSL_LIB) $(ZLIB_LIB) gdi32.lib Shell32.lib user32.lib advapi32.lib ws2_32.lib Shell32.lib shlwapi.lib
 
 $(TARGET3): $(OBJECTS3) $(LIBS3) pkcs11.def
 	link /dll $(LINKFLAGS) /out:$@ /def:pkcs11.def /implib:$*.lib $(OBJECTS3) $(LIBS3) $(OPENSSL_LIB) gdi32.lib advapi32.lib shlwapi.lib
